@@ -33,7 +33,8 @@ import { getTouchLayout } from "@/lib/chicken/touch-layout"
 import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
-import { placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type ZoneBox } from "@/lib/pigchicken/sound-zones"
+import { placeEnvAt, sceneZoneOf, soundZoneOf, zoneAt, type LanesBox, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
+import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
 import { isLiteDevice } from "@/lib/performance"
@@ -76,7 +77,8 @@ const SOURCE_LABEL: Record<AimSource, string> = {
 const DEFAULT_ELEMENTS = defaultLayout().elements
 const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
 // worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30 }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number }) {
+// hideBackdrop: the header's eye hides the scenery far behind (sky, sun, mountains)
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, hideBackdrop = false }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; hideBackdrop?: boolean }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
   const templeLeft = templeScene(screens) * SCENE_W
@@ -94,7 +96,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
       <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
-      <ParallaxBackdrop worldW={width} />
+      {!hideBackdrop && <ParallaxBackdrop worldW={width} />}
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }} />
       {debug && Array.from({ length: screens }, (_, s) => (
@@ -174,10 +176,13 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
+  // the scenes' own music, as this Pátio changed it
+  const sceneZonesRef = useRef(sceneZones)
+  sceneZonesRef.current = sceneZones
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -456,7 +461,16 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let worldBoxes: Box[] = []
     // the layout's Zonas sonoras and Faixas fixas: what each point of the map plays
     let worldMusic: { zones: ZoneBox[]; lanes: LanesBox[] } = { zones: [], lanes: [] }
-    combat.setPlaceEnv((x, y) => placeEnvAt(worldMusic.zones, worldMusic.lanes, x, y))
+    // the zones as they play now (the ones with walls change when their life runs out: zone-life.ts)
+    let playZones: ZoneBox[] = []
+    combat.setPlaceEnv((x, y) => placeEnvAt(playZones, worldMusic.lanes, x, y))
+    combat.setZoneWalls((px, py, x, y, count) => {
+      const hit = zoneWallHit(playZones, px, py, x, y)
+      if (!hit) return null
+      const died = count ? hitZone(hit.box.id) : null
+      if (died) playZones = liveZones(worldMusic.zones)
+      return { flipX: hit.flipX, color: (died ?? hit.box.zone).color, died: !!died }
+    })
     const header = document.querySelector("main header")
     let drawnCamX = NaN, drawnCamY = NaN, drawnZoom = NaN
     let viewTop = header?.getBoundingClientRect().bottom ?? 0
@@ -500,6 +514,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         }
         worldBoxes = nextBoxes
         worldMusic = layoutMusic(shown)
+        playZones = liveZones(worldMusic.zones)
       }
       // the button stays while Pegar is held, so holding it while walking keeps taking items
       const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : offerShown && engine.peekActions().grab ? offerShown as "take" | "equip" : ""
@@ -914,9 +929,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // (in the temple: the stage's music, or the temple at rest)
       const templeMusic = stage.music ?? temple.music
       // a Zona sonora she is in wins over the scene's (not over a song playing in the temple)
-      const inZone = templeMusic && inTemple ? null : zoneAt(worldMusic.zones, body.x, body.y - 90 * body.scale, true)
+      const inZone = templeMusic && inTemple ? null : zoneAt(playZones, body.x, body.y - 90 * body.scale, true)
       combat.setZoneBirds(inZone?.zone.birds ?? null)
-      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : ZONES[sceneAt(worldX) % ZONES.length]
+      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : sceneZoneOf(sceneZonesRef.current, sceneAt(worldX))
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
       setMusicVolumes(mixGain("notes"), mixGain("ambience"))

@@ -28,6 +28,9 @@ export type MusicOut = {
 export type NoteEnvFn = (shot: NoteShot, angle: number) => (Partial<NoteEnv> & { rule?: RebateRule; combo?: number }) | null
 // what a point of the map plays (the layout's Zonas sonoras and Faixas fixas)
 export type PlaceEnvFn = (x: number, y: number) => PlaceEnv | null
+// a note going from (px, py) to (x, y) through the wall of a zone with life: which way it bounces, the zone's colour
+// and whether that hit made it change (count: false only replays what another browser already counted)
+export type ZoneWallsFn = (px: number, py: number, x: number, y: number, count: boolean) => { flipX: boolean; color: string; died: boolean } | null
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
@@ -185,6 +188,8 @@ export function createCombat() {
   const noteEvents: NoteShotEvent[] = []
   let noteEnv: NoteEnvFn | null = null
   let placeEnv: PlaceEnvFn | null = null
+  // the walls of the Zonas sonoras with life: a note crossing one bounces (count: it takes a point of the zone's life)
+  let zoneWalls: ZoneWallsFn | null = null
   // a peck defending at (x, y) cancels what is there, in a little cloud (parriedBy: the player who did it)
   let parriedBy = ''
   function parryAt(x: number, y: number, r: number, color: string) {
@@ -774,11 +779,16 @@ export function createCombat() {
         const lx = px + (b.x - px) * (k - 1) / steps, ly = py + (b.y - py) * (k - 1) / steps
         const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
         const wall = surfaceHit(boxes, lx, ly, x, y)
-        if (!wall) continue
+        const zw = wall ? null : zoneWalls?.(lx, ly, x, y, !dry) ?? null
+        if (!wall && !zw) continue
         b.x = lx; b.y = ly
-        if (wall.flipX) b.vx = -b.vx; else b.vy = -b.vy
+        if ((wall ?? zw)!.flipX) b.vx = -b.vx; else b.vy = -b.vy
         b.bounces = (b.bounces ?? 0) + 1
-        if (!dry) {
+        if (zw) {
+          if (!dry) { b.hits.clear(); burst(lx, ly, zw.died ? 28 : 5, zw.color, zw.died ? 340 : 140, zw.died ? 4 : 2) }
+          return false
+        }
+        if (wall && !dry) {
           const notes = surfaceSound(wall.box.rebate!, lx, ly, b.note.midi, b.note.voice, items[b.item].rebateChain, undefined)
           const main = notes.find(o => !o.drum)?.midi
           if (main !== undefined) b.note = { ...b.note, midi: main, color: DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length] }
@@ -1068,6 +1078,14 @@ export function createCombat() {
       if (n.state === 'missed') { if (n.t > 0.6) noteShots.splice(i, 1); continue }
       // a "Rebate notas" surface: it bounces back and plays again (a few times at most)
       const wall = (n.bounces ?? 0) < SURFACE_BOUNCES ? surfaceHit(ctx.boxes, px, py, n.x, n.y) : null
+      const zw = wall || (n.bounces ?? 0) >= SURFACE_BOUNCES ? null : zoneWalls?.(px, py, n.x, n.y, true) ?? null
+      if (zw) {
+        n.x = px; n.y = py
+        if (zw.flipX) n.vx = -n.vx; else n.vy = -n.vy
+        n.bounces = (n.bounces ?? 0) + 1; n.t = 0
+        burst(n.x, n.y, zw.died ? 28 : 6, zw.color, zw.died ? 340 : 160, zw.died ? 4 : 3)
+        continue
+      }
       if (wall) {
         n.x = px; n.y = py
         if (wall.flipX) n.vx = -n.vx; else n.vy = -n.vy
@@ -1175,6 +1193,8 @@ export function createCombat() {
     setNoteEnv(fn: NoteEnvFn | null) { noteEnv = fn },
     // what a point of the map plays (its Zonas sonoras and Faixas fixas); the stage's ambience wins over it
     setPlaceEnv(fn: PlaceEnvFn | null) { placeEnv = fn },
+    // the walls of the zones with life (zone-life.ts)
+    setZoneWalls(fn: ZoneWallsFn | null) { zoneWalls = fn },
     // a song is playing (the undead wait for it to end before leaving); the birds of the place (null: the zone's)
     setPlaying(on: boolean) { playing = on },
     setZoneBirds(list: BirdId[] | null) { zoneBirds = list?.length ? list : null },

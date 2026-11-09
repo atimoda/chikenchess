@@ -21,6 +21,13 @@ const RECENT = [
         'A Maryjane agora se chama Bear Gummy e seu desenho mostra um único ursinho.',
         'O som de equipar um instrumento ficou bem mais suave: as duas notas entram devagar e bem mais baixas, sem estalo.',
       ] },
+      { title: 'Zonas sonoras', items: [
+        'O rótulo de cada zona sonora virou uma fileira de tags, uma por parâmetro, mostrando só o valor: nome, tom, escala, acordes, balanço, andamento, progressão, cadeia, prioridade, troca a música, pássaros, vida das paredes, padrão de mudança e cor.',
+        'No editor, clicar numa tag passa para o próximo valor sem abrir o painel; a progressão anda para trás numa lista de progressões populares e, da primeira, volta para a última. Andamento, prioridade e vida são sliders do tamanho da tag: arraste em qualquer ponto dela. Clicar no nome abre a configuração completa.',
+        'Dois olhos novos no cabeçalho do Pátio: um oculta o cenário de fundo e o outro mostra ou oculta as zonas musicais. Fora do editor as tags só informam os valores, sem fundo e sem clique.',
+        'A zona de cada cena (Campo, Noite, Feira, Céu, Porão), que vale para a coluna inteira da cena, agora pode ser editada pelas tags da faixa do chão ou no painel Zona da cena; fica salva no Pátio.',
+        'Paredes com vida: com Vida das paredes acima de 0, as notas quicam nas bordas da zona e cada quique tira 1 ponto. Quando a vida zera, a zona muda pelo padrão escolhido (Random, Tempo dobrado, Acelerando, Troca de levada, Sobe meio tom, Ciclo de quintas, Relativa, Homônima, Troca de modo, Próxima progressão, Retrógrada, Penta ↔ diatônica, Espelho, Contracanto, Oitava acima) e a vida enche de novo.',
+      ] },
       { title: 'Pátio online', items: [
         'Aliens, zumbis, aliens de treino e os mortos-vivos que eles deixam agora são os mesmos para todo o lobby: o dono do lobby comanda os inimigos, e os acertos de qualquer player (tiros, notas, explosões, golpes e arremessos) valem para todos, inclusive matar, virar passarinho ou curar.',
         'Os botões SOLTAR ALIENS / SOLTAR ZUMBIS e os inimigos de treino do editor funcionam para qualquer player e aparecem para todos; os zumbis vão atrás da galinha mais próxima, de qualquer navegador.',

@@ -2,16 +2,17 @@
 
 // The Editor Mode's panels for the map's music: a Zona sonora's key, scale, tempo, ambience chain and priority; the
 // Faixas fixas' layout and notes; and the "Rebate notas" collision of any surface.
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { NOTE_NAMES, SCALES, ZONES, type Feel, type ScaleId } from "@/lib/pigchicken/music"
 import {
-  LANES_MAX, SURFACE_MODES, ZONE_BPM, ZONE_PRIORITY, defaultSurfaceRebate, lanesNotes, normalizeLanes, normalizeSoundZone,
+  LANES_MAX, SURFACE_MODES, ZONE_BPM, ZONE_LIFE, ZONE_PRIORITY, defaultSurfaceRebate, lanesNotes, normalizeLanes, normalizeSoundZone,
   type LanesParams, type SoundZoneParams, type SurfaceRebate,
 } from "@/lib/pigchicken/sound-zones"
 import { ChainEditor } from "./chain-editor"
 import { BIRDS, BIRD_IDS } from "@/lib/pigchicken/birds"
 import { LanesArt } from "./sound-zone-art"
+import { PROGRESSIONS, ZONE_CHANGES, progressionIndex, zoneChange, type ZoneChangeId } from "@/lib/pigchicken/zone-changes"
 
 const field = "h-9 w-full min-w-0 rounded-md border border-white/15 bg-[#0b110e] px-2"
 const SCALE_IDS = Object.keys(SCALES) as ScaleId[]
@@ -35,12 +36,17 @@ function KeySelect({ value, onChange, label = "Tom" }: { value: number; onChange
 
 // ---------- Zona sonora ----------
 
-export function SoundZoneFields({ zone, onChange }: { zone: SoundZoneParams; onChange: (z: SoundZoneParams, step?: string) => void }) {
+// scene: a scene's own zone (only its music: no priority, walls, birds or chain)
+export function SoundZoneFields({ zone, onChange, scene = false }: { zone: SoundZoneParams; onChange: (z: SoundZoneParams, step?: string) => void; scene?: boolean }) {
   const set = (p: Partial<SoundZoneParams>, step?: string) => onChange(normalizeSoundZone({ ...zone, ...p }), step)
-  const [prog, setProg] = useState(zone.progression.map(d => d + 1).join(" "))
+  const progText = zone.progression.map(d => d + 1).join(" ")
+  const [prog, setProg] = useState(progText)
+  // a tag on the label changed it: the text follows
+  useEffect(() => { setProg(t => (t.split(/[\s,]+/).map(Number).filter(n => n >= 1 && n <= 7).join(" ") === progText ? t : progText)) }, [progText])
+  const preset = progressionIndex(zone.progression)
   return (
     <>
-      <p className="text-[#93a79a]">Invisível no jogo. Quem entra nela ouve o tom, a escala e o andamento dela, e toda nota rebatida aqui dentro passa pela cadeia do ambiente.</p>
+      {!scene && <p className="text-[#93a79a]">Invisível no jogo. Quem entra nela ouve o tom, a escala e o andamento dela, e toda nota rebatida aqui dentro passa pela cadeia do ambiente.</p>}
       <Field label="Copiar de uma cena">
         <select aria-label="Copiar de uma cena" value="" onChange={e => { const z = ZONES.find(x => x.id === e.target.value); if (z) { set({ name: z.name, root: z.root, scale: z.scale, chordScale: z.chordScale, bpm: z.bpm, feel: z.feel, progression: z.progression.slice(), color: z.color }); setProg(z.progression.map(d => d + 1).join(" ")) } }} className={field}>
           <option value="">Escolher…</option>
@@ -70,6 +76,12 @@ export function SoundZoneFields({ zone, onChange }: { zone: SoundZoneParams; onC
         </Field>
       </div>
       <PatioRange label="Andamento" min={ZONE_BPM.min} max={ZONE_BPM.max} value={zone.bpm} display={`${zone.bpm} bpm`} onChange={bpm => set({ bpm }, "zone-bpm")} />
+      <Field label="Progressão pronta">
+        <select aria-label="Progressão pronta" value={preset} onChange={e => { const p = PROGRESSIONS[Number(e.target.value)]; if (p) { set({ progression: p.degrees.slice() }); setProg(p.degrees.map(d => d + 1).join(" ")) } }} className={field}>
+          {preset < 0 && <option value={-1}>Própria</option>}
+          {PROGRESSIONS.map((p, i) => <option key={p.label} value={i}>{p.label} ({p.degrees.map(d => d + 1).join(" ")})</option>)}
+        </select>
+      </Field>
       <Field label="Progressão (graus, um acorde por compasso)" hint="Ex.: 1 5 6 4. Os graus vão de 1 a 7.">
         <input aria-label="Progressão" value={prog} onChange={e => {
           setProg(e.target.value)
@@ -77,6 +89,7 @@ export function SoundZoneFields({ zone, onChange }: { zone: SoundZoneParams; onC
           if (degrees.length) set({ progression: degrees }, "zone-prog")
         }} className={field} />
       </Field>
+      {!scene && <>
       <PatioRange label="Prioridade" min={ZONE_PRIORITY.min} max={ZONE_PRIORITY.max} value={zone.priority} hint="Onde zonas se sobrepõem, vale a de prioridade maior. Qualquer zona vale mais que a da cena."
         onChange={priority => set({ priority }, "zone-priority")} />
       <label className="flex items-center justify-between gap-3">
@@ -97,6 +110,19 @@ export function SoundZoneFields({ zone, onChange }: { zone: SoundZoneParams; onC
       <ChainEditor chain={zone.chain} changed={false} title="Cadeia do ambiente"
         hint="Toda nota rebatida dentro da zona passa por estes passos (a parte “ambiente” da regra de rebate)"
         onChange={fn => { const chain = structuredClone(zone.chain); fn(chain); set({ chain }) }} />
+      <PatioRange label="Vida das paredes" min={ZONE_LIFE.min} max={ZONE_LIFE.max} value={zone.life} display={zone.life ? `${zone.life} notas` : "Sem paredes"}
+        hint="Com vida, as notas quicam nas bordas da zona e cada uma tira 1 ponto. Quando zera, a zona muda pelo padrão e a vida enche de novo."
+        onChange={life => set({ life }, "zone-life")} />
+      {zone.life > 0 && (
+        <Field label="Padrão de mudança" hint={zoneChange(zone.change).hint}>
+          <select aria-label="Padrão de mudança" value={zone.change} onChange={e => set({ change: e.target.value as ZoneChangeId })} className={field}>
+            {(["Geral", "Ritmo", "Harmonia", "Melodia"] as const).map(g => (
+              <optgroup key={g} label={g}>{ZONE_CHANGES.filter(c => c.group === g).map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</optgroup>
+            ))}
+          </select>
+        </Field>
+      )}
+      </>}
     </>
   )
 }
