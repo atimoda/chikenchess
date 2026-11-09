@@ -53,6 +53,20 @@ test('the movement keys aim only for a player without the mouse', () => {
   assert.equal(keysAimFor(null), false)
 })
 
+test('a PlayStation gamepad is told by its id and its buttons get PlayStation names', () => {
+  for (const id of ['DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)', '054c-09cc-Wireless Controller', 'PS4 Controller (Vendor: 054c Product: 09cc)', 'Sony DualShock 4', 'PlayStation(R)3 Controller']) {
+    assert.equal(controls.padStyleOfId(id), 'playstation', id)
+  }
+  for (const id of ['Xbox 360 Controller (XInput STANDARD GAMEPAD)', '045e-02fd-Xbox Wireless Controller', 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)', '', null, undefined]) {
+    assert.equal(controls.padStyleOfId(id), 'xbox', String(id))
+  }
+  assert.deepEqual(['Pad:b0', 'Pad:b1', 'Pad:b2', 'Pad:b3', 'Pad:b4', 'Pad:b7', 'Pad:b9', 'Pad:b11'].map(t => controls.chickenBindName(t, 'playstation')), ['✕', '○', '□', '△', 'L1', 'R2', 'Options', 'R3'])
+  assert.deepEqual(['Pad:b0', 'Pad:b3', 'Pad:b4', 'Pad:b7', 'Pad:b9'].map(t => controls.chickenBindName(t, 'xbox')), ['A', 'Y', 'LB', 'RT', 'Start'])
+  // sticks and keys do not change with the pad
+  assert.equal(controls.chickenBindName('Pad:a1-', 'playstation'), 'LS ↑')
+  assert.equal(controls.chickenBindName('Key:KeyW', 'playstation'), 'W')
+})
+
 test('dragging a touch control stays inside the screen', () => {
   const rect = { left: 100, right: 200, top: 500, bottom: 600 }
   assert.deepEqual(layout.clampDelta(rect, -500, 900, 400, 700), { x: -96, y: 96 })

@@ -9,7 +9,7 @@ import Link from "next/link"
 import { Gamepad2, Keyboard, Mouse, X, type LucideIcon } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import {
-  CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, KEYBOARD_INPUT_TYPES, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames,
+  CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, KEYBOARD_INPUT_TYPES, PAD_STYLE_LABELS, type PadStyle, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames, padStyleAt,
   readGamepadTokens, saveChickenControls, setChickenControlsListening, subscribeChickenControls,
   type ChickenAction, type ChickenControls, type ChickenInputType, type ChickenTouchMode,
 } from "@/lib/chicken/controls"
@@ -40,6 +40,17 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   const [listen, setListen] = useState<Listen>(null)
   const listenRef = useRef<Listen>(null)
   listenRef.current = listen
+  // the connected gamepad's make (Xbox / PlayStation): the buttons are named after it; a pad shows up after its first press
+  const [padStyle, setPadStyle] = useState<PadStyle>("xbox")
+  useEffect(() => {
+    if (!open) return
+    const read = () => setPadStyle(padStyleAt())
+    read()
+    const timer = window.setInterval(read, 1000)
+    window.addEventListener("gamepadconnected", read)
+    window.addEventListener("gamepaddisconnected", read)
+    return () => { window.clearInterval(timer); window.removeEventListener("gamepadconnected", read); window.removeEventListener("gamepaddisconnected", read) }
+  }, [open])
 
   useEffect(() => {
     setControls(loadChickenControls())
@@ -120,7 +131,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
               {(() => { const Icon = INPUT_ICONS[t.id]; return <Icon className="h-5 w-5" /> })()}
               {t.id === "keys2" && <span className="absolute -right-2 -top-1 font-mono text-[9px] font-bold leading-none">2</span>}
             </span>
-            {t.label}
+            {t.device === "gamepad" && padStyle !== "xbox" ? `${t.label} · ${PAD_STYLE_LABELS[padStyle]}` : t.label}
           </span>
         ))}
         <span style={{ gridColumn: mouseColumn }} className="flex flex-col items-center gap-1 border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">
@@ -146,7 +157,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
                   onContextMenu={e => { e.preventDefault(); assign(null, { kind, action: a.key, slot }) }}
                   className={cn("h-7 truncate rounded border px-1 font-mono text-[11px] transition-colors", on ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 text-[#dfe8df] hover:border-primary/60")}
                 >
-                  {on ? (kind === "pad" ? "no controle…" : "aperte…") : chickenBindName(controls[kind][a.key][slot])}
+                  {on ? (kind === "pad" ? "no controle…" : "aperte…") : chickenBindName(controls[kind][a.key][slot], padStyle)}
                 </button>
               )
             })}
