@@ -18,11 +18,13 @@ import { ZoneTags } from "./zone-tags"
 
 const noop = () => {}
 
-export function MusicZonesLayer({ elements, screens, sceneZones, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop }: {
+export function MusicZonesLayer({ elements, screens, sceneZones, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, opacity = 1 }: {
   elements: LayoutElement[]; screens: number; sceneZones?: SceneZones; editable: boolean
   onZone?: (el: LayoutElement, zone: SoundZoneParams, step?: string) => void
   onScene?: (scene: number, zone: SoundZoneParams, step?: string) => void
   onOpenZone?: (el: LayoutElement) => void; onOpenScene?: (scene: number) => void
+  // how strongly the layer shows (the layers menu's Zonas slider)
+  opacity?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => (ref.current ? followCamera(ref.current) : undefined), [])
@@ -30,7 +32,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, editable, onZon
   useSyncExternalStore(zoneLiveStore.subscribe, zoneLiveStore.version, zoneLiveStore.version)
   const scenes = worldScenes(screens), temple = templeScene(screens)
   return (
-    <div aria-label="Zonas sonoras" className="pointer-events-none fixed inset-0 z-[204] overflow-hidden">
+    <div aria-label="Zonas sonoras" className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
       <div ref={ref} className="absolute left-0 top-0">
         {/* each scene's own zone: it plays in the whole column of the scene, from the floor to the ceiling */}
         {Array.from({ length: scenes }, (_, s) => {

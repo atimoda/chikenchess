@@ -573,21 +573,21 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editorOn} worldTop={worldTop} groundHeight={groundHeight} hideBackdrop={!patioLayers.layers.backdrop} />
+      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editorOn} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} />
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editorOn} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editorOn} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} showScaleFan={patioLayers.layers.scale} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} hitboxes={patioLayers.layers.hitboxes} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
       {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
-        soundLayer={patioLayers.layers.zones} onSoundLayer={() => patioLayers.toggle("zones")} />}
+        soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })} />}
       {/* the "Zonas sonoras" layer outside the editor: only shown, the tags do not change anything */}
-      {patioLayers.layers.zones && !(editorOn && patio && access.canEdit) && (
-        <MusicZonesLayer elements={elementsInWorld({ v: 1, elements: patio?.layout.elements ?? [] }, screens)} screens={screens} sceneZones={patio?.layout.settings?.sceneZones} editable={false} />
+      {patioLayers.layers.zones > 0 && !(editorOn && patio && access.canEdit) && (
+        <MusicZonesLayer elements={elementsInWorld({ v: 1, elements: patio?.layout.elements ?? [] }, screens)} screens={screens} sceneZones={patio?.layout.settings?.sceneZones} editable={false} opacity={patioLayers.layers.zones / 100} />
       )}
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (

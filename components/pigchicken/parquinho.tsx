@@ -36,6 +36,7 @@ import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layo
 import { placeEnvAt, sceneZoneOf, soundZoneOf, zoneAt, type LanesBox, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { drawScaleFan } from "@/components/pigchicken/draw/scale-fan"
+import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
 import { isLiteDevice } from "@/lib/performance"
@@ -85,8 +86,8 @@ function onlyThrow(actions: Record<ChickenAction, boolean>): Record<ChickenActio
 }
 
 // worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
-// hideBackdrop: the header's eye hides the scenery far behind (sky, sun, mountains)
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, hideBackdrop = false }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; hideBackdrop?: boolean }) {
+// backdrop: how strongly the scenery far behind shows (sky, sun, mountains; the layers menu's Fundo, 0 hides it)
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1 }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
   const templeLeft = templeScene(screens) * SCENE_W
@@ -104,7 +105,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
       <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
-      {!hideBackdrop && <ParallaxBackdrop worldW={width} />}
+      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} /></div>)}
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)" }} />
       {debug && Array.from({ length: screens }, (_, s) => (
@@ -184,7 +185,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, showScaleFan = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; showScaleFan?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, scaleFan = 0, scaleFanSize = 0.3, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; scaleFan?: number; scaleFanSize?: number; hitboxes?: boolean }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -194,9 +195,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // the scenes' own music, as this Pátio changed it
   const sceneZonesRef = useRef(sceneZones)
   sceneZonesRef.current = sceneZones
-  // the "Escala da mira" layer: each player's aim fan with the note and degree of each lane
-  const scaleFanRef = useRef(showScaleFan)
-  scaleFanRef.current = showScaleFan
+  // the layers menu's debug layers: Escalas (each player's aim fan with the note and degree of each lane, this
+  // strong; 0 off) and Hit-boxes
+  const scaleFanRef = useRef(scaleFan)
+  scaleFanRef.current = scaleFan
+  const scaleSizeRef = useRef(scaleFanSize)
+  scaleSizeRef.current = scaleFanSize
+  const hitboxesRef = useRef(hitboxes)
+  hitboxesRef.current = hitboxes
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -1063,15 +1069,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const tints = colorsRef.current
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
-      if (scaleFanRef.current) {
+      if (hitboxesRef.current) {
+        drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
+          const ms = eng.getMotionState()
+          return { id, shoulder: eng.getState().shoulder, box: { l: ms.x - 45 * ms.scale, r: ms.x + 45 * ms.scale, t: ms.y - 200 * ms.scale, b: ms.y } }
+        }))
+      }
+      if (scaleFanRef.current > 0) {
         const o = engine.getState().shoulder
-        drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale)
+        drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale, scaleFanRef.current, scaleSizeRef.current)
         extraList.forEach(([id, eng]) => {
           const at = extraAim.get(id)
           if (!at) return
           combat.use(id)
           const xo = eng.getState().shoulder
-          drawScaleFan(ctx, combat, xo.x, xo.y, at.angle, st.scale)
+          drawScaleFan(ctx, combat, xo.x, xo.y, at.angle, st.scale, scaleFanRef.current, scaleSizeRef.current)
         })
         combat.use("p1")
       }

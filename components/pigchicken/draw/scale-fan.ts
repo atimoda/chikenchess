@@ -7,7 +7,6 @@
 import type { Combat } from "@/lib/pigchicken/combat"
 import { DEGREE_COLORS, NOTE_NAMES, SCALES, type PitchSet } from "@/lib/pigchicken/music"
 
-const R_IN = 34, R_OUT = 118
 
 const noteName = (m: number) => `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`
 
@@ -20,8 +19,13 @@ function aimSource(combat: Combat): { set: PitchSet; octave: number; span: numbe
   return by ? { set: "scale", octave: by.n, span: 2 } : null
 }
 
-// the current player's fan (combat.use(id) first), centred at (cx, cy) in screen units
-export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1) {
+// the fan's radius at size 1x (the layers menu's "Escalas (Tamanho)" goes from 0.1x to 2x; 0.3x by default)
+export const SCALE_FAN_R = 390
+
+// the current player's fan (combat.use(id) first), centred at (cx, cy) in screen units; alpha: the layer's
+// strength; size: its radius in SCALE_FAN_R. Each lane fades out toward the circle (0 at its edge), the labels sit
+// in the middle of each lane on the side she aims at.
+export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3) {
   const src = aimSource(combat)
   if (!src) return
   const music = combat.music, zone = music.zone
@@ -36,7 +40,14 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
   // the angle on a side for a height of the aim
   const angle = (up: number, side: boolean) => (side ? -Math.asin(up) : Math.PI + Math.asin(up))
   const now = Math.round(((upOf(aim) + 1) / 2) * (n - 1))
-  const rIn = R_IN * scale, rOut = R_OUT * scale
+  const rOut = SCALE_FAN_R * size * scale, rIn = Math.min(rOut * 0.3, 34 * scale)
+  // fading from the centre to nothing at the circle
+  const fade = (color: string, a: number) => {
+    const g = ctx.createRadialGradient(cx, cy, rIn, cx, cy, rOut)
+    g.addColorStop(0, hexA(color, a)); g.addColorStop(1, hexA(color, 0))
+    return g
+  }
+  const font = Math.max(8, Math.min(14, rOut * 0.07))
   ctx.save()
   ctx.lineWidth = 1
   for (let i = 0; i < n; i++) {
@@ -50,30 +61,29 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
       ctx.arc(cx, cy, rOut, Math.min(a0, a1), Math.max(a0, a1))
       ctx.arc(cx, cy, rIn, Math.max(a0, a1), Math.min(a0, a1), true)
       ctx.closePath()
-      ctx.globalAlpha = i === now ? 0.32 : 0.1
-      ctx.fillStyle = color
+      ctx.fillStyle = fade(color, alpha * (i === now ? 0.4 : 0.14))
       ctx.fill()
-      ctx.globalAlpha = 0.55
-      ctx.strokeStyle = color
+      ctx.strokeStyle = fade(color, alpha * 0.6)
       ctx.beginPath()
       ctx.moveTo(cx + Math.cos(a0) * rIn, cy + Math.sin(a0) * rIn)
       ctx.lineTo(cx + Math.cos(a0) * rOut, cy + Math.sin(a0) * rOut)
       ctx.stroke()
     }
     // the label in the middle of the lane, on the side she aims at
-    const mid = angle((lo + hi) / 2, right), r = rOut + 4 * scale
-    const x = cx + Math.cos(mid) * r, y = cy + Math.sin(mid) * r
-    ctx.globalAlpha = i === now ? 1 : 0.8
-    ctx.font = `${i === now ? "bold " : ""}${Math.round(9 * Math.max(0.8, scale))}px monospace`
-    ctx.textAlign = right ? "left" : "right"
+    const mid = angle((lo + hi) / 2, right), r = (rIn + rOut) / 2
+    ctx.globalAlpha = alpha * (i === now ? 1 : 0.8)
+    ctx.font = `${i === now ? "bold " : ""}${Math.round(font)}px monospace`
+    ctx.textAlign = "center"
     ctx.textBaseline = "middle"
-    const label = `${noteName(m)} ${inScale ? deg + 1 : `(${deg + 1})`}`
-    ctx.lineWidth = 3
-    ctx.strokeStyle = "rgba(0,0,0,0.85)"
-    ctx.strokeText(label, x, y)
     ctx.fillStyle = color
-    ctx.fillText(label, x, y)
-    ctx.lineWidth = 1
+    ctx.fillText(`${noteName(m)} ${inScale ? deg + 1 : `(${deg + 1})`}`, cx + Math.cos(mid) * r, cy + Math.sin(mid) * r)
+    ctx.globalAlpha = 1
   }
   ctx.restore()
+}
+
+// "#rrggbb" with an alpha
+function hexA(hex: string, a: number) {
+  const v = parseInt(hex.slice(1, 7), 16)
+  return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${Math.max(0, Math.min(1, a))})`
 }

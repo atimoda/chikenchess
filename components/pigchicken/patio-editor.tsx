@@ -78,7 +78,7 @@ const rad = (deg: number) => (deg * Math.PI) / 180
 const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 
 // soundLayer: the "Zonas sonoras" layer (shared with the header's eye), editable here
-export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: boolean; onSoundLayer: () => void }) {
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void }) {
   const history = useHistory(layout, onChange)
   const { back, forward, canUndo, canRedo } = history
   // the gesture under way (move, resize, turn); the element being dragged does not fall until it is let go
@@ -305,10 +305,10 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
           : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} />)}
-      {soundLayer && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} editable
+      {soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} editable opacity={soundLayer}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
         onScene={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
-      {soundLayer && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
+      {soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
         <SceneZonePanel key={scenePanel} scene={scenePanel} zones={layout.settings?.sceneZones} onChange={(zone, step) => setSceneZone(scenePanel, zone, step && `${step}:cena${scenePanel}`)}
           onReset={() => setSceneZone(scenePanel, null)} onClose={() => setScenePanel(null)} />
       )}
@@ -319,7 +319,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           return { ...createElement("tree", 0, 0, { tree: next.tree }), w: next.w, h: next.h }
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
-        soundLayer={soundLayer} onSoundLayer={onSoundLayer}
+        soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer}
         floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />
       {draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
