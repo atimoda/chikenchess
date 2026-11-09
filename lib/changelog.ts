@@ -13,6 +13,7 @@ const RECENT = [
         'O inventário comporta até 25 itens. O limite de cada Pátio fica em Configurações do Pátio → Limite do inventário (padrão 25); baixar o limite não tira itens de ninguém, só não deixa pegar novos.',
         'Os itens ficam em três grupos, nesta ordem: instrumentos, armas e o resto (esportivos, consumíveis e utilitários). Cada item pego entra no fim do seu grupo. Na barra, um espaço maior e uma linha colorida separam os grupos, e as casas encolhem para caber na tela.',
         'Clique e arraste um item da barra para mudar sua posição; soltando ao lado de um item de outro grupo, ele passa para esse grupo. Um clique sem arrastar continua equipando.',
+        'O analógico de movimento (gamepad ou tela) volta a mirar em todas as direções, inclusive para baixo e nas diagonais de baixo com a galinha no chão. Os players adicionais também passam a mirar pelo analógico esquerdo quando não usam o direito.',
       ] },
       { title: 'Galinha', items: [
         'Novos atalhos: Próximo instrumento (Tab, LB), Próxima arma (Q, RB) e Próximo utilitário (F, Y) percorrem só aquele grupo, na ordem da barra, começando pelo primeiro quando o item da mão é de outro grupo. Próximo item e Item anterior continuam passando por todo o inventário pela rodinha do mouse e pelo teclado secundário (Del e \'); no teclado principal e no gamepad ficam sem atalho padrão.',

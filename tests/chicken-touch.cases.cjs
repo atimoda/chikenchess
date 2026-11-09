@@ -5,7 +5,7 @@ const { resolveAim } = loadTs('lib/pigchicken/aim.ts')
 const controls = loadTs('lib/chicken/controls.ts')
 const layout = loadTs('lib/chicken/touch-layout.ts')
 
-const base = { rightStick: null, mouse: null, touch: null, leftStick: null, keys: { x: 0, y: 0 }, origin: { x: 0, y: 0 }, face: 1, grounded: false, aimLock: false, aimMagnetDeg: 0 }
+const base = { rightStick: null, mouse: null, touch: null, leftStick: null, keys: { x: 0, y: 0 }, origin: { x: 0, y: 0 }, face: 1, aimMagnetDeg: 0 }
 
 test('the on-screen left stick aims at any angle, not only the 8 directions', () => {
   globalThis.window = { dispatchEvent() {} }
@@ -22,6 +22,16 @@ test('the on-screen left stick aims at any angle, not only the 8 directions', ()
   // the magnet still snaps when it is on
   const snapped = resolveAim({ ...base, leftStick: { x: Math.cos(.1), y: -Math.sin(.1), mag: 1 }, aimMagnetDeg: 12 })
   assert.ok(Math.abs(snapped.angle) < 1e-12)
+})
+
+test('the left stick aims in all 8 directions, down included, on the ground too', () => {
+  const s = Math.SQRT1_2
+  const dirs = [[1, 0], [s, s], [0, 1], [-s, s], [-1, 0], [-s, -s], [0, -1], [s, -s]]
+  for (const [x, y] of dirs) {
+    const aim = resolveAim({ ...base, leftStick: { x, y, mag: 1 } })
+    assert.equal(aim.source, 'leftStick')
+    assert.ok(Math.abs(aim.angle - Math.atan2(y, x)) < 1e-9, `${x},${y} got ${aim.angle}`)
+  }
 })
 
 test('dragging a touch control stays inside the screen', () => {

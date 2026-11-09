@@ -682,7 +682,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       aim = resolveAim({
         rightStick: wh.open ? null : rightStickForAim ?? (held && !held.touch ? held.stick : null), mouse: autoAt ?? (owner.owns && !wh.open && !panActive ? aimMouse : null),
         touch: wh.open ? null : touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
-        face: st.face, grounded: st.grounded, aimLock, aimMagnetDeg: an.aimMagnetDeg,
+        face: st.face, aimMagnetDeg: an.aimMagnetDeg,
       })
       const d = combat.def()
       // the aim starts at the muzzle: with the cursor, turn the item until the line through its muzzle
@@ -794,11 +794,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xs = eng.getMotionState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
         combat.use(id)
         const xd = combat.def(), xArmed = !!combat.inventory[combat.current]
-        // aim: their gamepad's right stick; else up (looking up) or straight ahead
+        // aim: their gamepad's right stick; else the left stick (every way, up and down included); else up (looking up) or straight ahead
         const devs = eng.getDevices()
-        const rs = stickFor(devs, 1, an.deadzoneR)
+        const rs = stickFor(devs, 1, an.deadzoneR), ls = rs ? null : stickFor(devs, 0, an.deadzoneL)
         const ahead = xs.face >= 0 ? 0 : Math.PI
-        const angle = rs ? magnetAngle(Math.atan2(rs.y, rs.x), an.aimMagnetDeg) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
+        const aimStick = rs ?? ls
+        const angle = aimStick ? magnetAngle(Math.atan2(aimStick.y, aimStick.x), an.aimMagnetDeg) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
         const xo = eng.getState().shoulder
         const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
         const xrepeat = extraQuickSwitch.get(id) ?? newQuickSwitchRepeat()
@@ -816,7 +817,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
-        eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: rs ? angle : null, ...effectGame(combat.effect, xd.weight) })
+        eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick ? angle : null, ...effectGame(combat.effect, xd.weight) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
         eng.setSwing(rigSwing(xsw))

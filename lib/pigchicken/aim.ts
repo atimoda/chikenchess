@@ -13,8 +13,6 @@ export type AimInput = {
   keys: { x: number; y: number } // -1, 0 or 1 on each axis (movement keys: not used for the aim any more)
   origin: { x: number; y: number } // where the aim starts (her shoulder)
   face: number
-  grounded: boolean
-  aimLock: boolean
   aimMagnetDeg: number
 }
 export type Aim = {
@@ -48,11 +46,9 @@ export function resolveAim(i: AimInput): Aim {
     if (Math.hypot(dx, dy) > 4) return fromVec(dx, dy, 'mouse', 1, true, { ...i.mouse })
   }
   if (i.touch) { const stick = magnetVector(i.touch, i.aimMagnetDeg); return fromVec(stick.x, stick.y, 'touch', stick.mag, true) }
-  // on the ground, down is crouch: it only aims while the aim is locked
-  const downOk = !i.grounded || i.aimLock
+  // the left stick aims every way, up and down included, on the ground or in the air
   if (i.leftStick) {
-    let { x, y } = i.leftStick
-    if (y > 0 && !downOk) y = 0
+    const { x, y } = i.leftStick
     if (Math.abs(x) > 0.05 || Math.abs(y) > 0.05) {
       const a = magnetAngle(Math.atan2(y, x), i.aimMagnetDeg)
       return { ...fromVec(Math.cos(a), Math.sin(a), 'leftStick', i.leftStick.mag, false) }
