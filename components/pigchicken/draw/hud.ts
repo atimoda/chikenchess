@@ -185,6 +185,10 @@ function fitSize(groups: readonly number[], room: number, max: number, min: numb
 }
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 export const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
+// the key hints (the 1-9 numbers under the slots, each group's key beside it) need a mouse and a roomy screen: phones and
+// small windows show none
+export const SMALL_SCREEN_W = 768
+export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof window === "undefined" || window.innerWidth >= SMALL_SCREEN_W)
 // where a player's bar sits. bottom: the first player's big bar, at the bottom on the right (desktop and tablet).
 // Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
 // but the first on desktop and tablet; everyone on a phone held upright)
@@ -266,7 +270,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   // go left of them
   const firstRest = groups.findIndex(k => k !== 0), restX = x0 + (firstRest > 0 ? g.xs[firstRest] - g.lead : 0)
   // the slot numbers (keys 1-9) are the first player's, with a mouse
-  const numbers = g.tabs && row === 0 && (desktopPointer?.matches ?? true)
+  const numbers = g.tabs && row === 0 && showKeyHints()
   const r = Math.max(3, Math.round(size * (bottom ? 0.16 : 0.15)))
   ctx.save()
   ctx.textBaseline = "middle"
