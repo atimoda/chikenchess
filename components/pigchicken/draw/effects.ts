@@ -68,10 +68,10 @@ export function rigSwing(sw: Swing | null) {
 // the blow's air: a cream crescent along the sweep, thick at the tip and thin at the tail, that appears in a frame or
 // two and dissolves from the tail, letting off a few curls; a flash where it hit. The horizontal blow is a flattened
 // ellipse: its back half is drawn behind her (layer "back"), its front half over her (layer "front")
-export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back") {
+export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back", view: ViewRect = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }) {
   const sw = combat.swing
   if (!sw || sw.trail.opacity <= 0) return
-  if (!intersectsView({ x: origin.x - sw.reach - 40, y: origin.y - sw.reach - 40, w: sw.reach * 2 + 80, h: sw.reach * 2 + 80 }, { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }, 8)) return
+  if (!intersectsView({ x: origin.x - sw.reach - 40, y: origin.y - sw.reach - 40, w: sw.reach * 2 + 80, h: sw.reach * 2 + 80 }, view, 8)) return
   if (layer === "front" && sw.kind !== "flat") return
   const span = trailSpan(sw)
   ctx.save()

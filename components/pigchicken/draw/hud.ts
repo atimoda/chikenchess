@@ -155,9 +155,9 @@ export const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
 export const INV_W = (n: number) => n * INV_SIZE + (n - 1) * INV_GAP
 // the inventories' stack on a phone held upright: top right, one row per local player, the player's avatar at the
 // right end of the row (the avatars stay there on every screen)
-export const INV_STACK = { top: 64, right: 12, size: INV_SIZE, rowGap: 6, avatarGap: 6 }
+export const INV_STACK = { top: 64, right: 12, size: INV_SIZE, rowGap: 6, avatarGap: 6, soulGap: 6 }
 export const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_STACK.rowGap)
-export const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap
+export const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap + INV_SIZE + INV_STACK.soulGap
 // the hotbar at the bottom (desktop and tablet): big slots apart from each other, the key numbers under them; the
 // world is lifted so her ground sits above it
 export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16 }
@@ -328,6 +328,26 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, cx + nw + 14, py + ph / 2 + 0.5) }
     ctx.globalAlpha = 1
   }
+  ctx.restore()
+}
+
+// Each player's captured birds remain as a soul count beside their avatar, including when the first player's
+// inventory is displayed in the desktop bottom bar.
+export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: string, offset?: { x: number; y: number }) {
+  const size = INV_STACK.size, r = size / 2
+  const x = window.innerWidth - INV_STACK.right - size - INV_STACK.avatarGap - size + (offset?.x ?? 0)
+  const y = invRowY(row) + (offset?.y ?? 0)
+  ctx.save()
+  ctx.beginPath(); ctx.arc(x + r, y + r, r - 1, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(8,15,13,0.94)'; ctx.fill()
+  ctx.lineWidth = 2.2; ctx.strokeStyle = color; ctx.stroke()
+  ctx.beginPath(); ctx.arc(x + r, y + r, r - 4, -Math.PI * 0.82, -Math.PI * 0.18)
+  ctx.strokeStyle = 'rgba(220,250,245,0.32)'; ctx.lineWidth = 1; ctx.stroke()
+  const count = String(combat.capturedSouls)
+  const fontSize = count.length > 3 ? 8 : count.length > 2 ? 10 : 12
+  ctx.font = `bold ${fontSize}px ui-monospace, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(count, x + r, y + r + 0.5)
+  ctx.fillStyle = '#e9f4ee'; ctx.fillText(count, x + r, y + r + 0.5)
   ctx.restore()
 }
 

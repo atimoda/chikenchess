@@ -272,9 +272,9 @@ test('Shift reverses Next item on press, without a second switch when the modifi
 })
 
 test('every throwable item marks its Throw pose without changing its launch angle; proportional Fire is separate', () => {
-  const {RACK_ITEM_IDS}=loadTs('lib/pigchicken/items.ts')
+  const {DEFAULT_ITEMS, RACK_ITEM_IDS}=loadTs('lib/pigchicken/items.ts')
   const {heldItemPose}=loadTs('lib/pigchicken/held-pose.ts')
-  for(const item of RACK_ITEM_IDS){
+  for(const item of RACK_ITEM_IDS.filter(id => DEFAULT_ITEMS[id].throwSpeed > 0)){
     const c=createCombat();c.give(item)
     for(let i=0;i<15;i++)step(c,{throwHeld:true})
     const pose=heldItemPose(c,0)

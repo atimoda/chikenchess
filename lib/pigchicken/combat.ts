@@ -12,7 +12,7 @@ import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, typ
 import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
-import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
+import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
@@ -443,24 +443,25 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: number
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
+  let souls = 0
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [],
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: 0,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls } = l)
     active = id
   }
 
@@ -815,6 +816,33 @@ export function createCombat() {
   // the blow lands at the end of the preparação: everything in its arc is hit once
   function strike(sw: Swing, origin: { x: number; y: number }) {
     sw.hit = true
+    if ((sw.item as Owned | null)?.item === 'passagua') {
+      let caught = 0
+      const caughtAt: { x: number; y: number }[] = []
+      // Undead birds stay Targets while circling; the other undead phases are not capturable.
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i]
+        if (t.kind !== 'undead' || t.deadT > 0) continue
+        const u = t.data as UndeadState | undefined
+        if (!u?.bird || (u.phase !== 'bird' && u.phase !== 'leave')) continue
+        const x = t.x, y = t.y - t.h / 2
+        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35)) continue
+        targets.splice(i, 1); caught++; caughtAt.push({ x, y })
+      }
+      // Converted living birds fly as critters rather than targets and use the same capture sweep.
+      for (let i = critters.length - 1; i >= 0; i--) {
+        const c = critters[i]
+        if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16)) continue
+        critters.splice(i, 1); caught++; caughtAt.push({ x: c.x, y: c.y })
+      }
+      if (caught) {
+        souls += caught
+        caughtAt.forEach(({ x, y }) => puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' }))
+        addText(origin.x, origin.y - 54, `+${caught} alma${caught === 1 ? '' : 's'}`, '#cceef0')
+        sound('puff', null)
+      }
+      return
+    }
     targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = t.x, cy = t.y - t.h / 2
@@ -1021,6 +1049,7 @@ export function createCombat() {
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
     use(id: string) { useLoadout(id) },
     get player() { return active },
+    get capturedSouls() { return souls },
     drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id) } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
@@ -1101,6 +1130,12 @@ export function createCombat() {
       targets.push({ id, kind: 'dummy', home: x, x, y, w: 46, h: 112, hp: p.maxHp, maxHp: p.maxHp, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: 0, dummy: { params: p, stage: DUMMY_STAGE_MAX, tipT: 0, crackT: 0 } })
       return id
     },
+    addTrainingAlien(x: number, y: number, alien: { w: number; h: number; hp: number; data: unknown }) {
+      const id = nextId++
+      targets.push({ id, kind: 'alien', home: x, x, y, w: alien.w, h: alien.h, hp: alien.hp, maxHp: alien.hp, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'idle', animT: Math.random(), data: alien.data })
+      return id
+    },
+    addTrainingZombie(x: number, y: number) { spawnZombieAt(targets, x, y) },
     // the editor changes a dummy's params: a new total life keeps the share of life it had
     setDummyParams(id: number, params: Partial<DummyParams>) {
       const t = targets.find(g => g.id === id && g.dummy)

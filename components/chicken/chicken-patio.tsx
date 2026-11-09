@@ -23,6 +23,7 @@ import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
 import { OnlineChickens, netColor, useNet } from "./online-chickens"
 import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
 import { normalizeLayout, type PatioLayout } from "@/lib/pigchicken/layout"
+import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { getOnlineClient } from "@/lib/online/client"
 import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, type ChickenPortalWorld } from "./chicken-portal"
@@ -124,6 +125,7 @@ export function ChickenPatio() {
   const chatPlayers = useMemo(() => ({ ...speakers, [LOCAL_CHAT_PLAYER]: engine }), [engine, speakers])
   const worldRef = useRef<HTMLDivElement>(null)
   const fgRef = useRef<HTMLDivElement>(null)
+  const trainingSpawns = useRef<TrainingSpawnRequest[]>([])
   const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: PORTAL_X, groundY: PORTAL_GROUND_Y, d: PORTAL_D }), [])
   const [pq, setPq] = useState<ParquinhoSettings>(DEFAULT_PARQUINHO)
   const [pqOpen, setPqOpen] = useState(false)
@@ -541,10 +543,10 @@ export function ChickenPatio() {
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editorOn} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={SPAWN_X} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editorOn} />
-      {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} />}
+      {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })} />}
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
         <PatioSavePanel

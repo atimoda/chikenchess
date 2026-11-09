@@ -196,12 +196,15 @@ export function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
   const dur = a === "attack" ? ZOMBIE_TIMES.attack : a === "hurt" ? ZOMBIE_TIMES.hurt : a === "dead" ? ZOMBIE_TIMES.dead : 0.8
   const f = a === "walk" ? Math.floor((g.animT / dur) * sheet.n) % sheet.n : Math.min(sheet.n - 1, Math.floor((g.animT / dur) * sheet.n))
   const k = ZOMBIE_HEIGHT / ZOMBIE_SHEETS.walk.h
+  const hue = (g.data as { hue?: number } | undefined)?.hue ?? 0
   ctx.save()
   ctx.translate(x, g.y)
   ctx.scale(g.face < 0 ? -k : k, k)
   if (g.state === "dead") ctx.globalAlpha = Math.min(1, g.deadT / ZOMBIE_TIMES.fade)
-  if (g.flash > 0) ctx.filter = g.tint ? `drop-shadow(0 0 10px ${g.tint}) brightness(1.5)` : "brightness(2.2)"
-  else if ((g.stun ?? 0) > 0 && g.tint) ctx.filter = `drop-shadow(0 0 6px ${g.tint})`
+  const filters = hue ? [`hue-rotate(${hue}deg)`, "saturate(1.25)"] : []
+  if (g.flash > 0) filters.push(g.tint ? `drop-shadow(0 0 10px ${g.tint})` : "brightness(2.2)", ...(g.tint ? ["brightness(1.5)"] : []))
+  else if ((g.stun ?? 0) > 0 && g.tint) filters.push(`drop-shadow(0 0 6px ${g.tint})`)
+  if (filters.length) ctx.filter = filters.join(" ")
   ctx.drawImage(img, f * sheet.w, 0, sheet.w, sheet.h, -sheet.ax, -sheet.h, sheet.w, sheet.h)
   ctx.restore()
   if (g.state !== "dead" && g.hp < g.maxHp) {

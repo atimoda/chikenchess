@@ -257,15 +257,18 @@ test('keyboard defaults and legacy bindings migrate to G Throw, Tab next and Q w
   } finally { globalThis.window = previous }
 })
 
-test('Backpedal defaults to 55% and migrates old custom values into central movement tuning', () => {
+test('PigChicken movement defaults match the live tuning and migrate old custom backpedal values', () => {
   const { defaultChickenConfig, normalizeChickenConfig, migrateLegacyBackpedal } = loadTs('lib/chicken/config.ts')
   const { loadParquinho, saveParquinho } = loadTs('lib/pigchicken/settings.ts')
   const previous=globalThis.window,store=new Map()
   globalThis.window={localStorage:{getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v)}}
   try {
-    assert.equal(defaultChickenConfig().params.backpedal,55)
+    assert.equal(defaultChickenConfig().params.acceleration,4500)
+    assert.equal(defaultChickenConfig().params.backpedal,50)
+    assert.equal(defaultChickenConfig().params.flyUpFallAtten,40)
+    assert.equal(defaultChickenConfig().params.flyDownFallAtten,69)
     store.set('pigchicken-parquinho-v1',JSON.stringify({backpedal:.7}))
-    assert.equal(normalizeChickenConfig({params:{}}).params.backpedal,55)
+    assert.equal(normalizeChickenConfig({params:{}}).params.backpedal,50)
     store.set('pigchicken-parquinho-v1',JSON.stringify({backpedal:.45}))
     const old=normalizeChickenConfig({params:{}})
     assert.equal(old.params.backpedal,45)

@@ -51,6 +51,16 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M-2 -2.6 L1 2.6 M3 -2.6 L6 2.6 M8 -2.6 L11 2.6 M13 -2.6 L16 2.6" stroke="#4a5262" stroke-width="1"/>
     <ellipse cx="-8" cy="0" rx="3.4" ry="4.4" fill="#9c6331"/>`,
   },
+  // Passaguá: a hand-sized grip at (0,0), light shaft and a soft mesh bag inside an oval hoop.
+  passagua: {
+    box: [-7, -28, 82, 56],
+    svg: `<path d="M1 0 L62 0" stroke="#805b35" stroke-width="4.2" stroke-linecap="round"/>
+    <path d="M5 -1.5 L54 -1.5" stroke="#c99b61" stroke-width="1.2" stroke-linecap="round" opacity="0.85"/>
+    <path d="M-5 -3 L2 -3 L2 3 L-5 3 Z" fill="#70502f"/><path d="M-3 -2.5 L-3 2.5 M0 -2.5 L0 2.5" stroke="#d7bb8e" stroke-width="0.8"/>
+    <path d="M61 -21 Q48 -18 40 -8 Q36 0 40 8 Q48 18 61 21" fill="rgba(171,223,220,0.1)" stroke="#b5e7e4" stroke-width="1.2"/>
+    <ellipse cx="64" cy="0" rx="5" ry="24" fill="none" stroke="#d4eeeb" stroke-width="2.8"/>
+    <path d="M43 -11 L61 -17 M39 -5 L60 -9 M38 0 L59 0 M39 5 L60 9 M43 11 L61 17 M46 -14 L40 8 M51 -16 L42 13 M56 -18 L46 15" fill="none" stroke="#9bcac7" stroke-width="0.65" opacity="0.8"/>`,
+  },
   pistol: {
     box: [-6, -16, 64, 40],
     svg: `<g transform="scale(1.7)">

@@ -166,6 +166,13 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
           {grid}
         </section>
         <section className="grid gap-2">
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Inventário</h3>
+          <PatioRange label="Repetir troca após segurar" min={0.2} max={5} step={0.1} value={controls.inventory.repeatDelay}
+            display={`${controls.inventory.repeatDelay.toFixed(1)} s`} onChange={v => update(c => { c.inventory.repeatDelay = v })} />
+          <PatioRange label="Intervalo entre trocas" min={0.1} max={2} step={0.1} value={controls.inventory.repeatInterval}
+            display={`${controls.inventory.repeatInterval.toFixed(1)} s`} onChange={v => update(c => { c.inventory.repeatInterval = v })} />
+        </section>
+        <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Analógicos</h3>
           {([["deadzoneL", "Zona morta do esquerdo"], ["deadzoneR", "Zona morta do direito"]] as const).map(([k, label]) => (
             <PatioRange key={k} label={label} min={0} max={90} value={Math.round(controls.analog[k] * 100)}
@@ -179,7 +186,6 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             display={`${controls.analog.magnetDeg}°`} onChange={v => update(c => { c.analog.magnetDeg = v; c.analog.magnet = v > 0; if (v > 0) c.analog.magnetRestoreDeg = v })} />
           <PatioRange label="Força do ímã dos 8 ângulos na mira" min={0} max={22.5} step={0.5} value={controls.analog.aimMagnetDeg}
             display={`${controls.analog.aimMagnetDeg}°`} onChange={v => update(c => { c.analog.aimMagnetDeg = v })} />
-          <p className="text-[11px] text-[#8a9a8a]">No mouse: clique esquerdo atira, clique direito dá o golpe, a rodinha troca o item. As teclas 1 a 9 escolhem o item. Com a roda do inventário aberta, o mouse ou o analógico direito escolhe o item.</p>
         </section>
         <section className="grid gap-2">
           <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Na tela (celular)</h3>

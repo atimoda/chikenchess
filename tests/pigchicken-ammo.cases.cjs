@@ -11,11 +11,26 @@ const press = c => { step(c, { fire: true, firePressed: true }); step(c, {}); wa
 
 test('weapons and instruments never break; instruments and the taco refill gradually, guns do not', () => {
   for (const id of [...MELEE_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS]) assert.equal(DEFAULT_ITEMS[id].durability, 0, id)
-  for (const id of INSTRUMENT_IDS) { assert.equal(DEFAULT_ITEMS[id].refillTime, 0.5, id); assert.equal(DEFAULT_ITEMS[id].autoReload, true, id) }
+  for (const id of INSTRUMENT_IDS) { assert.ok(DEFAULT_ITEMS[id].refillTime > 0, id); assert.equal(DEFAULT_ITEMS[id].autoReload, true, id) }
   for (const id of WEAPON_IDS) assert.equal(DEFAULT_ITEMS[id].refillTime, 0, id)
-  for (const id of [...MELEE_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS]) assert.equal(DEFAULT_ITEMS[id].refillAmount, 1, id)
+  for (const id of [...MELEE_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS]) assert.ok(DEFAULT_ITEMS[id].refillAmount >= 1, id)
   const bat = DEFAULT_ITEMS.bat
   assert.deepEqual([bat.meleeOnly, bat.mag, bat.autoReload, bat.refillTime], [true, 8, true, 0.5])
+})
+
+test('weapon and instrument defaults match the live PigChicken tuning', () => {
+  for (const id of ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'flute', 'sax', 'trumpet', 'guitar', 'violin']) {
+    assert.equal(DEFAULT_ITEMS[id].chargeTime, 0.1, `${id} charge`)
+  }
+  assert.equal(DEFAULT_ITEMS.sniper.speed, 4000)
+  assert.equal(DEFAULT_ITEMS.grenade.range, 3000)
+  assert.deepEqual([DEFAULT_ITEMS.flute.rate, DEFAULT_ITEMS.flute.mag, DEFAULT_ITEMS.flute.throwCharge], [13, 60, 0.3])
+  assert.deepEqual([DEFAULT_ITEMS.sax.burst, DEFAULT_ITEMS.sax.recoilPush, DEFAULT_ITEMS.sax.weight, DEFAULT_ITEMS.sax.turnRate], [6, 100, 0.75, 120])
+  assert.deepEqual([DEFAULT_ITEMS.trumpet.reloadTime, DEFAULT_ITEMS.trumpet.refillTime, DEFAULT_ITEMS.trumpet.recoilPush], [0.2, 0.25, 790])
+  assert.deepEqual([DEFAULT_ITEMS.guitar.rate, DEFAULT_ITEMS.guitar.burst, DEFAULT_ITEMS.guitar.mag, DEFAULT_ITEMS.guitar.reloadTime, DEFAULT_ITEMS.guitar.refillTime, DEFAULT_ITEMS.guitar.refillAmount, DEFAULT_ITEMS.guitar.range, DEFAULT_ITEMS.guitar.pellets, DEFAULT_ITEMS.guitar.spreadBase, DEFAULT_ITEMS.guitar.turnRate], [17, 5, 60, 0.2, 0.55, 4, 850, 2, 20, 0])
+  assert.deepEqual([DEFAULT_ITEMS.violin.speed, DEFAULT_ITEMS.violin.weight, DEFAULT_ITEMS.violin.turnRate], [4000, 0.6, 420])
+  assert.deepEqual([DEFAULT_ITEMS.keys.rate, DEFAULT_ITEMS.keys.burst, DEFAULT_ITEMS.keys.chargeTime, DEFAULT_ITEMS.keys.mag, DEFAULT_ITEMS.keys.size, DEFAULT_ITEMS.keys.hitscan], [1, 4, 0.25, 33, 12, true])
+  assert.deepEqual([DEFAULT_ITEMS.tambourine.range, DEFAULT_ITEMS.tambourine.size], [3000, 12])
 })
 
 test('gradual auto reload: one shot back per interval while not playing, firing restarts the count', () => {

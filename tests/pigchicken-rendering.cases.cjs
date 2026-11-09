@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { intersectsView, trajectoryVisible, needsTrajectory, patioPixelRatio } = loadTs('lib/pigchicken/viewport.ts')
+const { intersectsView, trajectoryVisible, needsTrajectory, patioPixelRatio, zoomedView } = loadTs('lib/pigchicken/viewport.ts')
 const { chickenPlatformLines, chickenPlatformRects, setPlatformWorldOffset } = loadTs('lib/chicken/platform-geometry.ts')
 const { createFrameGate } = loadTs('lib/game-frame.ts')
 const { createCollisionOcclusion } = loadTs('lib/chicken/collision-occlusion.ts')
@@ -88,6 +88,26 @@ test('render culling keeps viewport edges, crossing trails and overlapping explo
   assert.equal(intersectsView({ x: 6800, y: 300, w: 400, h: 1 }, view), true)
   assert.equal(intersectsView({ x: 6800, y: 50, w: 400, h: 400 }, view), true)
   assert.equal(intersectsView({ x: 7200, y: -400, w: 100, h: 100 }, view), false)
+})
+
+test('zoomed clipping maps to the full screen below the header and preserves newly visible objects', () => {
+  const width = 1000, height = 800, top = 60
+  for (const zoom of [0.5, 0.75, 1, 2.5]) {
+    const view = zoomedView(width, height, zoom, top)
+    const screenX = x => width / 2 + (x - width / 2) * zoom
+    const screenY = y => height / 2 + (y - height / 2) * zoom
+    assert.ok(Math.abs(screenX(view.x)) < 1e-9)
+    assert.ok(Math.abs(screenX(view.x + view.w) - width) < 1e-9)
+    assert.ok(Math.abs(screenY(view.y) - top) < 1e-9)
+    assert.ok(Math.abs(screenY(view.y + view.h) - height) < 1e-9)
+  }
+  // A zombie at y=1000 and a projectile to the right were outside the old unzoomed rectangle,
+  // but fit entirely on screen at 50%. Their lower parts must not be clipped or culled.
+  const view = zoomedView(width, height, 0.5, top)
+  assert.equal(intersectsView({ x: 450, y: 825, w: 90, h: 175 }, view), true)
+  assert.ok(view.y + view.h >= 1000)
+  assert.equal(intersectsView({ x: 1300, y: 400, w: 30, h: 30 }, view), true)
+  assert.equal(intersectsView({ x: 1600, y: 400, w: 30, h: 30 }, view), false)
 })
 
 test('optional trajectories wake for visible paths/landings and preserve the bow reload endpoint', () => {

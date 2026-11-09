@@ -62,6 +62,8 @@ export type ChickenEngine = {
   setBounds: (bounds: { lo: number; hi: number; top?: number } | null) => void
   // the ground's height from the bottom of the screen (the Pátio raises it on a phone held upright)
   setGroundHeight: (h: number) => void
+  // magnification of the shared Pátio camera
+  setCameraZoom: (zoom: number) => void
   setGame: (game: ChickenGame) => void
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
@@ -215,6 +217,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const svg = document.createElementNS(NS, 'svg')
   svg.setAttribute('aria-hidden', 'true')
   svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;touch-action:none'
+  svg.style.transformOrigin = '50% 50%'
   svg.innerHTML = SVG_MARKUP
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
@@ -309,8 +312,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('keyup', onKeyUp)
   window.addEventListener('blur', onBlur)
   window.addEventListener('pointermove', onPointerMove)
+  let cameraResetR3 = false
   function pollPad() {
     const on = padTokensFor(devices, controls.analog.deadzoneL, controls.analog.magnetDeg)
+    if (!on.has('Pad:b11')) cameraResetR3 = false
+    else if (game.gameMode && on.has('Pad:b8')) cameraResetR3 = true
+    if (cameraResetR3) on.delete('Pad:b11') // Consume the reset until R3 is released, without jumping.
     pad = {}
     CHICKEN_ACTIONS.forEach(a => { pad[a.key] = controls.pad[a.key].some(t => t && on.has(t)) })
   }
@@ -1775,7 +1782,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.root.style.pointerEvents = 'none'
       renderPortal(portalEntry.start)
     },
-    setGroundHeight(h) { if (h !== opts.groundHeight) { opts.groundHeight = h; resize() } },
+    setGroundHeight(h) {
+      if (h === opts.groundHeight) return
+      opts.groundHeight = h; groundY = H - h
+      if (S.grounded && !S.plat && !S.cl) S.y = groundY
+    },
+    setCameraZoom(zoom) { svg.style.transform = zoom === 1 ? '' : `scale(${Math.max(0.5, Math.min(2.5, zoom))})` },
     setVirtual(action, on) {
       ensureAudio()
       if (on && !virt[action]) virtTapped.add(action)

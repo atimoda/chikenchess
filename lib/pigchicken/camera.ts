@@ -9,18 +9,24 @@ export const CAMERA_MODES: { value: CameraMode; label: string }[] = [
 ]
 
 // lead: px the follow camera looks ahead of her (toward the side she faces; negative = to the left)
-export type CameraOpts = { mode: CameraMode; worldX: number; viewW: number; worldW: number; dt: number; deadband: number; lag: number; lead?: number }
+export type CameraOpts = { mode: CameraMode; worldX: number; viewW: number; worldW: number; dt: number; deadband: number; lag: number; lead?: number; zoom?: number }
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
+export function cameraXRange(viewW: number, worldW: number, zoom = 1) {
+  const lo = viewW / (2 * zoom) - viewW / 2
+  return { lo, hi: Math.max(lo, worldW - viewW / 2 - viewW / (2 * zoom)) }
+}
+
 // next camera x (left edge of the view, in world pixels)
 export function cameraStep(camX: number, o: CameraOpts) {
-  const maxX = Math.max(0, o.worldW - o.viewW)
-  if (o.mode === 'fixed') return clamp(camX, 0, maxX)
+  const zoom = o.zoom ?? 1
+  const { lo: minX, hi: maxX } = cameraXRange(o.viewW, o.worldW, zoom)
+  if (o.mode === 'fixed') return clamp(camX, minX, maxX)
   let target: number
   if (o.mode === 'scenes') {
     const scene = clamp(Math.floor(o.worldX / o.viewW), 0, Math.max(0, Math.ceil(o.worldW / o.viewW) - 1))
-    target = clamp(scene * o.viewW, 0, maxX)
+    target = clamp(scene * o.viewW, minX, maxX)
     // a quick slide to the next screen
     const k = Math.min(1, 9 * o.dt)
     const next = camX + (target - camX) * k
@@ -29,8 +35,14 @@ export function cameraStep(camX: number, o: CameraOpts) {
   // the dead band sits around the point she looks at, `lead` px ahead of her
   const centre = camX + o.viewW / 2, off = o.worldX + (o.lead ?? 0) - centre
   target = Math.abs(off) <= o.deadband ? camX : camX + off - Math.sign(off) * o.deadband
-  target = clamp(target, 0, maxX)
-  return camX + (target - camX) * Math.min(1, o.lag * o.dt)
+  target = clamp(target, minX, maxX)
+  let next = camX + (target - camX) * Math.min(1, o.lag * o.dt)
+  if (zoom > 1) {
+    const safeHalf = Math.max(0, o.viewW / (2 * zoom) - 70)
+    const centre = o.worldX - o.viewW / 2
+    next = clamp(next, centre - safeHalf, centre + safeHalf)
+  }
+  return clamp(next, minX, maxX)
 }
 
 // the look-ahead: slides toward `dist` px on the side she faces (face -1 / 1) at `speed` (1/s), so turning

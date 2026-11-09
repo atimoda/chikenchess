@@ -325,6 +325,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     let strands = makeStrands(strandCount(), r, 6, strandPoints())
     let arcs: Arc[] = []
     const sparks: Spark[] = []
+    let portalPressPointer: number | null = null
     let rot = 0, last = performance.now(), nextStrands = 0, drawnAt = 0
     let power = 1 // glow strength: rises as she comes close, flares on entering
     let enteredAt = transitionRef.current?.at ?? 0, raf = 0
@@ -335,6 +336,30 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     let box = canvas.getBoundingClientRect()
     const onResize = () => { box = canvas.getBoundingClientRect() }
     window.addEventListener("resize", onResize)
+    const visualCenter = (center: { x: number; y: number }) => {
+      const zoom = inWorld ? liveCamera.zoom : 1
+      return {
+        x: window.innerWidth / 2 + (center.x - window.innerWidth / 2) * zoom,
+        y: window.innerHeight / 2 + (center.y - window.innerHeight / 2) * zoom,
+      }
+    }
+    const insidePortal = (x: number, y: number) => {
+      const center = centerRef.current
+      const shown = center && visualCenter(center)
+      return !!shown && Math.hypot(x - shown.x, y - shown.y) <= r * (inWorld ? liveCamera.zoom : 1)
+    }
+    const onPortalPointerDown = (e: PointerEvent) => {
+      portalPressPointer = !document.body.classList.contains('pigchicken-camera-mode') && e.isPrimary && e.button === 0 && insidePortal(e.clientX, e.clientY) ? e.pointerId : null
+    }
+    const onPortalPointerUp = (e: PointerEvent) => {
+      const beganInside = portalPressPointer === e.pointerId
+      portalPressPointer = null
+      if (beganInside && !document.body.classList.contains('pigchicken-camera-mode') && insidePortal(e.clientX, e.clientY)) enterRef.current?.()
+    }
+    const onPortalPointerCancel = () => { portalPressPointer = null }
+    window.addEventListener("pointerdown", onPortalPointerDown, true)
+    window.addEventListener("pointerup", onPortalPointerUp, true)
+    window.addEventListener("pointercancel", onPortalPointerCancel, true)
 
     const enter = () => {
       if (enteredAt || !runtimeRef.current.enabled || !visibleRef.current || !candidateRef.current) return
@@ -345,7 +370,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       portalGate(enteringEngine, portalId).block()
       enteringEngine?.setPortalEntry({ ...center, durationMs: ENTER_MS })
       setTouching(false)
-      setFlashAt(runtimeRef.current.onEnter ? null : centerRef.current)
+      setFlashAt(runtimeRef.current.onEnter ? null : visualCenter(center))
       setEntering(true)
       playPortalSound("enter")
       if (!runtimeRef.current.onEnter) markPortalArrival(href === '/' ? 'globe' : 'patio')
@@ -368,12 +393,11 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       enteringEngine = transitionRef.current?.engine ?? null
       const elapsed = now - last
       const world = worldRef.current
-      if (inWorld && world) {
-        const left = world.x - size / 2 - liveCamera.x
-        const top = world.groundY + 6 - d - PAD + liveCamera.y
-        box = { ...box, left, top, right: left + size, bottom: top + size }
-      }
-      const pcx = box.left + cx, pcy = box.top + cy
+      if (inWorld && world) box = canvas.getBoundingClientRect()
+      const zoom = inWorld ? liveCamera.zoom : 1
+      const pcxScreen = box.left + cx * zoom, pcyScreen = box.top + cy * zoom
+      const pcx = (pcxScreen - window.innerWidth / 2) / zoom + window.innerWidth / 2
+      const pcy = (pcyScreen - window.innerHeight / 2) / zoom + window.innerHeight / 2
       centerRef.current = { x: pcx, y: pcy }
       if (enteredAt) enteringEngine?.setPortalEntry({ x: pcx, y: pcy, durationMs: ENTER_MS })
       // ---------- characters and destination arrival ----------
@@ -408,7 +432,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         candidateRef.current = candidate
         setTouching(!!candidate)
         const pointer = pointerRef.current
-        const hovered = pointer && Math.hypot(pointer.x - pcx, pointer.y - pcy) <= r
+        const hovered = pointer && Math.hypot(pointer.x - pcxScreen, pointer.y - pcyScreen) <= r * zoom
         const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
         setShowInstruction(!!(active && onScreen && !suppressed && (candidate || (label.trim() && (hovered || runtime.instructionMode === 'always')))))
       }
@@ -420,8 +444,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       const btn = buttonRef.current
       if (btn) {
         const w = btn.offsetWidth
-        btn.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - w, pcx - w / 2))}px`
-        btn.style.top = `${pcy - r - 10 - btn.offsetHeight}px`
+        btn.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - w, pcxScreen - w / 2))}px`
+        btn.style.top = `${pcyScreen - btn.offsetHeight / 2}px`
       }
       const dt = Math.min(0.05, elapsed / 1000); last = now
       if (!lite && !enteredAt) {
@@ -484,7 +508,11 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     raf = requestGameFrame(frame)
     return () => {
       cancelGameFrame(raf)
-      window.removeEventListener("resize", onResize); enterRef.current = null
+      window.removeEventListener("resize", onResize)
+      window.removeEventListener("pointerdown", onPortalPointerDown, true)
+      window.removeEventListener("pointerup", onPortalPointerUp, true)
+      window.removeEventListener("pointercancel", onPortalPointerCancel, true)
+      enterRef.current = null
     }
   }, [layout, router, href, worldD, host, portalId, label])
 
@@ -503,9 +531,12 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   )
   // first place of the button (the animation keeps it on the ring from then on)
   const c = centerRef.current
+  const cOnScreen = c && (world
+    ? { x: window.innerWidth / 2 + (c.x - window.innerWidth / 2) * liveCamera.zoom, y: window.innerHeight / 2 + (c.y - window.innerHeight / 2) * liveCamera.zoom }
+    : c)
   const btnStyle: React.CSSProperties = c
-    ? { left: Math.max(8, c.x - buttonW / 2), top: c.y - layout.d / 2 - 10 - 36 }
-    : { right: Math.max(8, layout.right + layout.d / 2 - buttonW / 2), bottom: CHICKEN_GROUND_H - 6 + layout.d + 10 }
+    ? { left: Math.max(8, cOnScreen!.x - buttonW / 2), top: cOnScreen!.y - 18 }
+    : { right: Math.max(8, layout.right + layout.d / 2 - buttonW / 2), bottom: CHICKEN_GROUND_H - 6 + layout.d / 2 - 18 }
   const flash = flashAt
     ? `${flashAt.x}px ${flashAt.y}px`
     : `calc(100% - ${layout.right + layout.d / 2}px) calc(100% - ${CHICKEN_GROUND_H - 6 + layout.d / 2}px)`
@@ -523,7 +554,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
             type="button"
             aria-label="Usar portal"
             aria-description={label.trim() || undefined}
-            onClick={() => enterRef.current?.()}
+            onClick={e => { if (e.detail === 0) enterRef.current?.() }}
             disabled={!touching}
             title={touching ? "Usar portal (mesmo comando de Pegar)" : "Aproxime o boneco para usar o portal"}
             className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 disabled:cursor-default"

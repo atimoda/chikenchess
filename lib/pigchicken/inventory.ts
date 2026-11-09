@@ -7,10 +7,33 @@ export const INVENTORY_MAX = 13
 
 // Direction is sampled on the action's press, so changing Shift while the
 // button remains held never causes a second switch. Explicit Previous wins.
-export function quickSwitchStep(current: { nextItem?: boolean; prevItem?: boolean }, previous: { nextItem?: boolean; prevItem?: boolean }, shift: boolean): -1 | 0 | 1 {
-  if (current.prevItem && !previous.prevItem) return -1
-  if (current.nextItem && !previous.nextItem) return shift ? -1 : 1
-  return 0
+export type QuickSwitchRepeat = { action: 'nextItem' | 'prevItem' | null; direction: -1 | 1; elapsed: number; nextAt: number }
+export const newQuickSwitchRepeat = (): QuickSwitchRepeat => ({ action: null, direction: 1, elapsed: 0, nextAt: 1.5 })
+export function quickSwitchStep(
+  current: { nextItem?: boolean; prevItem?: boolean }, previous: { nextItem?: boolean; prevItem?: boolean }, shift: boolean,
+  repeat?: QuickSwitchRepeat, dt = 0, delay = 1.5, interval = 0.3,
+): -1 | 0 | 1 {
+  if (!repeat) {
+    if (current.prevItem && !previous.prevItem) return -1
+    if (current.nextItem && !previous.nextItem) return shift ? -1 : 1
+    return 0
+  }
+  const action = current.prevItem ? 'prevItem' : current.nextItem ? 'nextItem' : null
+  if (!action) { repeat.action = null; repeat.elapsed = 0; repeat.nextAt = delay; return 0 }
+  if (current[action] && !previous[action]) {
+    repeat.action = action; repeat.direction = action === 'prevItem' || shift ? -1 : 1
+    repeat.elapsed = 0; repeat.nextAt = delay
+    return repeat.direction
+  }
+  if (repeat.action !== action) {
+    repeat.action = action; repeat.direction = action === 'prevItem' || shift ? -1 : 1
+    repeat.elapsed = 0; repeat.nextAt = delay
+    return 0
+  }
+  repeat.elapsed += Math.max(0, dt)
+  if (repeat.elapsed + 1e-9 < repeat.nextAt) return 0
+  repeat.nextAt += Math.max(0.05, interval)
+  return repeat.direction
 }
 
 // the order of the groups in the inventory: instruments, weapons, other items (mobility, consumables...)

@@ -52,6 +52,7 @@ export type ChickenControls = {
   touchRunGrab: boolean
   sound: boolean
   analog: ChickenAnalog
+  inventory: { repeatDelay: number; repeatInterval: number }
 }
 
 const STORE = 'chickenchess-chicken-controls-v1'
@@ -62,7 +63,7 @@ const EVENT = 'chickenchess-chicken-controls'
 export function defaultChickenControls(): ChickenControls {
   const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
   CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
-  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG } }
+  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { repeatDelay: 1.5, repeatInterval: 0.3 } }
 }
 
 // The binds of one action on one input type (the players panel reads a player's inputs through this)
@@ -96,6 +97,11 @@ export function loadChickenControls(): ChickenControls {
     base.analog = {
       deadzoneL: num(an.deadzoneL, 0, 0.9, DEFAULT_ANALOG.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, DEFAULT_ANALOG.deadzoneR),
       magnet: movementMagnet > 0, magnetDeg: movementMagnet, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, savedMagnet > 0 ? savedMagnet : 12), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, 0),
+    }
+    const inventory = saved?.inventory ?? {}
+    base.inventory = {
+      repeatDelay: num(inventory.repeatDelay, 0.2, 5, base.inventory.repeatDelay),
+      repeatInterval: num(inventory.repeatInterval, 0.1, 2, base.inventory.repeatInterval),
     }
     // controls saved before X became run (01/11): X leaves brood and takes RB's place in run
     if (!saved?.padXRun) {

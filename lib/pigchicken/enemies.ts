@@ -39,13 +39,24 @@ export const ALIEN_PATTERNS: { id: AlienPattern; label: string }[] = [{ id: 'row
 type Formation = { x: number; y: number; dir: number; targetY: number; speed: number; cols: number; gap: number; total: number }
 export type EnemyData =
   | { kind: 'alien'; f: Formation; col: number; row: number; color: string }
-  | { kind: 'zombie'; speed: number; bit: boolean }
+  | { kind: 'zombie'; speed: number; bit: boolean; race: string; hue: number }
   // the temple's aliens (lib/pigchicken/temple.ts moves them; here they only blink and die)
   | { kind: 'temple'; species: string; color: string }
 
 export type EnemyEnv = { playerX: number; playerY: number; groundY: number; viewL: number; viewR: number; onBite: (t: Target) => void }
 
 let nextId = 1_000_000
+
+// One sprite set supports several zombie races through distinct color mutations.
+export const ZOMBIE_RACES = [
+  { id: 'moss', label: 'Musgo', hue: 55 },
+  { id: 'violet', label: 'Violeta', hue: 245 },
+  { id: 'ice', label: 'Gelo', hue: 170 },
+  { id: 'rust', label: 'Ferrugem', hue: 330 },
+  { id: 'sickly', label: 'Amarelado', hue: 85 },
+] as const
+
+function zombieRace() { return ZOMBIE_RACES[Math.floor(Math.random() * ZOMBIE_RACES.length)] }
 
 export function spawnAlienRow(targets: Target[], env: EnemyEnv, cols = 6, rows = 3) {
   const gap = 70
@@ -64,11 +75,20 @@ export function spawnZombies(targets: Target[], env: EnemyEnv, count: number) {
   for (let i = 0; i < count; i++) {
     const left = i % 2 === 0
     const x = left ? env.viewL - 60 - Math.floor(i / 2) * 90 : env.viewR + 60 + Math.floor(i / 2) * 90
+    const race = zombieRace()
     targets.push({
       id: nextId++, kind: 'zombie', home: 0, x, y: env.groundY, w: 56, h: 160, hp: 60, maxHp: 60, flash: 0, wobble: 0, vx: 0, deadT: 0,
-      face: left ? 1 : -1, state: 'walk', animT: Math.random(), data: { kind: 'zombie', speed: 55 + Math.random() * 30, bit: false },
+      face: left ? 1 : -1, state: 'walk', animT: Math.random(), data: { kind: 'zombie', speed: 55 + Math.random() * 30, bit: false, race: race.id, hue: race.hue },
     })
   }
+}
+
+export function spawnZombieAt(targets: Target[], x: number, groundY: number) {
+  const race = zombieRace()
+  targets.push({
+    id: nextId++, kind: 'zombie', home: x, x, y: groundY, w: 56, h: 160, hp: 60, maxHp: 60, flash: 0, wobble: 0, vx: 0, deadT: 0,
+    face: Math.random() < 0.5 ? 1 : -1, state: 'walk', animT: Math.random(), data: { kind: 'zombie', speed: 55 + Math.random() * 30, bit: false, race: race.id, hue: race.hue },
+  })
 }
 
 export const ZOMBIE_TIMES = { attack: 0.7, bite: 0.45, hurt: 0.35, dead: 1.2, fade: 0.6 }

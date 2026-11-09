@@ -9,7 +9,7 @@
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Layers, Lock, LockOpen, Music, Pencil, Redo2, RotateCw, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
@@ -19,7 +19,7 @@ import {
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
-import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, MELEE_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
@@ -78,7 +78,7 @@ const replaceEl = (layout: PatioLayout, el: LayoutElement): PatioLayout => ({ ..
 const rad = (deg: number) => (deg * Math.PI) / 180
 const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 
-export function PatioEditor({ layout, screens, onChange, onClose }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void }) {
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void }) {
   const history = useHistory(layout, onChange)
   const { back, forward, canUndo, canRedo } = history
   // the gesture under way (move, resize, turn); the element being dragged does not fall until it is let go
@@ -294,7 +294,7 @@ export function PatioEditor({ layout, screens, onChange, onClose }: { layout: Pa
         : selectedTree
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
-          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} />)}
+          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} />)}
       {soundLayer && <SoundLayerLabels elements={shown} onEdit={edit} />}
       <Palette onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
         bindHouse={house => placement.bind(() => randomHouseElement(house.style), () => openDraft({ kind: "house", value: house }))}
@@ -470,7 +470,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
 }
 
 // the Edit panel for elements that do not have their own customizer
-function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void }) {
+function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void }) {
   const set = (p: ElementParams, step?: string) => onChange({ ...el, params: { ...el.params, ...p } }, step)
   const [msg, setMsg] = useState(el.params.message ?? "")
   const editSession = useId()
@@ -485,6 +485,14 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
       </div>
       {el.kind === "dummy" && (
         <>
+          <section className="grid gap-2">
+            <h3 className="text-[10px] uppercase tracking-wider text-[#93a79a]">Alvo de treino</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => onSpawnEnemy?.('alien', el.x + el.w / 2, el.y + el.h)} className="flex h-9 items-center justify-center gap-2 rounded-md border border-white/15 bg-[#0b110e] hover:border-primary hover:text-white"><Ghost className="h-4 w-4" />Alien aleatório</button>
+              <button type="button" onClick={() => onSpawnEnemy?.('zombie', el.x + el.w / 2, el.y + el.h)} className="flex h-9 items-center justify-center gap-2 rounded-md border border-white/15 bg-[#0b110e] hover:border-primary hover:text-white"><Skull className="h-4 w-4" />Zumbi aleatório</button>
+            </div>
+            <p className="text-[10px] text-[#93a79a]">Cada botão cria um inimigo com raça sorteada ao lado deste alvo.</p>
+          </section>
           <label className="grid gap-1">
             <span>Mensagem ao ser destruído</span>
             <textarea
@@ -531,7 +539,8 @@ function EditPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el
         <label className="grid gap-1">
           <span>Item do suporte</span>
           <select aria-label="Item do suporte" value={el.params.item} onChange={e => { const item = e.target.value as ItemId; set({ item, respawnDelay: rackRespawnDelay(item) }) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
-            <optgroup label="Armas">{[...MELEE_IDS, ...WEAPON_IDS].map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
           </select>
@@ -587,7 +596,8 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Música", items: (["zone", "lanes"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
-  { group: "Armas", items: [...MELEE_IDS, ...WEAPON_IDS].map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Esportivos", items: SPORTS_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Armas", items: WEAPON_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Instrumentos", items: INSTRUMENT_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Habilidades especiais", items: CONSUMABLE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
 ]

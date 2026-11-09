@@ -67,3 +67,17 @@ test('follow camera looks ahead to the side she faces, and slides over when she 
   assert.equal(lead, -200)
   assert.equal(camera.leadStep(0, 1, 0, 2, 0.1), 0)
 })
+
+test('zoomed follow keeps the player visible and its crop inside the world', () => {
+  const { cameraStep, cameraXRange } = loadTs('lib/pigchicken/camera.ts')
+  const viewW = 1000, worldW = 8000, zoom = 2.5
+  const range = cameraXRange(viewW, worldW, zoom)
+  assert.equal((range.lo + viewW / 2) - viewW / (2 * zoom), 0)
+  assert.equal((range.hi + viewW / 2) + viewW / (2 * zoom), worldW)
+  for (const worldX of [40, 1800, 4000, 7960]) {
+    const cam = cameraStep(0, { mode: 'follow', worldX, viewW, worldW, zoom, dt: 1 / 60, deadband: 180, lag: 2, lead: 200 })
+    const screenX = viewW / 2 + (worldX - cam - viewW / 2) * zoom
+    assert.ok(screenX >= 0 && screenX <= viewW, `player ${worldX} is visible at ${screenX}`)
+    assert.ok(cam >= range.lo && cam <= range.hi)
+  }
+})

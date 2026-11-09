@@ -14,7 +14,7 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
 ]
 export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp'
-  | 'maryjane' | 'cok'
+  | 'maryjane' | 'cok' | 'passagua'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // each family's reticle shows what matters for it
@@ -169,7 +169,7 @@ function chain(...steps: [TransformKind, string?, number?][]): Transform[] {
 
 const PISTOL: ItemDef = {
   id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off', landShow: 'always',
-  fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0, chargeMin: 0.3,
+  fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0.1, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
@@ -215,7 +215,7 @@ const PUMP: ItemDef = {
 const SNIPER: ItemDef = {
   ...PISTOL, id: 'sniper', name: 'Sniper', family: 'Sniper', reticle: 'laser',
   fireMode: 'release', pathShow: 'holdAim', rate: 0.83, mag: 5, reloadTime: 2.2,
-  speed: 9000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
+  speed: 4000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
   spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
   recoilKick: 14, recoilPush: 250, weight: 0.85, turnRate: 360,
   muzzleX: 142, muzzleY: -4, length: 140, meleeDamage: 20, durability: 0, throwDamage: 30,
@@ -235,7 +235,7 @@ const LAUNCHER: ItemDef = {
 const GRENADE: ItemDef = {
   ...PISTOL, id: 'grenade', name: 'Granada', family: 'Granadas', reticle: 'grenade', pathShow: 'hold', landShow: 'hold',
   fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3,
-  speed: 1100, drop: 1500, damage: 0, range: 4000, size: 8, explodeRadius: 140, explodeDamage: 90, explodePush: 1250, fuse: 2.5, bounce: 0.45,
+  speed: 1100, drop: 1500, damage: 0, range: 3000, size: 8, explodeRadius: 140, explodeDamage: 90, explodePush: 1250, fuse: 2.5, bounce: 0.45,
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
   recoilKick: 0, recoilPush: 0,
   muzzleX: 8, muzzleY: -4, length: 0, meleeDamage: 10, meleeRange: 80, durability: 0, throwDamage: 15,
@@ -271,6 +271,15 @@ const BAT: ItemDef = {
   rebateChain: chain(['dynamics', 'accent']), rebateSnap: 25, rebateSnapForce: 0.5, rebateSpeed: 1.6, rebateTok: true,
 }
 
+// Passaguá: a light bird net. It sweeps the same way as a melee item, but only captures living and undead birds.
+const PASSAGUA: ItemDef = {
+  ...WING, id: 'passagua', name: 'Passaguá', family: 'Esportivos', reticle: 'dot', meleeOnly: true, mag: 0,
+  muzzleX: 0, muzzleY: 0, length: 64, meleeDamage: 0, meleeRange: 66, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 190,
+  meleeTime: 0.22, meleePush: 0, durability: 0, throwDamage: 0, throwMin: 0, throwSpeed: 0,
+  trailWidth: 16, trailColor: '#cceef0', trailTime: 0.3, trailWisps: 2, trailOpacity: 0.26,
+  rebateChain: [], rebateSnap: 0, rebateSnapForce: 0, rebateSpeed: 1, rebateTok: false,
+}
+
 const PECK: ItemDef = {
   ...WING, id: 'peck', name: 'Bicada', family: 'Sem item',
   meleeDamage: 12, meleeRange: 85, meleeArc: 160, meleeCooldown: 0.1, meleeTime: 0.16, meleePush: 220,
@@ -286,32 +295,32 @@ const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDama
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
   ...PISTOL, ...MUSIC_MELEE, id: 'flute', name: 'Flauta', family: 'Flautas', reticle: 'dot',
-  mag: 16, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
+  rate: 13, mag: 60, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
   recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
   instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7,
-  rebateChain: chain(['octave', 'fixed', 1]),
+  throwCharge: 0.3, rebateChain: chain(['octave', 'fixed', 1]),
 }
 // Palhetas → SMG: holding plays a fast arpeggio of the chord
 const SAX: ItemDef = {
   ...SMG, ...MUSIC_MELEE, id: 'sax', name: 'Sax', family: 'Palhetas', reticle: 'circle',
-  rate: 8, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
-  recoilKick: 2, muzzleX: 32, muzzleY: 18, length: 50,
+  rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
+  recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 120, muzzleX: 32, muzzleY: 18, length: 50,
   instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9,
   rebateChain: chain(['transpose', 'degree', 2]),
 }
 // Metais → rifle: a phrase of 3 notes per press, going through one enemy
 const TRUMPET: ItemDef = {
   ...RIFLE, ...MUSIC_MELEE, id: 'trumpet', name: 'Trompete', family: 'Metais', reticle: 'cross',
-  fireMode: 'burst', burst: 3, rate: 9, mag: 24, speed: 1300, damage: 10, size: 10, pierce: 1,
-  recoilKick: 3, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
+  fireMode: 'burst', burst: 3, rate: 9, mag: 24, reloadTime: 0.2, refillTime: 0.25, speed: 1300, damage: 10, size: 10, pierce: 1,
+  recoilKick: 3, recoilPush: 790, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
   instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4,
   rebateChain: chain(['voices', 'power']),
 }
 // Cordas → pump: a strummed chord in a fan, each pellet one note of the chord
 const GUITAR: ItemDef = {
   ...PUMP, ...MUSIC_MELEE, id: 'guitar', name: 'Violão', family: 'Cordas', reticle: 'cone',
-  rate: 1.6, mag: 6, reloadTime: 0.35, pellets: 5, speed: 900, damage: 9, size: 10, range: 480,
-  spreadBase: 24, spreadMax: 30, recoilKick: 5, muzzleX: 87, muzzleY: 0, length: 87,
+  rate: 17, burst: 5, mag: 60, reloadTime: 0.2, refillTime: 0.55, refillAmount: 4, pellets: 2, speed: 900, damage: 9, size: 10, range: 850,
+  spreadBase: 20, spreadMax: 30, recoilKick: 5, turnRate: 0, muzzleX: 87, muzzleY: 0, length: 87,
   instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 0.15]),
 }
@@ -319,14 +328,14 @@ const GUITAR: ItemDef = {
 const VIOLIN: ItemDef = {
   ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
-  spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, turnRate: 240, muzzleX: 78, muzzleY: 0, length: 78,
+  spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 420, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4,
   rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
 }
 // Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
 const KEYS: ItemDef = {
   ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: 'Teclado', family: 'Teclas', reticle: 'impact',
-  rate: 1.2, mag: 3, reloadTime: 1.4, speed: 650, size: 14, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0,
+  rate: 1, burst: 4, chargeTime: 0.25, mag: 33, reloadTime: 1.4, speed: 650, size: 12, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0, hitscan: true,
   recoilKick: 6, muzzleX: 82, muzzleY: -9, length: 82,
   instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6,
   rebateChain: chain(['voices', 'seventh']),
@@ -334,7 +343,7 @@ const KEYS: ItemDef = {
 // Percussion fires a musical note with a fuse, then lets out notes in a circle.
 const TAMBOURINE: ItemDef = {
   ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
-  mag: 3, fuse: 1.6, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 14, muzzleX: 14, muzzleY: 0, length: 20,
+  mag: 3, fuse: 1.6, range: 3000, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 12, muzzleX: 14, muzzleY: 0, length: 20,
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
@@ -366,7 +375,7 @@ const COK: ItemDef = {
 }
 
 export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = {
-  wing: WING, peck: PECK, bat: BAT, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
+  wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP,
   maryjane: MARYJANE, cok: COK,
 }
@@ -374,11 +383,12 @@ export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper',
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']
 export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
-// items only for hitting
-export const MELEE_IDS: ItemId[] = ['bat']
+// sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
+export const SPORTS_IDS: ItemId[] = ['bat', 'passagua']
+export const MELEE_IDS: ItemId[] = SPORTS_IDS
 // the items a rack can hold
-export const RACK_ITEM_IDS: ItemId[] = [...MELEE_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS]
-export const ITEM_IDS: ItemId[] = [...MELEE_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing', 'peck']
+export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS]
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing', 'peck']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)

@@ -1,16 +1,22 @@
 // The Pátio's camera as it is right now (ParquinhoPlay moves it every frame): x is the world x at the screen's
 // left edge, y the screen y of world y = 0. Layers drawn above the chicken (the foreground, the editor's handles)
 // register their world element here and follow it, so they line up with the world underneath.
-import { intersectsView, type ViewRect } from './viewport'
+import { intersectsView, zoomedView, type ViewRect } from './viewport'
 
-export const liveCamera = { x: 0, y: 0 }
+export const liveCamera = { x: 0, y: 0, zoom: 1 }
 const followers = new Set<HTMLElement>()
 const parallaxLayers = new Map<SVGElement, number>()
 const regions = new Set<{ el: HTMLElement | SVGElement; bounds: ViewRect; depth: number }>()
-const place = (el: HTMLElement) => { el.style.transform = `translate3d(${-liveCamera.x}px,${liveCamera.y}px,0)` }
+const cameraTransform = (depth = 1) => {
+  const z = liveCamera.zoom, cx = window.innerWidth / 2, cy = window.innerHeight / 2
+  if (z === 1) return `translate(${-liveCamera.x * depth}px, ${liveCamera.y * depth}px)`
+  return `translate3d(${cx * (1 - z) - liveCamera.x * depth * z}px,${cy * (1 - z) + liveCamera.y * z}px,0) scale(${z})`
+}
+const place = (el: HTMLElement) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform() }
 
 function updateRegions() {
-  const view = { x: liveCamera.x, y: -liveCamera.y, w: window.innerWidth, h: window.innerHeight }
+  const screenView = zoomedView(window.innerWidth, window.innerHeight, liveCamera.zoom)
+  const view = { ...screenView, x: screenView.x + liveCamera.x, y: screenView.y - liveCamera.y }
   regions.forEach(({ el, bounds, depth }) => {
     const visible = String(intersectsView({ ...bounds, x: bounds.x + liveCamera.x * depth }, view, 192))
     if (el.getAttribute('data-patio-visible') !== visible) el.setAttribute('data-patio-visible', visible)
@@ -35,17 +41,21 @@ export function followCamera(el: HTMLElement) {
 
 export function followParallax(el: SVGElement, depth: number) {
   parallaxLayers.set(el, depth)
-  el.style.transform = `translate(${liveCamera.x * depth}px, 0px)`
+  el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform(-depth)
   return () => { parallaxLayers.delete(el) }
 }
 
-export function moveLiveCamera(x: number, y: number) {
-  if (x === liveCamera.x && y === liveCamera.y) return
-  liveCamera.x = x; liveCamera.y = y
+export function moveLiveCamera(x: number, y: number, zoom = liveCamera.zoom) {
+  if (x === liveCamera.x && y === liveCamera.y && zoom === liveCamera.zoom) return
+  liveCamera.x = x; liveCamera.y = y; liveCamera.zoom = zoom
   followers.forEach(place)
-  parallaxLayers.forEach((depth, el) => { el.style.transform = `translate(${x * depth}px, 0px)` })
+  parallaxLayers.forEach((depth, el) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform(-depth) })
   updateRegions()
 }
 
 // a screen point in world units
-export const screenToWorld = (sx: number, sy: number) => ({ x: sx + liveCamera.x, y: sy - liveCamera.y })
+export const screenToWorld = (sx: number, sy: number) => {
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2, z = liveCamera.zoom
+  const x = (sx - cx) / z + cx, y = (sy - cy) / z + cy
+  return { x: x + liveCamera.x, y: y - liveCamera.y }
+}

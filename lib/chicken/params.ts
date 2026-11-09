@@ -1,5 +1,5 @@
 // Default movement, animation and sound tuning for the player chicken: the "Leve" class saved in the
-// "Pátio da Caipira" prototype (2026-10-29), retuned from the user's live Pátio settings on 2026-11-04.
+// "Pátio da Caipira" prototype (2026-10-29), retuned from the user's live Pátio settings on 2026-11-08.
 // The game reads the central configuration (config.ts), saved in the Pátio da Galinha (/patio); these
 // values are its fallback and fill any setting the saved version lacks.
 // Distances are in screen pixels at full size; the engine scales the ones in CHICKEN_PX_PARAMS on small screens.
@@ -8,7 +8,7 @@ export const CHICKEN_PARAMS = {
   // Movimento
   walkSpeed: 255,
   runMultiplier: 2,
-  acceleration: 4650,
+  acceleration: 4500,
   deceleration: 900,
   airSpeed: 1.6,
   jumpPush: 0,
@@ -22,7 +22,7 @@ export const CHICKEN_PARAMS = {
   maxSpeed: 1500,
   fallSideSpeed: 0.5,
   airControl: 0.55,
-  backpedal: 55,
+  backpedal: 50,
   // Arremesso
   throwAirStop: 80,
   throwGroundStop: 90,
@@ -93,8 +93,8 @@ export const CHICKEN_PARAMS = {
   crouchRunBroodJumpBoost: 0,
   // Voo
   flyFallDivisor: 3,
-  flyUpFallAtten: 20,
-  flyDownFallAtten: 40,
+  flyUpFallAtten: 40,
+  flyDownFallAtten: 69,
   flapRate: 9,
   jumpFlaps: 2,
   heldFlapRate: 9,

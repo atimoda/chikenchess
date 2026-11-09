@@ -105,8 +105,13 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
       raf = requestGameFrame(frame)
       remotes.current.forEach(r => {
         if (!r.seen) return
+        r.engine.setCameraZoom(liveCamera.zoom)
         const s = r.engine.getMotionState()
-        r.tag.style.transform = `translate(${Math.round(s.x - r.tag.offsetWidth / 2)}px, ${Math.round(s.y - TAG_UP * s.scale)}px)`
+        const z = liveCamera.zoom, cx = window.innerWidth / 2, cy = window.innerHeight / 2
+        const x = cx + (s.x - cx) * z - r.tag.offsetWidth * z / 2
+        const y = cy + (s.y - TAG_UP * s.scale - cy) * z
+        r.tag.style.transformOrigin = "0 0"
+        r.tag.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) scale(${z})`
       })
     }
     frame()
