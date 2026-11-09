@@ -362,9 +362,9 @@ const CONSUMABLE = {
   muzzleX: 10, muzzleY: -6, length: 0, consumable: true,
   rebateChain: [] as Transform[],
 }
-// Maryjane: red gummy bears. The buddha state: a third faster, and every start is slow at first and fast at the end
+// Bear Gummy (id maryjane): a red gummy bear. The buddha state: a third faster, and every start is slow at first and fast at the end
 const MARYJANE: ItemDef = {
-  ...CONSUMABLE, id: 'maryjane', name: 'Maryjane', family: 'Habilidades especiais',
+  ...CONSUMABLE, id: 'maryjane', name: 'Bear Gummy', family: 'Habilidades especiais',
   effectTime: 15, effectSpeed: 1.33, effectAccel: 1, effectCurve: 'superIn', effectRamp: 0.6, effectLook: 'buddha',
 }
 // Cok: a little glass bottle of soda. The opposite: slower in the end, but quicker off the mark

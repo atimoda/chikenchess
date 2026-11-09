@@ -15,7 +15,7 @@ import { createMouseOwner, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, 
 import { cameraBounds, cameraStep, cameraXRange, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
-import { createCombat, type Box, type Combat, type Effect } from "@/lib/pigchicken/combat"
+import { createCombat, lookDoses, type Box, type Combat, type Effect } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { INVENTORY_MAX, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
@@ -727,7 +727,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         throwHeld: !wh.open && act.throw && armed && !combat.throwVoid,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
         lookAngle: aim.source === 'rightStick' || aim.source === 'leftStick' || aim.source === 'touch' || aim.source === 'keys' ? aim.angle : null,
-        ...effectGame(combat.effect, d.weight),
+        ...effectGame(combat.effect, d.weight, combat.effects),
       })
 
       // ---------- combat (world coordinates) ----------
@@ -837,7 +837,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
-        eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight) })
+        eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
         eng.setSwing(rigSwing(xsw))
@@ -1299,8 +1299,8 @@ const BOW_STROKE_PX = 260
 // flat item art, pointing right with the grip at (0, 0)
 // an item's art fitted into maxW x maxH around the current origin (centred), or with its grip at the origin
 // a consumable's effect on her movement and look (none: her own)
-function effectGame(e: Effect | null, weight: number): ChickenGame {
-  return { speedMult: weight * (e?.speed ?? 1), accelMult: e?.accel ?? 1, accelPower: e ? curvePower(e.curve) : 1, accelRamp: e?.ramp ?? 0.5, aura: e?.look ?? "none" }
+function effectGame(e: Effect | null, weight: number, doses: readonly Effect[] = []): ChickenGame {
+  return { speedMult: weight * (e?.speed ?? 1), accelMult: e?.accel ?? 1, accelPower: e ? curvePower(e.curve) : 1, accelRamp: e?.ramp ?? 0.5, ...lookDoses(doses) }
 }
 
 // ---------- the zone's ambience: percussion on the sixteenths (the drone follows the bars) ----------

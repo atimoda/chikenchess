@@ -29,9 +29,9 @@ import { LIMIT_BORDER } from './limits'
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
 // accelMult scales her acceleration; accelPower > 1 eases each start (1 linear, 3 "ease-super-in": slow, then fast),
-// reaching full speed in accelRamp seconds; aura draws a state on her (a consumable's effect in the Pátio)
-export type ChickenAura = 'none' | 'buddha' | 'fizz'
-export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; aura?: ChickenAura }
+// reaching full speed in accelRamp seconds; buddha / fizz are how many doses of each consumable look she has
+// (the Pátio): they stack up (more glow, more bubbles) and show together
+export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; buddha?: number; fizz?: number }
 // A chicken driven from outside (an online player's, from the network): where she is on this screen and what she
 // is doing. She follows it smoothly, animates by its state and ignores input, physics and the pointer.
 export type ChickenRemote = { x: number; y: number; vx: number; vy: number; face: number; state: string }
@@ -144,12 +144,18 @@ const BOW_MARKUP = `
   <circle cx="0.8" cy="0.5" r="1.3" fill="#f4f1e8"/>`
 // Consumable states: the buddha state's calm golden glow behind her;
 // a soda's fizz, little bubbles rising around her
+// each buddha dose adds a glow layer (a little wider, overlapping: the shadow gets more intense); each soda dose adds bubbles
+const BUDDHA_LAYERS = 6
+const FIZZ_BUBBLES = [[-62, 0, 6], [-32, 0.7, 4.5], [8, 1.5, 7], [38, 0.35, 5], [66, 1.1, 6], [-12, 1.9, 4],
+  [-48, 1.2, 5], [22, 0.15, 4.5], [52, 1.7, 5.5], [-72, 1.55, 4], [-20, 0.5, 6.5], [76, 0.85, 4.5]]
+const FIZZ_PER_DOSE = 6
 const AURA_MARKUP = `<g data-part="aura" style="display:none">
-    <ellipse cx="0" cy="-110" rx="120" ry="140" fill="url(#chk-buddhaGlow)"><animate attributeName="opacity" values="0.75;1;0.75" dur="3.2s" repeatCount="indefinite"/></ellipse>
+    ${Array.from({ length: BUDDHA_LAYERS }, (_, i) =>
+      `<ellipse data-layer="${i}" cx="0" cy="${-110 - i * 2}" rx="${120 + i * 9}" ry="${140 + i * 11}" fill="url(#chk-buddhaGlow)" style="display:${i ? 'none' : ''}"><animate attributeName="opacity" values="0.75;1;0.75" dur="${3.2 + i * 0.3}s" repeatCount="indefinite"/></ellipse>`).join('')}
   </g>
   <g data-part="fizz" style="display:none">
-    ${[[-62, 0, 6], [-32, 0.7, 4.5], [8, 1.5, 7], [38, 0.35, 5], [66, 1.1, 6], [-12, 1.9, 4]].map(([x, d, r]) =>
-      `<circle cx="${x}" r="${r}" fill="rgba(255,255,255,0.12)" stroke="#fff3df" stroke-width="2.6" opacity="0"><animate attributeName="cy" values="-20;-210" dur="2.2s" begin="${d}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0.9;0" dur="2.2s" begin="${d}s" repeatCount="indefinite"/></circle>`).join('')}
+    ${FIZZ_BUBBLES.map(([x, d, r], i) =>
+      `<circle data-bubble="${i}" cx="${x}" r="${r}" fill="rgba(255,255,255,0.12)" stroke="#fff3df" stroke-width="2.6" opacity="0" style="display:${i < FIZZ_PER_DOSE ? '' : 'none'}"><animate attributeName="cy" values="-20;-210" dur="2.2s" begin="${d}s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0.9;0" dur="2.2s" begin="${d}s" repeatCount="indefinite"/></circle>`).join('')}
   </g>`
 const HALO_MARKUP = `<g data-part="halo" style="display:none">
     <circle cx="34" cy="-204" r="34" fill="none" stroke="#ffd166" stroke-width="9" opacity="0.22"/>
@@ -369,14 +375,18 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   const handAimAngle = (angle: number) => heldItem?.consumable && !swingNow && !(heldItem.pull && heldItem.pull > 0) ? clamp(angle, -CONSUMABLE_WING_AIM_LIMIT, CONSUMABLE_WING_AIM_LIMIT) : angle
   let bounds: { lo: number; hi: number; top?: number } | null = null
-  const game: Required<ChickenGame> = { gameMode: false, throwHeld: false, throwCharging: false, aimFace: null, lookAngle: null, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, aura: 'none' }
-  let auraShown: ChickenAura = 'none'
+  const game: Required<ChickenGame> = { gameMode: false, throwHeld: false, throwCharging: false, aimFace: null, lookAngle: null, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, buddha: 0, fizz: 0 }
+  let auraShown = ''
   function showAura() {
-    if (game.aura === auraShown) return
-    auraShown = game.aura
-    el.aura.style.display = auraShown === 'buddha' ? '' : 'none'
+    const buddha = clamp(Math.floor(game.buddha) || 0, 0, BUDDHA_LAYERS), bubbles = clamp((Math.floor(game.fizz) || 0) * FIZZ_PER_DOSE, 0, FIZZ_BUBBLES.length)
+    const key = `${buddha}/${bubbles}`
+    if (key === auraShown) return
+    auraShown = key
+    el.aura.style.display = buddha ? '' : 'none'
+    el.aura.querySelectorAll<SVGElement>('[data-layer]').forEach((n, i) => { n.style.display = i < buddha ? '' : 'none' })
     el.halo.style.display = 'none'
-    el.fizz.style.display = auraShown === 'fizz' ? '' : 'none'
+    el.fizz.style.display = bubbles ? '' : 'none'
+    el.fizz.querySelectorAll<SVGElement>('[data-bubble]').forEach((n, i) => { n.style.display = i < bubbles ? '' : 'none' })
   }
   const wallLo = () => bounds ? bounds.lo : LIMIT_BORDER, wallHi = () => bounds ? bounds.hi : W - LIMIT_BORDER
   const wallTop = () => bounds?.top ?? LIMIT_BORDER
@@ -1493,7 +1503,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     let lid = st === 'brood' ? clamp((S.broodT - R.broodEyeDelay) / 0.35, 0, 1) * 0.55 : 0
     if (blink.t >= 0) { blink.t += dt; const b = blink.t / 0.14; lid = Math.max(lid, b < 0.5 ? b * 2 : 2 - b * 2); if (b >= 1) blink.t = -1 }
     // the buddha state: calm, half-closed eyes
-    if (game.aura === 'buddha') lid = Math.max(lid, 0.45)
+    if (game.buddha > 0) lid = Math.max(lid, 0.45)
     pose.lid = lid
     pose.shiftY = shiftY
     render()
