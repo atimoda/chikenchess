@@ -1,6 +1,6 @@
 // The world pass: everything drawn in world coordinates each frame, and the per-frame state it reads.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
-import { chickenBindName, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
+import { chickenBindName, padStyleAt, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { type InputDeviceId } from "@/lib/chicken/input-devices"
 import { type Combat, type Pickup } from "@/lib/pigchicken/combat"
 import { type Catalog } from "@/lib/pigchicken/alien-catalog"
@@ -32,8 +32,10 @@ export function markHover(combat: Combat, key: string) {
 export function bindLabel(c: ChickenControls, devices: readonly InputDeviceId[] | null, action: ChickenAction) {
   const pick = (slots: (string | null)[]) => slots.find(Boolean) ?? null
   const kb = !devices || devices.includes("kb1") ? pick(c.keys[action]) : devices.includes("kb2") ? pick(c.keys2[action]) : null
-  const tok = kb ?? (!devices || devices.some(d => d.startsWith("pad")) ? pick(c.pad[action]) : null)
-  return tok ? chickenBindName(tok) : ""
+  const pad = devices?.find(d => d.startsWith("pad"))
+  const tok = kb ?? (!devices || pad ? pick(c.pad[action]) : null)
+  // a gamepad bind is named after this player's own gamepad (a PlayStation pad shows ✕ ○ □ △ L1 ...)
+  return tok ? chickenBindName(tok, tok.startsWith("Pad:") ? padStyleAt(pad ? Number(pad.slice(3)) : undefined) : undefined) : ""
 }
 export const grabLabel = (c: ChickenControls, devices: readonly InputDeviceId[] | null) => bindLabel(c, devices, "grab")
 // the keys shown left of each inventory group on the big bar: Próximo instrumento, Próxima arma, Próximo utilitário

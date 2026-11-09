@@ -333,8 +333,25 @@ export const isChickenControlsListening = () => listening
 export const setChickenControlsListening = (value: boolean) => { listening = value }
 
 const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: 'Alt/Option esq.', AltRight: 'Alt/Option dir.', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab', Insert: 'Ins', Delete: 'Del', PageUp: 'PgUp', PageDown: 'PgDn', Backspace: 'Bksp', Backslash: '\\', Slash: '/', BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", MetaLeft: 'Cmd esq.', MetaRight: 'Cmd dir.' }
-// Xbox names; LS / RS are the left / right sticks
-const PAD_BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'Home']
+// The binds are stored by the standard gamepad layout (Pad:b0 = bottom face button ...), named after the Xbox pad by
+// default; a PlayStation pad (Sony vendor 054c, or a DualShock / DualSense / PlayStation name in the browser's id)
+// shows the same buttons with its own names. LS / RS are the left / right sticks for both.
+export type PadStyle = 'xbox' | 'playstation'
+const PAD_BUTTONS: Record<PadStyle, string[]> = {
+  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'Home'],
+  playstation: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'PS', 'Touchpad'],
+}
+export const PAD_STYLE_LABELS: Record<PadStyle, string> = { xbox: 'Xbox', playstation: 'PlayStation' }
+// the browser's id: "DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)" (Chrome, Safari),
+// "054c-0ce6-Wireless Controller" (Firefox)
+export const padStyleOfId = (id: string | null | undefined): PadStyle =>
+  id && (/(^|[^0-9a-f])054c([^0-9a-f]|$)/i.test(id) || /playstation|dualshock|dualsense/i.test(id)) ? 'playstation' : 'xbox'
+function connectedPad(index?: number) {
+  const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? Array.from(navigator.getGamepads()) : []
+  return (index === undefined ? pads.find(g => g && g.connected) : pads[index]) ?? null
+}
+// the style of the gamepad at `index` (the first connected one when omitted); Xbox when there is none
+export const padStyleAt = (index?: number): PadStyle => padStyleOfId(connectedPad(index)?.id)
 const PAD_AXES = ['LS ←', 'LS →', 'LS ↑', 'LS ↓', 'RS ←', 'RS →', 'RS ↑', 'RS ↓']
 
 let layoutNames: Map<string, string> | null = null
@@ -345,11 +362,12 @@ export function loadKeyboardLayoutNames(): Promise<void> {
   return kb.getLayoutMap().then((m: Map<string, string>) => { layoutNames = new Map(m) }).catch(() => {})
 }
 
-export function chickenBindName(token: string | null) {
+// `padStyle`: the names of the gamepad buttons (the first connected gamepad's when omitted)
+export function chickenBindName(token: string | null, padStyle?: PadStyle) {
   if (!token) return '—'
   const value = token.slice(token.indexOf(':') + 1)
   if (token.startsWith('Pad:')) {
-    if (value[0] === 'b') { const i = Number(value.slice(1)); return PAD_BUTTONS[i] ?? `Botão ${i}` }
+    if (value[0] === 'b') { const i = Number(value.slice(1)); return PAD_BUTTONS[padStyle ?? padStyleAt()][i] ?? `Botão ${i}` }
     const i = Number(value.slice(1, -1)), plus = value.endsWith('+')
     return PAD_AXES[i * 2 + (plus ? 1 : 0)] ?? `Eixo ${i}${plus ? '+' : '−'}`
   }
