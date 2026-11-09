@@ -19,6 +19,7 @@ const RECENT = [
         'Na barra de baixo, os instrumentos ficam alinhados à esquerda da tela, os utilitários à direita e as armas centralizadas no espaço entre eles, sem a linha colorida acima de cada grupo. Em celulares e telas estreitas (menos de 768 px) as teclas dos grupos e os números 1–9 sob as casas não aparecem. À esquerda do primeiro item de cada grupo aparece a tecla do atalho do grupo (TAB, Q, F, ou LB, RB, B no gamepad).',
         'Os efeitos visuais dos consumíveis também acumulam: cada dose de Maryjane deixa a sombra dourada do estado búdico mais intensa, e tomar Cok junto mostra as bolhas ao mesmo tempo que a sombra, sem um anular o outro (mais doses de Cok, mais bolhas).',
         'A Maryjane agora se chama Bear Gummy e seu desenho mostra um único ursinho.',
+        'O som de equipar um instrumento ficou bem mais suave: as duas notas entram devagar e bem mais baixas, sem estalo.',
       ] },
       { title: 'Pátio online', items: [
         'Aliens, zumbis, aliens de treino e os mortos-vivos que eles deixam agora são os mesmos para todo o lobby: o dono do lobby comanda os inimigos, e os acertos de qualquer player (tiros, notas, explosões, golpes e arremessos) valem para todos, inclusive matar, virar passarinho ou curar.',

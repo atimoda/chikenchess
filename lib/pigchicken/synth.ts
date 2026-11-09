@@ -62,15 +62,21 @@ function noise(a: AudioContext) {
 
 export type Held = { setPitch: (midi: number) => void; stop: () => void }
 
-// plays one note; `at` is a delay in seconds (to land on the grid), `dur` how long it is held
-export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?: number; vel?: number; sustain?: boolean } = {}): Held | null {
+// plays one note; `at` is a delay in seconds (to land on the grid), `dur` how long it is held; `fade` (seconds)
+// adds a gentle fade-in on top of the voice's own attack, so even plucked voices start without a click
+export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?: number; vel?: number; sustain?: boolean; fade?: number } = {}): Held | null {
   const a = ctx()
   if (!a || !bus || noteVol <= 0) return null
   const t = a.currentTime + Math.max(0, opts.at ?? 0)
   const vel = Math.max(0.05, Math.min(1, opts.vel ?? 0.8))
   const dur = opts.dur ?? 0.3
   const f = midiHz(midi)
-  const out = a.createGain(); out.connect(bus)
+  const out = a.createGain()
+  const fade = Math.max(0, opts.fade ?? 0)
+  if (fade > 0) {
+    const fg = a.createGain(); fg.gain.setValueAtTime(0, t); fg.gain.linearRampToValueAtTime(1, t + fade)
+    out.connect(fg); fg.connect(bus)
+  } else out.connect(bus)
   const sources: AudioScheduledSourceNode[] = []
   const freqs: AudioParam[] = [] // pitched params that follow setPitch (each with its ratio)
   const ratios: number[] = []

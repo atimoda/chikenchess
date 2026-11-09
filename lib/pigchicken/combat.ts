@@ -20,7 +20,7 @@ import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type Du
 
 // where the instruments' sound goes (the Parquinho plugs the synth in)
 export type MusicOut = {
-  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number) => void
+  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, fade?: number) => void
   hold: (voice: VoiceId, midi: number) => Held | null
   drum: (kind: Drum, at: number, vel?: number) => void
 }
@@ -157,7 +157,8 @@ export function createCombat() {
     // instruments make musical sounds instead of the mechanical ones
     if (d?.instrument) {
       const root = music.noteFor(-Math.PI / 2, 'chord', d.octave, 0.5)
-      if (kind === 'equip') { out.note(d.voice, root, 0, 0.12, 0.5); out.note(d.voice, music.walk(root, 2, 'chord'), 0.09, 0.18, 0.5) }
+      // equipping: a very soft two-note sigh (low velocity, slow fade-in), well under the played notes
+      if (kind === 'equip') { out.note(d.voice, root, 0, 0.14, 0.12, 0.06); out.note(d.voice, music.walk(root, 2, 'chord'), 0.1, 0.2, 0.1, 0.08) }
       else if (kind === 'reloadDone' || kind === 'shell') out.note(d.voice, music.walk(root, 1, 'chord'), 0, 0.1, 0.35)
       else if (kind === 'dry') out.note('chip', root - 24, 0, 0.05, 0.25)
       else if (kind === 'bounce') out.drum('jingle', 0)
