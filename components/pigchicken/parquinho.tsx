@@ -77,6 +77,13 @@ const SOURCE_LABEL: Record<AimSource, string> = {
 // the code's own Pátio, when the page gives no layout
 const DEFAULT_ELEMENTS = defaultLayout().elements
 const GROUND_FILL = `linear-gradient(to bottom, #6b8f3a 0, #54752c 4px, #4a3522 7px, #3a2a1b 30px, #2a1e13 100%)`
+// a chicken held by the pointer keeps only Throw: every other action reads as let go
+function onlyThrow(actions: Record<ChickenAction, boolean>): Record<ChickenAction, boolean> {
+  const out = {} as Record<ChickenAction, boolean>
+  for (const k of Object.keys(actions) as ChickenAction[]) out[k] = k === "throw" && actions[k]
+  return out
+}
+
 // worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
 // hideBackdrop: the header's eye hides the scenery far behind (sky, sun, mountains)
 export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, hideBackdrop = false }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; hideBackdrop?: boolean }) {
@@ -271,6 +278,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       document.body.classList.toggle('pigchicken-camera-mode', cameraKey)
     }
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
+    // a press on a chicken's body picks her up (the engine drags her); it neither fires nor walks
+    const onChicken = (t: EventTarget | null) => !!(t as Element | null)?.closest?.('[data-part="root"]')
+    // point-and-click with empty hands: a click or a tap on the scene sends her walking there (like on the globe)
+    let walkTap: { id: number; x: number; y: number; t: number } | null = null
+    const canWalkTap = (e: PointerEvent) => e.button === 0 && !cameraKey && !isUi(e.target) && !onChicken(e.target) &&
+      !(e.target as Element | null)?.closest?.("[data-patio-editor]") && !combat.inventory[combat.current] && !engine.getMotionState().held
+    const onTouchDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") walkTap = canWalkTap(e) ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() } : null
+    }
+    const onTapUp = (e: PointerEvent) => {
+      const t = walkTap
+      if (!t || t.id !== e.pointerId) return
+      walkTap = null
+      if (Math.hypot(e.clientX - t.x, e.clientY - t.y) <= 8 && performance.now() - t.t <= 600) engine.walkTo({ x: e.clientX, y: e.clientY })
+    }
     // the mouse is someone else's (another local player holds it)
     const noMouse = () => !!devicesRef.current && !devicesRef.current.includes("mouse")
     const onMove = (e: PointerEvent) => {
@@ -308,10 +330,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (e.button === 1) resetView()
         return
       }
+      if (e.button === 0 && onChicken(e.target)) return
+      // empty hands: the left button walks (Atirar's peck stays on the keyboard, gamepad and touch)
+      if (e.button === 0 && canWalkTap(e)) { walkTap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; return }
       if (e.button === 0) mouseBtn.fire = true
       if (e.button === 2) mouseBtn.melee = true
     }
     const onUp = (e: PointerEvent) => {
+      onTapUp(e)
       if (panPointer === e.pointerId && e.button === 0) {
         panPointer = null
         document.body.classList.remove('pigchicken-camera-dragging')
@@ -349,6 +375,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerdown", onDown, true)
+    window.addEventListener("pointerdown", onTouchDown, true)
     window.addEventListener("pointerup", onUp, true)
     window.addEventListener("contextmenu", onMenu)
     window.addEventListener("click", onCameraClick, true)
@@ -625,7 +652,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       others.forEach(o => o.setCameraZoom(zoom))
 
       // ---------- aim ----------
-      const act = engine.getActions()
+      // picked up by the pointer: every action but Throw waits until she is let go
+      const dragged = st.held
+      const act = dragged ? onlyThrow(engine.getActions()) : engine.getActions()
+      if (dragged) { mouseBtn.fire = false; mouseBtn.melee = false; slotPick = 0; slotTap.current = 0; barMove.current = null; wheel = 0 }
       const an = controls.analog
       const devs = devicesRef.current
       if (noMouse() && (mouse || mouseBtn.fire || mouseBtn.melee)) { mouse = null; mouseBtn.fire = false; mouseBtn.melee = false }
@@ -647,7 +677,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         setWheelOpen(on)
       }
       const confirmWheel = () => { if (wh.hover >= 0 && wh.hover < nSlots) wheelPick = wh.hover + 1; showWheel(false) }
-      if (act.deselectItem && !prev.deselectItem) showWheel(false)
+      if ((act.deselectItem && !prev.deselectItem) || dragged) showWheel(false)
       else if (act.itemWheel && !prev.itemWheel && !wh.open) showWheel(true)
       else if (!act.itemWheel && wh.open) confirmWheel()
       else if (wh.open && wh.hover >= 0) {
@@ -827,7 +857,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- the other local players: their own items (a loadout each), in the same world ----------
       const extraList = extras?.current ? [...extras.current.entries()] : []
       extraList.forEach(([id, eng]) => {
-        const xs = eng.getMotionState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
+        const xs = eng.getMotionState(), xa = xs.held ? onlyThrow(eng.getActions()) : eng.getActions(), xp = extraPrev.get(id) ?? {}
         combat.use(id)
         const xd = combat.def(), xArmed = !!combat.inventory[combat.current]
         // aim: their gamepad's right stick; else the left stick (every way, up and down included); else, without the mouse, their movement keys (8 directions); else ahead
@@ -1134,6 +1164,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerdown", onDown, true)
+      window.removeEventListener("pointerdown", onTouchDown, true)
       window.removeEventListener("pointerup", onUp, true)
       window.removeEventListener("contextmenu", onMenu)
       window.removeEventListener("click", onCameraClick, true)

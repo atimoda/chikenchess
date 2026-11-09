@@ -64,6 +64,8 @@ export type ChickenEngine = {
   setGroundHeight: (h: number) => void
   // magnification of the shared Pátio camera
   setCameraZoom: (zoom: number) => void
+  // the Pátio's point-and-click: walk to this spot (screen pixels as clicked, before the camera's zoom)
+  walkTo: (point: { x: number; y: number }) => void
   setGame: (game: ChickenGame) => void
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
@@ -1262,6 +1264,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- drag and drop: pick her up with the pointer; let go and she falls ----------
   const drag = { on: false, id: null as number | null, x0: 0, y0: 0, ox: 0, oy: 0, px: 0, py: 0 }
+  // the Pátio's camera zoom scales the drawing around the screen's centre: a pointer in her own pixels
+  let camZoom = 1
+  const local = (x: number, y: number) => camZoom === 1 ? { x, y } : { x: W / 2 + (x - W / 2) / camZoom, y: H / 2 + (y - H / 2) / camZoom }
   function heldStep(dt: number) {
     const tx = drag.px - drag.ox, ty = drag.py - drag.oy
     S.vx = ease(S.vx, (tx - S.x) / Math.max(dt, 1e-3), 12, dt); S.vy = ease(S.vy, (ty - S.y) / Math.max(dt, 1e-3), 12, dt)
@@ -1270,14 +1275,17 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     animate(dt, 'held', false, 0)
   }
   const onRootDown = (e: PointerEvent) => {
-    if (portalEntry || e.button !== 0 || game.gameMode) return
+    // the Pátio (game mode) can pick her up too; a remote chicken (online) is not ours to move
+    if (portalEntry || e.button !== 0 || remote) return
     e.preventDefault(); e.stopPropagation(); ensureAudio()
-    drag.id = e.pointerId; drag.x0 = e.clientX; drag.y0 = e.clientY; drag.on = false
+    const p = local(e.clientX, e.clientY)
+    drag.id = e.pointerId; drag.x0 = p.x; drag.y0 = p.y; drag.on = false
   }
   function moveDrag(e: PointerEvent) {
     if (drag.id !== e.pointerId) return
-    drag.px = e.clientX; drag.py = e.clientY
-    if (!drag.on && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 5) {
+    const p = local(e.clientX, e.clientY)
+    drag.px = p.x; drag.py = p.y
+    if (!drag.on && Math.hypot(p.x - drag.x0, p.y - drag.y0) > 5) {
       drag.on = true
       if (S.cl) { startTurn(); S.x = S.cl.px + S.cl.n[0] * 40 * R.scale; S.y = Math.min(groundY, S.cl.py + 30 * R.scale); S.cl = null }
       drag.ox = drag.x0 - S.x; drag.oy = drag.y0 - S.y
@@ -1293,7 +1301,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   // Mobile browsers ignore touch-action on SVG shapes: a finger moving on her starts a page pan, which
   // fires pointercancel and drops her. Blocking the touch's default keeps the pointer stream alive.
-  const blockTouch = (e: TouchEvent) => { if (e.cancelable && !game.gameMode) e.preventDefault() }
+  const blockTouch = (e: TouchEvent) => { if (e.cancelable && !remote) e.preventDefault() }
   const blockTouchMove = (e: TouchEvent) => { if (drag.id !== null && e.cancelable) e.preventDefault() }
   el.root.addEventListener('pointerdown', onRootDown)
   el.root.addEventListener('touchstart', blockTouch, { passive: false })
@@ -1797,7 +1805,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       opts.groundHeight = h; groundY = H - h
       if (S.grounded && !S.plat && !S.cl) S.y = groundY
     },
-    setCameraZoom(zoom) { svg.style.transform = zoom === 1 ? '' : `scale(${Math.max(0.5, Math.min(2.5, zoom))})` },
+    setCameraZoom(zoom) { camZoom = Math.max(0.5, Math.min(2.5, zoom)); svg.style.transform = zoom === 1 ? '' : `scale(${Math.max(0.5, Math.min(2.5, zoom))})` },
     setVirtual(action, on) {
       ensureAudio()
       if (on && !virt[action]) virtTapped.add(action)
@@ -1851,6 +1859,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     setBounds(next) { bounds = next },
     setGame(next) { Object.assign(game, next); showAura() },
+    walkTo(point) {
+      if (remote || portalEntry || S.held || S.cl) return
+      const p = local(point.x, point.y), m = 40 * R.scale
+      goal = { x: clamp(p.x, m, W - m), y: p.y, checkT: .3, checkX: S.x }
+      if (R.broodStandOnMove) S.broodLatch = false
+    },
     setPeck(next) { if (!portalEntry) peckNow = next },
     setSwing(next) { swingNow = next; if (next) throwTransition.reset() },
     heldPoint(angle, x, y) {
