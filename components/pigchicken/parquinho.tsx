@@ -16,7 +16,7 @@ import { cameraBounds, cameraStep, cameraXRange, leadStep } from "@/lib/pigchick
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, type Box, type Combat, type Effect } from "@/lib/pigchicken/combat"
-import { newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
+import { INVENTORY_MAX, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
 import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
@@ -50,8 +50,16 @@ import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
-import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_W, INV_STACK, invRowY, invRight, BAR, BAR_W, drawInventory, drawSoulCounter, wheelGeom, drawWheel } from "@/components/pigchicken/draw/hud"
+import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { templeDraw, pickupMarks, markHover, grabLabel, drawWorld } from "@/components/pigchicken/draw/world"
+
+// Próximo instrumento / Próxima arma / Próximo utilitário pressed this frame: the group to go through (the first
+// one listed wins when several are pressed together)
+const GROUP_BINDS: [ChickenAction, ItemGroup][] = [["nextInstrument", 0], ["nextWeapon", 1], ["nextUtility", 2]]
+const groupPress = (act: Partial<Record<ChickenAction, boolean>>, prev: Partial<Record<ChickenAction, boolean>>): ItemGroup | null =>
+  GROUP_BINDS.find(([a]) => act[a] && !prev[a])?.[1] ?? null
+// how far (px) a press on the inventory bar moves before it becomes a drag instead of a click
+const BAR_DRAG_START = 6
 
 const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
@@ -161,7 +169,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]> }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -189,8 +197,24 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const tapShot = useRef(0)
   // a slot the player clicked or tapped on the inventory bar (1-based, 0 none): equips it on the next frame
   const slotTap = useRef(0)
-  // how many slots the inventory bar shows (her items plus the empty one while there is room)
-  const [invSlots, setInvSlots] = useState(1)
+  // the groups of the slots the inventory bar shows (her items plus the empty one while there is room), as a key
+  // ("0012": two instruments, a weapon, the empty slot) so the page lays its invisible slots out like the canvas
+  const [invKey, setInvKey] = useState("2")
+  const invGroups = useMemo(() => invKey.split("").map(Number), [invKey])
+  // which of those slots hold an item (the empty one does not drag)
+  const barItems = useRef<boolean[]>([false])
+  // a slot dragged on the first player's bar (null: none) and a drop waiting for the next frame
+  const barDrag = useRef<(BarDrag & { pointer: number; x0: number; y0: number; active: boolean }) | null>(null)
+  const barMove = useRef<{ from: number; to: number; after: boolean } | null>(null)
+  const inventoryLimitRef = useRef(inventoryLimit)
+  inventoryLimitRef.current = inventoryLimit
+  // the bar's size follows the window (its slots shrink to fit): lay the invisible slots out again on a resize
+  const [, setViewportW] = useState(0)
+  useEffect(() => {
+    const onResize = () => setViewportW(window.innerWidth)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
   // the inventory wheel: open (its layer takes the clicks and taps), where the pointer is over it, a click on it
   const [wheelOpen, setWheelOpen] = useState(false)
   const [cameraMode, setCameraMode] = useState(false)
@@ -349,7 +373,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     window.addEventListener("blur", cancelPeckInput)
     window.addEventListener("pointercancel", cancelPeckInput)
-    let slotsShown = 1, wheelDrawn = false, fireBlock = false, prevFire = false
+    let slotsShown = "2", wheelDrawn = false, fireBlock = false, prevFire = false
     // horde settings, changed by shooting their buttons
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
@@ -584,8 +608,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- the inventory wheel: open while its button is held; point at an item (mouse, right stick, touch) ----------
       // letting go of the button closes it and equips the item pointed at; fire, jump or run pressed with an item
       // pointed at equips it and closes the wheel too
+      combat.setInventoryLimit(inventoryLimitRef.current)
       const slots = combat.inventory, nSlots = slots.length
-      if (nSlots !== slotsShown) { slotsShown = nSlots; setInvSlots(nSlots) }
+      const slotsKey = combat.inventoryGroups.join("")
+      if (slotsKey !== slotsShown) { slotsShown = slotsKey; setInvKey(slotsKey) }
+      barItems.current = slots.map(Boolean)
       let wheelPick = 0
       const showWheel = (on: boolean) => {
         if (wh.open === on) return
@@ -700,6 +727,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
       let pick = quickSwitchStep(act, prev, engine.isShiftHeld(), quickSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
       if (wheel) { pick = wheel > 0 ? 1 : -1; wheel = 0 }
+      const move = barMove.current
+      barMove.current = null
       const input = {
         deselect: act.deselectItem && !prev.deselectItem,
         cancelFire: cancelPecks || wh.open || fireBlock || document.hidden || st.held || st.state.startsWith('portal'),
@@ -718,6 +747,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           }
           return pressed
         })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab,
+        groupPick: wh.open ? null : groupPress(act, prev), move,
       }
       slotPick = 0; slotTap.current = 0
       prev = { ...act, fire, melee }
@@ -779,6 +809,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab,
+          groupPick: groupPress(xa, xp),
         }
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
@@ -990,7 +1021,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // tablet the first player's is the big bar at the bottom right instead
       const barBottom = !liftedRef.current
       const offsets = getTouchLayout().offsets
-      drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"])
+      const drag = barDrag.current?.active ? barDrag.current : null
+      drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag)
       combat.use("p1"); drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", offsets.inventory)
       extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory); drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", offsets.inventory) })
       combat.use("p1")
@@ -1084,33 +1116,56 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
       <canvas ref={wheelCanvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[205] h-full w-full" />
       <div ref={hudRef} className="pointer-events-none absolute left-3 z-[120] font-mono text-[11px] text-[#93a79a]" style={{ bottom: groundHeight + 10 }} />
-      {/* the inventory bar is drawn on the canvas; these invisible slots sit on top of it so a click or a tap
-          equips that item. In edit mode the Movable's drag handle covers them, so dragging never equips. */}
-      {engine && (
-        <Movable
-          id={lifted ? "inventory" : "inventoryBar"}
-          className="pointer-events-none fixed z-[190]"
-          style={lifted ? { right: invRight, top: invRowY(0), width: INV_W(invSlots), height: INV_SIZE } : { right: BAR.side, bottom: BAR.bottom + BAR.tab, width: BAR_W(invSlots), height: BAR.size }}
-        >
-          {!editing && (
-            <div data-chicken-ignore className="flex h-full" style={{ gap: lifted ? 3 : BAR.gap }}>
-              {Array.from({ length: invSlots }, (_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  tabIndex={-1}
-                  aria-label={`Equipar item ${i + 1} do inventário`}
-                  className="pointer-events-auto h-full shrink-0 rounded-md bg-transparent"
-                  style={{ width: lifted ? INV_SIZE : BAR.size, touchAction: "none" }}
-                  // pointerdown (not click): instant on touch, and preventDefault keeps focus off the button so Space stays a game key
-                  onPointerDown={e => { e.preventDefault(); e.stopPropagation(); slotTap.current = i + 1 }}
-                  onContextMenu={e => e.preventDefault()}
-                />
-              ))}
-            </div>
-          )}
-        </Movable>
-      )}
+      {/* the inventory bar is drawn on the canvas; this invisible layer sits on top of it: a click or a tap equips the
+          slot under it, pressing and dragging moves the item to another place (it joins the group it is dropped in).
+          In edit mode the Movable's drag handle covers it, so moving the bar never equips. */}
+      {engine && (() => {
+        const g = invGeom(0, invGroups, !lifted, undefined)
+        const slotAt = (e: ReactPointerEvent<HTMLDivElement>) => barSlotAt(g.xs, g.size, e.clientX - e.currentTarget.getBoundingClientRect().left)
+        const end = (e: ReactPointerEvent<HTMLDivElement>, drop: boolean) => {
+          const d = barDrag.current
+          if (!d || d.pointer !== e.pointerId) return
+          barDrag.current = null
+          if (!drop) return
+          if (!d.active) { slotTap.current = d.from + 1; return }
+          if (d.to !== d.from) barMove.current = { from: d.from, to: d.to, after: d.after }
+        }
+        return (
+          <Movable
+            id={lifted ? "inventory" : "inventoryBar"}
+            className="pointer-events-none fixed z-[190]"
+            style={lifted ? { right: invRight, top: invRowY(0), width: g.w, height: g.size } : { right: BAR.side, bottom: BAR.bottom + BAR.tab, width: g.w, height: g.size }}
+          >
+            {!editing && (
+              <div
+                data-chicken-ignore
+                role="toolbar"
+                aria-label="Inventário: clique para equipar, arraste para mudar a ordem"
+                className="pointer-events-auto h-full w-full"
+                style={{ touchAction: "none" }}
+                // pointerdown keeps focus off the page so Space stays a game key; the click equips on release
+                onPointerDown={e => {
+                  e.preventDefault(); e.stopPropagation()
+                  const { slot } = slotAt(e)
+                  e.currentTarget.setPointerCapture?.(e.pointerId)
+                  barDrag.current = { from: slot, to: slot, after: false, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, pointer: e.pointerId, active: false }
+                }}
+                onPointerMove={e => {
+                  const d = barDrag.current
+                  if (!d || d.pointer !== e.pointerId) return
+                  d.x = e.clientX; d.y = e.clientY
+                  if (!d.active && barItems.current[d.from] && Math.hypot(d.x - d.x0, d.y - d.y0) > BAR_DRAG_START) d.active = true
+                  if (d.active) { const at = slotAt(e); d.to = at.slot; d.after = at.after }
+                }}
+                onPointerUp={e => end(e, true)}
+                onPointerCancel={e => end(e, false)}
+                onLostPointerCapture={e => end(e, true)}
+                onContextMenu={e => e.preventDefault()}
+              />
+            )}
+          </Movable>
+        )
+      })()}
       {/* the inventory wheel (drawn on the canvas): this layer, under the touch controls, takes the pointer while it is open */}
       {engine && wheelOpen && (
         <div

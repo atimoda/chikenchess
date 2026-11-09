@@ -29,14 +29,25 @@ test('quick switch cycles through the items and one empty slot, then back to the
   step(c, { slot: 9 }); assert.equal(c.held.item, 'flute')
 })
 
-test('at most 13 items: a full inventory has no empty slot', () => {
+test('the Pátio sets the limit (up to 25, all of it by default): a full inventory has no empty slot', () => {
+  assert.equal(inv.INVENTORY_MAX, 25)
+  assert.equal(createCombat().inventoryLimit, 25)
   const c = createCombat()
+  c.setInventoryLimit(13)
   const ids = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow', 'flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys']
   ids.forEach(id => c.give(id))
-  assert.equal(c.inventory.length, inv.INVENTORY_MAX)
+  assert.equal(c.inventory.length, 13)
   assert.ok(c.inventory.every(Boolean))
   assert.ok(!names(c).includes('keys'))
   assert.equal(c.hoverSwaps, true)
+  // lowering it keeps what she carries; raising it brings the empty slot back
+  c.setInventoryLimit(5); assert.equal(c.inventory.length, 13); assert.ok(c.inventory.every(Boolean))
+  c.setInventoryLimit(99); assert.equal(c.inventoryLimit, 25); assert.equal(c.inventory.length, 14); assert.equal(c.inventory[13], null)
+  c.setInventoryLimit(0); assert.equal(c.inventoryLimit, 1)
+  // every item there is fits in the default 25
+  const { RACK_ITEM_IDS } = loadTs('lib/pigchicken/items.ts')
+  const all = createCombat(); RACK_ITEM_IDS.forEach(id => all.give(id))
+  assert.equal(all.inventory.filter(Boolean).length, RACK_ITEM_IDS.length)
 })
 
 test('the wheel: equal slices, the first at the top, clockwise', () => {
@@ -46,8 +57,9 @@ test('the wheel: equal slices, the first at the top, clockwise', () => {
   assert.equal(inv.wheelSliceAt(Math.PI / 2, 4), 2) // down
   assert.equal(inv.wheelSliceAt(Math.PI, 4), 3) // left
   assert.equal(inv.wheelSliceAt(up + 0.01, 1), 0)
-  for (let n = 1; n <= 13; n++) for (let i = 0; i < n; i++) assert.equal(inv.wheelSliceAt(inv.wheelSliceCenter(i, n), n), i)
-  assert.equal(inv.slotCount(0), 1); assert.equal(inv.slotCount(12), 13); assert.equal(inv.slotCount(13), 13)
+  for (let n = 1; n <= 25; n++) for (let i = 0; i < n; i++) assert.equal(inv.wheelSliceAt(inv.wheelSliceCenter(i, n), n), i)
+  assert.equal(inv.slotCount(0), 1); assert.equal(inv.slotCount(24), 25); assert.equal(inv.slotCount(25), 25)
+  assert.equal(inv.slotCount(12, 13), 13); assert.equal(inv.slotCount(13, 13), 13); assert.equal(inv.slotCount(15, 13), 15)
 })
 
 test('each local player has their own items (loadouts) in the same world', () => {
@@ -178,6 +190,7 @@ test('consumables stack up to 13 Maryjanes and 3 Coks in one slot each, with no 
 test('a ground consumable tops up an existing stack even with all inventory slots occupied', () => {
   const { ITEM_IDS } = loadTs('lib/pigchicken/items.ts')
   const c = createCombat()
+  c.setInventoryLimit(13)
   c.give('maryjane')
   for (const id of ITEM_IDS.filter(id => id !== 'wing' && id !== 'maryjane').slice(0, 12)) c.give(id)
   assert.equal(c.inventory.length, 13)
@@ -306,6 +319,7 @@ test('deselect leaves every item intact, wins simultaneous actions and isolates 
 
 test('deselect works with all 13 slots and cycling/pickup never skips or exceeds capacity', () => {
   const c = createCombat()
+  c.setInventoryLimit(13)
   const ids = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow', 'flute', 'sax', 'trumpet', 'guitar', 'violin']
   ids.forEach(id => c.give(id))
   const before = structuredClone(c.inventory)
@@ -362,4 +376,75 @@ test('after a throw she holds the item before the thrown one (the new first when
   step(c, { slot: 1 }); for (let i = 0; i < 20; i++) step(c)
   step(c, { throwHeld: true }); step(c, { throwReleased: true })
   assert.equal(c.held.item, 'pistol')
+})
+
+test('three groups: instruments, weapons, then sports tools, consumables and utilities; a new item ends its group', () => {
+  assert.equal(inv.itemGroup('bat', false), 2); assert.equal(inv.itemGroup('passagua', false), 2)
+  assert.equal(inv.itemGroup('maryjane', false), 2); assert.equal(inv.itemGroup('pistol', false), 1); assert.equal(inv.itemGroup('flute', true), 0)
+  const c = createCombat()
+  c.give('bat'); c.give('pistol'); c.give('maryjane'); c.give('flute'); c.give('rifle'); c.give('sax')
+  assert.deepEqual(names(c), ['flute', 'sax', 'pistol', 'rifle', 'bat', 'maryjane', null])
+  assert.deepEqual(c.inventoryGroups, [0, 0, 1, 1, 2, 2, 2])
+})
+
+test('dragging a slot moves it before / after another, joining that group; the held item stays held', () => {
+  const c = createCombat()
+  c.give('flute'); c.give('pistol'); c.give('rifle'); c.give('bat')
+  step(c, { slot: 3 }); assert.equal(c.held.item, 'rifle')
+  // the bat goes before the pistol: it is a weapon now
+  step(c, { move: { from: 3, to: 1, after: false } })
+  assert.deepEqual(names(c), ['flute', 'bat', 'pistol', 'rifle', null])
+  assert.deepEqual(c.inventoryGroups, [0, 1, 1, 1, 2])
+  assert.equal(c.held.item, 'rifle'); assert.equal(c.current, 3)
+  // the rifle (held) after the flute: an instrument, still in the wing
+  step(c, { move: { from: 3, to: 0, after: true } })
+  assert.deepEqual(names(c), ['flute', 'rifle', 'bat', 'pistol', null])
+  assert.deepEqual(c.inventoryGroups, [0, 0, 1, 1, 2])
+  assert.equal(c.held.item, 'rifle')
+  // onto the empty slot: the end of the last group
+  step(c, { move: { from: 0, to: 4, after: false } })
+  assert.deepEqual(names(c), ['rifle', 'bat', 'pistol', 'flute', null])
+  assert.deepEqual(c.inventoryGroups, [0, 1, 1, 2, 2])
+  // empty hands stay empty
+  step(c, { deselect: true }); step(c, { move: { from: 0, to: 2, after: true } })
+  assert.equal(c.held, null); assert.deepEqual(names(c), ['bat', 'pistol', 'rifle', 'flute', null])
+  // nothing moves for a slot that is not an item
+  step(c, { move: { from: 4, to: 0, after: false } }); assert.deepEqual(names(c), ['bat', 'pistol', 'rifle', 'flute', null])
+})
+
+test('an item taken again goes back to its own group, at its end', () => {
+  const c = createCombat()
+  c.give('flute'); c.give('pistol')
+  step(c, { move: { from: 1, to: 0, after: false } })
+  assert.deepEqual(c.inventoryGroups, [0, 0, 2])
+  c.give('sax'); assert.deepEqual(names(c), ['pistol', 'flute', 'sax', null])
+  // thrown and picked up again: a weapon again
+  step(c, { slot: 1 }); step(c, { throwHeld: true }); for (let i = 0; i < 40; i++) step(c, { throwHeld: true }); step(c, { throwReleased: true })
+  assert.ok(!names(c).includes('pistol'))
+  const p = c.thrown[0]?.owned ?? c.pickups[0]?.owned
+  assert.equal(p.item, 'pistol')
+  c.thrown.splice(0); c.pickups.splice(0)
+  c.pickups.push({ id: 999, owned: p, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { grab: true })
+  assert.deepEqual(names(c), ['flute', 'sax', 'pistol', null]); assert.deepEqual(c.inventoryGroups, [0, 0, 1, 2])
+})
+
+test('Próximo instrumento / arma / utilitário cycle their group in the bar order, starting at its first from elsewhere', () => {
+  const c = createCombat()
+  c.give('flute'); c.give('sax'); c.give('pistol'); c.give('rifle'); c.give('bat')
+  const seen = g => { step(c, { groupPick: g }); return c.held?.item ?? null }
+  // holding the bat (utilities): the instruments start at the first
+  assert.deepEqual([seen(0), seen(0), seen(0)], ['flute', 'sax', 'flute'])
+  assert.deepEqual([seen(1), seen(1), seen(1)], ['pistol', 'rifle', 'pistol'])
+  assert.deepEqual([seen(2), seen(2)], ['bat', 'bat'])
+  step(c, { deselect: true }); assert.equal(seen(1), 'pistol')
+  // a group with nothing in it does nothing
+  const d = createCombat(); d.give('flute')
+  step(d, { groupPick: 1 }); assert.equal(d.held.item, 'flute')
+  // dragged items belong to the group they were dropped in
+  step(c, { move: { from: 4, to: 0, after: false } })
+  assert.deepEqual([seen(0), seen(0)], ['bat', 'flute'])
+  // a press in the same frame as the next / previous item: those win (one switch per frame)
+  step(c, { slot: 1 }); step(c, { pick: 1, groupPick: 2 }); assert.equal(c.held.item, 'flute')
+  inv.groupStep([0, 0, 1], 5, 2) === -1 || assert.fail('empty group')
 })

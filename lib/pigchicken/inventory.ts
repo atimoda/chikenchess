@@ -1,9 +1,13 @@
-// PigChicKen's inventory: the items she carries, always grouped (instruments, then weapons, then the other items),
-// at most INVENTORY_MAX of them. The bar and the selection wheel show only the items she has plus one empty slot
-// (empty hands) while there is room. Pure helpers, shared by the combat, the bar and the wheel.
-import type { ItemId } from './items'
+// PigChicKen's inventory: the items she carries, always grouped (instruments, then weapons, then sports tools,
+// consumables and utilities), at most the Pátio's limit of them (INVENTORY_MAX at most). The bar and the selection
+// wheel show only the items she has plus one empty slot (empty hands) while there is room. Pure helpers, shared by
+// the combat, the bar and the wheel.
+import { CONSUMABLE_IDS, SPORTS_IDS, type ItemId } from './items'
 
-export const INVENTORY_MAX = 13
+// the most a Pátio may allow (Configurações do Pátio → Limite do inventário); new Pátios start with all of it
+export const INVENTORY_MAX = 25
+export const INVENTORY_MIN = 1
+export const clampInventoryLimit = (n: number) => Math.round(Math.max(INVENTORY_MIN, Math.min(INVENTORY_MAX, Number.isFinite(n) ? n : INVENTORY_MAX)))
 
 // Direction is sampled on the action's press, so changing Shift while the
 // button remains held never causes a second switch. Explicit Previous wins.
@@ -36,13 +40,15 @@ export function quickSwitchStep(
   return repeat.direction
 }
 
-// the order of the groups in the inventory: instruments, weapons, other items (mobility, consumables...)
+// the order of the groups in the inventory: instruments, weapons, then sports tools, consumables and utilities.
+// An item taken goes to its own group; dragged on the bar, it may join another one (the player's choice).
 export type ItemGroup = 0 | 1 | 2
-// the "other" items (consumables: Maryjane, Cok): they go after the weapons
-const OTHER_ITEMS = new Set<ItemId>(['maryjane', 'cok'])
+export const ITEM_GROUPS: ItemGroup[] = [0, 1, 2]
+// the third group (sports tools: Taco, Passaguá; consumables: Maryjane, Cok; utilities, when there are some)
+const UTILITY_ITEMS = new Set<ItemId>([...SPORTS_IDS, ...CONSUMABLE_IDS])
 export function itemGroup(id: ItemId, instrument: boolean): ItemGroup {
   if (instrument) return 0
-  return OTHER_ITEMS.has(id) ? 2 : 1
+  return UTILITY_ITEMS.has(id) ? 2 : 1
 }
 
 // puts the item at the end of its group (the others keep their order) and returns where it went
@@ -54,8 +60,30 @@ export function insertSorted<T>(list: T[], item: T, group: (t: T) => number): nu
   return at
 }
 
+// Dragging on the bar: list[from] goes right before (or after) the slot `to` and joins that slot's group, so the
+// groups stay in order. `to` === list.length is the empty slot at the end: the end of the last group. Returns the
+// item's new index (from, unchanged, when nothing moves).
+export function moveToSlot<T extends { group?: ItemGroup }>(list: T[], from: number, to: number, after: boolean): number {
+  if (from < 0 || from >= list.length || to < 0 || to > list.length || from === to) return from
+  const item = list[from], anchor = to < list.length ? list[to] : null
+  list.splice(from, 1)
+  item.group = anchor ? anchor.group ?? 2 : 2
+  const at = anchor ? list.indexOf(anchor) + (after ? 1 : 0) : list.length
+  list.splice(at, 0, item)
+  return at
+}
+
+// "Próximo instrumento / arma / utilitário": the next item of that group, in the bar's order, from the held one;
+// coming from another group (or empty hands) it starts at the group's first. -1: the group has nothing.
+export function groupStep(groups: readonly number[], cur: number, group: number): number {
+  const at = groups.flatMap((g, i) => g === group ? [i] : [])
+  if (!at.length) return -1
+  const k = at.indexOf(cur)
+  return k < 0 ? at[0] : at[(k + 1) % at.length]
+}
+
 // how many slots show: the items plus one empty slot, while there is room
-export const slotCount = (items: number) => Math.min(items + 1, INVENTORY_MAX)
+export const slotCount = (items: number, limit = INVENTORY_MAX) => items < limit ? items + 1 : items
 
 // a slot index cycled into 0..count-1
 export const wrapSlot = (i: number, count: number) => count > 0 ? ((i % count) + count) % count : 0
