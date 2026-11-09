@@ -331,8 +331,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         return
       }
       if (e.button === 0 && onChicken(e.target)) return
-      // empty hands: the left button walks (Atirar's peck stays on the keyboard, gamepad and touch)
-      if (e.button === 0 && canWalkTap(e)) { walkTap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; return }
+      // empty hands: the left button pecks as always and, on a quick click, also walks there
+      if (e.button === 0 && canWalkTap(e)) walkTap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }
       if (e.button === 0) mouseBtn.fire = true
       if (e.button === 2) mouseBtn.melee = true
     }

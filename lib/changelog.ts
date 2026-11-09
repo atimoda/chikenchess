@@ -37,7 +37,7 @@ const RECENT = [
       ] },
       { title: 'Galinha', items: [
         'No Pátio, dá para pegar a galinha com o mouse ou o dedo e arrastá-la pelo cenário; ao soltar, ela cai com o embalo do arraste. Enquanto está pendurada, só Arremessar funciona: andar, pular, atirar, golpear, pegar, trocar de item e a roda ficam bloqueados até soltá-la.',
-        'No Pátio, de mãos vazias, clicar ou tocar num ponto do cenário faz a galinha andar até lá (como no globo). Com o mouse, o clique esquerdo sem item passa a andar em vez de bicar; a Bicada continua em Atirar no teclado, no gamepad e no toque.',
+        'No Pátio, de mãos vazias, clicar ou tocar num ponto do cenário faz a galinha andar até lá (como no globo). Com o mouse, o clique esquerdo sem item continua bicando e também a faz andar até o ponto.',
         'Novos atalhos: Próximo instrumento (Tab, LB), Próxima arma (Q, RB) e Próximo utilitário (F, B) percorrem só aquele grupo, na ordem da barra, começando pelo primeiro quando o item da mão é de outro grupo. Próximo utilitário também passa pela casa vazia (mãos vazias). Próximo item e Item anterior continuam passando por todo o inventário pela rodinha do mouse e pelo teclado secundário (Del e \'); no teclado principal e no gamepad ficam sem atalho padrão.',
         'Para abrir espaço: Roda do inventário passa de Q para T, Deselecionar item de F para B e, no gamepad, Golpe passa de B para Y e Arremessar de Y para R3 (que deixa de ser o segundo botão de Pular). Atalhos personalizados são preservados.',
       ] },
