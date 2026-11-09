@@ -5,16 +5,16 @@
 // only shown otherwise) and the "Escala da mira" (debug: the note and degree of each lane of every player's aim).
 // Saved in this browser (pigchicken-layers-v1).
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Check, Eye } from "lucide-react"
+import { Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const KEY = "pigchicken-layers-v1"
 export type PatioLayers = { backdrop: boolean; zones: boolean; scale: boolean }
 const DEFAULT: PatioLayers = { backdrop: true, zones: false, scale: false }
-const LAYERS: { key: keyof PatioLayers; label: string; hint: string }[] = [
-  { key: "backdrop", label: "Cenário de fundo", hint: "Céu, sol, nuvens, montanhas e árvores ao longe" },
-  { key: "zones", label: "Zonas musicais", hint: "A zona de cada cena e as zonas sonoras do mapa (editáveis no modo editor)" },
-  { key: "scale", label: "Escala da mira", hint: "Debug: a nota e o grau de cada faixa do leque da mira de cada boneco" },
+const LAYERS: { key: keyof PatioLayers; label: string }[] = [
+  { key: "backdrop", label: "Fundo" },
+  { key: "zones", label: "Zonas" },
+  { key: "scale", label: "Escalas" },
 ]
 
 export function usePatioLayers() {
@@ -52,12 +52,14 @@ export function LayerEyes({ layers, toggle }: ReturnType<typeof usePatioLayers>)
         <Eye className="h-4 w-4" />
       </button>
       {open && (
-        <div role="menu" aria-label="Camadas" data-chicken-ignore className="fixed left-auto top-14 z-[130] w-64 rounded-lg border border-white/15 bg-[#101713] p-1.5 font-mono text-xs text-[#dfe8df] shadow-lg [text-shadow:none]" style={{ left: (ref.current?.getBoundingClientRect().left ?? 0) }}>
+        <div role="menu" aria-label="Camadas" data-chicken-ignore className="fixed left-auto top-14 z-[130] w-40 rounded-lg border border-white/15 bg-[#101713] p-1.5 font-mono text-xs text-[#dfe8df] shadow-lg [text-shadow:none]" style={{ left: (ref.current?.getBoundingClientRect().left ?? 0) }}>
           {LAYERS.map(l => (
-            <button key={l.key} type="button" role="menuitemcheckbox" aria-checked={layers[l.key]} title={l.hint} onClick={() => toggle(l.key)}
-              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-white/10">
-              <span className={cn("mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border", layers[l.key] ? "border-primary bg-primary text-[#05060c]" : "border-white/30")}>{layers[l.key] && <Check className="h-3 w-3" />}</span>
-              <span className="grid"><span>{l.label}</span><span className="text-[10px] text-[#93a79a]">{l.hint}</span></span>
+            <button key={l.key} type="button" role="menuitemcheckbox" aria-checked={layers[l.key]} onClick={() => toggle(l.key)}
+              className="flex w-full items-center justify-between gap-4 rounded-md px-2 py-1.5 text-left hover:bg-white/10">
+              <span>{l.label}</span>
+              <span aria-hidden="true" className={cn("relative h-5 w-9 shrink-0 rounded-full border border-white/25 transition-colors", layers[l.key] ? "bg-green-600" : "bg-zinc-700")}>
+                <span className="absolute left-0.5 top-0.5 size-[14px] rounded-full bg-white transition-transform" style={{ transform: layers[l.key] ? "translateX(16px)" : undefined }} />
+              </span>
             </button>
           ))}
         </div>
