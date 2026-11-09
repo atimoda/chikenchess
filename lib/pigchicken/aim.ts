@@ -1,6 +1,6 @@
 // PigChicKen aim: which input owns the aim this frame and where it points. Pure functions, screen coordinates (y down).
-// Priority: right stick > mouse (after it moves) > on-screen right stick > left stick > facing. The movement keys
-// (arrows, WASD) do not aim.
+// Priority: right stick > mouse (after it moves) > on-screen right stick > left stick > movement keys > facing.
+// The movement keys (arrows, WASD) aim in the 8 directions.
 import { magnetVector } from '../chicken/analog-magnet'
 
 export type Stick = { x: number; y: number; mag: number }
@@ -10,7 +10,7 @@ export type AimInput = {
   mouse: { x: number; y: number } | null // cursor, only while the mouse owns the aim
   touch: Stick | null
   leftStick: Stick | null
-  keys: { x: number; y: number } // -1, 0 or 1 on each axis (movement keys: not used for the aim any more)
+  keys: { x: number; y: number } // -1, 0 or 1 on each axis: the movement keys (left / right / up / crouch)
   origin: { x: number; y: number } // where the aim starts (her shoulder)
   face: number
   aimMagnetDeg: number
@@ -54,7 +54,9 @@ export function resolveAim(i: AimInput): Aim {
       return { ...fromVec(Math.cos(a), Math.sin(a), 'leftStick', i.leftStick.mag, false) }
     }
   }
-  // the keyboard's movement keys never aim (they would fight the mouse): with no other aim, she aims ahead
+  // the movement keys aim in the 8 directions (the mouse / aim stick give the aim back to them after `aimRelease`)
+  if (i.keys.x || i.keys.y) return fromVec(i.keys.x, i.keys.y, 'keys', 1, false)
+  // with no other aim, she aims ahead
   return fromVec(i.face || 1, 0, 'facing', 1, false)
 }
 
@@ -72,7 +74,7 @@ export function reticleAtAngle(target: { x: number; y: number }, grip: { x: numb
   return { x: muzzle.x + dx * travel, y: muzzle.y + dy * travel, distance: Math.abs(travel) }
 }
 
-// The mouse (or the aim stick) takes the aim after moving `grabPx`; it gives it back when the arrows / left stick are
+// The mouse (or the aim stick) takes the aim after moving `grabPx`; it gives it back when the movement keys / left stick are
 // used and it has been still for `idleS` seconds. `idleS` = Infinity: it never gives it back (the aim stays put).
 export function createMouseOwner(grabPx = 8) {
   let owns = false, travel = 0, lastMove = -Infinity

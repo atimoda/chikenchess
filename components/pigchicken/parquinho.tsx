@@ -652,12 +652,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // brooding with an item in the wing is aiming: she stays put and the aim is locked while brood is held
       const armed = !!combat.inventory[combat.current]
       const aimLock = act.down && armed && st.grounded
-      const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch || (act.down && !aimLock) ? 1 : 0) - (act.up ? 1 : 0) }
+      // the movement keys aim in the 8 directions; brood is not a direction, crouch is down
+      const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch ? 1 : 0) - (act.up ? 1 : 0) }
+      const keysAim = keys.x !== 0 || keys.y !== 0
       // the wheel's stick choices are not aim: while it is open the aim stick is not held
       const liveStick = wh.open ? null : rightStickForAim ?? touchAim.current
       if (liveStick) { heldStick = { stick: liveStick, touch: !rightStick }; stickOwner.moved(1, now); owner.release() }
-      // only the left stick takes the aim back from a still mouse / aim stick: the movement keys never aim
-      if (leftStick) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
+      // the left stick or the movement keys take the aim back from a mouse / aim stick still for `aimRelease`
+      if (leftStick || keysAim) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
       const held = !liveStick && stickOwner.owns ? heldStick : null
       // her shoulder as drawn (it turns with her body on walls)
       const origin = engine.getState().shoulder
@@ -717,7 +719,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         // a held Throw uses the bird's ground/air slowdown (switching items cancels it)
         throwHeld: !wh.open && act.throw && armed && !combat.throwVoid,
         aimFace: aim.secondary && Math.abs(aim.dx) > 0.2 ? Math.sign(aim.dx) : null,
-        lookAngle: aim.source === 'rightStick' || aim.source === 'leftStick' || aim.source === 'touch' ? aim.angle : null,
+        lookAngle: aim.source === 'rightStick' || aim.source === 'leftStick' || aim.source === 'touch' || aim.source === 'keys' ? aim.angle : null,
         ...effectGame(combat.effect, d.weight),
       })
 
@@ -794,12 +796,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xs = eng.getMotionState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
         combat.use(id)
         const xd = combat.def(), xArmed = !!combat.inventory[combat.current]
-        // aim: their gamepad's right stick; else the left stick (every way, up and down included); else up (looking up) or straight ahead
+        // aim: their gamepad's right stick; else the left stick (every way, up and down included); else their movement keys (8 directions); else ahead
         const devs = eng.getDevices()
         const rs = stickFor(devs, 1, an.deadzoneR), ls = rs ? null : stickFor(devs, 0, an.deadzoneL)
         const ahead = xs.face >= 0 ? 0 : Math.PI
         const aimStick = rs ?? ls
-        const angle = aimStick ? magnetAngle(Math.atan2(aimStick.y, aimStick.x), an.aimMagnetDeg) : xa.up ? (xs.face >= 0 ? -Math.PI / 3 : -Math.PI * 2 / 3) : ahead
+        const xkx = (xa.right ? 1 : 0) - (xa.left ? 1 : 0), xky = (xa.crouch ? 1 : 0) - (xa.up ? 1 : 0)
+        const xKeys = xkx !== 0 || xky !== 0
+        const angle = aimStick ? magnetAngle(Math.atan2(aimStick.y, aimStick.x), an.aimMagnetDeg) : xKeys ? Math.atan2(xky, xkx) : ahead
         const xo = eng.getState().shoulder
         const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
         const xrepeat = extraQuickSwitch.get(id) ?? newQuickSwitchRepeat()
@@ -817,7 +821,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
-        eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick ? angle : null, ...effectGame(combat.effect, xd.weight) })
+        eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
         eng.setSwing(rigSwing(xsw))

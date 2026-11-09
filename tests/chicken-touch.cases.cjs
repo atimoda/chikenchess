@@ -34,6 +34,17 @@ test('the left stick aims in all 8 directions, down included, on the ground too'
   }
 })
 
+test('the movement keys aim in the 8 directions, after the sticks and the mouse', () => {
+  for (const [x, y] of [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]) {
+    const aim = resolveAim({ ...base, keys: { x, y } })
+    assert.equal(aim.source, 'keys')
+    assert.ok(Math.abs(aim.angle - Math.atan2(y, x)) < 1e-9)
+  }
+  assert.equal(resolveAim({ ...base, keys: { x: 0, y: -1 }, leftStick: { x: 1, y: 0, mag: 1 } }).source, 'leftStick')
+  assert.equal(resolveAim({ ...base, keys: { x: 0, y: -1 }, mouse: { x: 50, y: 0 } }).source, 'mouse')
+  assert.equal(resolveAim({ ...base }).source, 'facing')
+})
+
 test('dragging a touch control stays inside the screen', () => {
   const rect = { left: 100, right: 200, top: 500, bottom: 600 }
   assert.deepEqual(layout.clampDelta(rect, -500, 900, 400, 700), { x: -96, y: 96 })
