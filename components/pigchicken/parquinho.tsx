@@ -185,7 +185,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, scaleFan = 0, scaleFanSize = 0.3, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; scaleFan?: number; scaleFanSize?: number; hitboxes?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; hitboxes?: boolean }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -201,6 +201,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   scaleFanRef.current = scaleFan
   const scaleSizeRef = useRef(scaleFanSize)
   scaleSizeRef.current = scaleFanSize
+  const scaleFadeRef = useRef(scaleFanFade)
+  scaleFadeRef.current = scaleFanFade
   const hitboxesRef = useRef(hitboxes)
   hitboxesRef.current = hitboxes
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -1077,13 +1079,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       if (scaleFanRef.current > 0) {
         const o = engine.getState().shoulder
-        drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale, scaleFanRef.current, scaleSizeRef.current)
+        drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current)
         extraList.forEach(([id, eng]) => {
           const at = extraAim.get(id)
           if (!at) return
           combat.use(id)
           const xo = eng.getState().shoulder
-          drawScaleFan(ctx, combat, xo.x, xo.y, at.angle, st.scale, scaleFanRef.current, scaleSizeRef.current)
+          drawScaleFan(ctx, combat, xo.x, xo.y, at.angle, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current)
         })
         combat.use("p1")
       }

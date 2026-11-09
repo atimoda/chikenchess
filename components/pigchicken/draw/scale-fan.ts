@@ -19,13 +19,14 @@ function aimSource(combat: Combat): { set: PitchSet; octave: number; span: numbe
   return by ? { set: "scale", octave: by.n, span: 2 } : null
 }
 
-// the fan's radius at size 1x (the layers menu's "Escalas (Tamanho)" goes from 0.1x to 2x; 0.3x by default)
+// the fan's radius at size 1x (the layers menu's "Escalas (Tamanho)" goes from 0.1x to 3x; 0.3x by default)
 export const SCALE_FAN_R = 390
 
 // the current player's fan (combat.use(id) first), centred at (cx, cy) in screen units; alpha: the layer's
-// strength; size: its radius in SCALE_FAN_R. Each lane fades out toward the circle (0 at its edge), the labels sit
-// in the middle of each lane on the side she aims at.
-export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3) {
+// strength; size: its radius in SCALE_FAN_R; fade: "Escalas (Degradê)" from 0 to 1. Each lane fades out toward the
+// circle (0 at its edge) as (1 - t)^(fade * 2) up to 1/2 and then up to (1 - t)^4: 0 is solid, 1/2 linear, 1 a long
+// soft tail. The labels sit in the middle of each lane on the side she aims at.
+export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3, fade = 0.5) {
   const src = aimSource(combat)
   if (!src) return
   const music = combat.music, zone = music.zone
@@ -41,10 +42,13 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
   const angle = (up: number, side: boolean) => (side ? -Math.asin(up) : Math.PI + Math.asin(up))
   const now = Math.round(((upOf(aim) + 1) / 2) * (n - 1))
   const rOut = SCALE_FAN_R * size * scale, rIn = Math.min(rOut * 0.3, 34 * scale)
-  // fading from the centre to nothing at the circle
-  const fade = (color: string, a: number) => {
+  // fading from the centre to nothing at the circle (solid when fade is 0)
+  const power = fade <= 0.5 ? fade * 2 : 1 + (fade - 0.5) * 6
+  const fill = (color: string, a: number): string | CanvasGradient => {
+    if (power <= 0) return hexA(color, a)
     const g = ctx.createRadialGradient(cx, cy, rIn, cx, cy, rOut)
-    g.addColorStop(0, hexA(color, a)); g.addColorStop(1, hexA(color, 0))
+    const stops = power === 1 ? 1 : 12
+    for (let k = 0; k <= stops; k++) { const t = k / stops; g.addColorStop(t, hexA(color, a * (1 - t) ** power)) }
     return g
   }
   const font = Math.max(8, Math.min(14, rOut * 0.07))
@@ -61,9 +65,9 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
       ctx.arc(cx, cy, rOut, Math.min(a0, a1), Math.max(a0, a1))
       ctx.arc(cx, cy, rIn, Math.max(a0, a1), Math.min(a0, a1), true)
       ctx.closePath()
-      ctx.fillStyle = fade(color, alpha * (i === now ? 0.4 : 0.14))
+      ctx.fillStyle = fill(color, alpha * (i === now ? 0.4 : 0.14))
       ctx.fill()
-      ctx.strokeStyle = fade(color, alpha * 0.6)
+      ctx.strokeStyle = fill(color, alpha * 0.6)
       ctx.beginPath()
       ctx.moveTo(cx + Math.cos(a0) * rIn, cy + Math.sin(a0) * rIn)
       ctx.lineTo(cx + Math.cos(a0) * rOut, cy + Math.sin(a0) * rOut)

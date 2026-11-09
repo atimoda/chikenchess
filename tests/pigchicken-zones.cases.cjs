@@ -245,3 +245,10 @@ test("the scenes' own zones: the code's until the Pátio changes one, saved in i
   assert.equal(sz.sceneZoneOf(s.sceneZones, 1), ZONES[1])
   assert.equal(settings.normalizePatioSettings({ sceneZones: {} }), undefined)
 })
+
+test('a Pátio keeps its own Camadas: cleaned, in range, Escalas up to 3x', () => {
+  const settings = loadTs('lib/pigchicken/patio-settings.ts')
+  const s = settings.normalizePatioSettings({ layers: { backdrop: 140, zones: -3, scale: 42.6, scaleSize: 9, scaleFade: 'x', hitboxes: true } })
+  assert.deepEqual(s.layers, { backdrop: 100, zones: 0, scale: 43, scaleSize: 3, scaleFade: 50, hitboxes: true })
+  assert.equal(settings.normalizePatioSettings({ layers: 'nope' }), undefined)
+})
