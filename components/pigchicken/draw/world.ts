@@ -1,6 +1,6 @@
 // The world pass: everything drawn in world coordinates each frame, and the per-frame state it reads.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
-import { chickenBindName, type ChickenControls } from "@/lib/chicken/controls"
+import { chickenBindName, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { type InputDeviceId } from "@/lib/chicken/input-devices"
 import { type Combat, type Pickup } from "@/lib/pigchicken/combat"
 import { type Catalog } from "@/lib/pigchicken/alien-catalog"
@@ -28,12 +28,17 @@ export function markHover(combat: Combat, key: string) {
   at(combat.hoverOwned, "#9aa0a8", "equipar")
 }
 // the grab bind a player sees: from the keyboard they hold (primary first), else from their gamepad
-export function grabLabel(c: ChickenControls, devices: readonly InputDeviceId[] | null) {
+// the name of an action's first bind on a player's inputs: their keyboard's, else their gamepad's ("" when unbound)
+export function bindLabel(c: ChickenControls, devices: readonly InputDeviceId[] | null, action: ChickenAction) {
   const pick = (slots: (string | null)[]) => slots.find(Boolean) ?? null
-  const kb = !devices || devices.includes("kb1") ? pick(c.keys.grab) : devices.includes("kb2") ? pick(c.keys2.grab) : null
-  const tok = kb ?? (!devices || devices.some(d => d.startsWith("pad")) ? pick(c.pad.grab) : null)
+  const kb = !devices || devices.includes("kb1") ? pick(c.keys[action]) : devices.includes("kb2") ? pick(c.keys2[action]) : null
+  const tok = kb ?? (!devices || devices.some(d => d.startsWith("pad")) ? pick(c.pad[action]) : null)
   return tok ? chickenBindName(tok) : ""
 }
+export const grabLabel = (c: ChickenControls, devices: readonly InputDeviceId[] | null) => bindLabel(c, devices, "grab")
+// the keys shown left of each inventory group on the big bar: Próximo instrumento, Próxima arma, Próximo utilitário
+export const groupBindLabels = (c: ChickenControls, devices: readonly InputDeviceId[] | null) =>
+  (["nextInstrument", "nextWeapon", "nextUtility"] as const).map(a => bindLabel(c, devices, a).toUpperCase() || null)
 export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
   const visible = (x: number, y: number, w = 160, h = 240) => intersectsView({ x: x - w / 2, y: y - h, w, h }, view, 32)
   const X = (x: number) => x - camX

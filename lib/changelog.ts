@@ -14,10 +14,11 @@ const RECENT = [
         'Os itens ficam em três grupos, nesta ordem: instrumentos, armas e o resto (esportivos, consumíveis e utilitários). Cada item pego entra no fim do seu grupo. Na barra, um espaço maior e uma linha colorida separam os grupos, e as casas encolhem para caber na tela.',
         'Clique e arraste um item da barra para mudar sua posição; soltando ao lado de um item de outro grupo, ele passa para esse grupo. Um clique sem arrastar continua equipando.',
         'O analógico de movimento (gamepad ou tela) mira em todas as direções, inclusive para baixo com a galinha no chão. O teclado de um player sem mouse (por exemplo o Secondary keyboard passado para outro player no painel Players) mira nas 8 direções pelas teclas de movimento; o teclado que tem o mouse junto continua sem mirar pelas setas. Mouse ou analógico de mira parados devolvem a mira ao movimento depois do tempo de Câmera de Mira → Mira parada volta para o movimento. Os players adicionais também miram pelo analógico esquerdo quando não usam o direito.',
+        'Na barra de baixo, os instrumentos ficam alinhados à esquerda da tela e as armas e utilitários à direita. À esquerda do primeiro item de cada grupo aparece a tecla do atalho do grupo (TAB, Q, F, ou LB, RB, B no gamepad).',
       ] },
       { title: 'Galinha', items: [
-        'Novos atalhos: Próximo instrumento (Tab, LB), Próxima arma (Q, RB) e Próximo utilitário (F, Y) percorrem só aquele grupo, na ordem da barra, começando pelo primeiro quando o item da mão é de outro grupo. Próximo item e Item anterior continuam passando por todo o inventário pela rodinha do mouse e pelo teclado secundário (Del e \'); no teclado principal e no gamepad ficam sem atalho padrão.',
-        'Para abrir espaço: Roda do inventário passa de Q para T, Deselecionar item de F para B e, no gamepad, Arremessar passa de Y para R3 (que deixa de ser o segundo botão de Pular). Atalhos personalizados são preservados.',
+        'Novos atalhos: Próximo instrumento (Tab, LB), Próxima arma (Q, RB) e Próximo utilitário (F, B) percorrem só aquele grupo, na ordem da barra, começando pelo primeiro quando o item da mão é de outro grupo. Próximo utilitário também passa pela casa vazia (mãos vazias). Próximo item e Item anterior continuam passando por todo o inventário pela rodinha do mouse e pelo teclado secundário (Del e \'); no teclado principal e no gamepad ficam sem atalho padrão.',
+        'Para abrir espaço: Roda do inventário passa de Q para T, Deselecionar item de F para B e, no gamepad, Golpe passa de B para Y e Arremessar de Y para R3 (que deixa de ser o segundo botão de Pular). Atalhos personalizados são preservados.',
       ] },
     ],
   },
