@@ -189,8 +189,8 @@ export const desktopPointer = typeof window !== "undefined" ? window.matchMedia(
 // Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
 // but the first on desktop and tablet; everyone on a phone held upright)
 // groups: each shown slot's group (Combat.inventoryGroups). The page's invisible slot buttons use the same numbers.
-// labels: the big bar shows each group's key left of its first slot. On the big bar the instruments sit on the left
-// of the screen and the other groups on the right (xs are from the bar's left end, which is then the screen's)
+// labels: the big bar shows each group's key left of its first slot. The big bar spans the screen: the instruments
+// on the left, the utilities on the right and the weapons centred between them (xs are from the bar's left end)
 export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = window.innerWidth, H = window.innerHeight, labels = false) {
   if (!bottom) {
     const size = fitSize(groups, W - invRight - ROW.margin, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
@@ -198,14 +198,18 @@ export function invGeom(row: number, groups: readonly number[], bottom: boolean,
     return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false, lead: 0 }
   }
   const lead = labels ? BAR.label : 0
-  const nLeft = groups.findIndex(g => g !== 0), split = nLeft > 0
-  const left = split ? groups.slice(0, nLeft) : [], right = split ? groups.slice(nLeft) : groups
-  const room = W - BAR.side * 2 - (split ? BAR.middle : 0)
-  const spaces = barSlots(left, 0, BAR.gap, BAR.groupGap, lead).w + barSlots(right, 0, BAR.gap, BAR.groupGap, lead).w
+  // three parts across the screen: the instruments on the left, the utilities (and the empty slot) on the right, and
+  // the weapons centred in the free space between them; at least BAR.middle between two parts
+  const parts = [0, 1, 2].map(k => groups.filter(g => g === k))
+  const shown = parts.filter(p => p.length).length
+  const room = W - BAR.side * 2 - BAR.middle * Math.max(0, shown - 1)
+  const spaces = parts.reduce((sum, p) => sum + barSlots(p, 0, BAR.gap, BAR.groupGap, lead).w, 0)
   const size = Math.max(BAR.minSize, Math.min(BAR.size, Math.floor((room - spaces) / Math.max(1, groups.length))))
-  const L = barSlots(left, size, BAR.gap, BAR.groupGap, lead), R = barSlots(right, size, BAR.gap, BAR.groupGap, lead)
-  const w = split ? Math.max(W - BAR.side * 2, L.w + BAR.middle + R.w) : R.w
-  const xs = split ? [...L.xs, ...R.xs.map(x => x + w - R.w)] : R.xs
+  const [L, M, R] = parts.map(p => barSlots(p, size, BAR.gap, BAR.groupGap, lead))
+  const w = Math.max(W - BAR.side * 2, L.w + M.w + R.w + BAR.middle * Math.max(0, shown - 1))
+  const freeL = L.w + (parts[0].length ? BAR.middle : 0), freeR = w - R.w - (parts[2].length ? BAR.middle : 0)
+  const mx = Math.max(freeL, Math.min((L.w + w - R.w - M.w) / 2, freeR - M.w))
+  const xs = [...L.xs, ...M.xs.map(x => x + mx), ...R.xs.map(x => x + w - R.w)]
   const x = W - BAR.side - w, y = H - BAR.bottom - BAR.tab - size
   return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size, gap: BAR.gap, groupGap: BAR.groupGap, xs, w, tabs: true, lead }
 }
@@ -266,17 +270,6 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   const r = Math.max(3, Math.round(size * (bottom ? 0.16 : 0.15)))
   ctx.save()
   ctx.textBaseline = "middle"
-  // each group's colour in a thin line over its slots (the big bar)
-  if (bottom) {
-    ctx.save(); ctx.globalAlpha = 0.6
-    for (let i = 0; i < n; i++) {
-      if (!slots[i] || (i && groups[i] === groups[i - 1] && slots[i - 1])) continue
-      let j = i; while (j + 1 < n && slots[j + 1] && groups[j + 1] === groups[i]) j++
-      ctx.fillStyle = GROUP_COLORS[groups[i]] ?? "#ffffff"
-      roundRect(ctx, x0 + g.xs[i] + 4, y - 5, g.xs[j] + size - g.xs[i] - 8, 2, 1); ctx.fill()
-    }
-    ctx.restore()
-  }
   // the effects running on her, by item (the longest one, and how many doses add up)
   const running = new Map<ItemId, { left: number; total: number; look: string; count: number }>()
   combat.effects.forEach(e => {
