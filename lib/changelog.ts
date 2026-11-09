@@ -18,6 +18,11 @@ const RECENT = [
         'Com um controle de PlayStation conectado (identificado pelo fabricante Sony), os botões aparecem com os nomes dele (✕ ○ □ △ L1 R1 L2 R2 Create Options) no painel Controles e nas dicas do jogo; as atribuições são as mesmas. Os demais controles seguem com os nomes de Xbox.',
         'Na barra de baixo, os instrumentos ficam alinhados à esquerda da tela e as armas e utilitários à direita. À esquerda do primeiro item de cada grupo aparece a tecla do atalho do grupo (TAB, Q, F, ou LB, RB, B no gamepad).',
       ] },
+      { title: 'Pátio online', items: [
+        'Aliens, zumbis, aliens de treino e os mortos-vivos que eles deixam agora são os mesmos para todo o lobby: o dono do lobby comanda os inimigos, e os acertos de qualquer player (tiros, notas, explosões, golpes e arremessos) valem para todos, inclusive matar, virar passarinho ou curar.',
+        'Os botões SOLTAR ALIENS / SOLTAR ZUMBIS e os inimigos de treino do editor funcionam para qualquer player e aparecem para todos; os zumbis vão atrás da galinha mais próxima, de qualquer navegador.',
+        'Os tiros, notas e itens arremessados dos outros players aparecem voando na sua tela; as explosões deles empurram a sua galinha. Quando o dono sai, o próximo continua com os mesmos inimigos.',
+      ] },
       { title: 'Galinha', items: [
         'Novos atalhos: Próximo instrumento (Tab, LB), Próxima arma (Q, RB) e Próximo utilitário (F, B) percorrem só aquele grupo, na ordem da barra, começando pelo primeiro quando o item da mão é de outro grupo. Próximo utilitário também passa pela casa vazia (mãos vazias). Próximo item e Item anterior continuam passando por todo o inventário pela rodinha do mouse e pelo teclado secundário (Del e \'); no teclado principal e no gamepad ficam sem atalho padrão.',
         'Para abrir espaço: Roda do inventário passa de Q para T, Deselecionar item de F para B e, no gamepad, Golpe passa de B para Y e Arremessar de Y para R3 (que deixa de ser o segundo botão de Pular). Atalhos personalizados são preservados.',

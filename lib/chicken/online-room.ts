@@ -5,6 +5,7 @@
 import { Client, type Room } from '@colyseus/sdk'
 import { receiveChickenChat, setChickenChatTransport } from './chat'
 import { decodeNetSnapshot, encodeNetState, NET_MAX_BROWSERS, type NetChicken } from './net-protocol'
+import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world'
 
 /* global process */
 // ws(s)://host[:port] of the game server; in development it defaults to the one `cd server && npm start` runs
@@ -30,6 +31,17 @@ const layoutListeners = new Set<LayoutListener>()
 const savedListeners = new Set<SavedListener>()
 export function onNetLayout(fn: LayoutListener) { layoutListeners.add(fn); return () => { layoutListeners.delete(fn) } }
 export function onNetSaved(fn: SavedListener) { savedListeners.add(fn); return () => { savedListeners.delete(fn) } }
+// the shared world (lib/pigchicken/net-world-sync.ts): the owner's enemies, hits and spawns asked of the owner,
+// everyone's shots. Unchecked: the listener cleans them.
+export type NetWorldMsg =
+  | { type: 'foes'; foes: NetFoes }
+  | { type: 'hits'; pid: number; list: unknown[] }
+  | { type: 'spawn'; pid: number; spawn: unknown }
+  | { type: 'shots'; pid: number; list: unknown[] }
+type WorldListener = (m: NetWorldMsg) => void
+const worldListeners = new Set<WorldListener>()
+export function onNetWorld(fn: WorldListener) { worldListeners.add(fn); return () => { worldListeners.delete(fn) } }
+const toWorld = (m: NetWorldMsg) => worldListeners.forEach(fn => fn(m))
 let room: Room | null = null
 let seq = 0
 const listeners = new Set<() => void>()
@@ -105,6 +117,10 @@ function attach(r: Room) {
   })
   r.onMessage('layout', (m: { layout: unknown }) => layoutListeners.forEach(fn => fn(m.layout)))
   r.onMessage('saved', (m: { revision: number }) => savedListeners.forEach(fn => fn(m.revision)))
+  r.onMessage('foes', (m: NetFoes) => toWorld({ type: 'foes', foes: m }))
+  r.onMessage('hits', (m: { pid: number; list: unknown[] }) => { if (Array.isArray(m?.list)) toWorld({ type: 'hits', pid: m.pid, list: m.list }) })
+  r.onMessage('spawn', (m: { pid: number; spawn: unknown }) => toWorld({ type: 'spawn', pid: m?.pid, spawn: m?.spawn }))
+  r.onMessage('shots', (m: { pid: number; list: unknown[] }) => { if (m?.pid !== state.myPid && Array.isArray(m?.list)) toWorld({ type: 'shots', pid: m.pid, list: m.list }) })
   r.onMessage('denied', (m: { reason: string }) => set({ notice: m.reason }))
   r.onMessage('kicked', (m: { reason: string }) => set({ notice: m.reason }))
   r.onLeave(() => {
@@ -138,6 +154,12 @@ export const clearNetNotice = () => set({ notice: null })
 // Edit mode: the layout after an edit (owner or editor) and the revision the owner just saved
 export const sendNetLayout = (layout: unknown) => room?.send('layout', { layout })
 export const sendNetSaved = (revision: number) => room?.send('saved', { revision })
+// the shared world: the owner's enemies; hits and spawns for the owner; the shots fired here
+const live = () => (room && state.status === 'online' ? room : null)
+export const sendNetFoes = (foes: NetFoes) => live()?.send('foes', foes)
+export const sendNetHits = (list: NetHit[]) => live()?.send('hits', { list })
+export const sendNetSpawn = (spawn: NetSpawn) => live()?.send('spawn', { spawn })
+export const sendNetShots = (list: NetShot[]) => live()?.send('shots', { list })
 
 const httpBase = () => GAME_SERVER_URL.replace(/^ws/, 'http')
 /** the public lobbies on the server, oldest first (empty when it cannot be reached) */
