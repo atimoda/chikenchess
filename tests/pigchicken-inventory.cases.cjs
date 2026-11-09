@@ -162,6 +162,30 @@ test('several doses of the same consumable multiply its effect, each with its ow
   assert.ok(c.effects[0].left < c.effects[1].left)
 })
 
+test('the looks stack up per dose and coexist: buddha doses and fizz doses are counted separately', () => {
+  const { lookDoses } = loadTs('lib/pigchicken/combat.ts')
+  const c = createCombat()
+  assert.deepEqual({ ...lookDoses(c.effects) }, { buddha: 0, fizz: 0 })
+  for (let i = 0; i < 3; i++) c.give('maryjane')
+  c.give('cok')
+  step(c, { slot: 1 }); for (let i = 0; i < 40; i++) step(c)
+  step(c, { fire: true, firePressed: true })
+  for (let i = 0; i < 60; i++) step(c)
+  step(c, { fire: true, firePressed: true })
+  assert.deepEqual({ ...lookDoses(c.effects) }, { buddha: 2, fizz: 0 })
+  for (let i = 0; i < 60; i++) step(c)
+  step(c, { slot: 2 }); for (let i = 0; i < 40; i++) step(c)
+  step(c, { fire: true, firePressed: true })
+  // Cok is the latest dose, but the buddha doses are still counted: neither look cancels the other
+  assert.equal(c.effect.look, 'fizz')
+  assert.deepEqual({ ...lookDoses(c.effects) }, { buddha: 2, fizz: 1 })
+})
+
+test('Maryjane is called Bear Gummy and keeps its id', () => {
+  const { DEFAULT_ITEMS } = loadTs('lib/pigchicken/items.ts')
+  assert.equal(DEFAULT_ITEMS.maryjane.name, 'Bear Gummy')
+})
+
 test('each local player has their own effect', () => {
   const c = createCombat()
   c.give('maryjane'); step(c, { fire: true, firePressed: true })

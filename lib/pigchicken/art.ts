@@ -146,10 +146,10 @@ const ART: Partial<Record<ItemId, Art>> = {
   keys: picture({ src: `${I}keys.png`, iw: 119, ih: 375, len: 150, gx: 0.7, gy: 0.55, rot: 90 }),
   harp: picture({ src: `${I}harp.png`, iw: 162, ih: 229, len: 100, gx: 0.2, gy: 0.55, rot: 0 }),
   // special abilities (consumables)
-  // Maryjane: a little pile of red gummy bears
+  // Bear Gummy (Maryjane): one red gummy bear
   maryjane: {
-    box: [-9, -32, 50, 46],
-    svg: `${gummyBear(5, -10, -16)}${gummyBear(26, -12, 14)}${gummyBear(15, -2, 2)}`,
+    box: [-11, -17, 22, 32],
+    svg: gummyBear(0, 0, -8),
   },
   // Cok: a little glass soda bottle with its contoured waist, the dark drink inside, the red label and cap
   cok: {

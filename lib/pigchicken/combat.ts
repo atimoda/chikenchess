@@ -85,6 +85,10 @@ export const TIP_AGAIN = 5
 // a consumable's effect on her; the numbers are taken when it is used. Doses add up (several at once, of the same
 // item or not): each one keeps its own timer and their multipliers multiply
 export type Effect = { item: ItemId; left: number; total: number; speed: number; accel: number; curve: AccelCurve; ramp: number; look: EffectLook }
+// how many doses of each look are running: the visual states stack up and coexist (buddha glow + fizz together)
+export function lookDoses(list: readonly Effect[]): { buddha: number; fizz: number } {
+  return { buddha: list.filter(e => e.look === 'buddha').length, fizz: list.filter(e => e.look === 'fizz').length }
+}
 export function combineEffects(list: readonly Effect[]): Effect | null {
   if (!list.length) return null
   const last = list[list.length - 1]
