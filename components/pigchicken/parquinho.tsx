@@ -11,7 +11,7 @@ import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
 import type { ChickenEngine, ChickenGame } from "@/lib/chicken/engine"
 import { readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { padTokensFor, stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
-import { createMouseOwner, magnetAngle, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
+import { createMouseOwner, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, cameraXRange, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
@@ -652,8 +652,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // brooding with an item in the wing is aiming: she stays put and the aim is locked while brood is held
       const armed = !!combat.inventory[combat.current]
       const aimLock = act.down && armed && st.grounded
-      // the movement keys aim in the 8 directions; brood is not a direction, crouch is down
-      const keys = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch ? 1 : 0) - (act.up ? 1 : 0) }
+      // without the mouse, the movement keys aim in the 8 directions; brood is not a direction, crouch is down
+      const keys = keysAimFor(devs) ? { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch ? 1 : 0) - (act.up ? 1 : 0) } : { x: 0, y: 0 }
       const keysAim = keys.x !== 0 || keys.y !== 0
       // the wheel's stick choices are not aim: while it is open the aim stick is not held
       const liveStick = wh.open ? null : rightStickForAim ?? touchAim.current
@@ -796,12 +796,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xs = eng.getMotionState(), xa = eng.getActions(), xp = extraPrev.get(id) ?? {}
         combat.use(id)
         const xd = combat.def(), xArmed = !!combat.inventory[combat.current]
-        // aim: their gamepad's right stick; else the left stick (every way, up and down included); else their movement keys (8 directions); else ahead
+        // aim: their gamepad's right stick; else the left stick (every way, up and down included); else, without the mouse, their movement keys (8 directions); else ahead
         const devs = eng.getDevices()
         const rs = stickFor(devs, 1, an.deadzoneR), ls = rs ? null : stickFor(devs, 0, an.deadzoneL)
         const ahead = xs.face >= 0 ? 0 : Math.PI
         const aimStick = rs ?? ls
-        const xkx = (xa.right ? 1 : 0) - (xa.left ? 1 : 0), xky = (xa.crouch ? 1 : 0) - (xa.up ? 1 : 0)
+        const xkb = keysAimFor(devs)
+        const xkx = xkb ? (xa.right ? 1 : 0) - (xa.left ? 1 : 0) : 0, xky = xkb ? (xa.crouch ? 1 : 0) - (xa.up ? 1 : 0) : 0
         const xKeys = xkx !== 0 || xky !== 0
         const angle = aimStick ? magnetAngle(Math.atan2(aimStick.y, aimStick.x), an.aimMagnetDeg) : xKeys ? Math.atan2(xky, xkx) : ahead
         const xo = eng.getState().shoulder

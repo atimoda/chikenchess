@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { resolveAim } = loadTs('lib/pigchicken/aim.ts')
+const { resolveAim, keysAimFor } = loadTs('lib/pigchicken/aim.ts')
 const controls = loadTs('lib/chicken/controls.ts')
 const layout = loadTs('lib/chicken/touch-layout.ts')
 
@@ -43,6 +43,14 @@ test('the movement keys aim in the 8 directions, after the sticks and the mouse'
   assert.equal(resolveAim({ ...base, keys: { x: 0, y: -1 }, leftStick: { x: 1, y: 0, mag: 1 } }).source, 'leftStick')
   assert.equal(resolveAim({ ...base, keys: { x: 0, y: -1 }, mouse: { x: 50, y: 0 } }).source, 'mouse')
   assert.equal(resolveAim({ ...base }).source, 'facing')
+})
+
+test('the movement keys aim only for a player without the mouse', () => {
+  assert.equal(keysAimFor(['kb1', 'kb2', 'mouse']), false)
+  assert.equal(keysAimFor(['kb1', 'mouse', 'pad0']), false)
+  assert.equal(keysAimFor(['kb2']), true)
+  assert.equal(keysAimFor(['kb1', 'kb2', 'pad0']), true)
+  assert.equal(keysAimFor(null), false)
 })
 
 test('dragging a touch control stays inside the screen', () => {
