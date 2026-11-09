@@ -1,0 +1,27 @@
+# The game server behind Caddy, which gets and renews the HTTPS certificate for GAME_DOMAIN by itself.
+# Only Caddy is published (80/443); the game server is reached through it, so wss://GAME_DOMAIN.
+# Values come from deploy/.env (made by setup.sh, never committed).
+services:
+  game:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "2567"
+    logging: { driver: local, options: { max-size: 10m, max-file: "3" } }
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    depends_on: [game]
+    ports: ["80:80", "443:443", "443:443/udp"]
+    env_file: .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging: { driver: local, options: { max-size: 10m, max-file: "3" } }
+
+volumes:
+  caddy_data:
+  caddy_config:

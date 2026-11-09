@@ -1,0 +1,6 @@
+# HTTPS for the game server: Caddy asks Let's Encrypt for GAME_DOMAIN's certificate (the DNS record must point
+# here, without a proxy in front) and passes HTTP and WebSocket traffic to the game container.
+{$GAME_DOMAIN} {
+	encode gzip
+	reverse_proxy game:2567
+}
