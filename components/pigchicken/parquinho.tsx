@@ -50,8 +50,8 @@ import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
-import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
-import { templeDraw, pickupMarks, markHover, grabLabel, drawWorld } from "@/components/pigchicken/draw/world"
+import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, desktopPointer, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
+import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 
 // Próximo instrumento / Próxima arma / Próximo utilitário pressed this frame: the group to go through (the first
 // one listed wins when several are pressed together)
@@ -60,6 +60,9 @@ const groupPress = (act: Partial<Record<ChickenAction, boolean>>, prev: Partial<
   GROUP_BINDS.find(([a]) => act[a] && !prev[a])?.[1] ?? null
 // how far (px) a press on the inventory bar moves before it becomes a drag instead of a click
 const BAR_DRAG_START = 6
+// the keys shown left of each group on the first player's big bar (with a mouse, like the slot numbers; null: none)
+const barLabels = (controls: ChickenControls | null, devices: InputDeviceId[] | null, lifted: boolean) =>
+  !controls || lifted || !(desktopPointer?.matches ?? true) ? null : groupBindLabels(controls, devices)
 
 const SOURCE_LABEL: Record<AimSource, string> = {
   rightStick: "analógico direito", mouse: "mouse", touch: "analógico da tela", leftStick: "analógico esquerdo", keys: "setas", facing: "olhando pra frente",
@@ -1022,7 +1025,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const barBottom = !liftedRef.current
       const offsets = getTouchLayout().offsets
       const drag = barDrag.current?.active ? barDrag.current : null
-      drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag)
+      drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom))
       combat.use("p1"); drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", offsets.inventory)
       extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory); drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", offsets.inventory) })
       combat.use("p1")
@@ -1120,9 +1123,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           slot under it, pressing and dragging moves the item to another place (it joins the group it is dropped in).
           In edit mode the Movable's drag handle covers it, so moving the bar never equips. */}
       {engine && (() => {
-        const g = invGeom(0, invGroups, !lifted, undefined)
-        const slotAt = (e: ReactPointerEvent<HTMLDivElement>) => barSlotAt(g.xs, g.size, e.clientX - e.currentTarget.getBoundingClientRect().left)
-        const end = (e: ReactPointerEvent<HTMLDivElement>, drop: boolean) => {
+        const labels = barLabels(controls, devices, lifted)
+        const g = invGeom(0, invGroups, !lifted, undefined, undefined, undefined, !!labels?.some(Boolean))
+        // the pointer's place along the bar (px from its left end), from any slot's button
+        const slotAt = (e: ReactPointerEvent<HTMLButtonElement>) => barSlotAt(g.xs, g.size, e.clientX - (e.currentTarget.parentElement?.getBoundingClientRect().left ?? 0))
+        const end = (e: ReactPointerEvent<HTMLButtonElement>, drop: boolean) => {
           const d = barDrag.current
           if (!d || d.pointer !== e.pointerId) return
           barDrag.current = null
@@ -1137,31 +1142,35 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             style={lifted ? { right: invRight, top: invRowY(0), width: g.w, height: g.size } : { right: BAR.side, bottom: BAR.bottom + BAR.tab, width: g.w, height: g.size }}
           >
             {!editing && (
-              <div
-                data-chicken-ignore
-                role="toolbar"
-                aria-label="Inventário: clique para equipar, arraste para mudar a ordem"
-                className="pointer-events-auto h-full w-full"
-                style={{ touchAction: "none" }}
-                // pointerdown keeps focus off the page so Space stays a game key; the click equips on release
-                onPointerDown={e => {
-                  e.preventDefault(); e.stopPropagation()
-                  const { slot } = slotAt(e)
-                  e.currentTarget.setPointerCapture?.(e.pointerId)
-                  barDrag.current = { from: slot, to: slot, after: false, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, pointer: e.pointerId, active: false }
-                }}
-                onPointerMove={e => {
-                  const d = barDrag.current
-                  if (!d || d.pointer !== e.pointerId) return
-                  d.x = e.clientX; d.y = e.clientY
-                  if (!d.active && barItems.current[d.from] && Math.hypot(d.x - d.x0, d.y - d.y0) > BAR_DRAG_START) d.active = true
-                  if (d.active) { const at = slotAt(e); d.to = at.slot; d.after = at.after }
-                }}
-                onPointerUp={e => end(e, true)}
-                onPointerCancel={e => end(e, false)}
-                onLostPointerCapture={e => end(e, true)}
-                onContextMenu={e => e.preventDefault()}
-              />
+              <div data-chicken-ignore role="toolbar" aria-label="Inventário: clique para equipar, arraste para mudar a ordem" className="relative h-full w-full">
+                {g.xs.map((x, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={`Item ${i + 1} do inventário`}
+                    className="pointer-events-auto absolute top-0 h-full rounded-md bg-transparent"
+                    style={{ left: x, width: g.size, touchAction: "none" }}
+                    // pointerdown keeps focus off the button so Space stays a game key; the click equips on release
+                    onPointerDown={e => {
+                      e.preventDefault(); e.stopPropagation()
+                      e.currentTarget.setPointerCapture?.(e.pointerId)
+                      barDrag.current = { from: i, to: i, after: false, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, pointer: e.pointerId, active: false }
+                    }}
+                    onPointerMove={e => {
+                      const d = barDrag.current
+                      if (!d || d.pointer !== e.pointerId) return
+                      d.x = e.clientX; d.y = e.clientY
+                      if (!d.active && barItems.current[d.from] && Math.hypot(d.x - d.x0, d.y - d.y0) > BAR_DRAG_START) d.active = true
+                      if (d.active) { const at = slotAt(e); d.to = at.slot; d.after = at.after }
+                    }}
+                    onPointerUp={e => end(e, true)}
+                    onPointerCancel={e => end(e, false)}
+                    onLostPointerCapture={e => end(e, true)}
+                    onContextMenu={e => e.preventDefault()}
+                  />
+                ))}
+              </div>
             )}
           </Movable>
         )

@@ -1238,7 +1238,8 @@ export function createCombat() {
         equip(from + input.pick)
       }
       else if (input.groupPick != null) {
-        const i = groupStep(inv.map(groupOf), cur, input.groupPick)
+        // the shown slots: the empty one (empty hands) belongs to the last group, so Próximo utilitário passes by it
+        const i = groupStep(shown().map(o => o ? groupOf(o) : 2), cur, input.groupPick)
         if (i >= 0) equip(i)
       }
       const dNow = def()

@@ -73,8 +73,9 @@ export function moveToSlot<T extends { group?: ItemGroup }>(list: T[], from: num
   return at
 }
 
-// "Próximo instrumento / arma / utilitário": the next item of that group, in the bar's order, from the held one;
-// coming from another group (or empty hands) it starts at the group's first. -1: the group has nothing.
+// "Próximo instrumento / arma / utilitário": the next slot of that group, in the bar's order, from the held one;
+// coming from another group it starts at the group's first. groups: each shown slot's group (the empty slot, while
+// there is room, counts as the last group, so the utilities pass by empty hands). -1: the group has nothing.
 export function groupStep(groups: readonly number[], cur: number, group: number): number {
   const at = groups.flatMap((g, i) => g === group ? [i] : [])
   if (!at.length) return -1

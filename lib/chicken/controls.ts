@@ -29,18 +29,18 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyV', null, null], keys2: ['Key:Insert', 'Key:BracketRight'], pad: ['Pad:b7', null, null], group: 'items' },
-  { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', 'Key:BracketLeft'], pad: ['Pad:b1', null, null], group: 'items' },
+  { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', 'Key:BracketLeft'], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:End', 'Key:Backslash'], pad: ['Pad:b11', null, null], group: 'items' },
   // every item in the bar's order (the mouse wheel does the same); the three below go through one group each
   { key: 'nextItem', label: 'Próximo item', keys: [null, null, null], keys2: ['Key:Delete', null], pad: [null, null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Quote', null], pad: [null, null, null], group: 'items' },
   { key: 'nextInstrument', label: 'Próximo instrumento', keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'nextWeapon', label: 'Próxima arma', keys: ['Key:KeyQ', null, null], keys2: [null, null], pad: ['Pad:b5', null, null], group: 'items' },
-  { key: 'nextUtility', label: 'Próximo utilitário', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'nextUtility', label: 'Próximo utilitário', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: ['Pad:b1', null, null], group: 'items' },
   { key: 'deselectItem', label: 'Deselecionar item', keys: ['Key:KeyB', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   // the inventory wheel stays open while held: aim at an item (mouse / right stick) and let go (or fire / jump / run)
   { key: 'itemWheel', label: 'Roda do inventário', keys: ['Key:KeyT', null, null], keys2: [null, null], pad: ['Pad:b10', null, null], group: 'items' },
-  // X runs and also grabs while standing on an item; the Shifts do the same on the keyboards. R3 throws, B hits, LT broods.
+  // X runs and also grabs while standing on an item; the Shifts do the same on the keyboards. R3 throws, Y hits, LT broods.
   { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', 'Key:ShiftLeft', null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: ['Key:Backspace', null], pad: ['Pad:b9', null, null], group: 'items' },
 ]
@@ -299,6 +299,15 @@ export function loadChickenControls(): ChickenControls {
       const givePad = (action: ChickenAction, tok: string) => { if (!Array.isArray(saved?.pad?.[action]) && !padHeld(tok)) base.pad[action][0] = tok }
       givePad('nextInstrument', 'Pad:b4'); givePad('nextWeapon', 'Pad:b5'); givePad('nextUtility', 'Pad:b3')
     }
+    // 09/11: on the gamepad Y hits (Golpe) and B goes through the utilities, the other way round from the first
+    // group binds. Only while Golpe is still on B alone and Próximo utilitário on Y alone (or without a button, Y free).
+    if (!saved?.padMeleeY) {
+      const only = (list: Slots, tok: string) => list.filter(Boolean).length === 1 && list.includes(tok)
+      const yFree = !CHICKEN_ACTIONS.some(a => base.pad[a.key].includes('Pad:b3'))
+      if (only(base.pad.melee, 'Pad:b1') && (only(base.pad.nextUtility, 'Pad:b3') || (!base.pad.nextUtility.some(Boolean) && yFree))) {
+        base.pad.melee = ['Pad:b3', null, null]; base.pad.nextUtility = ['Pad:b1', null, null]
+      }
+    }
     // one key, one action, on one keyboard type: the primary keyboard wins
     const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
     CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = base.keys2[a.key].map(t => t && primary.has(t) ? null : t) })
@@ -307,7 +316,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
