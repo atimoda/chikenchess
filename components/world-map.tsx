@@ -1315,8 +1315,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Controles do boneco"
-            title="Controles do boneco"
+            aria-label="Controles"
+            title="Controles"
             onClick={() => setShowChickenControls(v => !v)}
             className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >

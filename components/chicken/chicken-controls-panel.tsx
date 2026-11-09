@@ -1,14 +1,13 @@
 "use client"
 
-// Character controls panel ("Controles do boneco"): the same floating panel on every screen. One list of actions
+// Character controls panel ("Controles"): the same floating panel on every screen. One list of actions
 // with the binds grouped by input type (primary keyboard, secondary keyboard, gamepad), on-screen controls mode and
 // clucking sound, saved in this browser.
 import { PatioRange } from "@/components/ui/patio-range"
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { Gamepad2, Keyboard, X, type LucideIcon } from "lucide-react"
+import { Gamepad2, Keyboard, Mouse, X, type LucideIcon } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
-import { InfoTip } from "@/components/info-tip"
 import {
   CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, KEYBOARD_INPUT_TYPES, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames,
   readGamepadTokens, saveChickenControls, setChickenControlsListening, subscribeChickenControls,
@@ -26,10 +25,13 @@ const COLUMNS = CHICKEN_INPUT_TYPES.flatMap((t, i) => Array.from({ length: t.slo
 // the icon above each input type's label in the bind grid (the secondary keyboard's carries a small 2)
 const INPUT_ICONS: Record<ChickenInputType, LucideIcon> = { keys: Keyboard, keys2: Keyboard, pad: Gamepad2 }
 
+// The mouse buttons are fixed (not rebindable): shown as a read-only column beside the rebindable ones.
+const MOUSE_BINDS: Partial<Record<ChickenAction, string>> = { fire: "Botão esq.", melee: "Botão dir.", nextItem: "Roda ↓", prevItem: "Roda ↑" }
+
 const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
   { value: "auto", label: "Automático" },
-  { value: "on", label: "Sempre" },
-  { value: "off", label: "Nunca" },
+  { value: "on", label: "Sempre visível" },
+  { value: "off", label: "Nunca mostrar" },
 ]
 
 // editLayout: shows the button that moves the on-screen controls (the Pátio, where every control exists)
@@ -106,7 +108,8 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   useEffect(() => () => setChickenControlsListening(false), [])
 
   // one list of actions; the bind columns are grouped by input type
-  const cols = `clamp(7.5rem, 30vw, 14rem) ${CHICKEN_INPUT_TYPES.map(t => `repeat(${t.slots}, 4.75rem)`).join(" 0px ")}`
+  const cols = `clamp(7.5rem, 26vw, 12rem) ${CHICKEN_INPUT_TYPES.map(t => `repeat(${t.slots}, 4.75rem)`).join(" 0px ")} 0px 4.5rem`
+  const mouseColumn = COLUMNS[COLUMNS.length - 1].column + 2
   const grid = (
     <div className="overflow-x-auto">
       <div className="grid w-max min-w-full items-center gap-x-1.5 gap-y-1.5 text-xs" style={{ gridTemplateColumns: cols }}>
@@ -120,10 +123,14 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             {t.label}
           </span>
         ))}
+        <span style={{ gridColumn: mouseColumn }} className="flex flex-col items-center gap-1 border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">
+          <span aria-hidden="true"><Mouse className="h-5 w-5" /></span>
+          Mouse
+        </span>
         {CHICKEN_ACTIONS.map((a, i) => (
           <div key={a.key} className="contents">
             {a.group === "items" && CHICKEN_ACTIONS[i - 1]?.group !== "items" && (
-              <span style={{ gridColumn: `span ${COLUMNS.length + CHICKEN_INPUT_TYPES.length}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
+              <span style={{ gridColumn: `span ${COLUMNS.length + CHICKEN_INPUT_TYPES.length + 2}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
             )}
             <span className="sticky left-0 z-[1] truncate bg-[#101713] pr-1 text-[#b9c7b9]" title={a.label}>{a.label}</span>
             {COLUMNS.map(({ type, slot, column }) => {
@@ -143,6 +150,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
                 </button>
               )
             })}
+            <span style={{ gridColumn: mouseColumn }} title="Botões do mouse (fixos)" className="flex h-7 items-center justify-center truncate rounded border border-white/10 px-1 font-mono text-[11px] text-[#8a9a8a]">{MOUSE_BINDS[a.key] ?? "—"}</span>
           </div>
         ))}
       </div>
@@ -152,17 +160,16 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   if (!open) return null
   return (
     <FloatingPanel
-      id="chicken-controls" role="dialog" aria-label="Controles do boneco"
-      initial={(vw, vh) => { const w = Math.min(980, vw - 32); return { x: (vw - w) / 2, y: 16, w, h: Math.min(820, vh - 32) } }}
+      id="chicken-controls" role="dialog" aria-label="Controles"
+      initial={(vw, vh) => { const w = Math.min(1040, vw - 32); return { x: (vw - w) / 2, y: 16, w, h: Math.min(820, vh - 32) } }}
       minW={300} className="rounded-lg border border-primary/30 bg-[#101713] text-[#dfe8df] shadow-lg"
     >
       <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2 border-b border-white/10 px-6 py-3">
-        <h2 className="flex-1 font-mono text-sm uppercase tracking-widest">Controles do boneco</h2>
+        <h2 className="flex-1 font-mono text-sm uppercase tracking-widest">Controles</h2>
         <button type="button" aria-label="Fechar controles" onClick={() => onOpenChange(false)} className="rounded p-1 text-white/70 hover:text-white"><X className="h-4 w-4" /></button>
       </div>
       <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto p-6">
         <section className="grid gap-2">
-          <h3 className="flex w-fit items-center gap-1 font-mono text-xs uppercase tracking-wider text-primary">Movimentos<InfoTip label="Controles de movimento"><div className="space-y-2"><p>Primary keyboard é a mão esquerda (WASD); Secondary keyboard é a mão direita (setas, o bloco Ins/Home/PgUp/Del/End/PgDn e as teclas P [ ] ; &apos; \ /), pensado para um segundo jogador no mesmo teclado. Teclados de notebook (Mac principalmente) não têm esse bloco nem Ctrl direito: as teclas de pontuação perto do Enter já cobrem chocar, pular, atirar, golpe, arremessar, pegar e item anterior. O navegador não deixa bloquear alguns atalhos com Ctrl: Ctrl junto com W fecha a aba.</p><p>Gamepad: nomes no padrão Xbox (A, B, X, Y). LS e RS são os analógicos esquerdo e direito. O analógico direito mira.</p></div></InfoTip></h3>
           {grid}
         </section>
         <section className="grid gap-2">
@@ -188,7 +195,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             display={`${controls.analog.aimMagnetDeg}°`} onChange={v => update(c => { c.analog.aimMagnetDeg = v })} />
         </section>
         <section className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Na tela (celular)</h3>
+          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Touch Controls</h3>
           <div className="flex flex-wrap gap-1.5">
             {TOUCH_MODES.map(m => (
               <button key={m.value} type="button" onClick={() => update(c => { c.touch = m.value })} className={cn("h-7 rounded border px-3 text-xs transition-colors", controls.touch === m.value ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 hover:border-primary/60")}>{m.label}</button>
@@ -207,10 +214,13 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
           )}
         </section>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={controls.sound} onChange={e => { const v = e.target.checked; update(c => { c.sound = v }) }} className="accent-[var(--primary)]" />
-            Cacarejos
-          </label>
+          {/* the Pátio keeps this in its Volume panel; the globe has none, so it stays here */}
+          {editLayout ? <span /> : (
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={controls.sound} onChange={e => { const v = e.target.checked; update(c => { c.sound = v }) }} className="accent-[var(--primary)]" />
+              Cacarejos
+            </label>
+          )}
           <Link href={CHICKEN_PATIO_PATH} onClick={() => onOpenChange(false)} className="text-xs text-primary underline-offset-2 hover:underline">Pátio da Galinha</Link>
           <button type="button" onClick={() => { const d = defaultChickenControls(); saveChickenControls(d); setControls(d); setListen(null) }} className="h-8 rounded border border-white/20 px-3 text-xs hover:border-primary">Restaurar padrão</button>
         </div>

@@ -9,6 +9,7 @@ import { Volume1, Volume2, VolumeX, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { DEFAULT_MIX, MIX_LAYERS, getMix, setMix, subscribeMix, type Mix } from "@/lib/pigchicken/mixer"
+import { loadChickenControls, saveChickenControls, subscribeChickenControls } from "@/lib/chicken/controls"
 
 export function VolumeButton({ className }: { className?: string }) {
   const [open, setOpen] = useState(false)
@@ -17,6 +18,13 @@ export function VolumeButton({ className }: { className?: string }) {
     setLocal(getMix())
     return subscribeMix(() => setLocal(getMix()))
   }, [])
+  // the chicken's clucks on / off (saved with her controls)
+  const [clucks, setClucks] = useState(true)
+  useEffect(() => {
+    setClucks(loadChickenControls().sound)
+    return subscribeChickenControls(c => setClucks(c.sound))
+  }, [])
+  const toggleClucks = (on: boolean) => { const next = structuredClone(loadChickenControls()); next.sound = on; saveChickenControls(next); setClucks(on) }
   const Icon = mix.master <= 0 ? VolumeX : mix.master < 0.5 ? Volume1 : Volume2
 
   return (
@@ -26,7 +34,7 @@ export function VolumeButton({ className }: { className?: string }) {
       </button>
       {/* in the body: the header is its own stacking context, under the game's canvases */}
       {open && createPortal(
-        <FloatingPanel id="patio-volume" aria-label="Volume" initial={(vw, vh) => { const w = Math.min(300, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(480, vh - 80) } }} minW={240} minH={260} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <FloatingPanel id="patio-volume" aria-label="Volume" initial={(vw, vh) => { const w = Math.min(300, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(560, vh - 80) } }} minW={240} minH={260} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
             <h2 className="flex-1 text-sm text-white">Volume</h2>
             <button type="button" onClick={() => setMix(DEFAULT_MIX)} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
@@ -35,6 +43,10 @@ export function VolumeButton({ className }: { className?: string }) {
           <VolumeRange label="Master volume" value={mix.master} onChange={v => setMix({ master: v })} strong />
           <div className="grid gap-3 border-t border-white/10 pt-3">
             {MIX_LAYERS.map(l => <VolumeRange key={l.key} label={l.label} hint={l.hint} value={mix[l.key]} onChange={v => setMix({ [l.key]: v })} />)}
+            <label className="flex items-center gap-2" title="Liga e desliga os cacarejos da galinha">
+              <input type="checkbox" checked={clucks} onChange={e => toggleClucks(e.target.checked)} className="accent-[var(--primary)]" />
+              Cacarejos
+            </label>
           </div>
         </FloatingPanel>,
         document.body,
