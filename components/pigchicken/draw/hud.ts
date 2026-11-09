@@ -2,7 +2,7 @@
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
 import { CONSUMABLE_LIMITS, type ItemId } from "@/lib/pigchicken/items"
 import { type Combat } from "@/lib/pigchicken/combat"
-import { itemGroup, wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
+import { wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
 import { drawItem, type Ctx } from "./shared"
 
@@ -152,7 +152,6 @@ export function drawThrowPath(ctx: Ctx, pts: { x: number; y: number }[]) {
 }
 
 export const INV_SIZE = 34, INV_GAP = 0, INV_TOP = 100
-export const INV_W = (n: number) => n * INV_SIZE + (n - 1) * INV_GAP
 // the inventories' stack on a phone held upright: top right, one row per local player, the player's avatar at the
 // right end of the row (the avatars stay there on every screen)
 export const INV_STACK = { top: 64, right: 12, size: INV_SIZE, rowGap: 6, avatarGap: 6, soulGap: 6 }
@@ -160,23 +159,48 @@ export const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_ST
 export const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap + INV_SIZE + INV_STACK.soulGap
 // the hotbar at the bottom (desktop and tablet): big slots apart from each other, the key numbers under them; the
 // world is lifted so her ground sits above it
-export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16 }
+export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16, groupGap: 10, minSize: 30 }
 export const BAR_GROUND_H = 100
-export const BAR_W = (n: number) => n * BAR.size + (n - 1) * BAR.gap
+// the small rows: 3 px between slots, 5 px more between groups; they shrink (down to 18 px) to fit the screen
+const ROW = { gap: 3, groupGap: 5, minSize: 18, margin: 12 }
+// where each slot sits along a bar (from its left end) and how wide the bar is: `gap` between slots, `groupGap`
+// more where the group changes (instruments | weapons | the rest)
+export function barSlots(groups: readonly number[], size: number, gap: number, groupGap: number) {
+  const xs: number[] = []
+  let x = 0
+  groups.forEach((g, i) => { if (i) x += gap + (g !== groups[i - 1] ? groupGap : 0); xs.push(x); x += size })
+  return { xs, w: Math.max(0, x) }
+}
+// the biggest slot (up to `max`, at least `min`) whose bar still fits `room` px
+function fitSize(groups: readonly number[], room: number, max: number, min: number, gap: number, groupGap: number) {
+  const n = Math.max(1, groups.length), spaces = barSlots(groups, 0, gap, groupGap).w
+  return Math.max(min, Math.min(max, Math.floor((room - spaces) / n)))
+}
 // a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
 export const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
 // where a player's bar sits. bottom: the first player's big bar, at the bottom on the right (desktop and tablet).
 // Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
 // but the first on desktop and tablet; everyone on a phone held upright)
-export function invGeom(row: number, n: number, bottom: boolean, offset?: { x: number; y: number }) {
-  const W = window.innerWidth, H = window.innerHeight
+// groups: each shown slot's group (Combat.inventoryGroups). The page's invisible slot buttons use the same numbers.
+export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = window.innerWidth, H = window.innerHeight) {
   if (!bottom) {
-    const w = INV_W(n)
-    return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size: INV_SIZE, gap: 3, w, tabs: false }
+    const size = fitSize(groups, W - invRight - ROW.margin, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
+    const { xs, w } = barSlots(groups, size, ROW.gap, ROW.groupGap)
+    return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false }
   }
-  const w = BAR_W(n), x = W - BAR.side - w, y = H - BAR.bottom - BAR.tab - BAR.size
-  return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size: BAR.size, gap: BAR.gap, w, tabs: true }
+  const size = fitSize(groups, W - BAR.side * 2, BAR.size, BAR.minSize, BAR.gap, BAR.groupGap)
+  const { xs, w } = barSlots(groups, size, BAR.gap, BAR.groupGap)
+  const x = W - BAR.side - w, y = H - BAR.bottom - BAR.tab - size
+  return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size, gap: BAR.gap, groupGap: BAR.groupGap, xs, w, tabs: true }
 }
+// the slot under a point along a bar (px from its left end): the nearest one, and whether the point is on its right half
+export function barSlotAt(xs: readonly number[], size: number, x: number): { slot: number; after: boolean } {
+  let best = 0, dist = Infinity
+  xs.forEach((sx, i) => { const d = x < sx ? sx - x : x > sx + size ? x - sx - size : 0; if (d < dist) { dist = d; best = i } })
+  return { slot: best, after: x > (xs[best] ?? 0) + size / 2 }
+}
+// a slot being dragged on the first player's bar: which one, where the pointer is (screen) and where it would go
+export type BarDrag = { from: number; x: number; y: number; to: number; after: boolean }
 // the ammo bar along the bottom of a slot: the whole width, one segment per shot (or blow), the loaded ones lit.
 // What is coming back (the reload of the held item, the gradual auto reload) fills in a paler colour, so it also
 // works as the cooldown's bar. Segments too thin to tell apart are drawn as one bar
@@ -211,15 +235,26 @@ export function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, 
 // one empty slot while there is room (instruments, weapons, then the other items). Each slot is a glass tile; the
 // current one glows teal. A bar along the bottom shows the ammo (a badge counts a consumable's doses), a thin line
 // what is left of an item that wears.
-export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }) {
-  const slots = combat.inventory, n = slots.length
-  const g = invGeom(row, n, bottom, offset), { size, gap } = g
+export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null) {
+  const slots = combat.inventory, n = slots.length, groups = combat.inventoryGroups
+  const g = invGeom(row, groups, bottom, offset), { size, gap } = g
   const x0 = g.x, y = g.y
   // the slot numbers (keys 1-9) are the first player's, with a mouse
   const numbers = g.tabs && row === 0 && (desktopPointer?.matches ?? true)
-  const r = bottom ? 9 : 5
+  const r = Math.max(3, Math.round(size * (bottom ? 0.16 : 0.15)))
   ctx.save()
   ctx.textBaseline = "middle"
+  // each group's colour in a thin line over its slots (the big bar)
+  if (bottom) {
+    ctx.save(); ctx.globalAlpha = 0.6
+    for (let i = 0; i < n; i++) {
+      if (!slots[i] || (i && groups[i] === groups[i - 1] && slots[i - 1])) continue
+      let j = i; while (j + 1 < n && slots[j + 1] && groups[j + 1] === groups[i]) j++
+      ctx.fillStyle = GROUP_COLORS[groups[i]] ?? "#ffffff"
+      roundRect(ctx, x0 + g.xs[i] + 4, y - 5, g.xs[j] + size - g.xs[i] - 8, 2, 1); ctx.fill()
+    }
+    ctx.restore()
+  }
   // the effects running on her, by item (the longest one, and how many doses add up)
   const running = new Map<ItemId, { left: number; total: number; look: string; count: number }>()
   combat.effects.forEach(e => {
@@ -228,7 +263,9 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     else was.count++
   })
   for (let i = 0; i < n; i++) {
-    const x = x0 + i * (size + gap), o = slots[i], on = i === combat.current
+    const x = x0 + g.xs[i], o = slots[i], on = i === combat.current
+    // the slot being dragged stays faint in its place until it is dropped
+    ctx.globalAlpha = drag && drag.from === i ? 0.3 : 1
     roundRect(ctx, x, y, size, size, r)
     if (on) { ctx.save(); ctx.shadowColor = "rgba(64,224,208,0.85)"; ctx.shadowBlur = bottom ? 14 : 8; ctx.fillStyle = "rgba(38,92,88,0.62)"; ctx.fill(); ctx.restore() }
     else { ctx.fillStyle = "rgba(48,58,52,0.5)"; ctx.fill() }
@@ -246,7 +283,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     // a soft light along the top edge: glass
     ctx.save(); roundRect(ctx, x + 1, y + 1, size - 2, size * 0.45, r - 1); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill(); ctx.restore()
     if (o) {
-      ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size - (bottom ? 12 : 6), size - (bottom ? 14 : 8)); ctx.restore()
+      ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size * (bottom ? 0.79 : 0.82), size * (bottom ? 0.75 : 0.76)); ctx.restore()
       const d = combat.item(o.item)
       // a consumable's badge: the doses left, in the bottom right corner
       if (d.mag > 0 && d.consumable) {
@@ -285,6 +322,20 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
       ctx.font = "bold 9px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = on ? "#ffffff" : "rgba(255,255,255,0.75)"
       ctx.fillText(String(i + 1), tx, ty + th / 2 + 0.5)
     }
+  }
+  ctx.globalAlpha = 1
+  // dragging: a line where the slot would go (in the colour of the group it would join) and the item on the pointer
+  if (drag && slots[drag.from]) {
+    const to = Math.min(drag.to, n - 1), before = !slots[to] || !drag.after
+    const gx = before ? x0 + g.xs[to] - gap / 2 : x0 + g.xs[to] + size + gap / 2
+    ctx.fillStyle = slots[to] ? GROUP_COLORS[groups[to]] ?? "#ffffff" : GROUP_COLORS[2]
+    roundRect(ctx, gx - 1.5, y - 4, 3, size + 8, 1.5); ctx.fill()
+    const ds = size * 0.9
+    ctx.save(); ctx.globalAlpha = 0.9
+    roundRect(ctx, drag.x - ds / 2, drag.y - ds / 2, ds, ds, r); ctx.fillStyle = "rgba(38,92,88,0.7)"; ctx.fill()
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "#5ee8d8"; ctx.stroke()
+    ctx.translate(drag.x, drag.y); drawItem(ctx, slots[drag.from]!.item, ds * 0.79, ds * 0.75)
+    ctx.restore()
   }
   // the other local players: a dot of their colour at the start of the bar
   if (color && row > 0) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x0 - 8, y + size / 2, 4, 0, Math.PI * 2); ctx.fill() }
@@ -359,9 +410,9 @@ export function wheelGeom() {
   return { cx: W / 2, cy: H / 2, rOut, rIn: rOut * 0.5 }
 }
 export const GROUP_COLORS = ["#c77dff", "#ff9f43", "#7bd88f"]
-export const GROUP_NAMES = ["Instrumento", "Arma", "Item"]
+export const GROUP_NAMES = ["Instrumento", "Arma", "Utilitário"]
 export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number) {
-  const slots = combat.inventory, n = slots.length, { cx, cy, rOut, rIn } = wheelGeom(), span = wheelSpan(n)
+  const slots = combat.inventory, groups = combat.inventoryGroups, n = slots.length, { cx, cy, rOut, rIn } = wheelGeom(), span = wheelSpan(n)
   const ease = 1 - (1 - open) ** 3
   ctx.save()
   ctx.globalAlpha = ease
@@ -377,7 +428,7 @@ export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number)
     ctx.fillStyle = on ? "rgba(255,255,255,0.92)" : "rgba(28,32,38,0.66)"; ctx.fill()
     ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 1; ctx.stroke()
     // the group's colour along the inner edge, the held one in yellow, the chosen one with a blue rim
-    if (o) { ctx.strokeStyle = GROUP_COLORS[itemGroup(o.item, combat.item(o.item).instrument)]; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, rIn + 2.5, a0, a1); ctx.stroke() }
+    if (o) { ctx.strokeStyle = GROUP_COLORS[groups[i]]; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, rIn + 2.5, a0, a1); ctx.stroke() }
     if (i === combat.current) { ctx.strokeStyle = "#ffd166"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, rOut - 2.5, a0, a1); ctx.stroke() }
     if (on) { ctx.strokeStyle = "#4cc9f0"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, rOut + 3.5, a0, a1); ctx.stroke() }
     const x = Math.cos(c) * mid, y = Math.sin(c) * mid, arc = n > 1 ? span * mid : Infinity
@@ -402,8 +453,8 @@ export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number)
   ctx.textAlign = "center"; ctx.textBaseline = "middle"
   if (o) {
     const d = combat.item(o.item)
-    ctx.fillStyle = GROUP_COLORS[itemGroup(o.item, d.instrument)]; ctx.font = "10px ui-monospace, monospace"
-    ctx.fillText(GROUP_NAMES[itemGroup(o.item, d.instrument)].toUpperCase(), 0, -22)
+    ctx.fillStyle = GROUP_COLORS[groups[i]]; ctx.font = "10px ui-monospace, monospace"
+    ctx.fillText(GROUP_NAMES[groups[i]].toUpperCase(), 0, -22)
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 17px ui-sans-serif, system-ui, sans-serif"
     ctx.fillText(d.name, 0, 0, rIn * 1.7)
     const info = [d.mag > 0 ? `${Math.ceil(o.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[o.item] : d.mag}` : "", d.durability > 0 ? `${o.durability} golpes` : ""].filter(Boolean).join(" · ")

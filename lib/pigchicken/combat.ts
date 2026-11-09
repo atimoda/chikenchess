@@ -9,7 +9,7 @@ import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, ne
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
-import { INVENTORY_MAX, insertSorted, itemGroup, slotCount, wrapSlot } from './inventory'
+import { INVENTORY_MAX, clampInventoryLimit, groupStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
@@ -45,8 +45,9 @@ export const boxContains = (box: Box, x: number, y: number) =>
   x >= box.l && x <= box.r && y >= box.t && y <= box.b && !box.occludedAt?.(x, y)
 const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
   x >= box.l && x <= box.r && prevY <= box.t && y >= box.t && !box.occludedAt?.(x, box.t)
-// refill: seconds the gradual auto reload has counted toward the next shots coming back (reset whenever it is used)
-export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number }
+// refill: seconds the gradual auto reload has counted toward the next shots coming back (reset whenever it is used).
+// group: the inventory group it sits in (its own when taken; dragging it on the bar may change it)
+export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
@@ -98,6 +99,8 @@ export type Body = { x: number; y: number; face: number; scale: number; grounded
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
+  groupPick?: ItemGroup | null // Próximo instrumento / arma / utilitário: the next item of that group
+  move?: { from: number; to: number; after: boolean } | null // a slot dragged on the bar, dropped before / after another
   deselect?: boolean // empty hands without dropping anything; cancels prepared actions
   cancelFire?: boolean // UI, focus loss or a grabbed/portal chicken cancels preparation
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
@@ -105,6 +108,8 @@ export type FrameInput = {
 }
 
 export const SLOTS = INVENTORY_MAX
+// the inputs that switch items, cleared when something blocks switching
+const NO_SWITCH = { pick: 0, slot: 0, groupPick: null }
 const THROW_GRAVITY = 1500
 const ITEM_GRAVITY = 1800
 
@@ -117,6 +122,8 @@ export function createCombat() {
   // the empty slot (empty hands), which exists while there is room
   const inv: Owned[] = []
   let cur = 0
+  // the Pátio's inventory limit (the same for every local player)
+  let limit = INVENTORY_MAX
   let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
   // The item that received the last held-fire frame. A newly equipped weapon sees a fresh trigger press.
   let fireHeldItem: Owned | null = null
@@ -202,8 +209,11 @@ export function createCombat() {
   let zoneBirds: BirdId[] | null = null
 
   const held = (): Owned | null => inv[cur] ?? null
-  const groupOf = (o: Owned) => itemGroup(o.item, !!items[o.item]?.instrument)
-  const room = () => inv.length < SLOTS
+  const ownGroup = (item: ItemId) => itemGroup(item, !!items[item]?.instrument)
+  const groupOf = (o: Owned) => o.group ?? ownGroup(o.item)
+  // an item taken goes to the end of its own group (even one dragged to another group before it was dropped)
+  const takeIn = (o: Owned) => { o.group = ownGroup(o.item); return insertSorted(inv, o, groupOf) }
+  const room = () => inv.length < limit
   // the slots shown on the bar and the wheel: her items, plus the empty one while there is room
   const shown = (): (Owned | null)[] => room() ? [...inv, null] : inv.slice()
   // the held item leaves (broke, thrown): her hands are empty (the empty slot, at the end)
@@ -487,7 +497,7 @@ export function createCombat() {
       pickups.push({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
       p.owned.ammo = limit
     }
-    cur = insertSorted(inv, p.owned, groupOf); reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0
+    cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
@@ -498,7 +508,7 @@ export function createCombat() {
     const old = held()
     stopBeam()
     if (old) { pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 }); inv.splice(cur, 1) }
-    cur = insertSorted(inv, p.owned, groupOf); reloadT = 0; chargeT = 0; burstLeft = 0
+    cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
   }
@@ -509,11 +519,18 @@ export function createCombat() {
   let hoverOwned: Pickup | null = null
 
   function equip(i: number) {
-    i = wrapSlot(i, slotCount(inv.length))
+    i = wrapSlot(i, shown().length)
     if (i === cur) return
     stopBeam(); peck = null; peckPrep = 0
     cur = i; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; cooldown = Math.max(cooldown, 0.15)
     if (held()) sound('equip')
+  }
+
+  // a slot dragged on the bar onto another one (or the empty slot): the held item stays held, wherever it goes
+  function moveSlot(from: number, to: number, after: boolean) {
+    const h = held()
+    moveToSlot(inv, from, Math.min(to, inv.length), after)
+    cur = h ? inv.indexOf(h) : inv.length
   }
 
   // a consumable: one dose adds its effect to the ones running on her; the last dose ends the item
@@ -1053,6 +1070,11 @@ export function createCombat() {
     drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id) } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
+    // each shown slot's group (the empty slot counts as the last group)
+    get inventoryGroups(): ItemGroup[] { return shown().map(o => o ? groupOf(o) : 2) },
+    // the Pátio's inventory limit (Configurações do Pátio): items already carried past it stay, no new ones fit
+    get inventoryLimit() { return limit },
+    setInventoryLimit(n: number) { limit = clampInventoryLimit(n) },
     get current() { return cur },
     get held() { return held() },
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
@@ -1117,7 +1139,7 @@ export function createCombat() {
       const stack = inv.find(o => o.item === item)
       if (stack) { if (CONSUMABLE_LIMITS[item]) stack.ammo = Math.min(CONSUMABLE_LIMITS[item]!, stack.ammo + 1); return }
       if (!room()) return
-      stopBeam(); cur = insertSorted(inv, fresh(item), groupOf); sound('equip', item)
+      stopBeam(); cur = takeIn(fresh(item)); sound('equip', item)
     },
     setItems(next: Record<ItemId, ItemDef>) {
       items = next
@@ -1170,17 +1192,19 @@ export function createCombat() {
     // world: false steps only the current player's loadout (another local player in the same frame)
     step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      // rearranging the bar never changes what she holds (nor what is being done with it)
+      if (input.move) moveSlot(input.move.from, input.move.to, input.move.after)
       if (input.deselect) {
         stopBeam(); peck = null; peckPrep = 0; swing = null; consumption = null
         cur = inv.length; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0
         throwT = 0; throwItem = null; throwVoid = input.throwHeld
-        input = { ...input, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, pick: 0, slot: 0, grab: false, grabHeld: false }
+        input = { ...input, ...NO_SWITCH, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
       }
       const d = def()
       if (consumption) {
         consumption.left -= dt
         if (consumption.left <= 0) consumption = null
-        input = { ...input, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, grab: false, grabHeld: false }
+        input = { ...input, ...NO_SWITCH, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
       }
       // aim turns at the item's speed
       if (d.turnRate > 0) {
@@ -1207,11 +1231,15 @@ export function createCombat() {
       if (!swing || swing.t > swing.time) swingGap += dt
 
       // switching items
-      if (input.slot) { if (input.slot <= slotCount(inv.length)) equip(input.slot - 1) }
+      if (input.slot) { if (input.slot <= shown().length) equip(input.slot - 1) }
       else if (input.pick) {
-        // A full inventory has no displayed empty slot; F can still leave it unequipped.
+        // A full inventory has no displayed empty slot; Deselecionar can still leave it unequipped.
         const from = !room() && !held() ? (input.pick > 0 ? -1 : inv.length) : cur
         equip(from + input.pick)
+      }
+      else if (input.groupPick != null) {
+        const i = groupStep(inv.map(groupOf), cur, input.groupPick)
+        if (i >= 0) equip(i)
       }
       const dNow = def()
       // Golpe is taken before firing, even with Atirar held: on an item that shoots, the blow interrupts firing
