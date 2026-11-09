@@ -15,7 +15,11 @@ export DEBIAN_FRONTEND=noninteractive
 echo "== packages"
 apt-get update -q
 apt-get install -yq ca-certificates curl git ufw
-command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
+# Docker's script first; on an Ubuntu release it does not know yet, Ubuntu's own packages
+if ! docker compose version >/dev/null 2>&1; then
+  curl -fsSL https://get.docker.com | sh || apt-get install -yq docker.io docker-compose-v2 docker-buildx
+fi
+systemctl enable --now docker
 
 echo "== swap (1 GB machines need it for builds)"
 if ! swapon --show | grep -q /swapfile; then
