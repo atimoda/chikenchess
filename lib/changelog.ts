@@ -15,6 +15,7 @@ const RECENT = [
         'Em Itens, o novo grupo Pontos mostra o desenho do item com o Eixo, a Asa, a Asa de trás e a Saída do tiro para arrastar com o mouse ou o dedo, a escolha de onde o eixo fica preso (ombro ou boca) e se cada asa segura o item. Vale também para as armas, com as asas desligadas por padrão. O Salvar no game do painel Itens grava esses pontos junto com o resto.',
         'No Pátio online, o item na mão das galinhas dos outros players aponta para o lado em que elas olham e usa os mesmos pontos.',
         'Itens → Pontos ganha Inverter asa (vertical): as asas que seguram o item ficam espelhadas ao longo do comprimento, para não ficarem de cabeça para baixo quando giram muito. Vem marcado na flauta, no sax e no trompete.',
+        'A camada Escalas some enquanto a galinha é arrastada pelo mouse ou pelo toque e volta ao soltar.',
         'O drone de fundo das zonas toca a terça de cada acorde, então dá para ouvir se ele é maior, menor ou diminuto, e a quinta do acorde em vez de uma quinta fixa.',
         'O drone muda de nota na virada do compasso, sem deslizar entre uma nota e outra, e o grave fica perto da tônica em vez de saltar uma oitava.',
         'Os acordes de cada zona sempre combinam com a escala: trocar a escala, o Random e as mudanças de modo escolhem acordes que contêm todas as notas dela. No painel da zona, os acordes que desafinam com a escala aparecem marcados.',
