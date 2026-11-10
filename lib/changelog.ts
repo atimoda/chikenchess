@@ -21,6 +21,7 @@ const RECENT = [
         'Os efeitos visuais dos consumíveis também acumulam: cada dose de Maryjane deixa a sombra dourada do estado búdico mais intensa, e tomar Cok junto mostra as bolhas ao mesmo tempo que a sombra, sem um anular o outro (mais doses de Cok, mais bolhas).',
         'A Maryjane agora se chama Bear Gummy e seu desenho mostra um único ursinho.',
         'O som de equipar um instrumento ficou bem mais suave: as duas notas entram devagar e bem mais baixas, sem estalo.',
+        'Novo parâmetro Tremolo nos instrumentos (Itens → Música): tremer a mira dentro da mesma faixa do leque entorta levemente o som da nota, mais quanto maior o valor, sem sair do próprio grau. Instrumentos sem trastes (o violino, com o maior valor) deslizam livremente entre as notas em vez de pular de grau. Flauta, violão, sax e trompete têm valores próprios; harpa, pandeiro e teclado vêm com zero.',
       ] },
       { title: 'Zonas sonoras', items: [
         'O rótulo de cada zona sonora virou uma fileira de tags, uma por parâmetro, mostrando só o valor: nome, tom, escala, acordes, balanço, andamento, progressão, cadeia, prioridade, troca a música, pássaros, vida das paredes, padrão de mudança e cor.',

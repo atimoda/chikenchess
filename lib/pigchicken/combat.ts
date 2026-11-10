@@ -14,6 +14,7 @@ import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, type NetHit, type NetShot } from './net-world'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
+import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
@@ -215,6 +216,8 @@ export function createCombat() {
   let arpStep = 0, arpIdle = 0, phraseBase = 0, glissNext = 0, glissSteps = 0, bonusTextT = 0
   let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null = null
   let beamHeld: Held | null = null, beamMidi = 0
+  // the aim's tremolo (lib/pigchicken/tremolo.ts): semitones the held instrument's notes bend right now
+  let trem: TremoloState = newTremolo(), tremBend = 0
   const critters: Critter[] = []
   let quantizeAll = true
   const conv = { birds: 0, people: 0, harmonized: 0, undeadBirds: 0 }
@@ -492,24 +495,25 @@ export function createCombat() {
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: number
+    trem: TremoloState; tremBend: number
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   let souls = 0
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: 0,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: 0, trem: newTremolo(), tremBend: 0,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend } = l)
     active = id
   }
 
@@ -624,7 +628,7 @@ export function createCombat() {
         bonus = d.beatBonus
         if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
-      notes.forEach((m, i) => out.note(d.voice, m, at + i * d.strum, d.noteLen, 0.75))
+      notes.forEach((m, i) => out.note(d.voice, m + tremBend, at + i * d.strum, d.noteLen, 0.75))
     }
     const speed = d.speed * power
     const damage = d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
@@ -1140,8 +1144,10 @@ export function createCombat() {
     }
     const midi = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
     const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
-    if (!beamHeld) { beamHeld = out.hold(d.voice, midi); beamMidi = midi }
-    else if (midi !== beamMidi) { beamHeld.setPitch(midi); beamMidi = midi }
+    // the sound bends with the aim's tremolo; the note (colour, harmony) stays the lane's
+    const pitch = midi + tremBend
+    if (!beamHeld) { beamHeld = out.hold(d.voice, pitch); beamMidi = pitch }
+    else if (Math.abs(pitch - beamMidi) > 0.005) { beamHeld.setPitch(pitch); beamMidi = pitch }
     beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null }
     h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
@@ -1374,6 +1380,12 @@ export function createCombat() {
         aimAngle += diff
       } else aimAngle = targetAngle
       throwAngle = targetAngle
+      // tremolo: shaking the aim inside a lane of the instrument's fan bends its notes
+      if (d.instrument && d.tremolo > 0) {
+        const pool = music.aimPool(d.pitchSet, d.octave, d.span)
+        const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless)
+        tremBend = pool.length ? lane - music.noteFor(aimAngle, d.pitchSet, d.octave, d.span) : 0
+      } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0 }
 
       lastBody = body
       if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt) }
