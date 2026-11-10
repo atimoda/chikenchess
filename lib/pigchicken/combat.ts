@@ -8,7 +8,7 @@ import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
-import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
@@ -233,7 +233,7 @@ export function createCombat() {
   const scaleOf = (h: Owned | null | undefined, d: ItemDef): InstrumentScale => scaleAt(d.instrument ? d.scales : undefined, h?.scale)
   function tones(d: ItemDef) {
     const sc = scaleOf(held(), d), angle = aimAngle, reach = aimReach
-    const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span }
+    const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending }
     return {
       scale: sc,
       note: () => sc.noteFor(music, q),
@@ -644,6 +644,7 @@ export function createCombat() {
     else if (d.arp === 'down') off = -(k % 4)
     else if (d.arp === 'updown') { const c = k % 6; off = c <= 3 ? c : 6 - c }
     else if (d.arp === 'random') off = Math.floor(rand(-2, 4))
+    else if (d.arp === 'phrase' && pizzicato(d)) return [t.walk(base, k % Math.max(2, d.burst), d.pitchSet)]
     else if (d.arp === 'phrase') { if (burstLeft === d.burst || burstLeft <= 0) phraseBase = base; return [t.walk(phraseBase, d.burst - Math.max(1, burstLeft), d.pitchSet)] }
     return [t.walk(base, off, d.arp === 'off' ? d.pitchSet : 'chord')]
   }
@@ -654,6 +655,9 @@ export function createCombat() {
     const n = Math.max(1, Math.round(d.pellets))
     // instruments: the sound waits for the next sixteenth (within the window), and a shot on the beat converts more
     let notes: number[] = [], at = 0, bonus = 1
+    // the violin's pizzicato: plucked notes at the arpeggio's speed, each one a slice of the bow's seconds and of
+    // its harmony per second
+    const pz = pizzicato(d), pzRate = Math.max(1, d.arpRate)
     if (d.instrument) {
       notes = shotNotes(d, n)
       const g = music.toGrid()
@@ -662,10 +666,10 @@ export function createCombat() {
         bonus = d.beatBonus
         if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
-      notes.forEach((m, i) => out.note(d.voice, m + tremBend, at + i * d.strum, d.noteLen, 0.75 * noteVol(d)))
+      notes.forEach((m, i) => out.note(pz ? 'pizz' : d.voice, m + tremBend, at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d)))
     }
     const speed = d.speed * power
-    const damage = d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
+    const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
     for (let i = 0; i < n; i++) {
       const u = n === 1 ? rand(-0.5, 0.5) : i / (n - 1) - 0.5 + rand(-0.3, 0.3) / n
       const a = aimAngle + u * spreadDeg * DEG
@@ -675,7 +679,7 @@ export function createCombat() {
       }
       if (d.instrument) {
         const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
-        b.note = { midi: m, color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }
+        b.note = { midi: m, color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: pz ? 'pizz' : d.voice }
         b.ring = d.ringNotes; b.ghost = true
       }
       // instant shots travel their whole way now and leave a tracer
@@ -692,7 +696,8 @@ export function createCombat() {
     if (d.instrument) burst(mx, my, 2 + n, tones(d).color(notes[0]), 110, 3)
     else { burst(mx, my, 3 + n, '#fff3b0', 140, 2); sound('shot', h.item) }
     if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
-    h.ammo--; if (h.refill) h.refill = 0; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
+    if (pz) h.ammo = Math.max(0, h.ammo - d.rate / pzRate); else h.ammo--
+    if (h.refill) h.refill = 0; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / (pz ? pzRate : d.rate); kick = d.recoilKick
     onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
     if (h.ammo <= 0 && d.autoReload) startReload()
   }
@@ -1430,7 +1435,7 @@ export function createCombat() {
       // (the press, or the violin's bow coming on, starts it in tune)
       if (d.instrument && d.tremolo > 0 && scaleOf(held(), d).id === 'primary') {
         const pool = music.aimPool(d.pitchSet, d.octave, d.span)
-        const playing = input.fire && (!d.beam || !!beamHeld)
+        const playing = input.fire && (!bowed(d) || !!beamHeld)
         const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless, playing, d.tremoloRange)
         tremBend = pool.length ? lane - music.noteFor(aimAngle, d.pitchSet, d.octave, d.span) : 0
       } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0 }
@@ -1489,7 +1494,7 @@ export function createCombat() {
         if (input.fire && hNow === fireResume) input = { ...input, firePressed: true }
         fireResume = null
       }
-      if (beam && (!input.fire || !dNow.beam)) stopBeam()
+      if (beam && (!input.fire || !bowed(dNow))) stopBeam()
 
       // reload
       if (reloadT > 0) {
@@ -1587,7 +1592,12 @@ export function createCombat() {
         const ctx = { boxes, groundY }
         // shell by shell: firing with something loaded stops the reload
         if (reloadT > 0 && d.shellReload && h.ammo > 0 && input.firePressed) reloadT = 0
-        if (d.beam) { if (reloadT <= 0 && h.ammo > 0 && input.fire) stepBeam(d, h, dt, muzzle, ctx); else if (beam) stopBeam(); if (input.firePressed && (reloadT > 0 || h.ammo <= 0)) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() } }
+        if (bowed(d)) { if (reloadT <= 0 && h.ammo > 0 && input.fire) stepBeam(d, h, dt, muzzle, ctx); else if (beam) stopBeam(); if (input.firePressed && (reloadT > 0 || h.ammo <= 0)) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() } }
+        // pizzicato: while Atirar is held, one plucked note of the arpeggio at a time
+        else if (pizzicato(d)) {
+          if (reloadT > 0 || h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() } }
+          else if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx)
+        }
         else if (reloadT > 0) { if (input.firePressed) sound('dry') }
         else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
         else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }

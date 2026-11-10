@@ -151,6 +151,7 @@ export type ItemDef = {
   // the scales the aim can play (lib/pigchicken/instrument-scales.ts), in order; the quick switch goes through them
   // before the next item
   scales: InstrumentScaleId[]
+  spiralDescending: boolean // the Espiral from the highest note (outside) to the lowest (inside)
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
   consumable: boolean
@@ -192,7 +193,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[],
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
 }
@@ -325,7 +326,7 @@ const PECK: ItemDef = {
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
 // melee is the same for all of them (Y); like the weapons they never break. Their notes come back on their own,
 // one every half second without playing
-const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5, scales: ['primary', 'fifths', 'tension'] as InstrumentScaleId[] }
+const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5, scales: ['primary', 'fifths', 'tension', 'spiral'] as InstrumentScaleId[] }
 
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
@@ -440,6 +441,10 @@ export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_I
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
 const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true }
+// the violin (a beam instrument) bows its held note with the arpeggiator off; with it on, it plucks the arpeggio
+// (pizzicato: short notes, the bow's seconds spent note by note)
+export const bowed = (d: ItemDef) => d.beam && d.arp === 'off'
+export const pizzicato = (d: ItemDef) => d.beam && d.arp !== 'off'
 export const ARPS: { value: Arp; label: string }[] = [
   { value: 'off', label: 'Desligado (a mira escolhe)' }, { value: 'up', label: 'Subindo' }, { value: 'down', label: 'Descendo' },
   { value: 'updown', label: 'Sobe e desce' }, { value: 'random', label: 'Aleatório' }, { value: 'phrase', label: 'Frase (passos da escala)' },
@@ -568,7 +573,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
   if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
   ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
@@ -578,14 +583,16 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
   if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
   { const sc = cleanScales(s.scales); if (sc) out[id].scales = sc }
+  // saved before the Espiral (v7): an instrument that had every scale on gets the new one too
+  if (!(v >= 7) && out[id].instrument && ['primary', 'fifths', 'tension'].every(k => out[id].scales.includes(k as InstrumentScaleId)) && !out[id].scales.includes('spiral')) out[id].scales = cleanScales([...out[id].scales, 'spiral'])!
   if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
 }
 
-const ITEMS_VERSION = 6
+const ITEMS_VERSION = 7
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor', 'scales',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)
@@ -646,7 +653,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
 }
 
 export function saveItems(items: Record<ItemId, ItemDef>) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: 6 })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: ITEMS_VERSION })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

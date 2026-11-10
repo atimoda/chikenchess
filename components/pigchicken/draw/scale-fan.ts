@@ -6,7 +6,7 @@
 // lanes are the same on both sides; the labels go on the side she aims at.
 import type { Combat } from "@/lib/pigchicken/combat"
 import { DEGREE_COLORS, NOTE_NAMES, SCALES, type PitchSet } from "@/lib/pigchicken/music"
-import { CHART_HOLE, RING_SPLIT, sectorEdges, type ScaleRegion } from "@/lib/pigchicken/instrument-scales"
+import { CHART_HOLE, RING_SPLIT, SpiralScale, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
 
 
 const noteName = (m: number) => `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`
@@ -31,10 +31,16 @@ export const SCALE_FAN_R = 390
 export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3, fade = 0.5, lines = 1) {
   const src = aimSource(combat)
   if (!src) return
-  // an instrument on a chart scale (Ciclo de quintas, Tensão e resolução): the round chart instead of the leque
+  // an instrument on a chart scale (Ciclo de quintas, Tensão e resolução): the round chart instead of the leque;
+  // on the Espiral, the spiral of the zone's scale
   const chart = combat.def().instrument ? combat.scale : null
+  if (chart instanceof SpiralScale) {
+    const d = combat.def(), lay = chart.layout(combat.music, { octave: d.octave, span: d.span, descending: d.spiralDescending })
+    drawSpiral(ctx, lay, chart.pieceAt(lay, aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    return
+  }
   if (chart && chart.regions().length) {
-    drawScaleChart(ctx, chart.regions(), chart.regionAt(aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    drawScaleChart(ctx, chart, combat.music, chart.regionAt(aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
     return
   }
   const music = combat.music, zone = music.zone
@@ -103,9 +109,11 @@ function hexA(hex: string, a: number) {
 }
 
 // The round chart of a chart scale: 12 sectors (the first centred straight up), the inner ring up to RING_SPLIT of
-// the radius and the outer one to the edge, each region with its chord's name. Tensão e resolução draws its outer
-// ring as a circle of balls; the region she aims at (direction and reach) is lit.
-function drawScaleChart(ctx: CanvasRenderingContext2D, regions: ScaleRegion[], now: ScaleRegion | null, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+// the radius and the outer one to the edge, each region with its chord. Tensão e resolução draws its outer
+// ring as a circle of balls; the region she aims at (direction and reach) is lit. Each region shows its chord in
+// letters (cifra) and, small above it, its degree in the zone's key (Roman numerals).
+function drawScaleChart(ctx: CanvasRenderingContext2D, chart: InstrumentScale, music: Combat["music"], now: ScaleRegion | null, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+  const regions = chart.regions()
   const rHole = rOut * CHART_HOLE, rMid = rOut * RING_SPLIT
   const font = Math.max(8, Math.min(14, rOut * 0.075))
   ctx.save()
@@ -133,11 +141,77 @@ function drawScaleChart(ctx: CanvasRenderingContext2D, regions: ScaleRegion[], n
       ctx.fill()
       if (lines > 0) { ctx.strokeStyle = hexA("#ffffff", alpha * 0.35 * lines); ctx.stroke() }
     }
+    const fs = Math.round(r.ring === 1 ? font : font * 0.85), px = cx + Math.cos(mid) * rc, py = cy + Math.sin(mid) * rc
     ctx.globalAlpha = alpha * (on ? 1 : 0.75)
-    ctx.font = `${on ? "bold " : ""}${Math.round(r.ring === 1 ? font : font * 0.85)}px monospace`
     ctx.fillStyle = "#ffffff"
-    ctx.fillText(r.label, cx + Math.cos(mid) * rc, cy + Math.sin(mid) * rc)
+    ctx.font = `${on ? "bold " : ""}${fs}px monospace`
+    ctx.fillText(r.label, px, py + fs * 0.35)
+    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.font = `${Math.round(fs * 0.7)}px monospace`
+    ctx.fillText(chart.degreeLabel(r, music), px, py - fs * 0.55)
     ctx.globalAlpha = 1
   }
   ctx.restore()
+}
+
+// The Espiral: a dashed spiral line from the outer edge (straight up) inward, clockwise, cut into one piece per note
+// of the zone's scale, each a band coloured by its degree with the note in letters and, small above it, its degree
+// number; the piece she aims at is lit.
+function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: number, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+  const n = lay.pieces.length
+  if (!n) return
+  const half = spiralGap(lay.turns) * 0.46 * rOut // half a band: the distance between turns, a hair less
+  const at = (u: number, off = 0) => { const a = spiralAngle(u, lay.turns), r = spiralRadius(u, lay.turns) * rOut + off; return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r } }
+  const font = Math.max(8, Math.min(14, Math.min(half * 0.9, rOut * 0.07)))
+  ctx.save()
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  lay.pieces.forEach((p, i) => {
+    const on = i === now, color = DEGREE_COLORS[(p.degree - 1) % DEGREE_COLORS.length]
+    // the band: out along the piece's outer edge, back along its inner one
+    const steps = Math.max(4, Math.ceil((p.u1 - p.u0) * lay.turns * 48))
+    ctx.beginPath()
+    for (let k = 0; k <= steps; k++) { const q = at(p.u0 + ((p.u1 - p.u0) * k) / steps, half); if (k) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y) }
+    for (let k = steps; k >= 0; k--) { const q = at(p.u0 + ((p.u1 - p.u0) * k) / steps, -half); ctx.lineTo(q.x, q.y) }
+    ctx.closePath()
+    ctx.fillStyle = hexA(color, alpha * (on ? 0.6 : 0.18))
+    ctx.fill()
+    if (lines > 0) { ctx.strokeStyle = hexA("#ffffff", alpha * 0.25 * lines); ctx.lineWidth = 1; ctx.stroke() }
+  })
+  // the spiral's own line, dashed, like the reference drawing
+  if (lines > 0) {
+    ctx.beginPath()
+    const steps = Math.ceil(lay.turns * 96)
+    for (let k = 0; k <= steps; k++) { const q = at(k / steps); if (k) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y) }
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = hexA("#ffffff", alpha * 0.45 * lines); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([])
+  }
+  lay.pieces.forEach((p, i) => {
+    const on = i === now, q = at((p.u0 + p.u1) / 2)
+    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.fillStyle = "#ffffff"
+    ctx.font = `${on ? "bold " : ""}${Math.round(font)}px monospace`
+    ctx.fillText(p.letter, q.x, q.y + font * 0.35)
+    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.font = `${Math.round(font * 0.7)}px monospace`
+    ctx.fillText(String(p.degree), q.x, q.y - font * 0.55)
+  })
+  ctx.globalAlpha = 1
+  ctx.restore()
+}
+
+// The arpeggiator's selector over a chicken holding an instrument: one small dot per option (ARPS, in order), the
+// current one lit. Returns its box (screen units) for the click that turns it to the next option.
+export const ARP_DOT_GAP = 9
+export function drawArpSelector(ctx: CanvasRenderingContext2D, x: number, y: number, count: number, current: number, color = "#ffffff") {
+  const w = (count - 1) * ARP_DOT_GAP, x0 = x - w / 2
+  ctx.save()
+  for (let i = 0; i < count; i++) {
+    const on = i === current
+    ctx.beginPath()
+    ctx.arc(x0 + i * ARP_DOT_GAP, y, on ? 3.2 : 2.2, 0, Math.PI * 2)
+    ctx.fillStyle = on ? hexA(color.startsWith("#") && color.length === 7 ? color : "#ffffff", 0.95) : "rgba(255,255,255,0.35)"
+    ctx.fill()
+  }
+  ctx.restore()
+  return { l: x0 - 7, r: x0 + w + 7, t: y - 8, b: y + 8 }
 }

@@ -132,6 +132,12 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                           className="h-5 w-5 accent-[var(--primary)]" />
                       </label>
                     ))}
+                    {it.scales.includes("spiral") ? (
+                      <label className="flex items-center justify-between gap-3 pl-3" title="Desligado: de fora para dentro, do grave ao agudo">
+                        <span>Espiral descendente (agudo → grave)</span>
+                        <input type="checkbox" checked={it.spiralDescending} onChange={e => { const v = e.target.checked; update(d => { d.spiralDescending = v }) }} className="h-5 w-5 accent-[var(--primary)]" />
+                      </label>
+                    ) : null}
                   </div>
                   <label className="flex items-center justify-between gap-3">
                     <span>Arpejador</span>

@@ -3,9 +3,9 @@
 import { audio } from './sfx'
 import { midiHz } from './music'
 
-export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass'
+export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass' | 'pizz'
 export const VOICE_LABELS: Record<VoiceId, string> = {
-  flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo',
+  flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo', pizz: 'Violino pizzicato',
 }
 
 const MAX_VOICES = 18
@@ -129,6 +129,15 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       if (sustain) { out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.13 * vel, t + 0.09); end = t + 60 }
       else end = env(a, out, t, 0.13 * vel, 0.08, Math.max(0, dur - 0.08), 0.25)
       break
+    }
+    // the violin plucked: a bright snap that dies fast, a little body underneath
+    case 'pizz': {
+      const o1 = osc(a, 'sawtooth', f, t), o2 = osc(a, 'triangle', f, t), g2 = a.createGain(); g2.gain.value = 0.5
+      const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2
+      lp.frequency.setValueAtTime(f * 8, t); lp.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.12)
+      o1.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(out); track(o1.frequency, 1); track(o2.frequency, 1)
+      sources.push(o1, o2)
+      end = env(a, out, t, 0.2 * vel, 0.002, 0, 0.22 + Math.min(0.2, dur)); break
     }
     case 'keys': {
       const c = osc(a, 'sine', f, t), m = osc(a, 'sine', f, t), mg = a.createGain()
