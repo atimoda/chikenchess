@@ -341,7 +341,7 @@ const FLUTE: ItemDef = {
 const SAX: ItemDef = {
   ...SMG, ...MUSIC_MELEE, id: 'sax', name: 'Sax', family: 'Palhetas', reticle: 'circle',
   rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
-  recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 120, muzzleX: 32, muzzleY: 18, length: 50,
+  recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 0, muzzleX: 32, muzzleY: 18, length: 50,
   instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
   pivotAt: 'mouth', pivotX: -27, pivotY: -52, handOn: true, handX: 0, handY: 12, backOn: true, backX: 2, backY: -15, wingFlip: true,
   rebateChain: chain(['transpose', 'degree', 2]),
@@ -368,7 +368,7 @@ const GUITAR: ItemDef = {
 const VIOLIN: ItemDef = {
   ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
-  spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 420, muzzleX: 78, muzzleY: 0, length: 78,
+  spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 0, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
   handOn: true, handX: 45, handY: 0, backOn: true, backX: -23, backY: 0,
   rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
@@ -377,7 +377,7 @@ const VIOLIN: ItemDef = {
 const KEYS: ItemDef = {
   ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: 'Teclado', family: 'Teclas', reticle: 'impact',
   rate: 1, burst: 4, chargeTime: 0.25, mag: 33, reloadTime: 1.4, speed: 650, size: 12, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0, hitscan: true,
-  recoilKick: 6, muzzleX: 82, muzzleY: -9, length: 82,
+  recoilKick: 6, turnRate: 0, muzzleX: 82, muzzleY: -9, length: 82,
   instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6, volMin: 0.6,
   handOn: true, handX: 40, handY: -15, backOn: true, backX: -30, backY: -15,
   rebateChain: chain(['voices', 'seventh']),
@@ -445,6 +445,14 @@ const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true,
 // (pizzicato: short notes, the bow's seconds spent note by note)
 export const bowed = (d: ItemDef) => d.beam && d.arp === 'off'
 export const pizzicato = (d: ItemDef) => d.beam && d.arp !== 'off'
+// the arpeggiator's glyph over an instrument's slot in the inventory: one dot per column, its height (0 low … 3 high)
+// the note the pattern plays there; null leaves a gap. Off: one held line; Frase: two short climbing groups
+export const ARP_GLYPHS: Record<Arp, (number | null)[]> = {
+  off: [1, 1, 1, 1], up: [0, 1, 2, 3], down: [3, 2, 1, 0], updown: [0, 1, 2, 3, 2, 1],
+  random: [2, 0, 3, 1, 3, 0], phrase: [0, 1, 2, null, 1, 2, 3],
+}
+// the next option of the arpeggiator (the glyph's click), round to the first after the last
+export const nextArp = (a: Arp): Arp => ARPS[(ARPS.findIndex(o => o.value === a) + 1) % ARPS.length].value
 export const ARPS: { value: Arp; label: string }[] = [
   { value: 'off', label: 'Desligado (a mira escolhe)' }, { value: 'up', label: 'Subindo' }, { value: 'down', label: 'Descendo' },
   { value: 'updown', label: 'Sobe e desce' }, { value: 'random', label: 'Aleatório' }, { value: 'phrase', label: 'Frase (passos da escala)' },
@@ -586,9 +594,14 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the Espiral (v7): an instrument that had every scale on gets the new one too
   if (!(v >= 7) && out[id].instrument && ['primary', 'fifths', 'tension'].every(k => out[id].scales.includes(k as InstrumentScaleId)) && !out[id].scales.includes('spiral')) out[id].scales = cleanScales([...out[id].scales, 'spiral'])!
   if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
+  // saved before instruments aimed instantly (v8): an untouched old Giro da mira takes the new default (0); custom numbers stay
+  if (!(v >= 8) && s.turnRate === V7_TURN_RATE[id]) out[id].turnRate = DEFAULT_ITEMS[id].turnRate
 }
 
-const ITEMS_VERSION = 7
+// Giro da mira the instruments had before v8 (now 0 = instant)
+const V7_TURN_RATE: Partial<Record<ItemId, number>> = { sax: 120, violin: 420, keys: 300 }
+
+const ITEMS_VERSION = 8
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',

@@ -19,7 +19,7 @@ import { createCombat, lookDoses, type Box, type Combat, type Effect } from "@/l
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { INVENTORY_MAX, inventorySlotFromCode, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
-import { announceHeldItem, bowed, curvePower, loadItems, saveItems, ARPS, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { announceHeldItem, bowed, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
@@ -35,7 +35,7 @@ import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
 import { placeEnvAt, sceneZoneOf, soundZoneOf, zoneAt, type LanesBox, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
-import { drawArpSelector, drawScaleFan, SCALE_FAN_R } from "@/components/pigchicken/draw/scale-fan"
+import { drawScaleFan, SCALE_FAN_R } from "@/components/pigchicken/draw/scale-fan"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
@@ -286,20 +286,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // pushes it (px since the last frame; when the mouse rests, it bows on the beat by itself)
     const bowing = { stroke: 0.5, dir: 1, travel: 0, movedAt: 0 }
     const mouseBtn = { fire: false, melee: false }
-    // the arpeggiator selectors drawn this frame (screen units before the zoom) and the instrument each one belongs to
+    // the arpeggiator glyphs drawn over the instruments' slots this frame (screen units, like the inventory) and the
+    // instrument each one belongs to
     const arpBoxes: { item: ItemId; box: { l: number; r: number; t: number; b: number } }[] = []
-    // a press on a selector turns that instrument's arpeggiator to the next option (saved like the Itens panel; it
-    // neither fires nor walks)
+    // a press on a glyph turns that instrument's arpeggiator to the next option (saved like the Itens panel); it
+    // neither equips, fires nor walks
     const onArpDown = (e: PointerEvent) => {
-      if (e.button !== 0 || cameraKey || isUi(e.target) || !arpBoxes.length) return
-      const x = zoom !== 1 ? (e.clientX - stageWidth() / 2) / zoom + stageWidth() / 2 : e.clientX
-      const y = zoom !== 1 ? (e.clientY - window.innerHeight / 2) / zoom + window.innerHeight / 2 : e.clientY
-      const hit = arpBoxes.find(a => x >= a.box.l && x <= a.box.r && y >= a.box.t && y <= a.box.b)
+      if (e.button !== 0 || cameraKey || !arpBoxes.length) return
+      const hit = arpBoxes.find(a => e.clientX >= a.box.l && e.clientX <= a.box.r && e.clientY >= a.box.t && e.clientY <= a.box.b)
       if (!hit) return
       e.preventDefault(); e.stopImmediatePropagation()
-      const all = loadItems(), d = all[hit.item]
-      const i = ARPS.findIndex(a => a.value === d.arp)
-      d.arp = ARPS[(i + 1) % ARPS.length].value
+      const all = loadItems()
+      all[hit.item].arp = nextArp(all[hit.item].arp)
       saveItems(all)
     }
     let wheel = 0, slotPick = 0, escape = false
@@ -1129,17 +1127,6 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         })
         combat.use("p1")
       }
-      // the arpeggiator's dots over each local player holding an instrument (a click turns it to the next option)
-      arpBoxes.length = 0
-      ;([["p1", engine] as const, ...extraList]).forEach(([id, eng]) => {
-        combat.use(id)
-        const h = combat.inventory[combat.current], ms = eng.getMotionState()
-        if (!h || ms.held || !combat.def().instrument) return
-        const cur = ARPS.findIndex(a => a.value === combat.def().arp)
-        const box = drawArpSelector(ctx, ms.x, ms.y - 200 * ms.scale - 10, ARPS.length, cur, tints?.[id] ?? "#ffffff")
-        arpBoxes.push({ item: h.item, box })
-      })
-      combat.use("p1")
       if (charge > 0) { const from = engine.heldPoint(combat.throwAngle, 0, 0); drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY }))) }
       // the other local players' reticles, each in their own color, where their item points
       extraList.forEach(([id, eng]) => {
@@ -1174,9 +1161,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const barBottom = !liftedRef.current
       const offsets = getTouchLayout().offsets
       const drag = barDrag.current?.active ? barDrag.current : null
-      drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom))
+      arpBoxes.length = 0
+      arpBoxes.push(...drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
       combat.use("p1"); drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", offsets.inventory)
-      extraList.forEach(([id], i) => { combat.use(id); drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory); drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", offsets.inventory) })
+      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", offsets.inventory) })
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []

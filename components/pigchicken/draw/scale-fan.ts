@@ -199,19 +199,3 @@ function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: numbe
   ctx.restore()
 }
 
-// The arpeggiator's selector over a chicken holding an instrument: one small dot per option (ARPS, in order), the
-// current one lit. Returns its box (screen units) for the click that turns it to the next option.
-export const ARP_DOT_GAP = 9
-export function drawArpSelector(ctx: CanvasRenderingContext2D, x: number, y: number, count: number, current: number, color = "#ffffff") {
-  const w = (count - 1) * ARP_DOT_GAP, x0 = x - w / 2
-  ctx.save()
-  for (let i = 0; i < count; i++) {
-    const on = i === current
-    ctx.beginPath()
-    ctx.arc(x0 + i * ARP_DOT_GAP, y, on ? 3.2 : 2.2, 0, Math.PI * 2)
-    ctx.fillStyle = on ? hexA(color.startsWith("#") && color.length === 7 ? color : "#ffffff", 0.95) : "rgba(255,255,255,0.35)"
-    ctx.fill()
-  }
-  ctx.restore()
-  return { l: x0 - 7, r: x0 + w + 7, t: y - 8, b: y + 8 }
-}

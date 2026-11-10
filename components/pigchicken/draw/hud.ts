@@ -1,6 +1,7 @@
 // Screen-space HUD: the reticle, the throw path, the inventory bars and the item wheel.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
-import { CONSUMABLE_LIMITS, type ItemId } from "@/lib/pigchicken/items"
+import { ARP_GLYPHS, CONSUMABLE_LIMITS, type Arp, type ItemId } from "@/lib/pigchicken/items"
+import { DEGREE_COLORS } from "@/lib/pigchicken/music"
 import { type Combat } from "@/lib/pigchicken/combat"
 import { wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
@@ -251,13 +252,31 @@ const effectTint = (look: string) => look === "buddha" ? "#ffd166" : look === "f
 export function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath()
 }
+// the arpeggiator's glyph over an instrument's slot: the pattern's dots (ARP_GLYPHS), small squares with no box;
+// lit in the degrees' colours on the held slot, pale on the others. Its bottom sits `gap` px over the slot; returns
+// the area a click turns to the next option (the slot's width, from the slot's top up past the glyph)
+export const arpGlyphHeight = (big: boolean) => (big ? 5 : 3) * 4 + 6
+export function drawArpGlyph(ctx: Ctx, arp: Arp, cx: number, top: number, big: boolean, lit: boolean, w: number) {
+  const cols = ARP_GLYPHS[arp], d = big ? 4 : 2, step = d + 1
+  const x0 = Math.round(cx - (cols.length * step - 1) / 2), base = top - 3 - d
+  ctx.save()
+  cols.forEach((h, i) => {
+    if (h === null) return
+    ctx.fillStyle = lit ? DEGREE_COLORS[(h * 2) % DEGREE_COLORS.length] : "rgba(255,255,255,0.5)"
+    ctx.fillRect(x0 + i * step, base - h * step, d, d)
+  })
+  ctx.restore()
+  return { l: cx - w / 2, r: cx + w / 2, t: top - arpGlyphHeight(big), b: top }
+}
 // the inventory bar, moved by the player's saved offset (edit mode of the touch controls). Only her items show, plus
 // one empty slot while there is room (instruments, weapons, then the other items). Each slot is a glass tile; the
 // current one glows teal. A bar along the bottom shows the ammo (a badge counts a consumable's doses), a thin line
 // what is left of an item that wears.
 // labels: each group's key (Próximo instrumento / arma / utilitário), shown left of the group's first slot on the
 // big bar (null: none)
+// Returns the arpeggiator glyphs drawn over its instruments (the item and the area a click turns to its next option).
 export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null) {
+  const glyphs: { item: ItemId; box: { l: number; r: number; t: number; b: number } }[] = []
   const slots = combat.inventory, n = slots.length, groups = combat.inventoryGroups
   const showLabels = bottom && !!labels?.some(Boolean)
   const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels, combat.current), { size, gap } = g
@@ -299,6 +318,12 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     if (o) {
       ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size * (bottom ? 0.79 : 0.82), size * (bottom ? 0.75 : 0.76)); ctx.restore()
       const d = combat.item(o.item)
+      // an instrument: its arpeggiator's pattern over the slot (the other players' small rows sit too close for it:
+      // there it goes small inside the slot's top, without the click)
+      if (d.instrument && !(drag && drag.from === i)) {
+        if (bottom || row === 0) glyphs.push({ item: o.item, box: drawArpGlyph(ctx, d.arp, x + size / 2, y, bottom, on, size) })
+        else drawArpGlyph(ctx, d.arp, x + size / 2, y + 14, false, on, size)
+      }
       // a consumable's badge: the doses left, in the bottom right corner
       if (d.mag > 0 && d.consumable) {
         const t = String(Math.ceil(o.ammo))
@@ -398,7 +423,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     const pw = Math.ceil(nw + iw)
     // on the big bar, over the held slot (kept on the screen)
     const at = x0 + (g.xs[Math.min(combat.current, n - 1)] ?? 0) + size / 2
-    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, stageWidth() - pw - 8)) : x0 + g.w - pw), py = bottom ? y - 12 : y + size + 12
+    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, stageWidth() - pw - 8)) : x0 + g.w - pw), py = bottom ? y - 12 - (d?.instrument ? arpGlyphHeight(true) - 4 : 0) : y + size + 12
     ctx.globalAlpha = since > PILL_TIME - 300 ? (PILL_TIME - since) / 300 : 1
     ctx.shadowBlur = 0; ctx.shadowColor = "transparent"
     ctx.textAlign = "left"
@@ -407,6 +432,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     ctx.globalAlpha = 1
   }
   ctx.restore()
+  return glyphs
 }
 
 // Each player's captured birds remain as a soul count beside their avatar, including when the first player's

@@ -23,7 +23,7 @@ const RECENT = [
         'Com a camada Escalas ligada, as escalas redondas aparecem como gráfico em volta da galinha, com a região da mira acesa.',
         'Nova escala Espiral nos instrumentos: as notas da escala da zona viram pedaços de uma espiral em volta da galinha, do grave (por fora) ao agudo (por dentro), uma volta por oitava; a mira escolhe o pedaço pela direção e pela distância. Em Itens → Música, “Espiral descendente” inverte para do agudo ao grave.',
         'Nos gráficos das escalas, cada acorde aparece em cifra (C, Am, B°7, G7♭9…) com o grau em cima (I, vi, V, vii°7…, em relação à tônica da zona); na Espiral, cada nota mostra a letra e o número do grau.',
-        'Sobre a galinha que segura um instrumento aparece o seletor do Arpejador: uma fileira de bolinhas, uma por opção, com a atual acesa. Clicar ou tocar nelas passa para a próxima opção, sem atirar, e o painel Itens acompanha.',
+        'No inventário, em cima de cada instrumento, bolinhas desenham o padrão do Arpejador (subindo, descendo, sobe e desce, aleatório, frase ou uma linha reta quando desligado), coloridas no item da mão. Clicar ou tocar nelas passa para o próximo padrão, sem equipar nem atirar, e o painel Itens acompanha.',
         'Violino com arpejo ligado toca pizzicato: notas curtas pinçadas no ritmo do arpejo, em vez do feixe contínuo; com o arpejador desligado, continua o feixe de sempre.',
         'O drone de fundo das zonas toca a terça de cada acorde, então dá para ouvir se ele é maior, menor ou diminuto, e a quinta do acorde em vez de uma quinta fixa.',
         'O drone muda de nota na virada do compasso, sem deslizar entre uma nota e outra, e o grave fica perto da tônica em vez de saltar uma oitava.',

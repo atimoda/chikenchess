@@ -3,7 +3,7 @@ const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const { INSTRUMENT_SCALES, sectorAt, ringAt, cleanScales, scaleAt, regionNotes, romanOf, spiralAt, spiralRadius, SPIRAL_HOLE } = loadTs('lib/pigchicken/instrument-scales.ts')
 const { scaleStep, arrivalScale } = loadTs('lib/pigchicken/inventory.ts')
-const { DEFAULT_ITEMS, INSTRUMENT_IDS, INSTRUMENT_WEAPON, ARPS, bowed, pizzicato } = loadTs('lib/pigchicken/items.ts')
+const { DEFAULT_ITEMS, INSTRUMENT_IDS, INSTRUMENT_WEAPON, ARPS, ARP_GLYPHS, nextArp, bowed, pizzicato } = loadTs('lib/pigchicken/items.ts')
 const { createConductor } = loadTs('lib/pigchicken/music.ts')
 
 const UP = -Math.PI / 2, RIGHT = 0
@@ -108,10 +108,21 @@ test('Espiral: the aim finds the nearest turn; walking stays in the zone’s cho
   assert.equal(s.degreeOf(music, 64), music.degreeOf(64))
 })
 
-test('the arpeggiator: the dots go round its options; the violin bows with it off and plucks with it on', () => {
-  const next = v => ARPS[(ARPS.findIndex(a => a.value === v) + 1) % ARPS.length].value
-  assert.equal(next('off'), 'up')
-  assert.equal(next(ARPS[ARPS.length - 1].value), 'off')
+test('the arpeggiator: a glyph per option tracing its pattern; a click goes round them; the violin bows with it off and plucks with it on', () => {
+  assert.deepEqual(ARPS.map(a => nextArp(a.value)), [...ARPS.slice(1), ARPS[0]].map(a => a.value))
+  for (const a of ARPS) {
+    const g = ARP_GLYPHS[a.value]
+    assert.ok(g.length >= 4 && g.every(h => h === null || (h >= 0 && h <= 3)), a.value)
+  }
+  const dots = a => ARP_GLYPHS[a].filter(h => h !== null)
+  const rising = g => g.every((h, i) => !i || h > g[i - 1])
+  assert.ok(rising(dots('up')))
+  assert.ok(rising([...dots('down')].reverse()))
+  assert.equal(new Set(dots('off')).size, 1)
+  const ud = dots('updown'), top = ud.indexOf(Math.max(...ud))
+  assert.ok(top > 0 && top < ud.length - 1 && rising(ud.slice(0, top + 1)) && rising(ud.slice(top).reverse()))
+  assert.ok(!rising(dots('random')) && !rising([...dots('random')].reverse()))
+  assert.ok(ARP_GLYPHS.phrase.includes(null))
   const v = DEFAULT_ITEMS.violin
   assert.equal(v.arp, 'off')
   assert.ok(bowed(v) && !pizzicato(v))
