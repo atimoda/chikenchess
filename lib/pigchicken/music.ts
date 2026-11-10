@@ -60,6 +60,15 @@ export function chordOn(zone: Zone, degree: number, seventh = false) {
   return notes
 }
 
+// the drone's notes for a chord: its root kept within a fourth/fifth of the key's root (the bass does not leap an
+// octave between bars), its own third (major or minor: what makes the chord's type heard) and fifth (a diminished
+// chord's is a tritone, not a perfect fifth)
+export function droneOf(zone: Zone, chord: number[]) {
+  const up = ((((chord[0] - zone.root) % 12) + 12) % 12)
+  const iv = (n: number) => ((((n - chord[0]) % 12) + 12) % 12)
+  return { root: zone.root + (up > 6 ? up - 12 : up), third: iv(chord[1]), fifth: iv(chord[2]) }
+}
+
 // pitch classes of a chord spread over a register
 export function chordNotes(chord: number[], lo: number, hi: number) {
   const pcs = new Set(chord.map(n => ((n % 12) + 12) % 12))

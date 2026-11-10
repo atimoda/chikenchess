@@ -252,3 +252,21 @@ test('a Pátio keeps its own Camadas: cleaned, in range, Escalas up to 3x', () =
   assert.deepEqual(s.layers, { backdrop: 100, zones: 0, scale: 43, scaleSize: 3, scaleFade: 50, scaleLines: 30, hitboxes: true })
   assert.equal(settings.normalizePatioSettings({ layers: 'nope' }), undefined)
 })
+
+test('zone chords always fit the melody scale, and the drone stays near the key with the chord\'s own fifth', () => {
+  const zc = loadTs('lib/pigchicken/zone-changes.ts')
+  const music = loadTs('lib/pigchicken/music.ts')
+  const fits = (scale, chords) => music.SCALES[scale].steps.every(s => music.SCALES[chords].steps.includes(s)) || scale === 'blues'
+  assert.deepEqual(zc.chordScalesFor('minorPenta').slice().sort(), ['dorian', 'minor'])
+  let z = sz.normalizeSoundZone({ scale: 'majorPenta', chordScale: 'major' })
+  for (let i = 0; i < 30; i++) { z = { ...z, ...zc.ZONE_STEP.scale(z) }; assert.ok(fits(z.scale, z.chordScale), `${z.scale}/${z.chordScale}`) }
+  for (let i = 0; i < 10; i++) { z = { ...z, ...zc.ZONE_STEP.chordScale(z) }; assert.ok(fits(z.scale, z.chordScale), `${z.scale}/${z.chordScale}`) }
+  let seed = 1; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  for (let i = 0; i < 40; i++) for (const id of ['random', 'modal', 'penta', 'relative', 'parallel']) { z = sz.applyZoneChange(z, id, rnd); assert.ok(fits(z.scale, z.chordScale), `${id}: ${z.scale}/${z.chordScale}`) }
+  // C major, I bVII IV: B° on degree 7 has a tritone, and the bass never leaps more than a tritone from C
+  const zone = { ...music.ZONES[0], root: 60, chordScale: 'major' }
+  const vii = music.droneOf(zone, music.chordOn(zone, 6))
+  assert.equal(vii.fifth, 6); assert.equal(vii.third, 3); assert.equal(vii.root, 59)
+  assert.equal(music.droneOf(zone, music.chordOn(zone, 5)).third, 3); assert.equal(music.droneOf(zone, music.chordOn(zone, 3)).third, 4)
+  for (let d = 0; d < 7; d++) { const r = music.droneOf(zone, music.chordOn(zone, d)).root; assert.ok(r >= 55 && r <= 66, `${d}: ${r}`) }
+})

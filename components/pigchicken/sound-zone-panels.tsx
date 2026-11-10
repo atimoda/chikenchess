@@ -12,7 +12,7 @@ import {
 import { ChainEditor } from "./chain-editor"
 import { BIRDS, BIRD_IDS } from "@/lib/pigchicken/birds"
 import { LanesArt } from "./sound-zone-art"
-import { PROGRESSIONS, ZONE_CHANGES, progressionIndex, zoneChange, type ZoneChangeId } from "@/lib/pigchicken/zone-changes"
+import { PROGRESSIONS, ZONE_CHANGES, chordScalesFor, fitChords, progressionIndex, zoneChange, type ZoneChangeId } from "@/lib/pigchicken/zone-changes"
 
 const field = "h-9 w-full min-w-0 rounded-md border border-white/15 bg-[#0b110e] px-2"
 const SCALE_IDS = Object.keys(SCALES) as ScaleId[]
@@ -60,13 +60,13 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
       <div className="grid grid-cols-2 gap-2">
         <Field label="Tom"><KeySelect value={zone.root} onChange={root => set({ root })} /></Field>
         <Field label="Escala">
-          <select aria-label="Escala" value={zone.scale} onChange={e => set({ scale: e.target.value as ScaleId })} className={field}>
+          <select aria-label="Escala" value={zone.scale} onChange={e => { const scale = e.target.value as ScaleId; set({ scale, chordScale: fitChords(scale, zone.chordScale) }) }} className={field}>
             {SCALE_IDS.map(s => <option key={s} value={s}>{SCALES[s].label}</option>)}
           </select>
         </Field>
         <Field label="Acordes de">
           <select aria-label="Escala dos acordes" value={zone.chordScale} onChange={e => set({ chordScale: e.target.value as ScaleId })} className={field}>
-            {CHORD_SCALES.map(s => <option key={s} value={s}>{SCALES[s].label}</option>)}
+            {CHORD_SCALES.map(s => <option key={s} value={s}>{SCALES[s].label}{chordScalesFor(zone.scale).includes(s) ? "" : " (desafina)"}</option>)}
           </select>
         </Field>
         <Field label="Balanço">

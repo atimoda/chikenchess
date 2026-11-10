@@ -13,6 +13,17 @@ export const ZONE_BPM = { min: 40, max: 200 }
 export const ZONE_LIFE = { min: 0, max: 60 }
 export const SCALE_IDS = Object.keys(SCALES) as ScaleId[]
 export const CHORD_SCALES = SCALE_IDS.filter(s => SCALES[s].steps.length === 7)
+// the chord scales that hold every note of a melody scale (so the chords never clash with it); the blues has a
+// note no 7-note scale has: minor, dorian or mixolydian
+export function chordScalesFor(scale: ScaleId): ScaleId[] {
+  const fit = CHORD_SCALES.filter(c => SCALES[scale].steps.every(s => SCALES[c].steps.includes(s)))
+  return fit.length ? fit : ['minor', 'dorian', 'mixolydian']
+}
+// the chords kept when they fit the new scale, else the first that fits (the scale itself when it has 7 notes)
+export function fitChords(scale: ScaleId, chordScale: ScaleId): ScaleId {
+  const fit = chordScalesFor(scale)
+  return fit.includes(chordScale) ? chordScale : fit.includes(scale) ? scale : fit[0]
+}
 export const FEELS: Feel[] = ['straight', 'swing', 'half']
 export const FEEL_LABELS: Record<Feel, string> = { straight: 'Reto', swing: 'Swing', half: 'Meio tempo' }
 export const pcOf = (m: number) => ((m % 12) + 12) % 12
@@ -51,8 +62,9 @@ const after = <T,>(list: readonly T[], v: T, by = 1) => list[(((list.indexOf(v) 
 
 export const ZONE_STEP = {
   root: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ root: rootOf(pcOf(z.root) + 1) }),
-  scale: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ scale: after(SCALE_IDS, z.scale) }),
-  chordScale: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ chordScale: after(CHORD_SCALES, z.chordScale) }),
+  // a new scale takes chords that fit it; the chords step only through those that fit the scale
+  scale: (z: SoundZoneParams): Partial<SoundZoneParams> => { const scale = after(SCALE_IDS, z.scale); return { scale, chordScale: fitChords(scale, z.chordScale) } },
+  chordScale: (z: SoundZoneParams): Partial<SoundZoneParams> => { const fit = chordScalesFor(z.scale); return { chordScale: fit.includes(z.chordScale) ? after(fit, z.chordScale) : fit[0] } },
   feel: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ feel: after(FEELS, z.feel) }),
   // the progression counts down: a custom one goes to the last of the list, the first goes back to the last
   progression: (z: SoundZoneParams): Partial<SoundZoneParams> => {
@@ -106,10 +118,13 @@ function flipMode(z: SoundZoneParams, relative: boolean): Partial<SoundZoneParam
 
 export const ZONE_CHANGES: ZoneChange[] = [
   { id: 'random', label: 'Random', group: 'Geral', hint: 'Embaralha tom, escalas, andamento, balanço e progressão',
-    apply: (_z, rnd) => ({
-      root: rootOf(Math.floor(rnd() * 12)), scale: pick(SCALE_IDS, rnd), chordScale: pick(CHORD_SCALES, rnd),
-      bpm: 60 + 2 * Math.floor(rnd() * 46), feel: pick(FEELS, rnd), progression: pick(PROGRESSIONS, rnd).degrees.slice(),
-    }) },
+    apply: (_z, rnd) => {
+      const scale = pick(SCALE_IDS, rnd)
+      return {
+        root: rootOf(Math.floor(rnd() * 12)), scale, chordScale: pick(chordScalesFor(scale), rnd),
+        bpm: 60 + 2 * Math.floor(rnd() * 46), feel: pick(FEELS, rnd), progression: pick(PROGRESSIONS, rnd).degrees.slice(),
+      }
+    } },
   { id: 'doubleTime', label: 'Tempo dobrado', group: 'Ritmo', hint: 'Dobra o andamento (ou corta pela metade quando passaria do limite)',
     apply: z => ({ bpm: z.bpm * 2 <= ZONE_BPM.max ? z.bpm * 2 : Math.round(z.bpm / 2) }) },
   { id: 'accelerando', label: 'Acelerando', group: 'Ritmo', hint: 'Mais 10 bpm a cada morte; passando de 200 volta a 70',
@@ -125,13 +140,18 @@ export const ZONE_CHANGES: ZoneChange[] = [
   { id: 'parallel', label: 'Homônima maior/menor', group: 'Harmonia', hint: 'Dó maior ↔ Dó menor',
     apply: z => flipMode(z, false) },
   { id: 'modal', label: 'Troca de modo', group: 'Harmonia', hint: 'Maior → lídio → mixolídio → dórico → menor (os acordes; a escala também se tiver 7 notas)',
-    apply: z => { const mode = after(MODES, MODES.includes(z.chordScale) ? z.chordScale : 'minor'); return SCALES[z.scale].steps.length === 7 ? { chordScale: mode, scale: mode } : { chordScale: mode } } },
+    apply: z => {
+      if (SCALES[z.scale].steps.length === 7) { const mode = after(MODES, MODES.includes(z.chordScale) ? z.chordScale : 'minor'); return { chordScale: mode, scale: mode } }
+      // a pentatonic keeps its notes: only the modes that hold them
+      const fit = MODES.filter(m => chordScalesFor(z.scale).includes(m))
+      return { chordScale: fit.includes(z.chordScale) ? after(fit, z.chordScale) : fit[0] ?? fitChords(z.scale, z.chordScale) }
+    } },
   { id: 'progression', label: 'Próxima progressão', group: 'Harmonia', hint: 'Passa para a próxima progressão da lista',
     apply: z => { const i = progressionIndex(z.progression); return { progression: PROGRESSIONS[(i + 1) % PROGRESSIONS.length].degrees.slice() } } },
   { id: 'retrograde', label: 'Progressão retrógrada', group: 'Harmonia', hint: 'Toca a progressão de trás para a frente',
     apply: z => ({ progression: z.progression.slice().reverse() }) },
   { id: 'penta', label: 'Penta ↔ diatônica', group: 'Melodia', hint: 'Pentatônica vira a escala de 7 notas e vice-versa',
-    apply: z => ({ scale: z.scale === 'majorPenta' ? 'major' : z.scale === 'minorPenta' ? 'minor' : z.scale === 'blues' ? 'minorPenta' : MINORISH.includes(z.scale) ? 'minorPenta' : 'majorPenta' }) },
+    apply: z => { const scale: ScaleId = z.scale === 'majorPenta' ? 'major' : z.scale === 'minorPenta' ? 'minor' : z.scale === 'blues' ? 'minorPenta' : MINORISH.includes(z.scale) ? 'minorPenta' : 'majorPenta'; return { scale, chordScale: fitChords(scale, z.chordScale) } } },
   { id: 'mirror', label: 'Espelho melódico', group: 'Melodia', hint: 'Liga ou desliga o espelho na cadeia do ambiente (melodia de cabeça para baixo)',
     apply: z => ({ chain: toggleStep(z.chain, newTransform('mirror')) }) },
   { id: 'counter', label: 'Contracanto', group: 'Melodia', hint: 'Liga ou desliga uma segunda voz em terças na cadeia do ambiente',

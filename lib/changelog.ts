@@ -5,6 +5,18 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.5.1',
+    date: '10/11/2026',
+    title: 'Música ambiente das zonas afinada',
+    groups: [
+      { title: 'Pátio', items: [
+        'O drone de fundo das zonas toca a terça de cada acorde, então dá para ouvir se ele é maior, menor ou diminuto, e a quinta do acorde em vez de uma quinta fixa.',
+        'O drone muda de nota na virada do compasso, sem deslizar entre uma nota e outra, e o grave fica perto da tônica em vez de saltar uma oitava.',
+        'Os acordes de cada zona sempre combinam com a escala: trocar a escala, o Random e as mudanças de modo escolhem acordes que contêm todas as notas dela. No painel da zona, os acordes que desafinam com a escala aparecem marcados.',
+      ] },
+    ],
+  },
+  {
     version: '2.5.0',
     date: '09/11/2026',
     title: 'Inventário em grupos, arrastar itens e atalhos por grupo',
@@ -105,40 +117,6 @@ const RECENT = [
       'Armas e instrumentos não quebram mais com os golpes; com Quebra depois de em 0 o painel mostra “0 (nunca quebra)”. Itens ajustados antes mantêm os números que você mudou.',
       'Os painéis flutuantes do Pátio (Configurações, Volume, Itens, Players, editor e os outros) agora se arrastam por qualquer parte que não seja botão, campo ou slider, não só pelo título. No celular, numa lista que rola, o dedo rola a lista e o título continua arrastando. Clicar ou arrastar um painel o traz para a frente dos outros, e o painel que abre aparece na frente.',
     ] }],
-  },
-  {
-    version: '2.2.0',
-    date: '07/11/2026',
-    title: 'Pátio online, morte e morto-vivo, pássaros por tipo, Catálogo de aliens, a jukebox do Templo, o editor de músicas, as músicas na conta, o gerador MIDI, seis viagens Classical e pulsos simultâneos',
-    groups: [
-      { title: 'Pátio', items: [
-        'Pátio online: ligar Online no painel Players (ou no portal do globo) leva você ao lobby público aberto mais antigo do Pátio, com até 13 navegadores. Você vê as galinhas dos outros com o visual, o nome em cima e o item na mão; cada navegador tem uma cor, e quem joga com mais de uma galinha aparece numerada.',
-        'No lobby online, o dono é quem criou o Pátio ou, sem ele, quem chegou primeiro. Só o dono remove players, abre ou fecha o lobby (Público) e marca quem edita. O passador de lobby do cabeçalho anda pelos lobbies públicos abertos. Visitantes jogam só com um nome.',
-        'Até 4 players locais por computador, também no modo Local.',
-        'Modo editor ao vivo no lobby online: as mudanças do dono e de quem ele liberou aparecem na hora para todos, e quem entra depois já vê o Pátio editado. Só o dono salva no servidor, sem conflitos entre quem edita junto.',
-        'Novo histórico do chat: uma telinha semitransparente no canto lista as mensagens com o nick de quem enviou e pode ser rolada. Escrever continua igual (Enter), com o balão em cima da galinha.',
-        'Cada alien tem duas mortes, as duas no tempo da música: derrubado por golpe, tiro ou arremesso, toca um tambor que depende da espécie (bloco de madeira na água-viva, taiko na concha, palmas na lanterna); convertido por notas, toca um acorde ou arpejo.',
-        'Um alien derrubado deixa um morto-vivo: cinza, de olhos vermelhos, ele cai duro girando, quica cada vez menos e fica deitado onde caiu. Depois de um tempo levanta e anda pelo chão como um robô aspirador, virando nas bordas das plataformas e nas paredes. É inofensivo, e a galinha pode subir nele.',
-        'Notas enchem a barra do morto-vivo de novo e o trazem de volta como pássaro morto-vivo, com os olhos na cor da nota e o canto em menor. Armas destroem o morto-vivo de vez. Quando a música acaba, cada um vai embora depois do seu próprio tempo; no máximo 40 ficam ao mesmo tempo.',
-        'Os aliens convertidos viram pássaros de verdade, de cinco tipos (pardal, bem-te-vi, sabiá, canário e coruja), cada um com sua cor, seu canto na escala e seu jeito de voar. Cada lugar tem seus pássaros, e a Zona sonora pode escolher os dela. De vez em quando eles assobiam uma nota que a galinha pode rebater.',
-        'Novo Catálogo de aliens (ícone de fantasma no cabeçalho): cada alien das músicas é uma variação, uma espécie com seus parâmetros de corpo, movimento, tiro, rebate, sons e morto-vivo. Os cartões mostram o desenho animado; clicar abre os parâmetros, com botões para ouvir o disparo e as duas mortes, duplicar e voltar ao padrão. Fica salvo neste navegador.',
-        'Primeira leva de variações: Sino, Baixo e Neon (água-viva), Flauta, Brasa e Papel (lanterna), Taiko e Bronze (casco), Terças e Eco (gêmeos), Chocalho e Faísca (mini), Palmas, Caixa e Bumbo (tambor, em que rebater vira batida) e Fogo e Jade (dragão, com escala própria).',
-        'O disco do Templo do Gongo virou uma jukebox de neon. Bata nela para abrir o painel de músicas: uma grade de capas com a Campanha do Gongo e as músicas, com bpm, tom, duração e recorde. A escolhida é a que o gongo começa. Tocar começa na hora, e Salvar como guarda uma cópia com outro nome neste navegador.',
-        'Cada música ganha uma capa desenhada a partir da própria sequência de aliens: Sulco, como um vinil visto de cima, ou Grade, como um piano roll. Nas músicas salvas, dá para trocar o estilo, as cores e o fundo da capa.',
-        'Novo editor de músicas (Editar e Nova música, na jukebox): a música vira uma linha do tempo em compassos, com uma linha por faixa do leque e cada alien como um bloco do aparecimento ao encostar, com as notas em pontos. Arraste no tempo ou entre as faixas, dê duplo clique para criar um alien, Ctrl+clique para pôr nota e botão direito para tirar. Tem copiar, colar no cursor, desfazer e refazer, zoom, grade, tom, escala, bpm e uma prévia do semicírculo em volta da galinha. Tocar daqui toca o rascunho no templo a partir do compasso do cursor.',
-        'As músicas ganham pausas e falas. Uma pausa abre compassos sem aliens, com só o fundo tocando ou em silêncio total. Uma fala tem quem fala (o narrador, o Gongo, a galinha ou um alien do catálogo), o texto, o tempo na tela, o lugar (o banner do meio, um balão sobre quem fala ou uma faixa embaixo do placar) e um blip de voz a cada letra.',
-        'Quem entra com a conta guarda as músicas nela: cada música salva, editada ou apagada vai para a conta, e as feitas em outro aparelho aparecem na jukebox. Se a mesma música mudou nos dois lugares, a da conta fica e a deste aparelho vira uma cópia. A jukebox diz onde as músicas estão, e o admin vê as músicas de todos, podendo ouvir ou copiar cada uma.',
-        'Novo Gerar de MIDI na jukebox: escolha um arquivo .mid, as faixas que entram e o alien de cada uma (a bateria vira bumbo, caixa, palmas e chocalho), a dificuldade, o tom e os compassos. O gerador alinha as notas na grade, deixa só as que a dificuldade aguenta, encaixa tudo nas faixas do leque e junta as notas seguidas em aliens de 5 a 15 tiros. Dá para ouvir no templo antes, e a música abre no editor para ajustar.',
-      ] },
-      { title: 'Música', items: [
-        'A campanha Classical ganha três músicas originais: Venice 1725 · Baroque concerto, Copenhagen 1869 · Nordic piano concerto e Paris 1913 · Modernist ballet. Cada uma tem doze seções, novos contrastes, regiões harmônicas e diálogos próprios entre as peças.',
-        'Mais contrabaixos arco e pizzicato, piano de cauda em duas mãos, trombone e percussão orquestral gravada — incluindo bumbo sinfônico e tam-tam — ampliam a paleta. Os novos kits alternam ritornelos, solos, cadência de piano, passagens líricas e ritmos assimétricos.',
-        'Os três kits Classical foram reconstruídos com cordas nos oito peões e madeiras, metais, cravo ou tímpanos na fileira de trás. Novas gravações acústicas, frases de dezesseis compassos, dinâmica e dez seções dão mais espaço para solos, diálogos, desenvolvimento e retomadas.',
-        'Vienna 1780 agora se chama Viennese Sinfonietta. Leipzig 1723 tem uma direção pastoral barroca e Vienna 1825 ganha uma abertura romântica em alla breve, com regiões harmônicas contrastantes.',
-        'Todas as peças que tocam juntas podem mostrar o pulso de nota ao mesmo tempo. Preferências ganhou Pulsos simultâneos no tabuleiro, ligado por padrão e salvo no navegador. Desligar volta ao destaque de uma peça por vez no Criativo, na campanha e no online.',
-      ] },
-      { title: 'Criativo', items: ['O contador de ovos foi removido do tabuleiro do Criativo.', 'Avisos como Kit carregado somem automaticamente após alguns segundos. O botão de fechar fica reservado aos alertas que precisam de confirmação de leitura, como falhas ao preservar ou salvar o rascunho.'] },
-    ],
   },
 ]
 

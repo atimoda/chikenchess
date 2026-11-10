@@ -27,7 +27,7 @@ import { ALIEN_PATTERNS } from "@/lib/pigchicken/enemies"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
 import { mixGain } from "@/lib/pigchicken/mixer"
-import { ZONES, chordName, zoneLabel, type Zone } from "@/lib/pigchicken/music"
+import { ZONES, chordName, droneOf, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
 import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
@@ -997,7 +997,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const templeZone = combat.music.zone.id.startsWith("templo")
       events.forEach(e => {
         if (mixGain("ambience") <= 0) return
-        if (e.kind === "bar" && !stage.silent) drone.set(combat.music.chord()[0])
+        if (e.kind === "bar" && !stage.silent) { const d = droneOf(combat.music.zone, combat.music.chord()); drone.set(d.root, d.fifth, d.third) }
         if (e.kind === "step") {
           // a pause in total silence: no background
           if (templeZone) { if (!stage.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }

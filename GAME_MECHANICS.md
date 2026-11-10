@@ -26,6 +26,7 @@
 | Pátio: golpe, bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
+| Pátio: camadas (olho), tags das zonas, música ambiente (drone e percussão), zonas das cenas, paredes com vida | [Zonas e camadas](docs/mechanics/patio/zones.md) |
 | Admin e catálogos locais | [Admin](docs/mechanics/admin.md) |
 | Online 1v1: salas, lobby e convites | [Lobby](docs/mechanics/online/lobby.md) |
 | Online 1v1: partidas simultâneas e retorno ao globo | [Globo e recuperação](docs/mechanics/online/globe-and-recovery.md) |
@@ -63,7 +64,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: modo editor, layout e salvar/abrir](docs/mechanics/patio/editor.md) | 17 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 12 KB |
-| [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 17 KB |
+| [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |
+| [Pátio: zonas sonoras, camadas e música ambiente](docs/mechanics/patio/zones.md) | 10 KB |
 | [Pátio: Templo do Gongo, fase de notas, mortes e catálogo de aliens](docs/mechanics/patio/temple.md) | 17 KB |
 | [Pátio: mundo, cenário, portais, Vila, árvores e trampolim](docs/mechanics/patio/world.md) | 25 KB |
 | [Gestos e custo de processamento](docs/mechanics/performance.md) | 21 KB |
