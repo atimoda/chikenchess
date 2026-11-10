@@ -39,6 +39,7 @@ const RECENT = [
         'Andando por Chãos com rampas suaves, a galinha passa pelas dobras e pelos picos do piso sem ficar presa andando no lugar nem tremer; subindo uma rampa, ela acompanha o piso sem pousos repetidos. O degrau automático só acontece na beirada solta de um piso.',
         'Pintinhos: quatro pintinhos seguem a galinha desde o globo, caindo do céu logo depois dela, e em cada Pátio que ela entra nasce um bando novo de quatro. Cada um tem uma cor natural sorteada (amarelo, creme, preto e creme, prata, caramelo, listrado, chocolate, ardósia, carijó ou pintado). Eles andam, correm e batem asas como a galinha, em tamanho de pintinho, com pulo e voo bem mais fracos e a cabeça balançando pouco; param a distâncias diferentes, demoram tempos diferentes para voltar a correr atrás dela, dão pulinhos para alcançá-la quando ela sobe e descem pelas plataformas quando ela está embaixo.',
         'O Passaguá captura os pintinhos como os pássaros: cada um soma uma alma no contador de quem pegou.',
+        'Clicar ou tocar no botão de qualquer portal do Pátio (a volta ao globo e os pares de portais) faz a galinha andar até ele e entrar sozinha ao encostar, como no portal do globo; mexer a galinha no caminho cancela a ida.',
       ] },
       { title: 'Interface', items: [
         'No Criativo, a aba Modulation do Instrument ganha o visual da aba Tuning: nome completo e ajuda em cada controle, knobs verdes e seletores na mesma célula dos knobs.',

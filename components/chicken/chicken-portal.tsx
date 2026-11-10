@@ -350,7 +350,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       return !!shown && Math.hypot(x - shown.x, y - shown.y) <= r * (inWorld ? liveCamera.zoom : 1)
     }
     const onPortalPointerDown = (e: PointerEvent) => {
-      portalPressPointer = !document.body.classList.contains('pigchicken-camera-mode') && e.isPrimary && e.button === 0 && insidePortal(e.clientX, e.clientY) ? { id: e.pointerId, walk: e.pointerType === 'mouse' && !!buttonRef.current?.querySelector('button')?.contains(e.target as Node) } : null
+      portalPressPointer = !document.body.classList.contains('pigchicken-camera-mode') && e.isPrimary && e.button === 0 && insidePortal(e.clientX, e.clientY) ? { id: e.pointerId, walk: !!buttonRef.current?.querySelector('button')?.contains(e.target as Node) } : null
     }
     const onPortalPointerUp = (e: PointerEvent) => {
       const press = portalPressPointer
@@ -566,8 +566,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
             aria-label="Usar portal"
             aria-description={label.trim() || undefined}
             onClick={e => { if (e.detail === 0) enterRef.current?.(true) }}
-            disabled={!touching && !engine?.canPointAndClick()}
-            title={touching ? "Usar portal (mesmo comando de Pegar)" : engine?.canPointAndClick() ? "Ir até o portal e entrar" : "Aproxime o boneco para usar o portal"}
+            disabled={!touching && !engine?.canWalkToPortal()}
+            title={touching ? "Usar portal (mesmo comando de Pegar)" : engine?.canWalkToPortal() ? "Ir até o portal e entrar" : "Aproxime o boneco para usar o portal"}
             className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 disabled:cursor-default"
           >
             {label.trim() ? label : "Usar"}

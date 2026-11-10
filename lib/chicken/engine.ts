@@ -59,6 +59,8 @@ export type ChickenEngine = {
   peekActions: () => Record<ChickenAction, boolean>
   peekUse: (now: number) => boolean
   canPointAndClick: () => boolean
+  // Clicking a portal's button may walk her there in every mode (the Pátio's game mode included).
+  canWalkToPortal: () => boolean
   walkToPortal: (id: string, point: { x: number; y: number }) => boolean
   isWalkingToPortal: (id: string) => boolean
   cancelPortalWalk: (id: string) => void
@@ -1285,6 +1287,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let goal: { x: number; y: number; checkT: number; checkX: number; portalId?: string } | null = null
   let tap: { id: number; x: number; y: number; t: number } | null = null
   const canPointAndClick = () => !game.gameMode && !remote && !portalEntry && (!devices || devices.includes('mouse'))
+  // The portal button's walk is not the scene's point-and-click: it works in game mode too, for the mouse or touch owner.
+  const canWalkToPortal = () => !remote && !portalEntry && (!devices || devices.includes('mouse') || devices.includes('touch'))
   const manualWalkInput = () => WALK_ACTIONS.some(action => input(action))
   const ignoreTap = (t: EventTarget | null) => {
     const n = t as Element | null
@@ -1936,9 +1940,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     getState: () => ({ ...motionState(), shoulder: shoulder() }),
     getMotionState: motionState,
     canPointAndClick,
+    canWalkToPortal,
     walkToPortal(id, point) {
       pollPad()
-      if (!canPointAndClick() || S.held || S.cl || manualWalkInput()) return false
+      if (!canWalkToPortal() || S.held || S.cl || manualWalkInput()) return false
       const m = 40 * R.scale
       goal = { x: clamp(point.x, m, W - m), y: point.y, checkT: .3, checkX: S.x, portalId: id }
       if (R.broodStandOnMove) S.broodLatch = false
@@ -1948,7 +1953,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       // Check live input here too: portal/physics frame ordering must not beat a cancellation.
       if (goal?.portalId !== id) return false
       pollPad()
-      if (!canPointAndClick() || S.held || S.cl || manualWalkInput()) goal = null
+      if (!canWalkToPortal() || S.held || S.cl || manualWalkInput()) goal = null
       return goal?.portalId === id
     },
     cancelPortalWalk(id) { if (goal?.portalId === id) goal = null },
