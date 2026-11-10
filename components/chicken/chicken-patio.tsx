@@ -66,7 +66,6 @@ import {
 } from "@/lib/chicken/lobby"
 import type { ChickenLook } from "@/lib/chicken/look-art"
 import { LobbySwitcher, LocalChickens, PlayersPanel, lookForNewPlayer, useInputDevices } from "./players-panel"
-import { ChickFlock } from "./chick-flock"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
 // The globe portal is the layout's entry portal (moved in the editor, never deleted); she starts just to its right,
@@ -639,11 +638,10 @@ export function ChickenPatio() {
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
       <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} />
 
-      <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} />
+      <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
-      <ChickFlock lead={engine} groundHeight={groundHeight} engines={chickEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} />}
       <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} hitboxes={patioLayers.layers.hitboxes} />
       {/* the trees in front of her (half see-through) */}

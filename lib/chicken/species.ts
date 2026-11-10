@@ -45,6 +45,10 @@ export const CHICK_FACTORS: Partial<Record<NumKey, number>> = {
   stepTime: 0.65,
   stepGap: 0.65,
   headSnapTime: 0.7,
+  // the head bobs much less walking and running
+  headLead: 0.35,
+  runHeadTilt: 0.35,
+  bodyRock: 0.6,
   // a lighter body: falls a little slower at the top speed
   terminalVelocity: 0.85,
 }

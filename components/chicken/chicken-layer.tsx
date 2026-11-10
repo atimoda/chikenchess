@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { ChevronsUp, Egg, Footprints, Gamepad2 } from "lucide-react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
+import { ChickFlock } from "./chick-flock"
 import { refreshChickenConfig } from "@/lib/chicken/config"
 import { loadChickenControls, setTouchMoveStick, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
 import { magnetVector } from "@/lib/chicken/analog-magnet"
@@ -149,9 +150,13 @@ export function usePortrait() {
 // touch: forces the on-screen controls on or off (the globe has its own switch); left out, the saved setting decides
 // dropAvoid: horizontal spans (for a window this wide) the entrance fall must not start above
 // fixedScale: she keeps one size on every screen (a world in fixed units, such as the Pátio's) instead of shrinking on small ones
-export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM, touch, dropAvoid, fixedScale = false }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number; touch?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean }) {
+// chickEngines: where the chicks that follow her are kept (the Pátio moves them with its camera); chickKey: a new value
+// brings a new flock (another Pátio), null holds it back (see ChickFlock)
+export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM, touch, dropAvoid, fixedScale = false, chickEngines, chickKey }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number; touch?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean; chickEngines?: React.RefObject<Map<string, ChickenEngine>>; chickKey?: string | null }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<ChickenEngine | null>(null)
+  const [mother, setMother] = useState<ChickenEngine | null>(null)
+  const ownChicks = useRef(new Map<string, ChickenEngine>())
   const savedTouch = useChickenTouch()
   const { editing } = useTouchLayout()
   const showTouch = editing || (touch ?? savedTouch)
@@ -170,7 +175,8 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
     const engine = createChickenEngine(hostRef.current, { groundHeight: groundRef.current, dropIn, fixedScale, dropAvoid: w => avoidRef.current?.(w) ?? [] })
     engineRef.current = engine
     onEngineRef.current?.(engine)
-    return () => { onEngineRef.current?.(null); engine.destroy(); engineRef.current = null }
+    setMother(engine)
+    return () => { onEngineRef.current?.(null); setMother(null); engine.destroy(); engineRef.current = null }
   }, [dropIn, fixedScale])
 
   useEffect(() => { engineRef.current?.setGroundHeight(groundHeight) }, [groundHeight])
@@ -182,6 +188,7 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
       {showTouch && <TouchControls set={set} bottom={controlsBottom} />}
       {editing && <TouchLayoutBar />}
       <div ref={hostRef} className="pointer-events-none fixed inset-0 z-[200]" />
+      <ChickFlock lead={mother} groundHeight={groundHeight} engines={chickEngines ?? ownChicks} fixedScale={fixedScale} spawnKey={chickKey} />
     </>
   )
 }
