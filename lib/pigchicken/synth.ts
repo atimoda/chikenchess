@@ -60,7 +60,7 @@ function noise(a: AudioContext) {
   const s = a.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s
 }
 
-export type Held = { setPitch: (midi: number) => void; stop: () => void }
+export type Held = { setPitch: (midi: number) => void; setVolume?: (v: number) => void; stop: () => void }
 
 // plays one note; `at` is a delay in seconds (to land on the grid), `dur` how long it is held; `fade` (seconds)
 // adds a gentle fade-in on top of the voice's own attack, so even plucked voices start without a click
@@ -72,11 +72,14 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
   const dur = opts.dur ?? 0.3
   const f = midiHz(midi)
   const out = a.createGain()
+  // a held note's loudness on top of its envelope (setVolume: the aim's distance on the violin's beam)
+  const level = a.createGain()
+  out.connect(level)
   const fade = Math.max(0, opts.fade ?? 0)
   if (fade > 0) {
     const fg = a.createGain(); fg.gain.setValueAtTime(0, t); fg.gain.linearRampToValueAtTime(1, t + fade)
-    out.connect(fg); fg.connect(bus)
-  } else out.connect(bus)
+    level.connect(fg); fg.connect(bus)
+  } else level.connect(bus)
   const sources: AudioScheduledSourceNode[] = []
   const freqs: AudioParam[] = [] // pitched params that follow setPitch (each with its ratio)
   const ratios: number[] = []
@@ -200,6 +203,7 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       const now = a.currentTime, nf = midiHz(m)
       freqs.forEach((p, i) => { p.cancelScheduledValues(now); p.setValueAtTime(p.value, now); p.exponentialRampToValueAtTime(nf * ratios[i], now + 0.06) })
     },
+    setVolume(x: number) { level.gain.setTargetAtTime(Math.max(0, Math.min(1, x)), a.currentTime, 0.03) },
     stop() { const now = a.currentTime; v.end = now; out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), now); out.gain.exponentialRampToValueAtTime(0.0001, now + 0.25); sources.forEach(s => { try { s.stop(now + 0.3) } catch { /* ok */ } }) },
   }
 }

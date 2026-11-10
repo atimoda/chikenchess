@@ -1,7 +1,8 @@
 // Tremolo da mira: shaking the aim inside the same lane of the instrument's fan bends the note a little, so a
-// trembling hand makes a controllable vibrato. Only the movement counts: the aim's position in the fan (in lanes)
-// is followed by a slow copy of itself, and the gap between them (how far the aim just moved) is the bend, so a
-// still aim always plays the plain note. Only movement while a note plays counts: with nothing playing (Fire not
+// trembling hand makes a controllable vibrato. Only the turning of the aim counts (its distance never does): the
+// aim's elevation angle is followed by a slow copy of itself, and the gap between them (how many degrees the aim
+// just turned, every degree worth the same anywhere in the fan) is the bend, so a still aim always plays the plain
+// note. Only movement while a note plays counts: with nothing playing (Fire not
 // held, or the violin's bow not on) everything restarts, so every note starts in tune wherever in the fan it starts.
 //   fretted (frets): the note stays its lane's note and the bend stays within `range` (±½ semitone by default);
 //     entering another lane starts the new note clean.
@@ -15,7 +16,7 @@ export const TREMOLO_GLIDE = 0.12 // s a fretless note takes to slide to a new l
 export const TREMOLO_FRETTED_MAX = 0.5
 export const TREMOLO_FRETLESS_MAX = 2
 
-export type TremoloState = { slow: number; lane: number; base: number | null }
+export type TremoloState = { slow: number; lane: number; base: number | null } // slow: the elevation's slow copy (rad)
 
 export const newTremolo = (): TremoloState => ({ slow: NaN, lane: -1, base: null })
 
@@ -30,13 +31,16 @@ export function stepTremolo(s: TremoloState, pool: number[], up: number, dt: num
   const pos = aimLanePos(up, n)
   const lane = Math.max(0, Math.min(n - 1, Math.round(pos)))
   const note = pool[lane]
-  if (!(amount > 0) || n < 2 || !playing) { s.slow = pos; s.lane = lane; s.base = note; return note }
+  // the elevation (rad, -π/2 down … π/2 up): the bend follows the angle, not the height
+  const elev = Math.asin(Math.max(-1, Math.min(1, up)))
+  if (!(amount > 0) || n < 2 || !playing) { s.slow = elev; s.lane = lane; s.base = note; return note }
   const fresh = !Number.isFinite(s.slow)
   // a new lane starts the bend clean (a fretless note slides to the new note below instead of jumping)
-  if (fresh || lane !== s.lane) s.slow = pos
-  else s.slow += (pos - s.slow) * (1 - Math.exp(-Math.max(0, dt) / TREMOLO_FOLLOW))
+  if (fresh || lane !== s.lane) s.slow = elev
+  else s.slow += (elev - s.slow) * (1 - Math.exp(-Math.max(0, dt) / TREMOLO_FOLLOW))
   s.lane = lane
-  const d = pos - s.slow
+  // the turn in lanes' worth: as many lanes per radian as the fan has at the horizon, the same everywhere
+  const d = (elev - s.slow) * ((n - 1) / 2)
   // a lane's worth of movement bends by the interval to the neighbour it moves toward
   const next = d >= 0 ? pool[Math.min(n - 1, lane + 1)] - note : note - pool[Math.max(0, lane - 1)]
   const interval = next > 0 ? next : 2

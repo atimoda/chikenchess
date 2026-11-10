@@ -3,6 +3,8 @@
 // Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
 // picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
 import { PatioRange } from "@/components/ui/patio-range"
+import { PatioDualRange } from "@/components/ui/patio-dual-range"
+import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
@@ -123,6 +125,12 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <label className="flex items-center justify-between gap-3"><span>Nota sustentada em feixe</span><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Carga em glissando</span><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Sem trastes (tremolo livre)</span><input type="checkbox" checked={it.fretless} onChange={e => { const v = e.target.checked; update(d => { d.fretless = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <PatioDualRange label="Volume pela distância" min={0} max={1} step={0.01} lo={it.volMin} hi={it.volMax} snap={VOLUME_SNAP}
+                    display={it.volMin === it.volMax ? "sem variação" : `${Math.round(it.volMin * 100)}–${Math.round(it.volMax * 100)}%`}
+                    changed={it.volMin !== DEFAULT_ITEMS[it.id].volMin || it.volMax !== DEFAULT_ITEMS[it.id].volMax}
+                    hint="Mira perto dela: volume mínimo; longe: máximo. Pontos juntos = sem variação"
+                    onChange={(lo, hi) => update(d => { d.volMin = lo; d.volMax = hi })}
+                    onReset={() => update(d => { d.volMin = DEFAULT_ITEMS[d.id].volMin; d.volMax = DEFAULT_ITEMS[d.id].volMax })} />
                 </>
               )}
               {g === "Efeito" && (

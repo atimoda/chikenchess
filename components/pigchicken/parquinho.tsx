@@ -55,6 +55,8 @@ import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
+import { aimReach } from "@/lib/pigchicken/aim-volume"
+import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { stageWidth } from "@/lib/stage-size"
@@ -863,6 +865,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         return { box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
       }))
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
+      // the aim's distance from her sets the instrument's loudness (lib/pigchicken/aim-volume.ts)
+      combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, stick: aim.source === "rightStick" || aim.source === "touch" ? aim.strength : null }))
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
@@ -899,6 +903,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        combat.setAimReach(rs ? rs.mag : 1)
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
@@ -1073,6 +1078,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.use("p1")
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const tints = colorsRef.current
+      drawVolumeRing(ctx, combat, rx, ry, tints?.p1 ?? "#ffffff")
       drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
       if (hitboxesRef.current) {
         drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
@@ -1111,6 +1117,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
         }
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        drawVolumeRing(ctx, combat, xrx, xry, tints?.[id] ?? "#ffffff")
         drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
         if (combat.throwCharge > 0 && combat.held) {
           const from = eng.heldPoint(combat.throwAngle, 0, 0)

@@ -80,3 +80,31 @@ test('the limit caps the bend each way', () => {
   assert.equal(DEFAULT_ITEMS.violin.tremoloRange, 2)
   assert.equal(DEFAULT_ITEMS.flute.tremoloRange, 0.5)
 })
+
+test('every degree of turn bends the same, near the horizon or pointing high up', () => {
+  const even = Array.from({ length: 13 }, (_, i) => 48 + 2 * i) // whole tones: the same interval everywhere
+  const up = d => Math.sin(d * Math.PI / 180)
+  const bendAfter = (fromDeg, toDeg) => {
+    const s = newTremolo()
+    stepTremolo(s, even, up(fromDeg), 0.016, 1, false, true, 3)
+    const p = stepTremolo(s, even, up(toDeg), 0.016, 1, false, true, 3)
+    return p - even[Math.round(aimLanePos(up(toDeg), even.length))]
+  }
+  const flat = bendAfter(0, 2), steep = bendAfter(60, 62)
+  assert.ok(flat > 0.05 && Math.abs(flat - steep) < 0.02, `${flat} vs ${steep}`)
+})
+
+const vol = loadTs('lib/pigchicken/aim-volume.ts')
+test('volume by distance: min close, max far, no change with both points together', () => {
+  assert.equal(vol.aimVolume(0.3, 1, 0), 0.3)
+  assert.equal(vol.aimVolume(0.3, 1, 1), 1)
+  assert.equal(vol.aimVolume(0.6, 0.6, 0.2), 0.6)
+  assert.equal(vol.aimReach({ px: vol.VOLUME_REACH * 2 }), 1)
+  assert.equal(vol.aimReach({ px: vol.VOLUME_REACH / 2 }), 0.5)
+  assert.equal(vol.aimReach({ stick: 0.25 }), 0.25)
+  assert.equal(vol.aimReach({}), 1)
+  for (const id of ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']) {
+    assert.ok(DEFAULT_ITEMS[id].volMin < DEFAULT_ITEMS[id].volMax, id)
+  }
+  assert.equal(DEFAULT_ITEMS.pistol.volMin, DEFAULT_ITEMS.pistol.volMax)
+})

@@ -142,6 +142,8 @@ export type ItemDef = {
   gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
   tremoloRange: number // semitones the tremolo can bend a note each way
+  volMin: number // 0..1: loudness of its notes with the aim close to her (lib/pigchicken/aim-volume.ts)
+  volMax: number // 0..1: with the aim far; equal to volMin = the distance changes nothing
   fretless: boolean // no frets (violin): the bend is free and changing lane slides instead of jumping
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
@@ -161,7 +163,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, fretless: false,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, fretless: false,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
 }
 
@@ -300,7 +302,7 @@ const FLUTE: ItemDef = {
   ...PISTOL, ...MUSIC_MELEE, id: 'flute', name: 'Flauta', family: 'Flautas', reticle: 'dot',
   rate: 13, mag: 60, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
   recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
-  instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35,
+  instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35, volMin: 0.45,
   throwCharge: 0.3, rebateChain: chain(['octave', 'fixed', 1]),
 }
 // Palhetas → SMG: holding plays a fast arpeggio of the chord
@@ -308,7 +310,7 @@ const SAX: ItemDef = {
   ...SMG, ...MUSIC_MELEE, id: 'sax', name: 'Sax', family: 'Palhetas', reticle: 'circle',
   rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
   recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 120, muzzleX: 32, muzzleY: 18, length: 50,
-  instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5,
+  instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
   rebateChain: chain(['transpose', 'degree', 2]),
 }
 // Metais → rifle: a phrase of 3 notes per press, going through one enemy
@@ -316,7 +318,7 @@ const TRUMPET: ItemDef = {
   ...RIFLE, ...MUSIC_MELEE, id: 'trumpet', name: 'Trompete', family: 'Metais', reticle: 'cross',
   fireMode: 'burst', burst: 3, rate: 9, mag: 24, reloadTime: 0.2, refillTime: 0.25, speed: 1300, damage: 10, size: 10, pierce: 1,
   recoilKick: 3, recoilPush: 790, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
-  instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4,
+  instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4, volMin: 0.55,
   rebateChain: chain(['voices', 'power']),
 }
 // Cordas → pump: a strummed chord in a fan, each pellet one note of the chord
@@ -324,7 +326,7 @@ const GUITAR: ItemDef = {
   ...PUMP, ...MUSIC_MELEE, id: 'guitar', name: 'Violão', family: 'Cordas', reticle: 'cone',
   rate: 17, burst: 5, mag: 60, reloadTime: 0.2, refillTime: 0.55, refillAmount: 4, pellets: 2, speed: 900, damage: 9, size: 10, range: 850,
   spreadBase: 20, spreadMax: 30, recoilKick: 5, turnRate: 0, muzzleX: 87, muzzleY: 0, length: 87,
-  instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022, tremolo: 0.45,
+  instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022, tremolo: 0.45, volMin: 0.5,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 0.15]),
 }
 // Cordas friccionadas → sniper: a held note in a beam; it keeps the enemy still while it plays
@@ -332,7 +334,7 @@ const VIOLIN: ItemDef = {
   ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 420, muzzleX: 78, muzzleY: 0, length: 78,
-  instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, fretless: true,
+  instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
   rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
 }
 // Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
@@ -340,21 +342,21 @@ const KEYS: ItemDef = {
   ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: 'Teclado', family: 'Teclas', reticle: 'impact',
   rate: 1, burst: 4, chargeTime: 0.25, mag: 33, reloadTime: 1.4, speed: 650, size: 12, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0, hitscan: true,
   recoilKick: 6, muzzleX: 82, muzzleY: -9, length: 82,
-  instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6,
+  instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6, volMin: 0.6,
   rebateChain: chain(['voices', 'seventh']),
 }
 // Percussion fires a musical note with a fuse, then lets out notes in a circle.
 const TAMBOURINE: ItemDef = {
   ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
   mag: 3, fuse: 1.6, range: 3000, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 12, muzzleX: 14, muzzleY: 0, length: 20,
-  instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10,
+  instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
 // Harpas → bow: the charge is a glissando, the note rises with the charge and flies far and precise
 const HARP: ItemDef = {
   ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa', family: 'Harpas', reticle: 'bow',
   damage: 40, size: 12, speed: 1500, drop: 700, muzzleX: 21, muzzleY: -10, length: 30,
-  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true,
+  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
 }
 
@@ -526,6 +528,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
       ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
       if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
       if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
+      ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
       if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
       if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
       if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
