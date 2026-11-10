@@ -65,7 +65,6 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         // best-effort guest transfer must not make the completed login look failed.
         setError(null)
         setStep('saved')
-        setNotice('Login realizado. A cópia do perfil visitante continua guardada neste navegador.')
       } else {
         setError(onlineErrorMessage(cause))
       }
@@ -350,10 +349,10 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       {savePending && <Button disabled={busy} onClick={() => void retrySave()}>Tentar salvar perfil</Button>}
       {notice && <p role="status" className="text-xs text-primary">{notice}</p>}
       {busy && <p role="status" className="text-xs text-white/60">{popupWaiting.current ? 'Aguardando Google…' : 'Aguarde…'}</p>}
-      <div className="space-y-2 border-t border-white/10 pt-3 text-center">
+      {step !== 'saved' && step !== 'conflict' && <div className="space-y-2 border-t border-white/10 pt-3 text-center">
         <p className="text-xs leading-relaxed text-white/50">By signing in, you agree to our Terms of Service. Our Privacy Policy explains how we handle your information.</p>
         <LegalLinks newTab className="text-white/65" />
-      </div>
+      </div>}
       {step !== 'saved' && step !== 'conflict' && <Button variant="ghost" className="text-white/60" onClick={() => changeOpen(false)}>Cancel</Button>}
     </DialogContent>
   </Dialog>

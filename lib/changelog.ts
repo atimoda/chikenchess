@@ -38,6 +38,7 @@ const RECENT = [
         'Andando por Chãos com rampas suaves, a galinha passa pelas dobras do piso sem dar um tranco nem uma pequena agarrada; o degrau automático só acontece na beirada solta de um piso.',
       ] },
       { title: 'Interface', items: [
+        'Na tela Perfil salvo (e no resumo da migração do perfil visitante), saem o aviso sobre a cópia do visitante e o rodapé dos termos de uso; eles ficam só na tela de login/cadastro.',
         'Nos painéis do PigChicKen, as instruções dos parâmetros ficam no hover do campo; a cópia abaixo some para dar espaço ao nome e ao valor.',
         'No painel Itens, a frase de família e persistência abaixo da seleção sai; as listas de sliders ficam com 3 px entre campos em todos os painéis que usam essa barra.',
         'No popup de lobby, as linhas dos jogadores ficam sem cartões; uma divisória fina separa cada participante.',
