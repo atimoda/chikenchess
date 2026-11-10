@@ -13,7 +13,7 @@ import { requestGameFrame, cancelGameFrame } from '../game-frame'
 import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenArtSet, type ChickenLook } from './look-art'
 import { speciesParams, type BirdSpecies } from './species'
-import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
+import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, chickenClucks, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
@@ -233,7 +233,7 @@ function sharedAudioContext() {
   if (a.ctx) { if (a.ctx.state === 'suspended') void a.ctx.resume(); return a.ctx }
   try { a.ctx = new (window.AudioContext || (window as any).webkitAudioContext)() } catch { a.ctx = null; return null }
   const ctx = a.ctx
-  Object.values(CHICKEN_CLUCKS).flat().forEach(name => {
+  ;[CHICKEN_CLUCKS, ...Object.values(CHICKEN_VOICES)].flatMap(v => Object.values(v).flat()).forEach(name => {
     if (a.buffers[name]) return
     fetch(`/audio/chicken/${name}.mp3`).then(r => r.arrayBuffer()).then(b => ctx.decodeAudioData(b)).then(buf => { a.buffers[name] = buf }).catch(() => {})
   })
@@ -276,7 +276,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let ownArt: ChickenArtSet | null = opts.art ?? null
   // the eye's middle in the head (rig units): every face may set its own
   let eyeAt = { x: 51, y: -192 }
+  // her voice: the breed of her beak, if that breed has clucks of its own (params.ts CHICKEN_VOICES)
+  let voice = ''
   function paintLook(look: ChickenLook) {
+    voice = look.beak
     const A = ownArt ?? lookArt(look)
     const set = (name: string, html: string | undefined) => { part(name).innerHTML = html ?? '' }
     set('artComb', A.comb.svg); set('artFace', A.face.svg); set('artBeak', A.beak.svg); set('artWattle', A.wattle.svg)
@@ -385,10 +388,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     actx = sharedAudio.ctx
     if (!v || !actx || !controls.sound || R.volume <= 0) return
     const cats = v === 'all' ? Object.keys(CHICKEN_CLUCKS).filter(c => (R as any)['snd_' + c]) : [v]
-    const ready = (c: string) => (CHICKEN_CLUCKS[c] || []).filter(n => buffers[n])
+    const ready = (c: string) => chickenClucks(voice, c).filter(n => buffers[n])
     // byType: draw the type first, so every type has the same chance however many samples it has
     const types = R.byType ? cats.filter(c => ready(c).length) : cats
-    let pool = R.byType ? ready(types[Math.floor(Math.random() * types.length)] ?? '') : cats.flatMap(ready)
+    // (a voice may share samples between types: each counts once)
+    let pool = R.byType ? ready(types[Math.floor(Math.random() * types.length)] ?? '') : [...new Set(cats.flatMap(ready))]
     if (R.avoidRepeat && pool.length > 1) pool = pool.filter(n => n !== lastName)
     const name = pool[Math.floor(Math.random() * pool.length)]
     if (!name) return

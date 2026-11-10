@@ -156,3 +156,16 @@ export const CHICKEN_CLUCKS: Record<string, string[]> = {
   grito: ['grito_04', 'grito_10', 'grito_12', 'grito_17', 'grito_19', 'grito_20'],
   murmurio: ['murmurio_01', 'murmurio_03', 'murmurio_05', 'murmurio_07', 'murmurio_08', 'murmurio_09', 'murmurio_10', 'murmurio_11', 'murmurio_15'],
 }
+
+// Breed voices: a breed with clucks of its own replaces the chicken's of every type. A chicken speaks with the
+// breed of her beak; the types switched on and each movement's choice stay the class's.
+export const CHICKEN_VOICES: Record<string, Record<string, string[]>> = {
+  // guinea fowl: its "tô fraco" call is the grito; the soft little cackle covers suave, medio and murmurio; the loud rattle is forte
+  angola: (() => {
+    const n = (g: string, k: number) => Array.from({ length: k }, (_, i) => `angola_${g}_${String(i + 1).padStart(2, '0')}`)
+    const suave = n('suave', 10)
+    return { cot_suave: suave, medio: suave, murmurio: suave, cot_forte: n('forte', 13), grito: n('tofraco', 12) }
+  })(),
+}
+// the samples of a type in a voice (a breed without its own clucks uses the chicken's)
+export const chickenClucks = (voice: string, type: string): string[] => (CHICKEN_VOICES[voice] ?? CHICKEN_CLUCKS)[type] ?? []
