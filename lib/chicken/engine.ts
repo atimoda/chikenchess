@@ -1213,6 +1213,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         const fy = floorY(sg, S.x)
         if (fy !== null && fy < feetY && fy > exitY) { exit = sg; exitY = fy }
       }
+      // walking up a slope her feet sink a little into it before the floor below catches up: she just follows it
+      if (exit && S.grounded && exitY >= feetY - STEP_UP * s) { S.y = exitY; S.plat = exit.id; S.platAx = exit.anchorX; return }
       if (exit) { S.cl = null; land(exitY, exit); return }
     }
     if (!S.grounded && S.vy < 0) return
@@ -1239,23 +1241,25 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     let best: Seg | null = null, bestY = S.y
     SEGS.forEach(sg => {
       if (sg.wall || !sg.topEdge || sg.id === S.plat) return
-      const fy = Math.min(sg.ay, sg.by)
+      const lo = Math.max(x0, Math.min(sg.ax, sg.bx)), hi = Math.min(x1, Math.max(sg.ax, sg.bx))
+      if (lo > hi) return
+      // a floor that goes on from another one (the next piece of a slope or a bend in a Chão, ahead of her or
+      // behind her) is walked along, not stepped onto: only a free end near her (a box's top, a step over a wall) is a step
+      if (continuesFloor(sg)) return
+      // the highest point of it within her reach (a sloped piece is not as high everywhere)
+      const fy = Math.min(floorY(sg, lo) as number, floorY(sg, hi) as number)
       if (fy >= S.y - 2 || fy < S.y - STEP_UP * s) return
-      if (Math.max(sg.ax, sg.bx) < x0 || Math.min(sg.ax, sg.bx) > x1) return
-      // a floor that goes on from another one (the next piece of a slope or a bend in a Chão) is walked onto,
-      // not stepped onto: only a free end facing her (a box's top, a step over a wall) is a step
-      if (continuesFloor(sg, heldDir || S.face)) return
       if (fy < bestY) { best = sg; bestY = fy }
     })
     if (!best) return
     const sg = best as Seg
     S.x = clamp(S.x, Math.min(sg.ax, sg.bx) + 4 * s, Math.max(sg.ax, sg.bx) - 4 * s)
-    land(bestY, sg); S.squash = 0.35
+    land(floorY(sg, S.x) ?? bestY, sg); S.squash = 0.35
   }
 
-  // the end of a floor she meets walking in `dir` is joined to another floor (within 2 px)
-  function continuesFloor(sg: Seg, dir: number) {
-    const [nx, ny] = (sg.ax < sg.bx) === (dir > 0) ? [sg.ax, sg.ay] : [sg.bx, sg.by]
+  // the end of a floor nearest her is joined to another floor (within 2 px)
+  function continuesFloor(sg: Seg) {
+    const [nx, ny] = Math.abs(sg.ax - S.x) < Math.abs(sg.bx - S.x) ? [sg.ax, sg.ay] : [sg.bx, sg.by]
     return SEGS.some(o => o !== sg && !o.wall && (Math.hypot(o.ax - nx, o.ay - ny) < 2 || Math.hypot(o.bx - nx, o.by - ny) < 2))
   }
 

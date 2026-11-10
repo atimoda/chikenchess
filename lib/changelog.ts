@@ -35,7 +35,7 @@ const RECENT = [
         'Para contas admin, o botão Salvar no game no painel Controles (ao lado de Restaurar padrão) e no fim do painel Itens grava, no Admin local, os controles ou os números de todos os itens como o padrão do jogo; depois do deploy, vale para quem nunca mexeu neles (e para Restaurar padrão nos Controles).',
         'Com o painel Itens aberto, equipar um item com o boneco principal troca o item mostrado no painel para ele.',
         'Enquanto Chocar fixo, segurar Agachar mostra a pose agachada; soltar Agachar restaura a pose chocando sem liberar a trava.',
-        'Andando por Chãos com rampas suaves, a galinha passa pelas dobras do piso sem dar um tranco nem uma pequena agarrada; o degrau automático só acontece na beirada solta de um piso.',
+        'Andando por Chãos com rampas suaves, a galinha passa pelas dobras e pelos picos do piso sem ficar presa andando no lugar nem tremer; subindo uma rampa, ela acompanha o piso sem pousos repetidos. O degrau automático só acontece na beirada solta de um piso.',
       ] },
       { title: 'Interface', items: [
         'Na tela Perfil salvo (e no resumo da migração do perfil visitante), saem o aviso sobre a cópia do visitante e o rodapé dos termos de uso; eles ficam só na tela de login/cadastro.',
