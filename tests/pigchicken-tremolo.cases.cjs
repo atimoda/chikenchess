@@ -102,6 +102,8 @@ test('volume by distance: min close, max far, no change with both points togethe
   assert.equal(vol.aimReach({ px: vol.VOLUME_REACH * 2 }), 1)
   assert.equal(vol.aimReach({ px: vol.VOLUME_REACH / 2 }), 0.5)
   assert.equal(vol.aimReach({ stick: 0.25 }), 0.25)
+  assert.equal(vol.aimReach({ px: 60, radius: 120 }), 0.5)
+  assert.equal(vol.aimReach({ px: 300, radius: 120 }), 1)
   assert.equal(vol.aimReach({}), 1)
   for (const id of ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']) {
     assert.ok(DEFAULT_ITEMS[id].volMin < DEFAULT_ITEMS[id].volMax, id)

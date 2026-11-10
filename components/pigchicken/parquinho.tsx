@@ -35,7 +35,7 @@ import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
 import { placeEnvAt, sceneZoneOf, soundZoneOf, zoneAt, type LanesBox, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
-import { drawScaleFan } from "@/components/pigchicken/draw/scale-fan"
+import { drawScaleFan, SCALE_FAN_R } from "@/components/pigchicken/draw/scale-fan"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
@@ -866,7 +866,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }))
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       // the aim's distance from her sets the instrument's loudness (lib/pigchicken/aim-volume.ts)
-      combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, stick: aim.source === "rightStick" || aim.source === "touch" ? aim.strength : null }))
+      // (mouse: full at the scale fan's circle; sticks: their value, which already starts at 0 at the dead zone's edge)
+      combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, radius: SCALE_FAN_R * scaleSizeRef.current * st.scale, stick: aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? aim.strength : null }))
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
@@ -903,7 +904,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
-        combat.setAimReach(rs ? rs.mag : 1)
+        combat.setAimReach((rs ?? ls)?.mag ?? 1)
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
