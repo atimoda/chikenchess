@@ -1,15 +1,20 @@
 "use client"
 
 // Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
-// picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
+// picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live. The admin's "Salvar no game"
+// writes every item's changes from the code to the game's official sheet (data/pigchicken/items.json, local Admin).
 import { PatioRange } from "@/components/ui/patio-range"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
-import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, SPORTS_IDS, WEAPON_IDS, loadItems, saveItems, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
+import { Database, X } from "lucide-react"
+import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, GAME_ITEMS, itemsDiff, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, SPORTS_IDS, WEAPON_IDS, loadItems, saveItems, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
 import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
+import { ItemPointsEditor } from "./item-points-editor"
+import { useOnline } from "@/components/online/online-provider"
+import { isAdminUser } from "@/lib/admin/access"
+import { saveOfficialItems } from "@/lib/admin/items-file-client"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "semi", label: "Semi (um por toque)" },
@@ -21,12 +26,12 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
 
 // what each item uses; the wing has no ammo, projectile or throw; a consumable has its effect (and its doses), a slap and a
 // throw; the taco has no shots, but its blows are its ammo (Munição)
-const CONSUMABLE_HIDES = ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Explosão", "Música", "Rebate"]
+const CONSUMABLE_HIDES = ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Pontos", "Explosão", "Música", "Rebate"]
 const HIDDEN: Partial<Record<ItemId, string[]>> = {
-  peck: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Combo", "Rebate"],
-  bat: ["Disparo", "Projétil", "Espalhamento", "Explosão", "Efeito"],
-  passagua: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Música", "Rebate"],
-  wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito"],
+  peck: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
+  bat: ["Disparo", "Projétil", "Espalhamento", "Pontos", "Explosão", "Efeito"],
+  passagua: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música", "Rebate"],
+  wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
 }
 // a consumable's doses are the magazine's number
@@ -35,12 +40,27 @@ const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   const [sel, setSel] = useState<ItemId>("pistol")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, Combo: true, Bicada: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, Combo: true, Bicada: true, Pontos: true })
   useEffect(() => {
     setItems(loadItems())
     return subscribeItems(setItems)
   }, [])
-  const it = items[sel], base = DEFAULT_ITEMS[sel]
+  const it = items[sel], base = GAME_ITEMS[sel]
+  const online = useOnline()
+  const isAdmin = isAdminUser(online.user)
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
+  const [saving, setSaving] = useState(false)
+  // "Salvar no game": every item's changes from the code become the game's sheet (after the deploy, for everyone)
+  const saveToGame = async () => {
+    setSaving(true); setNotice(null)
+    try {
+      await saveOfficialItems(itemsDiff(items, DEFAULT_ITEMS))
+      setNotice({ text: "Itens salvos no game (data/pigchicken/items.json). Chegam a todos no próximo deploy." })
+    } catch (error) { setNotice({ text: error instanceof Error ? error.message : "Não foi possível salvar no game.", error: true }) }
+    finally { setSaving(false) }
+  }
+  // items held at the hand (sports tools, consumables, a grenade charged in the hand) keep the hand's own pose
+  const handHeld = it.reticle === "grenade" && it.fireMode === "charge"
   const update = (fn: (d: ItemDef) => void) => {
     const next = structuredClone(items)
     fn(next[sel])
@@ -57,12 +77,14 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value="wing">{items.wing.name}</option>
         </select>
-        <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do código" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+        {isAdmin && <button type="button" disabled={saving} onClick={() => void saveToGame()} title="Grava as fichas de todos os itens como as do game (Admin local)" className="inline-flex h-8 items-center gap-1 rounded-md border border-[#ffd166]/60 px-2 text-[#ffd166] hover:border-[#ffd166] disabled:opacity-40"><Database className="h-3.5 w-3.5" />{saving ? "Salvando…" : "Salvar no game"}</button>}
+        <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do game" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <p className="px-4 pt-3 text-[10px] text-[#93a79a]">Família: {it.family}. {sel === "peck" && "Sem item selecionado: segure Atirar para recolher o pescoço e solte para bicar na direção da mira. Golpe continua dando uma asada. "}Vale na hora no Parquinho e fica salvo neste navegador. Duplo clique numa barra volta o valor do código.</p>
-        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Efeito" || it.consumable)).map(g => (
+        {notice && <p role="status" className={`px-4 pt-3 text-[11px] ${notice.error ? "text-[#ff8a7a]" : "text-[#7bd88f]"}`}>{notice.text}</p>}
+        <p className="px-4 pt-3 text-[10px] text-[#93a79a]">Família: {it.family}. {sel === "peck" && "Sem item selecionado: segure Atirar para recolher o pescoço e solte para bicar na direção da mira. Golpe continua dando uma asada. "}Vale na hora no Parquinho e fica salvo neste navegador. Duplo clique numa barra volta o valor do game.</p>
+        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld)).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a] hover:text-white">{g}</summary>
             <div className="grid gap-3 px-4 pb-4">
@@ -140,6 +162,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   </label>
                 </>
               )}
+              {g === "Pontos" && <ItemPointsEditor id={sel} item={it} base={base} onChange={update} />}
               {g === "Combo" && (
                 <div className="grid gap-1.5">
                   <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam">Ordem dos golpes</span>
@@ -154,7 +177,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                       <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push("down") })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
                     )}
                     {it.combo.join() !== base.combo.join() && (
-                      <button type="button" title="Volta a ordem do código" onClick={() => update(d => { d.combo = base.combo.slice() })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+                      <button type="button" title="Volta a ordem do game" onClick={() => update(d => { d.combo = base.combo.slice() })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
                     )}
                   </div>
                 </div>
@@ -171,7 +194,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Golpe" && sel !== "peck" && (
                 <label className="flex items-center justify-between gap-3">
                   <span>Rastro: cor</span>
-                  <input type="color" aria-label="Cor do rastro" value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? "Nos instrumentos o rastro pega a cor da nota do acorde" : "Duplo clique volta a cor do código"} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
+                  <input type="color" aria-label="Cor do rastro" value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? "Nos instrumentos o rastro pega a cor da nota do acorde" : "Duplo clique volta a cor do game"} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
                 </label>
               )}
               {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail")))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {

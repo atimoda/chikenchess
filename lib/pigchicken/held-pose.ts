@@ -2,6 +2,7 @@
 import type { Combat } from './combat'
 import type { ChickenEngine } from '../chicken/engine'
 import { ITEM_SVG } from './art'
+import { itemRig } from './items'
 export function heldItemPose(combat: Combat, now: number, bow?: { x: number; stroke: number } | null, faceHint?: number): Parameters<ChickenEngine['setHeld']>[0] {
   const held = combat.held, eating = combat.consumption
   const id = eating?.item ?? held?.item
@@ -24,5 +25,6 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
     atHand: sportsTool || d.consumable || (d.reticle === 'grenade' && d.fireMode === 'charge') || charge > 0,
     consumable: d.consumable ? { upright: d.consumeKind === 'liquid' ? -90 : 0, progress: eating ? 1 - eating.left / eating.total : undefined } : undefined,
     bow: charge <= 0 ? bow : null,
+    rig: charge <= 0 && !swinging ? itemRig(d) : null,
   }
 }

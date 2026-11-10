@@ -119,6 +119,12 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       if (new Set(result.rules.map((rule: { id: string }) => rule.id)).size !== result.rules.length) throw new Error('IDs das regras não podem repetir.')
       break
     }
+    case 'pigchicken-items': {
+      // the item sheets' changes from the code, item by item; the game keeps only known keys with valid values
+      const field = z.union([finite, z.boolean(), z.string().max(64), z.array(z.unknown()).max(64)])
+      z.record(z.string().regex(/^[a-z]{2,16}$/, 'Item desconhecido.'), z.record(z.string().regex(/^[a-zA-Z]{1,32}$/), field)).parse(value)
+      break
+    }
     case 'music-preset': {
       creativeSchema.parse(value)
       const kit = parseCreativeSession(JSON.stringify(value))
