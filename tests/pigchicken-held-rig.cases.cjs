@@ -19,6 +19,8 @@ test('the wind instruments turn around their mouthpiece, which sits on her mouth
     // the mouthpiece is behind the grip on the drawing
     assert.ok(rig.x < 0, id)
     assert.ok(rig.hand && rig.back, id)
+    // their wings are turned all the way round: flipped so they are not upside down
+    assert.equal(rig.flip, true, id)
   }
 })
 
@@ -30,7 +32,7 @@ test('every instrument held in the wing has the wings on it; weapons stay as the
   }
   for (const id of items.WEAPON_IDS) assert.equal(items.itemRig(items.DEFAULT_ITEMS[id]), null, id)
   const pistol = { ...items.DEFAULT_ITEMS.pistol, handOn: true, handX: 10, handY: 4 }
-  assert.deepEqual(items.itemRig(pistol), { at: 'shoulder', x: 0, y: 0, hand: { x: 10, y: 4 }, back: null })
+  assert.deepEqual(items.itemRig(pistol), { at: 'shoulder', x: 0, y: 0, hand: { x: 10, y: 4 }, back: null, flip: false })
 })
 
 test('every beak names her mouth', () => {

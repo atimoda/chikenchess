@@ -170,14 +170,15 @@ export type ItemDef = {
   backOn: boolean
   backX: number
   backY: number
+  wingFlip: boolean // the wings that hold it are flipped vertically (mirrored along their length), for poses that turn them upside down
 }
 // the body parts a held item can turn around
 export type PivotPart = 'shoulder' | 'mouth'
 // the rig the chicken's engine draws it with: the pivot on a body part and the wings' touch points (null: as always,
 // turning around the shoulder with the wing following the aim)
-export function itemRig(d: ItemDef): { at: PivotPart; x: number; y: number; hand: { x: number; y: number } | null; back: { x: number; y: number } | null } | null {
+export function itemRig(d: ItemDef): { at: PivotPart; x: number; y: number; hand: { x: number; y: number } | null; back: { x: number; y: number } | null; flip: boolean } | null {
   if (d.pivotAt === 'shoulder' && !d.pivotX && !d.pivotY && !d.handOn && !d.backOn) return null
-  return { at: d.pivotAt, x: d.pivotX, y: d.pivotY, hand: d.handOn ? { x: d.handX, y: d.handY } : null, back: d.backOn ? { x: d.backX, y: d.backY } : null }
+  return { at: d.pivotAt, x: d.pivotX, y: d.pivotY, hand: d.handOn ? { x: d.handX, y: d.handY } : null, back: d.backOn ? { x: d.backX, y: d.backY } : null, flip: d.wingFlip }
 }
 export const PIVOT_PARTS: { value: PivotPart; label: string }[] = [{ value: 'shoulder', label: 'Ombro (padrão)' }, { value: 'mouth', label: 'Boca (bico)' }]
 
@@ -189,7 +190,7 @@ const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
-  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0,
+  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
 }
 
 // a rebate chain from [kind, mode, n?] steps (always happening)
@@ -328,7 +329,7 @@ const FLUTE: ItemDef = {
   rate: 13, mag: 60, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
   recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
   instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35, volMin: 0.45,
-  pivotAt: 'mouth', pivotX: -49, pivotY: 0, handOn: true, handX: 13, handY: 0, backOn: true, backX: -22, backY: 0,
+  pivotAt: 'mouth', pivotX: -49, pivotY: 0, handOn: true, handX: 13, handY: 0, backOn: true, backX: -22, backY: 0, wingFlip: true,
   throwCharge: 0.3, rebateChain: chain(['octave', 'fixed', 1]),
 }
 // Palhetas → SMG: holding plays a fast arpeggio of the chord
@@ -337,7 +338,7 @@ const SAX: ItemDef = {
   rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
   recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 120, muzzleX: 32, muzzleY: 18, length: 50,
   instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
-  pivotAt: 'mouth', pivotX: -27, pivotY: -52, handOn: true, handX: 0, handY: 12, backOn: true, backX: 2, backY: -15,
+  pivotAt: 'mouth', pivotX: -27, pivotY: -52, handOn: true, handX: 0, handY: 12, backOn: true, backX: 2, backY: -15, wingFlip: true,
   rebateChain: chain(['transpose', 'degree', 2]),
 }
 // Metais → rifle: a phrase of 3 notes per press, going through one enemy
@@ -346,7 +347,7 @@ const TRUMPET: ItemDef = {
   fireMode: 'burst', burst: 3, rate: 9, mag: 24, reloadTime: 0.2, refillTime: 0.25, speed: 1300, damage: 10, size: 10, pierce: 1,
   recoilKick: 3, recoilPush: 790, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
   instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4, volMin: 0.55,
-  pivotAt: 'mouth', pivotX: -53, pivotY: -7, handOn: true, handX: -4, handY: -12, backOn: true, backX: -23, backY: 7,
+  pivotAt: 'mouth', pivotX: -53, pivotY: -7, handOn: true, handX: -4, handY: -12, backOn: true, backX: -23, backY: 7, wingFlip: true,
   rebateChain: chain(['voices', 'power']),
 }
 // Cordas → pump: a strummed chord in a fan, each pellet one note of the chord
@@ -559,7 +560,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
   if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
   ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
@@ -575,7 +576,7 @@ const ITEMS_VERSION = 6
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)
