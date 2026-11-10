@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { setStageInset } from "@/lib/stage-size"
+import { registerEscClose } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 
 const KEY = "chickenchess:patio-editor-dock"
@@ -43,6 +44,9 @@ const fitWidth = (w: number) => Math.round(Math.max(DOCK_MIN_W, Math.min(w, wind
 export function EditorDock({ children, className, ...rest }: { children: React.ReactNode; className?: string } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
   const [width, setWidth] = useState(() => fitWidth(readPref().w))
   const drag = useRef<number | null>(null)
+  const ref = useRef<HTMLElement | null>(null)
+  // Esc closes it like the floating panels, in the order they opened
+  useEffect(() => (ref.current ? registerEscClose(ref.current) : undefined), [])
 
   // the Pátio gives up this width while the dock is open, and gets it back when it closes
   useEffect(() => { setStageInset(width) }, [width])
@@ -54,7 +58,7 @@ export function EditorDock({ children, className, ...rest }: { children: React.R
   }, [])
 
   return createPortal(
-    <aside data-chicken-ignore data-patio-dock {...rest} style={{ ...rest.style, width }}
+    <aside ref={ref} data-chicken-ignore data-patio-dock {...rest} style={{ ...rest.style, width }}
       className={cn("fixed inset-y-0 right-0 z-[200] flex flex-col border-l border-[#ffd166]/40 bg-[#101713]", className)}>
       {children}
       {/* the divider between the Pátio and the panel */}

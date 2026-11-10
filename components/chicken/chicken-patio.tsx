@@ -210,7 +210,12 @@ export function ChickenPatio() {
   // it turns it off; off, the panel stays open (its cards still place elements) and the Pátio plays as outside the
   // editor; the bind also turns it on with the panel closed
   const [editActive, setEditActive] = useState(false)
-  useEffect(() => { setEditActive(editorOn) }, [editorOn])
+  // holding the bind shows or hides the panel and keeps the switch as it is
+  const keepEditing = useRef(false)
+  useEffect(() => {
+    if (keepEditing.current) { keepEditing.current = false; return }
+    setEditActive(editorOn)
+  }, [editorOn])
   const [editHint, setEditHint] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   const [openOpen, setOpenOpen] = useState(false)
@@ -411,19 +416,32 @@ export function ChickenPatio() {
   }
   const editingRef = useRef(toggleEditing)
   editingRef.current = toggleEditing
+  const togglePanel = () => {
+    if (!access.canEdit) { setEditHint(v => !v); return }
+    setEditHint(false)
+    keepEditing.current = true
+    setEditorOn(v => !v)
+  }
+  const panelRef = useRef(togglePanel)
+  panelRef.current = togglePanel
   // the Edição bind (Controles; Alt and Cmd by default) turns the editing switch on and off with a tap: the key
-  // pressed and let go with nothing else in between, so Cmd+Z and Alt+click keep working
+  // pressed and let go with nothing else in between, so Cmd+Z and Alt+click keep working. Held for 1.5 s, it shows
+  // or hides the editor's panel instead (when the time is up, without waiting for the key to go up).
   useEffect(() => {
-    let pending: string | null = null
+    let pending: string | null = null, hold = 0
+    const stop = () => { window.clearTimeout(hold); hold = 0 }
     const onDown = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (isChickenControlsListening() || e.repeat || (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable))) { pending = null; return }
       const c = loadChickenControls(), tok = `Key:${e.code}`
       pending = c.keys.editMode.includes(tok) || c.keys2.editMode.includes(tok) ? e.code : null
-      if (pending?.startsWith("Alt")) e.preventDefault()
+      stop()
+      if (!pending) return
+      if (pending.startsWith("Alt")) e.preventDefault()
+      hold = window.setTimeout(() => { hold = 0; pending = null; panelRef.current() }, 1500)
     }
-    const onUp = (e: KeyboardEvent) => { if (pending && e.code === pending) { pending = null; editingRef.current() } }
-    const reset = () => { pending = null }
+    const onUp = (e: KeyboardEvent) => { if (pending && e.code === pending) { pending = null; stop(); editingRef.current() } }
+    const reset = () => { pending = null; stop() }
     window.addEventListener("keydown", onDown)
     window.addEventListener("keyup", onUp)
     window.addEventListener("pointerdown", reset, true)
@@ -431,6 +449,7 @@ export function ChickenPatio() {
     return () => {
       window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp)
       window.removeEventListener("pointerdown", reset, true); window.removeEventListener("blur", reset)
+      stop()
     }
   }, [])
   // "=" turns the editor mode on and off

@@ -15,6 +15,8 @@ const RECENT = [
         'Os acordes de cada zona sempre combinam com a escala: trocar a escala, o Random e as mudanças de modo escolhem acordes que contêm todas as notas dela. No painel da zona, os acordes que desafinam com a escala aparecem marcados.',
         'Ao passar o mouse por botões e painéis, a mira e o círculo de volume somem e aparece o cursor normal; ao voltar para o jogo, a mira reaparece.',
         'A Bicada também pega itens novos do chão, pelo corpo ao soltar e pela área do bico ao acertar, sem tirar a galinha de mãos vazias. A camada Hit-boxes passa a mostrar os itens no chão, o alcance dos pés para pegar e o cone da Bicada.',
+        'Segurar o bind Edição (Alt ou Cmd) por 1,5 s mostra ou esconde o painel do Modo editor sem mudar o switch de edição; um toque rápido continua ligando e desligando a edição.',
+        'Esc fecha o último painel aberto, inclusive o Modo editor fixo na lateral; com um elemento selecionado no editor, o primeiro Esc só tira a seleção.',
       ] },
     ],
   },

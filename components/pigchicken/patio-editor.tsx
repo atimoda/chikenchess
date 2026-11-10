@@ -189,7 +189,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
       const mod = e.ctrlKey || e.metaKey
-      if (e.code === "Escape" && selectedRef.current) { select(null); return }
+      if (e.code === "Escape" && selectedRef.current) { e.preventDefault(); select(null); return }
       if (mod && e.code === "KeyZ") { e.preventDefault(); if (e.shiftKey) forward(); else back(); return }
       if (mod && e.code === "KeyY") { e.preventDefault(); forward(); return }
       if (mod && e.code === "KeyD") {

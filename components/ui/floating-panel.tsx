@@ -44,6 +44,40 @@ function dropPanel(token: number) {
 }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 
+// Esc closes the panel opened last (still open and shown) through its own close button, so it closes exactly as a
+// click would. Whoever uses Esc for something else first (cancel a drag, clear a selection, stop waiting for a key)
+// calls preventDefault and the panel stays. Not from a text field, nor while a dialog is open.
+const opened: HTMLElement[] = []
+const CLOSE = 'button[aria-label^="Fechar"], button[aria-label="Sair do modo editor"]'
+// It runs once every other listener had its turn on this key, whatever order they were added in.
+function onEscape(e: KeyboardEvent) {
+  if (e.code === "Escape" && !e.repeat) window.setTimeout(() => closeLast(e))
+}
+function closeLast(e: KeyboardEvent) {
+  if (e.defaultPrevented) return
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
+  if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"]')) return
+  for (let i = opened.length - 1; i >= 0; i--) {
+    const el = opened[i]
+    if (!el.isConnected || !el.getClientRects().length) continue
+    const button = (el.querySelector(`[data-drag-handle] :is(${CLOSE})`) ?? el.querySelector(CLOSE)) as HTMLButtonElement | null
+    if (!button || button.disabled) continue
+    button.click()
+    return
+  }
+}
+/** Registers a panel for Esc, in the order the panels open. */
+export function registerEscClose(el: HTMLElement) {
+  if (!opened.length) window.addEventListener("keydown", onEscape)
+  opened.push(el)
+  return () => {
+    const i = opened.indexOf(el)
+    if (i >= 0) opened.splice(i, 1)
+    if (!opened.length) window.removeEventListener("keydown", onEscape)
+  }
+}
+
 // What a press may not drag: controls, anything focusable or with its own pointer cursor, and an explicit data-no-drag.
 const CONTROL = 'button,a,input,textarea,select,option,label,summary,[role="button"],[role="slider"],[role="checkbox"],[role="switch"],[role="tab"],[role="menuitem"],[contenteditable=""],[contenteditable="true"],[tabindex]:not([tabindex="-1"]),[data-no-drag]'
 const FREE_CURSORS = new Set(["auto", "default", "move"])
@@ -90,6 +124,9 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   children: React.ReactNode
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
   const [rect, setRect] = useState<Rect | null>(null)
+  const panelRef = useRef<HTMLElement | null>(null)
+  const shown = !!rect
+  useEffect(() => (shown && panelRef.current ? registerEscClose(panelRef.current) : undefined), [shown])
   const op = useRef<{ pointer: number; edge: Edge | "move"; sx: number; sy: number; start: Rect; armed?: boolean } | null>(null)
   const key = `floating-panel:${id}`
   const [token] = useState(() => nextPanel++)
@@ -148,6 +185,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   if (!rect) return null
   return (
     <aside
+      ref={panelRef}
       data-chicken-ignore
       {...rest}
       style={{ ...rest.style, left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: PANEL_Z + Math.max(0, place) }}

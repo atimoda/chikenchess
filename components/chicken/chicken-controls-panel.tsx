@@ -109,13 +109,8 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   }, [listen])
 
   useEffect(() => { if (!open) setListen(null) }, [open])
-  // Esc closes the panel (while waiting for a key, Esc only cancels that)
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => { if (e.code === "Escape" && !listenRef.current) onOpenChange(false) }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [open, onOpenChange])
+  // Esc closes the panel like any floating panel (components/ui/floating-panel.tsx); while waiting for a key it only
+  // cancels that
   useEffect(() => () => setChickenControlsListening(false), [])
 
   // one list of actions; the bind columns are grouped by input type

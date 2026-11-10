@@ -253,7 +253,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
     else if (mod && k === "v") { if (clip.current) { const r = pasteClip(draft, clip.current, cursor); commit(r.song, r.sel) } }
     else if (mod && k === "a") { e.preventDefault(); setSel({ aliens: draft.aliens.map((_, i) => i), lines: (draft.lines ?? []).map((_, i) => i), pauses: [] }) }
     else if (e.key === "Delete" || e.key === "Backspace") { if (!isEmpty(sel)) { e.preventDefault(); commit(removeItems(draft, sel), NOTHING) } }
-    else if (e.key === "Escape") setSel(NOTHING)
+    else if (e.key === "Escape") { if (!isEmpty(sel)) { e.preventDefault(); setSel(NOTHING) } }
     else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       e.preventDefault()
       const d = (e.key === "ArrowLeft" ? -1 : 1) * (e.shiftKey ? 4 : grid)
