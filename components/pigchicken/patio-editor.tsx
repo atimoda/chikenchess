@@ -79,7 +79,9 @@ const rad = (deg: number) => (deg * Math.PI) / 180
 const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 
 // soundLayer: the "Zonas sonoras" layer (shared with the header's eye), editable here
-export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void }) {
+// active: the switch in the panel's title; off, the panel stays open and its cards still place elements, but the
+// elements cannot be selected, moved or edited and the Pátio plays as outside the editor
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, active = true, onActive }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void }) {
   const history = useHistory(layout, onChange)
   const { back, forward, canUndo, canRedo } = history
   // the gesture under way (move, resize, turn); the element being dragged does not fall until it is let go
@@ -101,6 +103,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   selectedRef.current = selected
 
   const select = useCallback((id: string | null) => { setSelected(id); setPanel("") }, [])
+  // switching the editor off lets go of the selection and its panels
+  useEffect(() => { if (!active) { select(null); setScenePanel(null) } }, [active, select])
   // a deleted (or undone) element is no longer selected
   useEffect(() => { if (selected && !layout.elements.some(e => e.id === selected)) select(null) }, [layout, selected, select])
 
@@ -276,7 +280,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         .patio-corner span { width: 12px; height: 12px; border: 0 solid #ffd166; }
         @media (pointer: coarse) { .patio-corner { width: 44px; height: 44px; } .patio-corner span { width: 16px; height: 16px; } }
       `}</style>
-      <div data-patio-editor className="pointer-events-none fixed inset-0 z-[203] overflow-hidden">
+      {active && <div data-patio-editor className="pointer-events-none fixed inset-0 z-[203] overflow-hidden">
         <div ref={worldRef} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
           {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => (
             <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
@@ -298,7 +302,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
             />
           )}
         </div>
-      </div>
+      </div>}
       {sel && panel === "layers" && <LayersPanel el={sel} onChange={el => update(el)} onClose={() => setPanel("")} />}
       {sel && panel === "edit" && !draft && (sel.kind === 'house' && sel.params.house
         ? <HousePanel key={sel.id} house={sel.params.house} dimensions={sel} onChange={(house, step) => update({ ...sel, params: { house } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
@@ -306,14 +310,14 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
           : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} />)}
-      {soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} editable opacity={soundLayer}
+      {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} editable opacity={soundLayer}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
         onScene={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
-      {soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
+      {active && soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
         <SceneZonePanel key={scenePanel} scene={scenePanel} zones={layout.settings?.sceneZones} onChange={(zone, step) => setSceneZone(scenePanel, zone, step && `${step}:cena${scenePanel}`)}
           onReset={() => setSceneZone(scenePanel, null)} onClose={() => setScenePanel(null)} />
       )}
-      <Palette onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
+      <Palette active={active} onActive={onActive} onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
         bindHouse={house => placement.bind(() => randomHouseElement(house.style), () => openDraft({ kind: "house", value: house }))}
         bindTree={tree => placement.bind(() => {
           const next = randomTree(tree.style)
@@ -652,7 +656,8 @@ function PaletteSection({ title, children }: { title: string; children: React.Re
   </PatioDisclosure>
 }
 
-function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
+function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
+  active: boolean; onActive?: (on: boolean) => void
   onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
   bindTree: (tree: TreeParams) => PatioPlacementHandlers
   canAddScenery: boolean; hidden: boolean; draggingScenery: boolean
@@ -689,7 +694,13 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
   const body = (
     <>
         <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-1.5 border-b border-white/10 px-3 py-2">
-          <h2 className="flex-1 text-sm text-white">Modo editor</h2>
+          <h2 className="whitespace-nowrap text-sm text-white">Modo editor</h2>
+          <button type="button" role="switch" aria-checked={active} aria-label="Edição ativa" onClick={() => onActive?.(!active)}
+            title={active ? "Desligar a edição (o painel continua aberto para arrastar elementos)" : "Ligar a edição: selecionar, mover e editar os elementos do Pátio"}
+            className={cn("relative h-5 w-9 shrink-0 rounded-full border transition-colors", active ? "border-[#ffd166] bg-[#ffd166]/80" : "border-white/25 bg-white/10")}>
+            <span aria-hidden className={cn("absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all", active ? "left-[18px] bg-[#101713]" : "left-0.5 bg-[#b9c7b9]")} />
+          </button>
+          <span className="flex-1" />
           <button type="button" className={cn(TOOL, docked && "border-[#ffd166] text-white")} onClick={toggleDock} aria-pressed={docked}
             title={docked ? "Soltar o painel (flutuante)" : "Fixar o painel à direita do Pátio"} aria-label="Fixar o painel à direita"><PanelRight className="h-4 w-4" /></button>
           <button type="button" className={TOOL} disabled={!canUndo} onClick={undo} title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><Undo2 className="h-4 w-4" /></button>
