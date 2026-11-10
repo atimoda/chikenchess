@@ -15,7 +15,12 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'copenhagen-1869': 'copenhagen-2026-11-07-concerto-v1',
   'paris-1913': 'paris-2026-11-07-ballet-v1',
   'buenos-aires-1940': 'buenos-aires-2026-11-10-tango-v1',
-  'new-orleans-1953': 'new-orleans-2026-10-02-midi-v6',
+  // World ballads rewrite: official kits authored by scripts/ballads/<city>.cjs.
+  'manchester-1999': 'manchester-1999-2026-11-10-ballads-v1',
+  'dublin-1990': 'dublin-1990-2026-11-10-ballads-v1',
+  'new-orleans-1953': 'new-orleans-2026-11-10-ballads-v1',
+  'memphis-1967': 'memphis-1967-2026-11-10-ballads-v1',
+  'london-1977': 'london-1977-2026-11-10-ballads-v1',
   'leipzig-1723': 'leipzig-2026-11-07-orchestra-v5',
   'vienna-1825': 'vienna-2026-11-07-orchestra-v5',
   vienna: 'vienna-2026-11-07-orchestra-v5',
@@ -127,7 +132,8 @@ function configurePart(kit: CreativeSession, piece: CreativeSession['pieces'][nu
 }
 
 export function createStyledCityKit(city: CityData, profileOverride?: StyleProfile): CreativeSession {
-  if (city.id === 'manchester-1999') return createManchesterJazzKit()
+  // The 1999 preset stays the fallback; an authored profile (scripts/ballads) builds the official kit.
+  if (city.id === 'manchester-1999' && !profileOverride) return createManchesterJazzKit()
   const profile = profileOverride ?? STYLE_PROFILES[city.id]
   if (!profile) throw new Error(`Perfil ausente: ${city.id}`)
   if (profile.parts.length !== WHITE_SLOTS.length) throw new Error(`Perfil incompleto: ${city.id} tem ${profile.parts.length}/16 vozes.`)

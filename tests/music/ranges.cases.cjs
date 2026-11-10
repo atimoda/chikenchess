@@ -343,6 +343,16 @@ test('all 68 city presets retain their authored bank order and contrasting harmo
       }
       continue // Harmony, sound and the chan-chan are covered in kits.cases.cjs.
     }
+    if (['manchester-1999', 'dublin-1990', 'new-orleans-1953', 'memphis-1967', 'london-1977'].includes(city.id)) {
+      // World ballads rewrite: global banks per section (reprises share them), rests stay silent, fills use bank 7.
+      assert.equal(kit.harmony, 'kit')
+      assert.ok(kit.arrangement.sections.length >= 10)
+      for (const instrument of Object.values(kit.instruments)) {
+        assert.equal(instrument.pianoRolls.length, 8, instrument.name)
+        assert.ok(Object.values(instrument.arrangement.sections).every(step => step.fill === undefined || step.fill === 7))
+      }
+      continue // Form, sound and grid are covered in kits.cases.cjs.
+    }
     if (city.id === 'goa') {
       assert.equal(kit.arrangement.sections.length, 9)
       assert.ok(Object.values(kit.instruments).every(instrument => instrument.pianoRolls.length === 8))

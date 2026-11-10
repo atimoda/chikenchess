@@ -23,6 +23,11 @@ export interface RollLane {
   delay?: number
   drive?: number
 }
+/** Float subtraction leaves noise (0.10416666666666669 instead of 5/48) that Strudel turns into
+ * huge exact fractions; a value within 1e-9 of the fine music grid (1/13440 bar: binary, triplet,
+ * quintuplet and septuplet positions) snaps to it. Other values pass unchanged. */
+const GRID = 13440
+const clean = (value: number) => { const snapped = Math.round(value * GRID) / GRID; return Math.abs(snapped - value) < 1e-9 ? snapped : value }
 export function optimizeRoll(roll: PianoRoll): RollLane[] {
   type Event = { start: number; duration: number; notes: number[] }
   type Group = { controls: Omit<RollLane, 'segments'>; events: Event[] }
@@ -47,13 +52,13 @@ export function optimizeRoll(roll: PianoRoll): RollLane[] {
     for (const event of events.sort((a, b) => a.start - b.start)) {
       let lane = lanes.find(candidate => candidate.end <= event.start)
       if (!lane) { lane = { end: 0, segments: [] }; lanes.push(lane) }
-      const gap = event.start - lane.end
+      const gap = clean(event.start - lane.end)
       if (gap > 0) lane.segments.push({duration:gap,notes:null})
       lane.segments.push({duration:event.duration,notes:event.notes})
       lane.end = event.start + event.duration
     }
     for (const lane of lanes) {
-      if (lane.end < roll.bars) lane.segments.push({duration:roll.bars-lane.end,notes:null})
+      if (lane.end < roll.bars) lane.segments.push({duration:clean(roll.bars-lane.end),notes:null})
       result.push({ ...controls, segments: lane.segments })
     }
   }

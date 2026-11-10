@@ -193,8 +193,8 @@ test('waltz and ballad stages place accents in 3/4, 6/8 and 12/8 rather than a f
  const {renderMusicCode}=loadTs('lib/music/code-export.ts')
  const checks=[
   ['new-york-1962','3/4',3,'Acordes rítmicos',[1/6,2/3]],
-  ['dublin-1990','6/8',2,'Batida no quatro',[1/2]],
-  ['new-orleans-1953','12/8',4,'Ride ternário',[0,2/12,3/12]],
+  ['santiago-del-estero-1960','6/8',2,'Baixo principal',[0,1/2]],
+  ['harare-1981','12/8',4,'Triplet Snare Backbeat',[3/12,9/12]],
  ]
  for(const [id,meter,pulses,name,onsets] of checks){
   const kit=defaultCityKit(id),snapshot=creative.creativeSnapshot(kit,true)

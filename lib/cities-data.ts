@@ -228,9 +228,9 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
   // A second Manchester era, preserving the existing Haçienda chapter.
   {
     id: "manchester-1999", name: "Manchester", country: "UK", year: 1999,
-    genre: "Jazz / Breaks",
-    description: "British club culture turned record collecting into a living collage: jazz, funk and hip-hop breaks meet as DJs reshape the dance floor with every mix.",
-    bpm: 123, scale: ["G4", "A4", "Bb4", "C4", "D4", "E4", "F4"],
+    genre: "Nu-jazz breaks",
+    description: "Late-90s Manchester crate diggers slowed hip-hop breaks under soul-jazz flutes, Rhodes and upright bass, with bossa and big-beat detours for the small hours.",
+    bpm: 94, scale: ["G4", "A4", "Bb4", "C4", "D4", "E4", "F4"],
     geoCoordinates: { lat: 53.4808, lng: -2.2426 }, color: "#ffb65c",
     image: "https://images.unsplash.com/photo-1495366819608-9e926b56f8ad?q=85&w=1600&auto=format&fit=crop",
     samples: { kick: "bd:2", snare: "sd:2", hihat: "hh:2", bass: "bass:2", pad: "pad:2", lead: "synth:1" },
@@ -541,8 +541,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
   },
   {
     id: 'dublin-1990', name: 'Dublin', country: 'Ireland', year: 1990,
-    genre: 'Folk ballad / double jig', description: 'Irish traditional music keeps its dance tunes alive through open sessions, where musicians pass jigs between generations and newcomers learn by listening in.',
-    bpm: 96, meter: '6/8', scale: ['D4','E4','F#4','G4','A4','B4','C#5'],
+    genre: 'Irish jig session', description: 'In Dublin pub sessions of the trad revival, a slow air over the drone gives way to double jigs passed between whistle, fiddle, flute and concertina over bouzouki and bodhrán.',
+    bpm: 100, meter: '6/8', scale: ['D4','E4','F#4','G4','A4','B4','C#5'],
     geoCoordinates: { lat: 53.3498, lng: -6.2603 }, color: '#85d0a2',
     image: 'https://images.unsplash.com/photo-1549918864-48ac978761a4?q=85&w=1600&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },
@@ -550,8 +550,8 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
   },
   {
     id: 'new-orleans-1953', name: 'New Orleans', country: 'USA', year: 1953,
-    genre: 'Slow blues ballad', description: 'Black New Orleans musicians wove blues, gospel and brass-band traditions into communal rhythm and blues, where a rolling piano turns private ache into a call for the whole room.',
-    bpm: 76, meter: '12/8', scale: ['C4','Eb4','F4','Gb4','G4','Bb4'],
+    genre: 'Rhythm & blues', description: 'Black New Orleans musicians wove blues, gospel and brass-band traditions into rhythm and blues: rolling piano triplets, a boogie bass, honking tenor and a second-line parade never far away.',
+    bpm: 72, meter: '12/8', scale: ['C4','D4','E4','F4','G4','A4','B4'],
     geoCoordinates: { lat: 29.9511, lng: -90.0715 }, color: '#e8b779',
     image: 'https://images.unsplash.com/photo-1635284225771-b6b35e18f7ad?q=85&w=1600&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },

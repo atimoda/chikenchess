@@ -2,19 +2,29 @@
 // Each entry is a complete kit that replaces the city's profile-generated default.
 import kit0 from '../../data/music/kits/buenos-aires-1940.json'
 import kit1 from '../../data/music/kits/copenhagen-1869.json'
-import kit2 from '../../data/music/kits/goa.json'
-import kit3 from '../../data/music/kits/leipzig-1723.json'
-import kit4 from '../../data/music/kits/paris-1913.json'
-import kit5 from '../../data/music/kits/venice-1725.json'
-import kit6 from '../../data/music/kits/vienna-1825.json'
-import kit7 from '../../data/music/kits/vienna.json'
+import kit2 from '../../data/music/kits/dublin-1990.json'
+import kit3 from '../../data/music/kits/goa.json'
+import kit4 from '../../data/music/kits/leipzig-1723.json'
+import kit5 from '../../data/music/kits/london-1977.json'
+import kit6 from '../../data/music/kits/manchester-1999.json'
+import kit7 from '../../data/music/kits/memphis-1967.json'
+import kit8 from '../../data/music/kits/new-orleans-1953.json'
+import kit9 from '../../data/music/kits/paris-1913.json'
+import kit10 from '../../data/music/kits/venice-1725.json'
+import kit11 from '../../data/music/kits/vienna-1825.json'
+import kit12 from '../../data/music/kits/vienna.json'
 export const OFFICIAL_CITY_KITS: Record<string, unknown> = {
   'buenos-aires-1940': kit0,
   'copenhagen-1869': kit1,
-  'goa': kit2,
-  'leipzig-1723': kit3,
-  'paris-1913': kit4,
-  'venice-1725': kit5,
-  'vienna-1825': kit6,
-  'vienna': kit7,
+  'dublin-1990': kit2,
+  'goa': kit3,
+  'leipzig-1723': kit4,
+  'london-1977': kit5,
+  'manchester-1999': kit6,
+  'memphis-1967': kit7,
+  'new-orleans-1953': kit8,
+  'paris-1913': kit9,
+  'venice-1725': kit10,
+  'vienna-1825': kit11,
+  'vienna': kit12,
 }

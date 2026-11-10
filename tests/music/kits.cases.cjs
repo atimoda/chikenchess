@@ -131,22 +131,6 @@ test('Manchester 1999 has a curated six-section band with audible queens and gen
   assert.notDeepEqual(kit.instruments['w:b1'].pianoRolls, kit.instruments['w:g1'].pianoRolls, 'bass and reply are complementary')
 })
 
-test('Manchester 1999 keeps its main bass through sparse sections and reserves the reply for the full band', async () => {
-  const api = await strudel()
-  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  const kit = defaultCityKit('manchester-1999')
-  const snapshot = creative.creativeSnapshot(kit, true)
-  const voices = voiceSpecs(snapshot, null)
-  const main = voices.find(voice => voice.piece.id === 'w:b1')
-  const reply = voices.find(voice => voice.piece.id === 'w:g1')
-  const count = (voice, from, to) => compileVoice(api, voice).queryArc(from, to).filter(event => event.hasOnset()).length
-  assert.ok(count(main, 0, 4) > 0, 'the main bass supports section A')
-  assert.ok(count(main, 10, 13) > 0, 'the main bass supports section C')
-  assert.equal(count(reply, 0, 4), 0, 'the bass reply leaves space in section A')
-  assert.ok(count(reply, 4, 10) > 0, 'the bass reply enters in section B')
-  assert.equal(count(reply, 10, 13), 0, 'the bass reply leaves space in section C')
-})
-
 test('Düsseldorf and New Orleans leave their featured voices room in later sections', async () => {
   const api = await strudel()
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
@@ -162,12 +146,12 @@ test('Düsseldorf and New Orleans leave their featured voices room in later sect
   assert.equal(events(dusseldorf, 'w:c1', 8, 24), 0, 'the organ is kept for the Hook')
   assert.ok(events(dusseldorf, 'w:c1', 32, 48) > 0, 'the organ answers the Hook')
 
+  // New Orleans: Intro 0–4, A 4–12, A 12–20, Bridge 20–28, A 28–36, Solo 36–52, parade Break 52–60.
   const newOrleans = voicesFor('new-orleans-1953')
-  for (const id of ['w:e1', 'w:f1']) {
-    assert.ok(events(newOrleans, id, 4, 10) > 0, `${id} answers in section B`)
-    assert.equal(events(newOrleans, id, 14, 20), 0, `${id} leaves section D`)
-  }
-  assert.ok(events(newOrleans, 'w:g2', 14, 20) > 0, 'the trumpet takes the final section')
+  assert.equal(events(newOrleans, 'w:d1', 4, 20), 0, 'the trumpet waits through the first verses')
+  assert.ok(events(newOrleans, 'w:d1', 52, 60) > 0, 'the trumpet leads the second-line parade')
+  assert.equal(events(newOrleans, 'w:g2', 0, 52), 0, 'the parade bass drum is kept for the Break')
+  assert.ok(events(newOrleans, 'w:g2', 52, 60) > 0, 'the parade bass drum marches in the Break')
 })
 
 test('Goa 1994 ships an official psytrance kit with its own palette, articulations and reactions', () => {
@@ -219,7 +203,7 @@ test('Manchester eras share geography but keep separate kits and save keys', () 
   assert.deepEqual(getCityEras(jazz).map(c => c.year), [1988, 1999])
   assert.deepEqual(old.geoCoordinates, jazz.geoCoordinates)
   assert.notEqual(cityKitStorageKey(old.id), cityKitStorageKey(jazz.id))
-  assert.equal(defaultCityKit(jazz.id).name, 'Manchester 1999 · Northern Jazz Breaks')
+  assert.equal(defaultCityKit(jazz.id).name, 'Nu-jazz breaks')
   assert.equal(EDITABLE_CITY_KITS.find(c => c.id === jazz.id).name, 'Manchester · 1999')
 })
 
@@ -372,8 +356,6 @@ test('the new songs place their defining phrases inside each notated bar', () =>
     return [...new Set(instrument.pianoRolls[0].notes.map(note => Math.round(note.start * 12) / 12))]
   }
   assert.deepEqual(onsets('new-york-1962', 'Acordes rítmicos'), [1 / 6, 2 / 3])
-  assert.deepEqual(onsets('dublin-1990', 'Flauta do cais'), [0, 1 / 6, 2 / 6, 3 / 6, 4 / 6, 5 / 6])
-  assert.deepEqual(onsets('new-orleans-1953', 'Piano que rola'), [0, 1 / 4, 1 / 2, 3 / 4])
 })
 
 test('every city voice produces bounded, in-scale Strudel events in every section', async () => {
@@ -884,4 +866,58 @@ test('Tango 1913 uses Kit Harmony, section and note sound, fills and its own rea
   const bass=compileVoice(api,voices.find(v=>v.piece.id==='w:a1')),total=kit.arrangement.sections.reduce((n,s)=>n+s.beats,0)/4
   const at=time=>bass.queryArc(time,time+1/64).filter(h=>h.hasOnset()).map(h=>Math.round(h.value.note)%12)
   assert.deepEqual([at(total-2+.875),at(total-1)],[[9],[2]],'chan-chan: A then D')
+})
+
+test('World ballads: five rewritten kits with Kit Harmony, contrasting sections, section and note sound, fills and reactions', async () => {
+  const api=await strudel(),{defaultCityKit}=loadTs('lib/music/city-kits.ts'),{cities}=loadTs('lib/cities-data.ts'),{OFFICIAL_CITY_KITS}=loadTs('lib/music/official-kits.ts')
+  const expected={
+    'manchester-1999':['Nu-jazz breaks','4/4',94,'G','Dórica'], 'dublin-1990':['Irish jig session','6/8',100,'D','Maior'],
+    'new-orleans-1953':['Rhythm & blues','12/8',72,'C','Maior'], 'memphis-1967':['Southern soul','12/8',64,'F','Maior'],
+    'london-1977':['Arena rock in six','6/8',66,'D','Maior'],
+  }
+  for(const [id,[genre,meter,bpm,root,scale]] of Object.entries(expected)){
+    const city=cities.find(c=>c.id===id)
+    assert.deepEqual(city.campaigns,['world-ballads'])
+    assert.equal(city.genre,genre); assert.doesNotMatch(city.genre,/ballad/i,`${id}: no "ballad" in the name`)
+    assert.ok(Object.hasOwn(OFFICIAL_CITY_KITS,id),`${id}: official kit`)
+    const kit=defaultCityKit(id)
+    assert.deepEqual([kit.meter,kit.bpm,kit.root,kit.scale,kit.harmony],[meter,bpm,root,scale,'kit'],id)
+    assert.ok(kit.arrangement.sections.length>=10,`${id}: many sections`)
+    assert.ok(new Set(kit.arrangement.sections.map(s=>s.label)).size>=6,`${id}: varied section types`)
+    const steps=Object.values(kit.instruments).flatMap(i=>Object.values(i.arrangement.sections))
+    assert.ok(steps.some(s=>s.params),`${id}: per-section sound`)
+    assert.ok(steps.some(s=>s.fill===7),`${id}: fills`)
+    const notes=Object.values(kit.instruments).flatMap(i=>i.pianoRolls.flatMap(r=>r.notes))
+    for(const key of ['release','reverb','slide','chance','vibrato']) assert.ok(notes.some(n=>n[key]!==undefined),`${id}: note ${key}`)
+    // Grid: binary in 4/4; 1/192 bar in compound meters. Decimal leftovers become huge fractions in Strudel.
+    const grid=meter==='4/4'?[128,64]:[192,192]
+    assert.ok(notes.every(n=>Number.isInteger(Math.round(n.start*grid[0]*1e6)/1e6)&&Number.isInteger(Math.round(n.duration*grid[1]*1e6)/1e6)),`${id}: notes on the grid`)
+    for(const trigger of ['check','mate','queenCapture','quiet']) assert.ok(kit.reactions.overrides.includes(trigger),`${id}: ${trigger}`)
+    // Each section's presence differs: the arrangement changes the band, not only the banks.
+    const presence=kit.arrangement.sections.map(section=>Object.values(kit.instruments).map(i=>i.arrangement.sections[section.id].variation===null?0:1).join(''))
+    assert.ok(new Set(presence).size>=7,`${id}: the band changes between sections`)
+    const voices=voiceSpecs(creative.creativeSnapshot(kit,true),null).filter(v=>v.piece.color==='w')
+    const t0=performance.now(); for(const voice of voices) compileVoice(api,voice)
+    assert.ok(performance.now()-t0<3000,`${id}: compiles quickly`)
+  }
+  // Compound meters land on their real pulses: Dublin's bodhrán on the two dotted quarters, New Orleans' piano in twelve triplets.
+  const kitOf=id=>defaultCityKit(id),roll=(id,slot,bank)=>kitOf(id).instruments[`w:${slot}`].pianoRolls[bank]
+  const firstBar=(id,slot,bank)=>[...new Set(roll(id,slot,bank).notes.filter(n=>n.start<1&&n.degree===0).map(n=>Math.round(n.start*12)/12))]
+  assert.deepEqual(firstBar('dublin-1990','a2',1),[0,1/2])
+  assert.equal(new Set(roll('new-orleans-1953','c1',1).notes.filter(n=>n.start<1).map(n=>Math.round(n.start*12))).size,12)
+  // The last choruses of Memphis and London rise; Manchester's intro and outro sound like a record.
+  const memphis=kitOf('memphis-1967'),london=kitOf('london-1977')
+  const last=(kit,label)=>kit.arrangement.sections.filter(s=>s.label===label).at(-1)
+  assert.ok(Object.values(memphis.instruments).some(i=>i.arrangement.sections[last(memphis,'Chorus').id].transpose===1),'Memphis key change')
+  assert.ok(Object.values(london.instruments).some(i=>i.arrangement.sections[last(london,'Chorus').id].transpose===2),'London key change')
+  const manchester=kitOf('manchester-1999'),rhodes=manchester.instruments['w:d1']
+  assert.equal(rhodes.arrangement.sections[manchester.arrangement.sections[0].id].params.hpf,320,'record intro')
+})
+
+test('roll packing snaps float noise in rest lengths so triplet grids stay small fractions', () => {
+  const {optimizeRoll}=loadTs('lib/music/roll-optimizer.ts')
+  const lanes=optimizeRoll({bars:1,notes:[{start:0,duration:28/192,degree:0,velocity:1},{start:1/6+1/12,duration:7/48,degree:2,velocity:1}]})
+  const rests=lanes.flatMap(l=>l.segments).filter(s=>!s.notes).map(s=>s.duration)
+  for(const rest of rests) assert.equal(rest,Math.round(rest*13440)/13440,`rest ${rest} is the exact grid value`)
+  assert.ok(rests.includes(20/192))
 })
