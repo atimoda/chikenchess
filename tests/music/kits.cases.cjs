@@ -870,6 +870,8 @@ test('Tango 1913 uses Kit Harmony, section and note sound, fills and its own rea
   assert.ok(steps.some(s=>s.fill!==undefined),'fills lead into sections')
   const notes=Object.values(kit.instruments).flatMap(i=>i.pianoRolls.flatMap(r=>r.notes))
   for(const key of ['release','reverb','delay','drive','slide','ratchet','chance','pan','vibrato']) assert.ok(notes.some(n=>n[key]!==undefined),`note ${key}`)
+  // Binary grid: decimal lengths become huge exact fractions in Strudel and froze the match while compiling.
+  assert.ok(notes.every(n=>Number.isInteger(n.start*128)&&Number.isInteger(n.duration*64)),'notes on the 1/128 grid')
   for(const trigger of ['check','mate','tension','queenCapture']) assert.ok(kit.reactions.overrides.includes(trigger),trigger)
   const voices=voiceSpecs(creative.creativeSnapshot(kit,true),null)
   const bandoneon=compileVoice(api,voices.find(v=>v.piece.id==='w:b1'))

@@ -6,7 +6,7 @@ import type { NoteParamsSelection } from '@/components/music-note-params'
 /** Scope and page of the instrument parameters. Selecting a note opens Note and deselecting it
  * goes back; selecting a section in the arrangement strip opens Section. */
 export function useParamsScope(noteSelection: NoteParamsSelection | null, sectionId: string | null) {
-  const [tab, setTab] = useState<InstrumentParamsTab>('tuning')
+  const [tab, setTab] = useState<InstrumentParamsTab>('filters')
   const [scope, setScope] = useState<ParamsScope>('all')
   const before = useRef<ParamsScope>('all'), hadNote = useRef(false)
   useEffect(() => {

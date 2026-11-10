@@ -46,11 +46,14 @@ const RECENT = [
       { title: 'Música', items: [
         'Buenos Aires vira 1913 Buenos Aires - Tango, com o kit refeito do zero e inspirado nos tangos que fizeram a tangomania de Paris (El Choclo, La Morocha). São oito seções em Ré menor: a introdução soa como um disco antigo e se abre no Tema A do bandoneón; depois vêm o tema lírico do violino, o arrastre em 3-3-2 com chicharra, o trío de violoncelo e flauta, a variación do bandoneón e o chan-chan final.',
         'O Tango reage à partida: o cheque puxa o arrastre, perder a dama traz o lamento do violino, lances quietos levam ao trío, o primeiro roque passa à relativa maior, o final acelera para a variación e o xeque-mate toca o chan-chan.',
+        'O Tango não trava mais a partida: as durações das notas passam a cair na grade do relógio musical, e cada peça ativada entra sem congelar a tela.',
       ] },
       { title: 'Interface', items: [
         'No Criativo, a aba Modulation do Instrument ganha o visual da aba Tuning: nome completo e ajuda em cada controle, knobs verdes e seletores na mesma célula dos knobs.',
         'No editor de parâmetros dos instrumentos (Criativo e partida), as abas All / Section / Note ficam acima de Tuning/Filters/Modulation/Movement. All edita o instrumento inteiro; Section personaliza os knobs só na seção selecionada (clicar numa seção já abre essa aba) e Note só nas notas selecionadas no editor MIDI. Os knobs ainda herdados aparecem apagados com o valor de All e acordam ao serem mexidos; duplo clique devolve o knob ao valor herdado.',
         'A partida passa a usar o mesmo editor de parâmetros do Criativo, e as notas do editor MIDI ganham Release, Reverb, Delay e Drive próprios.',
+        'No Piece params da partida, as ajudas “?” dos parâmetros saem (continuam no Criativo) e a janela também redimensiona na horizontal.',
+        'No editor de parâmetros (Criativo e partida), Tuning e Filters viram uma só aba, Filters & Tuning, com os filtros primeiro; as mini-abas ficam sem borda e sai a linha acima de All / Section / Note.',
         'Abrir um link de convite de lobby já coloca o jogador dentro da sala, sem precisar clicar em Join lobby; se a sala estiver cheia ou encerrada, o lobby aparece com o aviso.',
         'Na tela Perfil salvo (e no resumo da migração do perfil visitante), saem o aviso sobre a cópia do visitante e o rodapé dos termos de uso; eles ficam só na tela de login/cadastro.',
         'Nos painéis do PigChicKen, as instruções dos parâmetros ficam no hover do campo; a cópia abaixo some para dar espaço ao nome e ao valor.',

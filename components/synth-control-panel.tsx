@@ -168,14 +168,14 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         defaultSize={{ width: 340, height: '60vh' }}
         size={isStatic ? { width: '100%', height: 'auto' } : undefined}
         minWidth={isStatic ? '100%' : 340}
-        maxWidth={isStatic ? '100%' : undefined}
-        // Free vertical resize: the content scrolls inside when the panel is short.
+        maxWidth={isStatic ? '100%' : '92vw'}
+        // Free resize: wider shows more knobs per row; the content scrolls inside when the panel is short.
         minHeight={isStatic ? 'auto' : MIN_PANEL_HEIGHT}
         maxHeight={isStatic ? undefined : '90vh'}
-        enable={isStatic ? false : { top: false, right: false, bottom: true, left: false, topRight: false, bottomRight: false, bottomLeft: false, topLeft: false }}
-        handleStyles={{ bottom: { zIndex: 90, height: 10, bottom: 0, cursor: 'ns-resize' } }}
+        enable={isStatic ? false : { top: false, right: true, bottom: true, left: false, topRight: false, bottomRight: true, bottomLeft: false, topLeft: false }}
+        handleStyles={{ bottom: { zIndex: 90, height: 10, bottom: 0, cursor: 'ns-resize' }, right: { zIndex: 90, width: 10, right: -5, cursor: 'ew-resize' }, bottomRight: { zIndex: 90, width: 16, height: 16, right: -6, bottom: -6, cursor: 'nwse-resize' } }}
         handleWrapperStyle={{ zIndex: 90 }}
-        handleComponent={{ bottom: <div className="pointer-events-none absolute bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-white/35" /> }}
+        handleComponent={{ bottom: <div className="pointer-events-none absolute bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-white/35" />, right: <div data-no-drag="true" className="h-full w-full" />, bottomRight: <div data-no-drag="true" className="h-full w-full" /> }}
         className={cn('relative', isStatic && 'w-full')}
         onResizeStart={event => event.stopPropagation()}
       >

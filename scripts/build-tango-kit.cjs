@@ -388,6 +388,14 @@ const PARTS = [
     sections: [NONE, NONE, NONE, 3, NONE, 5, NONE, 6], effects: { reverb: .12, pan: .3 }, design: { role: 'drums' } },
 ]
 
+// Every start and length lands on a binary grid (starts in 1/128 bar, lengths in 1/64).
+// Strudel keeps time as exact fractions: decimal leftovers such as 0.0738 or 0.17619999…
+// turn into huge fractions and made this kit take ~1 s per piece to compile (the match froze).
+for (const part of PARTS) for (const r of part.rolls) r.notes = r.notes.map(n => {
+  const start = Math.min(r.bars - 1 / 64, Math.round(n.start * 128) / 128)
+  return { ...n, start, duration: Math.min(r.bars - start, Math.max(1 / 64, Math.round(n.duration * 64) / 64)) }
+})
+
 // ---------- per-section sound (Section scope) ----------
 // Intro sounds like a 1913 shellac record: narrow band, a little grit; the band opens at Tema A.
 const RECORD = { hpf: 380, lpfRange: { first: 2600, second: 3400 }, reverbRange: { first: .02, second: .05 }, resonance: 4 }

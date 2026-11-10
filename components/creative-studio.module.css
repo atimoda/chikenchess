@@ -18,7 +18,7 @@
 .studio .bandLinks > button:hover:not(:disabled) { background: transparent; color: #d9ef9e; text-decoration-color: currentColor; }
 .studio .bandLinks > button:disabled { color: #6f7d73; text-decoration: none; }
 /* Instrument parameters in mini-tabs, like the match's Piece params. */
-.paramTabs { margin-top: 14px; border-top: 1px solid #39473d; padding-top: 12px; }
+.paramTabs { margin-top: 14px; }
 .paramTabStrip { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 /* All / Section / Note above the pages: what the knobs edit. */
 .paramScopeStrip { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
@@ -29,9 +29,9 @@
 .paramTabs .paramScopeStrip [role='tab'][aria-selected='true'] { background: rgba(182,219,161,.16); color: #fff; }
 .paramTabs .paramScopeStrip [role='tab']:disabled { color: #56645a; cursor: default; opacity: 1; }
 .paramTabStrip [role='tablist'] { display: flex; flex-wrap: wrap; gap: 4px; }
-.paramTabs .paramTabStrip [role='tab'] { padding: 3px 6px; border: 1px solid #425544; border-radius: 4px; background: transparent; color: #9eafa2; font-family: var(--font-geist-mono), monospace; font-size: 10px; line-height: 1; }
-.paramTabs .paramTabStrip [role='tab']:hover { background: transparent; border-color: #b6dba1; color: #fff; }
-.paramTabs .paramTabStrip [role='tab'][aria-selected='true'] { border-color: #b6dba1; background: rgba(182,219,161,.12); color: #fff; }
+.paramTabs .paramTabStrip [role='tab'] { padding: 3px 6px; border: 0; border-radius: 4px; background: transparent; color: #9eafa2; font-family: var(--font-geist-mono), monospace; font-size: 10px; line-height: 1; }
+.paramTabs .paramTabStrip [role='tab']:hover { background: transparent; color: #fff; }
+.paramTabs .paramTabStrip [role='tab'][aria-selected='true'] { background: rgba(182,219,161,.12); color: #fff; }
 .paramTabs .controls { padding-top: 14px; }
 .noteKnobs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 13px 8px; padding-top: 14px; }
 .paramHint { margin: 14px 0 0; font-size: 11px; line-height: 1.5; color: #9eafa2; }
