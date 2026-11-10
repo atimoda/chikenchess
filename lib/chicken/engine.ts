@@ -35,16 +35,20 @@ export type ChickenState = { x: number; y: number; angle: number; shoulder: { x:
 export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; buddha?: number; fizz?: number }
 // A chicken driven from outside (an online player's, from the network): where she is on this screen and what she
 // is doing. She follows it smoothly, animates by its state and ignores input, physics and the pointer.
-export type ChickenRemote = { x: number; y: number; vx: number; vy: number; face: number; state: string }
-// the states a remote chicken animates; anything else (portal, cling, the shocking jump's wind-up) looks like the nearest one
+// cling: the angle (radians) of the surface she holds, turned like hers (null: not clinging); then x/y is the
+// contact point, vx her speed along the surface and state the pose she shows on it (cling, walk, idle...)
+export type ChickenRemote = { x: number; y: number; vx: number; vy: number; face: number; state: string; cling?: number | null }
+// the states a remote chicken animates; anything else (portal, the shocking jump's wind-up) looks like the nearest
+// one (cling without a surface angle, from an older browser, as a jump)
 const REMOTE_STATE: Record<string, string> = { cling: 'jump', shockingPrepare: 'brood', portal: 'idle', portalArrival: 'idle' }
 const REMOTE_SNAP = 400
 const WALK_ACTIONS: ChickenAction[] = ['left', 'right', 'up', 'down', 'crouch', 'jump', 'run']
 
 export type ChickenEngine = {
   setRemote: (source: (() => ChickenRemote | null) | null) => void
-  // the item in her hand (its key), for the online Pátio
+  // the item in her hand (its key) and where it points (radians; else where she looks, null: nowhere), for the online Pátio
   getHeldItem: () => string | null
+  getAim: () => number | null
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
   getMotionState: () => Omit<ChickenState, 'shoulder'>
@@ -112,6 +116,7 @@ type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
+const TAU = Math.PI * 2
 const CONSUMABLE_WING_AIM_LIMIT = 25
 // leg chain (bird anatomy): hip, hidden inside the body -> knee at the belly -> ankle (bends back) -> foot joint -> toes
 const LEG = { F: { hx: -14 }, B: { hx: -26 } } as const
@@ -1186,7 +1191,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const speed = Math.abs(S.vx)
     const hanging = c.n[1] > 0.7
     const st = !hanging ? 'cling' : speed > 5 ? (speed > R.climbSpeed * 1.2 ? 'run' : 'walk') : U ? 'crouch' : Dn ? 'lookUp' : 'idle'
-    S.state = 'cling'
+    S.state = 'cling'; S.clingAnim = st
     updateFeet(dt, st, speed)
     animate(dt, st, st === 'lookUp', speed)
   }
@@ -1748,6 +1753,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function remoteStep(dt: number) {
     const t = remote?.()
     if (!t) { render(); return }
+    if (t.cling != null) { remoteCling(dt, t); return }
+    if (S.cl) {
+      // she let go: back to an upright frame where she was on the surface
+      startTurn(); S.x = S.cl.px; S.y = S.cl.py; S.cl = null; plantFeet()
+    }
     const dx = t.x - S.x, dy = t.y - S.y
     // a portal or a late join jumps; otherwise she glides toward the latest position
     if (Math.hypot(dx, dy) > REMOTE_SNAP * R.scale) { S.x = t.x; S.y = t.y; plantFeet() }
@@ -1761,6 +1771,34 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     shockingAirReleaseTime = airRelease ? .3 : 0
     S.grounded = !['jump', 'fly', 'fastFall', 'held'].includes(st)
     S.held = st === 'held'
+    S.state = st
+    const speed = Math.abs(t.vx)
+    updateFeet(dt, st, speed)
+    animate(dt, st, st === 'lookUp', speed)
+  }
+
+  // Clinging on the other screen: the same rotated frame as a local cling (S.cl: contact point and surface angle;
+  // S.x her distance along the surface's direction), turning smoothly onto each new surface
+  function remoteCling(dt: number, t: ChickenRemote) {
+    const phi = t.cling!
+    if (S.face !== (t.face < 0 ? -1 : 1)) S.face = t.face < 0 ? -1 : 1
+    let c = S.cl
+    const turned = !c || Math.abs(((phi - c.phi) % TAU + TAU * 1.5) % TAU - Math.PI) > 0.03
+    if (!c) c = S.cl = { px: t.x, py: t.y, phi, tilt: 0, n: [0, 0] }
+    if (turned) startTurn()
+    const dx = t.x - c.px, dy = t.y - c.py
+    if (Math.hypot(dx, dy) > REMOTE_SNAP * R.scale) { c.px = t.x; c.py = t.y }
+    else { const k = 1 - Math.exp(-dt * 18); c.px += dx * k; c.py += dy * k }
+    c.phi = phi
+    c.n = [Math.sin(phi), -Math.cos(phi)]
+    const sin = Math.sin(phi)
+    c.tilt = Math.abs(sin) < 0.05 ? 0 : -Math.sign(S.face * sin) * R.clingTilt
+    S.x = c.px * Math.cos(phi) + c.py * Math.sin(phi); S.y = c.py
+    if (turned) plantFeet()
+    S.vx = t.vx; S.vy = 0
+    S.shocking = false; shockingAirElapsed = 0; shockingAirReleaseTime = 0
+    S.grounded = true; S.held = false
+    const st = t.state === 'cling' ? 'cling' : REMOTE_STATE[t.state] ?? t.state
     S.state = st
     const speed = Math.abs(t.vx)
     updateFeet(dt, st, speed)
@@ -1807,11 +1845,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   function motionState(): Omit<ChickenState, 'shoulder'> {
-    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, networkAnimation: !portalEntry && !S.held && !S.cl && !S.grounded && S.shocking ? 'shockingAirPrepare' : !portalEntry && !S.held && !S.cl && !S.grounded && shockingAirReleaseTime > 0 ? 'shockingAirRelease' : undefined, held: !!S.held, width: W, height: H, groundY }
+    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, networkAnimation: !portalEntry && S.cl ? S.clingAnim ?? 'cling' : !portalEntry && !S.held && !S.cl && !S.grounded && S.shocking ? 'shockingAirPrepare' : !portalEntry && !S.held && !S.cl && !S.grounded && shockingAirReleaseTime > 0 ? 'shockingAirRelease' : undefined, held: !!S.held, width: W, height: H, groundY }
   }
 
   return {
     getHeldItem: () => heldItem?.itemKey ?? null,
+    getAim: () => heldItem ? heldItem.angle : game.lookAngle ?? null,
     setRemote(source) {
       remote = source
       S.shocking = false; shockingAirElapsed = 0; shockingAirReleaseTime = 0; shockingAirLimitApplied = false

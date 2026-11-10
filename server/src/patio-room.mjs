@@ -151,7 +151,7 @@ export class PatioRoom extends Room {
       p.state.set(c.slot, {
         x: clamp(c.x, WORLD.minX, WORLD.maxX), y: clamp(c.y, WORLD.minY, WORLD.maxY),
         vx: clamp(c.vx, -WORLD.maxSpeed, WORLD.maxSpeed), vy: clamp(c.vy, -WORLD.maxSpeed, WORLD.maxSpeed),
-        face: c.face, state: c.state, item: c.item,
+        face: c.face, state: c.state, item: c.item, aim: c.aim, rot: c.rot,
       })
     }
   }
