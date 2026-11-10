@@ -52,7 +52,8 @@ export function keyTokensFor(c: ChickenControls, action: ChickenAction, devices:
 // every key any device of the list uses (the engine only takes those from the page)
 export function allKeyTokens(c: ChickenControls, devices: readonly InputDeviceId[] | null) {
   const out = new Set<string>()
-  CHICKEN_ACTIONS.forEach(a => keyTokensFor(c, a.key, devices).forEach(t => out.add(t)))
+  // the Pátio's binds (the editing switch) are not the chicken's: the engine leaves those keys to the page
+  CHICKEN_ACTIONS.filter(a => a.group !== 'patio').forEach(a => keyTokensFor(c, a.key, devices).forEach(t => out.add(t)))
   return out
 }
 

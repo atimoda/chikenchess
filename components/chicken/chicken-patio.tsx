@@ -32,6 +32,7 @@ import { PatioPortals } from "@/components/pigchicken/patio-portals"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 import { stageInset, subscribeStageInset } from "@/lib/stage-size"
+import { isChickenControlsListening, loadChickenControls } from "@/lib/chicken/controls"
 import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
 import { GamePreferences } from "@/components/game-preferences"
@@ -205,11 +206,11 @@ export function ChickenPatio() {
 
   // ---------- the Pátio open here (a lobby: its layout, who created it, its saving) and the editor mode ----------
   const [editorOn, setEditorOn] = useState(false)
-  // the switch in the editor panel's title: it turns on whenever the panel opens; off, the panel stays open (its
-  // cards still place elements) and the Pátio plays as outside the editor
-  const [editActive, setEditActive] = useState(true)
-  useEffect(() => { if (editorOn) setEditActive(true) }, [editorOn])
-  const editing = editorOn && editActive
+  // the editing switch (in the editor panel's title, or the Edição bind): opening the panel turns it on and closing
+  // it turns it off; off, the panel stays open (its cards still place elements) and the Pátio plays as outside the
+  // editor; the bind also turns it on with the panel closed
+  const [editActive, setEditActive] = useState(false)
+  useEffect(() => { setEditActive(editorOn) }, [editorOn])
   const [editHint, setEditHint] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   const [openOpen, setOpenOpen] = useState(false)
@@ -217,6 +218,7 @@ export function ChickenPatio() {
   const meId = online.user?.id ?? null
   const isAccount = !!online.user && !online.user.is_anonymous
   const access = usePatioEditAccess()
+  const editing = editActive && access.canEdit
   // online, only the lobby owner's browser saves the Pátio to the database (the others edit live through it)
   const net = useNet()
   const netLive = lobby?.mode === "online" && net.status === "online" && !!net.info
@@ -370,6 +372,7 @@ export function ChickenPatio() {
   // another lobby (from "Abrir" or the lobby panel's Próximo / Anterior): what is pending is saved, the editor closes
   const switchLobby = (id: string | null) => {
     setEditorOn(false)
+    setEditActive(false)
     setEditHint(false)
     setOpenOpen(false)
     setPerson(null)
@@ -383,6 +386,7 @@ export function ChickenPatio() {
   // a new Pátio of mine (a copy of the default one, or an empty one): I am its creator and may edit it
   const startNewPatio = (empty = false) => {
     setEditorOn(false)
+    setEditActive(false)
     setEditHint(false)
     setOpenOpen(false)
     setPerson(null)
@@ -400,6 +404,35 @@ export function ChickenPatio() {
   }
   const toggleRef = useRef(toggleEditor)
   toggleRef.current = toggleEditor
+  const toggleEditing = () => {
+    if (!access.canEdit) { setEditHint(v => !v); return }
+    setEditHint(false)
+    setEditActive(v => !v)
+  }
+  const editingRef = useRef(toggleEditing)
+  editingRef.current = toggleEditing
+  // the Edição bind (Controles; Alt and Cmd by default) turns the editing switch on and off with a tap: the key
+  // pressed and let go with nothing else in between, so Cmd+Z and Alt+click keep working
+  useEffect(() => {
+    let pending: string | null = null
+    const onDown = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (isChickenControlsListening() || e.repeat || (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable))) { pending = null; return }
+      const c = loadChickenControls(), tok = `Key:${e.code}`
+      pending = c.keys.editMode.includes(tok) || c.keys2.editMode.includes(tok) ? e.code : null
+      if (pending?.startsWith("Alt")) e.preventDefault()
+    }
+    const onUp = (e: KeyboardEvent) => { if (pending && e.code === pending) { pending = null; editingRef.current() } }
+    const reset = () => { pending = null }
+    window.addEventListener("keydown", onDown)
+    window.addEventListener("keyup", onUp)
+    window.addEventListener("pointerdown", reset, true)
+    window.addEventListener("blur", reset)
+    return () => {
+      window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp)
+      window.removeEventListener("pointerdown", reset, true); window.removeEventListener("blur", reset)
+    }
+  }, [])
   // "=" turns the editor mode on and off
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -592,7 +625,7 @@ export function ChickenPatio() {
       <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} hitboxes={patioLayers.layers.hitboxes} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} />
-      {editorOn && patio && access.canEdit && <PatioEditor layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
+      {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
         soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })} />}
       {/* the "Zonas sonoras" layer outside the editor: only shown, the tags do not change anything */}
       {patioLayers.layers.zones > 0 && !(editing && patio && access.canEdit) && (

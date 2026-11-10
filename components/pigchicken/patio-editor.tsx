@@ -81,7 +81,7 @@ const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 // soundLayer: the "Zonas sonoras" layer (shared with the header's eye), editable here
 // active: the switch in the panel's title; off, the panel stays open and its cards still place elements, but the
 // elements cannot be selected, moved or edited and the Pátio plays as outside the editor
-export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, active = true, onActive }: { layout: PatioLayout; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void }) {
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, active = true, onActive, palette = true }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void }) {
   const history = useHistory(layout, onChange)
   const { back, forward, canUndo, canRedo } = history
   // the gesture under way (move, resize, turn); the element being dragged does not fall until it is let go
@@ -317,7 +317,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         <SceneZonePanel key={scenePanel} scene={scenePanel} zones={layout.settings?.sceneZones} onChange={(zone, step) => setSceneZone(scenePanel, zone, step && `${step}:cena${scenePanel}`)}
           onReset={() => setSceneZone(scenePanel, null)} onClose={() => setScenePanel(null)} />
       )}
-      <Palette active={active} onActive={onActive} onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
+      {palette && <Palette active={active} onActive={onActive} onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
         bindHouse={house => placement.bind(() => randomHouseElement(house.style), () => openDraft({ kind: "house", value: house }))}
         bindTree={tree => placement.bind(() => {
           const next = randomTree(tree.style)
@@ -325,10 +325,10 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
         soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer}
-        floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />
-      {draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
+        floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />}
+      {palette && draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
-      {draft?.kind === "tree" && <TreePanel tree={draft.value} onChange={value => setDraft({ kind: "tree", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
+      {palette && draft?.kind === "tree" && <TreePanel tree={draft.value} onChange={value => setDraft({ kind: "tree", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('tree', 0, 0, { tree: draft.value }), ...treeDraftSize(draft.value) }))} />}
       {placement.ghost && <div ref={placement.ghostRef} aria-hidden="true" className="pointer-events-none fixed z-[260] opacity-75"
         style={{ left: -placement.ghost.w / 2, top: -placement.ghost.h, width: placement.ghost.w, height: placement.ghost.h }}>

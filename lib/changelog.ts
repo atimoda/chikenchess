@@ -37,6 +37,7 @@ const RECENT = [
         'Ao trocar de Pátio, a galinha é sugada pelo portal de entrada do Pátio atual e sai pelo portal de entrada do Pátio novo.',
         'Novo botão no painel do Modo editor (ícone de painel lateral) fixa o painel no lado direito da tela: o Pátio passa a ocupar só o espaço à esquerda, e a divisória entre os dois muda a largura arrastando. Clicar de novo volta ao painel flutuante; a escolha e a largura ficam guardadas.',
         'No título do Modo editor, um switch liga e desliga a edição sem fechar o painel: desligado, os elementos não podem ser selecionados nem movidos e os portais voltam a funcionar, mas ainda dá para arrastar elementos do painel para o Pátio. Abrir o painel liga o switch.',
+        'Novo bind Edição no painel Controles (grupo Pátio): apertar e soltar Alt/Option ou Cmd liga e desliga a edição do Modo editor, mesmo com o painel fechado. Atalhos como Cmd+Z continuam funcionando normalmente.',
       ] },
       { title: 'Pátio online', items: [
         'Aliens, zumbis, aliens de treino e os mortos-vivos que eles deixam agora são os mesmos para todo o lobby: o dono do lobby comanda os inimigos, e os acertos de qualquer player (tiros, notas, explosões, golpes e arremessos) valem para todos, inclusive matar, virar passarinho ou curar.',

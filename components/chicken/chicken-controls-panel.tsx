@@ -143,6 +143,9 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             {a.group === "items" && CHICKEN_ACTIONS[i - 1]?.group !== "items" && (
               <span style={{ gridColumn: `span ${COLUMNS.length + CHICKEN_INPUT_TYPES.length + 2}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Itens (PigChicKen)</span>
             )}
+            {a.group === "patio" && DISPLAY_ACTIONS[i - 1]?.group !== "patio" && (
+              <span style={{ gridColumn: `span ${COLUMNS.length + CHICKEN_INPUT_TYPES.length + 2}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Pátio</span>
+            )}
             <span className="sticky left-0 z-[1] truncate bg-[#101713] pr-1 text-[#b9c7b9]" title={a.label}>{a.label}</span>
             {COLUMNS.map(({ type, slot, column }) => {
               const kind = type.id

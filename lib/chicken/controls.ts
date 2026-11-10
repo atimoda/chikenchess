@@ -5,6 +5,8 @@ export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
   | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'itemWheel' | 'reload' | 'grab' | 'deselectItem'
   | 'nextInstrument' | 'nextWeapon' | 'nextUtility'
+  // the Pátio: turns the Modo editor's editing switch on and off (a tap: pressed and let go with no other key)
+  | 'editMode'
 export type ChickenTouchMode = 'auto' | 'on' | 'off'
 type Slots = (string | null)[]
 
@@ -19,7 +21,7 @@ export const CHICKEN_INPUT_TYPES: { id: ChickenInputType; label: string; device:
 ]
 export const KEYBOARD_INPUT_TYPES: ChickenInputType[] = CHICKEN_INPUT_TYPES.filter(t => t.device === 'keyboard').map(t => t.id)
 
-export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; keys2: Slots; pad: Slots; group?: 'items' }[] = [
+export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; keys2: Slots; pad: Slots; group?: 'items' | 'patio' }[] = [
   { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', null, null], keys2: ['Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
   { key: 'right', label: 'Direita', keys: ['Key:KeyD', null, null], keys2: ['Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
   { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', null, null], keys2: ['Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
@@ -43,6 +45,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   // X runs and also grabs while standing on an item; the Shifts do the same on the keyboards. R3 throws, Y hits, LT broods.
   { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', 'Key:ShiftLeft', null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: ['Key:Backspace', null], pad: ['Pad:b9', null, null], group: 'items' },
+  { key: 'editMode', label: 'Edição (Modo editor)', keys: ['Key:AltLeft', 'Key:MetaLeft', null], keys2: [null, null], pad: [null, null, null], group: 'patio' },
 ]
 
 // Independent eight-direction magnets for movement and aim; zero disables each.
@@ -307,6 +310,11 @@ export function loadChickenControls(): ChickenControls {
       if (only(base.pad.melee, 'Pad:b1') && (only(base.pad.nextUtility, 'Pad:b3') || (!base.pad.nextUtility.some(Boolean) && yFree))) {
         base.pad.melee = ['Pad:b3', null, null]; base.pad.nextUtility = ['Pad:b1', null, null]
       }
+    }
+    // 09/11: the editing switch's bind (Alt, Cmd) on controls saved before it, only with keys nothing else holds
+    if (!Array.isArray(saved?.keys?.editMode)) {
+      const held = (tok: string | null) => !!tok && CHICKEN_ACTIONS.some(a => a.key !== 'editMode' && (base.keys[a.key].includes(tok) || base.keys2[a.key].includes(tok)))
+      base.keys.editMode = base.keys.editMode.map(t => held(t) ? null : t)
     }
     // one key, one action, on one keyboard type: the primary keyboard wins
     const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
