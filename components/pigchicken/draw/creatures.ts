@@ -7,6 +7,7 @@ import { drawTempleAlien } from "@/components/pigchicken/temple-draw"
 import { BIRDS, UNDEAD_EYE, birdColors, type BirdType } from "@/lib/pigchicken/birds"
 import { undeadSize, type UndeadState } from "@/lib/pigchicken/undead"
 import { type Ctx } from "./shared"
+import { pixelSprite, stampPixels } from "./pixel-sprite"
 
 // where the characters are (world coordinates, at their heads), set every frame: the aliens' eyes follow the
 // nearest one. Only her for now; online, every character on screen goes in here.
@@ -40,11 +41,11 @@ export function drawBirdArt(ctx: Ctx, x: number, y: number, face: number, t: num
   const f = BIRD_FRAMES[Math.floor(t * (type?.flap ?? 8.3)) % 2], p = type?.pixel ?? 4
   const c = type ? birdColors(type, undead) : { body: color, wing: color, belly: color, beak: "#ffb347" }
   ctx.save(); ctx.translate(x, y); ctx.scale(face < 0 ? -1 : 1, 1)
-  f.forEach((row, r) => { for (let i = 0; i < row.length; i++) {
-    const ch = row[i]; if (ch === ".") continue
-    ctx.fillStyle = flash > 0 ? "#ffffff" : ch === "o" ? (undead ? eye : "#101018") : ch === ">" ? c.beak : ch === "w" ? c.wing : ch === "b" ? c.belly : c.body
-    ctx.fillRect((i - 5.5) * p, (r - 4) * p, p, p)
-  } })
+  const key = flash > 0 ? "flash" : `${undead ? eye : "#101018"}|${c.beak}|${c.wing}|${c.belly}|${c.body}`
+  const sprite = pixelSprite(f, key, () => flash > 0
+    ? () => "#ffffff"
+    : ch => (ch === "o" ? (undead ? eye : "#101018") : ch === ">" ? c.beak : ch === "w" ? c.wing : ch === "b" ? c.belly : c.body))
+  stampPixels(ctx, sprite, -5.5 * p, -4 * p, p)
   if (undead) { ctx.globalAlpha = 0.5; ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(1.5 * p, -0.5 * p, p * 1.4, 0, Math.PI * 2); ctx.fill() }
   ctx.restore()
 }
@@ -169,12 +170,12 @@ export function drawAlien(ctx: Ctx, g: Combat["targets"][number], x: number) {
   const left = x - g.w / 2, top = g.y - g.h
   ctx.save()
   if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.35) * 0.6
-  frame.forEach((row, r) => { for (let c = 0; c < row.length; c++) {
-    const ch = row[c]
-    if (ch === ".") continue
-    ctx.fillStyle = g.flash > 0 ? (g.tint ?? "#ffffff") : ch === "w" ? (Math.floor(g.animT * 2) % 9 === 0 ? d.color : "#f4f1e8") : ch === "o" ? "#101018" : d.color
-    ctx.fillRect(left + c * p, top + r * p, p, p)
-  } })
+  // from its sprite (drawn once for each colour, see pixel-sprite.ts); now and then it blinks: the eye's white in its colour
+  const flash = g.flash > 0 ? (g.tint ?? "#ffffff") : null, blink = Math.floor(g.animT * 2) % 9 === 0
+  const sprite = pixelSprite(frame, flash ? `f${flash}` : `${d.color}|${blink ? 1 : 0}`, () => flash
+    ? () => flash
+    : ch => (ch === "w" ? (blink ? d.color : "#f4f1e8") : ch === "o" ? "#101018" : d.color))
+  stampPixels(ctx, sprite, left, top, p)
   ctx.restore()
   if (g.deadT <= 0) harmonyBar(ctx, g, x, top - 9, g.w)
 }

@@ -7,6 +7,7 @@ import type { Combat } from "@/lib/pigchicken/combat"
 import type { Conductor } from "@/lib/pigchicken/music"
 import { SPECIES, STAGES, drumOpen, multOf, type Species, type Temple } from "@/lib/pigchicken/temple"
 import { stageWidth } from "@/lib/stage-size"
+import { pixelSprite, stampGlow, stampHalo, stampPixels } from "@/components/pigchicken/draw/pixel-sprite"
 
 type Ctx = CanvasRenderingContext2D
 type Target = Combat["targets"][number]
@@ -145,11 +146,18 @@ const ART: Partial<Record<Species, { frames: string[][]; pal: Record<string, str
   },
 }
 
-// a colour mixed toward white (k > 0) or black (k < 0)
+// a colour mixed toward white (k > 0) or black (k < 0); remembered, the dragon asks for the same ones every frame
+const shades = new Map<string, string>()
 function shade(hex: string, k: number) {
+  const key = `${hex}|${k}`
+  const hit = shades.get(key)
+  if (hit) return hit
   const n = parseInt(hex.slice(1), 16), to = k > 0 ? 255 : 0, a = Math.abs(k)
   const ch = (v: number) => Math.round(v + (to - v) * a)
-  return `rgb(${ch((n >> 16) & 255)},${ch((n >> 8) & 255)},${ch(n & 255)})`
+  const out = `rgb(${ch((n >> 16) & 255)},${ch((n >> 8) & 255)},${ch(n & 255)})`
+  if (shades.size > 256) shades.clear()
+  shades.set(key, out)
+  return out
 }
 // a variation of another colour: its body's pixels take it (a darker and a lighter shade where the art has them)
 function bodyTint(sp: Species, color: string): ((ch: string) => string | null) | undefined {
@@ -163,14 +171,13 @@ function bodyTint(sp: Species, color: string): ((ch: string) => string | null) |
   return ch => map[ch] ?? null
 }
 
-function pixels(ctx: Ctx, rows: string[], pal: Record<string, string>, left: number, top: number, flash: string | null, tint?: (ch: string) => string | null) {
-  rows.forEach((row, r) => {
-    for (let c = 0; c < row.length; c++) {
-      const ch = row[c]
-      if (ch === ".") continue
-      ctx.fillStyle = flash ?? tint?.(ch) ?? pal[ch] ?? "#ffffff"
-      ctx.fillRect(left + c * P, top + r * P, P, P)
-    }
+// the art in its colours (a flash paints it whole), from its sprite: `colour` keys the tint and the palette it gets
+// (the same colour, the same sprite), and they are only worked out the first time
+function pixelArt(rows: string[], colour: string, flash: string | null, colours: () => { pal: Record<string, string>; tint?: (ch: string) => string | null }) {
+  return pixelSprite(rows, flash ? `f${flash}` : `c${colour}`, () => {
+    if (flash) return () => flash
+    const { pal, tint } = colours()
+    return ch => tint?.(ch) ?? pal[ch] ?? "#ffffff"
   })
 }
 
@@ -194,9 +201,7 @@ export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: numbe
   // a dark halo behind it, so it reads against the temple's roofs and walls
   {
     const cy = g.y - g.h / 2, r = Math.max(g.w, g.h) * 0.85
-    const halo = ctx.createRadialGradient(x, cy, r * 0.3, x, cy, r)
-    halo.addColorStop(0, "rgba(8,8,20,0.6)"); halo.addColorStop(1, "rgba(8,8,20,0)")
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2); ctx.fill()
+    stampHalo(ctx, x, cy, r, "rgba(8,8,20,0.6)", "rgba(8,8,20,0)")
   }
   // the bomb's warning: a red glow pulsing under it
   if (charge > 0.3 && g.deadT <= 0) {
@@ -212,17 +217,17 @@ export function drawTempleAlien(ctx: Ctx, g: Target, x: number, beatPhase: numbe
   ctx.translate(x, g.y); ctx.scale(2 - squash, squash); ctx.translate(-x, -g.y)
   const frame = Math.floor(beat) % 2
   if (sp === "jelly") {
-    const rows = lookRows(ALIEN_FRAMES[frame], look)
-    pixels(ctx, rows, { "#": d.color, w: "#f4f1e8", o: "#101018" }, x - g.w / 2, top, flash)
+    const sprite = pixelArt(lookRows(ALIEN_FRAMES[frame], look), d.color, flash, () => ({ pal: { "#": d.color, w: "#f4f1e8", o: "#101018" } }))
+    stampPixels(ctx, sprite, x - g.w / 2, top, P)
   } else if (sp === "drum") {
     const open = drumOpen(beatPhase)
-    if (open && !flash) { ctx.shadowColor = "#ffd166"; ctx.shadowBlur = 16 }
-    pixels(ctx, lookRows(ART.drum!.frames[open ? 1 : 0], look), ART.drum!.pal, x - g.w / 2, top, flash, bodyTint(sp, d.color))
-    ctx.shadowBlur = 0
+    const sprite = pixelArt(lookRows(ART.drum!.frames[open ? 1 : 0], look), d.color, flash, () => ({ pal: ART.drum!.pal, tint: bodyTint(sp, d.color) }))
+    if (open && !flash) stampGlow(ctx, sprite, x - g.w / 2, top, P, "#ffd166", 16)
+    stampPixels(ctx, sprite, x - g.w / 2, top, P)
   } else {
     const art = ART[sp]!
-    const tint = sp === "mini" ? (ch: string) => (ch === "#" ? d.color : null) : bodyTint(sp, d.color)
-    pixels(ctx, lookRows(art.frames[frame], look), art.pal, x - g.w / 2, top, flash, tint)
+    const tint = () => (sp === "mini" ? (ch: string) => (ch === "#" ? d.color : null) : bodyTint(sp, d.color))
+    stampPixels(ctx, pixelArt(lookRows(art.frames[frame], look), d.color, flash, () => ({ pal: art.pal, tint: tint() })), x - g.w / 2, top, P)
     // the shell cracks as it loses hit points
     if (sp === "shell" && !flash) {
       const k = g.hp / g.maxHp

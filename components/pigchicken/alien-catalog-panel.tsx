@@ -1,6 +1,7 @@
 "use client"
 
-// Popup with the aliens' catalogue: a card for each variation (its drawing, animated, its name and its species);
+// Popup with the aliens' catalogue: a card for each variation (its drawing, its name and its species; it stands still
+// and only the card under the pointer or focused moves, so a long catalogue costs one drawing a frame);
 // clicking one opens its parameters, with buttons to hear its shot and its two deaths, duplicate it, bring a code's
 // one back to its values or delete one made here. Saved in this browser; the songs take it live.
 import { useEffect, useRef, useState } from "react"
@@ -42,10 +43,10 @@ function sizeCanvas(c: HTMLCanvasElement) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h)
   return { ctx, w, h }
 }
-// the alien standing in the middle of a canvas, fitted to it, stomping on the beat
-function drawCard(c: HTMLCanvasElement, v: AlienVariant, now: number) {
+// the alien standing in the middle of a canvas, fitted to it, stomping on the beat (still: halfway between beats)
+function drawCard(c: HTMLCanvasElement, v: AlienVariant, now: number | null) {
   const { ctx, w, h } = sizeCanvas(c)
-  const beat = now / SPB, phase = beat - Math.floor(beat)
+  const beat = now === null ? 0.5 : now / SPB, phase = beat - Math.floor(beat)
   const sz = variantSize(v), k = Math.min(1.6, (h * 0.62) / Math.max(sz.w * 0.8, sz.h))
   ctx.save(); ctx.translate(w / 2, h * 0.8); ctx.scale(k, k)
   drawTempleAlien(ctx, fakeTarget(v, 0, 0), 0, phase, 0, beat, null)
@@ -109,16 +110,43 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => subscribeCatalog(setCatalog), [])
   const v = sel ? catalog.find(x => x.id === sel) ?? null : null
 
-  // one loop draws every card on screen (and the preview)
+  // the cards are drawn still, once (again when the catalogue changes or the panel's width does); one loop moves
+  // only the card under the pointer or focused, or the open variation's preview
   const live = useRef({ catalog, v })
   live.current = { catalog, v }
+  const moving = useRef<string | null>(null)
+  const drawStill = (id?: string) => {
+    const c = live.current.catalog
+    cards.current.forEach((el, key) => {
+      if (id && key !== id) return
+      const x = c.find(o => o.id === key)
+      if (x && el.isConnected) drawCard(el, x, null)
+    })
+  }
+  const hover = (id: string | null) => {
+    const was = moving.current
+    moving.current = id
+    if (was && was !== id) drawStill(was)
+  }
+  useEffect(() => { if (!v) drawStill() }, [catalog, v])
+  useEffect(() => {
+    const el = scroller.current
+    if (!el || typeof ResizeObserver === "undefined") return
+    let w = el.clientWidth
+    const ro = new ResizeObserver(() => { if (el.clientWidth !== w) { w = el.clientWidth; if (!live.current.v) drawStill() } })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   useEffect(() => {
     let raf = 0
     const frame = () => {
       const now = performance.now() / 1000
       const { catalog: c, v: cur } = live.current
       if (cur && preview.current) drawPreview(preview.current, cur, now)
-      else cards.current.forEach((el, id) => { const x = c.find(o => o.id === id); if (x && el.isConnected) drawCard(el, x, now) })
+      else if (moving.current) {
+        const el = cards.current.get(moving.current), x = c.find(o => o.id === moving.current)
+        if (el && x && el.isConnected) drawCard(el, x, now)
+      }
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
@@ -164,7 +192,9 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                 <h3 className="pb-2 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">{SPECIES[sp].name}</h3>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(108px,1fr))] gap-2">
                   {catalog.filter(x => x.species === sp).map(x => (
-                    <button key={x.id} type="button" onClick={() => pick(x.id)} className="grid min-w-0 gap-1 rounded-lg border border-white/10 bg-[#0b110e] p-1.5 text-left hover:border-primary">
+                    <button key={x.id} type="button" onClick={() => { hover(null); pick(x.id) }}
+                      onPointerEnter={() => hover(x.id)} onPointerLeave={() => { if (moving.current === x.id) hover(null) }}
+                      onFocus={() => hover(x.id)} onBlur={() => { if (moving.current === x.id) hover(null) }} className="grid min-w-0 gap-1 rounded-lg border border-white/10 bg-[#0b110e] p-1.5 text-left hover:border-primary">
                       <canvas ref={el => { if (el) cards.current.set(x.id, el); else cards.current.delete(x.id) }} aria-hidden="true" className="h-20 w-full rounded-md bg-[#141c26]" />
                       <span className="truncate px-0.5 text-[12px] text-white">{x.name}</span>
                       <span className="truncate px-0.5 text-[10px] text-[#93a79a]">{x.id === sp ? "Base" : SPECIES[x.species].name}{!x.builtin ? " · sua" : ""}</span>

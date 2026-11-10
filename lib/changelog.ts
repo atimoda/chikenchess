@@ -41,6 +41,7 @@ const RECENT = [
         'O Passaguá captura os pintinhos como os pássaros: cada um soma uma alma no contador de quem pegou.',
         'Clicar ou tocar no botão de qualquer portal do Pátio (a volta ao globo e os pares de portais) faz a galinha andar até ele e entrar sozinha ao encostar, como no portal do globo; mexer a galinha no caminho cancela a ida.',
         'A galinha com bico de galinha-d’angola ganha voz própria, recortada de uma gravação real: o “tô fraco” toca no grupo Grito, o cacarejo fraquinho em Suave, Médio e Murmúrio e o cacarejo forte (e chato) em Forte. Os grupos ligados e o som de cada movimento continuam os da classe.',
+        'O Catálogo de aliens abre leve: os cartões ficam parados e só o alien sob o mouse (ou o aberto) se mexe. No jogo, aliens e pássaros são desenhados bem mais rápido, para fases com muitos deles na tela ao mesmo tempo, sem mudar o visual.',
       ] },
       { title: 'Música', items: [
         'Buenos Aires vira 1913 Buenos Aires - Tango, com o kit refeito do zero e inspirado nos tangos que fizeram a tangomania de Paris (El Choclo, La Morocha). São oito seções em Ré menor: a introdução soa como um disco antigo e se abre no Tema A do bandoneón; depois vêm o tema lírico do violino, o arrastre em 3-3-2 com chicharra, o trío de violoncelo e flauta, a variación do bandoneón e o chan-chan final.',
