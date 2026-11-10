@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.6.0',
     date: '10/11/2026',
-    title: 'Instrumentos de sopro na boca, asas segurando os itens e música ambiente das zonas afinada',
+    title: 'Escalas alternativas nos instrumentos, sopros na boca, asas segurando os itens e música ambiente afinada',
     groups: [
       { title: 'Pátio', items: [
         'Flauta, sax e trompete ficam presos pela ponta do bocal no bico da galinha e giram a partir dali ao mirar; a cabeça passa a ficar na frente da asa enquanto ela toca. A mira e a saída das notas acompanham o novo eixo.',
@@ -17,6 +17,10 @@ const RECENT = [
         'No Pátio online, as galinhas dos outros players agarradas a paredes, tetos e rampas aparecem viradas para a superfície, com a mesma pose de escalada, em vez de flutuar no ar.',
         'Itens → Pontos ganha Inverter asa (vertical): as asas que seguram o item ficam espelhadas ao longo do comprimento, para não ficarem de cabeça para baixo quando giram muito. Vem marcado na flauta, no sax e no trompete.',
         'A camada Escalas some enquanto a galinha é arrastada pelo mouse ou pelo toque e volta ao soltar.',
+        'Escalas alternativas nos instrumentos: além da Escala primária (o leque de sempre), cada instrumento pode tocar o Ciclo de quintas e Tensão e resolução. Nelas a direção da mira escolhe um dos 12 setores e a distância escolhe o anel: com o mouse vale onde o cursor está; no analógico, empurrado pela metade toca o anel de dentro e esticado inteiro o de fora. Cada região tem um acorde fixo.',
+        'Ciclo de quintas: acordes maiores por fora (Dó em cima, Sol, Ré…) e as relativas menores por dentro. Tensão e resolução: diminutos e dissonantes no miolo e, nas bolinhas em volta, o acorde que resolve cada um.',
+        'Num instrumento com várias escalas, a rodinha do mouse e a troca rápida passam pelas escalas antes de ir para o próximo item; cada troca de escala faz o som de recarga da arma da família do instrumento e mostra o nome da escala. Em Itens → Música → Escalas dá para ligar e desligar cada uma (todas vêm ligadas nos instrumentos).',
+        'Com a camada Escalas ligada, as escalas redondas aparecem como gráfico em volta da galinha, com a região da mira acesa.',
         'O drone de fundo das zonas toca a terça de cada acorde, então dá para ouvir se ele é maior, menor ou diminuto, e a quinta do acorde em vez de uma quinta fixa.',
         'O drone muda de nota na virada do compasso, sem deslizar entre uma nota e outra, e o grave fica perto da tônica em vez de saltar uma oitava.',
         'Os acordes de cada zona sempre combinam com a escala: trocar a escala, o Random e as mudanças de modo escolhem acordes que contêm todas as notas dela. No painel da zona, os acordes que desafinam com a escala aparecem marcados.',

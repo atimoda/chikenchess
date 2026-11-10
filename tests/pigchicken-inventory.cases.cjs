@@ -2,7 +2,12 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const inv = loadTs('lib/pigchicken/inventory.ts')
-const { createCombat } = loadTs('lib/pigchicken/combat.ts')
+const { createCombat: newCombat } = loadTs('lib/pigchicken/combat.ts')
+const { DEFAULT_ITEMS } = loadTs('lib/pigchicken/items.ts')
+// these cases are about the items: every instrument with just its primary scale (the scales have their own case below)
+const ONE_SCALE = structuredClone(DEFAULT_ITEMS)
+Object.values(ONE_SCALE).forEach(d => { d.scales = ['primary'] })
+const createCombat = () => { const c = newCombat(); c.setItems(ONE_SCALE); return c }
 
 const body = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
 const step = (c, over = {}) => c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...over }, [], 1000, () => {})
@@ -543,4 +548,20 @@ test('Próximo instrumento / arma / utilitário cycle their group in the bar ord
   // a press in the same frame as the next / previous item: those win (one switch per frame)
   step(c, { slot: 1 }); step(c, { pick: 1, groupPick: 2 }); assert.equal(c.held.item, 'flute')
   inv.groupStep([0, 0, 1], 5, 2) === -1 || assert.fail('empty group')
+})
+
+test('the wheel goes through an instrument’s scales first, each with its weapon’s reload, then the next item', () => {
+  const c = newCombat()
+  c.give('pistol'); c.give('flute')
+  step(c, { slot: 1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'primary')
+  c.sounds.length = 0
+  step(c, { pick: 1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'fifths')
+  assert.deepEqual(c.sounds.find(s => s.kind === 'scale'), { kind: 'scale', item: 'pistol' })
+  step(c, { pick: 1 }); assert.equal(c.scale.id, 'tension')
+  step(c, { pick: 1 }); assert.equal(c.held.item, 'pistol')
+  // back: arriving at the flute from after it starts at its last scale
+  step(c, { pick: -1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'tension')
+  step(c, { pick: -1 }); assert.equal(c.scale.id, 'fifths')
+  // a number key keeps the scale it was on
+  step(c, { slot: 2 }); step(c, { slot: 1 }); assert.equal(c.scale.id, 'fifths')
 })

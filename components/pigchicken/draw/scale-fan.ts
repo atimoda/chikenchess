@@ -6,6 +6,7 @@
 // lanes are the same on both sides; the labels go on the side she aims at.
 import type { Combat } from "@/lib/pigchicken/combat"
 import { DEGREE_COLORS, NOTE_NAMES, SCALES, type PitchSet } from "@/lib/pigchicken/music"
+import { CHART_HOLE, RING_SPLIT, sectorEdges, type ScaleRegion } from "@/lib/pigchicken/instrument-scales"
 
 
 const noteName = (m: number) => `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`
@@ -30,6 +31,12 @@ export const SCALE_FAN_R = 390
 export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3, fade = 0.5, lines = 1) {
   const src = aimSource(combat)
   if (!src) return
+  // an instrument on a chart scale (Ciclo de quintas, Tensão e resolução): the round chart instead of the leque
+  const chart = combat.def().instrument ? combat.scale : null
+  if (chart && chart.regions().length) {
+    drawScaleChart(ctx, chart.regions(), chart.regionAt(aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    return
+  }
   const music = combat.music, zone = music.zone
   const pool = music.aimPool(src.set, src.octave, src.span)
   const n = pool.length
@@ -93,4 +100,44 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
 function hexA(hex: string, a: number) {
   const v = parseInt(hex.slice(1, 7), 16)
   return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${Math.max(0, Math.min(1, a))})`
+}
+
+// The round chart of a chart scale: 12 sectors (the first centred straight up), the inner ring up to RING_SPLIT of
+// the radius and the outer one to the edge, each region with its chord's name. Tensão e resolução draws its outer
+// ring as a circle of balls; the region she aims at (direction and reach) is lit.
+function drawScaleChart(ctx: CanvasRenderingContext2D, regions: ScaleRegion[], now: ScaleRegion | null, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+  const rHole = rOut * CHART_HOLE, rMid = rOut * RING_SPLIT
+  const font = Math.max(8, Math.min(14, rOut * 0.075))
+  ctx.save()
+  ctx.lineWidth = 1
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  for (const r of regions) {
+    const { a0, a1 } = sectorEdges(r.sector), on = r === now
+    const inner = r.ring === 0 ? rHole : rMid, outer = r.ring === 0 ? rMid : rOut
+    const mid = (a0 + a1) / 2, rc = (inner + outer) / 2
+    if (r.kind === "resolution") {
+      // a ball in the middle of the sector's outer band
+      const br = Math.min((outer - inner) * 0.42, rc * Math.sin((a1 - a0) / 2) * 0.85)
+      ctx.beginPath()
+      ctx.arc(cx + Math.cos(mid) * rc, cy + Math.sin(mid) * rc, br, 0, Math.PI * 2)
+      ctx.fillStyle = hexA(r.color, alpha * (on ? 0.85 : 0.4))
+      ctx.fill()
+      if (lines > 0) { ctx.strokeStyle = hexA("#f3e6c4", alpha * 0.6 * lines); ctx.stroke() }
+    } else {
+      ctx.beginPath()
+      ctx.arc(cx, cy, outer, a0, a1)
+      ctx.arc(cx, cy, inner, a1, a0, true)
+      ctx.closePath()
+      ctx.fillStyle = hexA(r.color, alpha * (on ? 0.6 : 0.2))
+      ctx.fill()
+      if (lines > 0) { ctx.strokeStyle = hexA("#ffffff", alpha * 0.35 * lines); ctx.stroke() }
+    }
+    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.font = `${on ? "bold " : ""}${Math.round(r.ring === 1 ? font : font * 0.85)}px monospace`
+    ctx.fillStyle = "#ffffff"
+    ctx.fillText(r.label, cx + Math.cos(mid) * rc, cy + Math.sin(mid) * rc)
+    ctx.globalAlpha = 1
+  }
+  ctx.restore()
 }
