@@ -18,6 +18,7 @@ const RECENT = [
         'Segurar o bind Edição (Alt ou Cmd) por 1,5 s mostra ou esconde o painel do Modo editor sem mudar o switch de edição; um toque rápido continua ligando e desligando a edição.',
         'Esc fecha o último painel aberto, inclusive o Modo editor fixo na lateral; com um elemento selecionado no editor, o primeiro Esc só tira a seleção.',
         'No painel Controles, quem entra com conta admin vê, ao lado de Restaurar padrão, o botão Tornar este o padrão: no Admin local ele grava os binds e opções atuais como o padrão do jogo, que vale para quem nunca mexeu nos controles e para Restaurar padrão depois do deploy.',
+        'Andando por Chãos com rampas suaves, a galinha passa pelas dobras do piso sem dar um tranco nem uma pequena agarrada; o degrau automático só acontece na beirada solta de um piso.',
       ] },
     ],
   },

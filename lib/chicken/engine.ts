@@ -1219,12 +1219,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const fy = Math.min(sg.ay, sg.by)
       if (fy >= S.y - 2 || fy < S.y - STEP_UP * s) return
       if (Math.max(sg.ax, sg.bx) < x0 || Math.min(sg.ax, sg.bx) > x1) return
+      // a floor that goes on from another one (the next piece of a slope or a bend in a Chão) is walked onto,
+      // not stepped onto: only a free end facing her (a box's top, a step over a wall) is a step
+      if (continuesFloor(sg, heldDir || S.face)) return
       if (fy < bestY) { best = sg; bestY = fy }
     })
     if (!best) return
     const sg = best as Seg
     S.x = clamp(S.x, Math.min(sg.ax, sg.bx) + 4 * s, Math.max(sg.ax, sg.bx) - 4 * s)
     land(bestY, sg); S.squash = 0.35
+  }
+
+  // the end of a floor she meets walking in `dir` is joined to another floor (within 2 px)
+  function continuesFloor(sg: Seg, dir: number) {
+    const [nx, ny] = (sg.ax < sg.bx) === (dir > 0) ? [sg.ax, sg.ay] : [sg.bx, sg.by]
+    return SEGS.some(o => o !== sg && !o.wall && (Math.hypot(o.ax - nx, o.ay - ny) < 2 || Math.hypot(o.bx - nx, o.by - ny) < 2))
   }
 
   // ---------- point-and-click: a click or tap sends her walking to that spot ----------
