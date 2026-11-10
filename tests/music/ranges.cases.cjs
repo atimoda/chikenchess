@@ -332,6 +332,17 @@ test('all 68 city presets retain their authored bank order and contrasting harmo
       }
       continue
     }
+    if (city.id === 'buenos-aires-1940') {
+      // Tango 1913: Tema A returns as the reprise; rests stay silent; fills use bank 7.
+      const order = [0, 1, 2, 3, 4, 5, 1, 6]
+      assert.equal(kit.harmony, 'kit')
+      assert.deepEqual(kit.arrangement.sections.map(section => section.harmony.length), [8, 8, 8, 8, 8, 8, 8, 4])
+      for (const instrument of Object.values(kit.instruments)) {
+        assert.deepEqual(kit.arrangement.sections.map((section, index) => instrument.arrangement.sections[section.id].variation ?? order[index]), order, instrument.name)
+        assert.ok(Object.values(instrument.arrangement.sections).every(step => step.fill === undefined || step.fill === 7))
+      }
+      continue // Harmony, sound and the chan-chan are covered in kits.cases.cjs.
+    }
     if (city.id === 'goa') {
       assert.equal(kit.arrangement.sections.length, 9)
       assert.ok(Object.values(kit.instruments).every(instrument => instrument.pianoRolls.length === 8))

@@ -531,9 +531,9 @@ const rawCities: Omit<CityData, "coordinates" | "campaigns" | "pinCoordinates">[
     ]
   },
   {
-    id: 'buenos-aires-1940', name: 'Buenos Aires', country: 'Argentina', year: 1940,
-    genre: 'Vals criollo', description: 'In the Río de la Plata, vals criollo carried tango’s immigrant mix into neighborhood dance halls, where longing and elegance could share the floor.',
-    bpm: 132, meter: '3/4', scale: ['A3','B3','C4','D4','E4','F4','G4'],
+    id: 'buenos-aires-1940', name: 'Buenos Aires', country: 'Argentina', year: 1913,
+    genre: 'Tango', description: 'From the Río de la Plata, the tango of the Guardia Vieja crossed to Paris and set off the 1913 tangomania: bandoneón, violin and piano trading habanera steps, dragged accents and longing melodies.',
+    bpm: 118, meter: '4/4', scale: ['D4','E4','F4','G4','A4','Bb4','C#5'],
     geoCoordinates: { lat: -34.6037, lng: -58.3816 }, color: '#ef8979',
     image: 'https://images.unsplash.com/photo-1589909202802-8f4aadce1849?q=85&w=1600&auto=format&fit=crop',
     samples: { kick: 'bd:0', snare: 'sd:0', hihat: 'hh:0', bass: 'bass:0', pad: 'pad:0', lead: 'synth:0' },

@@ -11,7 +11,7 @@ const voiceOf = (snapshot, id) => voiceSpecs(snapshot, null).find(voice => voice
 const firstValue = pattern => pattern.queryArc(0, 8).find(event => event.hasOnset()).value
 
 test('kits without sound-design fields keep their exact voices', () => {
-  const kit = cityKits.defaultCityKit('buenos-aires-1940')
+  const kit = cityKits.defaultCityKit('dublin-1990')
   const parsed = creative.creativeSchema.parse(JSON.parse(JSON.stringify(kit)))
   assert.equal(JSON.stringify(voiceSpecs(allActive(parsed), null)), JSON.stringify(voiceSpecs(allActive(kit), null)))
   for (const voice of voiceSpecs(allActive(kit), null)) {
@@ -105,7 +105,7 @@ test('lite profile (phones) drops worklet LFOs, private buses and sidechain, nar
     assert.deepEqual([find(lite, synthId).controls.unison, find(lite, synthId).controls.fmi], [3, 2])
   }
   // Kits without the new fields keep their voices apart from the bus count.
-  const plain = allActive(cityKits.defaultCityKit('buenos-aires-1940'))
+  const plain = allActive(cityKits.defaultCityKit('dublin-1990'))
   assert.equal(JSON.stringify(voiceSpecs(plain, null, 2, true)), JSON.stringify(voiceSpecs(plain, null, 2)))
 })
 

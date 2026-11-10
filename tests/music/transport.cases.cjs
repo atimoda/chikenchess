@@ -188,11 +188,11 @@ test('simple and compound meters give each bar its real pulse duration', () => {
  }
 })
 
-test('three ballad stages place accents in 3/4, 6/8 and 12/8 rather than a four-beat grid', async () => {
+test('waltz and ballad stages place accents in 3/4, 6/8 and 12/8 rather than a four-beat grid', async () => {
  const {defaultCityKit}=loadTs('lib/music/city-kits.ts')
  const {renderMusicCode}=loadTs('lib/music/code-export.ts')
  const checks=[
-  ['buenos-aires-1940','3/4',3,'Acorde no dois',[1/3]],
+  ['new-york-1962','3/4',3,'Acordes rítmicos',[1/6,2/3]],
   ['dublin-1990','6/8',2,'Batida no quatro',[1/2]],
   ['new-orleans-1953','12/8',4,'Ride ternário',[0,2/12,3/12]],
  ]

@@ -41,6 +41,10 @@ const RECENT = [
         'O Passaguá captura os pintinhos como os pássaros: cada um soma uma alma no contador de quem pegou.',
         'Clicar ou tocar no botão de qualquer portal do Pátio (a volta ao globo e os pares de portais) faz a galinha andar até ele e entrar sozinha ao encostar, como no portal do globo; mexer a galinha no caminho cancela a ida.',
       ] },
+      { title: 'Música', items: [
+        'Buenos Aires vira 1913 Buenos Aires - Tango, com o kit refeito do zero e inspirado nos tangos que fizeram a tangomania de Paris (El Choclo, La Morocha). São oito seções em Ré menor: a introdução soa como um disco antigo e se abre no Tema A do bandoneón; depois vêm o tema lírico do violino, o arrastre em 3-3-2 com chicharra, o trío de violoncelo e flauta, a variación do bandoneón e o chan-chan final.',
+        'O Tango reage à partida: o cheque puxa o arrastre, perder a dama traz o lamento do violino, lances quietos levam ao trío, o primeiro roque passa à relativa maior, o final acelera para a variación e o xeque-mate toca o chan-chan.',
+      ] },
       { title: 'Interface', items: [
         'No Criativo, a aba Modulation do Instrument ganha o visual da aba Tuning: nome completo e ajuda em cada controle, knobs verdes e seletores na mesma célula dos knobs.',
         'No editor de parâmetros dos instrumentos (Criativo e partida), as abas All / Section / Note ficam acima de Tuning/Filters/Modulation/Movement. All edita o instrumento inteiro; Section personaliza os knobs só na seção selecionada (clicar numa seção já abre essa aba) e Note só nas notas selecionadas no editor MIDI. Os knobs ainda herdados aparecem apagados com o valor de All e acordam ao serem mexidos; duplo clique devolve o knob ao valor herdado.',

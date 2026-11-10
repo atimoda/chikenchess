@@ -14,6 +14,7 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'venice-1725': 'venice-2026-11-07-concerto-v1',
   'copenhagen-1869': 'copenhagen-2026-11-07-concerto-v1',
   'paris-1913': 'paris-2026-11-07-ballet-v1',
+  'buenos-aires-1940': 'buenos-aires-2026-11-10-tango-v1',
   'new-orleans-1953': 'new-orleans-2026-10-02-midi-v6',
   'leipzig-1723': 'leipzig-2026-11-07-orchestra-v5',
   'vienna-1825': 'vienna-2026-11-07-orchestra-v5',

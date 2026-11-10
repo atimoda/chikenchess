@@ -42,7 +42,7 @@ Próxima validação musical: escuta A/B de cada kit com 4, 8 e 16 peças, verif
 
 ## Próxima validação das baladas
 
-Buenos Aires 1940, Dublin 1990 e New Orleans 1953 são composições originais de referência em 3/4, 6/8 e 12/8. A infraestrutura de duração, subdivisão, acento, exportação e edição está implementada. Falta comparar por escuta os timbres sintéticos com instrumentação mais expressiva, dinâmica entre formações pequenas/completas e custo em celular físico. A aprovação dos testes de padrões não equivale a aprovação de qualidade musical; novos estilos devem partir desses ensaios antes de ampliar o catálogo.
+New York 1962, Dublin 1990 e New Orleans 1953 são composições originais de referência em 3/4, 6/8 e 12/8 (Buenos Aires virou o Tango de 1913, em 4/4). A infraestrutura de duração, subdivisão, acento, exportação e edição está implementada. Falta comparar por escuta os timbres sintéticos com instrumentação mais expressiva, dinâmica entre formações pequenas/completas e custo em celular físico. A aprovação dos testes de padrões não equivale a aprovação de qualidade musical; novos estilos devem partir desses ensaios antes de ampliar o catálogo.
 
 ## Entrega de 16/09 — composição e comparação
 

@@ -11,7 +11,7 @@
 | Tabuleiro, layout, cabeçalho, Debug e widgets flutuantes | [Tabuleiro e layout](docs/mechanics/widgets/board-and-layout.md) |
 | Análise, Stockfish, Best/Worst e bots | [Análise e bots](docs/mechanics/widgets/analysis-and-bots.md) |
 | Barra de chance, abertura e apresentação da partida | [Cabeçalho e abertura](docs/mechanics/match-header-and-intro.md) |
-| Kits, migração, laboratório | [Criativo e persistência](docs/mechanics/creative.md), [Escopo](docs/mechanics/scope-and-data.md) e [Revisões de kits](docs/mechanics/kit-revisions.md) |
+| Kits, migração, laboratório | [Criativo e persistência](docs/mechanics/creative.md), [Escopo](docs/mechanics/scope-and-data.md), [Revisões de kits](docs/mechanics/kit-revisions.md) e [Kit Tango](docs/mechanics/kit-tango.md) |
 | Schema 7, migração do arranjo e LPF L/S/N | [MIDI-only e persistência](docs/mechanics/midi-persistence.md) |
 | Forma global, atribuições por peça e harmonia por compasso | [Arranjo global](docs/mechanics/arrangement.md) |
 | Regras, transições e BPM | [Estados e Eventos](docs/mechanics/states-and-events.md) e [editor de regras](docs/mechanics/states-and-events-editor.md) |
@@ -55,6 +55,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Criativo e persistência](docs/mechanics/creative.md) | 14 KB |
 | [Editor de variações](docs/mechanics/editor.md) | 15 KB |
 | [Kits: revisões e reconstruções por campanha](docs/mechanics/kit-revisions.md) | 29 KB |
+| [Kit Tango — Buenos Aires 1913](docs/mechanics/kit-tango.md) | 6 KB |
 | [Manutenção, ideias e histórico](docs/mechanics/maintenance.md) | 7 KB |
 | [Mapa, globo e popups das cidades](docs/mechanics/map.md) | 27 KB |
 | [Cabeçalho, barra de chance e abertura da partida](docs/mechanics/match-header-and-intro.md) | 5 KB |
