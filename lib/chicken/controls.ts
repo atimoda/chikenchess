@@ -1,5 +1,8 @@
 // Player chicken controls: keyboard and gamepad bindings, on-screen (touch) controls and sound.
 // One store for every screen, saved in this browser; the panel and the engine both read it.
+// The defaults (new players and "Restaurar padrão") come from data/chicken/default-controls.json, which an admin
+// rewrites from the panel ("Tornar este o padrão"); the binds in CHICKEN_ACTIONS are the fallback for anything it lacks.
+import DEFAULTS_FILE from '../../data/chicken/default-controls.json'
 
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
@@ -69,10 +72,43 @@ const LEGACY_KEYS2 = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Contro
 const EVENT = 'chickenchess-chicken-controls'
 const GROUP_ACTIONS: ChickenAction[] = ['nextInstrument', 'nextWeapon', 'nextUtility']
 
-export function defaultChickenControls(): ChickenControls {
+const num = (v: unknown, lo: number, hi: number, d: number) => typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d
+const isTouchMode = (v: unknown): v is ChickenTouchMode => v === 'on' || v === 'off' || v === 'auto'
+
+function codeDefaultChickenControls(): ChickenControls {
   const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
   CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
   return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { repeatDelay: 1.5, repeatInterval: 0.3 } }
+}
+
+/** The game's default controls: the defaults file over the code fallback (a missing or invalid field keeps the code's). */
+export function defaultChickenControls(): ChickenControls {
+  const base = codeDefaultChickenControls()
+  const file = DEFAULTS_FILE as Record<string, unknown> & { [type: string]: unknown }
+  CHICKEN_INPUT_TYPES.forEach(t => {
+    const binds = file?.[t.id] as Record<string, unknown> | undefined
+    CHICKEN_ACTIONS.forEach(a => {
+      if (Array.isArray(binds?.[a.key])) base[t.id][a.key] = slots(binds[a.key], base[t.id][a.key], t.device === 'gamepad' ? 'Pad:' : 'Key:', t.slots)
+    })
+  })
+  if (isTouchMode(file?.touch)) base.touch = file.touch
+  if (typeof file?.touchRunGrab === 'boolean') base.touchRunGrab = file.touchRunGrab
+  if (typeof file?.sound === 'boolean') base.sound = file.sound
+  const an = (file?.analog ?? {}) as Partial<ChickenAnalog>, d = base.analog
+  const magnetDeg = num(an.magnetDeg, 0, 22.5, d.magnetDeg)
+  base.analog = {
+    deadzoneL: num(an.deadzoneL, 0, 0.9, d.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, d.deadzoneR),
+    magnet: magnetDeg > 0, magnetDeg, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, d.magnetRestoreDeg), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, d.aimMagnetDeg),
+  }
+  const inv = (file?.inventory ?? {}) as Partial<ChickenControls['inventory']>
+  base.inventory = { repeatDelay: num(inv.repeatDelay, 0.2, 5, base.inventory.repeatDelay), repeatInterval: num(inv.repeatInterval, 0.1, 2, base.inventory.repeatInterval) }
+  return base
+}
+
+/** The defaults file's content for a set of controls (what "Tornar este o padrão" writes). */
+export function chickenControlsDefaultsFile(c: ChickenControls) {
+  const pick = (type: ChickenInputType) => Object.fromEntries(CHICKEN_ACTIONS.map(a => [a.key, c[type][a.key].slice()]))
+  return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory } }
 }
 
 // The binds of one action on one input type (the players panel reads a player's inputs through this)
@@ -90,8 +126,8 @@ export function loadChickenControls(): ChickenControls {
     if (!raw) return base
     const saved = JSON.parse(raw)
     CHICKEN_ACTIONS.forEach(a => {
-      base.keys[a.key] = slots(saved?.keys?.[a.key], a.keys, 'Key:')
-      base.pad[a.key] = slots(saved?.pad?.[a.key], a.pad, 'Pad:')
+      base.keys[a.key] = slots(saved?.keys?.[a.key], base.keys[a.key], 'Key:')
+      base.pad[a.key] = slots(saved?.pad?.[a.key], base.pad[a.key], 'Pad:')
     })
     if (!saved?.keyboardJumpZ && !Array.isArray(saved?.keys?.jump)) base.keys.jump = ['Key:Space', null, null]
     // the group binds (09/11) start empty on controls saved before them: the migration at the end gives them their
@@ -102,15 +138,15 @@ export function loadChickenControls(): ChickenControls {
     })
     // Add the new default only after legacy Throw migrations have freed F.
     if (!Array.isArray(saved?.keys?.deselectItem)) base.keys.deselectItem = [null, null, null]
-    if (saved?.touch === 'on' || saved?.touch === 'off' || saved?.touch === 'auto') base.touch = saved.touch
+    if (isTouchMode(saved?.touch)) base.touch = saved.touch
     if (typeof saved?.touchRunGrab === 'boolean') base.touchRunGrab = saved.touchRunGrab
     if (typeof saved?.sound === 'boolean') base.sound = saved.sound
-    const num = (v: unknown, lo: number, hi: number, d: number) => typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d
     const an = saved?.analog ?? {}
     const savedMagnet = num(an.magnetDeg, 0, 22.5, an.magnet === true ? 12 : 0)
     const movementMagnet = an.magnet === false ? 0 : savedMagnet
-    base.analog = {
-      deadzoneL: num(an.deadzoneL, 0, 0.9, DEFAULT_ANALOG.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, DEFAULT_ANALOG.deadzoneR),
+    // a save without analog settings keeps the defaults file's
+    if (saved?.analog && typeof saved.analog === 'object') base.analog = {
+      deadzoneL: num(an.deadzoneL, 0, 0.9, base.analog.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, base.analog.deadzoneR),
       magnet: movementMagnet > 0, magnetDeg: movementMagnet, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, savedMagnet > 0 ? savedMagnet : 12), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, 0),
     }
     const inventory = saved?.inventory ?? {}
@@ -170,7 +206,7 @@ export function loadChickenControls(): ChickenControls {
       }
       addKey('fire', 'Key:KeyV'); addKey('melee', 'Key:KeyB')
     } else {
-      CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = slots(saved?.keys2?.[a.key], a.keys2, 'Key:', CHICKEN_INPUT_TYPES.find(t => t.id === 'keys2')!.slots) })
+      CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = slots(saved?.keys2?.[a.key], base.keys2[a.key], 'Key:', CHICKEN_INPUT_TYPES.find(t => t.id === 'keys2')!.slots) })
       // controls saved before the secondary keyboard could grab (03/11): / takes grab there, if it is free
       if (!saved?.grabKeys2 && !base.keys2.grab.some(Boolean) && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:Slash') || base.keys2[a.key].includes('Key:Slash'))) base.keys2.grab[0] = 'Key:Slash'
       // right-hand punctuation (08/11): / broods, P grabs, ' goes back an item, and ] [ ; \ join fire / melee / jump /

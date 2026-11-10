@@ -24,8 +24,9 @@ Trocar de catálogo ou retornar ao globo com alterações abre Salvar/Descartar/
 - `data/ui/baptism-names.json`: palavras do sorteio de nomes de batismo.
 - `data/music/profiles/*.json`: 45 perfis autorais normalizados; curadoria de timbre e arranjo incorporada. `lib/music/kit-profiles/catalog.ts` importa essas fontes; o compositor continua em `styled-kits.ts`. Os arquivos autorais TypeScript anteriores não alimentam mais o catálogo em execução.
 - `public/presets/*.json`: Manchester 1999, Düsseldorf Electro 01 e Mouth Breather.
+- `data/chicken/default-controls.json`: controles padrão da galinha (binds de Primary keyboard, Secondary keyboard e Gamepad, Touch Controls, Correr pega itens, cacarejos, analógicos e repetição do inventário). `lib/chicken/controls.ts` importa o arquivo; campo ausente ou inválido cai no padrão do código (`CHICKEN_ACTIONS`). Além do editor JSON, o painel Controles grava este arquivo com **Tornar este o padrão** (10/11, v2.5.1): o botão aparece ao lado de Restaurar padrão só para conta admin, em qualquer tela e modo; no Admin local (`npm run admin:dev`, localhost) lê a revisão, envia o conjunto atual do painel e mostra o resultado no rodapé; fora do localhost, sem sessão admin ou sem o serviço, mostra o erro e não grava nada. Vale para quem não tem controles salvos no navegador e para Restaurar padrão depois do commit/deploy; controles já salvos por jogadores não mudam. A posição dos botões de toque (Editar posição dos botões) não entra.
 
-São 55 atalhos. Os catálogos importados são incluídos no build; mudar apenas um arquivo do deployment não recompila os consumidores. A manutenção usa commit/build/deploy. Textos e perfis já eram estáticos: a extração não demonstra redução de consultas nem ganho medido de desempenho.
+São 56 atalhos. Os catálogos importados são incluídos no build; mudar apenas um arquivo do deployment não recompila os consumidores. A manutenção usa commit/build/deploy. Textos e perfis já eram estáticos: a extração não demonstra redução de consultas nem ganho medido de desempenho.
 
 ## Nomes de batismo
 

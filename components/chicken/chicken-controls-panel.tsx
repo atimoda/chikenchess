@@ -15,6 +15,7 @@ import {
 } from "@/lib/chicken/controls"
 import { startTouchLayoutEdit } from "@/lib/chicken/touch-layout"
 import { cn } from "@/lib/utils"
+import { saveDefaultChickenControls, watchAdminSession } from "@/lib/admin/chicken-controls-file-client"
 
 // Game section where the chicken's movement and look are tuned and saved for every screen.
 const CHICKEN_PATIO_PATH = "/patio"
@@ -38,6 +39,10 @@ const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
 export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }: { open: boolean; onOpenChange: (open: boolean) => void; editLayout?: boolean }) {
   const [controls, setControls] = useState<ChickenControls>(defaultChickenControls)
   const [listen, setListen] = useState<Listen>(null)
+  // admins can make the current set the game's default (written to the defaults file by the local Admin)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [defaultSave, setDefaultSave] = useState<{ busy: boolean; message?: string; error?: boolean }>({ busy: false })
+  useEffect(() => watchAdminSession(setIsAdmin), [])
   const listenRef = useRef<Listen>(null)
   listenRef.current = listen
   // the connected gamepad's make (Xbox / PlayStation): the buttons are named after it; a pad shows up after its first press
@@ -231,6 +236,21 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             </label>
           )}
           <Link href={CHICKEN_PATIO_PATH} onClick={() => onOpenChange(false)} className="text-xs text-primary underline-offset-2 hover:underline">Pátio da Galinha</Link>
+          {defaultSave.message && <span role="status" className={cn("mr-auto text-[11px]", defaultSave.error ? "text-red-300" : "text-[#8a9a8a]")}>{defaultSave.message}</span>}
+          {isAdmin && (
+            <button
+              type="button" disabled={defaultSave.busy}
+              title="Grava estes controles em data/chicken/default-controls.json (Admin local); publique com deploy"
+              onClick={() => {
+                setDefaultSave({ busy: true })
+                saveDefaultChickenControls(controls).then(
+                  () => setDefaultSave({ busy: false, message: "Salvo em data/chicken/default-controls.json. Faça commit e deploy para publicar." }),
+                  (error: Error) => setDefaultSave({ busy: false, message: error.message, error: true }),
+                )
+              }}
+              className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50"
+            >{defaultSave.busy ? "Salvando…" : "Tornar este o padrão"}</button>
+          )}
           <button type="button" onClick={() => { const d = defaultChickenControls(); saveChickenControls(d); setControls(d); setListen(null) }} className="h-8 rounded border border-white/20 px-3 text-xs hover:border-primary">Restaurar padrão</button>
         </div>
       </div>

@@ -15,6 +15,7 @@ import { isProfileToken } from '../music/profile-tokens'
 import { prepareOfficialCityKit } from '../music/city-kits'
 import { kitReactionsSchema, reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
+import { CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES } from '../chicken/controls'
 
 const hasControl = (value: string, multiline = false) => [...value].some(character => { const code = character.codePointAt(0)!; return (code < 32 || code === 127) && !(multiline && [9, 10, 13].includes(code)) })
 const text = z.string().min(1).max(4000).refine(value => value.trim().length > 0 && !hasControl(value, true), 'Texto vazio ou com caracteres de controle.')
@@ -117,6 +118,17 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       const raw = z.object({ minimumPieces: z.unknown(), rules: z.array(z.unknown()) }).strict().parse(value)
       const result = reactionsSchema.parse(raw)
       if (new Set(result.rules.map((rule: { id: string }) => rule.id)).size !== result.rules.length) throw new Error('IDs das regras não podem repetir.')
+      break
+    }
+    case 'chicken-controls': {
+      const binds = (prefix: string, length: number) => exactMap(CHICKEN_ACTIONS.map(a => a.key), z.array(z.string().max(40).startsWith(prefix).nullable()).length(length))
+      const types = Object.fromEntries(CHICKEN_INPUT_TYPES.map(t => [t.id, binds(t.device === 'gamepad' ? 'Pad:' : 'Key:', t.slots)]))
+      z.object({
+        ...types,
+        touch: z.enum(['auto', 'on', 'off']), touchRunGrab: z.boolean(), sound: z.boolean(),
+        analog: z.object({ deadzoneL: finite.min(0).max(.9), deadzoneR: finite.min(0).max(.9), magnet: z.boolean(), magnetDeg: finite.min(0).max(22.5), magnetRestoreDeg: finite.min(.5).max(22.5), aimMagnetDeg: finite.min(0).max(22.5) }).strict(),
+        inventory: z.object({ repeatDelay: finite.min(.2).max(5), repeatInterval: finite.min(.1).max(2) }).strict(),
+      }).strict().parse(value)
       break
     }
     case 'music-preset': {

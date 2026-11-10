@@ -103,3 +103,19 @@ test('Save DB normalizes an official city kit and writes it with a regenerated i
   assert.match(index, /'berlin': kit1,/)
   await assert.rejects(saveOfficialKit(temp, '../escape', kit), /invalid city/)
 })
+
+test('chicken default controls: the file validates, feeds the defaults and round-trips what the panel writes', () => {
+  const controls = loadTs('lib/chicken/controls.ts')
+  const entry = ADMIN_ENTRIES.find(item => item.id === 'chicken-controls')
+  assert.equal(entry.path, 'data/chicken/default-controls.json')
+  const file = JSON.parse(fs.readFileSync(path.join(__dirname, '..', entry.path), 'utf8'))
+  validateAdminValue(entry, file)
+  const defaults = controls.defaultChickenControls()
+  assert.deepEqual(controls.chickenControlsDefaultsFile(defaults), file)
+  const edited = structuredClone(defaults); edited.keys.jump = ['Key:KeyJ', null, null]; edited.touch = 'on'
+  validateAdminValue(entry, controls.chickenControlsDefaultsFile(edited))
+  const wrongDevice = structuredClone(file); wrongDevice.pad.jump[0] = 'Key:Space'
+  assert.throws(() => validateAdminValue(entry, wrongDevice))
+  const missing = structuredClone(file); delete missing.keys2.fire
+  assert.throws(() => validateAdminValue(entry, missing))
+})

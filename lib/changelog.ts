@@ -17,6 +17,7 @@ const RECENT = [
         'A Bicada também pega itens novos do chão, pelo corpo ao soltar e pela área do bico ao acertar, sem tirar a galinha de mãos vazias. A camada Hit-boxes passa a mostrar os itens no chão, o alcance dos pés para pegar e o cone da Bicada.',
         'Segurar o bind Edição (Alt ou Cmd) por 1,5 s mostra ou esconde o painel do Modo editor sem mudar o switch de edição; um toque rápido continua ligando e desligando a edição.',
         'Esc fecha o último painel aberto, inclusive o Modo editor fixo na lateral; com um elemento selecionado no editor, o primeiro Esc só tira a seleção.',
+        'No painel Controles, quem entra com conta admin vê, ao lado de Restaurar padrão, o botão Tornar este o padrão: no Admin local ele grava os binds e opções atuais como o padrão do jogo, que vale para quem nunca mexeu nos controles e para Restaurar padrão depois do deploy.',
       ] },
     ],
   },
