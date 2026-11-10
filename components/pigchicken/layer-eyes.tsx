@@ -16,7 +16,7 @@ export type { PatioLayers }
 const SLIDERS: { key: "backdrop" | "zones" | "scale"; label: string }[] = [
   { key: "backdrop", label: "Fundo" },
   { key: "zones", label: "Zonas" },
-  { key: "scale", label: "Escalas" },
+  { key: "scale", label: "Escalas (Visibilidade)" },
 ]
 
 // patioKey: which Pátio is open; saved: its layers. Entering a Pátio (or its saved layers changing) brings them back.
@@ -41,7 +41,7 @@ export function LayerEyes({ layers, set, base, onSave }: ReturnType<typeof usePa
       <Eye className="h-4 w-4" />
     </button>
     {open && (
-      <FloatingPanel id="patio-layers-menu" aria-label="Camadas" initial={vw => { const w = Math.min(300, vw - 24); return { x: vw - w - 12, y: 64, w, h: 380 } }} minW={220} minH={160}
+      <FloatingPanel id="patio-layers-menu" aria-label="Camadas" initial={vw => { const w = Math.min(300, vw - 24); return { x: vw - w - 12, y: 64, w, h: 430 } }} minW={220} minH={160}
         className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs text-[#dfe8df] shadow-[0_20px_60px_rgba(0,0,0,0.6)] [text-shadow:none]">
         <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
           <h2 className="flex-1 text-sm text-white">Camadas</h2>
@@ -56,6 +56,8 @@ export function LayerEyes({ layers, set, base, onSave }: ReturnType<typeof usePa
             changed={layers.scaleSize !== DEFAULT.scaleSize} onReset={() => set({ scaleSize: DEFAULT.scaleSize })} onChange={v => set({ scaleSize: v })} />
           <PatioRange label="Escalas (Degradê)" min={0} max={100} value={layers.scaleFade} display={`${layers.scaleFade}%`}
             changed={layers.scaleFade !== DEFAULT.scaleFade} onReset={() => set({ scaleFade: DEFAULT.scaleFade })} onChange={v => set({ scaleFade: v })} />
+          <PatioRange label="Escalas (Linhas)" min={0} max={100} value={layers.scaleLines} display={`${layers.scaleLines}%`}
+            changed={layers.scaleLines !== DEFAULT.scaleLines} onReset={() => set({ scaleLines: DEFAULT.scaleLines })} onChange={v => set({ scaleLines: v })} />
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className={cn(layers.hitboxes !== DEFAULT.hitboxes && "text-amber-300")}>Hit-boxes</span>
             <input type="checkbox" checked={layers.hitboxes} onChange={e => set({ hitboxes: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />

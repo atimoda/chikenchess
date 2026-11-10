@@ -1,10 +1,11 @@
 // The Camadas panel's values (the header's eye). Each Pátio may save its own (PatioSettings.layers, "Salvar no
 // pátio"); whoever enters a Pátio starts from them (or from LAYERS_DEFAULT) and may change them only for themselves.
 // backdrop, zones, scale: 0 to 100 (0 hides the layer, above that its opacity). scaleSize: the Escalas fan's size in
-// x. scaleFade: the fan's fade toward the circle (0 none, 50 linear, 100 a long soft ease-out). hitboxes: on or off.
-export type PatioLayers = { backdrop: number; zones: number; scale: number; scaleSize: number; scaleFade: number; hitboxes: boolean }
+// x. scaleFade: the fan's fade toward the circle (0 none, 50 linear, 100 a long soft ease-out). scaleLines: how
+// strongly the fan's dividing lines show (0 to 100). hitboxes: on or off.
+export type PatioLayers = { backdrop: number; zones: number; scale: number; scaleSize: number; scaleFade: number; scaleLines: number; hitboxes: boolean }
 
-export const LAYERS_DEFAULT: PatioLayers = { backdrop: 100, zones: 33, scale: 0, scaleSize: 0.3, scaleFade: 50, hitboxes: false }
+export const LAYERS_DEFAULT: PatioLayers = { backdrop: 100, zones: 33, scale: 0, scaleSize: 0.3, scaleFade: 50, scaleLines: 100, hitboxes: false }
 export const LAYERS_SIZE = { min: 0.1, max: 3, step: 0.05 } as const
 
 const pct = (v: unknown, d: number) => typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.max(0, Math.min(100, v))) : d
@@ -14,7 +15,7 @@ export function normalizePatioLayers(raw: unknown): PatioLayers | undefined {
   const r = raw as Record<string, unknown>
   const d = LAYERS_DEFAULT
   return {
-    backdrop: pct(r.backdrop, d.backdrop), zones: pct(r.zones, d.zones), scale: pct(r.scale, d.scale), scaleFade: pct(r.scaleFade, d.scaleFade),
+    backdrop: pct(r.backdrop, d.backdrop), zones: pct(r.zones, d.zones), scale: pct(r.scale, d.scale), scaleFade: pct(r.scaleFade, d.scaleFade), scaleLines: pct(r.scaleLines, d.scaleLines),
     scaleSize: typeof r.scaleSize === 'number' && Number.isFinite(r.scaleSize) ? Math.round(Math.max(LAYERS_SIZE.min, Math.min(LAYERS_SIZE.max, r.scaleSize)) * 100) / 100 : d.scaleSize,
     hitboxes: r.hitboxes === true,
   }

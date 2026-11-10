@@ -25,8 +25,9 @@ export const SCALE_FAN_R = 390
 // the current player's fan (combat.use(id) first), centred at (cx, cy) in screen units; alpha: the layer's
 // strength; size: its radius in SCALE_FAN_R; fade: "Escalas (Degradê)" from 0 to 1. Each lane fades out toward the
 // circle (0 at its edge) as (1 - t)^(fade * 2) up to 1/2 and then up to (1 - t)^4: 0 is solid, 1/2 linear, 1 a long
-// soft tail. The labels sit in the middle of each lane on the side she aims at.
-export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3, fade = 0.5) {
+// soft tail. lines: "Escalas (Linhas)", how strongly the lanes' dividing lines show (0 to 1). The labels sit
+// in the middle of each lane on the side she aims at.
+export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3, fade = 0.5, lines = 1) {
   const src = aimSource(combat)
   if (!src) return
   const music = combat.music, zone = music.zone
@@ -67,11 +68,13 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
       ctx.closePath()
       ctx.fillStyle = fill(color, alpha * (i === now ? 0.4 : 0.14))
       ctx.fill()
-      ctx.strokeStyle = fill(color, alpha * 0.6)
-      ctx.beginPath()
-      ctx.moveTo(cx + Math.cos(a0) * rIn, cy + Math.sin(a0) * rIn)
-      ctx.lineTo(cx + Math.cos(a0) * rOut, cy + Math.sin(a0) * rOut)
-      ctx.stroke()
+      if (lines > 0) {
+        ctx.strokeStyle = fill(color, alpha * 0.6 * lines)
+        ctx.beginPath()
+        ctx.moveTo(cx + Math.cos(a0) * rIn, cy + Math.sin(a0) * rIn)
+        ctx.lineTo(cx + Math.cos(a0) * rOut, cy + Math.sin(a0) * rOut)
+        ctx.stroke()
+      }
     }
     // the label in the middle of the lane, on the side she aims at
     const mid = angle((lo + hi) / 2, right), r = (rIn + rOut) / 2
