@@ -11,7 +11,8 @@
 // how each edge faces; with `data-chicken-hard` ("Objeto duro") they are all solid and its walls stop her.
 import { requestGameFrame, cancelGameFrame } from '../game-frame'
 import type { PeckPose } from '../pigchicken/peck'
-import { LOOK_ART, type ChickenLook } from './look-art'
+import { LOOK_ART, type ChickenArtSet, type ChickenLook } from './look-art'
+import { speciesParams, type BirdSpecies } from './species'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
@@ -102,6 +103,11 @@ export type ChickenEngine = {
   getDevices: () => InputDeviceId[] | null
   // her look, apart from the central configuration's (another local player's chicken); null follows the configuration
   setLook: (look: ChickenLook | null) => void
+  // a whole set of parts of her own (a chick's style), over the look; null goes back to the look
+  setArt: (art: ChickenArtSet | null) => void
+  // driven by a bot (the chicks' follow brain): read once per step, it replaces every input (keys, gamepad, touch);
+  // null gives her back to her devices
+  setBot: (read: (() => Partial<Record<ChickenAction, boolean>>) | null) => void
   // falls from above the screen at x (screen px): a player arriving in the lobby
   dropAt: (x: number) => void
   destroy: () => void
@@ -237,7 +243,8 @@ function releaseSharedAudio() {
   if (!a.users && a.ctx) { void a.ctx.close(); a.ctx = null }
 }
 
-export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean }): ChickenEngine {
+// species: the bird's tuning over the configured chicken's (lib/chicken/species.ts); art: its own set of parts
+export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean; species?: BirdSpecies; art?: ChickenArtSet }): ChickenEngine {
   sharedAudio.users++
   const svg = document.createElementNS(NS, 'svg')
   svg.setAttribute('aria-hidden', 'true')
@@ -263,20 +270,27 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let tailSwing = 1
   // her mouth (rig units, in the head): every beak names its own, where a wind instrument's mouthpiece sits
   let mouthAt: { x: number; y: number } = CHICKEN_MOUTH
+  const lookArt = (look: ChickenLook) => Object.fromEntries(LOOK_ART.SLOTS.map(sl => [sl.id, LOOK_ART.art[sl.id][look[sl.id]] ?? Object.values(LOOK_ART.art[sl.id])[0]])) as ChickenArtSet
+  let ownArt: ChickenArtSet | null = opts.art ?? null
+  // the eye's middle in the head (rig units): every face may set its own
+  let eyeAt = { x: 51, y: -192 }
   function paintLook(look: ChickenLook) {
-    const A = LOOK_ART.art
+    const A = ownArt ?? lookArt(look)
     const set = (name: string, html: string | undefined) => { part(name).innerHTML = html ?? '' }
-    set('artComb', A.comb[look.comb].svg); set('artFace', A.face[look.face].svg); set('artBeak', A.beak[look.beak].svg); set('artWattle', A.wattle[look.wattle].svg)
-    set('artNeck', A.neck[look.neck].svg); set('artTorso', A.torso[look.torso].svg); set('artTail', A.tail[look.tail].svg); set('artWing', A.wing[look.wing].svg)
-    set('artWingBack', `<path d="${LOOK_ART.WING}" fill="${A.wing[look.wing].back}"/>`)
-    const legs = A.legs[look.legs]
+    set('artComb', A.comb.svg); set('artFace', A.face.svg); set('artBeak', A.beak.svg); set('artWattle', A.wattle.svg)
+    set('artNeck', A.neck.svg); set('artTorso', A.torso.svg); set('artTail', A.tail.svg); set('artWing', A.wing.svg)
+    set('artWingBack', `<path d="${A.wing.backPath ?? LOOK_ART.WING}" fill="${A.wing.back}"/>`)
+    el.sclera.setAttribute('fill', A.face.eye ?? '#fff8e1'); el.pupil.setAttribute('fill', A.face.pupil ?? '#1f1a17')
+    eyeAt = A.face.eyeAt ? { x: A.face.eyeAt[0], y: A.face.eyeAt[1] } : { x: 51, y: -192 }
+    el.sclera.setAttribute('cx', String(eyeAt.x)); el.sclera.setAttribute('cy', String(eyeAt.y)); el.lid.setAttribute('cx', String(eyeAt.x))
+    const legs = A.legs
     ;([['wrapF', legs.front], ['wrapB', legs.back]] as const).forEach(([w, c]) => {
       el[w].querySelectorAll('.c-drum').forEach(p => p.setAttribute('stroke', c.drum))
       el[w].querySelectorAll('.c-shank').forEach(p => p.setAttribute('stroke', c.shank))
     })
-    el.lid.setAttribute('fill', A.face[look.face].lid ?? '#f7b21b')
-    tailSwing = A.tail[look.tail].swing ?? 1
-    const m = A.beak[look.beak]?.mouth
+    el.lid.setAttribute('fill', A.face.lid ?? '#f7b21b')
+    tailSwing = A.tail.swing ?? 1
+    const m = A.beak.mouth
     mouthAt = m ? { x: m[0], y: m[1] } : CHICKEN_MOUTH
   }
   // central configuration (config.ts): params and look follow it live, including the Pátio's draft
@@ -285,7 +299,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   paintLook(ownLook ?? config.look)
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
-  const R = { ...CHICKEN_PARAMS, ...config.params } as ChickenParams
+  const R = speciesParams(opts.species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
   let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     rigMatrices.clear()
@@ -293,7 +307,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
-    const P = { ...CHICKEN_PARAMS, ...config.params }
+    const P = speciesParams(opts.species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
     Object.assign(R, P)
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
     R.scale = P.scale * vf
@@ -318,8 +332,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   rebind()
   const virtOk = () => !devices || devices.includes('touch') || devices.includes('mouse')
-  const input = (a: ChickenAction, touchRunGrab = controls.touchRunGrab) => keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && virtualActionHeld(virt, a, touchRunGrab))
-  const tapped = (a: ChickenAction) => keyBinds[a].some(t => pressed.has(t)) || (virtOk() && virtTapped.has(a))
+  // a bot's actions, read once per step (setBot)
+  let bot: (() => Partial<Record<ChickenAction, boolean>>) | null = null, botNow: Partial<Record<ChickenAction, boolean>> = {}
+  const input = (a: ChickenAction, touchRunGrab = controls.touchRunGrab) => bot ? !!botNow[a] : keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && virtualActionHeld(virt, a, touchRunGrab))
+  const tapped = (a: ChickenAction) => !bot && (keyBinds[a].some(t => pressed.has(t)) || (virtOk() && virtTapped.has(a)))
   const usedKey = (tok: string) => usedKeys.has(tok)
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') shifts.add(e.code)
@@ -344,6 +360,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('pointermove', onPointerMove)
   let cameraResetR3 = false
   function pollPad() {
+    if (bot) { pad = {}; botNow = bot(); return }
     const on = padTokensFor(devices, controls.analog.deadzoneL, controls.analog.magnetDeg)
     if (!on.has('Pad:b11')) cameraResetR3 = false
     else if (game.gameMode && on.has('Pad:b8')) cameraResetR3 = true
@@ -1730,10 +1747,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.wrapF.setAttribute('transform', legShift); el.wrapB.setAttribute('transform', legShift)
     ;(['F', 'B'] as const).forEach(k => { ['leg', 'tib', 'shin', 'toe'].forEach(b => { el[b + k].setAttribute('transform', rot(b + k, pose[b + k])) }) })
     el.lid.setAttribute('ry', (5.4 * pose.lid).toFixed(2))
-    el.lid.setAttribute('cy', (-197.4 + 5.4 * pose.lid).toFixed(2))
+    el.lid.setAttribute('cy', (eyeAt.y - 5.4 + 5.4 * pose.lid).toFixed(2))
     // Stick/touch aim takes priority over a mouse left elsewhere on the page.
     let px = 1.4, py = 0
-    if (game.lookAngle != null || pointer) {
+    // a bot (a chick) does not watch the mouse
+    if (game.lookAngle != null || (pointer && !bot)) {
       const r = game.lookAngle == null ? el.sclera.getBoundingClientRect() : null
       let dx = game.lookAngle != null ? Math.cos(game.lookAngle) * 100 : pointer!.x - (r!.left + r!.width / 2)
       const dy = game.lookAngle != null ? Math.sin(game.lookAngle) * 100 : pointer!.y - (r!.top + r!.height / 2)
@@ -1743,7 +1761,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const len = Math.hypot(rx, ry) || 1, m = 2.1 * Math.min(1, len / 24)
       px = rx / len * m; py = ry / len * m
     }
-    el.pupil.setAttribute('cx', (51 + px).toFixed(2)); el.pupil.setAttribute('cy', (-192 + py).toFixed(2))
+    el.pupil.setAttribute('cx', (eyeAt.x + px).toFixed(2)); el.pupil.setAttribute('cy', (eyeAt.y + py).toFixed(2))
     const fy = S.cl ? groundY : floorBelow(S.x, S.y)
     const shrink = Math.max(0.35, 1 - Math.max(0, fy - S.y) / 400)
     el.shadow.setAttribute('opacity', S.cl ? '0' : '0.35')
@@ -2055,6 +2073,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       held.clear(); pressed.clear(); gameTaps.clear(); pad = {}
     },
     getDevices: () => devices,
+    setArt(next) {
+      if (next === ownArt) return
+      ownArt = next
+      paintLook(ownLook ?? config.look)
+    },
+    setBot(read) { bot = read; botNow = {}; held.clear(); pressed.clear(); goal = null },
     setLook(next) {
       if (JSON.stringify(next) === JSON.stringify(ownLook)) return
       ownLook = next

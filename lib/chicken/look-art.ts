@@ -2,10 +2,13 @@
 // so any part can be combined with any other. Flat folk style: no outlines.
 export type ChickenSlot = 'comb' | 'face' | 'beak' | 'wattle' | 'neck' | 'torso' | 'wing' | 'tail' | 'legs'
 export type ChickenLook = Record<ChickenSlot, string>
-type LegColors = { drum: string; shank: string }
+export type LegColors = { drum: string; shank: string }
 // One variant of a part. Extra fields per slot: face.lid (eyelid color), wing.back (far wing color), beak.mouth (the mouth point),
-// tail.swing (how much the tail follows the body), legs.front/back (leg stroke colors).
-export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number] }
+// tail.swing (how much the tail follows the body), legs.front/back (leg stroke colors), wing.backPath (the far wing's
+// outline, else the chicken's WING), face.eye / face.pupil (eye colors, else the chicken's light eye; a chick's is dark), face.eyeAt (the eye's middle).
+export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number] }
+// a whole set of parts, one variant per slot (a bird drawn apart from the chickens' catalog, such as a chick)
+export type ChickenArtSet = Record<ChickenSlot, ChickenArtVariant>
 
 export const LOOK_ART = (() => {
   const chev = (pts: number[][], fill: string) => '<g fill="' + fill + '">' + pts.map(([x, y]) => '<path d="M' + x + ' ' + y + ' l3 5 l3 -5 l-3 2 Z"></path>').join('') + '</g>';

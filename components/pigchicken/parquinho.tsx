@@ -188,7 +188,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -653,7 +653,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         nextOy = Math.max(yr.lo, Math.min(yr.hi, (oy ?? yr.lo) + dy + (padPan && rightStick ? rightStick.y * speed : 0)))
         panDeltaX = 0; panDeltaY = 0
       }
-      const others = extras?.current ? [...extras.current.values()] : []
+      // the other local players' chickens and the chicks that follow her live in the same camera
+      const others = [...(extras?.current?.values() ?? []), ...(chicks?.current?.values() ?? [])]
       if (next !== camX || nextOy !== oy) {
         engine.shift(camX - next, nextOy - oy)
         others.forEach(o => o.shift(camX - next, nextOy - (oy as number)))
@@ -882,9 +883,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       buttonLabels.aliens = "SOLTAR ALIENS"; buttonLabels.pattern = `PADRÃO: ${ALIEN_PATTERNS[horde.pattern].label.toUpperCase()}`
       buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
       // Register every local player before the shared projectile update, including its owner.
-      combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? [])].map(eng => {
+      combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? []), ...Array.from(chicks?.current?.values() ?? [])].map(eng => {
         const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
         return { box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
+      }))
+      // the chicks are caught by any player's Passaguá, like the birds (and count as souls)
+      combat.setCatchables([...(chicks?.current?.entries() ?? [])].map(([id, eng]) => {
+        const cs = eng.getMotionState()
+        return { x: cs.x + camX, y: cs.y - camY - 100 * cs.scale, r: 100 * cs.scale, catch: () => { eng.destroy(); chicks?.current?.delete(id) } }
       }))
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       // the aim's distance from her sets the instrument's loudness (lib/pigchicken/aim-volume.ts)

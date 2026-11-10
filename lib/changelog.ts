@@ -37,6 +37,8 @@ const RECENT = [
         'Enquanto Chocar fixo, segurar Agachar mostra a pose agachada; soltar Agachar restaura a pose chocando sem liberar a trava.',
         'Todos os instrumentos miram na hora: o Giro da mira passa a 0 por padrão (Sax, Violino e Teclado giravam devagar). Quem tinha mudado esse número mantém o seu.',
         'Andando por Chãos com rampas suaves, a galinha passa pelas dobras e pelos picos do piso sem ficar presa andando no lugar nem tremer; subindo uma rampa, ela acompanha o piso sem pousos repetidos. O degrau automático só acontece na beirada solta de um piso.',
+        'Pintinhos: sete pintinhos seguem a galinha principal pelo Pátio, cada um com uma cor natural sorteada (amarelo, creme, preto e creme, prata, caramelo, listrado, chocolate, ardósia, carijó ou pintado). Eles andam, correm e batem asas como a galinha, em tamanho de pintinho e com pulo e voo bem mais fracos; param a distâncias diferentes, demoram tempos diferentes para voltar a correr atrás dela e dão pulinhos para tentar alcançá-la quando ela sobe.',
+        'O Passaguá captura os pintinhos como os pássaros: cada um soma uma alma no contador de quem pegou.',
       ] },
       { title: 'Interface', items: [
         'No Criativo, a aba Modulation do Instrument ganha o visual da aba Tuning: nome completo e ajuda em cada controle, knobs verdes e seletores na mesma célula dos knobs.',

@@ -37,6 +37,9 @@ export type ZoneWallsFn = (px: number, py: number, x: number, y: number, count: 
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
+// a bird the Passaguá can catch apart from the enemies (a chick): its middle and radius in world px
+export type Catchable = { x: number; y: number; r: number; catch: () => void }
+
 // a converted enemy leaving the scene: aliens become birds, zombies become happy people
 // birds: their type, where they circle or perch, their next whistle and when they leave
 export type Critter = {
@@ -161,6 +164,9 @@ export function createCombat() {
   let consumption: { item: ItemId; left: number; total: number } | null = null
   let effects: Effect[] = []
   let blastActors: { box: BlastBox; push: (vx: number, vy: number) => void }[] = []
+  // other catchable birds in the world (the chicks that follow her): where they are (world px, their middle and
+  // size) and what to do when the Passaguá catches one (the Parquinho removes it)
+  let catchables: Catchable[] = []
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
@@ -996,6 +1002,12 @@ export function createCombat() {
         if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16)) continue
         critters.splice(i, 1); caught++; caughtAt.push({ x: c.x, y: c.y })
       }
+      // the chicks that follow her: caught like the birds, they count as souls too
+      catchables = catchables.filter(c => {
+        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r)) return true
+        c.catch(); caught++; caughtAt.push({ x: c.x, y: c.y })
+        return false
+      })
       if (caught) {
         souls += caught
         caughtAt.forEach(({ x, y }) => puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' }))
@@ -1227,6 +1239,7 @@ export function createCombat() {
 
   return {
     setBlastActors(actors: { box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
+    setCatchables(list: Catchable[]) { catchables = list },
     // Local players: each one has their own items, aim, cooldowns and swing (a loadout); the world (targets,
     // enemies, shots, pickups, music) is shared. use(id) makes that player's loadout the current one; the
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
