@@ -313,8 +313,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     // the mouse is someone else's (another local player holds it)
     const noMouse = () => !!devicesRef.current && !devicesRef.current.includes("mouse")
+    // the pointer is over a UI control or panel (the same ones that keep the normal cursor): p1's mouse reticle hides
+    const overUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, [role='dialog'], button, input, select, textarea, a, label, summary, [data-chicken-ignore]")
+    let mouseOverUi = false
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse" || noMouse()) return
+      mouseOverUi = overUi(e.target)
       if (cameraKey) {
         if (e.button === 1 && (e.buttons & 4)) resetView()
         if (panPointer === e.pointerId && (e.buttons & 1) && mouse) {
@@ -1081,8 +1085,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.use("p1")
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const tints = colorsRef.current
-      drawVolumeRing(ctx, combat, rx, ry, tints?.p1 ?? "#ffffff")
-      drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
+      // over a button or panel the mouse shows its normal cursor instead of the reticle and its volume ring
+      if (!(mouseOverUi && aim.source === "mouse")) {
+        drawVolumeRing(ctx, combat, rx, ry, tints?.p1 ?? "#ffffff")
+        drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
+      }
       if (hitboxesRef.current) {
         drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
           const ms = eng.getMotionState()
