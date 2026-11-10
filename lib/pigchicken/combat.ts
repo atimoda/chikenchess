@@ -1380,10 +1380,12 @@ export function createCombat() {
         aimAngle += diff
       } else aimAngle = targetAngle
       throwAngle = targetAngle
-      // tremolo: shaking the aim inside a lane of the instrument's fan bends its notes
+      // tremolo: shaking the aim inside a lane of the instrument's fan, after the note starts, bends its notes
+      // (the press, or the violin's bow coming on, starts it in tune)
       if (d.instrument && d.tremolo > 0) {
         const pool = music.aimPool(d.pitchSet, d.octave, d.span)
-        const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless)
+        const playing = input.fire && (!d.beam || !!beamHeld)
+        const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless, playing)
         tremBend = pool.length ? lane - music.noteFor(aimAngle, d.pitchSet, d.octave, d.span) : 0
       } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0 }
 

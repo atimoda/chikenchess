@@ -60,3 +60,14 @@ test('defaults: violin the most and fretless; harp, tambourine and keys off', ()
   assert.equal(DEFAULT_ITEMS.guitar.fretless, false)
   assert.equal(aimLanePos(1, 7), 6)
 })
+
+test('a note always starts in tune, even right after the aim moved', () => {
+  for (const fretless of [false, true]) {
+    const s = newTremolo()
+    // the aim sweeps across the fan with nothing playing, then the note starts mid-lane
+    for (let i = 0; i <= 20; i++) stepTremolo(s, pool, upAt(i * 0.17), 0.016, 1, fretless, false)
+    assert.equal(stepTremolo(s, pool, upAt(3.4), 0.016, 1, fretless, true), 60, `${fretless}`)
+    // only moving after the start bends it
+    assert.ok(stepTremolo(s, pool, upAt(3.1), 0.016, 1, fretless, true) < 60)
+  }
+})

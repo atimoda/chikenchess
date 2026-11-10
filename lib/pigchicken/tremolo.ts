@@ -1,7 +1,8 @@
 // Tremolo da mira: shaking the aim inside the same lane of the instrument's fan bends the note a little, so a
 // trembling hand makes a controllable vibrato. Only the movement counts: the aim's position in the fan (in lanes)
 // is followed by a slow copy of itself, and the gap between them (how far the aim just moved) is the bend, so a
-// still aim always plays the plain note.
+// still aim always plays the plain note. Only movement while a note plays counts: with nothing playing (Fire not
+// held, or the violin's bow not on) everything restarts, so every note starts in tune wherever in the fan it starts.
 //   fretted (frets): the note stays its lane's note and the bend never leaves its own degree (±½ semitone);
 //     entering another lane starts the new note clean.
 //   fretless (violin): no frets to jump between: changing lane slides to the new note instead of jumping, and the
@@ -21,14 +22,14 @@ export const newTremolo = (): TremoloState => ({ slow: NaN, lane: -1, base: null
 export const aimLanePos = (up: number, n: number) => ((Math.max(-1, Math.min(1, up)) + 1) / 2) * Math.max(0, n - 1)
 
 // one frame: `pool` the fan's notes (low to high), `up` the aim's height (-1 down … 1 up). Returns the pitch to
-// sound (a fractional MIDI note; the lane's own note when amount is 0 or the aim is still)
-export function stepTremolo(s: TremoloState, pool: number[], up: number, dt: number, amount: number, fretless: boolean): number {
+// sound (a fractional MIDI note; the lane's own note when amount is 0, the aim is still or `playing` is false)
+export function stepTremolo(s: TremoloState, pool: number[], up: number, dt: number, amount: number, fretless: boolean, playing = true): number {
   const n = pool.length
   if (!n) return 60
   const pos = aimLanePos(up, n)
   const lane = Math.max(0, Math.min(n - 1, Math.round(pos)))
   const note = pool[lane]
-  if (!(amount > 0) || n < 2) { s.slow = pos; s.lane = lane; s.base = note; return note }
+  if (!(amount > 0) || n < 2 || !playing) { s.slow = pos; s.lane = lane; s.base = note; return note }
   const fresh = !Number.isFinite(s.slow)
   // a new lane starts the bend clean (a fretless note slides to the new note below instead of jumping)
   if (fresh || lane !== s.lane) s.slow = pos
