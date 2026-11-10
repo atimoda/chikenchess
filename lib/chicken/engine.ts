@@ -103,7 +103,8 @@ export type ChickenEngine = {
   destroy: () => void
 }
 
-export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: { x: number; y: number } | null; back?: { x: number; y: number } | null }
+// flip: the wings that hold it are mirrored across their own length (shoulder to tip), for poses that turn them upside down
+export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: { x: number; y: number } | null; back?: { x: number; y: number } | null; flip?: boolean }
 
 // ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
 // hardN: the outside of an "Objeto duro" edge (its walls stop her, its floors catch her feet)
@@ -1629,10 +1630,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const r = heldA / DEG, c = Math.cos(r), sn = Math.sin(r), qx = x - pivX - (heldItem?.kick ?? 0), qy = y - pivY
       return { x: anchorX + qx * c - qy * sn, y: anchorY + qx * sn + qy * c }
     }
-    // the wing (or the back wing) turned and stretched from the shoulder until its tip touches (x, y)
+    // the wing (or the back wing) turned and stretched from the shoulder until its tip touches (x, y); with the rig's
+    // flip it is mirrored across that line, so a wing turned all the way round is not upside down
     const wingTo = (node: SVGGraphicsElement, x: number, y: number) => {
       const [px, py] = PIV.wing
-      node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(Math.max(1, Math.hypot(x, y)) / WING_TIP_LEN).toFixed(3)} 1) rotate(${(-WING_TIP_DEG).toFixed(2)}) translate(${-px} ${-py})`)
+      node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(Math.max(1, Math.hypot(x, y)) / WING_TIP_LEN).toFixed(3)} ${rig?.flip ? -1 : 1}) rotate(${(-WING_TIP_DEG).toFixed(2)}) translate(${-px} ${-py})`)
     }
     const restAngle = (pose.wing + (heldItem?.atHand ? handAimAngle(heldA) : 0)) / DEG
     const restHandX = HAND_DX * Math.cos(restAngle) - HAND_DY * Math.sin(restAngle)

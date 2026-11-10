@@ -1099,12 +1099,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, box: { l: ms.x - 45 * ms.scale, r: ms.x + 45 * ms.scale, t: ms.y - 200 * ms.scale, b: ms.y } }
         }))
       }
+      // the scale layer hides while a chicken is being dragged by the mouse/touch
       if (scaleFanRef.current > 0) {
         const o = engine.getState().shoulder
-        drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current)
+        if (!st.held) drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current)
         extraList.forEach(([id, eng]) => {
           const at = extraAim.get(id)
-          if (!at) return
+          if (!at || eng.getMotionState().held) return
           combat.use(id)
           const xo = eng.getState().shoulder
           drawScaleFan(ctx, combat, xo.x, xo.y, at.angle, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current)

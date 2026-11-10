@@ -59,6 +59,10 @@ export function ItemPointsEditor({ id, item, base, onChange }: { id: ItemId; ite
             </label>
           )
         })}
+        <label className="flex items-center gap-2" title="Espelha as asas que seguram o item ao longo do comprimento, para não ficarem de cabeça para baixo quando giram muito">
+          <input type="checkbox" checked={item.wingFlip} onChange={e => { const v = e.target.checked; onChange(d => { d.wingFlip = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
+          <span>Inverter asa (vertical)</span>
+        </label>
       </div>
       <svg ref={svgRef} viewBox={`${view.l} ${view.t} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" aria-label="Pontos do item: arraste para mudar"
         onPointerMove={move} onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
