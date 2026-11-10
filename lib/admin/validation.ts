@@ -16,6 +16,7 @@ import { prepareOfficialCityKit } from '../music/city-kits'
 import { kitReactionsSchema, reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
 import { CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES } from '../chicken/controls'
+import { itemsFileProblem } from '../pigchicken/items'
 
 const hasControl = (value: string, multiline = false) => [...value].some(character => { const code = character.codePointAt(0)!; return (code < 32 || code === 127) && !(multiline && [9, 10, 13].includes(code)) })
 const text = z.string().min(1).max(4000).refine(value => value.trim().length > 0 && !hasControl(value, true), 'Texto vazio ou com caracteres de controle.')
@@ -129,6 +130,11 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
         analog: z.object({ deadzoneL: finite.min(0).max(.9), deadzoneR: finite.min(0).max(.9), magnet: z.boolean(), magnetDeg: finite.min(0).max(22.5), magnetRestoreDeg: finite.min(.5).max(22.5), aimMagnetDeg: finite.min(0).max(22.5) }).strict(),
         inventory: z.object({ repeatDelay: finite.min(.2).max(5), repeatInterval: finite.min(.1).max(2) }).strict(),
       }).strict().parse(value)
+      break
+    }
+    case 'pigchicken-items': {
+      const problem = itemsFileProblem(value)
+      if (problem) throw new Error(problem)
       break
     }
     case 'music-preset': {

@@ -1,7 +1,7 @@
 // Player chicken controls: keyboard and gamepad bindings, on-screen (touch) controls and sound.
 // One store for every screen, saved in this browser; the panel and the engine both read it.
 // The defaults (new players and "Restaurar padrão") come from data/chicken/default-controls.json, which an admin
-// rewrites from the panel ("Tornar este o padrão"); the binds in CHICKEN_ACTIONS are the fallback for anything it lacks.
+// rewrites from the panel ("Salvar no game"); the binds in CHICKEN_ACTIONS are the fallback for anything it lacks.
 import DEFAULTS_FILE from '../../data/chicken/default-controls.json'
 
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
@@ -105,7 +105,7 @@ export function defaultChickenControls(): ChickenControls {
   return base
 }
 
-/** The defaults file's content for a set of controls (what "Tornar este o padrão" writes). */
+/** The defaults file's content for a set of controls (what "Salvar no game" writes). */
 export function chickenControlsDefaultsFile(c: ChickenControls) {
   const pick = (type: ChickenInputType) => Object.fromEntries(CHICKEN_ACTIONS.map(a => [a.key, c[type][a.key].slice()]))
   return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory } }

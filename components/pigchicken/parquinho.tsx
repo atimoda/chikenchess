@@ -19,7 +19,7 @@ import { createCombat, lookDoses, type Box, type Combat, type Effect } from "@/l
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { INVENTORY_MAX, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
-import { curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { announceHeldItem, curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
@@ -876,6 +876,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, radius: SCALE_FAN_R * scaleSizeRef.current * st.scale, stick: aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? aim.strength : null }))
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
+      // the Itens panel follows the item the main player holds
+      announceHeldItem(combat.held?.item ?? null)
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
       pickupMarks.clear()
       markHover(combat, grabLabel(controls, devs))

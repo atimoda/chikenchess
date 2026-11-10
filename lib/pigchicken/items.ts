@@ -4,6 +4,7 @@
 import { COMBO_MAX, COMBO_WINDOW, SWING_COMBO, isSwingKind, type SwingKind } from './swing'
 import type { PitchSet } from './music'
 import type { VoiceId } from './synth'
+import DEFAULTS_FILE from '../../data/pigchicken/default-items.json'
 import { CHAIN_MAX, cleanTransform, newTransform, type Transform, type TransformKind } from './transforms'
 
 export type FireMode = 'semi' | 'auto' | 'burst' | 'charge' | 'release'
@@ -380,7 +381,8 @@ const COK: ItemDef = {
   effectTime: 15, effectSpeed: 0.78, effectAccel: 1.33, effectCurve: 'linear', effectRamp: 0.5, effectLook: 'fizz',
 }
 
-export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = {
+// the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
+const CODE_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP,
   maryjane: MARYJANE, cok: COK,
@@ -489,6 +491,100 @@ const V5_DURABILITY: Partial<Record<ItemId, number>> = {
   flute: 12, sax: 12, trumpet: 12, guitar: 12, violin: 12, keys: 12, tambourine: 12, harp: 12,
 }
 
+// One item's saved numbers and choices over out[id] (each checked and clamped); v is the version the save was written in,
+// which runs the migrations of older saves (the defaults file is always current).
+function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: number) {
+  ITEM_PARAM_META.forEach(m => {
+    const n = s[m.key]
+    // a value equal to the one already there stays as it is (some code defaults sit outside the panel's range)
+    if (typeof n === 'number' && Number.isFinite(n) && n !== out[id][m.key]) (out[id] as Record<string, unknown>)[m.key] = Math.min(m.max, Math.max(m.min, n))
+  })
+  // Update untouched Bicada defaults saved before v4, preserving custom tuning.
+  if (id === 'peck' && !(v >= 4)) {
+    const old = { meleeRange: 105, meleeArc: 30, meleeCooldown: 0.4, meleeTime: 0.24 }
+    for (const key of Object.keys(old) as (keyof typeof old)[]) {
+      if (s[key] === old[key]) out.peck[key] = DEFAULT_ITEMS.peck[key]
+    }
+  }
+  // saved before blows had no interval (v5): every item's golpe goes back to 0 (the Bicada keeps its own)
+  if (id !== 'peck' && !(v >= 5)) out[id].meleeCooldown = 0
+  // saved before weapons and instruments never broke and the taco had blows (v6): an untouched old default takes
+  // the new one (never breaks; 8 blows that come back on their own); custom numbers stay
+  if (!(v >= 6)) {
+    if (s.durability === V5_DURABILITY[id]) out[id].durability = DEFAULT_ITEMS[id].durability
+    if (id === 'bat') {
+      if (!s.mag) out.bat.mag = DEFAULT_ITEMS.bat.mag
+      if (s.reloadTime === 1.1) out.bat.reloadTime = DEFAULT_ITEMS.bat.reloadTime
+    }
+  }
+  // saved before the sniper fired on release (v2): it takes the new mode
+  if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && !(v >= 2))) out[id].fireMode = s.fireMode
+  if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
+  // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
+  if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
+  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
+  if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
+  ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
+  if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
+  if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
+  if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
+  if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
+  if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
+  if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
+}
+
+const ITEMS_VERSION = 6
+// what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
+const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
+  ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor',
+])]
+function itemsOver(file: unknown): Record<ItemId, ItemDef> {
+  const out = structuredClone(CODE_ITEMS)
+  if (file && typeof file === 'object') ITEM_IDS.forEach(id => {
+    const s = (file as Record<string, unknown>)[id]
+    if (s && typeof s === 'object') applySavedItem(out, id, s, ITEMS_VERSION)
+  })
+  return out
+}
+/** The game's default items: the code's, with data/pigchicken/default-items.json over them. */
+export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = itemsOver(DEFAULTS_FILE)
+
+/** The defaults file's content for a set of items (what "Salvar no game" writes). */
+export function itemsDefaultsFile(items: Record<ItemId, ItemDef>) {
+  return Object.fromEntries(ITEM_IDS.map(id => [id, Object.fromEntries(ITEM_FILE_KEYS.map(k => [k, structuredClone(items[id][k])]))]))
+}
+
+/** Why a defaults file is not valid (an unknown item or field, or a value the game would change), or null. */
+export function itemsFileProblem(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return 'O arquivo precisa ser um objeto com um campo por item.'
+  const applied = itemsOver(value)
+  for (const [id, fields] of Object.entries(value)) {
+    if (!(ITEM_IDS as string[]).includes(id)) return `${id}: item desconhecido.`
+    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return `${id}: precisa ser um objeto.`
+    for (const [key, v] of Object.entries(fields)) {
+      if (!(ITEM_FILE_KEYS as string[]).includes(key)) return `${id}.${key}: campo desconhecido.`
+      if (JSON.stringify(applied[id as ItemId][key as keyof ItemDef]) !== JSON.stringify(v)) return `${id}.${key}: valor inválido ou fora dos limites.`
+    }
+  }
+  return null
+}
+
+// The item the main player (p1) holds in the Pátio, announced when it changes (the Itens panel follows it)
+let heldItem: ItemId | null = null
+const HELD_EVENT = 'pigchicken-held-item'
+export function announceHeldItem(id: ItemId | null) {
+  if (id === heldItem) return
+  heldItem = id
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(HELD_EVENT, { detail: id }))
+}
+export function subscribeHeldItem(onChange: (id: ItemId | null) => void) {
+  const handler = (e: Event) => onChange((e as CustomEvent<ItemId | null>).detail)
+  window.addEventListener(HELD_EVENT, handler)
+  return () => window.removeEventListener(HELD_EVENT, handler)
+}
+
 const STORE = 'pigchicken-items-v1'
 const EVENT = 'pigchicken-items'
 
@@ -497,47 +593,7 @@ export function loadItems(): Record<ItemId, ItemDef> {
   try {
     const saved = JSON.parse(window.localStorage.getItem(STORE) || 'null')
     if (!saved) return out
-    ITEM_IDS.forEach(id => {
-      const s = saved[id]
-      if (!s) return
-      ITEM_PARAM_META.forEach(m => {
-        const v = s[m.key]
-        if (typeof v === 'number' && Number.isFinite(v)) (out[id] as Record<string, unknown>)[m.key] = Math.min(m.max, Math.max(m.min, v))
-      })
-      // Update untouched Bicada defaults saved before v4, preserving custom tuning.
-      if (id === 'peck' && !(saved._v >= 4)) {
-        const old = { meleeRange: 105, meleeArc: 30, meleeCooldown: 0.4, meleeTime: 0.24 }
-        for (const key of Object.keys(old) as (keyof typeof old)[]) {
-          if (s[key] === old[key]) out.peck[key] = DEFAULT_ITEMS.peck[key]
-        }
-      }
-      // saved before blows had no interval (v5): every item's golpe goes back to 0 (the Bicada keeps its own)
-      if (id !== 'peck' && !(saved._v >= 5)) out[id].meleeCooldown = 0
-      // saved before weapons and instruments never broke and the taco had blows (v6): an untouched old default takes
-      // the new one (never breaks; 8 blows that come back on their own); custom numbers stay
-      if (!(saved._v >= 6)) {
-        if (s.durability === V5_DURABILITY[id]) out[id].durability = DEFAULT_ITEMS[id].durability
-        if (id === 'bat') {
-          if (!s.mag) out.bat.mag = DEFAULT_ITEMS.bat.mag
-          if (s.reloadTime === 1.1) out.bat.reloadTime = DEFAULT_ITEMS.bat.reloadTime
-        }
-      }
-      // saved before the sniper fired on release (v2): it takes the new mode
-      if (['semi', 'auto', 'burst', 'charge', 'release'].includes(s.fireMode) && !(id === 'sniper' && !(saved._v >= 2))) out[id].fireMode = s.fireMode
-      if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
-      // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
-      if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(saved._v >= 3))) out[id].landShow = s.landShow
-      ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
-      if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
-      if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
-      ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
-      if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
-      if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
-      if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
-      if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
-      if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
-      if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
-    })
+    ITEM_IDS.forEach(id => { if (saved[id]) applySavedItem(out, id, saved[id], typeof saved._v === 'number' ? saved._v : 0) })
   } catch { /* storage unavailable */ }
   return out
 }

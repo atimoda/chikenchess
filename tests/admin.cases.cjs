@@ -119,3 +119,17 @@ test('chicken default controls: the file validates, feeds the defaults and round
   const missing = structuredClone(file); delete missing.keys2.fire
   assert.throws(() => validateAdminValue(entry, missing))
 })
+
+test('item defaults: the file validates, feeds DEFAULT_ITEMS and round-trips what the Itens panel writes', () => {
+  const items = loadTs('lib/pigchicken/items.ts')
+  const entry = ADMIN_ENTRIES.find(item => item.id === 'pigchicken-items')
+  assert.equal(entry.path, 'data/pigchicken/default-items.json')
+  const file = JSON.parse(fs.readFileSync(path.join(__dirname, '..', entry.path), 'utf8'))
+  validateAdminValue(entry, file)
+  assert.deepEqual(items.itemsDefaultsFile(items.DEFAULT_ITEMS), file)
+  const edited = structuredClone(items.DEFAULT_ITEMS); edited.pistol.rate = 7; edited.flute.arp = 'up'
+  validateAdminValue(entry, items.itemsDefaultsFile(edited))
+  assert.throws(() => validateAdminValue(entry, { ...file, pistol: { ...file.pistol, rate: 999 } }))
+  assert.throws(() => validateAdminValue(entry, { ...file, pistol: { ...file.pistol, nope: 1 } }))
+  assert.throws(() => validateAdminValue(entry, { ...file, laser: {} }))
+})

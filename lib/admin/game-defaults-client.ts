@@ -1,8 +1,10 @@
 import { isAdminUser } from './access'
 import { getOnlineClient } from '../online/client'
 import { chickenControlsDefaultsFile, type ChickenControls } from '../chicken/controls'
+import { itemsDefaultsFile, type ItemDef, type ItemId } from '../pigchicken/items'
 
-const CONTROLS_FILE_URL = '/__admin-local/file?id=chicken-controls'
+// "Salvar no game": admins write a game defaults file of the repository through the local Admin service
+// (npm run admin:dev), which checks the session and validates the content; publishing is commit + deploy.
 
 /** Calls back with whether this browser's session is an admin's, now and whenever it changes. */
 export function watchAdminSession(onChange: (admin: boolean) => void) {
@@ -13,22 +15,27 @@ export function watchAdminSession(onChange: (admin: boolean) => void) {
   return () => data.subscription.unsubscribe()
 }
 
-/** Writes these controls to data/chicken/default-controls.json through the local Admin service. */
-export async function saveDefaultChickenControls(controls: ChickenControls) {
+async function saveAdminFile(id: string, value: unknown) {
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   if (!isLocal) throw new Error('Só funciona no Admin local (npm run admin:dev).')
   const client = getOnlineClient()
   const { data } = client ? await client.auth.getSession() : { data: { session: null } }
   if (!data.session || !isAdminUser(data.session.user)) throw new Error('Entre com uma conta admin.')
+  const url = `/__admin-local/file?id=${encodeURIComponent(id)}`
   const headers = { Authorization: `Bearer ${data.session.access_token}` }
-  const current = await fetch(CONTROLS_FILE_URL, { cache: 'no-store', headers }).catch(() => null)
+  const current = await fetch(url, { cache: 'no-store', headers }).catch(() => null)
   const payload = await current?.json().catch(() => null)
   if (!current?.ok || typeof payload?.revision !== 'string') throw new Error(payload?.error || 'Salvamento local indisponível. Rode npm run admin:dev.')
-  const response = await fetch(CONTROLS_FILE_URL, {
+  const response = await fetch(url, {
     method: 'PUT', cache: 'no-store',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ revision: payload.revision, value: chickenControlsDefaultsFile(controls) }),
+    body: JSON.stringify({ revision: payload.revision, value }),
   })
   const saved = await response.json().catch(() => null)
-  if (!response.ok) throw new Error(saved?.error || 'Não deu para salvar o padrão.')
+  if (!response.ok) throw new Error(saved?.error || 'Não deu para salvar no game.')
 }
+
+/** Writes these controls to data/chicken/default-controls.json. */
+export const saveDefaultChickenControls = (controls: ChickenControls) => saveAdminFile('chicken-controls', chickenControlsDefaultsFile(controls))
+/** Writes these items to data/pigchicken/default-items.json. */
+export const saveDefaultItems = (items: Record<ItemId, ItemDef>) => saveAdminFile('pigchicken-items', itemsDefaultsFile(items))

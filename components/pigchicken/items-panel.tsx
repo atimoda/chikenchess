@@ -8,10 +8,12 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, SPORTS_IDS, WEAPON_IDS, loadItems, saveItems, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, SPORTS_IDS, WEAPON_IDS, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
 import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
+import { SaveToGameButton } from "@/components/admin/save-to-game-button"
+import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "semi", label: "Semi (um por toque)" },
@@ -42,6 +44,8 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
     setItems(loadItems())
     return subscribeItems(setItems)
   }, [])
+  // the main player equips an item while the panel is open: the dropdown jumps to it
+  useEffect(() => subscribeHeldItem(id => { if (id) setSel(id) }), [])
   const it = items[sel], base = DEFAULT_ITEMS[sel]
   const update = (fn: (d: ItemDef) => void) => {
     const next = structuredClone(items)
@@ -197,6 +201,8 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
             </div>
           </details>
         ))}
+        {/* admins: every item's current numbers become the game's default (data/pigchicken/default-items.json) */}
+        <SaveToGameButton path="data/pigchicken/default-items.json" save={() => saveDefaultItems(items)} className="justify-end px-4 py-3" />
       </div>
     </FloatingPanel>
   )
