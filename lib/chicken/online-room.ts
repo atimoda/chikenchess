@@ -4,7 +4,7 @@
 // position of every other chicken, and relays the chat. Nothing here touches Supabase.
 import { Client, type Room } from '@colyseus/sdk'
 import { receiveChickenChat, setChickenChatTransport } from './chat'
-import { decodeNetSnapshot, encodeNetState, NET_MAX_BROWSERS, type NetChicken } from './net-protocol'
+import { byteAngle, decodeNetSnapshot, encodeNetState, NET_MAX_BROWSERS, type NetChicken } from './net-protocol'
 import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world'
 
 /* global process */
@@ -21,7 +21,7 @@ export type NetRoomInfo = { roomId: string; patioId: string; name: string | null
 export type NetStatus = 'off' | 'connecting' | 'online'
 export type NetState = { status: NetStatus; info: NetRoomInfo | null; myPid: number | null; notice: string | null }
 export type NetLobby = { roomId: string; patioId: string; name: string | null; owner: string | null; players: number; max: number; createdAt: string }
-export type RemoteChicken = { x: number; y: number; vx: number; vy: number; face: number; state: number; item: number; at: number }
+export type RemoteChicken = { x: number; y: number; vx: number; vy: number; face: number; state: number; item: number; aim: number; rot: number; at: number }
 
 let state: NetState = { status: 'off', info: null, myPid: null, notice: null }
 // Edit mode live: layouts other browsers edited, and the database revision the owner saved
@@ -52,11 +52,13 @@ export const getNetState = () => state
 export function subscribeNet(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn) } }
 export const netChatPlayer = (pid: number) => `net:${pid}`
 
-/** where another browser's chicken is now: the latest snapshot moved on by its speed (at most 0.15 s ahead) */
+/** where another browser's chicken is now: the latest snapshot moved on by its speed (at most 0.15 s ahead);
+ * clinging, her speed runs along the surface she holds (rot) */
 export function remoteChicken(pid: number, slot: number, now = performance.now()): RemoteChicken | null {
   const r = remotes.get(`${pid}:${slot}`)
   if (!r) return null
-  const ahead = Math.min(0.15, (now - r.at) / 1000)
+  const ahead = Math.min(0.15, (now - r.at) / 1000), phi = byteAngle(r.rot)
+  if (phi !== null) return { ...r, x: r.x + Math.cos(phi) * r.vx * ahead, y: r.y + Math.sin(phi) * r.vx * ahead }
   return { ...r, x: r.x + r.vx * ahead, y: r.y + r.vy * ahead }
 }
 
@@ -107,7 +109,7 @@ function attach(r: Room) {
     const at = performance.now()
     for (const e of decodeNetSnapshot(new Uint8Array(bytes)).entries) {
       if (e.pid === state.myPid) continue
-      remotes.set(`${e.pid}:${e.slot}`, { x: e.x, y: e.y, vx: e.vx, vy: e.vy, face: e.face, state: e.state, item: e.item, at })
+      remotes.set(`${e.pid}:${e.slot}`, { x: e.x, y: e.y, vx: e.vx, vy: e.vy, face: e.face, state: e.state, item: e.item, aim: e.aim, rot: e.rot, at })
     }
   })
   r.onMessage('chat', (m: { pid: number; text: string }) => {

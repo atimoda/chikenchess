@@ -2,12 +2,13 @@
 
 // The online Pátio on screen: sends this browser's chickens to the game server 20 times a second (in world units,
 // so every screen agrees whatever its camera) and draws the other browsers' chickens, each with its look and a
-// name tag in its browser's color (with the chicken's number when that browser has more than one).
+// name tag in its browser's color (with the chicken's number when that browser has more than one). Where each one
+// aims (the item in her hand and her eyes) and the surface she clings to travel as one byte each.
 import { useEffect, useRef, useSyncExternalStore } from "react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import type { ChickenLook } from "@/lib/chicken/look-art"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
-import { stateByte, stateName } from "@/lib/chicken/net-protocol"
+import { angleByte, byteAngle, stateByte, stateName } from "@/lib/chicken/net-protocol"
 import { getNetState, remoteChicken, sendOwnChickens, subscribeNet, type NetPlayer } from "@/lib/chicken/online-room"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
@@ -27,7 +28,10 @@ const TAG_UP = 236
 export const netColor = (index: number) => PLAYER_COLORS[index % PLAYER_COLORS.length]
 export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getNetState)
 
-type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; item: number; face: number }
+// aim: the angle she is drawn pointing at, eased toward the latest one (the packets come 20 times a second)
+type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; item: number; aim: number | null; at: number }
+// the shortest turn from a to b
+const turnTo = (a: number, b: number) => ((b - a) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI
 
 // own: this browser's chickens in order (Player 1 first); onSpeakers: the first chicken of each other browser,
 // for the chat bubbles (by chat player id)
@@ -47,7 +51,11 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
     const timer = window.setInterval(() => {
       const list = ownRef.current().slice(0, 4).map((eng, slot) => {
         const s = eng.getMotionState()
-        return { slot, x: s.x + liveCamera.x, y: s.y - liveCamera.y, vx: s.vx, vy: s.vy, face: s.face, state: stateByte(s.networkAnimation ?? s.state), item: itemByte(eng.getHeldItem()) }
+        const clinging = s.state === "cling"
+        return {
+          slot, x: s.x + liveCamera.x, y: s.y - liveCamera.y, vx: s.vx, vy: s.vy, face: s.face, state: stateByte(s.networkAnimation ?? s.state), item: itemByte(eng.getHeldItem()),
+          aim: angleByte(eng.getAim()), rot: clinging ? angleByte(s.angle) : 0,
+        }
       })
       sendOwnChickens(list)
     }, SEND_MS)
@@ -74,18 +82,24 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
         const tag = document.createElement("div")
         tag.className = "pointer-events-none fixed left-0 top-0 z-[203] whitespace-nowrap rounded-full border-2 bg-black/60 px-2 py-0.5 font-mono text-[11px] font-bold text-white"
         host.appendChild(tag)
-        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, item: 0, face: 1 }
+        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, item: 0, aim: null, at: performance.now() }
         engine.setRemote(() => {
           const c = remoteChicken(entry.pid, entry.slot)
           if (!c) return null
           if (!entry.seen) { entry.seen = true; wrap.style.visibility = "visible"; tag.style.visibility = "visible" }
-          // the item in her hand, pointing the way she faces
-          if (c.item !== entry.item || (c.item && c.face !== entry.face)) {
-            entry.item = c.item; entry.face = c.face
-            const key = itemKey(c.item), svg = key ? ITEM_SVG[key as keyof typeof ITEM_SVG] : undefined
-            engine.setHeld(key && svg ? { svg, itemKey: key, angle: c.face < 0 ? Math.PI : 0, kick: 0, rig: key in DEFAULT_ITEMS ? itemRig(DEFAULT_ITEMS[key as ItemId]) : null } : null)
+          // where she aims: the item in her hand turns with it (without one, the way she faces) and so do her eyes
+          const now = performance.now(), dt = Math.min(0.1, (now - entry.at) / 1000)
+          entry.at = now
+          const target = byteAngle(c.aim)
+          entry.aim = target === null ? null : entry.aim === null ? target : entry.aim + turnTo(entry.aim, target) * (1 - Math.exp(-dt * 20))
+          const angle = entry.aim ?? (c.face < 0 ? Math.PI : 0)
+          const key = itemKey(c.item), svg = key ? ITEM_SVG[key as keyof typeof ITEM_SVG] : undefined
+          if (c.item !== entry.item || key) {
+            entry.item = c.item
+            engine.setHeld(key && svg ? { svg, itemKey: key, angle, kick: 0, rig: key in DEFAULT_ITEMS ? itemRig(DEFAULT_ITEMS[key as ItemId]) : null } : null)
           }
-          return { x: c.x - liveCamera.x, y: c.y + liveCamera.y, vx: c.vx, vy: c.vy, face: c.face, state: stateName(c.state) }
+          engine.setGame({ lookAngle: entry.aim })
+          return { x: c.x - liveCamera.x, y: c.y + liveCamera.y, vx: c.vx, vy: c.vy, face: c.face, state: stateName(c.state), cling: byteAngle(c.rot) }
         })
         tag.style.visibility = "hidden"
         r = entry

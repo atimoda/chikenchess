@@ -39,7 +39,7 @@ test('chat and looks are cleaned', () => {
 })
 
 test('protocol: 1 to 4 chickens up, every chicken down', () => {
-  const chickens = [{ slot: 0, x: 10.5, y: -20, vx: 300, vy: 0, face: -1, state: 3, item: 7 }, { slot: 3, x: 1, y: 2, vx: 0, vy: 0, face: 1, state: 0, item: 0 }]
+  const chickens = [{ slot: 0, x: 10.5, y: -20, vx: 300, vy: 0, face: -1, state: 3, item: 7, aim: 40, rot: 0 }, { slot: 3, x: 1, y: 2, vx: 0, vy: 0, face: 1, state: 0, item: 0, aim: 0, rot: 192 }]
   const s = decodeState(encodeState(chickens, 9))
   assert.equal(s.seq, 9)
   assert.deepEqual(s.chickens, chickens)
