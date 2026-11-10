@@ -63,3 +63,13 @@ test('"Salvar no game" writes the points with the rest of the sheet, and the fil
   assert.equal(items.itemsFileProblem(file), null)
   assert.notEqual(items.itemsFileProblem({ flute: { pivotAt: 'elbow' } }), null)
 })
+
+test('instruments aim instantly by default; an old saved Giro da mira moves to 0 unless it was changed', () => {
+  for (const id of items.ITEM_IDS) if (items.DEFAULT_ITEMS[id].instrument) assert.equal(items.DEFAULT_ITEMS[id].turnRate, 0, id)
+  assert.equal(items.DEFAULT_ITEMS.rifle.turnRate, 720)
+  withStorage({ _v: 7, sax: { turnRate: 120 }, violin: { turnRate: 420 }, keys: { turnRate: 600 }, rifle: { turnRate: 720 } }, () => {
+    const back = items.loadItems()
+    assert.deepEqual([back.sax.turnRate, back.violin.turnRate, back.keys.turnRate, back.rifle.turnRate], [0, 0, 600, 720])
+  })
+  withStorage({ _v: 8, sax: { turnRate: 120 } }, () => assert.equal(items.loadItems().sax.turnRate, 120))
+})
