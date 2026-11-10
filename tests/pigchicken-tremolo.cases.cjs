@@ -71,3 +71,12 @@ test('a note always starts in tune, even right after the aim moved', () => {
     assert.ok(stepTremolo(s, pool, upAt(3.1), 0.016, 1, fretless, true) < 60)
   }
 })
+
+test('the limit caps the bend each way', () => {
+  const s = newTremolo()
+  stepTremolo(s, pool, upAt(3), 0.016, 1, false, true, 0.2)
+  const p = stepTremolo(s, pool, upAt(3.45), 0.016, 1, false, true, 0.2)
+  assert.ok(Math.abs(p - 60.2) < 1e-9, `${p}`)
+  assert.equal(DEFAULT_ITEMS.violin.tremoloRange, 2)
+  assert.equal(DEFAULT_ITEMS.flute.tremoloRange, 0.5)
+})

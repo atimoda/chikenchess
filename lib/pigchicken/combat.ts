@@ -1385,7 +1385,7 @@ export function createCombat() {
       if (d.instrument && d.tremolo > 0) {
         const pool = music.aimPool(d.pitchSet, d.octave, d.span)
         const playing = input.fire && (!d.beam || !!beamHeld)
-        const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless, playing)
+        const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless, playing, d.tremoloRange)
         tremBend = pool.length ? lane - music.noteFor(aimAngle, d.pitchSet, d.octave, d.span) : 0
       } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0 }
 

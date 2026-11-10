@@ -141,6 +141,7 @@ export type ItemDef = {
   ringNotes: number // notes it lets out in a circle when it bursts (with a fuse or on impact)
   gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
+  tremoloRange: number // semitones the tremolo can bend a note each way
   fretless: boolean // no frets (violin): the bend is free and changing lane slides instead of jumping
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
@@ -160,7 +161,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, fretless: false,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, fretless: false,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
 }
 
@@ -331,7 +332,7 @@ const VIOLIN: ItemDef = {
   ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 420, muzzleX: 78, muzzleY: 0, length: 78,
-  instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, fretless: true,
+  instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, fretless: true,
   rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
 }
 // Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
@@ -469,6 +470,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'stun', label: 'Paralisa', min: 0, max: 3, step: 0.1, unit: 's', group: 'Música', hint: 'O inimigo fica parado depois da nota' },
   { key: 'strum', label: 'Rasgueado', min: 0, max: 0.1, step: 0.002, unit: 's', group: 'Música', hint: 'Intervalo entre as notas do acorde' },
   { key: 'tremolo', label: 'Tremolo', min: 0, max: 1, step: 0.05, unit: '×', group: 'Música', hint: 'Tremer a mira dentro da mesma faixa do leque entorta a nota; 0 = desligado' },
+  { key: 'tremoloRange', label: 'Tremolo: limite', min: 0.05, max: 3, step: 0.05, unit: 'semitons', group: 'Música', hint: 'Até quanto a nota sobe ou desce para cada lado' },
   { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },
   { key: 'effectTime', label: 'Duração do efeito', min: 1, max: 120, step: 1, unit: 's', group: 'Efeito', hint: 'Doses acumulam: cada uma tem o seu tempo e os multiplicadores se multiplicam' },
   { key: 'effectSpeed', label: 'Velocidade final', min: 0.3, max: 2.5, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%; 0,78 = −22%' },
