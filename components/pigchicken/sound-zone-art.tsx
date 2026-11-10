@@ -4,7 +4,7 @@
 // degree, faint like the frets of the songs' fan) and the Zona sonora (only in the editor: its colour and label).
 import { memo } from "react"
 import { NOTE_NAMES } from "@/lib/pigchicken/music"
-import { lanesCenter, lanesShape, soundZoneLabel, type LanesParams, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
+import { lanesCenter, lanesShape, type LanesParams, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
 
 const noteName = (m: number) => `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`
 
@@ -52,12 +52,7 @@ export const LanesArt = memo(function LanesArt({ lanes, w, h, editing = false, l
   )
 })
 
+// the box only: its values are the Zonas layer's tags (music-zones-layer.tsx)
 export const ZoneArt = memo(function ZoneArt({ zone, strong = false }: { zone: SoundZoneParams; strong?: boolean }) {
-  return (
-    <div className="absolute inset-0 overflow-hidden rounded-md" style={{ background: `${zone.color}${strong ? "2e" : "1f"}`, border: `2px ${zone.music ? "solid" : "dashed"} ${zone.color}` }}>
-      <span className="absolute left-2 top-2 max-w-[calc(100%-16px)] truncate rounded bg-black/70 px-1.5 py-0.5 font-mono text-[12px]" style={{ color: zone.color }}>
-        ♫ {soundZoneLabel(zone)}
-      </span>
-    </div>
-  )
+  return <div className="absolute inset-0 overflow-hidden rounded-md" style={{ background: `${zone.color}${strong ? "2e" : "1f"}`, border: `2px ${zone.music ? "solid" : "dashed"} ${zone.color}` }} />
 })
