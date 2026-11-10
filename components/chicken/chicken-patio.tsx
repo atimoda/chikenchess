@@ -375,7 +375,7 @@ export function ChickenPatio() {
     }
   }
   // another lobby (from "Abrir" or the lobby panel's Próximo / Anterior): what is pending is saved, the editor closes
-  const switchLobby = (id: string | null) => {
+  const switchLobby = (id: string | null, savePending = true) => {
     setEditorOn(false)
     setEditActive(false)
     setEditHint(false)
@@ -383,7 +383,7 @@ export function ChickenPatio() {
     setPerson(null)
     // the players' lobby is the Pátio open here
     setLobby(prev => (prev ? { ...prev, id: id ?? prev.id } : prev))
-    return travel(() => pl.switchTo(id))
+    return travel(() => pl.switchTo(id, savePending))
   }
   const switchRef = useRef(switchLobby)
   switchRef.current = switchLobby
@@ -547,6 +547,22 @@ export function ChickenPatio() {
           <Save className="h-4 w-4" />
           {patio?.dirty && <span aria-hidden="true" className={cn("absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full", pl.save.kind === "conflict" || pl.save.kind === "error" ? "bg-[#ff8a7a]" : "bg-[#ffd166]")} />}
         </button>
+        <h1 className="hidden min-w-0 items-baseline gap-1.5 whitespace-nowrap font-mono text-sm font-bold sm:flex">
+          <span className="truncate" title={patioName}>{patioName}</span>
+          {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
+        </h1>
+        {/* the lobby switcher and the players, right after the Pátio's name */}
+        <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} onStatus={setToast} onSwitch={target => {
+          // the other lobby's Pátio opens, and its room is the one joined
+          const url = new URL(window.location.href)
+          url.searchParams.set("room", target.roomId)
+          window.history.replaceState(null, "", url)
+          void leavePatioOnline()
+          if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
+          else openPatioLobby(target.patioId === "default" ? null : target.patioId)
+        }} />
+        {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
+        <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="relative">
           <button
             type="button"
@@ -569,22 +585,6 @@ export function ChickenPatio() {
           )}
         </div>
         <LayerEyes {...patioLayers} onSave={patio && access.canEdit ? layers => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined} />
-        <h1 className="hidden min-w-0 items-baseline gap-1.5 whitespace-nowrap font-mono text-sm font-bold sm:flex">
-          <span className="truncate" title={patioName}>{patioName}</span>
-          {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
-        </h1>
-        {/* the lobby switcher and the players, right after the Pátio's name */}
-        <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} onStatus={setToast} onSwitch={target => {
-          // the other lobby's Pátio opens, and its room is the one joined
-          const url = new URL(window.location.href)
-          url.searchParams.set("room", target.roomId)
-          window.history.replaceState(null, "", url)
-          void leavePatioOnline()
-          if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
-          else openPatioLobby(target.patioId === "default" ? null : target.patioId)
-        }} />
-        {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
-        <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Users className="h-4 w-4" />
           {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
@@ -662,7 +662,7 @@ export function ChickenPatio() {
         <PatioOpenPanel
           currentId={patio?.id ?? null} me={meId} isAdmin={isAdmin} isAccount={isAccount}
           onOpen={switchLobby} onNew={startNewPatio} onLogin={online.openLogin}
-          onDeleted={id => { forgetPatio(id); if (id === patio?.id) switchLobby(null) }}
+          onDeleted={async id => { if (id === patio?.id) await switchLobby(null, false); forgetPatio(id) }}
           onClose={() => setOpenOpen(false)}
         />
       )}
@@ -675,7 +675,7 @@ export function ChickenPatio() {
       {editingSong && <SongEditorPanel key={editingSong} songId={editingSong} onClose={() => setEditingSong(null)} />}
       {pqOpen && (
         <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-          <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
+          <div data-drag-handle className="flex shrink-0 items-center gap-2">
             <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
             <button type="button" onClick={() => { setPq(DEFAULT_PARQUINHO); saveParquinho(DEFAULT_PARQUINHO) }} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
             <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -725,7 +725,7 @@ export function ChickenPatio() {
 
       {panelOpen && (
         <FloatingPanel id="chicken-tuning" aria-label="Ajustes da galinha" initial={(vw, vh) => { const w = Math.min(400, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-          <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
+          <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Ajustes</h2>
             {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
             <button type="button" aria-label="Fechar ajustes" onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -771,7 +771,7 @@ export function ChickenPatio() {
 function Group({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: (open: boolean) => void; children: React.ReactNode }) {
   return (
     <PatioDisclosure title={title} open={open} onToggle={onToggle}>
-      <div className="grid gap-3 px-4 pb-4">{children}</div>
+      <div className="grid gap-[3px] px-4 pb-4">{children}</div>
     </PatioDisclosure>
   )
 }
@@ -801,11 +801,11 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
   }
   const n = value as number
   return <PatioRange label={<CombinationLabel meta={meta} />} name={meta.label} min={meta.min} max={meta.max} step={meta.step}
-    value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed}
+    value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} hintBelow changed={changed}
     onChange={value => onChange(meta.key, value)} onReset={() => onChange(meta.key, saved.params[meta.key])} />
 }
 
 function PqRange({ label, unit, min, max, step, value, onChange, hint, format }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string; format?: (v: number) => string }) {
-  return <PatioRange label={label} min={min} max={max} step={step} value={value} onChange={onChange} hint={hint}
+  return <PatioRange label={label} min={min} max={max} step={step} value={value} onChange={onChange} hint={hint} hintBelow
     display={format ? format(value) : `${value}${unit ? ` ${unit}` : ""}`} />
 }

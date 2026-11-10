@@ -451,7 +451,7 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
 function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center justify-between gap-3" title={hint}>
-      <span className="grid"><span>{label}</span>{hint && <span className="text-[10px] text-[#93a79a]">{hint}</span>}</span>
+      <span>{label}</span>
       <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
     </label>
   )
@@ -461,15 +461,15 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
 function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el: LayoutElement) => void; onClose: () => void }) {
   return (
     <FloatingPanel id="patio-layers" aria-label="Camada e colisões" initial={vw => ({ x: Math.max(12, vw - 312), y: 64, w: 300, h: 470 })} minW={240} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
+      <div data-drag-handle className="flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Camada · {ELEMENT_DEFS[el.kind].label}</h2>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div role="radiogroup" aria-label="Camada" className="grid gap-1">
         {[...LAYERS].reverse().map(l => (
-          <label key={l} className={cn("flex cursor-pointer items-start gap-2 rounded-md border px-2 py-1.5", el.layer === l ? "border-primary bg-primary/10 text-white" : "border-white/10 hover:border-white/30")}>
+          <label key={l} title={LAYER_HINTS[l]} className={cn("flex cursor-pointer items-start gap-2 rounded-md border px-2 py-1.5", el.layer === l ? "border-primary bg-primary/10 text-white" : "border-white/10 hover:border-white/30")}>
             <input type="radio" name="patio-layer" checked={el.layer === l} onChange={() => onChange({ ...el, layer: l })} className="mt-0.5 accent-[var(--primary)]" />
-            <span className="grid"><span>{LAYER_LABELS[l]}</span><span className="text-[10px] text-[#93a79a]">{LAYER_HINTS[l]}</span></span>
+            <span>{LAYER_LABELS[l]}</span>
           </label>
         ))}
       </div>
@@ -504,7 +504,7 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement;
   const bounce = el.params.trampoline
   return (
     <FloatingPanel id="patio-edit" aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
+      <div data-drag-handle className="flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Editar · {ELEMENT_DEFS[el.kind].label}</h2>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
@@ -552,12 +552,14 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement;
         <div className="grid h-24 shrink-0 place-items-center rounded-md border border-white/10 bg-[#0b110e]" aria-label="Prévia do trampolim">
           <div className="relative h-12 w-48"><ElementArt el={el} /></div>
         </div>
+        <div className="grid gap-[3px]">
         <PatioRange label="Força do impulso" min={1} max={TRAMPOLINE_LEVELS.length} value={bounce.strength}
           display={`Nível ${bounce.strength}`} onEnd={endSlider}
           onChange={strength => set({ trampoline: { ...bounce, strength } }, `bounce-strength:${editSession}:${sliderGesture.current}`)} />
         <PatioRange label="Direção do impulso" min={-TRAMPOLINE_ANGLE} max={TRAMPOLINE_ANGLE} value={bounce.angle}
           display={bounce.angle === 0 ? "Vertical" : `${Math.abs(bounce.angle)}° ${bounce.angle < 0 ? "←" : "→"}`} onEnd={endSlider}
           onChange={angle => set({ trampoline: { ...bounce, angle } }, `bounce-angle:${editSession}:${sliderGesture.current}`)} />
+        </div>
         <p className="text-[#93a79a]">Pouse por cima para quicar. Segure Agachar ou Chocar para atravessar.</p>
       </>}
       {el.kind === "rack" && <>
@@ -570,10 +572,9 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement;
             <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
           </select>
         </label>
-        <label className="grid gap-1">
+        <label className="grid gap-1" title="Espera após pegar o item. Consumíveis: 0,1 s por padrão; armas e instrumentos: 2 s. Zero repõe imediatamente.">
           <span>Tempo de reposição (s)</span>
           <input aria-label="Tempo de reposição do item" type="number" min={0} max={RACK_DELAY_MAX} step={0.1} value={el.params.respawnDelay ?? rackRespawnDelay(el.params.item ?? 'pistol')} onChange={e => { if (e.target.value !== '') set({ respawnDelay: Number(e.target.value) }, `rack-delay:${el.id}`) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
-          <span className="text-[10px] text-[#93a79a]">Espera após pegar o item. Consumíveis: 0,1 s por padrão; armas e instrumentos: 2 s. Zero repõe imediatamente.</span>
         </label>
       </>}
       {isSurfaceElement(el.kind) && el.params.surface && <SurfaceFields el={el} surface={el.params.surface} onChange={surface => set({ surface })} />}
@@ -693,7 +694,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
   const [docked, toggleDock] = useEditorDocked()
   const body = (
     <>
-        <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-1.5 border-b border-white/10 px-3 py-2">
+        <div data-drag-handle className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 py-2">
           <h2 className="whitespace-nowrap text-sm text-white">Modo editor</h2>
           <button type="button" role="switch" aria-checked={active} aria-label="Edição ativa" onClick={() => onActive?.(!active)}
             title={active ? "Desligar a edição (o painel continua aberto para arrastar elementos)" : "Ligar a edição: selecionar, mover e editar os elementos do Pátio"}
@@ -767,7 +768,7 @@ function SceneZonePanel({ scene, zones, onChange, onReset, onClose }: { scene: n
   const zone = sceneZoneParams(zones, scene), changed = !!zones?.[String(scene)]
   return (
     <FloatingPanel id="patio-scene-zone" aria-label={`Zona da cena ${scene + 1}`} initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 560 })} minW={260} minH={220} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex cursor-move items-center gap-2">
+      <div data-drag-handle className="flex items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Zona da cena {scene + 1}</h2>
         <button type="button" className={TOOL} onClick={onClose} title="Fechar" aria-label="Fechar"><X className="h-4 w-4" /></button>
       </div>

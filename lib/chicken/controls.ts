@@ -34,7 +34,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyV', null, null], keys2: ['Key:Insert', 'Key:BracketRight'], pad: ['Pad:b7', null, null], group: 'items' },
-  { key: 'melee', label: 'Golpe (melee)', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', 'Key:BracketLeft'], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'melee', label: 'Golpe de perto', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', 'Key:BracketLeft'], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:End', 'Key:Backslash'], pad: ['Pad:b11', null, null], group: 'items' },
   // every item in the bar's order (the mouse wheel does the same); the three below go through one group each
   { key: 'nextItem', label: 'Próximo item', keys: [null, null, null], keys2: ['Key:Delete', null], pad: [null, null, null], group: 'items' },

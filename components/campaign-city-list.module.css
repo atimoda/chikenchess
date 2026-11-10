@@ -37,11 +37,13 @@
   /* Only the city name takes pointer input; the style label and the flag must
      not extend the hover area or block dragging the globe behind them. */
   pointer-events: none;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
   color: rgb(255 255 255 / 70%);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .flagPole {

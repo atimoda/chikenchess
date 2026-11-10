@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils'
 
 // A slider with two points in the look of PatioRange: drag either point (the nearest to the press); points closer
 // than `snap` join (same value). Arrow keys move the focused point; a double click resets.
-export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0, display, hint, changed, onChange, onReset }: {
+export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0, display, hint, hintBelow = false, changed, onChange, onReset }: {
   label: ReactNode; min: number; max: number; step?: number; lo: number; hi: number; snap?: number; display?: ReactNode
-  hint?: string; changed?: boolean; onChange: (lo: number, hi: number) => void; onReset?: () => void
+  hint?: string; hintBelow?: boolean; changed?: boolean; onChange: (lo: number, hi: number) => void; onReset?: () => void
 }) {
   const box = useRef<HTMLDivElement>(null)
   const which = useRef<0 | 1>(0)
@@ -19,6 +19,7 @@ export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0,
     if (Math.abs(b - a) < snap) { if (k === 0) a = b; else b = a }
     onChange(Number(a.toFixed(4)), Number(b.toFixed(4)))
   }
+  const title = [hint, onReset && 'Duplo clique para voltar ao padrão.'].filter(Boolean).join(' ') || undefined
   const valueAt = (x: number) => { const r = box.current!.getBoundingClientRect(); return min + (max - min) * Math.max(0, Math.min(1, (x - r.left) / r.width)) }
   const thumb = (k: 0 | 1, v: number) => (
     <span role="slider" tabIndex={0} aria-valuemin={min} aria-valuemax={max} aria-valuenow={v} aria-label={k ? 'máximo' : 'mínimo'}
@@ -29,7 +30,7 @@ export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0,
       className="absolute top-1/2 h-6 w-2 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-white shadow outline-none focus:ring-2 focus:ring-primary"
       style={{ left: `${pct(v)}%` }} />
   )
-  return <div className="grid min-w-0 gap-1" title={hint}>
+  return <div className="grid min-w-0 gap-1" title={title}>
     <div ref={box} data-patio-range className="relative h-10 cursor-pointer touch-none overflow-hidden rounded-md bg-[#22302a]"
       onDoubleClick={onReset}
       onPointerDown={e => {
@@ -45,6 +46,6 @@ export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0,
       </div>
       {thumb(0, lo)}{thumb(1, hi)}
     </div>
-    {hint && <span className="text-[10px] text-[#93a79a]">{hint}</span>}
+    {hint && hintBelow && <span className="text-[10px] text-[#93a79a]">{hint}</span>}
   </div>
 }

@@ -31,7 +31,7 @@ export function HousePanel({ house, dimensions = houseDraftSize(house), onChange
   return <FloatingPanel id="patio-house" aria-label="Criador de casas" initial={(vw, vh) => ({ x: Math.max(8, vw - 390), y: 64, w: Math.min(vw - 16, 376), h: Math.min(vh - 78, 660) })}
     minW={245} minH={170} keepInViewport
     className={`rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs text-[#dfe8df] shadow-[0_20px_60px_#0009] ${dragging ? 'pointer-events-none opacity-0' : ''}`}>
-    <div data-drag-handle className="flex shrink-0 cursor-move items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+    <div data-drag-handle className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
       <h2 className="text-sm text-white">{previewDrag ? 'Criador de casas' : 'Editar casa'}</h2>
       <button type="button" className={BUTTON} aria-label="Fechar criador de casas" onClick={onClose}><X size={16} /></button>
     </div>
@@ -54,9 +54,11 @@ export function HousePanel({ house, dimensions = houseDraftSize(house), onChange
         <PatioSelect label="Formato" name="Formato do telhado" options={HOUSE_ROOFS} value={house.roof} onChange={roof => set({ roof })} />
         <PatioSelect label="Acabamento" options={ROOF_TEXTURES} value={house.roofTexture} onChange={roofTexture => set({ roofTexture })} />
         <PatioSelect label="Textura" options={WALL_TEXTURES} value={house.texture} onChange={texture => set({ texture })} />
+        <div className="grid gap-[3px]">
         <PatioRange label="Desgaste" min={0} max={100} value={house.wear} display={`${house.wear}%`} onChange={wear => set({ wear }, 'wear')} onEnd={end} />
         <PatioRange label={house.roof === 'parapet' ? 'Profundidade do terraço' : house.roof === 'flat' ? 'Espaço acima da fachada' : 'Altura do telhado'} min={8} max={40} value={house.pitch}
           display={`${house.pitch}%`} onChange={pitch => set({ pitch }, 'pitch')} onEnd={end} />
+        </div>
         <div className="grid grid-cols-2 gap-2">
           {COLORS.map(([key, label]) => <label key={key} className="flex min-w-0 items-center gap-2">
             <input type="color" value={house[key]} onChange={e => set({ [key]: e.target.value }, key)} onBlur={end}
@@ -66,8 +68,10 @@ export function HousePanel({ house, dimensions = houseDraftSize(house), onChange
       </fieldset>
       <fieldset className="grid min-w-0 gap-2 border-t border-white/10 pt-2">
         <legend className="pr-2 text-[#ffdba1]">Fachada</legend>
+        <div className="grid gap-[3px]">
         <PatioRange label="Andares" min={1} max={4} value={house.floors} onChange={floors => set({ floors }, 'floors')} onEnd={end} />
         <PatioRange label="Janelas por andar" min={0} max={4} value={house.windows} onChange={windows => set({ windows }, 'windows')} onEnd={end} />
+        </div>
         <PatioSelect label="Janelas" name="Formato das janelas" options={OPENING_SHAPES} value={house.windowShape} onChange={windowShape => set({ windowShape })} />
         <PatioSelect label="Luz" name="Luz das janelas" options={HOUSE_GLAZING} value={house.glass} onChange={glass => set({ glass })} />
         <PatioRange label="Tamanho das janelas" min={65} max={130} value={house.windowSize} display={`${house.windowSize}%`}

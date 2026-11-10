@@ -18,7 +18,7 @@ import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, lookDoses, type Box, type Combat, type Effect } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
-import { INVENTORY_MAX, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
+import { INVENTORY_MAX, inventorySlotFromCode, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
 import { announceHeldItem, curvePower, loadItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
@@ -384,8 +384,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         e.preventDefault(); cameraKey = true; mouseBtn.fire = false; mouseBtn.melee = false
         showCameraMode(true)
       }
-      const m = /^Digit([1-9])$/.exec(e.code)
-      if (m && !e.repeat) slotPick = Number(m[1])
+      const slot = inventorySlotFromCode(e.code)
+      if (slot !== null && !e.repeat) slotPick = slot
       if (e.code === "Escape") escape = true
     }
     const onKeyUp = (e: KeyboardEvent) => {

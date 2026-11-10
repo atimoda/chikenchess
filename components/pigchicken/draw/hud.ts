@@ -183,9 +183,9 @@ function fitSize(groups: readonly number[], room: number, max: number, min: numb
   const n = Math.max(1, groups.length), spaces = barSlots(groups, 0, gap, groupGap, lead).w
   return Math.max(min, Math.min(max, Math.floor((room - spaces) / n)))
 }
-// a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
+// a mouse is the main pointer (desktop): the slot numbers (keys 1-9, then 0 for slot ten) only show there
 export const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
-// the key hints (the 1-9 numbers under the slots, each group's key beside it) need a mouse and a roomy screen: phones and
+// the key hints (the 1-9 and 0 numbers under the slots, each group's key beside it) need a mouse and a roomy screen: phones and
 // small windows show none
 export const SMALL_SCREEN_W = 768
 export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof window === "undefined" || stageWidth() >= SMALL_SCREEN_W)
@@ -264,7 +264,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   const x0 = g.x, y = g.y
   // the effects' circles go left of the bar (of its first group's key, on the big bar)
   const restX = x0 + (g.xs[0] ?? 0) - g.lead
-  // the slot numbers (keys 1-9) are the first player's, with a mouse
+  // the slot numbers (keys 1-9, then 0 for slot ten) are the first player's, with a mouse
   const numbers = g.tabs && row === 0 && showKeyHints()
   const r = Math.max(3, Math.round(size * (bottom ? 0.16 : 0.15)))
   ctx.save()
@@ -328,13 +328,13 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
         ctx.fillStyle = k > 0.5 ? "#7bd88f" : k > 0.25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x + 6, ly, bw * k, 2)
       }
     }
-    // the key number under the slot (keys 1-9)
-    if (numbers && i < 9) {
+    // the key number under the slot (keys 1-9, then 0 for slot ten)
+    if (numbers && i < 10) {
       const tx = x + size / 2, tw = 16, th = 13, ty = y + size + 3
       roundRect(ctx, tx - tw / 2, ty, tw, th, 3); ctx.fillStyle = on ? "rgba(38,92,88,0.9)" : "rgba(18,22,26,0.72)"; ctx.fill()
       ctx.lineWidth = 1; ctx.strokeStyle = on ? "#5ee8d8" : "rgba(255,255,255,0.28)"; ctx.stroke()
       ctx.font = "bold 9px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = on ? "#ffffff" : "rgba(255,255,255,0.75)"
-      ctx.fillText(String(i + 1), tx, ty + th / 2 + 0.5)
+      ctx.fillText(String((i + 1) % 10), tx, ty + th / 2 + 0.5)
     }
   }
   ctx.globalAlpha = 1
@@ -391,21 +391,19 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     const d = held ? combat.item(held.item) : null
     const name = d ? d.name : "Mãos vazias"
     const info = held && d ? [d.mag > 0 ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? `${held.durability} golpes` : ""].filter(Boolean).join(" · ") : ""
-    ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"
+    ctx.font = "600 12px ui-sans-serif, system-ui, sans-serif"
     const nw = ctx.measureText(name).width
-    ctx.font = "11px ui-monospace, monospace"
-    const iw = info ? ctx.measureText(info).width + 14 : 0
-    const icon = held ? 26 : 0, pw = Math.ceil(12 + icon + nw + iw + 12), ph = 26
+    ctx.font = "400 11px ui-monospace, monospace"
+    const iw = info ? ctx.measureText(info).width + 7 : 0
+    const pw = Math.ceil(nw + iw)
     // on the big bar, over the held slot (kept on the screen)
     const at = x0 + (g.xs[Math.min(combat.current, n - 1)] ?? 0) + size / 2
-    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, stageWidth() - pw - 8)) : x0 + g.w - pw), py = bottom ? y - ph - 10 : y + size + 6
+    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, stageWidth() - pw - 8)) : x0 + g.w - pw), py = bottom ? y - 12 : y + size + 12
     ctx.globalAlpha = since > PILL_TIME - 300 ? (PILL_TIME - since) / 300 : 1
-    roundRect(ctx, px, py, pw, ph, 7); ctx.fillStyle = "rgba(24,30,28,0.78)"; ctx.fill()
-    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.stroke()
-    let cx = px + 12
-    if (held) { ctx.save(); ctx.translate(cx + 10, py + ph / 2); drawItem(ctx, held.item, 20, 16); ctx.restore(); cx += icon }
-    ctx.textAlign = "left"; ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"; ctx.fillText(name, cx, py + ph / 2 + 0.5)
-    if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, cx + nw + 14, py + ph / 2 + 0.5) }
+    ctx.shadowBlur = 0; ctx.shadowColor = "transparent"
+    ctx.textAlign = "left"
+    if (info) { ctx.fillStyle = "#aeb5be"; ctx.font = "400 11px ui-monospace, monospace"; ctx.fillText(info, px, py) }
+    ctx.fillStyle = "#ffffff"; ctx.font = "600 12px ui-sans-serif, system-ui, sans-serif"; ctx.fillText(name, px + iw, py)
     ctx.globalAlpha = 1
   }
   ctx.restore()

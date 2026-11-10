@@ -305,7 +305,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
       style={small ? undefined : { borderColor: NEON }}>
       {/* the header: drag it; the song's name; play, stop, undo, save */}
       {/* collapsed: only a small bar in the corner, clear of the song's score */}
-      <div data-drag-handle className={cn("pointer-events-auto flex cursor-move items-center gap-1.5 px-3 py-2", small ? "w-fit max-w-full self-start rounded-[18px] border-2 bg-[#07130d]" : "flex-wrap border-b border-white/10")} style={small ? { borderColor: NEON } : undefined}>
+      <div data-drag-handle className={cn("pointer-events-auto flex items-center gap-1.5 px-3 py-2", small ? "w-fit max-w-full self-start rounded-[18px] border-2 bg-[#07130d]" : "flex-wrap border-b border-white/10")} style={small ? { borderColor: NEON } : undefined}>
         <h2 className={cn("min-w-0 truncate text-sm text-white", small ? "max-w-40" : "flex-1")}><span style={{ color: z.color }}>{draft.name}</span>{dirty && <span className="text-[#93a79a]"> · não salva</span>}</h2>
         <button type="button" onClick={play} className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 font-bold text-[#05060c]" style={{ background: NEON }} title="Toca no templo a partir do compasso do cursor"><Play className="h-4 w-4" />Tocar daqui</button>
         <button type="button" onClick={() => stopDraft()} disabled={!playing} className={btn} aria-label="Parar"><Square className="h-3.5 w-3.5" /></button>

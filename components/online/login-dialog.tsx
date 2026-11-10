@@ -43,7 +43,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const popupWaiting = useRef(false)
   const popupRequestId = useRef<string | null>(null)
 
-  const executeMerge = useCallback(async () => {
+  const executeMerge = useCallback(async (afterLogin = false) => {
     setBusy(true)
     setError(null)
     try {
@@ -60,11 +60,19 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       sourceId.current = null
       setStep('conflict')
     } catch (cause) {
-      setError(onlineErrorMessage(cause))
+      if (afterLogin || user && !user.is_anonymous && profile) {
+        // Authentication and profile loading already succeeded. A failed
+        // best-effort guest transfer must not make the completed login look failed.
+        setError(null)
+        setStep('saved')
+        setNotice('Login realizado. A cópia do perfil visitante continua guardada neste navegador.')
+      } else {
+        setError(onlineErrorMessage(cause))
+      }
     } finally {
       setBusy(false)
     }
-  }, [resolveProfileTransfer, pendingTransfer])
+  }, [resolveProfileTransfer, pendingTransfer, user, profile])
 
   useEffect(() => {
     if (!open) return
@@ -95,14 +103,15 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     try { saved = await refreshProfile() } catch (cause) { setSavePending(true); throw cause }
     if (!saved) throw new Error('Conta conectada. O perfil ainda precisa ser salvo; tente novamente.')
     setSavePending(false)
-    if (sourceId.current && sourceId.current !== data.session.user.id) {
+    if (sourceId.current && sourceId.current !== data.session.user.id && pendingTransfer) {
       setStep('conflict')
-      void executeMerge()
+      void executeMerge(true)
     } else {
+      sourceId.current = null
       setStep('saved')
     }
     setNotice(null)
-  }, [refreshProfile, executeMerge])
+  }, [refreshProfile, executeMerge, pendingTransfer])
 
   useEffect(() => {
     if (!popupWaiting.current || !user || user.is_anonymous) return

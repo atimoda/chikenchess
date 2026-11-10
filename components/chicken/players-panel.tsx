@@ -173,7 +173,7 @@ export function PlayersPanel({ lobby, seats, connecting, onPublic, devices, meNa
       minW={300}
       className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
     >
-      <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-3 border-b border-white/10 px-4 py-2.5">
+      <div data-drag-handle className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2.5">
         <h2 className="text-sm text-white">Players</h2>
         <ModeSwitch mode={lobby.mode} onChange={onMode} />
         {seats && (

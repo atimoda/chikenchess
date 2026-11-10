@@ -241,9 +241,9 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
   }, [])
 
   // leaving for another lobby: what is pending is saved first
-  const switchTo = useCallback(async (id: string | null) => {
+  const switchTo = useCallback(async (id: string | null, savePending = true) => {
     flushKeep()
-    if (cur.current?.dirty && ctx.current.canEdit && ctx.current.saver) await saveNow({ silent: true })
+    if (savePending && cur.current?.dirty && ctx.current.canEdit && ctx.current.saver) await saveNow({ silent: true })
     setLobbyInUrl(id)
     await load(id)
   }, [flushKeep, saveNow, load])

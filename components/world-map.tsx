@@ -77,9 +77,9 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   // Create lobby only appears in city popups while Supabase answers.
   const onlineAvailability = useOnlineAvailability()
   const onlineAvailable = onlineAvailability === "available"
-  const [realisticGlobe, setRealisticGlobe] = useState(true)
+  const [realisticGlobe, setRealisticGlobe] = useState(false)
   useEffect(() => {
-    try { if (localStorage.getItem(REALISTIC_GLOBE_KEY) === 'off') setRealisticGlobe(false) } catch { /* Storage blocked: keep the realistic default. */ }
+    try { setRealisticGlobe(localStorage.getItem(REALISTIC_GLOBE_KEY) === 'on') } catch { /* Storage blocked: keep the neon default. */ }
   }, [])
   const toggleRealisticGlobe = () => setRealisticGlobe(current => {
     try { localStorage.setItem(REALISTIC_GLOBE_KEY, current ? 'off' : 'on') } catch { /* Storage blocked: the choice lasts this visit. */ }
@@ -1332,13 +1332,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             title={realisticGlobe ? "Neon globe" : "Realistic globe"}
             className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
-            {realisticGlobe ? <>
-              <RealisticGlobeIcon className="size-[18px] group-hover:hidden" />
-              <NeonGlobeIcon className="hidden size-[18px] group-hover:block" />
-            </> : <>
-              <NeonGlobeIcon className="size-[18px] group-hover:hidden" />
-              <RealisticGlobeIcon className="hidden size-[18px] group-hover:block" />
-            </>}
+            <span className="relative size-[18px]">
+              <RealisticGlobeIcon className={cn("absolute inset-0 size-full transition-opacity duration-[2000ms] ease-in-out", realisticGlobe ? "opacity-100 group-hover:opacity-0" : "opacity-0 group-hover:opacity-100")} />
+              <NeonGlobeIcon className={cn("absolute inset-0 size-full transition-opacity duration-[2000ms] ease-in-out", realisticGlobe ? "opacity-0 group-hover:opacity-100" : "opacity-100 group-hover:opacity-0")} />
+            </span>
           </Button>
           <Button 
             variant="ghost" 

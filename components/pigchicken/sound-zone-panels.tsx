@@ -23,7 +23,7 @@ const rootOf = (pc: number) => 54 + ((pc - 6 + 12) % 12)
 const pcOf = (m: number) => ((m % 12) + 12) % 12
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return <label className="grid gap-1" title={hint}><span>{label}</span>{children}{hint && <span className="text-[10px] text-[#93a79a]">{hint}</span>}</label>
+  return <label className="grid gap-1" title={hint}><span>{label}</span>{children}</label>
 }
 
 function KeySelect({ value, onChange, label = "Tom" }: { value: number; onChange: (root: number) => void; label?: string }) {
@@ -92,8 +92,8 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
       {!scene && <>
       <PatioRange label="Prioridade" min={ZONE_PRIORITY.min} max={ZONE_PRIORITY.max} value={zone.priority} hint="Onde zonas se sobrepõem, vale a de prioridade maior. Qualquer zona vale mais que a da cena."
         onChange={priority => set({ priority }, "zone-priority")} />
-      <label className="flex items-center justify-between gap-3">
-        <span className="grid"><span>Troca a música ao entrar</span><span className="text-[10px] text-[#93a79a]">Desligado: só muda as notas rebatidas dentro dela</span></span>
+      <label className="flex items-center justify-between gap-3" title="Desligado: só muda as notas rebatidas dentro dela">
+        <span>Troca a música ao entrar</span>
         <input type="checkbox" checked={zone.music} onChange={e => set({ music: e.target.checked })} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
       </label>
       <div className="grid gap-1" title="Os aliens convertidos aqui viram estes pássaros (nenhum marcado: os da cena)">
@@ -105,7 +105,6 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
               className={"h-8 rounded-md border px-2 " + (on ? "border-primary bg-primary/15 text-white" : "border-white/15 text-[#93a79a] hover:border-white/40")}>{BIRDS[id].name}</button>
           })}
         </div>
-        <span className="text-[10px] text-[#93a79a]">Nenhum marcado: os pássaros da cena.</span>
       </div>
       <ChainEditor chain={zone.chain} changed={false} title="Cadeia do ambiente"
         hint="Toda nota rebatida dentro da zona passa por estes passos (a parte “ambiente” da regra de rebate)"
@@ -191,15 +190,15 @@ export function LanesFields({ lanes, w, h, onChange }: { lanes: LanesParams; w: 
           }} className={field} />
         </Field>
       )}
-      {lanes.layout === "fan" && <>
+      {lanes.layout === "fan" && <div className="grid gap-[3px]">
         <PatioRange label="Abertura" min={10} max={360} step={5} value={lanes.open} display={`${lanes.open}°`} onChange={open => set({ open }, "lanes-open")} />
         <PatioRange label="Começa em" min={0} max={355} step={5} value={lanes.start} display={`${lanes.start}°`} hint="0° = direita, 90° = baixo, 180° = esquerda, 270° = cima" onChange={start => set({ start }, "lanes-start")} />
         <PatioRange label="Altura do centro" min={0} max={Math.round(h)} step={5} value={Math.min(lanes.centerY, Math.round(h))} display={`${Math.min(lanes.centerY, Math.round(h))} px`} hint="Acima da borda de baixo; no meio da caixa dá para abrir um círculo inteiro" onChange={centerY => set({ centerY }, "lanes-center")} />
-        <label className="flex items-center justify-between gap-3">
-          <span className="grid"><span>Espelhado</span><span className="text-[10px] text-[#93a79a]">Só a altura conta, como a mira dos instrumentos</span></span>
+        <label className="flex items-center justify-between gap-3" title="Só a altura conta, como a mira dos instrumentos">
+          <span>Espelhado</span>
           <input type="checkbox" checked={lanes.mirrored} onChange={e => set({ mirrored: e.target.checked })} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
         </label>
-      </>}
+      </div>}
       <PatioRange label="Brilho no jogo" min={0} max={100} step={5} value={Math.round(lanes.glow * 100)} display={lanes.glow ? `${Math.round(lanes.glow * 100)}%` : "Invisível"} onChange={v => set({ glow: v / 100 }, "lanes-glow")} />
     </>
   )
@@ -211,15 +210,14 @@ export function SurfaceRebateFields({ rebate, onChange }: { rebate: SurfaceRebat
   const r = rebate ?? defaultSurfaceRebate()
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
-      <label className="flex items-center justify-between gap-3">
-        <span className="grid"><span>Rebate notas</span><span className="text-[10px] text-[#93a79a]">As notas quicam nele e tocam de novo</span></span>
+      <label className="flex items-center justify-between gap-3" title="As notas quicam nele e tocam de novo">
+        <span>Rebate notas</span>
         <input type="checkbox" checked={!!rebate} onChange={e => onChange(e.target.checked ? r : undefined)} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
       </label>
       {rebate && <>
-        <select aria-label="O que a superfície toca" value={r.mode} onChange={e => onChange({ ...r, mode: e.target.value as SurfaceRebate["mode"] })} className={field}>
+        <select aria-label="O que a superfície toca" title={SURFACE_MODES.find(m => m.value === r.mode)?.hint} value={r.mode} onChange={e => onChange({ ...r, mode: e.target.value as SurfaceRebate["mode"] })} className={field}>
           {SURFACE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
-        <span className="text-[10px] text-[#93a79a]">{SURFACE_MODES.find(m => m.value === r.mode)?.hint}</span>
         {r.mode === "chain" && <ChainEditor chain={r.chain} changed={false} title="Cadeia da superfície" hint="Cada nota que quica aqui passa por estes passos"
           onChange={fn => { const chain = structuredClone(r.chain); fn(chain); onChange({ ...r, chain }) }} />}
       </>}

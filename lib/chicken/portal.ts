@@ -22,14 +22,14 @@ export function createPortalGate() {
   let blocked = false, touching = false, wasUsing = false
   return {
     block() { blocked = true; touching = false },
-    update(body: PortalBody, circle: PortalCircle, using: boolean, enabled = true) {
+    update(body: PortalBody, circle: PortalCircle, using: boolean, enabled = true, walkingHere = false) {
       const transiting = body.state === 'portal' || body.state === 'portalArrival'
       const overlaps = overlapsPortal(body, circle)
       if (transiting && overlaps) blocked = true
       if (!transiting && !overlaps) blocked = false
       const wasTouching = touching
       touching = enabled && !blocked && !transiting && touchesPortal(body, circle, wasTouching)
-      const enter = wasTouching && touching && using && !wasUsing
+      const enter = touching && (walkingHere || (wasTouching && using && !wasUsing))
       wasUsing = using
       return { touching, enter, blocked: blocked || transiting }
     },

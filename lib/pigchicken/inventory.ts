@@ -9,6 +9,14 @@ export const INVENTORY_MAX = 25
 export const INVENTORY_MIN = 1
 export const clampInventoryLimit = (n: number) => Math.round(Math.max(INVENTORY_MIN, Math.min(INVENTORY_MAX, Number.isFinite(n) ? n : INVENTORY_MAX)))
 
+// Number-row shortcuts for the first ten inventory slots: 0 follows 9.
+export function inventorySlotFromCode(code: string): number | null {
+  const match = /^Digit([0-9])$/.exec(code)
+  if (!match) return null
+  const digit = Number(match[1])
+  return digit === 0 ? 10 : digit
+}
+
 // Direction is sampled on the action's press, so changing Shift while the
 // button remains held never causes a second switch. Explicit Previous wins.
 export type QuickSwitchRepeat = { action: 'nextItem' | 'prevItem' | null; direction: -1 | 1; elapsed: number; nextAt: number }
