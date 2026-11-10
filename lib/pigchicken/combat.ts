@@ -8,15 +8,16 @@ import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
-import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
-import { INVENTORY_MAX, clampInventoryLimit, groupStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, type NetHit, type NetShot } from './net-world'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
-import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
+import { scaleAt, type InstrumentScale } from './instrument-scales'
+import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES, type PitchSet } from './music'
 import type { Drum, Held, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
 
@@ -53,7 +54,8 @@ const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
   x >= box.l && x <= box.r && prevY <= box.t && y >= box.t && !box.occludedAt?.(x, box.t)
 // refill: seconds the gradual auto reload has counted toward the next shots coming back (reset whenever it is used).
 // group: the inventory group it sits in (its own when taken; dragging it on the bar may change it)
-export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup }
+// scale: the index in its item's `scales` it plays now (instruments with more than one scale)
+export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
@@ -227,6 +229,19 @@ export function createCombat() {
   // how far the aim reaches (0 at her … 1 far; lib/pigchicken/aim-volume.ts): the instrument's notes get louder with it
   let aimReach = 1
   const noteVol = (d: ItemDef) => aimVolume(d.volMin, d.volMax, aimReach)
+  // the held instrument's scale (lib/pigchicken/instrument-scales.ts) and its notes for the aim right now
+  const scaleOf = (h: Owned | null | undefined, d: ItemDef): InstrumentScale => scaleAt(d.instrument ? d.scales : undefined, h?.scale)
+  function tones(d: ItemDef) {
+    const sc = scaleOf(held(), d), angle = aimAngle, reach = aimReach
+    const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span }
+    return {
+      scale: sc,
+      note: () => sc.noteFor(music, q),
+      pool: () => sc.pool(music, q),
+      walk: (from: number, n: number, set: PitchSet) => sc.walk(music, from, n, set, angle, reach),
+      color: (m: number) => DEGREE_COLORS[sc.degreeOf(music, m, angle, reach) % DEGREE_COLORS.length],
+    }
+  }
   const critters: Critter[] = []
   let quantizeAll = true
   const conv = { birds: 0, people: 0, harmonized: 0, undeadBirds: 0 }
@@ -599,6 +614,16 @@ export function createCombat() {
     h.ammo--; if (h.ammo <= 0) removeHeld()
   }
 
+  // another scale on the held instrument: the reload of its weapon family (a real gun racking a round) and the
+  // scale's name over her
+  function switchScale(h: Owned, i: number) {
+    h.scale = i
+    stopBeam()
+    const weapon = INSTRUMENT_WEAPON[h.item] ?? null
+    sounds.push({ kind: 'scale', item: weapon })
+    if (lastBody) addText(lastBody.x, lastBody.y - 120 * lastBody.scale, scaleOf(h, items[h.item]).label, '#ffd166')
+  }
+
   function startReload() {
     const h = held(); if (!h) return
     const d = items[h.item]
@@ -610,17 +635,17 @@ export function createCombat() {
   // the notes of one shot: the aim picks the note inside the chord (or scale); the arpeggiator, the phrase,
   // the strum and the glissando walk from there
   function shotNotes(d: ItemDef, n: number) {
-    const base = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
-    if (n > 1) return Array.from({ length: n }, (_, i) => music.walk(base, Math.floor(n / 2) - i, 'chord'))
-    if (d.gliss) return [music.walk(base, glissSteps, d.pitchSet)]
+    const t = tones(d), base = t.note()
+    if (n > 1) return Array.from({ length: n }, (_, i) => t.walk(base, Math.floor(n / 2) - i, 'chord'))
+    if (d.gliss) return [t.walk(base, glissSteps, d.pitchSet)]
     let off = 0
     const k = arpStep++
     if (d.arp === 'up') off = k % 4
     else if (d.arp === 'down') off = -(k % 4)
     else if (d.arp === 'updown') { const c = k % 6; off = c <= 3 ? c : 6 - c }
     else if (d.arp === 'random') off = Math.floor(rand(-2, 4))
-    else if (d.arp === 'phrase') { if (burstLeft === d.burst || burstLeft <= 0) phraseBase = base; return [music.walk(phraseBase, d.burst - Math.max(1, burstLeft), d.pitchSet)] }
-    return [music.walk(base, off, d.arp === 'off' ? d.pitchSet : 'chord')]
+    else if (d.arp === 'phrase') { if (burstLeft === d.burst || burstLeft <= 0) phraseBase = base; return [t.walk(phraseBase, d.burst - Math.max(1, burstLeft), d.pitchSet)] }
+    return [t.walk(base, off, d.arp === 'off' ? d.pitchSet : 'chord')]
   }
 
   function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void, power = 1, ctx?: StepCtx) {
@@ -650,7 +675,7 @@ export function createCombat() {
       }
       if (d.instrument) {
         const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
-        b.note = { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }
+        b.note = { midi: m, color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }
         b.ring = d.ringNotes; b.ghost = true
       }
       // instant shots travel their whole way now and leave a tracer
@@ -664,7 +689,7 @@ export function createCombat() {
         if (netOn) netShots.push(shotOf(b))
       }
     }
-    if (d.instrument) burst(mx, my, 2 + n, DEGREE_COLORS[music.degreeOf(notes[0]) % DEGREE_COLORS.length], 110, 3)
+    if (d.instrument) burst(mx, my, 2 + n, tones(d).color(notes[0]), 110, 3)
     else { burst(mx, my, 3 + n, '#fff3b0', 140, 2); sound('shot', h.item) }
     if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
     h.ammo--; if (h.refill) h.refill = 0; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / d.rate; kick = d.recoilKick
@@ -907,10 +932,10 @@ export function createCombat() {
     // (the same note a shot would play there) and climbs the chord `meleeNotes` notes; its air takes that note's colour
     let color = d.trailColor
     if (!wing && d.instrument) {
-      const base = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
+      const t = tones(d), base = t.note()
       const n = Math.max(1, Math.min(4, Math.round(d.meleeNotes)))
-      for (let i = 0; i < n; i++) out.note(d.voice, (i ? music.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d))
-      color = DEGREE_COLORS[music.degreeOf(base) % DEGREE_COLORS.length]
+      for (let i = 0; i < n; i++) out.note(d.voice, (i ? t.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d))
+      color = t.color(base)
     }
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
@@ -1153,8 +1178,8 @@ export function createCombat() {
       hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && !(t.kind === 'undead' && (t.data as UndeadState).bird) && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
-    const midi = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
-    const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    const t = tones(d), midi = t.note()
+    const color = t.color(midi)
     // the sound bends with the aim's tremolo; the note (colour, harmony) stays the lane's
     const pitch = midi + tremBend
     if (!beamHeld) { beamHeld = out.hold(d.voice, pitch); beamMidi = pitch }
@@ -1252,6 +1277,8 @@ export function createCombat() {
     // the aim's reach (0..1) for the current player, set by the page before step; the loudness it gives the held item
     setAimReach(r: number) { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1 },
     get aimReach() { return aimReach },
+    // the held instrument's scale now (the primary one for anything else)
+    get scale() { return scaleOf(held(), def()) },
     get aimVolume() { return noteVol(def()) },
     get throwAngle() { return throwAngle },
     // a throw called off (she switched items while charging): nothing happens until the button is let go
@@ -1401,7 +1428,7 @@ export function createCombat() {
       throwAngle = targetAngle
       // tremolo: shaking the aim inside a lane of the instrument's fan, after the note starts, bends its notes
       // (the press, or the violin's bow coming on, starts it in tune)
-      if (d.instrument && d.tremolo > 0) {
+      if (d.instrument && d.tremolo > 0 && scaleOf(held(), d).id === 'primary') {
         const pool = music.aimPool(d.pitchSet, d.octave, d.span)
         const playing = input.fire && (!d.beam || !!beamHeld)
         const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless, playing, d.tremoloRange)
@@ -1433,9 +1460,18 @@ export function createCombat() {
       }
       if (input.slot) { if (input.slot <= shown().length) equip(input.slot - 1) }
       else if (pick) {
-        // A full inventory has no displayed empty slot; Deselecionar can still leave it unequipped.
-        const from = !room() && !held() ? (pick > 0 ? -1 : inv.length) : cur
-        equip(from + pick)
+        // an instrument with more scales goes through them first (each switch sounds its weapon's reload); with
+        // none left that way, the next item, arriving at its first scale (backward: its last)
+        const h = held(), count = h ? d.scales.length : 0
+        const next = h && d.instrument ? scaleStep(count, h.scale ?? 0, pick) : null
+        if (h && next !== null) switchScale(h, next)
+        else {
+          // A full inventory has no displayed empty slot; Deselecionar can still leave it unequipped.
+          const from = !room() && !held() ? (pick > 0 ? -1 : inv.length) : cur
+          equip(from + pick)
+          const now = held()
+          if (now && now !== h && items[now.item].instrument && items[now.item].scales.length > 1) now.scale = arrivalScale(items[now.item].scales.length, pick)
+        }
       }
       else if (groupSlot >= 0) equip(groupSlot)
       const dNow = def()
@@ -1568,7 +1604,8 @@ export function createCombat() {
               const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
               glissNext -= dt
               if (glissNext <= 0 && glissSteps < 7) {
-                out.note(d.voice, music.walk(music.noteFor(aimAngle, d.pitchSet, d.octave, d.span), glissSteps, d.pitchSet), 0, 0.25, (0.35 + 0.3 * p) * noteVol(d))
+                const t = tones(d)
+                out.note(d.voice, t.walk(t.note(), glissSteps, d.pitchSet), 0, 0.25, (0.35 + 0.3 * p) * noteVol(d))
                 glissSteps++; glissNext = Math.max(0.04, 0.16 - 0.12 * p)
               }
             }

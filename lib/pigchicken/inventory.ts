@@ -107,3 +107,14 @@ export function wheelSliceAt(angle: number, count: number): number {
   const a = angle + Math.PI / 2 + span / 2
   return wrapSlot(Math.floor(((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / span), count)
 }
+
+// ---------- scales: an instrument with more than one scale (ItemDef.scales) ----------
+// The quick switch (mouse wheel, Próximo / Anterior) on it goes to its next (or previous) scale while there is one;
+// null: there is none left that way, so the switch goes to the next item. Arriving at an item forward starts at its
+// first scale, backward at its last (`arrivalScale`), so the wheel walks one straight line: scales, then items.
+export function scaleStep(count: number, at: number, dir: number): number | null {
+  if (count <= 1 || !dir) return null
+  const next = Math.max(0, Math.min(count - 1, Math.round(at))) + (dir > 0 ? 1 : -1)
+  return next >= 0 && next < count ? next : null
+}
+export const arrivalScale = (count: number, dir: number) => (dir < 0 ? Math.max(0, count - 1) : 0)

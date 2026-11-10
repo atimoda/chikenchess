@@ -2,7 +2,7 @@
 // Each item has its own shot; equipping, dry fire, aiming, reloading and explosions share a few recipes.
 import type { ItemId } from './items'
 
-export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat' | 'puff'
+export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat' | 'puff' | 'scale'
 
 let ac: AudioContext | null = null, master: GainNode | null = null, noise: AudioBuffer | null = null
 let volume = 0.6
@@ -105,6 +105,18 @@ export function playWeaponSound(kind: WeaponSound, item: ItemId | null) {
       break
     case 'reload': click(a, 0, 0.18, 1800); hiss(a, { at: 0.04, gain: 0.1, decay: 0.12 }, 'bandpass', 900, 2200, 2); break
     case 'reloadDone': click(a, 0, 0.25, 2200); click(a, 0.07, 0.2, 3000); break
+    // an instrument's scale switched: its weapon family reloading a round (item: that weapon). The pump racks a
+    // shell, the bow creaks, the grenade's pin clicks; the others drop the magazine in and lock it
+    case 'scale':
+      if (item === 'pump') { click(a, 0, 0.16, 1600); tone(a, { gain: 0.05, decay: 0.05 }, 'triangle', 600, 400); hiss(a, { at: 0.12, gain: 0.18, decay: 0.07 }, 'bandpass', 1200, 700, 2); click(a, 0.24, 0.22, 1800) }
+      else if (item === 'bow') { tone(a, { gain: 0.06, attack: 0.08, decay: 0.25 }, 'sawtooth', 80, 140); click(a, 0.2, 0.08, 1500) }
+      else if (item === 'grenade') { click(a, 0, 0.15, 5000); click(a, 0.06, 0.1, 6000) }
+      else {
+        const late = item === 'sniper' || item === 'launcher' ? 0.26 : item === 'rifle' ? 0.2 : 0.14
+        click(a, 0, 0.18, 1800); hiss(a, { at: 0.04, gain: 0.1, decay: 0.12 }, 'bandpass', 900, 2200, 2)
+        click(a, late, 0.25, 2200); click(a, late + 0.07, 0.2, 3000)
+      }
+      break
     case 'shell': click(a, 0, 0.16, 1600); tone(a, { gain: 0.05, decay: 0.05 }, 'triangle', 600, 400); break
     case 'pump': hiss(a, { gain: 0.18, decay: 0.07 }, 'bandpass', 1200, 700, 2); click(a, 0.12, 0.22, 1800); break
     case 'explode': hiss(a, { gain: 0.9, attack: 0.005, decay: 0.9 }, 'lowpass', 1400, 80); tone(a, { gain: 0.7, decay: 0.6 }, 'sine', 70, 28); break

@@ -15,6 +15,7 @@ import { ChainEditor } from "./chain-editor"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
 import { ItemPointsEditor } from "./item-points-editor"
+import { INSTRUMENT_SCALES, INSTRUMENT_SCALE_IDS } from "@/lib/pigchicken/instrument-scales"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "semi", label: "Semi (um por toque)" },
@@ -121,6 +122,17 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                       <option value="scale">Da escala da zona</option>
                     </select>
                   </label>
+                  <div className="grid gap-1.5" title="A rodinha / troca rápida passa pelas escalas ligadas antes do próximo item">
+                    <span>Escalas</span>
+                    {INSTRUMENT_SCALE_IDS.map(id => (
+                      <label key={id} className="flex items-center justify-between gap-3 pl-3">
+                        <span>{INSTRUMENT_SCALES[id].label}</span>
+                        <input type="checkbox" checked={it.scales.includes(id)} disabled={it.scales.length === 1 && it.scales.includes(id)}
+                          onChange={e => { const on = e.target.checked; update(d => { d.scales = INSTRUMENT_SCALE_IDS.filter(k => k === id ? on : d.scales.includes(k)) }) }}
+                          className="h-5 w-5 accent-[var(--primary)]" />
+                      </label>
+                    ))}
+                  </div>
                   <label className="flex items-center justify-between gap-3">
                     <span>Arpejador</span>
                     <select value={it.arp} onChange={e => { const v = e.target.value as Arp; update(d => { d.arp = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">

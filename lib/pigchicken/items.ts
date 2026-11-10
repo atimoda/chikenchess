@@ -3,6 +3,7 @@
 // destroying. The Parquinho's item popup edits these sheets; they are saved in this browser for now.
 import { COMBO_MAX, COMBO_WINDOW, SWING_COMBO, isSwingKind, type SwingKind } from './swing'
 import type { PitchSet } from './music'
+import { cleanScales, type InstrumentScaleId } from './instrument-scales'
 import type { VoiceId } from './synth'
 import DEFAULTS_FILE from '../../data/pigchicken/default-items.json'
 import { CHAIN_MAX, cleanTransform, newTransform, type Transform, type TransformKind } from './transforms'
@@ -147,6 +148,9 @@ export type ItemDef = {
   volMax: number // 0..1: with the aim far; equal to volMin = the distance changes nothing
   meleeNotes: number // notes of the blow's strum, from the aim's lane note up the chord (1 = just that note)
   fretless: boolean // no frets (violin): the bend is free and changing lane slides instead of jumping
+  // the scales the aim can play (lib/pigchicken/instrument-scales.ts), in order; the quick switch goes through them
+  // before the next item
+  scales: InstrumentScaleId[]
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
   consumable: boolean
@@ -188,7 +192,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[],
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
 }
@@ -321,7 +325,7 @@ const PECK: ItemDef = {
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
 // melee is the same for all of them (Y); like the weapons they never break. Their notes come back on their own,
 // one every half second without playing
-const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5 }
+const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5, scales: ['primary', 'fifths', 'tension'] as InstrumentScaleId[] }
 
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
@@ -420,6 +424,10 @@ const CODE_ITEMS: Record<ItemId, ItemDef> = {
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']
+// each instrument is built on a weapon family's sheet: switching its scale makes that weapon's reload sound
+export const INSTRUMENT_WEAPON: Partial<Record<ItemId, ItemId>> = {
+  flute: 'pistol', sax: 'smg', trumpet: 'rifle', guitar: 'pump', violin: 'sniper', keys: 'launcher', tambourine: 'grenade', harp: 'bow',
+}
 export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
@@ -569,6 +577,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
   if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
   if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
+  { const sc = cleanScales(s.scales); if (sc) out[id].scales = sc }
   if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
 }
 
@@ -576,7 +585,7 @@ const ITEMS_VERSION = 6
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor', 'scales',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)
