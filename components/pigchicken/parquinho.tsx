@@ -769,9 +769,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the aim starts at the muzzle: with the cursor, turn the item until the line through its muzzle
       // (not her shoulder) passes over the cursor
       const tgt = aim.target
-      if (armed && tgt && d.muzzleY) {
+      // (an item with a rig turns around its pivot: the line goes through the muzzle's height at the pivot)
+      if (armed && tgt && (d.muzzleY || d.pivotY)) {
         for (let i = 0; i < 3; i++) {
-          const o = engine.heldPoint(aim.angle, 0, d.muzzleY)
+          const o = engine.heldPoint(aim.angle, d.pivotX, d.muzzleY)
           const a = Math.atan2(tgt.y - o.y, tgt.x - o.x)
           aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
         }

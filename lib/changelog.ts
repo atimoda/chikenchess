@@ -5,11 +5,15 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
-    version: '2.5.1',
+    version: '2.6.0',
     date: '10/11/2026',
-    title: 'Música ambiente das zonas afinada',
+    title: 'Instrumentos de sopro na boca, asas segurando os itens e música ambiente das zonas afinada',
     groups: [
       { title: 'Pátio', items: [
+        'Flauta, sax e trompete ficam presos pela ponta do bocal no bico da galinha e giram a partir dali ao mirar; a cabeça passa a ficar na frente da asa enquanto ela toca. A mira e a saída das notas acompanham o novo eixo.',
+        'As asas seguram os instrumentos: a ponta da asa da frente e a da asa de trás ficam sempre encostadas num ponto de cada instrumento, girando e esticando como já acontecia com o arco do violino (que continua com a asa enquanto toca).',
+        'Em Itens, o novo grupo Pontos mostra o desenho do item com o Eixo, a Asa, a Asa de trás e a Saída do tiro para arrastar com o mouse ou o dedo, a escolha de onde o eixo fica preso (ombro ou boca) e se cada asa segura o item. Vale também para as armas, com as asas desligadas por padrão. O Salvar no game do painel Itens grava esses pontos junto com o resto.',
+        'No Pátio online, o item na mão das galinhas dos outros players aponta para o lado em que elas olham e usa os mesmos pontos.',
         'O drone de fundo das zonas toca a terça de cada acorde, então dá para ouvir se ele é maior, menor ou diminuto, e a quinta do acorde em vez de uma quinta fixa.',
         'O drone muda de nota na virada do compasso, sem deslizar entre uma nota e outra, e o grave fica perto da tônica em vez de saltar uma oitava.',
         'Os acordes de cada zona sempre combinam com a escala: trocar a escala, o Random e as mudanças de modo escolhem acordes que contêm todas as notas dela. No painel da zona, os acordes que desafinam com a escala aparecem marcados.',

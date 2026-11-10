@@ -14,6 +14,7 @@ import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
+import { ItemPointsEditor } from "./item-points-editor"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "semi", label: "Semi (um por toque)" },
@@ -25,12 +26,12 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
 
 // what each item uses; the wing has no ammo, projectile or throw; a consumable has its effect (and its doses), a slap and a
 // throw; the taco has no shots, but its blows are its ammo (Munição)
-const CONSUMABLE_HIDES = ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Explosão", "Música", "Rebate"]
+const CONSUMABLE_HIDES = ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Pontos", "Explosão", "Música", "Rebate"]
 const HIDDEN: Partial<Record<ItemId, string[]>> = {
-  peck: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Combo", "Rebate"],
-  bat: ["Disparo", "Projétil", "Espalhamento", "Explosão", "Efeito"],
-  passagua: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Música", "Rebate"],
-  wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito"],
+  peck: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
+  bat: ["Disparo", "Projétil", "Espalhamento", "Pontos", "Explosão", "Efeito"],
+  passagua: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música", "Rebate"],
+  wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
 }
 // a consumable's doses are the magazine's number
@@ -39,7 +40,7 @@ const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   const [sel, setSel] = useState<ItemId>("pistol")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, Combo: true, Bicada: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, Combo: true, Bicada: true, Pontos: true })
   useEffect(() => {
     setItems(loadItems())
     return subscribeItems(setItems)
@@ -47,6 +48,8 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   // the main player equips an item while the panel is open: the dropdown jumps to it
   useEffect(() => subscribeHeldItem(id => { if (id) setSel(id) }), [])
   const it = items[sel], base = DEFAULT_ITEMS[sel]
+  // items held at the hand (sports tools, consumables, a grenade charged in the hand) keep the hand's own pose
+  const handHeld = it.reticle === "grenade" && it.fireMode === "charge"
   const update = (fn: (d: ItemDef) => void) => {
     const next = structuredClone(items)
     fn(next[sel])
@@ -67,7 +70,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Efeito" || it.consumable)).map(g => (
+        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld)).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a] hover:text-white">{g}</summary>
             <div className="grid gap-3 px-4 pb-4">
@@ -152,6 +155,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   </label>
                 </>
               )}
+              {g === "Pontos" && <ItemPointsEditor id={sel} item={it} base={base} onChange={update} />}
               {g === "Combo" && (
                 <div className="grid gap-1.5">
                   <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam">Ordem dos golpes</span>

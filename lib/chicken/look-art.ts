@@ -3,9 +3,9 @@
 export type ChickenSlot = 'comb' | 'face' | 'beak' | 'wattle' | 'neck' | 'torso' | 'wing' | 'tail' | 'legs'
 export type ChickenLook = Record<ChickenSlot, string>
 type LegColors = { drum: string; shank: string }
-// One variant of a part. Extra fields per slot: face.lid (eyelid color), wing.back (far wing color),
+// One variant of a part. Extra fields per slot: face.lid (eyelid color), wing.back (far wing color), beak.mouth (the mouth point),
 // tail.swing (how much the tail follows the body), legs.front/back (leg stroke colors).
-export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors }
+export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number] }
 
 export const LOOK_ART = (() => {
   const chev = (pts: number[][], fill: string) => '<g fill="' + fill + '">' + pts.map(([x, y]) => '<path d="M' + x + ' ' + y + ' l3 5 l3 -5 l-3 2 Z"></path>').join('') + '</g>';
@@ -28,9 +28,9 @@ export const LOOK_ART = (() => {
       angola: { label: 'Cabeça pelada azulada', lid: '#b9d0e6', svg: '<circle cx="47" cy="-189" r="15" fill="#b9d0e6"></circle><path d="M40 -182 C 44 -176, 52 -175, 57 -179 C 52 -183, 45 -184, 40 -182 Z" fill="#8fb3d6"></path>' }
     },
     beak: {
-      caipira: { label: 'Bico curto', svg: '<path d="M60 -194 L 76 -188 L 60 -182 Z" fill="#f2522f"></path>' },
-      onagadori: { label: 'Bico de galo', svg: '<path d="M60 -195 C 68 -195, 76 -191, 77 -186 C 71 -186, 65 -184, 60 -182 Z" fill="#e3b955"></path><path d="M60 -188 L 75 -187" stroke="#b98f35" stroke-width="1" fill="none"></path>' },
-      angola: { label: 'Bico marfim', svg: '<path d="M59 -193 C 66 -192, 71 -189, 72 -185 C 67 -185, 63 -183, 59 -182 Z" fill="#d9c9a6"></path>' }
+      caipira: { label: 'Bico curto', mouth: [68, -188], svg: '<path d="M60 -194 L 76 -188 L 60 -182 Z" fill="#f2522f"></path>' },
+      onagadori: { label: 'Bico de galo', mouth: [69, -188], svg: '<path d="M60 -195 C 68 -195, 76 -191, 77 -186 C 71 -186, 65 -184, 60 -182 Z" fill="#e3b955"></path><path d="M60 -188 L 75 -187" stroke="#b98f35" stroke-width="1" fill="none"></path>' },
+      angola: { label: 'Bico marfim', mouth: [66, -187], svg: '<path d="M59 -193 C 66 -192, 71 -189, 72 -185 C 67 -185, 63 -183, 59 -182 Z" fill="#d9c9a6"></path>' }
     },
     wattle: {
       caipira: { label: 'Barbela redonda', svg: '<path d="M57 -180 C 52 -170, 58 -162, 64 -168 C 66 -174, 63 -180, 57 -180 Z" fill="#f2522f"></path>' },

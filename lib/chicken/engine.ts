@@ -78,7 +78,10 @@ export type ChickenEngine = {
   // The wing turns with it: its tip follows the aim.
   // `bow`: a bow played across it (the violin), held by the wing: `x` is where it crosses the strings (rig units
   // along the item), `stroke` 0..1 how far the bow has slid (0: played at its frog, 1: at its tip)
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null } | null) => void
+  // `rig`: how it sits on her (rig units on the item's drawing): the point (x, y) sits on her shoulder or mouth (`at`)
+  // and the item turns around it; `hand` / `back`: the points the wing's and the back wing's tips hold, the wing turning
+  // and stretching to keep touching them (the bow, while it plays, takes the wing's hand)
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in.
   setPeck: (peck: PeckPose | null) => void
@@ -99,6 +102,8 @@ export type ChickenEngine = {
   dropAt: (x: number) => void
   destroy: () => void
 }
+
+export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: { x: number; y: number } | null; back?: { x: number; y: number } | null }
 
 // ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
 // hardN: the outside of an "Objeto duro" edge (its walls stop her, its floors catch her feet)
@@ -250,6 +255,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- look ----------
   let tailSwing = 1
+  // her mouth (rig units, in the head): every beak names its own, where a wind instrument's mouthpiece sits
+  let mouthAt: { x: number; y: number } = CHICKEN_MOUTH
   function paintLook(look: ChickenLook) {
     const A = LOOK_ART.art
     const set = (name: string, html: string | undefined) => { part(name).innerHTML = html ?? '' }
@@ -263,6 +270,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     })
     el.lid.setAttribute('fill', A.face[look.face].lid ?? '#f7b21b')
     tailSwing = A.tail[look.tail].swing ?? 1
+    const m = A.beak[look.beak]?.mouth
+    mouthAt = m ? { x: m[0], y: m[1] } : CHICKEN_MOUTH
   }
   // central configuration (config.ts): params and look follow it live, including the Pátio's draft
   let config: ChickenConfig = getChickenConfig()
@@ -1604,6 +1613,27 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // Aim rotates the wing, while food/bottles keep their own upright pose in
     // screen space, with only a small sway. Consumption uses the mouth pose.
     const consumableAngle = consumable ? rigAngle((consumable.upright === 0 && S.face < 0 ? 180 : consumable.upright) + (consumable.progress !== undefined ? 0 : Math.sin(heldItem!.angle) * 12) + throwTilt) : 0
+    // the item's rig: turned around its pivot, which sits on her shoulder or mouth (in the held pivot's frame, the shoulder)
+    const rig = heldItem && !swingNow && !consumable && !heldItem.atHand && !heldItem.throwing ? heldItem.rig ?? null : null
+    let anchorX = 0, anchorY = 0
+    if (rig?.at === 'mouth') {
+      const head = el.head.getCTM(), pivot = el.heldPivot.getCTM()
+      if (head && pivot) { const m = new DOMPoint(mouthAt.x, mouthAt.y).matrixTransform(head).matrixTransform(pivot.inverse()); anchorX = m.x; anchorY = m.y }
+    }
+    const pivX = rig?.x ?? 0, pivY = rig?.y ?? 0
+    // an instrument in her mouth: her head comes in front of the wing that holds it (the beak on the mouthpiece)
+    const headFront = rig?.at === 'mouth'
+    if (headFront !== (el.neck.nextElementSibling === el.heldPivot)) el.body.insertBefore(el.neck, headFront ? el.heldPivot : el.wing)
+    // a point of the item's drawing in the held pivot's frame (from the shoulder), as drawn this frame
+    const onItem = (x: number, y: number) => {
+      const r = heldA / DEG, c = Math.cos(r), sn = Math.sin(r), qx = x - pivX - (heldItem?.kick ?? 0), qy = y - pivY
+      return { x: anchorX + qx * c - qy * sn, y: anchorY + qx * sn + qy * c }
+    }
+    // the wing (or the back wing) turned and stretched from the shoulder until its tip touches (x, y)
+    const wingTo = (node: SVGGraphicsElement, x: number, y: number) => {
+      const [px, py] = PIV.wing
+      node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(Math.max(1, Math.hypot(x, y)) / WING_TIP_LEN).toFixed(3)} 1) rotate(${(-WING_TIP_DEG).toFixed(2)}) translate(${-px} ${-py})`)
+    }
     const restAngle = (pose.wing + (heldItem?.atHand ? handAimAngle(heldA) : 0)) / DEG
     const restHandX = HAND_DX * Math.cos(restAngle) - HAND_DY * Math.sin(restAngle)
     const restHandY = HAND_DX * Math.sin(restAngle) + HAND_DY * Math.cos(restAngle)
@@ -1633,8 +1663,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const fx = bow.x + ux * along, fy = uy * along
       el.heldBow.setAttribute('transform', `translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(${BOW_TILT})`)
       // the frog in her body's frame, from the shoulder: the held item's own transform applied to it
-      const qx = fx - heldItem!.kick, qy = fy, r = heldA / DEG
-      const vx = qx * Math.cos(r) - qy * Math.sin(r), vy = qx * Math.sin(r) + qy * Math.cos(r)
+      const { x: vx, y: vy } = onItem(fx, fy)
       const b = Math.atan2(vy, vx) * DEG, stretch = clamp(Math.hypot(vx, vy) / WING_TIP_LEN, 0.6, 1.5)
       const [px, py] = PIV.wing
       el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${stretch.toFixed(3)} 1) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
@@ -1653,6 +1682,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       handX -= Math.cos(heldA / DEG) * heldItem.kick
       handY -= Math.sin(heldA / DEG) * heldItem.kick
       wingToHand()
+    } else if (rig?.hand) {
+      // the wing's hand holds the item at its touch point: the wing turns and stretches to keep touching it
+      const h = onItem(rig.hand.x, rig.hand.y)
+      handX = h.x; handY = h.y
+      wingTo(el.wing, h.x, h.y)
     } else if (heldItem) {
       // holding an item: the wing keeps its own pivot (the shoulder) and pose, and turns by the aim's angle
       // in the same direction as the item, flap included
@@ -1666,6 +1700,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.held.style.opacity = consumable?.progress !== undefined ? String(1 - clamp((consumable.progress - 0.75) / 0.25, 0, 1)) : '1'
       el.held.setAttribute('transform', consumable
         ? `translate(${handX} ${handY}) rotate(${consumableAngle})`
+        : rig ? `translate(${anchorX.toFixed(2)} ${anchorY.toFixed(2)}) rotate(${a.toFixed(1)}) translate(${(-heldItem.kick - pivX).toFixed(2)} ${(-pivY).toFixed(2)})`
         : `${heldItem.atHand && !swingNow ? `translate(${handX} ${handY}) ` : ''}rotate(${a.toFixed(1)})${at} translate(${(-(heldItem.atHand && !swingNow ? 0 : heldItem.kick)).toFixed(1)} 0)` )
       if (throwTransition.active() && heldItem.throwing && !swingNow && consumable?.progress === undefined) {
         const angle = consumable ? consumableAngle : a
@@ -1677,7 +1712,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         handX = animated.handX; handY = animated.handY; wingToHand()
       }
     }
-    el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
+    if (rig?.back) { const h = onItem(rig.back.x, rig.back.y); wingTo(el.wingBack, h.x, h.y) }
+    else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
     el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
     const legShift = `translate(0 ${(pose.shiftY || 0).toFixed(2)})`
     el.wrapF.setAttribute('transform', legShift); el.wrapB.setAttribute('transform', legShift)
@@ -1913,7 +1949,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const hand = heldItem?.atHand && !swingNow ? rigMatrix(el.heldPivot) : null
       const r = (pose.wing + handAimAngle(rigAngle(angle * DEG))) / DEG
       const hx = HAND_DX * Math.cos(r) - HAND_DY * Math.sin(r), hy = HAND_DX * Math.sin(r) + HAND_DY * Math.cos(r)
-      const p = hand ? new DOMPoint(hx, hy).matrixTransform(hand) : shoulder()
+      // an item with a rig turns around its pivot, which sits on her shoulder or mouth
+      const rig = heldItem && !swingNow && !heldItem.consumable && !heldItem.atHand && !heldItem.throwing ? heldItem.rig ?? null : null
+      if (rig) { x -= rig.x; y -= rig.y }
+      const mouth = rig?.at === 'mouth' ? rigMatrix(el.head) : null
+      const p = hand ? new DOMPoint(hx, hy).matrixTransform(hand) : mouth ? new DOMPoint(mouthAt.x, mouthAt.y).matrixTransform(mouth) : shoulder()
       const k = R.scale * pose.puff
       const c = Math.cos(angle), sn = Math.sin(angle)
       // Local down inherits the body mirror; aim alone never changes its sign.

@@ -12,6 +12,7 @@ import { getNetState, remoteChicken, sendOwnChickens, subscribeNet, type NetPlay
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
+import { DEFAULT_ITEMS, itemRig, type ItemId } from "@/lib/pigchicken/items"
 import { stageWidth } from "@/lib/stage-size"
 
 // the item in hand travels as one byte: its place in this list (0: empty hands)
@@ -82,7 +83,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
           if (c.item !== entry.item || (c.item && c.face !== entry.face)) {
             entry.item = c.item; entry.face = c.face
             const key = itemKey(c.item), svg = key ? ITEM_SVG[key as keyof typeof ITEM_SVG] : undefined
-            engine.setHeld(key && svg ? { svg, itemKey: key, angle: c.face < 0 ? 180 : 0, kick: 0 } : null)
+            engine.setHeld(key && svg ? { svg, itemKey: key, angle: c.face < 0 ? Math.PI : 0, kick: 0, rig: key in DEFAULT_ITEMS ? itemRig(DEFAULT_ITEMS[key as ItemId]) : null } : null)
           }
           return { x: c.x - liveCamera.x, y: c.y + liveCamera.y, vx: c.vx, vy: c.vy, face: c.face, state: stateName(c.state) }
         })

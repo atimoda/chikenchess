@@ -157,7 +157,29 @@ export type ItemDef = {
   effectCurve: AccelCurve
   effectRamp: number // s to full speed with an eased curve
   effectLook: EffectLook
+  // how it sits on her (rig units, on the item's drawing like the muzzle): the turning point (`pivot`) is placed on a
+  // body part (`pivotAt`: the shoulder, where items always were, or the mouth for the wind instruments) and the item turns
+  // around it with the aim; the wing's hand holds it at `hand` and the back wing's at `back` (each only when on),
+  // turning and stretching the wing so its tip always touches that point, like the violin's bow
+  pivotAt: PivotPart
+  pivotX: number
+  pivotY: number
+  handOn: boolean
+  handX: number
+  handY: number
+  backOn: boolean
+  backX: number
+  backY: number
 }
+// the body parts a held item can turn around
+export type PivotPart = 'shoulder' | 'mouth'
+// the rig the chicken's engine draws it with: the pivot on a body part and the wings' touch points (null: as always,
+// turning around the shoulder with the wing following the aim)
+export function itemRig(d: ItemDef): { at: PivotPart; x: number; y: number; hand: { x: number; y: number } | null; back: { x: number; y: number } | null } | null {
+  if (d.pivotAt === 'shoulder' && !d.pivotX && !d.pivotY && !d.handOn && !d.backOn) return null
+  return { at: d.pivotAt, x: d.pivotX, y: d.pivotY, hand: d.handOn ? { x: d.handX, y: d.handY } : null, back: d.backOn ? { x: d.backX, y: d.backY } : null }
+}
+export const PIVOT_PARTS: { value: PivotPart; label: string }[] = [{ value: 'shoulder', label: 'Ombro (padrão)' }, { value: 'mouth', label: 'Boca (bico)' }]
 
 // the air a blow leaves behind: cream, like the reference
 export const TRAIL_CREAM = '#fff4dc'
@@ -167,6 +189,7 @@ const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
+  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0,
 }
 
 // a rebate chain from [kind, mode, n?] steps (always happening)
@@ -305,6 +328,7 @@ const FLUTE: ItemDef = {
   rate: 13, mag: 60, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
   recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
   instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35, volMin: 0.45,
+  pivotAt: 'mouth', pivotX: -49, pivotY: 0, handOn: true, handX: 13, handY: 0, backOn: true, backX: -22, backY: 0,
   throwCharge: 0.3, rebateChain: chain(['octave', 'fixed', 1]),
 }
 // Palhetas → SMG: holding plays a fast arpeggio of the chord
@@ -313,6 +337,7 @@ const SAX: ItemDef = {
   rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
   recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 120, muzzleX: 32, muzzleY: 18, length: 50,
   instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
+  pivotAt: 'mouth', pivotX: -27, pivotY: -52, handOn: true, handX: 0, handY: 12, backOn: true, backX: 2, backY: -15,
   rebateChain: chain(['transpose', 'degree', 2]),
 }
 // Metais → rifle: a phrase of 3 notes per press, going through one enemy
@@ -321,6 +346,7 @@ const TRUMPET: ItemDef = {
   fireMode: 'burst', burst: 3, rate: 9, mag: 24, reloadTime: 0.2, refillTime: 0.25, speed: 1300, damage: 10, size: 10, pierce: 1,
   recoilKick: 3, recoilPush: 790, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
   instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4, volMin: 0.55,
+  pivotAt: 'mouth', pivotX: -53, pivotY: -7, handOn: true, handX: -4, handY: -12, backOn: true, backX: -23, backY: 7,
   rebateChain: chain(['voices', 'power']),
 }
 // Cordas → pump: a strummed chord in a fan, each pellet one note of the chord
@@ -329,6 +355,7 @@ const GUITAR: ItemDef = {
   rate: 17, burst: 5, mag: 60, reloadTime: 0.2, refillTime: 0.55, refillAmount: 4, pellets: 2, speed: 900, damage: 9, size: 10, range: 850,
   spreadBase: 20, spreadMax: 30, recoilKick: 5, turnRate: 0, muzzleX: 87, muzzleY: 0, length: 87,
   instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022, tremolo: 0.45, volMin: 0.5,
+  handOn: true, handX: 45, handY: 0, backOn: true, backX: -10, backY: 0,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 0.15]),
 }
 // Cordas friccionadas → sniper: a held note in a beam; it keeps the enemy still while it plays
@@ -337,6 +364,7 @@ const VIOLIN: ItemDef = {
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 420, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
+  handOn: true, handX: 45, handY: 0, backOn: true, backX: -23, backY: 0,
   rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
 }
 // Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
@@ -345,6 +373,7 @@ const KEYS: ItemDef = {
   rate: 1, burst: 4, chargeTime: 0.25, mag: 33, reloadTime: 1.4, speed: 650, size: 12, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0, hitscan: true,
   recoilKick: 6, muzzleX: 82, muzzleY: -9, length: 82,
   instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6, volMin: 0.6,
+  handOn: true, handX: 40, handY: -15, backOn: true, backX: -30, backY: -15,
   rebateChain: chain(['voices', 'seventh']),
 }
 // Percussion fires a musical note with a fuse, then lets out notes in a circle.
@@ -359,6 +388,7 @@ const HARP: ItemDef = {
   ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa', family: 'Harpas', reticle: 'bow',
   damage: 40, size: 12, speed: 1500, drop: 700, muzzleX: 21, muzzleY: -10, length: 30,
   instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
+  handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
 }
 
@@ -444,6 +474,12 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'muzzleX', label: 'Saída do tiro X', min: -20, max: 160, step: 1, unit: 'u', group: 'Desenho', hint: 'Ponto de onde sai o tiro e começa a mira, a partir da empunhadura' },
   { key: 'muzzleY', label: 'Saída do tiro Y', min: -60, max: 60, step: 0.5, unit: 'u', group: 'Desenho', hint: 'Negativo sobe' },
   { key: 'length', label: 'Comprimento no golpe', min: 0, max: 200, step: 1, unit: 'u', group: 'Desenho', hint: 'Quanto a arma estende o golpe além da ponta da asa' },
+  { key: 'pivotX', label: 'Eixo de giro X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'pivotY', label: 'Eixo de giro Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'handX', label: 'Mão da asa X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'handY', label: 'Mão da asa Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'backX', label: 'Mão da asa de trás X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'backY', label: 'Mão da asa de trás Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'meleeDamage', label: 'Dano do golpe', min: 0, max: 100, step: 1, group: 'Golpe' },
   { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
   { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe', hint: 'Do golpe para baixo; o giro acerta em volta toda' },
@@ -522,7 +558,8 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (PATH_SHOWS.some(o => o.value === s.pathShow)) out[id].pathShow = s.pathShow
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
-  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
+  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
   if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
   ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
@@ -538,7 +575,7 @@ const ITEMS_VERSION = 6
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)

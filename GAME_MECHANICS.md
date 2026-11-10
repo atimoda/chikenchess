@@ -23,6 +23,7 @@
 | Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, salvar/abrir | [Editor do Pátio](docs/mechanics/patio/editor.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
+| Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: golpe, bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
