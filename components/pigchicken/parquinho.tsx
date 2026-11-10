@@ -57,6 +57,7 @@ import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/d
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
+import { stageWidth } from "@/lib/stage-size"
 
 // Próximo instrumento / Próxima arma / Próximo utilitário pressed this frame: the group to go through (the first
 // one listed wins when several are pressed together)
@@ -243,7 +244,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // the bar's size follows the window (its slots shrink to fit): lay the invisible slots out again on a resize
   const [, setViewportW] = useState(0)
   useEffect(() => {
-    const onResize = () => setViewportW(window.innerWidth)
+    const onResize = () => setViewportW(stageWidth())
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
   }, [])
@@ -521,7 +522,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     if (header) headerObserver.observe(header)
     const fit = () => {
       const dpr = patioPixelRatio(window.devicePixelRatio, isLiteDevice())
-      canvas.width = Math.round(window.innerWidth * dpr); canvas.height = Math.round(window.innerHeight * dpr)
+      canvas.width = Math.round(stageWidth() * dpr); canvas.height = Math.round(window.innerHeight * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       // Allocate the wheel's full buffer only while it is open.
       wheelCanvas.width = 1; wheelCanvas.height = 1
@@ -649,13 +650,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       })
       if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY || zoom !== drawnZoom)) {
         const world = worldRef.current
-        world.style.transform = `translate3d(${(window.innerWidth / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`
+        world.style.transform = `translate3d(${(stageWidth() / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`
         world.style.transformOrigin = "0 0"
         setPlatformWorldOffset(world, -camX, camY)
         drawnCamX = camX; drawnCamY = camY; drawnZoom = zoom
       }
       if (fgRef?.current) {
-        fgRef.current.style.transform = `translate3d(${(window.innerWidth / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`
+        fgRef.current.style.transform = `translate3d(${(stageWidth() / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`
         fgRef.current.style.transformOrigin = "0 0"
       }
       // the layers above the chicken and the editor's handles follow the same camera
@@ -745,7 +746,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (!autoAt) pick(["dummy"])
       }
       const aimMouse = mouse && zoom !== 1 ? {
-        x: (mouse.x - window.innerWidth / 2) / zoom + window.innerWidth / 2,
+        x: (mouse.x - stageWidth() / 2) / zoom + stageWidth() / 2,
         y: (mouse.y - window.innerHeight / 2) / zoom + window.innerHeight / 2,
       } : mouse
       // while the wheel is open the mouse and the right stick choose items, not the aim
@@ -1003,9 +1004,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       wasLocked = aimLock
 
       // ---------- draw ----------
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
+      ctx.clearRect(0, 0, stageWidth(), window.innerHeight)
       ctx.save()
-      if (zoom !== 1) { ctx.translate(window.innerWidth / 2, window.innerHeight / 2); ctx.scale(zoom, zoom); ctx.translate(-window.innerWidth / 2, -window.innerHeight / 2) }
+      if (zoom !== 1) { ctx.translate(stageWidth() / 2, window.innerHeight / 2); ctx.scale(zoom, zoom); ctx.translate(-stageWidth() / 2, -window.innerHeight / 2) }
       // the world's things stay under the header, like the world itself
       // a blow that lands jolts the world for a moment
       let jolt = swingShake(combat.swing)
@@ -1134,13 +1135,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (wh.open || fronts.length) {
         if (wheelCanvas.width !== canvas.width || wheelCanvas.height !== canvas.height) {
           wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
-          const dpr = canvas.width / window.innerWidth
+          const dpr = canvas.width / stageWidth()
           wctx.setTransform(dpr, 0, 0, dpr, 0, 0)
           wheelCanvas.style.display = ""
         }
-        wctx.clearRect(0, 0, window.innerWidth, window.innerHeight)
+        wctx.clearRect(0, 0, stageWidth(), window.innerHeight)
         wctx.save()
-        if (zoom !== 1) { wctx.translate(window.innerWidth / 2, window.innerHeight / 2); wctx.scale(zoom, zoom); wctx.translate(-window.innerWidth / 2, -window.innerHeight / 2) }
+        if (zoom !== 1) { wctx.translate(stageWidth() / 2, window.innerHeight / 2); wctx.scale(zoom, zoom); wctx.translate(-stageWidth() / 2, -window.innerHeight / 2) }
         fronts.forEach(([id, at]) => { combat.use(id); drawSwing(wctx, combat, at, "front", screenView) })
         wctx.restore()
         combat.use("p1")

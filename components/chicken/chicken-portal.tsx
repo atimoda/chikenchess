@@ -19,6 +19,7 @@ import { isLiteDevice } from "@/lib/performance"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
+import { stageWidth } from "@/lib/stage-size"
 
 const PAD = 34 // room around the ring for the glow, arcs and sparks
 const OPACITY = 0.5 // the ring is half transparent
@@ -292,7 +293,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   // size and place: in the right corner of the ground
   useEffect(() => {
     const place = () => {
-      const { d, right } = worldD ? { d: worldD, right: 0 } : portalLayout(window.innerWidth)
+      const { d, right } = worldD ? { d: worldD, right: 0 } : portalLayout(stageWidth())
       setLayout(l => (l && l.d === d && l.right === right ? l : { d, right }))
     }
     place()
@@ -339,7 +340,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     const visualCenter = (center: { x: number; y: number }) => {
       const zoom = inWorld ? liveCamera.zoom : 1
       return {
-        x: window.innerWidth / 2 + (center.x - window.innerWidth / 2) * zoom,
+        x: stageWidth() / 2 + (center.x - stageWidth() / 2) * zoom,
         y: window.innerHeight / 2 + (center.y - window.innerHeight / 2) * zoom,
       }
     }
@@ -396,7 +397,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       if (inWorld && world) box = canvas.getBoundingClientRect()
       const zoom = inWorld ? liveCamera.zoom : 1
       const pcxScreen = box.left + cx * zoom, pcyScreen = box.top + cy * zoom
-      const pcx = (pcxScreen - window.innerWidth / 2) / zoom + window.innerWidth / 2
+      const pcx = (pcxScreen - stageWidth() / 2) / zoom + stageWidth() / 2
       const pcy = (pcyScreen - window.innerHeight / 2) / zoom + window.innerHeight / 2
       centerRef.current = { x: pcx, y: pcy }
       if (enteredAt) enteringEngine?.setPortalEntry({ x: pcx, y: pcy, durationMs: ENTER_MS })
@@ -433,7 +434,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         setTouching(!!candidate)
         const pointer = pointerRef.current
         const hovered = pointer && Math.hypot(pointer.x - pcxScreen, pointer.y - pcyScreen) <= r * zoom
-        const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+        const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > 0 && box.top < window.innerHeight
         setShowInstruction(!!(active && onScreen && !suppressed && (candidate || (label.trim() && (hovered || runtime.instructionMode === 'always')))))
       }
       // Contact is sampled every game frame, even when the ring draws at ~30 FPS.
@@ -444,7 +445,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       const btn = buttonRef.current
       if (btn) {
         const w = btn.offsetWidth
-        btn.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - w, pcxScreen - w / 2))}px`
+        btn.style.left = `${Math.max(8, Math.min(stageWidth() - 8 - w, pcxScreen - w / 2))}px`
         btn.style.top = `${pcyScreen - btn.offsetHeight / 2}px`
       }
       const dt = Math.min(0.05, elapsed / 1000); last = now
@@ -458,7 +459,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       }
       // Contact/arrival gates above still run for offscreen local players. Only
       // the decorative canvas work sleeps; a transition always keeps drawing.
-      const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+      const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > 0 && box.top < window.innerHeight
       if (!onScreen && !enteredAt) { sparks.length = 0; arcs = []; nextStrands = now; return }
       const enterT = enteredAt ? Math.min(1, (now - enteredAt) / ENTER_MS) : 0
       const target = 1 + near * 0.8 + enterT * 2.4
@@ -532,7 +533,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   // first place of the button (the animation keeps it on the ring from then on)
   const c = centerRef.current
   const cOnScreen = c && (world
-    ? { x: window.innerWidth / 2 + (c.x - window.innerWidth / 2) * liveCamera.zoom, y: window.innerHeight / 2 + (c.y - window.innerHeight / 2) * liveCamera.zoom }
+    ? { x: stageWidth() / 2 + (c.x - stageWidth() / 2) * liveCamera.zoom, y: window.innerHeight / 2 + (c.y - window.innerHeight / 2) * liveCamera.zoom }
     : c)
   const btnStyle: React.CSSProperties = c
     ? { left: Math.max(8, cOnScreen!.x - buttonW / 2), top: cOnScreen!.y - 18 }

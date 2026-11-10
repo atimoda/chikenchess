@@ -9,6 +9,7 @@ import { ARRIVE_R, type NoteStage, type StageTalk } from "@/lib/pigchicken/note-
 import type { NoteShot } from "@/lib/pigchicken/note-shots"
 import { multOf } from "@/lib/pigchicken/temple"
 import { drawBanner } from "@/components/pigchicken/temple-draw"
+import { stageWidth } from "@/lib/stage-size"
 
 type Ctx = CanvasRenderingContext2D
 type Target = Combat["targets"][number]
@@ -182,7 +183,7 @@ const JUDGE = {
 // the HUD: the song, the score, the combo, the afinação bar and the judgement of the last note; the banners
 export function drawNoteStageHud(ctx: Ctx, stage: NoteStage, top: number) {
   const s = stage.state
-  const W = window.innerWidth
+  const W = stageWidth()
   if (stage.active) {
     const pw = Math.min(460, W - 32), x0 = Math.round((W - pw) / 2), y0 = top
     ctx.save()
@@ -268,7 +269,7 @@ export function drawStageTalk(ctx: Ctx, stage: NoteStage, camX: number) {
     const full = wrapText(ctx, t.text, 240)
     const w = Math.max(90, ...full.map(l => ctx.measureText(l).width)) + 24, h = 26 + Math.max(1, full.length) * 18
     // kept on the screen; the tail still points at who speaks
-    const x = Math.round(Math.max(8, Math.min(window.innerWidth - w - 8, t.x - camX - w / 2))), y = Math.round(t.y - h - 14)
+    const x = Math.round(Math.max(8, Math.min(stageWidth() - w - 8, t.x - camX - w / 2))), y = Math.round(t.y - h - 14)
     const tx = Math.max(x + 16, Math.min(x + w - 16, t.x - camX))
     ctx.globalAlpha = Math.max(0, Math.min(1, t.t * 6, (t.secs - t.t) * 3))
     ctx.fillStyle = "rgba(250,247,238,0.96)"; ctx.strokeStyle = t.color; ctx.lineWidth = 2

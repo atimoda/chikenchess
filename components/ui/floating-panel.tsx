@@ -6,6 +6,7 @@
 // remembered in this browser under `id`.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { cn } from "@/lib/utils"
+import { stageWidth } from "@/lib/stage-size"
 
 type Rect = { x: number; y: number; w: number; h: number }
 type Edge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw"
@@ -72,7 +73,7 @@ function canDragFrom(target: Element, panel: Element, x: number, y: number, touc
 }
 
 function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean): Rect {
-  const vw = window.innerWidth, vh = window.innerHeight
+  const vw = stageWidth(), vh = window.innerHeight
   const w = Math.max(Math.min(minW, vw), Math.min(r.w, vw)), h = Math.max(Math.min(minH, vh), Math.min(r.h, vh))
   const x = keepInViewport ? Math.min(vw - w, Math.max(0, r.x)) : Math.min(vw - KEEP, Math.max(KEEP - w, r.x))
   const y = Math.min(vh - (keepInViewport ? h : KEEP), Math.max(0, r.y))
@@ -97,7 +98,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   useEffect(() => { raisePanel(token); return () => dropPanel(token) }, [token])
 
   useEffect(() => {
-    let r = initial(window.innerWidth, window.innerHeight)
+    let r = initial(stageWidth(), window.innerHeight)
     try { const saved = JSON.parse(window.localStorage.getItem(key) || "null"); if (saved && [saved.x, saved.y, saved.w, saved.h].every(Number.isFinite)) r = saved } catch { /* ignore */ }
     setRect(fit(r, minW, minH, keepInViewport))
     const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport))
@@ -127,7 +128,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
     let { x, y, w, h } = s
     if (o.edge === "move") { x += dx; y += dy }
     else {
-      const vw = window.innerWidth, vh = window.innerHeight
+      const vw = stageWidth(), vh = window.innerHeight
       if (o.edge.includes("e")) w = Math.min(vw - s.x, Math.max(minW, s.w + dx))
       if (o.edge.includes("s")) h = Math.min(vh - s.y, Math.max(minH, s.h + dy))
       if (o.edge.includes("w")) { w = Math.max(minW, s.w - dx); w = Math.min(w, s.x + s.w); x = s.x + s.w - w }

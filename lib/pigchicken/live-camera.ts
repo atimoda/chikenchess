@@ -2,20 +2,21 @@
 // left edge, y the screen y of world y = 0. Layers drawn above the chicken (the foreground, the editor's handles)
 // register their world element here and follow it, so they line up with the world underneath.
 import { intersectsView, zoomedView, type ViewRect } from './viewport'
+import { stageWidth } from "../stage-size"
 
 export const liveCamera = { x: 0, y: 0, zoom: 1 }
 const followers = new Set<HTMLElement>()
 const parallaxLayers = new Map<SVGElement, number>()
 const regions = new Set<{ el: HTMLElement | SVGElement; bounds: ViewRect; depth: number }>()
 const cameraTransform = (depth = 1) => {
-  const z = liveCamera.zoom, cx = window.innerWidth / 2, cy = window.innerHeight / 2
+  const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
   if (z === 1) return `translate(${-liveCamera.x * depth}px, ${liveCamera.y * depth}px)`
   return `translate3d(${cx * (1 - z) - liveCamera.x * depth * z}px,${cy * (1 - z) + liveCamera.y * z}px,0) scale(${z})`
 }
 const place = (el: HTMLElement) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform() }
 
 function updateRegions() {
-  const screenView = zoomedView(window.innerWidth, window.innerHeight, liveCamera.zoom)
+  const screenView = zoomedView(stageWidth(), window.innerHeight, liveCamera.zoom)
   const view = { ...screenView, x: screenView.x + liveCamera.x, y: screenView.y - liveCamera.y }
   regions.forEach(({ el, bounds, depth }) => {
     const visible = String(intersectsView({ ...bounds, x: bounds.x + liveCamera.x * depth }, view, 192))
@@ -55,7 +56,7 @@ export function moveLiveCamera(x: number, y: number, zoom = liveCamera.zoom) {
 
 // a screen point in world units
 export const screenToWorld = (sx: number, sy: number) => {
-  const cx = window.innerWidth / 2, cy = window.innerHeight / 2, z = liveCamera.zoom
+  const cx = stageWidth() / 2, cy = window.innerHeight / 2, z = liveCamera.zoom
   const x = (sx - cx) / z + cx, y = (sy - cy) / z + cy
   return { x: x + liveCamera.x, y: y - liveCamera.y }
 }

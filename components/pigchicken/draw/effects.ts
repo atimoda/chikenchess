@@ -5,6 +5,7 @@ import { ellipsePoint, swingPose, trailSpan } from "@/lib/pigchicken/swing"
 import { zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Ctx } from "./shared"
+import { stageWidth } from "@/lib/stage-size"
 
 // a note in flight: its symbol in the colour of its scale degree, swaying, with a short trail, pulsing on the beat
 export function drawNote(ctx: Ctx, b: Combat["bullets"][number], x: number, pulse: number) {
@@ -53,7 +54,7 @@ export function drawZoneBanner(ctx: Ctx, zone: Zone, life: number) {
   ctx.globalAlpha = Math.min(1, life, (2.5 - life) * 4)
   ctx.font = "bold 15px ui-monospace, monospace"; ctx.textAlign = "center"
   const text = `♪ ${zoneLabel(zone)}`, w = ctx.measureText(text).width + 28
-  const x = window.innerWidth / 2, y = 158
+  const x = stageWidth() / 2, y = 158
   ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, y - 20, w, 30)
   ctx.fillStyle = zone.color; ctx.fillText(text, x, y)
   ctx.restore()
@@ -68,7 +69,7 @@ export function rigSwing(sw: Swing | null) {
 // the blow's air: a cream crescent along the sweep, thick at the tip and thin at the tail, that appears in a frame or
 // two and dissolves from the tail, letting off a few curls; a flash where it hit. The horizontal blow is a flattened
 // ellipse: its back half is drawn behind her (layer "back"), its front half over her (layer "front")
-export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back", view: ViewRect = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }) {
+export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back", view: ViewRect = { x: 0, y: 0, w: stageWidth(), h: window.innerHeight }) {
   const sw = combat.swing
   if (!sw || sw.trail.opacity <= 0) return
   if (!intersectsView({ x: origin.x - sw.reach - 40, y: origin.y - sw.reach - 40, w: sw.reach * 2 + 80, h: sw.reach * 2 + 80 }, view, 8)) return

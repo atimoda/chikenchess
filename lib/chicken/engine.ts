@@ -25,6 +25,7 @@ import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampol
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
 import { LIMIT_BORDER } from './limits'
+import { stageWidth } from "../stage-size"
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -265,10 +266,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
   const R = { ...CHICKEN_PARAMS, ...config.params } as ChickenParams
-  let W = window.innerWidth, H = window.innerHeight, groundY = H - opts.groundHeight
+  let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     rigMatrices.clear()
-    W = window.innerWidth; H = window.innerHeight; groundY = H - opts.groundHeight
+    W = stageWidth(); H = window.innerHeight; groundY = H - opts.groundHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)

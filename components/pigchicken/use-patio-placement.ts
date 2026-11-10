@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState, type ComponentProps } from 'react'
 import type { LayoutElement } from '@/lib/pigchicken/layout'
+import { stageWidth } from "@/lib/stage-size"
 
 type Drag = { pointer: number; x: number; y: number; el: LayoutElement; moving: boolean }
 
@@ -65,7 +66,7 @@ export function usePatioPlacement(place: (el: LayoutElement, x: number, y: numbe
       // Pointer gestures finish on pointer up. Keyboard activation has no pointer coordinates.
       if (e.detail !== 0) return
       if (tap) tap()
-      else place(make(), window.innerWidth / 2, window.innerHeight / 2)
+      else place(make(), stageWidth() / 2, window.innerHeight / 2)
     },
   })
   return { bind, cancel, ghost, ghostRef }

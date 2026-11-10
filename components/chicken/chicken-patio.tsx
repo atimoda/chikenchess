@@ -6,7 +6,7 @@
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Pencil, Save, SlidersHorizontal, Sun, Swords, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
@@ -31,6 +31,7 @@ import { portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { PatioPortals } from "@/components/pigchicken/patio-portals"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
+import { stageInset, subscribeStageInset } from "@/lib/stage-size"
 import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
 import { GamePreferences } from "@/components/game-preferences"
@@ -467,8 +468,11 @@ export function ChickenPatio() {
   entryRef.current = entry
   const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: entry.x + entry.w / 2, groundY: entry.y + entry.h - 6, d: entry.w }), [entry])
 
+  // the Modo editor docked at the right: the whole Pátio fits in the space left of it (its fixed layers too)
+  const dockInset = useSyncExternalStore(subscribeStageInset, stageInset, () => 0)
+
   return (
-    <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]">
+    <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]" style={dockInset ? { right: dockInset, contain: "layout" } : undefined}>
       <header className="pointer-events-auto absolute inset-x-0 top-0 z-[120] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)]" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
         {/* the same Globe button as the chess matches' header */}
         <Button

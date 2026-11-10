@@ -9,7 +9,7 @@
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
@@ -36,6 +36,7 @@ import { TreePanel } from "./tree-panel"
 import { SurfacePoints } from "./surface-points"
 import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
+import { EditorDock, useEditorDocked } from "./editor-dock"
 
 const UI = "header, aside, button, input, select, textarea, a, label, [data-chicken-ignore], [role='dialog']"
 const HISTORY_MAX = 80
@@ -684,11 +685,13 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
     setDrag(null)
   }
   const d = drag ? ELEMENT_DEFS[drag.entry.kind] : null
-  return (
+  const [docked, toggleDock] = useEditorDocked()
+  const body = (
     <>
-      <FloatingPanel id="patio-palette" aria-label="Elementos do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(260, vw - 24), h: vw < 640 ? Math.min(300, vh * 0.38) : Math.min(560, vh - 80) })} minW={180} minH={140} className={cn("rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]", hidden && "hidden", draggingScenery && "pointer-events-none opacity-0")}>
         <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-1.5 border-b border-white/10 px-3 py-2">
           <h2 className="flex-1 text-sm text-white">Modo editor</h2>
+          <button type="button" className={cn(TOOL, docked && "border-[#ffd166] text-white")} onClick={toggleDock} aria-pressed={docked}
+            title={docked ? "Soltar o painel (flutuante)" : "Fixar o painel à direita do Pátio"} aria-label="Fixar o painel à direita"><PanelRight className="h-4 w-4" /></button>
           <button type="button" className={TOOL} disabled={!canUndo} onClick={undo} title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><Undo2 className="h-4 w-4" /></button>
           <button type="button" className={TOOL} disabled={!canRedo} onClick={redo} title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer"><Redo2 className="h-4 w-4" /></button>
           <button type="button" className={TOOL} onClick={onClose} title="Sair do modo editor (=)" aria-label="Sair do modo editor"><X className="h-4 w-4" /></button>
@@ -731,7 +734,13 @@ function Palette({ onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingSc
             </PaletteSection>
           ))}
         </div>
-      </FloatingPanel>
+    </>
+  )
+  return (
+    <>
+      {docked
+        ? <EditorDock aria-label="Elementos do Pátio" className="font-mono text-xs">{body}</EditorDock>
+        : <FloatingPanel id="patio-palette" aria-label="Elementos do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(260, vw - 24), h: vw < 640 ? Math.min(300, vh * 0.38) : Math.min(560, vh - 80) })} minW={180} minH={140} className={cn("rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]", hidden && "hidden", draggingScenery && "pointer-events-none opacity-0")}>{body}</FloatingPanel>}
       {/* what is being dragged, at its real size in the world */}
       {drag && d && (
         <div aria-hidden="true" className="pointer-events-none fixed z-[250] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: drag.y - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
