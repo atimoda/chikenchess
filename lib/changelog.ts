@@ -13,6 +13,7 @@ const RECENT = [
         'O drone de fundo das zonas toca a terça de cada acorde, então dá para ouvir se ele é maior, menor ou diminuto, e a quinta do acorde em vez de uma quinta fixa.',
         'O drone muda de nota na virada do compasso, sem deslizar entre uma nota e outra, e o grave fica perto da tônica em vez de saltar uma oitava.',
         'Os acordes de cada zona sempre combinam com a escala: trocar a escala, o Random e as mudanças de modo escolhem acordes que contêm todas as notas dela. No painel da zona, os acordes que desafinam com a escala aparecem marcados.',
+        'Ao passar o mouse por botões e painéis, a mira e o círculo de volume somem e aparece o cursor normal; ao voltar para o jogo, a mira reaparece.',
       ] },
     ],
   },
