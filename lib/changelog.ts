@@ -42,6 +42,8 @@ const RECENT = [
       ] },
       { title: 'Interface', items: [
         'No Criativo, a aba Modulation do Instrument ganha o visual da aba Tuning: nome completo e ajuda em cada controle, knobs verdes e seletores na mesma célula dos knobs.',
+        'No editor de parâmetros dos instrumentos (Criativo e partida), as abas All / Section / Note ficam acima de Tuning/Filters/Modulation/Movement. All edita o instrumento inteiro; Section personaliza os knobs só na seção selecionada (clicar numa seção já abre essa aba) e Note só nas notas selecionadas no editor MIDI. Os knobs ainda herdados aparecem apagados com o valor de All e acordam ao serem mexidos; duplo clique devolve o knob ao valor herdado.',
+        'A partida passa a usar o mesmo editor de parâmetros do Criativo, e as notas do editor MIDI ganham Release, Reverb, Delay e Drive próprios.',
         'Abrir um link de convite de lobby já coloca o jogador dentro da sala, sem precisar clicar em Join lobby; se a sala estiver cheia ou encerrada, o lobby aparece com o aviso.',
         'Na tela Perfil salvo (e no resumo da migração do perfil visitante), saem o aviso sobre a cópia do visitante e o rodapé dos termos de uso; eles ficam só na tela de login/cadastro.',
         'Nos painéis do PigChicKen, as instruções dos parâmetros ficam no hover do campo; a cópia abaixo some para dar espaço ao nome e ao valor.',

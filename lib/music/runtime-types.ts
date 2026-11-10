@@ -10,6 +10,7 @@ import type { Reactions, ReactionContext } from './reactions'
 import type { TeamMixes } from './team-mixer'
 import type { Instrument, MovementMapping, MusicPiece } from './model'
 import type { HarmonyPlanId } from './harmony'
+import type { SectionBounds } from './section-params'
 import type { Meter } from './meter'
 
 export type Strudel = typeof import('@strudel/web')
@@ -66,4 +67,14 @@ export interface VoiceSpec {
   duck?: DuckTrigger
   /** The voice owns its bus. Its output gain is left to sidechain ducking; volume sits on a node after it. */
   ownBus?: boolean
+  /** Per section (by performance step): the sound of a section that changes parameters. */
+  sections?: (SectionVoice | undefined)[]
+  /** Some section changes Play chance: each section bank applies its own chance. */
+  sectionChance?: boolean
+}
+export interface SectionVoice {
+  instrument: Instrument
+  controls: Record<string, number | string>
+  panLfo?: PanLfo
+  bounds: SectionBounds
 }

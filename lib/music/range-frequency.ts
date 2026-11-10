@@ -3,23 +3,41 @@ import type { RangeFrequency } from './model'
 import type { VoiceSpec, StrudelPattern } from './runtime-types'
 
 type Target = 'drive' | 'reverb' | 'swing' | 'octave' | 'lpf'
-interface EventRange { target: Target; min: number; max: number; seed: number; frequency: RangeFrequency; bars: number; clock?: LoopClock; selection?: { pattern: string; bars: number[]; restart: boolean } }
+interface EventRange { target: Target; min: number; max: number; seed: number; frequency: RangeFrequency; bars: number; clock?: LoopClock; selection?: { pattern: string; bars: number[]; restart: boolean }
+  /** Limits of the sections that change them, by clock step; the same draw lands inside them. */
+  bounds?: ([number, number] | null)[]
+  /** Made only for section limits: outside them the hap keeps its own value. */
+  onlyBounds?: boolean }
 interface RangeConfig { ranges: EventRange[]; beats: number; octave: number; mix: number }
 
 /** Octave, S/N effects and filter ranges are resolved at the original attack. */
 export function eventRangeConfig(voice: VoiceSpec): RangeConfig {
   const ranges: EventRange[] = []
   for (const target of ['drive', 'reverb', 'swing', 'octave', 'lpf'] as const) {
+    const bounds = target === 'drive' || target === 'reverb' || target === 'lpf' ? sectionBounds(voice, target) : undefined
+    // A section can set limits the instrument doesn't range: the instrument's value stays fixed elsewhere.
     const range = voice.instrument[target === 'drive' ? 'driveRange' : target === 'reverb' ? 'reverbRange' : target === 'swing' ? 'swingRange' : target === 'lpf' ? 'lpfRange' : 'octaveRange']
+      ?? (bounds ? fixedRange(voice, target as 'drive' | 'reverb' | 'lpf') : undefined)
     if (!range) continue
+    const onlyBounds = !!bounds && range.frequency === 'note' && !voice.instrument[target === 'drive' ? 'driveRange' : target === 'reverb' ? 'reverbRange' : 'lpfRange']
     const frequency = range.frequency ?? 'note'
     if (target !== 'lpf' && target !== 'octave' && frequency === 'loop') continue
     if (target === 'octave' && voice.unpitched || target === 'swing' && voice.manual) continue
     const recipe = loopRange(voice, range, target)
     if (target === 'lpf' && voice.previewFilterLimit !== undefined) { recipe.min = Math.min(recipe.min, voice.previewFilterLimit); recipe.max = Math.min(recipe.max, voice.previewFilterLimit) }
-    ranges.push({ target, ...recipe, frequency })
+    ranges.push({ target, ...recipe, frequency, ...(bounds && recipe.clock ? { bounds, ...(onlyBounds ? { onlyBounds } : {}) } : {}) })
   }
   return { ranges, beats: voice.beatsPerBar ?? 4, octave: voice.instrument.octave, mix: voice.instrument.distortionMix ?? .25 }
+}
+
+/** Section limits for a ranged target, by performance step, or undefined when no section sets them. */
+export function sectionBounds(voice: VoiceSpec, target: 'drive' | 'reverb' | 'lpf') {
+  if (!voice.sections?.some(section => section?.bounds[target])) return undefined
+  return voice.sections.map(section => section?.bounds[target] ?? null)
+}
+function fixedRange(voice: VoiceSpec, target: 'drive' | 'reverb' | 'lpf') {
+  const value = target === 'drive' ? voice.instrument.distortion ?? 0 : Number(voice.controls[target === 'lpf' ? 'lpf' : 'room'])
+  return { first: value, second: value, frequency: 'note' as const }
 }
 
 /** Self-contained on purpose: this exact function is embedded in exported Strudel.
@@ -57,6 +75,13 @@ export function eventRangePattern(pattern: StrudelPattern, config: RangeConfig, 
       } else index = range.frequency === 'section' ? 0 : Math.floor(time / range.bars)
     }
     const unit = random(range.seed, index)
+    if (range.bounds && range.clock) {
+      const clock = range.clock, local = ((time % clock.total) + clock.total) % clock.total
+      const step = clock.steps.findIndex(step => local < step.end)
+      const own = range.bounds[step < 0 ? clock.steps.length - 1 : step]
+      if (own) return own[0] + unit * (own[1] - own[0])
+      if (range.onlyBounds) return NaN
+    }
     return range.target === 'octave' ? range.min + Math.min(range.max - range.min, Math.floor(unit * (range.max - range.min + 1)))
       : range.min + unit * (range.max - range.min)
   }
@@ -76,6 +101,7 @@ export function eventRangePattern(pattern: StrudelPattern, config: RangeConfig, 
         const value = { ...original }
         for (const range of config.ranges) {
           const amount = sample(range, time)
+          if (Number.isNaN(amount)) continue
           if (range.target === 'lpf') { value.lpf = amount; value.cutoff = amount }
           if (range.target === 'reverb') value.room = amount
           if (range.target === 'drive') {

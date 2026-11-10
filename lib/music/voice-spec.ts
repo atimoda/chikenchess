@@ -1,10 +1,13 @@
 // Resolve a game/Creative snapshot to per-piece control values, without querying Strudel.
 import { performancePattern } from './performance'
-import { DEFAULT_ARRANGEMENT, piecePerformance } from './arrangement'
+import { DEFAULT_ARRANGEMENT, pieceSection, piecePerformance } from './arrangement'
 import { beatsPerBar } from './meter'
 import { DEFAULT_MOVEMENT, degreeToMidi, instrumentFor } from './model'
 import { sampleRegistration } from './sample-banks'
-import type { MusicSnapshot, Preview, VoiceSpec } from './runtime-types'
+import type { MusicSnapshot, Preview, SectionVoice, VoiceSpec } from './runtime-types'
+import { hasSectionParams, sectionSound } from './section-params'
+import type { SquareEffects } from '../types'
+import type { Instrument } from './model'
 import { HARMONY_PLANS, harmonyFrame, type HarmonyPlanId } from './harmony'
 import { duckSourceId, isDucked, needsOwnBus, panLfo, soundDesignControls } from './sound-design'
 
@@ -64,12 +67,45 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
     const melodic = !manual && !unpitched && instrument.behavior !== 'pulse'
     const generatedChords=!manual&&!unpitched&&instrument.behavior==='sustain'&&harmonyPlan!=='static'&&harmonyPlan!=='kit'
       ? chordVoicings(harmonyPlan,state.scale,instrument.octave,offset,pitch,roots):undefined
-    const lpf = Math.min(fx?.lpf ?? instrument.lpf, audition && mapping.previewFilter ? 800 + Number(square[1]) * 1800 : 20000)
     const ownBus = !lite && !audition && needsOwnBus(instrument) && ownBuses < OWN_BUS_LIMIT && ++ownBuses > 0
-    const design = soundDesignControls(instrument, { bpm: state.bpm, beatsPerBar: beatsPerBar(state.meter), unpitched, sample: source?.kind === 'sample', lite })
-    if (!ownBus) { delete design.delaytime; delete design.delayfeedback }
-    const pan = Math.max(0, Math.min(1, 0.5 + ((square.charCodeAt(0) - 97) / 7 - 0.5) * mapping.panWidth + (fx?.pan ?? 0) / 2))
+    // Controls of one sound: the instrument's, or a section's own (same bus, other values).
+    const sound = (instrument: Instrument, fx: SquareEffects | undefined) => {
+      const lpf = Math.min(fx?.lpf ?? instrument.lpf, audition && mapping.previewFilter ? 800 + Number(square[1]) * 1800 : 20000)
+      const design = soundDesignControls(instrument, { bpm: state.bpm, beatsPerBar: beatsPerBar(state.meter), unpitched, sample: source?.kind === 'sample', lite })
+      if (!ownBus) { delete design.delaytime; delete design.delayfeedback }
+      const pan = Math.max(0, Math.min(1, 0.5 + ((square.charCodeAt(0) - 97) / 7 - 0.5) * mapping.panWidth + (fx?.pan ?? 0) / 2))
+      return {
+        panLfo: manual ? undefined : panLfo(instrument, pan, state.bpm, beatsPerBar(state.meter)),
+        controls: {
+          ...(instrument.distortion ? {distort:`${instrument.distortion}:${instrument.distortionMix??.25}`} : {}),
+          ...(!unpitched && instrument.pitchEnvelope ? {penv:instrument.pitchEnvelope,patt:instrument.pitchAttack??.15} : {}),
+          s: source?.kind === 'sample' ? sampleRegistration(source).sound : instrument.sound,
+          ...(unpitched ? { speed: pitch } : {}),
+          gain: instrument.gain * (fx?.gain ?? 1),
+          attack: instrument.attack, decay: fx?.decay ?? instrument.decay ?? 0.15,
+          sustain: instrument.sustain ?? (instrument.behavior === 'pulse' ? 0 : 0.55),
+          release: instrument.release,
+          // Percussion gates are short even when the rhythmic cell lasts a beat.
+          clip: manual ? 1 : instrument.clip ?? (instrument.behavior === 'pulse' ? 0.12 : instrument.behavior === 'sustain' ? 0.95 : 0.7),
+          lpf, hpf: fx?.hpf ?? instrument.hpf,
+          pan,
+          room: fx?.reverb ?? 0.12,
+          delay: fx?.delay ?? 0,
+          delaytime: 60 / state.bpm * 0.75,
+          ...design,
+        } as Record<string, number | string>,
+      }
+    }
+    const base = sound(instrument, fx)
     const performance = manual ? undefined : piecePerformance(instrument,plan,state.sectionOverrides?.[piece.id],beatsPerBar(state.meter))
+    // Sections that change parameters get their own controls; the rest play the instrument's.
+    const sections: (SectionVoice | undefined)[] | undefined = performance && plan.sections.some((_, index) => hasSectionParams(pieceSection(instrument, plan, index).params))
+      ? plan.sections.map((_, index) => {
+        const params = pieceSection(instrument, plan, index).params
+        if (!hasSectionParams(params)) return undefined
+        const own = sectionSound(instrument, fx, params)
+        return { instrument: own.instrument, bounds: own.bounds, ...sound(own.instrument, own.fx) }
+      }) : undefined
     const harmonic = melodic ? {pulses:beatsPerBar(state.meter),sections:plan.sections.map((section,index) => {
       const step = performance!.steps[index]
       // The fill bar harmonizes with its section: its notes join the section's map.
@@ -86,29 +122,13 @@ export function voiceSpecs(state: MusicSnapshot, preview: Preview | null, effect
       previewFilterLimit: audition && mapping.previewFilter ? 800 + Number(square[1]) * 1800 : undefined,
       orbit: ownBus ? OWN_BUS + piece.slot : effectOrbit(piece, audition, effectBuses),
       ...(ownBus ? { ownBus: true } : {}),
-      ...(manual ? {} : { panLfo: panLfo(instrument, pan, state.bpm, beatsPerBar(state.meter)) }),
+      ...(manual ? {} : { panLfo: base.panLfo }),
+      ...(sections ? { sections, ...(sections.some(section => section && section.instrument.playChance !== instrument.playChance) ? { sectionChance: true } : {}) } : {}),
       pianoRolls: sourceRolls.map(roll => ({...roll,notes:(generatedChords ? [...new Map(roll.notes.map(note=>[note.start,note])).values()] : roll.notes).map(note=>({...note,degree:toMidi(note.degree)}))})),
       sectionPattern: performance ? performancePattern(performance, false, beatsPerBar(state.meter)) : '0',
       instrument,
       unpitched,
-      controls: {
-        ...(instrument.distortion ? {distort:`${instrument.distortion}:${instrument.distortionMix??.25}`} : {}),
-        ...(!unpitched && instrument.pitchEnvelope ? {penv:instrument.pitchEnvelope,patt:instrument.pitchAttack??.15} : {}),
-        s: source?.kind === 'sample' ? sampleRegistration(source).sound : instrument.sound,
-        ...(unpitched ? { speed: pitch } : {}),
-        gain: instrument.gain * (fx?.gain ?? 1),
-        attack: instrument.attack, decay: fx?.decay ?? instrument.decay ?? 0.15,
-        sustain: instrument.sustain ?? (instrument.behavior === 'pulse' ? 0 : 0.55),
-        release: instrument.release,
-        // Percussion gates are short even when the rhythmic cell lasts a beat.
-        clip: manual ? 1 : instrument.clip ?? (instrument.behavior === 'pulse' ? 0.12 : instrument.behavior === 'sustain' ? 0.95 : 0.7),
-        lpf, hpf: fx?.hpf ?? instrument.hpf,
-        pan,
-        room: fx?.reverb ?? 0.12,
-        delay: fx?.delay ?? 0,
-        delaytime: 60 / state.bpm * 0.75,
-        ...design,
-      },
+      controls: base.controls,
     }
   })
   return withSidechain(specs)

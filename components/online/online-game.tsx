@@ -296,6 +296,8 @@ export function OnlineMatchBoard({
   const [songHover, setSongHover] = useState<SongPanelHover | null>(null);
   // Piece Params shows the Song & Instruments list until the full params are opened.
   const [paramsOpen, setParamsOpen] = useState(false);
+  // Section picked in the Sections bar: the Section scope of Piece params edits it.
+  const [paramsSectionId, setParamsSectionId] = useState<string | null>(null);
   const [songMidiOn, setSongMidiOn] = useState(true);
   const [opponentOpen, setOpponentOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
@@ -1058,6 +1060,8 @@ export function OnlineMatchBoard({
                 arrangement={music.kit.arrangement}
                 harmony={music.kit.harmony}
                 onSeek={music.seekSection}
+                selectedSectionId={paramsSectionId}
+                onSelectSection={setParamsSectionId}
                 onSelect={(square) => music.select(square)}
                 onOpenParams={(square) => {
                   setSongHover(null);
@@ -1104,10 +1108,14 @@ export function OnlineMatchBoard({
                 harmony={music.kit.harmony}
                 monitor={music.monitor}
                 onSeek={music.seekSection}
+                selectedSectionId={paramsSectionId}
+                onSelectSection={setParamsSectionId}
               />
             ) : undefined
           }
           songMidi={{ on: songMidiOn, onToggle: () => setSongMidiOn((on) => !on) }}
+          arrangement={music.kit?.arrangement}
+          selectedSectionId={paramsSectionId}
           readOnlyMessage={locked ? "Opponent’s Piece Params" : "Match ended"}
           instrument={music.instrument}
           onInstrumentChange={

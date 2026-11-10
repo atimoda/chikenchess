@@ -1,6 +1,6 @@
 # Testes por domínio
 
-`npm run test:music` reúne 322 casos, incluindo as regressões do arranjo global, organizados abaixo. Os arquivos `.cases.cjs` evitam descoberta duplicada pelo runner padrão. Helpers em `helpers/music.cjs` compartilham o carregamento TypeScript, os imports JSON dos presets MIDI, o armazenamento em memória e o bundle real do Strudel.
+`npm run test:music` reúne 327 casos, incluindo as regressões do arranjo global, organizados abaixo. Os arquivos `.cases.cjs` evitam descoberta duplicada pelo runner padrão. Helpers em `helpers/music.cjs` compartilham o carregamento TypeScript, os imports JSON dos presets MIDI, o armazenamento em memória e o bundle real do Strudel.
 
 | Arquivo em `tests/music/` | Casos | Responsabilidade |
 | --- | ---: | --- |
@@ -25,6 +25,7 @@
 | `optimization.cases.cjs` | 3 | Equivalência de lanes/acordes, isolamento do cache de reverb e reverb compartilhado dos buses no celular |
 | `studies.cases.cjs` | 4 | Estudo Mouth Breather e equivalência da exportação |
 | `online-kit.cases.cjs` | 2 | Composição por cor, remapeamento das seções para contexto comum e preservação dos kits de origem |
+| `section-params.cases.cjs` | 5 | Parâmetros por seção: schema, só na própria seção, limites de range e exportação equivalente, chance por seção e LFO desligado, regras vencendo seções, valores por nota (release/reverb/delay/drive) vencendo seção e ranges |
 | `release.cases.cjs` | 2 | Sincronia entre package, lockfile e versão exibida; no máximo uma entrada por data |
 
 Para uma área: `node --test tests/music/editor.cases.cjs`.

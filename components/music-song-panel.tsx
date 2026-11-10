@@ -53,15 +53,18 @@ function Reveal({ open, mode, children }: { open: boolean; mode: string; childre
 
 /** The match's compact Global Sections bar, shared by the instrument list and
  * Piece Params (above the variation tabs). */
-export function MusicSongSections({ arrangement, harmony, monitor, onChange, onSeek }: {
+export function MusicSongSections({ arrangement, harmony, monitor, onChange, onSeek, selectedSectionId, onSelectSection }: {
   arrangement: Arrangement
   harmony?: HarmonyPlanId
   monitor: MusicMonitor
   onChange?: (arrangement: Arrangement) => void
   onSeek: (sectionId: string) => void
+  /** Section whose parameters the instrument editor's Section scope edits. */
+  selectedSectionId?: string | null
+  onSelectSection?: (sectionId: string) => void
 }) {
   return <section aria-label="Global Sections" className="min-w-0">
-    <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onChange} onSeek={onSeek} />
+    <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onChange} onSeek={onSeek} selectedId={selectedSectionId} onSelect={onSelectSection} />
   </section>
 }
 
@@ -72,7 +75,7 @@ export function MusicSongSections({ arrangement, harmony, monitor, onChange, onS
  * sequencer in place, turning the piece on if it was off (a second click on the
  * name collapses it); hovering a row plays its note and blinks its dot. A double
  * click or "Params" opens the full Piece Params. */
-export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, onSelect, onToggle, onSolo, canToggle, onHover, ownColor = 'w', onAudition, snapshot, selectedId = null, selectedView, showMidi = true, onOpenParams, columns = false }: {
+export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arrangement, harmony, onArrangementChange, onSeek, selectedSectionId, onSelectSection, onSelect, onToggle, onSolo, canToggle, onHover, ownColor = 'w', onAudition, snapshot, selectedId = null, selectedView, showMidi = true, onOpenParams, columns = false }: {
   pieces: readonly MusicPiece[]
   snapshot?: MusicSnapshot
   selectedId?: string | null
@@ -95,6 +98,8 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   harmony?: HarmonyPlanId
   onArrangementChange?: (arrangement: Arrangement) => void
   onSeek: (sectionId: string) => void
+  selectedSectionId?: string | null
+  onSelectSection?: (sectionId: string) => void
   /** Null deselects. */
   onSelect: (square: Square | null) => void
   onToggle: (square: Square) => void
@@ -119,7 +124,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   const expand = (piece: MusicPiece) => { setExpandedId(piece.id); if (selectedId !== piece.id) onSelect(piece.square) }
   const teams = ownColor === 'w' ? ['w', 'b'] as const : ['b', 'w'] as const
   return <div className="flex min-w-0 flex-col gap-2">
-    {arrangement && <MusicSongSections arrangement={arrangement} harmony={harmony} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} />}
+    {arrangement && <MusicSongSections arrangement={arrangement} harmony={harmony} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} selectedSectionId={selectedSectionId} onSelectSection={onSelectSection} />}
     <section aria-label="Instruments" className={columns ? 'grid min-w-0 grid-cols-2 items-start gap-3' : 'flex min-w-0 flex-col gap-2.5'} onPointerLeave={() => hover(null)}>
       {teams.map(color => <div key={color} className="min-w-0">
         <h3 className="m-0 px-1 pb-1.5 font-mono text-[9px] uppercase leading-none tracking-[1px] text-[#96a79a]">{color === 'w' ? 'White' : 'Black'}</h3>

@@ -5,6 +5,7 @@ import { HARMONY_PLANS, HARMONY_PLAN_IDS, type HarmonyPlanId } from './harmony'
 import officialGlobalReactions from '../../data/music/reactions.json'
 import { SCALE_SHIFTS, SCALE_SHIFT_IDS, seededIndex, shiftScale } from './scale-shift'
 import { instrumentRole } from './sound-design'
+import { scaleSectionGain, withoutSectionParams, type SectionParamKey } from './section-params'
 
 export const STATES = {
   opening: 'Opening (first 20 plies)', middle: 'Middlegame', endgame: 'Endgame (≤ 10 pieces)',
@@ -267,6 +268,7 @@ const pc=(note:string)=>{const m=/^([A-G])([#b]?)/i.exec(note)!; return (({C:0,D
 const note=(n:number)=>pitchNames[((n%12)+12)%12]+'4'
 
 /** Recompute overlays from the base every time: no drift, no mutation of the kit. */
+const SECTION_KEYS_BY_ACTION: Partial<Record<string, SectionParamKey[]>> = { lpf: ['lpfRange'], hpf: ['hpf'], resonance: ['resonance'], drive: ['driveRange'], reverb: ['reverbRange'], delay: ['delay'], pan: ['fxPan'] }
 export function applyReactions(base:MusicSnapshot, config:Reactions, context:ReactionContext, timed?: ReadonlyMap<string, TimedReaction>, ramps?: ReadonlyMap<string, RampState>) {
   const result={...base,pieces:base.pieces.map(p=>({...p})),effects:Object.fromEntries(Object.entries(base.effects).map(([id,fx])=>[id,{...fx}])),instruments:{...base.instruments},sectionOverrides:{...base.sectionOverrides}}
   const descriptions:string[]=[]
@@ -327,16 +329,19 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         if(!inst)continue
         const fx=result.effects[id]
         const factor=1+action.value/100
-        if(action.type==='gain'&&fx)fx.gain=Math.max(0,Math.min(2,fx.gain*(factor>0?factor**amount:1-amount)))
+        if(action.type==='gain'&&fx){const scale=(gain:number)=>Math.max(0,Math.min(2,gain*(factor>0?factor**amount:1-amount)));fx.gain=scale(fx.gain);result.instruments[id]=scaleSectionGain(result.instruments[id],scale)}
+        // A rule's value wins over the sections' own value for the same parameter.
+        const ruled=SECTION_KEYS_BY_ACTION[action.type]
+        if(ruled&&result.instruments[id])result.instruments[id]=withoutSectionParams(result.instruments[id],ruled)
         if(action.type==='transpose'&&fx&&!(inst.source?.kind==='sample'&&!inst.source.pitched))fx.pitch*=2**(action.value/12)
-        if(action.type==='lpf') {const lpf=glide(fx?.lpf??inst.lpf,action.value,amount);result.instruments[id]={...inst,lpf,lpfRange:undefined};if(fx)fx.lpf=lpf}
-        if(action.type==='hpf') {const hpf=glide(fx?.hpf??inst.hpf,action.value,amount);result.instruments[id]={...inst,hpf};if(fx)fx.hpf=hpf}
+        if(action.type==='lpf') {const lpf=glide(fx?.lpf??inst.lpf,action.value,amount);result.instruments[id]={...result.instruments[id],lpf,lpfRange:undefined};if(fx)fx.lpf=lpf}
+        if(action.type==='hpf') {const hpf=glide(fx?.hpf??inst.hpf,action.value,amount);result.instruments[id]={...result.instruments[id],hpf};if(fx)fx.hpf=hpf}
         if(action.type==='resonance')result.instruments[id]={...result.instruments[id],resonance:action.value}
         if(action.type==='drive')result.instruments[id]={...result.instruments[id],distortion:action.value,driveRange:undefined}
         if(action.type==='reverb'&&fx){fx.reverb=action.value;result.instruments[id]={...result.instruments[id],reverbRange:undefined}}
         if(action.type==='delay'&&fx)fx.delay=action.value
         if(action.type==='pan'&&fx)fx.pan=action.value
-        if(action.type==='invert'&&inst.behavior!=='pulse'){result.instruments[id]={...inst,pianoRolls:inst.pianoRolls.map(roll=>({...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}))}}
+        if(action.type==='invert'&&inst.behavior!=='pulse'){result.instruments[id]={...result.instruments[id],pianoRolls:inst.pianoRolls.map(roll=>({...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}))}}
       }
       descriptions.push(`${TRIGGERS[rule.trigger]} → ${actionSummary(action)}`)
     }

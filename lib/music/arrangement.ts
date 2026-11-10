@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { Instrument } from './model'
 import type { Performance } from './performance'
 import { beatsPerBar } from './meter'
+import { sectionParamsSchema } from './section-params'
 
 /** Closed vocabulary for global section names, in the order offered by the editor. */
 export const SECTION_TYPES = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Post-Chorus', 'Hook', 'Bridge', 'Interlude', 'Turnaround', 'Solo', 'Drop', 'Break', 'Outro'] as const
@@ -43,6 +44,8 @@ export const pieceSectionSchema = z.object({
   variation: z.number().int().min(0).max(7).nullable(), transpose: z.number().int().min(-24).max(24).default(0),
   /** Variation played in the section's last bar, leading into the next section. */
   fill: z.number().int().min(0).max(7).optional(),
+  /** Sound values this piece changes only in this section; the rest follows the instrument. */
+  params: sectionParamsSchema.optional(),
   active: z.boolean().optional(),
 }).transform(({ active, ...step }) => active === false ? { ...step, variation: null } : step)
 export const pieceArrangementSchema = z.object({ restart: z.boolean().default(true), sections: z.record(pieceSectionSchema) })

@@ -20,11 +20,18 @@
 /* Instrument parameters in mini-tabs, like the match's Piece params. */
 .paramTabs { margin-top: 14px; border-top: 1px solid #39473d; padding-top: 12px; }
 .paramTabStrip { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+/* All / Section / Note above the pages: what the knobs edit. */
+.paramScopeStrip { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
+.paramScopeStrip [role='tablist'] { display: flex; gap: 0; border: 1px solid #425544; border-radius: 5px; overflow: hidden; }
+.paramTabs .paramScopeStrip [role='tab'] { padding: 4px 10px; border: 0; border-radius: 0; background: transparent; color: #9eafa2; font-family: var(--font-geist-mono), monospace; font-size: 10px; line-height: 1; cursor: pointer; }
+.paramTabs .paramScopeStrip [role='tab'] + [role='tab'] { border-left: 1px solid #425544; }
+.paramTabs .paramScopeStrip [role='tab']:hover:not(:disabled) { background: transparent; color: #fff; }
+.paramTabs .paramScopeStrip [role='tab'][aria-selected='true'] { background: rgba(182,219,161,.16); color: #fff; }
+.paramTabs .paramScopeStrip [role='tab']:disabled { color: #56645a; cursor: default; opacity: 1; }
 .paramTabStrip [role='tablist'] { display: flex; flex-wrap: wrap; gap: 4px; }
-.studio .paramTabStrip [role='tab'] { padding: 3px 6px; border: 1px solid #425544; border-radius: 4px; background: transparent; color: #9eafa2; font-family: var(--font-geist-mono), monospace; font-size: 10px; line-height: 1; }
-.studio .paramTabStrip [role='tab']:hover { background: transparent; border-color: #b6dba1; color: #fff; }
-.studio .paramTabStrip [role='tab'][aria-selected='true'] { border-color: #b6dba1; background: rgba(182,219,161,.12); color: #fff; }
-.studio .paramTabStrip [role='tab'][data-has-note='true']:not([aria-selected='true']) { border-color: #dfa67a; }
+.paramTabs .paramTabStrip [role='tab'] { padding: 3px 6px; border: 1px solid #425544; border-radius: 4px; background: transparent; color: #9eafa2; font-family: var(--font-geist-mono), monospace; font-size: 10px; line-height: 1; }
+.paramTabs .paramTabStrip [role='tab']:hover { background: transparent; border-color: #b6dba1; color: #fff; }
+.paramTabs .paramTabStrip [role='tab'][aria-selected='true'] { border-color: #b6dba1; background: rgba(182,219,161,.12); color: #fff; }
 .paramTabs .controls { padding-top: 14px; }
 .noteKnobs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 13px 8px; padding-top: 14px; }
 .paramHint { margin: 14px 0 0; font-size: 11px; line-height: 1.5; color: #9eafa2; }
@@ -181,13 +188,15 @@
 .parameterKnob [role='slider'][data-range-thumb] { width: 9px; height: 9px; padding: 0; border-color: #142017; background: var(--city-neon); }
 .parameterKnob [role='slider'] > span, .transportKnob [role='slider'] > span { top: 50%; color: #d7ebc9; font-size: 9px; }
 .parameterKnob[data-disabled] > :not([data-info-tip]) { opacity: .5; }
+/* Section/Note scope: a knob still showing the inherited value sleeps until it is personalized. */
+.parameterKnob[data-inherited] > :not([data-info-tip]) { opacity: .38; filter: grayscale(1); transition: opacity .2s, filter .2s; }
 /* Choices and switches in a knob cell: same 46 px footprint and green face as the knobs. */
 .parameterCellFace { display: flex; align-items: center; justify-content: center; width: 100%; height: 46px; }
-.studio .parameterSelect { width: 100%; max-width: 74px; height: 26px; min-height: 0; padding: 0 3px; border: 1px solid #526c54; border-radius: 6px; background: #25372b; color: #d7ebc9; font-family: var(--font-geist-mono), monospace; font-size: 9px; font-weight: 700; }
-.studio .parameterSelect:hover:not(:disabled) { border-color: var(--city-neon); }
-.studio .parameterToggle { width: 46px; height: 46px; padding: 0; border: 1px solid #526c54; border-radius: 50%; background: #25372b; color: #9eafa2; font-family: var(--font-geist-mono), monospace; font-size: 9px; font-weight: 700; }
-.studio .parameterToggle:hover:not(:disabled) { border-color: var(--city-neon); background: #25372b; }
-.studio .parameterToggle[aria-checked='true'] { border-color: var(--city-neon); color: var(--city-neon); }
+.parameterKnob .parameterSelect { width: 100%; max-width: 74px; height: 26px; min-height: 0; padding: 0 3px; border: 1px solid #526c54; border-radius: 6px; background: #25372b; color: #d7ebc9; font-family: var(--font-geist-mono), monospace; font-size: 9px; font-weight: 700; }
+.parameterKnob .parameterSelect:hover:not(:disabled) { border-color: var(--city-neon); }
+.parameterKnob .parameterToggle { width: 46px; height: 46px; padding: 0; border: 1px solid #526c54; border-radius: 50%; background: #25372b; color: #9eafa2; font-family: var(--font-geist-mono), monospace; font-size: 9px; font-weight: 700; }
+.parameterKnob .parameterToggle:hover:not(:disabled) { border-color: var(--city-neon); background: #25372b; }
+.parameterKnob .parameterToggle[aria-checked='true'] { border-color: var(--city-neon); color: var(--city-neon); }
 .wideControl { grid-column: span 2; }
 .range > span { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; }
 .range output { font-family: monospace; font-size: 10px; color: #daebc5; }

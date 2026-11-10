@@ -43,7 +43,10 @@ export function ToggleCell({ label, ariaLabel, title, checked, onChange, neon = 
 /** Knob cells for a selected note, laid out for the five-column Piece Params grid:
  * ACCENT, PAN, CHANCE, RATCHET, CUTOFF on the first row; SLIDE ST, SLIDE SEC, the
  * slide graph and VIB on the second. */
-export function NoteParamsKnobs({ note, onChange, updateMode = 'immediate', neon = true }: { note: PianoNote; onChange: (patch: Partial<PianoNote>) => void; updateMode?: KnobUpdateMode; neon?: boolean }) {
+/** The piece's values a note inherits until it sets its own release, reverb, delay or drive. */
+export interface NoteSoundBase { release: number; reverb: number; delay: number; drive: number }
+
+export function NoteParamsKnobs({ note, onChange, updateMode = 'immediate', neon = true, base }: { note: PianoNote; onChange: (patch: Partial<PianoNote>) => void; updateMode?: KnobUpdateMode; neon?: boolean; base?: NoteSoundBase }) {
   const slide = note.slide ?? 0, seconds = note.slideSeconds ?? .5, pan = note.pan ?? .5
   // The graph follows the knobs while they are dragged, before the release commits.
   const [draft, setDraft] = useState<{ slide?: number | null; seconds?: number | null }>({})
@@ -57,7 +60,22 @@ export function NoteParamsKnobs({ note, onChange, updateMode = 'immediate', neon
     <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Note slide time" value={seconds} min={.001} max={2} step={.001} updateMode={updateMode} formatValue={n => `${Number(n.toFixed(3))} s`} onChange={slideSeconds => onChange({ slideSeconds })} onDraftChange={value => setDraft(d => ({ ...d, seconds: value }))} neon={neon}/>
     <SlideRamp slide={draft.slide ?? slide} seconds={draft.seconds ?? seconds} neon={neon}/>
     <ToggleCell label="VIB" ariaLabel="Note vibrato" title="Apply the piece's vibrato to this note (5.5 Hz, 0.3 st when the piece has none)" checked={!!note.vibrato} onChange={vibrato => onChange({ vibrato: vibrato || undefined })} neon={neon}/>
+    {base && <>
+      <NoteSoundKnob field="release" label="RELEASE" ariaLabel="Note release" note={note} base={base} min={.01} max={2} format={n => `${n.toFixed(2)} s`} onChange={onChange} updateMode={updateMode} neon={neon} first/>
+      <NoteSoundKnob field="reverb" label="REVERB" ariaLabel="Note reverb" note={note} base={base} min={0} max={1} format={n => `${Math.round(n * 100)}%`} onChange={onChange} updateMode={updateMode} neon={neon}/>
+      <NoteSoundKnob field="delay" label="DELAY" ariaLabel="Note delay" note={note} base={base} min={0} max={1} format={n => `${Math.round(n * 100)}%`} onChange={onChange} updateMode={updateMode} neon={neon}/>
+      <NoteSoundKnob field="drive" label="DRIVE" ariaLabel="Note drive" note={note} base={base} min={0} max={10} step={.1} format={n => n.toFixed(1)} onChange={onChange} updateMode={updateMode} neon={neon}/>
+    </>}
   </>
+}
+
+/** A note field that shows the piece's value, faded, until the note sets its own; double click returns it to the piece's. */
+function NoteSoundKnob({ field, label, ariaLabel, note, base, min, max, step = .01, format, onChange, updateMode, neon, first = false }: { field: keyof NoteSoundBase; label: string; ariaLabel: string; note: PianoNote; base: NoteSoundBase; min: number; max: number; step?: number; format: (value: number) => string; onChange: (patch: Partial<PianoNote>) => void; updateMode: KnobUpdateMode; neon: boolean; first?: boolean }) {
+  const own = note[field], inherited = own === undefined
+  return <div className={first ? 'col-start-1' : undefined} data-inherited={inherited || undefined} style={{ opacity: inherited ? .4 : 1 }} onDoubleClick={inherited ? undefined : () => onChange({ [field]: undefined })}>
+    <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label={label} ariaLabel={ariaLabel} value={own ?? base[field]} min={min} max={max} step={step} updateMode={updateMode} formatValue={format}
+      onChange={value => { if (!inherited || Math.abs(value - base[field]) > step / 2) onChange({ [field]: value }) }} neon={neon}/>
+  </div>
 }
 
 export type PieceParamsPage = 'tone' | 'fx'

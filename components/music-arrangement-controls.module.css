@@ -78,6 +78,7 @@
 .sectionButton small { font-size: 10px; color: #c2d3be; white-space: nowrap; }
 .timeline .sectionButton:focus-visible { outline: 2px solid #d9ef9e; outline-offset: 2px; }
 
+.timeline .sectionButton[data-selected='true'] { box-shadow: inset 0 -2px 0 #b6dba1; }
 .timeline .sectionButton[data-editing='true'] { border-color: #d9ef9e; background: #2f3d33; }
 
 /* Inline section editor: one row below the bar, labels above the fields. */

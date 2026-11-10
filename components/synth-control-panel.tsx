@@ -3,15 +3,17 @@
 import type React from "react"
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, forwardRef } from "react"
 import { Knob, LARGE_KNOB_SIZE } from "./knob"
-import { RangeKnob } from "./range-knob"
 import type { SquareEffects } from "@/lib/types"
 import { cn, stableHtml } from "@/lib/utils"
 import { Eye, EyeOff, LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
 import { MusicPlaybackViewport } from "./music-playback"
-import { KnobPanelTitle, NoteParamsHostContext, NoteParamsKnobs, SlideRamp, type NoteParamsSelection, type PieceParamsPage } from "./music-note-params"
-import { SoundDesignKnobs, type DuckSource } from "./music-sound-design"
+import { KnobPanelTitle, NoteParamsHostContext, type NoteParamsSelection } from "./music-note-params"
+import type { DuckSource } from "./music-sound-design"
+import { InstrumentParameters, paramsSection } from "./creative/instrument-parameters"
+import { useParamsScope } from "@/hooks/use-params-scope"
+import type { Arrangement } from "@/lib/music/arrangement"
 import type { Instrument, InstrumentPerformanceEdit, MusicPiece } from '@/lib/music/model'
 import { filterDialHertz, filterDialLabel, filterDialValue } from '@/lib/music/team-mixer'
 import type { MusicMonitor, TrackFrame } from '@/lib/music/monitor'
@@ -55,6 +57,9 @@ interface SynthControlPanelProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   songMidi?: { on: boolean; onToggle: () => void }
   /** Teammates offered as sidechain sources on the FX/MOD page. */
   duckSources?: readonly DuckSource[]
+  /** Global form and the section picked in the Sections bar, for the Section scope. */
+  arrangement?: Arrangement
+  selectedSectionId?: string | null
 }
 
 export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelProps>(({
@@ -86,6 +91,8 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   showSong = false,
   songMidi,
   duckSources,
+  arrangement,
+  selectedSectionId,
   ...props
 }, ref) => {
   const isStatic = props.style?.position === 'static'
@@ -95,9 +102,11 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   // A note selected in the MIDI editor swaps the knob panel to its Note params.
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
   const noteMode = !!noteSelection && !!playback
-  // Slide graph values under the SLIDE ST / SLIDE SEC knobs while they are dragged.
-  const [page, setPage] = useState<PieceParamsPage>('tone')
-  const [slideDraft, setSlideDraft] = useState<{ slide?: number | null; seconds?: number | null }>({})
+  const paramsSectionInfo = instrument ? paramsSection(arrangement, instrument, selectedSectionId) : null
+  const params = useParamsScope(noteMode ? noteSelection : null, paramsSectionInfo?.id ?? null)
+  // The section picked in the Sections bar opens the Section scope.
+  const lastSection = useRef<string | null | undefined>(selectedSectionId)
+  useEffect(() => { if (selectedSectionId && selectedSectionId !== lastSection.current) params.showSection(); lastSection.current = selectedSectionId }, [selectedSectionId, params])
   const songMode = !!song && (!selectedSquare || showSong)
   const panelStyle = {
     "--city-neon": cityColor,
@@ -105,7 +114,6 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
-  const pitchSlideEnabled = isOn && !!selectedSquare && !!instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched)
 
   useEffect(() => {
     // The song list renders its own editors; only the Piece Params editor is watched here.
@@ -273,150 +281,26 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               </MusicPlaybackViewport>
             </NoteParamsHostContext.Provider>
           </div>}
-          {songMode ? song : <section aria-label={noteMode ? 'Note params' : 'Piece params'} className="flex flex-none flex-col">
-            <KnobPanelTitle noteMode={noteMode} onPieceParams={() => noteSelection?.onDeselect()} page={page} onPage={instrument ? setPage : undefined} />
-            <div
-              ref={knobGridRef}
-              className={cn(
-                "grid grid-cols-5 gap-x-2 gap-y-[13px] py-2",
-                (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale",
-                !isOn && "pointer-events-none"
-              )}
-          >
-              {noteMode && noteSelection ? <NoteParamsKnobs note={noteSelection.note} onChange={noteSelection.onChange} updateMode={noteSelection.updateMode} neon={isOn && !!selectedSquare} /> : page === 'fx' && instrument ? <SoundDesignKnobs instrument={instrument} onChange={patch => onInstrumentChange?.(patch)} neon={isOn && !!selectedSquare} duckSources={duckSources} /> : <>
-            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="GAIN"
-              value={effects.gain}
-              min={0}
-              max={2}
-              monitorValue={monitorValues.gain}
-              updateMode="on-release"
-              onChange={(v) => onEffectChange("gain", v)}
-              neon={isOn}
-            />
-            {instrument && !(instrument.source?.kind === 'sample' && !instrument.source.pitched) ? <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Octaves" ariaLabel="Octaves" showFrequency value={instrument.octaveRange ?? { first: instrument.octave, second: instrument.octave, frequency: 'note' }} min={0} max={7} step={1} formatValue={range => `${range.first}–${range.second}`} formatSingleValue={value => String(value)} updateMode="on-release" onChange={octaveRange => onInstrumentChange?.({ octaveRange })} neon={isOn && !!selectedSquare} /> : <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="PITCH"
-              value={effects.pitch}
-              min={0.5}
-              max={2}
-              updateMode="on-release"
-              onChange={(v) => onEffectChange("pitch", v)}
-              neon={isOn}
-            />}
-            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="PAN"
-              value={effects.pan}
-              min={-1}
-              max={1}
-              monitorValue={monitorValues.pan === undefined ? undefined : monitorValues.pan * 2 - 1}
-              updateMode="on-release"
-              onChange={(v) => onEffectChange("pan", v)}
-              neon={isOn}
-            />
-            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="DELAY"
-              value={effects.delay}
-              min={0}
-              max={1}
-              monitorValue={monitorValues.delay}
-              updateMode="on-release"
-              onChange={(v) => onEffectChange("delay", v)}
-              neon={isOn}
-            />
-            
-            {instrument ? <>
-            <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="LPF"
-              ariaLabel="Corte passa-baixas"
-              showFrequency
-              updateMode="on-release"
-              value={{ ...instrument.lpfRange, first: instrument.lpfRange?.first ?? effects.lpf ?? instrument.lpf, second: instrument.lpfRange?.second ?? effects.lpf ?? instrument.lpf, frequency: instrument.lpfRange?.frequency ?? 'note' }}
-              min={20}
-              max={20000}
-              step={10}
-              formatValue={range => `${Math.round(range.first)}–${Math.round(range.second)}Hz`}
-              formatSingleValue={value => `${Math.round(value)}Hz`}
-              monitorValue={monitorValues.lpf}
-              onChange={lpfRange => onInstrumentChange?.({ lpfRange })}
-              neon={isOn && !!selectedSquare}
-            />
-            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="HPF"
-              value={effects.hpf ?? instrument.hpf}
-              min={0}
-              max={20000}
-              step={10}
-              logarithmic
-              updateMode="on-release"
-              formatValue={value => `${Math.round(value)}Hz`}
-              onChange={value => onEffectChange("hpf", value)}
-              neon={isOn}
-            />
-            </> : <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="LPF / HPF"
-              value={filterDialValue(effects.lpf, effects.hpf)}
-              min={-1}
-              max={1}
-              step={.01}
-              formatValue={filterDialLabel}
-              updateMode="on-release"
-              monitorValue={monitorValues.lpf !== undefined && Number.isFinite(monitorValues.lpf) ? filterDialValue(monitorValues.lpf) : undefined}
-              onChange={(value) => {
-                onEffectChange("lpf", value < 0 ? filterDialHertz(value) : 20000)
-                onEffectChange("hpf", value > 0 ? filterDialHertz(value) : 0)
-              }}
-              neon={isOn}
-            />}
-            <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="DRIVE"
-              showFrequency
-              updateMode="on-release"
-              value={instrument?.driveRange ?? { first: instrument?.distortion ?? 0, second: instrument?.distortion ?? 0 }}
-              min={0}
-              max={10}
-              step={.1}
-              formatValue={range => `${Number(range.first.toFixed(1))}–${Number(range.second.toFixed(1))}`}
-              formatSingleValue={value => Number(value.toFixed(1)).toString()}
-              onChange={driveRange => onInstrumentChange?.({ driveRange })}
-              neon={isOn && !!selectedSquare && !!instrument}
-            />
-            <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="REVERB"
-              showFrequency
-              updateMode="on-release"
-              monitorValue={monitorValues.room}
-              value={instrument?.reverbRange ?? { first: effects.reverb, second: effects.reverb }}
-              min={0}
-              max={1}
-              step={.01}
-              formatValue={range => `${Math.round(range.first * 100)}–${Math.round(range.second * 100)}%`}
-              formatSingleValue={value => `${Math.round(value * 100)}%`}
-              onChange={reverbRange => onInstrumentChange?.({ reverbRange })}
-              neon={isOn && !!selectedSquare && !!instrument}
-            />
-              {instrument && <>
-                <RangeKnob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SWING" showFrequency updateMode="on-release" value={instrument.swingRange ?? { first: instrument.extraSwing ?? 0, second: instrument.extraSwing ?? 0, frequency: 'note' }} min={0} max={.5} step={.01} formatValue={range => `${Math.round(range.first * 100)}–${Math.round(range.second * 100)}%`} formatSingleValue={value => `${Math.round(value * 100)}%`} onChange={swingRange => onInstrumentChange?.({ swingRange })} neon={isOn && !!selectedSquare} />
-                <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="CHANCE" ariaLabel="Chance de tocar" value={instrument.playChance ?? 1} min={0} max={1} step={.01} updateMode="on-release" formatValue={value => `${Math.round(value * 100)}%`} onChange={playChance => onInstrumentChange?.({ playChance })} neon={isOn && !!selectedSquare} />
-              </>}
-            <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE}
-              label="DECAY"
-              value={effects.decay}
-              min={0.01}
-              max={2}
-              updateMode="on-release"
-              onChange={(v) => onEffectChange("decay", v)}
-              neon={isOn}
-            />
-            {instrument && <>
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="ATAQUE" value={instrument.attack} min={.001} max={2} step={.001} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(3)} s`} onChange={attack => onInstrumentChange?.({ attack })} neon={isOn && !!selectedSquare} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SUSTAIN" value={instrument.sustain ?? .55} min={0} max={1} updateMode="on-release" onChange={sustain => onInstrumentChange?.({ sustain })} neon={isOn && !!selectedSquare} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="RELEASE" value={instrument.release} min={.01} max={2} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={release => onInstrumentChange?.({ release })} neon={isOn && !!selectedSquare} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="Length" value={instrument.clip ?? .7} min={.05} max={1} updateMode="on-release" formatValue={v => `${Math.round(v * 100)}%`} onChange={clip => onInstrumentChange?.({ clip })} neon={isOn && !!selectedSquare} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE ST" ariaLabel="Slide de afinação" value={instrument.pitchEnvelope ?? 0} min={-24} max={24} step={1} updateMode="on-release" formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)} st`} onChange={pitchEnvelope => onInstrumentChange?.({ pitchEnvelope })} onDraftChange={value => setSlideDraft(d => ({ ...d, slide: value }))} neon={pitchSlideEnabled} />
-              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="SLIDE SEC" ariaLabel="Tempo do slide" value={instrument.pitchAttack ?? .15} min={.001} max={2} step={.01} logarithmic updateMode="on-release" formatValue={v => `${v.toFixed(2)} s`} onChange={pitchAttack => onInstrumentChange?.({ pitchAttack })} onDraftChange={value => setSlideDraft(d => ({ ...d, seconds: value }))} neon={pitchSlideEnabled} />
-              <SlideRamp slide={slideDraft.slide ?? instrument.pitchEnvelope ?? 0} seconds={slideDraft.seconds ?? instrument.pitchAttack ?? .15} neon={pitchSlideEnabled} />
-            </>}
-              </>}
+          {songMode ? song : instrument ? <div className={cn("flex-none pb-2", (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale", !isOn && "pointer-events-none")}>
+            <InstrumentParameters variant="match" updateMode="on-release" instrument={instrument} effects={effects}
+              updateInstrument={patch => onInstrumentChange?.(patch as InstrumentPerformanceEdit)}
+              updateEffects={patch => { for (const [key, value] of Object.entries(patch)) if (value !== undefined) onEffectChange(key as keyof SquareEffects, value as number) }}
+              duckSources={duckSources} tab={params.tab} onTab={params.setTab} scope={params.scope} onScope={params.setScope}
+              section={paramsSectionInfo} noteSelection={noteMode ? noteSelection : null}
+              monitorValues={{ gain: monitorValues.gain, pan: monitorValues.pan, delay: monitorValues.delay, lpf: monitorValues.lpf, room: monitorValues.room }} />
+          </div> : <section aria-label="Piece params" className="flex flex-none flex-col">
+            <KnobPanelTitle noteMode={false} />
+            {/* Without an instrument (no piece selected) only the square's effects are shown. */}
+            <div ref={knobGridRef} className={cn("grid grid-cols-5 gap-x-2 gap-y-[13px] py-2", (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale", !isOn && "pointer-events-none")}>
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="GAIN" value={effects.gain} min={0} max={2} monitorValue={monitorValues.gain} updateMode="on-release" onChange={v => onEffectChange("gain", v)} neon={isOn} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="PITCH" value={effects.pitch} min={0.5} max={2} updateMode="on-release" onChange={v => onEffectChange("pitch", v)} neon={isOn} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="PAN" value={effects.pan} min={-1} max={1} monitorValue={monitorValues.pan === undefined ? undefined : monitorValues.pan * 2 - 1} updateMode="on-release" onChange={v => onEffectChange("pan", v)} neon={isOn} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="DELAY" value={effects.delay} min={0} max={1} monitorValue={monitorValues.delay} updateMode="on-release" onChange={v => onEffectChange("delay", v)} neon={isOn} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="LPF / HPF" value={filterDialValue(effects.lpf, effects.hpf)} min={-1} max={1} step={.01} formatValue={filterDialLabel} updateMode="on-release"
+                monitorValue={monitorValues.lpf !== undefined && Number.isFinite(monitorValues.lpf) ? filterDialValue(monitorValues.lpf) : undefined}
+                onChange={value => { onEffectChange("lpf", value < 0 ? filterDialHertz(value) : 20000); onEffectChange("hpf", value > 0 ? filterDialHertz(value) : 0) }} neon={isOn} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="REVERB" value={effects.reverb} min={0} max={1} monitorValue={monitorValues.room} updateMode="on-release" onChange={v => onEffectChange("reverb", v)} neon={isOn} />
+              <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label="DECAY" value={effects.decay} min={0.01} max={2} updateMode="on-release" onChange={v => onEffectChange("decay", v)} neon={isOn} />
             </div>
           </section>}
         </div>

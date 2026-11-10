@@ -7,7 +7,7 @@
 | Assunto | Arquivo |
 | --- | --- |
 | Ativação, captura, cheque, pausa e gesto | [Ações e movimento](docs/mechanics/actions-and-movement.md) |
-| Piece/Board Params, Mixer DJ e knobs | [Piece Params](docs/mechanics/widgets/piece-params.md), [Mixer](docs/mechanics/mixer.md) e [Chance de tocar](docs/mechanics/actions-and-movement.md) |
+| Piece/Board Params, Mixer DJ e knobs | [Piece Params](docs/mechanics/widgets/piece-params.md), [All / Section / Note](docs/mechanics/widgets/params-scopes.md), [Mixer](docs/mechanics/mixer.md) e [Chance de tocar](docs/mechanics/actions-and-movement.md) |
 | Tabuleiro, layout, cabeçalho, Debug e widgets flutuantes | [Tabuleiro e layout](docs/mechanics/widgets/board-and-layout.md) |
 | Análise, Stockfish, Best/Worst e bots | [Análise e bots](docs/mechanics/widgets/analysis-and-bots.md) |
 | Barra de chance, abertura e apresentação da partida | [Cabeçalho e abertura](docs/mechanics/match-header-and-intro.md) |
@@ -83,3 +83,4 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Widgets: análise, Stockfish, Best/Worst e bots](docs/mechanics/widgets/analysis-and-bots.md) | 18 KB |
 | [Widgets: tabuleiro, layout, cabeçalho e Debug](docs/mechanics/widgets/board-and-layout.md) | 20 KB |
 | [Widgets: Piece Params, Mixer, Spectrogram e knobs](docs/mechanics/widgets/piece-params.md) | 28 KB |
+| [Widgets: parâmetros All / Section / Note](docs/mechanics/widgets/params-scopes.md) | 5 KB |

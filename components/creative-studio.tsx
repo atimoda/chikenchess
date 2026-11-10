@@ -3,7 +3,8 @@ import { stableHtml } from '@/lib/utils'
 import { METER_IDS, meterLabel } from '@/lib/music/meter'
 import { Knob } from './knob'
 import { PiecePalette, type PalettePiece } from './creative/piece-palette'
-import { InstrumentParameters, type InstrumentParamsTab } from './creative/instrument-parameters'
+import { InstrumentParameters, paramsSection } from './creative/instrument-parameters'
+import { useParamsScope } from '@/hooks/use-params-scope'
 import { NoteParamsHostContext, type NoteParamsSelection } from './music-note-params'
 import { MusicPerformanceControls } from './music-performance-controls'
 import { InfoTip, HelpLabel } from './info-tip'
@@ -147,18 +148,11 @@ export function CreativeStudio() {
   const [selectedId, setSelectedId] = useState('w:b1')
   const [soloIds, setSoloIds] = useState<Set<string>>(() => new Set())
   const soloMemoryRef = useRef<string[] | null>(null)
-  // A note picked in the Instrument's MIDI editor opens the Note tab; deselecting it goes back.
-  const [paramsTab, setParamsTab] = useState<InstrumentParamsTab>('tuning')
+  // A note picked in the MIDI editor opens the Note scope; a section picked in the arrangement strip opens Section.
   const [noteSelection, setNoteSelection] = useState<NoteParamsSelection | null>(null)
-  const pieceParamsTabRef = useRef<InstrumentParamsTab>('tuning')
-  const hadNoteRef = useRef(false)
-  useEffect(() => {
-    const hasNote = !!noteSelection
-    if (hasNote === hadNoteRef.current) return
-    hadNoteRef.current = hasNote
-    if (hasNote) setParamsTab(tab => { if (tab !== 'note') pieceParamsTabRef.current = tab; return 'note' })
-    else setParamsTab(tab => tab === 'note' ? pieceParamsTabRef.current : tab)
-  }, [noteSelection])
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
+  const sectionExists = !!selectedSectionId && session.arrangement.sections.some(section => section.id === selectedSectionId)
+  const params = useParamsScope(noteSelection, sectionExists ? selectedSectionId : null)
   const soloCycleIdsRef = useRef<Set<string>>(new Set())
   const [boardSelected, setBoardSelected] = useState(true)
   const [account, setAccount] = useState<CreativeAccount | null>(null)
@@ -663,6 +657,8 @@ export function CreativeStudio() {
       harmony={session.harmony}
       onArrangementChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))}
       onSeek={music.seekSection}
+      selectedSectionId={sectionExists ? selectedSectionId : null}
+      onSelectSection={id => { setSelectedSectionId(id); params.showSection() }}
       onSelect={square => {
         const piece = square && boardPieces.find(item => item.square === square)
         if (piece) select(piece.id)
@@ -702,9 +698,10 @@ export function CreativeStudio() {
           <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
         </NoteParamsHostContext.Provider>
         <InstrumentParameters instrument={instrument} effects={effects} mapping={mapping}
-          updateInstrument={updateInstrument} updateEffects={updateEffects} updateMapping={updateMapping}
+          updateInstrument={patch => updateInstrument(patch as Partial<Instrument>)} updateEffects={updateEffects} updateMapping={updateMapping}
           duckSources={duckSourceOptions(session.pieces, session.instruments, selected)}
-          tab={paramsTab} onTab={setParamsTab} noteSelection={noteSelection} />
+          tab={params.tab} onTab={params.setTab} scope={params.scope} onScope={params.setScope} noteSelection={noteSelection}
+          section={paramsSection(session.arrangement, instrument, sectionExists ? selectedSectionId : null)} />
         <MusicPerformanceControls key={selectedId} arrangement={session.arrangement} override={music.snapshot.sectionOverrides?.[selectedId]} instrument={instrument} onChange={updateInstrument} monitor={music.monitor} />
       </section>
     </aside>

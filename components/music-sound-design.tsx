@@ -5,7 +5,7 @@ import { DELAY_TIMES, INSTRUMENT_ROLES, LFO_SHAPES, type Instrument, type Instru
 import { instrumentRole } from '@/lib/music/sound-design'
 import { Knob, LARGE_KNOB_SIZE } from './knob'
 import { ToggleCell } from './music-note-params'
-import { ParameterKnob, ParameterSelect, ParameterToggle } from './creative/parameter-range'
+import { ParameterKnob, ParameterSelect, ParameterToggle, type ParameterScope } from './creative/parameter-range'
 
 export interface DuckSource { slot: string; name: string }
 const LFO_LABELS = { none: 'Off', lpf: 'LPF', gain: 'Gain', pan: 'Pan', pitch: 'Pitch' } as const
@@ -23,20 +23,29 @@ export function SelectCell<T extends string>({ label, ariaLabel, value, options,
   </div>
 }
 
+// Instrument field behind each cell, by its full name.
+const FIELDS: Record<string, string> = { 'Filter resonance': 'resonance', 'Filter envelope depth': 'filterEnv', 'Filter envelope attack': 'filterAttack', 'Filter envelope decay': 'filterDecay',
+  'Delay time': 'delayTime', 'Delay feedback': 'delayFeedback', 'LFO target': 'lfoTarget', 'LFO period in bars': 'lfoRate', 'LFO rate in hertz': 'lfoRate', 'LFO rate unit': 'lfoUnit',
+  'LFO depth': 'lfoDepth', 'LFO shape': 'lfoShape', 'Vibrato rate': 'vibrato', 'Vibrato depth': 'vibratoDepth', 'FM index': 'fmIndex', 'FM ratio': 'fmRatio',
+  'Supersaw voices': 'unison', 'Supersaw detune': 'detune', 'Supersaw stereo spread': 'spread', 'Loop the sample': 'sampleLoop', 'Loop start': 'loopStart', 'Loop end': 'loopEnd',
+  'Sidechain source': 'duckSource', 'Sidechain depth': 'duckDepth', 'Sidechain release': 'duckRelease', 'Instrument role': 'role' }
+
 interface KnobOptions { step?: number; logarithmic?: boolean; format?: (value: number) => string; enabled?: boolean }
 
 /** The FX/MOD page of Piece Params: filter, delay, LFO, pitch, synthesis, sample loop, sidechain and role.
  * Cells follow the five-column knob grid; synthesis appears only for synths and the loop only for samples.
  * `variant="creative"` draws the cells like the Creative's Tuning tab: full names, help and the green face. */
-export function SoundDesignKnobs({ instrument, onChange, neon = true, duckSources = [], variant = 'match' }: { instrument: Instrument; onChange: (patch: InstrumentPerformanceEdit) => void; neon?: boolean; duckSources?: readonly DuckSource[]; variant?: 'match' | 'creative' }) {
+export function SoundDesignKnobs({ instrument, onChange, neon = true, duckSources = [], variant = 'match', scope, hidden }: { instrument: Instrument; onChange: (patch: InstrumentPerformanceEdit) => void; neon?: boolean; duckSources?: readonly DuckSource[]; variant?: 'match' | 'creative'
+  /** Section scope of each field (creative variant). */ scope?: (field: string) => ParameterScope | undefined
+  /** Fields left out, e.g. the bus-level ones in a section. */ hidden?: (field: string) => boolean }) {
   const creative = variant === 'creative'
   const sample = instrument.source?.kind === 'sample', unpitched = sample && instrument.source?.kind === 'sample' && !instrument.source.pitched
   // Short label for the match's compact grid; the full name labels the Creative cell.
-  const knob = (label: string, name: string, value: number, min: number, max: number, onValue: (value: number) => void, options: KnobOptions = {}) => creative
-    ? <ParameterKnob label={name} value={value} min={min} max={max} step={options.step ?? .01} logarithmic={options.logarithmic} updateMode="on-release" formatValue={options.format} disabled={!neon || options.enabled === false} onChange={onValue} />
+  const knob = (label: string, name: string, value: number, min: number, max: number, onValue: (value: number) => void, options: KnobOptions = {}) => hidden?.(FIELDS[name]) ? null : creative
+    ? <ParameterKnob scope={scope?.(FIELDS[name])} label={name} value={value} min={min} max={max} step={options.step ?? .01} logarithmic={options.logarithmic} updateMode="on-release" formatValue={options.format} disabled={!neon || options.enabled === false} onChange={onValue} />
     : <Knob labelPosition="bottom" size={LARGE_KNOB_SIZE} label={label} ariaLabel={name} value={value} min={min} max={max} step={options.step ?? .01} logarithmic={options.logarithmic} updateMode="on-release" formatValue={options.format} onChange={onValue} neon={neon && options.enabled !== false} />
-  const select = <T extends string,>(label: string, name: string, value: T, options: readonly (readonly [T, string])[], onValue: (value: T) => void, { title, enabled = true }: { title?: string; enabled?: boolean } = {}): ReactNode => creative
-    ? <ParameterSelect label={name} value={value} options={options} disabled={!neon || !enabled} onChange={onValue} />
+  const select = <T extends string,>(label: string, name: string, value: T, options: readonly (readonly [T, string])[], onValue: (value: T) => void, { title, enabled = true }: { title?: string; enabled?: boolean } = {}): ReactNode => hidden?.(FIELDS[name]) ? null : creative
+    ? <ParameterSelect scope={scope?.(FIELDS[name])} label={name} value={value} options={options} disabled={!neon || !enabled} onChange={onValue} />
     : <SelectCell label={label} ariaLabel={name} title={title} value={value} options={options} onChange={onValue} neon={neon && enabled} />
   const lfo = instrument.lfoTarget ?? 'none', bars = instrument.lfoUnit !== 'hz', ducking = !!instrument.duckSource
   const seconds = (value: number) => `${value < .1 ? value.toFixed(3) : value.toFixed(2)} s`
@@ -69,7 +78,7 @@ export function SoundDesignKnobs({ instrument, onChange, neon = true, duckSource
     </>}
     {sample && <>
       {creative
-        ? <ParameterToggle label="Loop the sample" checked={!!instrument.sampleLoop} disabled={!neon} onChange={sampleLoop => onChange({ sampleLoop: sampleLoop || undefined })} />
+        ? <ParameterToggle scope={scope?.('sampleLoop')} label="Loop the sample" checked={!!instrument.sampleLoop} disabled={!neon} onChange={sampleLoop => onChange({ sampleLoop: sampleLoop || undefined })} />
         : <ToggleCell label="LOOP" ariaLabel="Loop the sample" title="Repeat the region between IN and OUT while the note lasts" checked={!!instrument.sampleLoop} onChange={sampleLoop => onChange({ sampleLoop: sampleLoop || undefined })} neon={neon} />}
       {knob('IN', 'Loop start', instrument.loopStart ?? 0, 0, 1, loopStart => onChange({ loopStart: Math.min(loopStart, (instrument.loopEnd ?? 1) - .01) }), { format: value => `${Math.round(value * 100)}%`, enabled: !!instrument.sampleLoop })}
       {knob('OUT', 'Loop end', instrument.loopEnd ?? 1, 0, 1, loopEnd => onChange({ loopEnd: Math.max(loopEnd, (instrument.loopStart ?? 0) + .01) }), { format: value => `${Math.round(value * 100)}%`, enabled: !!instrument.sampleLoop })}

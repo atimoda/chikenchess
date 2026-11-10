@@ -17,6 +17,11 @@ export interface RollLane {
   cutoff?: number
   /** The notes take the piece's vibrato (or a gentle default). */
   vibrato?: boolean
+  /** The note's own release (s), reverb send, delay send and drive, replacing the piece's. */
+  release?: number
+  reverb?: number
+  delay?: number
+  drive?: number
 }
 export function optimizeRoll(roll: PianoRoll): RollLane[] {
   type Event = { start: number; duration: number; notes: number[] }
@@ -26,7 +31,9 @@ export function optimizeRoll(roll: PianoRoll): RollLane[] {
     const controls = { velocity: note.velocity, slide: note.slide, slideSeconds: note.slideSeconds, pan: note.pan,
       ratchet: note.ratchet !== undefined && note.ratchet > 1 ? note.ratchet : undefined,
       chance: note.chance !== undefined && note.chance < 1 ? note.chance : undefined,
-      ...(note.cutoff ? { cutoff: note.cutoff } : {}), ...(note.vibrato ? { vibrato: true } : {}) }
+      ...(note.cutoff ? { cutoff: note.cutoff } : {}), ...(note.vibrato ? { vibrato: true } : {}),
+      ...(note.release !== undefined ? { release: note.release } : {}), ...(note.reverb !== undefined ? { reverb: note.reverb } : {}),
+      ...(note.delay !== undefined ? { delay: note.delay } : {}), ...(note.drive !== undefined ? { drive: note.drive } : {}) }
     const key = JSON.stringify(controls)
     let group = groups.get(key)
     if (!group) { group = { controls, events: [] }; groups.set(key, group) }

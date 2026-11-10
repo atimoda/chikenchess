@@ -31,13 +31,16 @@ function reordered(sections: Section[], id: string, target: number) {
 
 /** Global Sections bar. A click queues a section; a double click opens its inline
  * editor row below the bar. Without `onChange` the bar only queues sections. */
-export function MusicArrangementControls({ arrangement, monitor, harmony, onChange, onSeek, compact = false }: {
+export function MusicArrangementControls({ arrangement, monitor, harmony, onChange, onSeek, compact = false, selectedId, onSelect }: {
   arrangement: Arrangement
   monitor: MusicMonitor
   harmony: HarmonyPlanId
   onChange?: (arrangement: Arrangement) => void
   onSeek: (sectionId: string) => void
   compact?: boolean
+  /** Section picked for the instrument editor's Section scope; a click picks it at once. */
+  selectedId?: string | null
+  onSelect?: (sectionId: string) => void
 }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const position = arrangementPosition(arrangement, frame.cycle, beatsPerBar(frame.transport?.meter))
@@ -174,6 +177,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
 
   const clickSection = (section: Section, detail: number) => {
     if (suppressClick.current && detail !== 0) return
+    onSelect?.(section.id)
     // Keyboard requests are immediate; pointer clicks wait to distinguish a double click/tap.
     if (detail === 0) {
       clearPendingSeek()
@@ -278,7 +282,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
         const playing = frame.running && position.section.id === item.id
         const next = frame.transport?.nextSectionId === item.id
         return <button type="button" key={item.id} className={controls.sectionButton}
-          data-section-id={item.id} data-playing={playing || undefined} data-next={next || undefined} data-dragging={draggingId === item.id || undefined} data-editing={editingId === item.id || undefined}
+          data-section-id={item.id} data-playing={playing || undefined} data-next={next || undefined} data-dragging={draggingId === item.id || undefined} data-editing={editingId === item.id || undefined} data-selected={selectedId === item.id || undefined}
           aria-label={item.label + ', ' + item.beats + ' beats' + (playing ? ', playing' : '') + (next ? ', next section' : '')}
           aria-current={playing ? 'true' : undefined} aria-keyshortcuts={onChange ? 'Enter Space F2 Alt+ArrowLeft Alt+ArrowRight Alt+ArrowUp Alt+ArrowDown' : 'Enter Space'} aria-expanded={onChange ? editingId === item.id : undefined}
           style={{ flexGrow: item.beats }} title={item.label + ' · ' + item.beats + ' beats · Click to queue it next' + (onChange ? '; double-click or F2 to edit' : '')}

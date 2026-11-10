@@ -66,26 +66,30 @@ export function Range({ label, value, min, max, step = 0.01, unit = '', help = t
   </label>
 }
 
-export function ParameterKnob({ label, value, min, max, step = 0.01, unit = '', logarithmic = false, formatValue, updateMode = 'immediate', disabled = false, onChange }: {
-  label: string; value: number; min: number; max: number; step?: number; unit?: string; logarithmic?: boolean; formatValue?: (value: number) => string; updateMode?: KnobUpdateMode; disabled?: boolean; onChange: (value: number) => void
+/** Section/Note scope of a cell: an inherited value is drawn faded and a double click on an own value returns it to the inherited one. */
+export interface ParameterScope { inherited: boolean; onReset: () => void }
+const scopeProps = (scope?: ParameterScope) => scope ? { 'data-inherited': scope.inherited || undefined, onDoubleClick: scope.inherited ? undefined : scope.onReset } : {}
+
+export function ParameterKnob({ label, value, min, max, step = 0.01, unit = '', logarithmic = false, formatValue, updateMode = 'immediate', disabled = false, scope, monitorValue, onChange }: {
+  label: string; value: number; min: number; max: number; step?: number; unit?: string; logarithmic?: boolean; formatValue?: (value: number) => string; updateMode?: KnobUpdateMode; disabled?: boolean; scope?: ParameterScope; monitorValue?: number; onChange: (value: number) => void
 }) {
   const defaultFormat = (current: number) => {
     if (unit === ' Hz') return current >= 1000 ? `${Number((current / 1000).toFixed(1))}kHz` : `${Number(current.toFixed(3))}Hz`
     return `${Number(current.toFixed(3))}${unit.trim()}`
   }
-  return <div className={styles.parameterKnob}>
+  return <div className={styles.parameterKnob} {...scopeProps(scope)}>
     <InfoTip label={label}>{RANGE_HELP[label] ?? `Adjusts ${label.toLowerCase()} for this setup. Range: ${min} to ${max}${unit}.`}</InfoTip>
-    <Knob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} neon={!disabled} onChange={onChange} />
+    <Knob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} neon={!disabled} monitorValue={monitorValue} onChange={onChange} />
   </div>
 }
 
 const help = (label: string) => RANGE_HELP[label] ?? `Chooses the ${label.toLowerCase()} for this setup.`
 
 /** A choice in a knob cell: the same help, label and green face as ParameterKnob. */
-export function ParameterSelect<T extends string>({ label, value, options, disabled = false, onChange }: {
-  label: string; value: T; options: readonly (readonly [T, string])[]; disabled?: boolean; onChange: (value: T) => void
+export function ParameterSelect<T extends string>({ label, value, options, disabled = false, scope, onChange }: {
+  label: string; value: T; options: readonly (readonly [T, string])[]; disabled?: boolean; scope?: ParameterScope; onChange: (value: T) => void
 }) {
-  return <div className={styles.parameterKnob} data-disabled={disabled || undefined}>
+  return <div className={styles.parameterKnob} data-disabled={disabled || undefined} {...scopeProps(scope)}>
     <InfoTip label={label}>{help(label)}</InfoTip>
     <span className={styles.parameterCellFace}>
       <select aria-label={label} className={styles.parameterSelect} value={value} disabled={disabled} onChange={event => onChange(event.target.value as T)}>
@@ -97,10 +101,10 @@ export function ParameterSelect<T extends string>({ label, value, options, disab
 }
 
 /** An on/off switch in a knob cell, round like the knob face. */
-export function ParameterToggle({ label, checked, disabled = false, onChange }: {
-  label: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void
+export function ParameterToggle({ label, checked, disabled = false, scope, onChange }: {
+  label: string; checked: boolean; disabled?: boolean; scope?: ParameterScope; onChange: (checked: boolean) => void
 }) {
-  return <div className={styles.parameterKnob} data-disabled={disabled || undefined}>
+  return <div className={styles.parameterKnob} data-disabled={disabled || undefined} {...scopeProps(scope)}>
     <InfoTip label={label}>{help(label)}</InfoTip>
     <span className={styles.parameterCellFace}>
       <button type="button" role="switch" aria-label={label} aria-checked={checked} disabled={disabled} className={styles.parameterToggle} onClick={() => onChange(!checked)}>{checked ? 'ON' : 'OFF'}</button>
@@ -109,11 +113,11 @@ export function ParameterToggle({ label, checked, disabled = false, onChange }: 
   </div>
 }
 
-export function ParameterRangeKnob({ label, value, min, max, step = 1, formatValue, formatSingleValue, updateMode = 'immediate', onChange }: {
-  label: string; value: IntegerRange; min: number; max: number; step?: number; formatValue?: (value: IntegerRange) => string; formatSingleValue?: (value: number) => string; updateMode?: KnobUpdateMode; onChange: (value: IntegerRange) => void
+export function ParameterRangeKnob({ label, value, min, max, step = 1, formatValue, formatSingleValue, updateMode = 'immediate', showFrequency = true, scope, monitorValue, onChange }: {
+  label: string; value: IntegerRange; min: number; max: number; step?: number; formatValue?: (value: IntegerRange) => string; formatSingleValue?: (value: number) => string; updateMode?: KnobUpdateMode; showFrequency?: boolean; scope?: ParameterScope; monitorValue?: number; onChange: (value: IntegerRange) => void
 }) {
-  return <div className={styles.parameterKnob}>
+  return <div className={styles.parameterKnob} {...scopeProps(scope)}>
     <InfoTip label={label}>{RANGE_HELP[label] ?? `Adjusts the limits of ${label.toLowerCase()} between ${min} and ${max}.`}</InfoTip>
-    <RangeKnob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} showFrequency updateMode={updateMode} formatValue={formatValue ?? (range => `${range.first}–${range.second}`)} formatSingleValue={formatSingleValue} onChange={onChange} />
+    <RangeKnob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} showFrequency={showFrequency} monitorValue={monitorValue} updateMode={updateMode} formatValue={formatValue ?? (range => `${range.first}–${range.second}`)} formatSingleValue={formatSingleValue} onChange={onChange} />
   </div>
 }

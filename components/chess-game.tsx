@@ -461,6 +461,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const [songHover, setSongHover] = useState<SongPanelHover | null>(null)
   // Piece Params shows the Song & Instruments list until the full params are opened.
   const [paramsOpen, setParamsOpen] = useState(false)
+  // Section picked in the Sections bar: the Section scope of Piece params edits it.
+  const [paramsSectionId, setParamsSectionId] = useState<string | null>(null)
   const [songMidiOn, setSongMidiOn] = useState(true)
   const mixerManuallyClosedRef = useRef(false)
   const musicWidgetsBeforeMuteRef = useRef<{
@@ -1769,7 +1771,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
                   <MusicVoiceReadout variationTabs showStatus={false} loopOn={music.activeIds.has(music.selected.id)} onLoopToggle={() => { if (music.selected) toggleSongPiece(music.selected.square) }} soloOn={music.soloIds.has(music.selected.id)} onSoloToggle={() => { if (music.selected) soloSongPiece(music.selected.id) }} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
                 </> : undefined}
-                sections={music.kit ? <MusicSongSections arrangement={music.kit.arrangement} harmony={music.kit.harmony} monitor={music.monitor} onChange={music.updateArrangement} onSeek={music.seekSection} /> : undefined}
+                arrangement={music.kit?.arrangement}
+                selectedSectionId={paramsSectionId}
+                sections={music.kit ? <MusicSongSections arrangement={music.kit.arrangement} harmony={music.kit.harmony} monitor={music.monitor} onChange={music.updateArrangement} onSeek={music.seekSection} selectedSectionId={paramsSectionId} onSelectSection={setParamsSectionId} /> : undefined}
                 song={music.kit ? <MusicSongPanel
                   pieces={music.snapshot.pieces}
                   names={Object.fromEntries(music.snapshot.pieces.map(piece => [piece.id, music.snapshot.instruments?.[piece.id]?.name]))}
@@ -1780,6 +1784,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   harmony={music.kit.harmony}
                   onArrangementChange={music.updateArrangement}
                   onSeek={music.seekSection}
+                  selectedSectionId={paramsSectionId}
+                  onSelectSection={setParamsSectionId}
                   onSelect={square => music.select(square)}
                   onOpenParams={square => { setSongHover(null); music.select(square); setParamsOpen(true) }}
                   snapshot={music.snapshot}

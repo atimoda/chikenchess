@@ -7,7 +7,8 @@ import { sampleRegistration } from './sample-banks'
 import { voiceSpecs } from './voice-spec'
 import { LFO_SIGNALS, noteVibrato } from './sound-design'
 import { loopClockCode, loopRange } from './loop-ranges'
-import { eventRangeConfig, eventRangePattern } from './range-frequency'
+import { eventRangeConfig, eventRangePattern, sectionBounds } from './range-frequency'
+import { cleanDrive, noteSound, sectionBankVoice } from './pattern-compiler'
 import type { ParameterRange } from './model'
 import type { MusicSnapshot, Preview, VoiceSpec } from './runtime-types'
 
@@ -34,24 +35,26 @@ export function renderMusicCode(state: MusicSnapshot, preview: Preview | null): 
 function voiceCode(voice: VoiceSpec): string {
   if (voice.performance) {
     const plan = voice.performance
-    const baseVoice = { ...voice, instrument: { ...voice.instrument, driveRange: undefined, reverbRange: undefined, swingRange: undefined, lpfRange: undefined, playChance: undefined,
-      ...(voice.instrument.octaveRange ? { octaveRange: undefined } : {}),
-      ...(voice.instrument.swingRange ? { extraSwing: undefined } : {}) } }
-    const variations = [...new Set(plan.steps.filter(step=>step.active).flatMap(step=>step.fill?[step.variation,step.fill.variation]:[step.variation]))]
-    const declarations = variations.map(index=>`const part${index} = ${voiceCode({...baseVoice,performance:undefined,harmonic:undefined,sectionPattern:String(index)})};`).join('\n    ')
-    const part = (step: { active: boolean; variation: number; transpose: number }) => step.active?`part${step.variation}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence'
-    const banks = [...plan.steps.map(part), ...plan.steps.flatMap(step => step.fill ? [part({ ...step, variation: step.fill.variation })] : [])]
+    // One declaration per MIDI bank, and per section that changes parameters.
+    const name = (variation: number, index: number) => voice.sections?.[index] ? `${variation}_${index}` : `${variation}`
+    const used = new Map<string, { variation: number; index: number }>()
+    plan.steps.forEach((step, index) => { if (step.active) for (const variation of step.fill ? [step.variation, step.fill.variation] : [step.variation]) used.set(name(variation, index), { variation, index }) })
+    const declarations = [...used].map(([id, { variation, index }]) => `const part${id} = ${voiceCode(sectionBankVoice(voice, voice.sections?.[index], variation))};`).join('\n    ')
+    const part = (step: { active: boolean; variation: number; transpose: number }, index: number) => step.active?`part${name(step.variation, index)}${!voice.unpitched&&step.transpose?`.transpose(${step.transpose})`:''}`:'silence'
+    const banks = [...plan.steps.map(part), ...plan.steps.flatMap((step, index) => step.fill ? [part({ ...step, variation: step.fill.variation }, index)] : [])]
     const selector = JSON.stringify(performancePattern(plan, true, voice.beatsPerBar))
     const form = `${plan.restart ? 'pickRestart' : 'pick'}([${banks.join(', ')}], mini(${selector}))`
     const source = `(() => {\n    ${declarations}\n    return ${form};\n  })()`
-    return rangesCode(voice, voice.harmonic ? `(${harmonicPattern.toString()})(${source},${JSON.stringify(voice.harmonic)})` : source)
+    const outer = voice.sectionChance ? { ...voice, instrument: { ...voice.instrument, playChance: undefined } } : voice
+    return `${rangesCode(outer, voice.harmonic ? `(${harmonicPattern.toString()})(${source},${JSON.stringify(voice.harmonic)})` : source)}.withValue(({ccNote, ...v}) => ccNote ? (${cleanDrive.toString()})({...v, ...ccNote}) : v)`
   }
   const event = voice.unpitched ? 'n' : 'note'
   const fixed = /^\d+$/.test(voice.sectionPattern) ? Number(voice.sectionPattern) : undefined
   const banks = voice.pianoRolls.map((roll, i) => {
     if (fixed !== undefined && i !== fixed % voice.pianoRolls.length) return 'silence'
     return stackCode(optimizeRoll(roll).map(lane => {
-      const overrides = { ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .5 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}),
+      const own = noteSound(lane, voice.instrument)
+      const overrides = { ...own, ...(own ? { ccNote: own } : {}), ...(lane.slide && !voice.unpitched ? { penv: lane.slide, pattack: lane.slideSeconds ?? .5 } : {}), ...(lane.pan !== undefined ? { pan: lane.pan } : {}),
         ...(lane.vibrato && !voice.unpitched ? noteVibrato(voice.instrument, voice.controls) : {}) }
       const cutoff = lane.cutoff && voice.controls.lpf !== undefined ? `.withValue(v => ({...v, ccOverrides: {...v.ccOverrides, cutoff: ${Math.max(20, Math.min(20000, Number(voice.controls.lpf) * (1 + lane.cutoff)))}}}))` : ''
       const chance = lane.chance !== undefined && !voice.manual ? `.degradeBy(${Number((1 - lane.chance).toFixed(12))})` : ''
@@ -68,12 +71,14 @@ function voiceCode(voice: VoiceSpec): string {
   }
   source = rangesCode(voice, source)
   const duck = voice.duck ? `, duckorbit: ${JSON.stringify(voice.duck.orbits)}, duckdepth: ${JSON.stringify(voice.duck.depth)}, duckattack: ${JSON.stringify(voice.duck.release)}, duckonset: 0.004` : ''
-  return `${source}.withValue(({ccOverrides, ...v}) => ({...v, ...ccOverrides${duck}}))`
+  return `${source}.withValue(({ccOverrides, ...v}) => (${cleanDrive.toString()})({...v, ...ccOverrides${duck}}))`
 }
 
 function rangeCode(voice: VoiceSpec, range: ParameterRange, target: 'drive' | 'reverb' | 'swing') {
   const recipe = loopRange(voice, range, target)
-  if (recipe.min === recipe.max) return `mini(${JSON.stringify(String(recipe.min))})`
+  const bounds = target === 'swing' ? undefined : sectionBounds(voice, target)
+  if (recipe.min === recipe.max && !(bounds && recipe.clock)) return `mini(${JSON.stringify(String(recipe.min))})`
+  if (recipe.clock && bounds) return `(() => {const r=rand.seed(${recipe.seed}),b=${JSON.stringify(bounds)};return signal(time=>{${loopClockCode(recipe.clock)}const n=c.steps.findIndex(s=>local<s.end),[lo,hi]=b[n<0?c.steps.length-1:n]??[${recipe.min},${recipe.max}];return lo+r.queryArc(index,index+.0001)[0].value*(hi-lo);});})()`
   if (recipe.clock) return `(() => {const r=rand.seed(${recipe.seed}).range(${recipe.min},${recipe.max});return signal(time=>{${loopClockCode(recipe.clock)}return r.queryArc(index,index+.0001)[0].value;});})()`
   if (recipe.selection) return `(() => {const r=rand.seed(${recipe.seed}).range(${recipe.min},${recipe.max}),c=${JSON.stringify(recipe.selection)},selector=mini(c.pattern);return signal(time=>{const t=Number(time),section=selector.queryArc(t,t+.0001)[0],variation=Number(section?.value??0)%c.bars.length,start=Number(section?.whole?.begin??0);const index=c.restart?Math.floor(start*4096)+Math.floor((t-start)/c.bars[variation])*8+variation:Math.floor(t/c.bars[variation])*c.bars.length+variation;return r.queryArc(index,index+.0001)[0].value;});})()`
   return `rand.seed(${recipe.seed}).range(${recipe.min},${recipe.max}).segment(1).slow(${recipe.bars})`
