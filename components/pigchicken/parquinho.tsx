@@ -1092,8 +1092,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       if (hitboxesRef.current) {
         drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
-          const ms = eng.getMotionState()
-          return { id, shoulder: eng.getState().shoulder, box: { l: ms.x - 45 * ms.scale, r: ms.x + 45 * ms.scale, t: ms.y - 200 * ms.scale, b: ms.y } }
+          const ms = eng.getMotionState(), es = eng.getState()
+          return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, box: { l: ms.x - 45 * ms.scale, r: ms.x + 45 * ms.scale, t: ms.y - 200 * ms.scale, b: ms.y } }
         }))
       }
       if (scaleFanRef.current > 0) {

@@ -131,3 +131,29 @@ test('new defaults migrate old untouched Bicada values and preserve saved custom
     for (const [key, value] of Object.entries(saved.peck)) assert.equal(recent[key], value)
   } finally { globalThis.window = previous }
 })
+
+test('the Bicada hit area picks up a new item it touches beyond her body reach, without equipping it', () => {
+  const c = createCombat()
+  const reach = DEFAULT_ITEMS.peck.meleeRange
+  assert.ok(reach - 4 > 70, 'the test item has to be out of body reach')
+  c.pickups.push({ id: 911, owned: { item: 'flute', ammo: 12, durability: 0 }, x: reach - 4, y: 14, vy: 0, resting: true, noPick: 0 })
+  c.pickups.push({ id: 912, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: -(reach - 4), y: 14, vy: 0, resting: true, noPick: 0 })
+  hold(c)
+  assert.equal(c.pickups.length, 2)
+  finish(c)
+  assert.deepEqual(c.inventory.filter(Boolean).map(o => o.item), ['flute'])
+  assert.equal(c.held, null, 'hands stay empty')
+  assert.deepEqual(c.pickups.map(p => p.id), [912], 'the item behind her stays')
+  assert.ok(c.peckZone === null)
+})
+
+test('letting a Bicada go also stores the item offered at her body', () => {
+  const c = createCombat()
+  c.pickups.push({ id: 913, owned: { item: 'flute', ammo: 12, durability: 0 }, x: -30, y: 0, vy: 0, resting: true, noPick: 0 })
+  hold(c)
+  assert.equal(c.pickups.length, 1, 'holding Fire does not take it')
+  step(c)
+  assert.deepEqual(c.inventory.filter(Boolean).map(o => o.item), ['flute'])
+  assert.equal(c.held, null)
+  assert.ok(c.peckZone, 'the peck still goes out')
+})

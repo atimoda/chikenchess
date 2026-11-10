@@ -126,7 +126,12 @@ export const SLOTS = INVENTORY_MAX
 const NO_SWITCH = { pick: 0, slot: 0, groupPick: null }
 const THROW_GRAVITY = 1500
 const ITEM_GRAVITY = 1800
-const SWING_PICKUP_R = 14 // an item on the floor, as a circle for the blow's hit area (px)
+// an item on the floor, as a circle for the blows' hit areas (Golpe and Bicada): radius (px), centred this far above
+// where it rests
+export const PICKUP_HIT_R = 14
+const SWING_PICKUP_R = PICKUP_HIT_R
+// how near her feet (horizontally, vertically) an item on the floor counts as touching her body (offered to Pegar)
+export const pickupReach = (scale: number) => ({ x: (46 * scale + 10) * 1.15, y: 60 * scale + 20 })
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const DEG = Math.PI / 180
@@ -1233,6 +1238,8 @@ export function createCombat() {
       if (peck) return peckPose(peck)
       return peckPrep > 0 ? { angle: aimAngle, pull: items.peck.peckPull * Math.min(1, peckPrep / 0.12), reach: items.peck.meleeRange, thrust: 0 } : null
     },
+    // the Bicada's hit area while the beak is out (the Hit-boxes layer): aim, reach, cone and whether it has landed
+    get peckZone() { return peck && !held() ? { angle: peck.angle, reach: peck.reach, arc: Math.min(160, Math.max(0, items.peck.meleeArc)) * DEG, hit: peck.hit } : null },
     // the item she stands on that grab would take (drawn with a blue outline)
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
@@ -1367,6 +1374,7 @@ export function createCombat() {
     // world: false steps only the current player's loadout (another local player in the same frame)
     step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      let peckStarted = false
       // rearranging the bar never changes what she holds (nor what is being done with it)
       if (input.move) moveSlot(input.move.from, input.move.to, input.move.after)
       if (input.deselect) {
@@ -1478,7 +1486,7 @@ export function createCombat() {
           peck.hit = true
           const at = opts.peckOrigin ?? origin, d = items.peck
           // Sweep a narrow cone from the neck base; solid scenery stops the beak.
-          const hit = new Set<number>()
+          const hit = new Set<number>(), touched = new Set<Pickup>()
           const arc = Math.min(160, Math.max(0, d.meleeArc)) * DEG
           for (let ray = 0; ray <= 8; ray++) {
             const a = peck.angle + (ray / 8 - 0.5) * arc
@@ -1490,8 +1498,17 @@ export function createCombat() {
                 hit.add(t.id)
                 hitTarget(t, d.meleeDamage, Math.cos(peck!.angle) * d.meleePush, x, y)
               })
+              for (const p of pickups) if (Math.hypot(x - p.x, y - (p.y - PICKUP_HIT_R)) <= PICKUP_HIT_R) touched.add(p)
             }
           }
+          // the beak also collects the new items it touches, like Golpe: stored without changing hands, never swapped
+          touched.forEach(p => {
+            const i = pickups.indexOf(p)
+            if (i < 0 || !canTake(p)) return
+            pickups.splice(i, 1)
+            if (!pickUp(p, false)) pickups.splice(i, 0, p)
+            else if (hover === p) hover = null
+          })
         }
         if (peck.t >= peck.time) peck = null
       }
@@ -1519,7 +1536,7 @@ export function createCombat() {
           if (!input.fire && prevFire && peckPrep > 0) {
             const p = items.peck
             peck = { angle: targetAngle, pull: p.peckPull * Math.min(1, peckPrep / 0.12), reach: p.meleeRange, t: 0, time: Math.max(0.05, p.meleeTime), hit: false }
-            peckPrep = 0; peckCool = Math.max(p.meleeCooldown, p.meleeTime); sound('swing', null)
+            peckPrep = 0; peckCool = Math.max(p.meleeCooldown, p.meleeTime); sound('swing', null); peckStarted = true
           }
         }
       } else if (h && d.consumable) {
@@ -1635,8 +1652,7 @@ export function createCombat() {
 
       // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
       hover = null; hoverOwned = null
-      const pickupReachX = (46 * body.scale + 10) * 1.15
-      const pickupReachY = 60 * body.scale + 20
+      const { x: pickupReachX, y: pickupReachY } = pickupReach(body.scale)
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
         if (world) p.noPick = Math.max(0, p.noPick - dt)
@@ -1657,7 +1673,8 @@ export function createCombat() {
       // the offered item is outlined; Usar/Pegar takes it into a free slot, or swaps it with the held one when full
       // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
       if (!input.grabHeld) heldTaken.clear()
-      const meleePickup = !!input.melee && !input.grab && !input.grabHeld && !!hover
+      // Golpe or a Bicada (when it is let go) also stores the new item offered at her body
+      const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover
       const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       if (grabNow && hover && pickups.includes(hover) && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)

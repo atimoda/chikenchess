@@ -2,9 +2,11 @@
 // Yellow: each player's blow sector while it lasts (centre, aim, arc and reach of inSector; the 20 px core always
 // counts). Red: the targets' boxes (aliens, zombies, dummies, the undead, the temple's buttons). Cyan: each player's
 // box (what explosions and incoming notes hit). Thin rings: shots and notes in flight with their radius.
-import type { Combat } from "@/lib/pigchicken/combat"
+// Green: each item on the floor (the circle the Golpe and the Bicada touch) and, dashed, each player's reach at her
+// feet for items (what is offered to Pegar). Orange: the Bicada's cone from the neck while the beak is out.
+import { PICKUP_HIT_R, pickupReach, type Combat } from "@/lib/pigchicken/combat"
 
-export type HitboxPlayer = { id: string; shoulder: { x: number; y: number }; box: { l: number; r: number; t: number; b: number } }
+export type HitboxPlayer = { id: string; shoulder: { x: number; y: number }; neck: { x: number; y: number }; feet: { x: number; y: number }; scale: number; box: { l: number; r: number; t: number; b: number } }
 
 export function drawHitboxes(ctx: CanvasRenderingContext2D, combat: Combat, camX: number, camY: number, players: HitboxPlayer[]) {
   ctx.save()
@@ -20,6 +22,17 @@ export function drawHitboxes(ctx: CanvasRenderingContext2D, combat: Combat, camX
   ctx.strokeStyle = "#4cc9f0"; ctx.setLineDash([5, 4])
   for (const p of players) ctx.strokeRect(p.box.l, p.box.t, p.box.r - p.box.l, p.box.b - p.box.t)
   ctx.setLineDash([])
+  // the items on the floor and the players' reach for them
+  ctx.strokeStyle = "#7ae582"; ctx.fillStyle = "rgba(122,229,130,0.12)"
+  for (const p of combat.pickups) {
+    ctx.beginPath(); ctx.arc(p.x - camX, p.y - PICKUP_HIT_R + camY, PICKUP_HIT_R, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+  }
+  ctx.strokeStyle = "rgba(122,229,130,0.7)"; ctx.setLineDash([3, 4])
+  for (const p of players) {
+    const r = pickupReach(p.scale)
+    ctx.strokeRect(p.feet.x - r.x, p.feet.y - r.y, r.x * 2, r.y * 2)
+  }
+  ctx.setLineDash([])
   // shots and notes in flight
   ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 1
   for (const b of combat.bullets) { ctx.beginPath(); ctx.arc(b.x - camX, b.y + camY, Math.max(2, b.size), 0, Math.PI * 2); ctx.stroke() }
@@ -28,6 +41,14 @@ export function drawHitboxes(ctx: CanvasRenderingContext2D, combat: Combat, camX
   ctx.lineWidth = 2
   for (const p of players) {
     combat.use(p.id)
+    const pk = combat.peckZone
+    if (pk) {
+      const { x, y } = p.neck
+      ctx.strokeStyle = pk.hit ? "#ff9f43" : "rgba(255,159,67,0.6)"
+      ctx.fillStyle = pk.hit ? "rgba(255,159,67,0.22)" : "rgba(255,159,67,0.08)"
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, pk.reach, pk.angle - pk.arc / 2, pk.angle + pk.arc / 2); ctx.closePath()
+      ctx.fill(); ctx.stroke()
+    }
     const sw = combat.swing
     if (!sw) continue
     const { x, y } = p.shoulder
