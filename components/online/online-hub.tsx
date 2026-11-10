@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, Dice5, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Music2, Play, Plus, RefreshCw, Shuffle, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
+import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, Dice5, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Music2, Play, Plus, RefreshCw, Shuffle, Shirt, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -175,7 +175,7 @@ function RunningGameMiniature({ game }: { game: RunningGame }) {
   )
 }
 
-export type OnlineHubTab = 'rooms' | 'friends' | 'profile' | 'room'
+export type OnlineHubTab = 'rooms' | 'friends' | 'profile' | 'wardrobe' | 'room'
 export interface OnlineHubProps {
   onMatch: (matchId: string) => void
   playerProfile: PlayerProfile | null
@@ -426,6 +426,15 @@ function saveHiddenFriendCodes(userId: string | undefined, hidden: Set<string>) 
   }
 }
 
+/** Wardrobe tab: placeholder until its contents are defined. */
+function WardrobePane() {
+  return <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-white/15 px-4 py-10 text-center">
+    <Shirt aria-hidden="true" className="size-8 text-primary/70" />
+    <p className="text-sm font-medium text-white/80">Vestiário</p>
+    <p className="text-xs text-white/50">Em breve: roupas e acessórios para a sua galinha.</p>
+  </div>
+}
+
 function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) => void }) {
   const { user } = useOnline()
   const { friends, loading, error, act, refresh } = useFriendList(true)
@@ -651,7 +660,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
   const [internalOpen, setInternalOpen] = useState(Boolean(inviteCode))
   const isOpen = open ?? internalOpen
   const [lobbyOpen, setLobbyOpen] = useState(false)
-  const [tab, setTab] = useState<OnlineHubTab>(initialTab === 'profile' ? 'profile' : initialTab === 'friends' ? 'friends' : 'rooms')
+  const [tab, setTab] = useState<OnlineHubTab>(initialTab === 'profile' || initialTab === 'friends' || initialTab === 'wardrobe' ? initialTab : 'rooms')
   const [_showDirectory, setShowDirectory] = useState(false)
   const [directoryError, setDirectoryError] = useState<string | null>(null)
   const roomsRefreshRevision = useRef(0)
@@ -1087,6 +1096,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     { id: 'rooms', label: 'Lobbies', icon: Globe2 },
     { id: 'friends', label: 'Friends', icon: Users },
     { id: 'profile', label: 'Profile', icon: UserRound },
+    { id: 'wardrobe', label: 'Vestiário', icon: Shirt },
   ]
   const selectTab = (id: OnlineHubTab) => {
     if (id === 'room') {
@@ -1164,10 +1174,10 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     <Dialog modal={false} open={isOpen} onOpenChange={setOpen}>
       {isOpen && <DialogContent floating closeOnInteractOutside className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent)} closeLabel="Close online panel">
         <DialogHeader className="sr-only">
-          <DialogTitle>{tab === 'rooms' ? 'Lobbies' : tab === 'friends' ? 'Friends' : 'Your profile'}</DialogTitle>
-          <DialogDescription>{tab === 'rooms' ? 'Play ChickenChess online with another player, powers, and each team’s kits.' : tab === 'friends' ? 'Add friends with their profile code or email and manage received requests.' : 'Your name, progress, and online account.'}</DialogDescription>
+          <DialogTitle>{tab === 'rooms' ? 'Lobbies' : tab === 'friends' ? 'Friends' : tab === 'wardrobe' ? 'Vestiário' : 'Your profile'}</DialogTitle>
+          <DialogDescription>{tab === 'rooms' ? 'Play ChickenChess online with another player, powers, and each team’s kits.' : tab === 'friends' ? 'Add friends with their profile code or email and manage received requests.' : tab === 'wardrobe' ? 'Your chicken’s outfits.' : 'Your name, progress, and online account.'}</DialogDescription>
         </DialogHeader>
-        <nav aria-label="Online area" className="grid grid-cols-3 gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2">
+        <nav aria-label="Online area" className="grid grid-cols-4 gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2">
           {tabs.map(({ id, label, icon: Icon }) => (
             <div key={id} className="min-w-0">
               <Button
@@ -1188,6 +1198,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
           ))}
         </nav>
         {tab === 'profile' ? <ProfilePane playerProfile={playerProfile} onSignIn={() => { setOpen(false); openLogin() }} />
+          : tab === 'wardrobe' ? <WardrobePane />
           : !configured ? <p className="rounded-md border border-white/15 p-4 text-sm leading-relaxed text-white/65">{ONLINE_CONFIGURATION_MESSAGE}</p>
           : tab === 'friends' ? <FriendsPane onCreateGame={handleCreateGameWithFriend} />
           : <div className="space-y-4">

@@ -48,6 +48,9 @@ const RECENT = [
         'Novos atalhos: Próximo instrumento (Tab, LB), Próxima arma (Q, RB) e Próximo utilitário (F, B) percorrem só aquele grupo, na ordem da barra, começando pelo primeiro quando o item da mão é de outro grupo. Próximo utilitário também passa pela casa vazia (mãos vazias). Próximo item e Item anterior continuam passando por todo o inventário pela rodinha do mouse e pelo teclado secundário (Del e \'); no teclado principal e no gamepad ficam sem atalho padrão.',
         'Para abrir espaço: Roda do inventário passa de Q para T, Deselecionar item de F para B e, no gamepad, Golpe passa de B para Y e Arremessar de Y para R3 (que deixa de ser o segundo botão de Pular). Atalhos personalizados são preservados.',
       ] },
+      { title: 'Perfil', items: [
+        'O painel do perfil (aberto pelo avatar, com as abas Lobbies, Friends e Profile) ganhou a aba Vestiário, por enquanto ainda sem conteúdo.',
+      ] },
     ],
   },
   {
