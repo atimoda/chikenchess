@@ -160,9 +160,8 @@ export const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_ST
 export const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap + INV_SIZE + INV_STACK.soulGap
 // the hotbar at the bottom (desktop and tablet): big slots apart from each other, the key numbers under them; the
 // world is lifted so her ground sits above it
-// label: the room left of each group's first slot for its key (Próximo instrumento / arma / utilitário); middle: the
-// least space between the instruments (on the left of the screen) and the other groups (on the right)
-export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16, groupGap: 10, minSize: 30, label: 30, middle: 24 }
+// label: the room left of each group's first slot for its key (Próximo instrumento / arma / utilitário)
+export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16, groupGap: 10, minSize: 30, label: 30 }
 export const BAR_GROUND_H = 100
 // the small rows: 3 px between slots, 5 px more between groups; they shrink (down to 18 px) to fit the screen
 const ROW = { gap: 3, groupGap: 5, minSize: 18, margin: 12 }
@@ -194,28 +193,24 @@ export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof w
 // Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
 // but the first on desktop and tablet; everyone on a phone held upright)
 // groups: each shown slot's group (Combat.inventoryGroups). The page's invisible slot buttons use the same numbers.
-// labels: the big bar shows each group's key left of its first slot. The big bar spans the screen: the instruments
-// on the left, the utilities on the right and the weapons centred between them (xs are from the bar's left end)
-export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false) {
+// labels: the big bar shows each group's key left of its first slot. The big bar is centred on the screen: the
+// instruments, then the weapons, then the utilities (xs are from the bar's left end). When it does not fit even with
+// the smallest slots, it slides so the held slot (cur) sits as near the centre as the bar's ends allow
+export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false, cur = 0) {
   if (!bottom) {
     const size = fitSize(groups, W - invRight - ROW.margin, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
     const { xs, w } = barSlots(groups, size, ROW.gap, ROW.groupGap)
     return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false, lead: 0 }
   }
-  const lead = labels ? BAR.label : 0
-  // three parts across the screen: the instruments on the left, the utilities (and the empty slot) on the right, and
-  // the weapons centred in the free space between them; at least BAR.middle between two parts
-  const parts = [0, 1, 2].map(k => groups.filter(g => g === k))
-  const shown = parts.filter(p => p.length).length
-  const room = W - BAR.side * 2 - BAR.middle * Math.max(0, shown - 1)
-  const spaces = parts.reduce((sum, p) => sum + barSlots(p, 0, BAR.gap, BAR.groupGap, lead).w, 0)
-  const size = Math.max(BAR.minSize, Math.min(BAR.size, Math.floor((room - spaces) / Math.max(1, groups.length))))
-  const [L, M, R] = parts.map(p => barSlots(p, size, BAR.gap, BAR.groupGap, lead))
-  const w = Math.max(W - BAR.side * 2, L.w + M.w + R.w + BAR.middle * Math.max(0, shown - 1))
-  const freeL = L.w + (parts[0].length ? BAR.middle : 0), freeR = w - R.w - (parts[2].length ? BAR.middle : 0)
-  const mx = Math.max(freeL, Math.min((L.w + w - R.w - M.w) / 2, freeR - M.w))
-  const xs = [...L.xs, ...M.xs.map(x => x + mx), ...R.xs.map(x => x + w - R.w)]
-  const x = W - BAR.side - w, y = H - BAR.bottom - BAR.tab - size
+  const lead = labels ? BAR.label : 0, room = W - BAR.side * 2
+  const size = fitSize(groups, room, BAR.size, BAR.minSize, BAR.gap, BAR.groupGap, lead)
+  const { xs, w } = barSlots(groups, size, BAR.gap, BAR.groupGap, lead)
+  let x = (W - w) / 2
+  if (w > room) {
+    const at = xs[Math.max(0, Math.min(cur, xs.length - 1))] ?? 0
+    x = Math.min(BAR.side, Math.max(W - BAR.side - w, W / 2 - at - size / 2))
+  }
+  const y = H - BAR.bottom - BAR.tab - size
   return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size, gap: BAR.gap, groupGap: BAR.groupGap, xs, w, tabs: true, lead }
 }
 // the slot under a point along a bar (px from its left end): the nearest one, and whether the point is on its right half
@@ -265,11 +260,10 @@ export function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, 
 export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null) {
   const slots = combat.inventory, n = slots.length, groups = combat.inventoryGroups
   const showLabels = bottom && !!labels?.some(Boolean)
-  const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels), { size, gap } = g
+  const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels, combat.current), { size, gap } = g
   const x0 = g.x, y = g.y
-  // where the groups after the instruments start (on the big bar they sit apart, on the right): the effects' circles
-  // go left of them
-  const firstRest = groups.findIndex(k => k !== 0), restX = x0 + (firstRest > 0 ? g.xs[firstRest] - g.lead : 0)
+  // the effects' circles go left of the bar (of its first group's key, on the big bar)
+  const restX = x0 + (g.xs[0] ?? 0) - g.lead
   // the slot numbers (keys 1-9) are the first player's, with a mouse
   const numbers = g.tabs && row === 0 && showKeyHints()
   const r = Math.max(3, Math.round(size * (bottom ? 0.16 : 0.15)))

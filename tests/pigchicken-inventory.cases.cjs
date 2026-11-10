@@ -8,6 +8,21 @@ const body = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx:
 const step = (c, over = {}) => c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...over }, [], 1000, () => {})
 const names = c => c.inventory.map(o => o ? o.item : null)
 
+test('number-row inventory shortcuts map 0 to the tenth item', () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => inv.inventorySlotFromCode(`Digit${n}`)), [1, 2, 3, 4, 5, 6, 7, 8, 9])
+  assert.equal(inv.inventorySlotFromCode('Digit0'), 10)
+  assert.equal(inv.inventorySlotFromCode('Numpad0'), null)
+  assert.equal(inv.inventorySlotFromCode('Key0'), null)
+
+  const c = createCombat()
+  const { RACK_ITEM_IDS } = loadTs('lib/pigchicken/items.ts')
+  RACK_ITEM_IDS.slice(0, 10).forEach(id => c.give(id))
+  const tenth = c.inventory[9].item
+  step(c, { slot: inv.inventorySlotFromCode('Digit0') })
+  assert.equal(c.current, 9)
+  assert.equal(c.held.item, tenth)
+})
+
 test('the inventory shows only her items plus one empty slot, grouped: instruments, weapons, others', () => {
   const c = createCombat()
   assert.deepEqual(names(c), [null])
@@ -515,9 +530,13 @@ test('Próximo instrumento / arma / utilitário cycle their group in the bar ord
   step(c, { deselect: true }); assert.equal(seen(1), 'pistol')
   // with empty hands, Próximo utilitário goes on to the first utility
   step(c, { deselect: true }); assert.equal(seen(2), 'bat')
-  // a group with nothing in it does nothing
+  // no weapon: Próxima arma works as Próximo item; no instrument: Próximo instrumento as Item anterior
   const d = createCombat(); d.give('flute')
+  step(d, { groupPick: 1 }); assert.equal(d.held, null)
   step(d, { groupPick: 1 }); assert.equal(d.held.item, 'flute')
+  const e = createCombat(); e.give('pistol'); e.give('bat')
+  step(e, { groupPick: 0 }); assert.equal(e.held.item, 'pistol')
+  step(e, { groupPick: 0 }); assert.equal(e.held, null)
   // dragged items belong to the group they were dropped in
   step(c, { move: { from: 4, to: 0, after: false } }); step(c, { deselect: true })
   assert.deepEqual([seen(0), seen(0)], ['bat', 'flute'])

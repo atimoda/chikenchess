@@ -1414,17 +1414,20 @@ export function createCombat() {
       if (!swing || swing.t > swing.time) swingGap += dt
 
       // switching items
+      // the shown slots: the empty one (empty hands) belongs to the last group, so Próximo utilitário passes by it
+      let groupSlot = -1, pick = input.pick
+      if (!input.slot && !pick && input.groupPick != null) {
+        groupSlot = groupStep(shown().map(o => o ? groupOf(o) : 2), cur, input.groupPick)
+        // no instrument: Próximo instrumento works as Item anterior; no weapon: Próxima arma as Próximo item
+        if (groupSlot < 0) pick = input.groupPick === 0 ? -1 : input.groupPick === 1 ? 1 : 0
+      }
       if (input.slot) { if (input.slot <= shown().length) equip(input.slot - 1) }
-      else if (input.pick) {
+      else if (pick) {
         // A full inventory has no displayed empty slot; Deselecionar can still leave it unequipped.
-        const from = !room() && !held() ? (input.pick > 0 ? -1 : inv.length) : cur
-        equip(from + input.pick)
+        const from = !room() && !held() ? (pick > 0 ? -1 : inv.length) : cur
+        equip(from + pick)
       }
-      else if (input.groupPick != null) {
-        // the shown slots: the empty one (empty hands) belongs to the last group, so Próximo utilitário passes by it
-        const i = groupStep(shown().map(o => o ? groupOf(o) : 2), cur, input.groupPick)
-        if (i >= 0) equip(i)
-      }
+      else if (groupSlot >= 0) equip(groupSlot)
       const dNow = def()
       // Golpe is taken before firing, even with Atirar held: on an item that shoots, the blow interrupts firing
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
