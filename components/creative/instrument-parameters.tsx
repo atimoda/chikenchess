@@ -65,7 +65,7 @@ export function InstrumentParameters({instrument, effects, mapping, updateInstru
               <ParameterRangeKnob label="Swing" value={instrument.swingRange ?? { first: instrument.extraSwing ?? 0, second: instrument.extraSwing ?? 0 }} min={0} max={.5} step={.01} formatValue={percent} formatSingleValue={value => `${Math.round(value * 100)}%`} onChange={range => setRange('swingRange', range)} />
             </div>}
     {tab === 'modulation' && <div className={styles.controls}>
-              <SoundDesignKnobs instrument={instrument} onChange={updateInstrument} duckSources={duckSources} />
+              <SoundDesignKnobs variant="creative" instrument={instrument} onChange={updateInstrument} duckSources={duckSources} />
             </div>}
     {tab === 'movement' && <div className={styles.controls}>
               <ParameterKnob label="Degrees per file" value={mapping.fileDegrees} min={-4} max={4} step={0.5} onChange={fileDegrees => updateMapping({ fileDegrees })} />

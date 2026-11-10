@@ -30,6 +30,32 @@ const RANGE_HELP: Record<string,string> = {
  'Degrees per file':'Scale degrees added for each file the piece moves from its original square.',
  'Degrees per rank':'Scale degrees added for each rank the piece advances, following its color.',
  'Board stereo width':'How much the file spreads pieces across the stereo field. Zero keeps every piece centered.',
+ 'Filter resonance':'Emphasis around the low-pass cutoff (0 to 30). Higher values ring at the cutoff; zero turns it off.',
+ 'Filter envelope depth':'How far each attack opens (+) or closes (−) the low-pass, in octaves, before it settles back on the cutoff. Zero turns the envelope off.',
+ 'Filter envelope attack':'Time for the filter envelope to reach its depth. Only acts when Filter envelope depth is not zero.',
+ 'Filter envelope decay':'Time for the filter envelope to settle back on the cutoff. Only acts when Filter envelope depth is not zero.',
+ 'Delay time':'Echo spacing in notes. Shared uses the loop’s common delay (3/16); a custom time gives the piece its own effect bus. The echo amount is Dotted delay, in Filters.',
+ 'Delay feedback':'How long the echoes keep repeating (0 to 90%). A custom feedback gives the piece its own effect bus.',
+ 'LFO target':'What the LFO sweeps: the low-pass, gain, pan or pitch. Off turns it off.',
+ 'LFO period in bars':'Length of one LFO cycle in bars, locked to the tempo.',
+ 'LFO rate in hertz':'LFO cycles per second, free from the tempo.',
+ 'LFO rate unit':'Bars locks the LFO to the tempo; Hz runs it freely. Switching resets the rate to 1.',
+ 'LFO depth':'How much of the target’s range the LFO sweeps.',
+ 'LFO shape':'Waveform of the LFO: sine and triangle glide, saw ramps and square jumps between two values.',
+ 'Vibrato rate':'Speed of the pitch vibrato in hertz. Zero turns it off.',
+ 'Vibrato depth':'Width of the vibrato in semitones. Only acts when Vibrato rate is not zero.',
+ 'FM index':'Frequency modulation of the synth: higher values add metallic, bell-like harmonics. Zero turns it off.',
+ 'FM ratio':'Modulator frequency relative to the note. Whole numbers sound harmonic; fractions sound inharmonic.',
+ 'Supersaw voices':'Number of stacked saw voices.',
+ 'Supersaw detune':'How far the stacked voices drift apart in pitch.',
+ 'Supersaw stereo spread':'How wide the stacked voices spread in stereo.',
+ 'Loop the sample':'Repeats the region between Loop start and Loop end while the note lasts.',
+ 'Loop start':'Start of the repeated region, as a fraction of the sample. Only acts with Loop the sample on.',
+ 'Loop end':'End of the repeated region, as a fraction of the sample. Only acts with Loop the sample on.',
+ 'Sidechain source':'Each hit of this teammate ducks this piece (sidechain); the piece gets its own effect bus.',
+ 'Sidechain depth':'How much the volume dips on each hit of the source.',
+ 'Sidechain release':'Time for the volume to recover after each hit.',
+ 'Instrument role':'Used by States & Events rules that target instruments by role. Auto infers it from the sound.',
 }
 export function Range({ label, value, min, max, step = 0.01, unit = '', help = true, onChange }: {
   label: string; value: number; min: number; max: number; step?: number; unit?: string; help?: boolean; onChange: (value: number) => void
@@ -40,8 +66,8 @@ export function Range({ label, value, min, max, step = 0.01, unit = '', help = t
   </label>
 }
 
-export function ParameterKnob({ label, value, min, max, step = 0.01, unit = '', logarithmic = false, formatValue, updateMode = 'immediate', onChange }: {
-  label: string; value: number; min: number; max: number; step?: number; unit?: string; logarithmic?: boolean; formatValue?: (value: number) => string; updateMode?: KnobUpdateMode; onChange: (value: number) => void
+export function ParameterKnob({ label, value, min, max, step = 0.01, unit = '', logarithmic = false, formatValue, updateMode = 'immediate', disabled = false, onChange }: {
+  label: string; value: number; min: number; max: number; step?: number; unit?: string; logarithmic?: boolean; formatValue?: (value: number) => string; updateMode?: KnobUpdateMode; disabled?: boolean; onChange: (value: number) => void
 }) {
   const defaultFormat = (current: number) => {
     if (unit === ' Hz') return current >= 1000 ? `${Number((current / 1000).toFixed(1))}kHz` : `${Number(current.toFixed(3))}Hz`
@@ -49,7 +75,37 @@ export function ParameterKnob({ label, value, min, max, step = 0.01, unit = '', 
   }
   return <div className={styles.parameterKnob}>
     <InfoTip label={label}>{RANGE_HELP[label] ?? `Adjusts ${label.toLowerCase()} for this setup. Range: ${min} to ${max}${unit}.`}</InfoTip>
-    <Knob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} onChange={onChange} />
+    <Knob label={label} labelContent={<div className={styles.parameterKnobLabel}>{label}</div>} labelPosition="bottom" size={LARGE_KNOB_SIZE} value={value} min={min} max={max} step={step} logarithmic={logarithmic} formatValue={formatValue ?? defaultFormat} updateMode={updateMode} neon={!disabled} onChange={onChange} />
+  </div>
+}
+
+const help = (label: string) => RANGE_HELP[label] ?? `Chooses the ${label.toLowerCase()} for this setup.`
+
+/** A choice in a knob cell: the same help, label and green face as ParameterKnob. */
+export function ParameterSelect<T extends string>({ label, value, options, disabled = false, onChange }: {
+  label: string; value: T; options: readonly (readonly [T, string])[]; disabled?: boolean; onChange: (value: T) => void
+}) {
+  return <div className={styles.parameterKnob} data-disabled={disabled || undefined}>
+    <InfoTip label={label}>{help(label)}</InfoTip>
+    <span className={styles.parameterCellFace}>
+      <select aria-label={label} className={styles.parameterSelect} value={value} disabled={disabled} onChange={event => onChange(event.target.value as T)}>
+        {options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}
+      </select>
+    </span>
+    <div className={styles.parameterKnobLabel}>{label}</div>
+  </div>
+}
+
+/** An on/off switch in a knob cell, round like the knob face. */
+export function ParameterToggle({ label, checked, disabled = false, onChange }: {
+  label: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void
+}) {
+  return <div className={styles.parameterKnob} data-disabled={disabled || undefined}>
+    <InfoTip label={label}>{help(label)}</InfoTip>
+    <span className={styles.parameterCellFace}>
+      <button type="button" role="switch" aria-label={label} aria-checked={checked} disabled={disabled} className={styles.parameterToggle} onClick={() => onChange(!checked)}>{checked ? 'ON' : 'OFF'}</button>
+    </span>
+    <div className={styles.parameterKnobLabel}>{label}</div>
   </div>
 }
 

@@ -39,6 +39,7 @@ const RECENT = [
         'Andando por Chãos com rampas suaves, a galinha passa pelas dobras e pelos picos do piso sem ficar presa andando no lugar nem tremer; subindo uma rampa, ela acompanha o piso sem pousos repetidos. O degrau automático só acontece na beirada solta de um piso.',
       ] },
       { title: 'Interface', items: [
+        'No Criativo, a aba Modulation do Instrument ganha o visual da aba Tuning: nome completo e ajuda em cada controle, knobs verdes e seletores na mesma célula dos knobs.',
         'Abrir um link de convite de lobby já coloca o jogador dentro da sala, sem precisar clicar em Join lobby; se a sala estiver cheia ou encerrada, o lobby aparece com o aviso.',
         'Na tela Perfil salvo (e no resumo da migração do perfil visitante), saem o aviso sobre a cópia do visitante e o rodapé dos termos de uso; eles ficam só na tela de login/cadastro.',
         'Nos painéis do PigChicKen, as instruções dos parâmetros ficam no hover do campo; a cópia abaixo some para dar espaço ao nome e ao valor.',
