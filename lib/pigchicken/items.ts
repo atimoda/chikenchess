@@ -144,6 +144,7 @@ export type ItemDef = {
   tremoloRange: number // semitones the tremolo can bend a note each way
   volMin: number // 0..1: loudness of its notes with the aim close to her (lib/pigchicken/aim-volume.ts)
   volMax: number // 0..1: with the aim far; equal to volMin = the distance changes nothing
+  meleeNotes: number // notes of the blow's strum, from the aim's lane note up the chord (1 = just that note)
   fretless: boolean // no frets (violin): the bend is free and changing lane slides instead of jumping
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
@@ -163,7 +164,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, fretless: false,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
 }
 
@@ -473,6 +474,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'strum', label: 'Rasgueado', min: 0, max: 0.1, step: 0.002, unit: 's', group: 'Música', hint: 'Intervalo entre as notas do acorde' },
   { key: 'tremolo', label: 'Tremolo', min: 0, max: 1, step: 0.05, unit: '×', group: 'Música', hint: 'Tremer a mira dentro da mesma faixa do leque entorta a nota; 0 = desligado' },
   { key: 'tremoloRange', label: 'Tremolo: limite', min: 0.05, max: 3, step: 0.05, unit: 'semitons', group: 'Música', hint: 'Até quanto a nota sobe ou desce para cada lado' },
+  { key: 'meleeNotes', label: 'Notas do golpe', min: 1, max: 4, step: 1, group: 'Música', hint: 'O golpe toca a nota da faixa do leque para onde a mira aponta e sobe o acorde a partir dela' },
   { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },
   { key: 'effectTime', label: 'Duração do efeito', min: 1, max: 120, step: 1, unit: 's', group: 'Efeito', hint: 'Doses acumulam: cada uma tem o seu tempo e os multiplicadores se multiplicam' },
   { key: 'effectSpeed', label: 'Velocidade final', min: 0.3, max: 2.5, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%; 0,78 = −22%' },

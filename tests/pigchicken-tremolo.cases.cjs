@@ -110,3 +110,22 @@ test('volume by distance: min close, max far, no change with both points togethe
   }
   assert.equal(DEFAULT_ITEMS.pistol.volMin, DEFAULT_ITEMS.pistol.volMax)
 })
+
+test('an instrument blow plays the note of the fan lane she aims at', () => {
+  const { createCombat } = loadTs('lib/pigchicken/combat.ts')
+  const body = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
+  const blowAt = angle => {
+    const c = createCombat(), played = []
+    c.setMusicOut({ note: (v, m) => played.push(m), hold: () => null, drum: () => {} })
+    const step = (input = {}) => c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, angle,
+      { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...input },
+      [], 1000, () => {}, { peckOrigin: { x: 0, y: 0 } })
+    c.give('flute'); step({ slot: 1 }); played.length = 0
+    for (let i = 0; i < 40; i++) step({ melee: i === 0 })
+    return { c, played }
+  }
+  const low = blowAt(Math.PI / 2 - 0.01), high = blowAt(-Math.PI / 2 + 0.01)
+  assert.ok(low.played.length >= 1 && high.played.length >= 1)
+  assert.ok(Math.min(...high.played) > Math.max(...low.played) - 1, `${low.played} / ${high.played}`)
+  assert.notEqual(low.played[0], high.played[0])
+})

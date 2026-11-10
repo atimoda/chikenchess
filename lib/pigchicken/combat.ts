@@ -903,12 +903,14 @@ export function createCombat() {
       if (own.ammo <= 0 && d.autoReload) startReload()
     }
     sound('swing', null)
-    // an instrument hit with Y still sounds: a quick strum of the chord, and its air takes the chord's colour
+    // an instrument hit with Y still sounds: a quick strum that starts at the note of the fan lane she aims at
+    // (the same note a shot would play there) and climbs the chord `meleeNotes` notes; its air takes that note's colour
     let color = d.trailColor
     if (!wing && d.instrument) {
-      const chord = music.chord()
-      chord.forEach((m, i) => out.note(d.voice, m + 12 * d.octave, i * 0.02, 0.15, 0.5))
-      if (chord.length) color = DEGREE_COLORS[music.degreeOf(chord[0]) % DEGREE_COLORS.length]
+      const base = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
+      const n = Math.max(1, Math.min(4, Math.round(d.meleeNotes)))
+      for (let i = 0; i < n; i++) out.note(d.voice, (i ? music.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d))
+      color = DEGREE_COLORS[music.degreeOf(base) % DEGREE_COLORS.length]
     }
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
