@@ -6,6 +6,7 @@
 // remembered in this browser under `id`.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { cn } from "@/lib/utils"
+import { stageWidth } from "@/lib/stage-size"
 
 type Rect = { x: number; y: number; w: number; h: number }
 type Edge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw"
@@ -43,6 +44,40 @@ function dropPanel(token: number) {
 }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 
+// Esc closes the panel opened last (still open and shown) through its own close button, so it closes exactly as a
+// click would. Whoever uses Esc for something else first (cancel a drag, clear a selection, stop waiting for a key)
+// calls preventDefault and the panel stays. Not from a text field, nor while a dialog is open.
+const opened: HTMLElement[] = []
+const CLOSE = 'button[aria-label^="Fechar"], button[aria-label="Sair do modo editor"]'
+// It runs once every other listener had its turn on this key, whatever order they were added in.
+function onEscape(e: KeyboardEvent) {
+  if (e.code === "Escape" && !e.repeat) window.setTimeout(() => closeLast(e))
+}
+function closeLast(e: KeyboardEvent) {
+  if (e.defaultPrevented) return
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
+  if (document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"]')) return
+  for (let i = opened.length - 1; i >= 0; i--) {
+    const el = opened[i]
+    if (!el.isConnected || !el.getClientRects().length) continue
+    const button = (el.querySelector(`[data-drag-handle] :is(${CLOSE})`) ?? el.querySelector(CLOSE)) as HTMLButtonElement | null
+    if (!button || button.disabled) continue
+    button.click()
+    return
+  }
+}
+/** Registers a panel for Esc, in the order the panels open. */
+export function registerEscClose(el: HTMLElement) {
+  if (!opened.length) window.addEventListener("keydown", onEscape)
+  opened.push(el)
+  return () => {
+    const i = opened.indexOf(el)
+    if (i >= 0) opened.splice(i, 1)
+    if (!opened.length) window.removeEventListener("keydown", onEscape)
+  }
+}
+
 // What a press may not drag: controls, anything focusable or with its own pointer cursor, and an explicit data-no-drag.
 const CONTROL = 'button,a,input,textarea,select,option,label,summary,[role="button"],[role="slider"],[role="checkbox"],[role="switch"],[role="tab"],[role="menuitem"],[contenteditable=""],[contenteditable="true"],[tabindex]:not([tabindex="-1"]),[data-no-drag]'
 const FREE_CURSORS = new Set(["auto", "default", "move"])
@@ -72,7 +107,7 @@ function canDragFrom(target: Element, panel: Element, x: number, y: number, touc
 }
 
 function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean): Rect {
-  const vw = window.innerWidth, vh = window.innerHeight
+  const vw = stageWidth(), vh = window.innerHeight
   const w = Math.max(Math.min(minW, vw), Math.min(r.w, vw)), h = Math.max(Math.min(minH, vh), Math.min(r.h, vh))
   const x = keepInViewport ? Math.min(vw - w, Math.max(0, r.x)) : Math.min(vw - KEEP, Math.max(KEEP - w, r.x))
   const y = Math.min(vh - (keepInViewport ? h : KEEP), Math.max(0, r.y))
@@ -89,6 +124,9 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   children: React.ReactNode
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
   const [rect, setRect] = useState<Rect | null>(null)
+  const panelRef = useRef<HTMLElement | null>(null)
+  const shown = !!rect
+  useEffect(() => (shown && panelRef.current ? registerEscClose(panelRef.current) : undefined), [shown])
   const op = useRef<{ pointer: number; edge: Edge | "move"; sx: number; sy: number; start: Rect; armed?: boolean } | null>(null)
   const key = `floating-panel:${id}`
   const [token] = useState(() => nextPanel++)
@@ -97,7 +135,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   useEffect(() => { raisePanel(token); return () => dropPanel(token) }, [token])
 
   useEffect(() => {
-    let r = initial(window.innerWidth, window.innerHeight)
+    let r = initial(stageWidth(), window.innerHeight)
     try { const saved = JSON.parse(window.localStorage.getItem(key) || "null"); if (saved && [saved.x, saved.y, saved.w, saved.h].every(Number.isFinite)) r = saved } catch { /* ignore */ }
     setRect(fit(r, minW, minH, keepInViewport))
     const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport))
@@ -127,7 +165,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
     let { x, y, w, h } = s
     if (o.edge === "move") { x += dx; y += dy }
     else {
-      const vw = window.innerWidth, vh = window.innerHeight
+      const vw = stageWidth(), vh = window.innerHeight
       if (o.edge.includes("e")) w = Math.min(vw - s.x, Math.max(minW, s.w + dx))
       if (o.edge.includes("s")) h = Math.min(vh - s.y, Math.max(minH, s.h + dy))
       if (o.edge.includes("w")) { w = Math.max(minW, s.w - dx); w = Math.min(w, s.x + s.w); x = s.x + s.w - w }
@@ -147,6 +185,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   if (!rect) return null
   return (
     <aside
+      ref={panelRef}
       data-chicken-ignore
       {...rest}
       style={{ ...rest.style, left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: PANEL_Z + Math.max(0, place) }}

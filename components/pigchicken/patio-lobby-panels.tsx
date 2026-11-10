@@ -29,7 +29,7 @@ export type PatioPersonCard = PatioPerson & { roles: PatioRole[] }
 
 function PanelHead({ title, icon, onClose }: { title: string; icon: React.ReactNode; onClose: () => void }) {
   return (
-    <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
+    <div data-drag-handle className="flex shrink-0 items-center gap-2">
       {icon}
       <h2 className="flex-1 text-sm text-white">{title}</h2>
       <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -216,9 +216,9 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   isAdmin: boolean
   isAccount: boolean
   onOpen: (id: string | null) => void
-  onNew: () => void
+  onNew: (empty?: boolean) => void
   onLogin: () => void
-  onDeleted: (id: string) => void
+  onDeleted: (id: string) => void | Promise<void>
   onClose: () => void
 }) {
   const server = patioOnlineAvailable() && !!me
@@ -247,7 +247,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   }, [server, all, tick])
 
   const known = new Set(rows?.map(r => r.id))
-  const localOnly = local.filter(r => r.id && !known.has(r.id) && (r.revision === 0 || !server))
+  const localOnly = local.filter((r): r is PatioRecord & { id: string } => !!r.id && !known.has(r.id) && (r.revision === 0 || !server))
   const others = (rows ?? []).filter(r => !r.isDefault)
   const saved = sortRows(others.filter(r => (r.mine || (savedAll && (!!r.name || isAdmin))) && (filter === "all" || (filter === "saved" ? !!r.name : !r.name))), savedSort, live)
   const favorites = sortRows(others.filter(r => r.favorite || (favAll && r.favorites > 0)), favSort, live)
@@ -275,7 +275,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
     >
       {isAdmin && <IconBtn label="Definir como padrão" onClick={() => void act(r.id, () => setDefaultPatioLobby(r.id))}><Crown className="h-3.5 w-3.5" /></IconBtn>}
       {canDelete(r) && (confirmDel === `${list}-${r.id}`
-        ? <button type="button" onClick={() => { setConfirmDel(null); void act(r.id, async () => { await deletePatioLobby(r.id); onDeleted(r.id) }) }} className={cn(btn, "h-7 border-[#ff8a7a] text-[#ff8a7a]")}>Apagar?</button>
+        ? <button type="button" onClick={() => { setConfirmDel(null); void act(r.id, async () => { await deletePatioLobby(r.id); await onDeleted(r.id) }) }} className={cn(btn, "h-7 border-[#ff8a7a] text-[#ff8a7a]")}>Apagar?</button>
         : <IconBtn label="Apagar" onClick={() => setConfirmDel(`${list}-${r.id}`)}><Trash2 className="h-3.5 w-3.5" /></IconBtn>)}
       {isAdmin && <DupButton id={r.id} list={list} name={r.name} dup={dup} setDup={setDup} onDuplicate={duplicate} />}
     </Row>
@@ -284,7 +284,10 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   return (
     <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(420, vw - 24) - 12), y: 64, w: Math.min(420, vw - 24), h: Math.min(640, vh - 80) })} className={panelCls}>
       <PanelHead title="Playgrounds" icon={<FolderOpen className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
-      <button type="button" onClick={onNew} className={cn(btn, "h-9 shrink-0 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio <span className="text-[10px] text-[#93a79a]">(cópia do padrão; você vira o criador)</span></button>
+      <div className="flex shrink-0 gap-2">
+        <button type="button" onClick={() => onNew(false)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
+        <button type="button" onClick={() => onNew(true)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio vazio</button>
+      </div>
 
       <Row
         title={def?.name ?? "Pátio padrão"} sub={def?.creatorName ? `de ${def.creatorName}` : undefined} current={currentId === null}
@@ -331,7 +334,11 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
         <div className="flex shrink-0 flex-col gap-1.5">
           <h3 className="text-[11px] text-[#93a79a]">{server ? "Só neste navegador (ainda não foram para o servidor)" : "Neste navegador"}</h3>
           {localOnly.map(r => (
-            <Row key={r.id} title={r.name ?? "Lobby não salvo"} unsaved={!r.name} current={r.id === currentId} sub={date(r.updatedAt)} playing={playing(r.id)} onOpen={() => onOpen(r.id)} />
+            <Row key={r.id} title={r.name ?? "Lobby não salvo"} unsaved={!r.name} current={r.id === currentId} sub={date(r.updatedAt)} playing={playing(r.id)} onOpen={() => onOpen(r.id)} busy={busy === r.id}>
+              {confirmDel === `local-${r.id}`
+                ? <button type="button" disabled={busy === r.id} onClick={() => { setConfirmDel(null); void act(r.id, async () => { await onDeleted(r.id) }) }} className={cn(btn, "h-7 border-[#ff8a7a] text-[#ff8a7a]")}>Excluir?</button>
+                : <IconBtn label="Excluir" onClick={() => setConfirmDel(`local-${r.id}`)}><Trash2 className="h-3.5 w-3.5" /></IconBtn>}
+            </Row>
           ))}
         </div>
       )}

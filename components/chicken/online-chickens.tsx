@@ -12,7 +12,8 @@ import { getNetState, remoteChicken, sendOwnChickens, subscribeNet, type NetPlay
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
-import { GAME_ITEMS, itemRig, type ItemId } from "@/lib/pigchicken/items"
+import { DEFAULT_ITEMS, itemRig, type ItemId } from "@/lib/pigchicken/items"
+import { stageWidth } from "@/lib/stage-size"
 
 // the item in hand travels as one byte: its place in this list (0: empty hands)
 const ITEM_KEYS = Object.keys(ITEM_SVG).sort()
@@ -82,7 +83,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
           if (c.item !== entry.item || (c.item && c.face !== entry.face)) {
             entry.item = c.item; entry.face = c.face
             const key = itemKey(c.item), svg = key ? ITEM_SVG[key as keyof typeof ITEM_SVG] : undefined
-            engine.setHeld(key && svg ? { svg, itemKey: key, angle: c.face < 0 ? Math.PI : 0, kick: 0, rig: key in GAME_ITEMS ? itemRig(GAME_ITEMS[key as ItemId]) : null } : null)
+            engine.setHeld(key && svg ? { svg, itemKey: key, angle: c.face < 0 ? Math.PI : 0, kick: 0, rig: key in DEFAULT_ITEMS ? itemRig(DEFAULT_ITEMS[key as ItemId]) : null } : null)
           }
           return { x: c.x - liveCamera.x, y: c.y + liveCamera.y, vx: c.vx, vy: c.vy, face: c.face, state: stateName(c.state) }
         })
@@ -108,7 +109,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
         if (!r.seen) return
         r.engine.setCameraZoom(liveCamera.zoom)
         const s = r.engine.getMotionState()
-        const z = liveCamera.zoom, cx = window.innerWidth / 2, cy = window.innerHeight / 2
+        const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
         const x = cx + (s.x - cx) * z - r.tag.offsetWidth * z / 2
         const y = cy + (s.y - TAG_UP * s.scale - cy) * z
         r.tag.style.transformOrigin = "0 0"

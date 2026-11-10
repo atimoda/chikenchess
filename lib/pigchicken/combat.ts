@@ -14,13 +14,15 @@ import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, type NetHit, type NetShot } from './net-world'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
+import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
+import { aimVolume } from './aim-volume'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES } from './music'
 import type { Drum, Held, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
 
 // where the instruments' sound goes (the Parquinho plugs the synth in)
 export type MusicOut = {
-  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number) => void
+  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, fade?: number) => void
   hold: (voice: VoiceId, midi: number) => Held | null
   drum: (kind: Drum, at: number, vel?: number) => void
 }
@@ -28,6 +30,9 @@ export type MusicOut = {
 export type NoteEnvFn = (shot: NoteShot, angle: number) => (Partial<NoteEnv> & { rule?: RebateRule; combo?: number }) | null
 // what a point of the map plays (the layout's Zonas sonoras and Faixas fixas)
 export type PlaceEnvFn = (x: number, y: number) => PlaceEnv | null
+// a note going from (px, py) to (x, y) through the wall of a zone with life: which way it bounces, the zone's colour
+// and whether that hit made it change (count: false only replays what another browser already counted)
+export type ZoneWallsFn = (px: number, py: number, x: number, y: number, count: boolean) => { flipX: boolean; color: string; died: boolean } | null
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
@@ -121,6 +126,12 @@ export const SLOTS = INVENTORY_MAX
 const NO_SWITCH = { pick: 0, slot: 0, groupPick: null }
 const THROW_GRAVITY = 1500
 const ITEM_GRAVITY = 1800
+// an item on the floor, as a circle for the blows' hit areas (Golpe and Bicada): radius (px), centred this far above
+// where it rests
+export const PICKUP_HIT_R = 14
+const SWING_PICKUP_R = PICKUP_HIT_R
+// how near her feet (horizontally, vertically) an item on the floor counts as touching her body (offered to Pegar)
+export const pickupReach = (scale: number) => ({ x: (46 * scale + 10) * 1.15, y: 60 * scale + 20 })
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const DEG = Math.PI / 180
@@ -157,7 +168,8 @@ export function createCombat() {
     // instruments make musical sounds instead of the mechanical ones
     if (d?.instrument) {
       const root = music.noteFor(-Math.PI / 2, 'chord', d.octave, 0.5)
-      if (kind === 'equip') { out.note(d.voice, root, 0, 0.12, 0.5); out.note(d.voice, music.walk(root, 2, 'chord'), 0.09, 0.18, 0.5) }
+      // equipping: a very soft two-note sigh (low velocity, slow fade-in), well under the played notes
+      if (kind === 'equip') { out.note(d.voice, root, 0, 0.14, 0.12, 0.06); out.note(d.voice, music.walk(root, 2, 'chord'), 0.1, 0.2, 0.1, 0.08) }
       else if (kind === 'reloadDone' || kind === 'shell') out.note(d.voice, music.walk(root, 1, 'chord'), 0, 0.1, 0.35)
       else if (kind === 'dry') out.note('chip', root - 24, 0, 0.05, 0.25)
       else if (kind === 'bounce') out.drum('jingle', 0)
@@ -184,6 +196,8 @@ export function createCombat() {
   const noteEvents: NoteShotEvent[] = []
   let noteEnv: NoteEnvFn | null = null
   let placeEnv: PlaceEnvFn | null = null
+  // the walls of the Zonas sonoras with life: a note crossing one bounces (count: it takes a point of the zone's life)
+  let zoneWalls: ZoneWallsFn | null = null
   // a peck defending at (x, y) cancels what is there, in a little cloud (parriedBy: the player who did it)
   let parriedBy = ''
   function parryAt(x: number, y: number, r: number, color: string) {
@@ -208,6 +222,11 @@ export function createCombat() {
   let arpStep = 0, arpIdle = 0, phraseBase = 0, glissNext = 0, glissSteps = 0, bonusTextT = 0
   let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null = null
   let beamHeld: Held | null = null, beamMidi = 0
+  // the aim's tremolo (lib/pigchicken/tremolo.ts): semitones the held instrument's notes bend right now
+  let trem: TremoloState = newTremolo(), tremBend = 0
+  // how far the aim reaches (0 at her … 1 far; lib/pigchicken/aim-volume.ts): the instrument's notes get louder with it
+  let aimReach = 1
+  const noteVol = (d: ItemDef) => aimVolume(d.volMin, d.volMax, aimReach)
   const critters: Critter[] = []
   let quantizeAll = true
   const conv = { birds: 0, people: 0, harmonized: 0, undeadBirds: 0 }
@@ -485,32 +504,33 @@ export function createCombat() {
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: number
+    trem: TremoloState; tremBend: number; aimReach: number
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   let souls = 0
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: 0,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: 0, trem: newTremolo(), tremBend: 0, aimReach: 1,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach } = l)
     active = id
   }
 
   // One slot per type; consumables can top up their existing stack.
   const canTake = (p: Pickup) => p.noPick <= 0 && (!inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
 
-  // grab with room: the item goes into its group's place and she holds it (picking up is always the player's choice)
-  function pickUp(p: Pickup) {
+  // Usar/Pegar equips a new item; Golpe can store it without changing the item she already holds.
+  function pickUp(p: Pickup, equip = true) {
     if (!canTake(p)) return false
     const stack = inv.find(o => o.item === p.owned.item)
     if (stack) {
@@ -522,13 +542,16 @@ export function createCombat() {
       return true
     }
     if (!room()) return false
-    stopBeam(); peck = null; peckPrep = 0
+    const wasHeld = held()
+    if (equip) { stopBeam(); peck = null; peckPrep = 0 }
     const limit = CONSUMABLE_LIMITS[p.owned.item]
     if (limit && p.owned.ammo > limit) {
       pickups.push({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
       p.owned.ammo = limit
     }
-    cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0
+    const added = takeIn(p.owned)
+    if (equip) { cur = added; reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0 }
+    else cur = wasHeld ? inv.indexOf(wasHeld) : inv.length
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
     return true
@@ -614,7 +637,7 @@ export function createCombat() {
         bonus = d.beatBonus
         if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
-      notes.forEach((m, i) => out.note(d.voice, m, at + i * d.strum, d.noteLen, 0.75))
+      notes.forEach((m, i) => out.note(d.voice, m + tremBend, at + i * d.strum, d.noteLen, 0.75 * noteVol(d)))
     }
     const speed = d.speed * power
     const damage = d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
@@ -773,11 +796,16 @@ export function createCombat() {
         const lx = px + (b.x - px) * (k - 1) / steps, ly = py + (b.y - py) * (k - 1) / steps
         const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
         const wall = surfaceHit(boxes, lx, ly, x, y)
-        if (!wall) continue
+        const zw = wall ? null : zoneWalls?.(lx, ly, x, y, !dry) ?? null
+        if (!wall && !zw) continue
         b.x = lx; b.y = ly
-        if (wall.flipX) b.vx = -b.vx; else b.vy = -b.vy
+        if ((wall ?? zw)!.flipX) b.vx = -b.vx; else b.vy = -b.vy
         b.bounces = (b.bounces ?? 0) + 1
-        if (!dry) {
+        if (zw) {
+          if (!dry) { b.hits.clear(); burst(lx, ly, zw.died ? 28 : 5, zw.color, zw.died ? 340 : 140, zw.died ? 4 : 2) }
+          return false
+        }
+        if (wall && !dry) {
           const notes = surfaceSound(wall.box.rebate!, lx, ly, b.note.midi, b.note.voice, items[b.item].rebateChain, undefined)
           const main = notes.find(o => !o.drum)?.midi
           if (main !== undefined) b.note = { ...b.note, midi: main, color: DEGREE_COLORS[music.degreeOf(main) % DEGREE_COLORS.length] }
@@ -875,12 +903,14 @@ export function createCombat() {
       if (own.ammo <= 0 && d.autoReload) startReload()
     }
     sound('swing', null)
-    // an instrument hit with Y still sounds: a quick strum of the chord, and its air takes the chord's colour
+    // an instrument hit with Y still sounds: a quick strum that starts at the note of the fan lane she aims at
+    // (the same note a shot would play there) and climbs the chord `meleeNotes` notes; its air takes that note's colour
     let color = d.trailColor
     if (!wing && d.instrument) {
-      const chord = music.chord()
-      chord.forEach((m, i) => out.note(d.voice, m + 12 * d.octave, i * 0.02, 0.15, 0.5))
-      if (chord.length) color = DEGREE_COLORS[music.degreeOf(chord[0]) % DEGREE_COLORS.length]
+      const base = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
+      const n = Math.max(1, Math.min(4, Math.round(d.meleeNotes)))
+      for (let i = 0; i < n; i++) out.note(d.voice, (i ? music.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d))
+      color = DEGREE_COLORS[music.degreeOf(base) % DEGREE_COLORS.length]
     }
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = d.meleeRange + (wing ? 0 : d.length * scale)
@@ -901,9 +931,22 @@ export function createCombat() {
     swingGap = 0
   }
 
+  // the blow's hit area also collects the new items on the floor it touches, like Golpe near her body: each one is
+  // stored in its group without changing the held item; with no room it stays on the floor (Golpe never swaps)
+  function collectInSwing(sw: Swing, origin: { x: number; y: number }) {
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const p = pickups[i]
+      if (!canTake(p) || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, p.x, p.y - SWING_PICKUP_R, SWING_PICKUP_R)) continue
+      pickups.splice(i, 1)
+      if (!pickUp(p, false)) pickups.splice(i, 0, p)
+      else if (hover === p) hover = null
+    }
+  }
+
   // the blow lands at the end of the preparação: everything in its arc is hit once
   function strike(sw: Swing, origin: { x: number; y: number }) {
     sw.hit = true
+    collectInSwing(sw, origin)
     if ((sw.item as Owned | null)?.item === 'passagua') {
       let caught = 0
       const caughtAt: { x: number; y: number }[] = []
@@ -1067,6 +1110,14 @@ export function createCombat() {
       if (n.state === 'missed') { if (n.t > 0.6) noteShots.splice(i, 1); continue }
       // a "Rebate notas" surface: it bounces back and plays again (a few times at most)
       const wall = (n.bounces ?? 0) < SURFACE_BOUNCES ? surfaceHit(ctx.boxes, px, py, n.x, n.y) : null
+      const zw = wall || (n.bounces ?? 0) >= SURFACE_BOUNCES ? null : zoneWalls?.(px, py, n.x, n.y, true) ?? null
+      if (zw) {
+        n.x = px; n.y = py
+        if (zw.flipX) n.vx = -n.vx; else n.vy = -n.vy
+        n.bounces = (n.bounces ?? 0) + 1; n.t = 0
+        burst(n.x, n.y, zw.died ? 28 : 6, zw.color, zw.died ? 340 : 160, zw.died ? 4 : 3)
+        continue
+      }
       if (wall) {
         n.x = px; n.y = py
         if (wall.flipX) n.vx = -n.vx; else n.vy = -n.vy
@@ -1104,8 +1155,11 @@ export function createCombat() {
     }
     const midi = music.noteFor(aimAngle, d.pitchSet, d.octave, d.span)
     const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
-    if (!beamHeld) { beamHeld = out.hold(d.voice, midi); beamMidi = midi }
-    else if (midi !== beamMidi) { beamHeld.setPitch(midi); beamMidi = midi }
+    // the sound bends with the aim's tremolo; the note (colour, harmony) stays the lane's
+    const pitch = midi + tremBend
+    if (!beamHeld) { beamHeld = out.hold(d.voice, pitch); beamMidi = pitch }
+    else if (Math.abs(pitch - beamMidi) > 0.005) { beamHeld.setPitch(pitch); beamMidi = pitch }
+    beamHeld?.setVolume?.(noteVol(d))
     beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null }
     h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
@@ -1174,6 +1228,8 @@ export function createCombat() {
     setNoteEnv(fn: NoteEnvFn | null) { noteEnv = fn },
     // what a point of the map plays (its Zonas sonoras and Faixas fixas); the stage's ambience wins over it
     setPlaceEnv(fn: PlaceEnvFn | null) { placeEnv = fn },
+    // the walls of the zones with life (zone-life.ts)
+    setZoneWalls(fn: ZoneWallsFn | null) { zoneWalls = fn },
     // a song is playing (the undead wait for it to end before leaving); the birds of the place (null: the zone's)
     setPlaying(on: boolean) { playing = on },
     setZoneBirds(list: BirdId[] | null) { zoneBirds = list?.length ? list : null },
@@ -1184,6 +1240,8 @@ export function createCombat() {
       if (peck) return peckPose(peck)
       return peckPrep > 0 ? { angle: aimAngle, pull: items.peck.peckPull * Math.min(1, peckPrep / 0.12), reach: items.peck.meleeRange, thrust: 0 } : null
     },
+    // the Bicada's hit area while the beak is out (the Hit-boxes layer): aim, reach, cone and whether it has landed
+    get peckZone() { return peck && !held() ? { angle: peck.angle, reach: peck.reach, arc: Math.min(160, Math.max(0, items.peck.meleeArc)) * DEG, hit: peck.hit } : null },
     // the item she stands on that grab would take (drawn with a blue outline)
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
@@ -1191,6 +1249,10 @@ export function createCombat() {
     get hoverSwaps() { return !room() && !inv.some(o => o.item === hover?.owned.item) },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
+    // the aim's reach (0..1) for the current player, set by the page before step; the loudness it gives the held item
+    setAimReach(r: number) { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1 },
+    get aimReach() { return aimReach },
+    get aimVolume() { return noteVol(def()) },
     get throwAngle() { return throwAngle },
     // a throw called off (she switched items while charging): nothing happens until the button is let go
     get throwVoid() { return throwVoid },
@@ -1314,6 +1376,7 @@ export function createCombat() {
     // world: false steps only the current player's loadout (another local player in the same frame)
     step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      let peckStarted = false
       // rearranging the bar never changes what she holds (nor what is being done with it)
       if (input.move) moveSlot(input.move.from, input.move.to, input.move.after)
       if (input.deselect) {
@@ -1336,6 +1399,14 @@ export function createCombat() {
         aimAngle += diff
       } else aimAngle = targetAngle
       throwAngle = targetAngle
+      // tremolo: shaking the aim inside a lane of the instrument's fan, after the note starts, bends its notes
+      // (the press, or the violin's bow coming on, starts it in tune)
+      if (d.instrument && d.tremolo > 0) {
+        const pool = music.aimPool(d.pitchSet, d.octave, d.span)
+        const playing = input.fire && (!d.beam || !!beamHeld)
+        const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless, playing, d.tremoloRange)
+        tremBend = pool.length ? lane - music.noteFor(aimAngle, d.pitchSet, d.octave, d.span) : 0
+      } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0 }
 
       lastBody = body
       if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt) }
@@ -1353,17 +1424,20 @@ export function createCombat() {
       if (!swing || swing.t > swing.time) swingGap += dt
 
       // switching items
+      // the shown slots: the empty one (empty hands) belongs to the last group, so Próximo utilitário passes by it
+      let groupSlot = -1, pick = input.pick
+      if (!input.slot && !pick && input.groupPick != null) {
+        groupSlot = groupStep(shown().map(o => o ? groupOf(o) : 2), cur, input.groupPick)
+        // no instrument: Próximo instrumento works as Item anterior; no weapon: Próxima arma as Próximo item
+        if (groupSlot < 0) pick = input.groupPick === 0 ? -1 : input.groupPick === 1 ? 1 : 0
+      }
       if (input.slot) { if (input.slot <= shown().length) equip(input.slot - 1) }
-      else if (input.pick) {
+      else if (pick) {
         // A full inventory has no displayed empty slot; Deselecionar can still leave it unequipped.
-        const from = !room() && !held() ? (input.pick > 0 ? -1 : inv.length) : cur
-        equip(from + input.pick)
+        const from = !room() && !held() ? (pick > 0 ? -1 : inv.length) : cur
+        equip(from + pick)
       }
-      else if (input.groupPick != null) {
-        // the shown slots: the empty one (empty hands) belongs to the last group, so Próximo utilitário passes by it
-        const i = groupStep(shown().map(o => o ? groupOf(o) : 2), cur, input.groupPick)
-        if (i >= 0) equip(i)
-      }
+      else if (groupSlot >= 0) equip(groupSlot)
       const dNow = def()
       // Golpe is taken before firing, even with Atirar held: on an item that shoots, the blow interrupts firing
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
@@ -1414,7 +1488,7 @@ export function createCombat() {
           peck.hit = true
           const at = opts.peckOrigin ?? origin, d = items.peck
           // Sweep a narrow cone from the neck base; solid scenery stops the beak.
-          const hit = new Set<number>()
+          const hit = new Set<number>(), touched = new Set<Pickup>()
           const arc = Math.min(160, Math.max(0, d.meleeArc)) * DEG
           for (let ray = 0; ray <= 8; ray++) {
             const a = peck.angle + (ray / 8 - 0.5) * arc
@@ -1426,8 +1500,17 @@ export function createCombat() {
                 hit.add(t.id)
                 hitTarget(t, d.meleeDamage, Math.cos(peck!.angle) * d.meleePush, x, y)
               })
+              for (const p of pickups) if (Math.hypot(x - p.x, y - (p.y - PICKUP_HIT_R)) <= PICKUP_HIT_R) touched.add(p)
             }
           }
+          // the beak also collects the new items it touches, like Golpe: stored without changing hands, never swapped
+          touched.forEach(p => {
+            const i = pickups.indexOf(p)
+            if (i < 0 || !canTake(p)) return
+            pickups.splice(i, 1)
+            if (!pickUp(p, false)) pickups.splice(i, 0, p)
+            else if (hover === p) hover = null
+          })
         }
         if (peck.t >= peck.time) peck = null
       }
@@ -1455,7 +1538,7 @@ export function createCombat() {
           if (!input.fire && prevFire && peckPrep > 0) {
             const p = items.peck
             peck = { angle: targetAngle, pull: p.peckPull * Math.min(1, peckPrep / 0.12), reach: p.meleeRange, t: 0, time: Math.max(0.05, p.meleeTime), hit: false }
-            peckPrep = 0; peckCool = Math.max(p.meleeCooldown, p.meleeTime); sound('swing', null)
+            peckPrep = 0; peckCool = Math.max(p.meleeCooldown, p.meleeTime); sound('swing', null); peckStarted = true
           }
         }
       } else if (h && d.consumable) {
@@ -1485,7 +1568,7 @@ export function createCombat() {
               const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
               glissNext -= dt
               if (glissNext <= 0 && glissSteps < 7) {
-                out.note(d.voice, music.walk(music.noteFor(aimAngle, d.pitchSet, d.octave, d.span), glissSteps, d.pitchSet), 0, 0.25, 0.35 + 0.3 * p)
+                out.note(d.voice, music.walk(music.noteFor(aimAngle, d.pitchSet, d.octave, d.span), glissSteps, d.pitchSet), 0, 0.25, (0.35 + 0.3 * p) * noteVol(d))
                 glissSteps++; glissNext = Math.max(0.04, 0.16 - 0.12 * p)
               }
             }
@@ -1571,8 +1654,7 @@ export function createCombat() {
 
       // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
       hover = null; hoverOwned = null
-      const pickupReachX = (46 * body.scale + 10) * 1.15
-      const pickupReachY = 60 * body.scale + 20
+      const { x: pickupReachX, y: pickupReachY } = pickupReach(body.scale)
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i]
         if (world) p.noPick = Math.max(0, p.noPick - dt)
@@ -1590,14 +1672,22 @@ export function createCombat() {
         }
       }
 
-      // the item she stands on is outlined; grab takes it into a free slot, or swaps it with the held one when full
+      // the offered item is outlined; Usar/Pegar takes it into a free slot, or swaps it with the held one when full
       // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
       if (!input.grabHeld) heldTaken.clear()
-      const grabNow = !!input.grab || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      // Golpe or a Bicada (when it is let go) also stores the new item offered at her body
+      const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover
+      const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       if (grabNow && hover && pickups.includes(hover) && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
-        const g = hover, firstNew = nextId
-        pickups.splice(pickups.indexOf(g), 1); if (!pickUp(g)) swapIn(g); hover = null
-        heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
+        const g = hover, firstNew = nextId, at = pickups.indexOf(g)
+        pickups.splice(at, 1)
+        const picked = pickUp(g, !meleePickup)
+        if (!picked && meleePickup) pickups.splice(at, 0, g)
+        else {
+          if (!picked) swapIn(g)
+          hover = null
+          heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
+        }
       }
       else if (input.grab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays)

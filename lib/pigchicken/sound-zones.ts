@@ -6,11 +6,10 @@ import { SCALES, ZONES, NOTE_NAMES, type Feel, type ScaleId, type Zone } from '.
 import { fanLaneAt, fanLanes, fanNotes, type Fan, type FanContent } from './fan'
 import { CHAIN_MAX, TRANSFORMS, cleanTransform, degreeOf, type Transform } from './transforms'
 import { isBirdId, type BirdId } from './birds'
+import { FEELS, SCALE_IDS, ZONE_BPM, ZONE_LIFE, isZoneChange, zoneChange, type ZoneChangeId } from './zone-changes'
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
-const SCALE_IDS = Object.keys(SCALES) as ScaleId[]
-const FEELS: Feel[] = ['straight', 'swing', 'half']
 const isScale = (v: unknown): v is ScaleId => typeof v === 'string' && v in SCALES
 const COLOR = /^#[0-9a-f]{6}$/i
 
@@ -31,15 +30,20 @@ export type SoundZoneParams = {
   music: boolean
   // the birds the aliens become inside it (empty: the scene's)
   birds: BirdId[]
+  // its walls: with life, the notes bounce off its edges and each one takes a point; at 0 it changes by `change`
+  // (zone-changes.ts) and its life fills again (0: no walls)
+  life: number
+  change: ZoneChangeId
 }
 export const ZONE_PRIORITY = { min: 1, max: 9 }
-export const ZONE_BPM = { min: 40, max: 200 }
+export { ZONE_BPM, ZONE_LIFE }
 
 // a new zone starts as a copy of one of the scenes' (the Noite by default), so it sounds right away
 export function defaultSoundZone(from: Zone = ZONES[1]): SoundZoneParams {
   return {
     name: from.name, root: from.root, scale: from.scale, chordScale: from.chordScale, bpm: from.bpm, feel: from.feel,
     progression: from.progression.slice(), color: from.color, chain: [], priority: 1, music: true, birds: [],
+    life: 0, change: 'random',
   }
 }
 
@@ -61,13 +65,42 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
     priority: Math.round(clamp(num(z.priority, d.priority), ZONE_PRIORITY.min, ZONE_PRIORITY.max)),
     music: z.music !== false,
     birds: Array.isArray(z.birds) ? [...new Set(z.birds.filter(isBirdId))] : [],
+    life: Math.round(clamp(num(z.life, 0), ZONE_LIFE.min, ZONE_LIFE.max)),
+    change: isZoneChange(z.change) ? z.change : d.change,
   }
+}
+
+// a zone after its life ran out: changed by its pattern (the walls and the rest stay)
+export function applyZoneChange(z: SoundZoneParams, id: ZoneChangeId = z.change, rnd: () => number = Math.random): SoundZoneParams {
+  return normalizeSoundZone({ ...z, ...zoneChange(id).apply(z, rnd) })
 }
 
 // the conductor's zone for a Zona sonora element: its id names the element and what it sounds like, so the conductor
 // keeps it while it stays the same and takes an edited one on the next bar
 export function soundZoneOf(id: string, p: SoundZoneParams): Zone {
   return { id: `zona:${id}:${p.root}:${p.scale}:${p.chordScale}:${p.bpm}:${p.feel}:${p.progression.join('.')}`, name: p.name, root: p.root, scale: p.scale, chordScale: p.chordScale, bpm: p.bpm, feel: p.feel, progression: p.progression, color: p.color }
+}
+
+// ---------- the scenes' own zones ----------
+
+// each scene of the Parquinho plays one of ZONES in turn; a Pátio may change any of them (saved in its settings,
+// by scene number). The Templo has its own music and is not one of them.
+export type SceneZones = Record<string, SoundZoneParams>
+export const sceneZoneBase = (s: number) => defaultSoundZone(ZONES[((s % ZONES.length) + ZONES.length) % ZONES.length])
+export const sceneZoneParams = (zones: SceneZones | undefined, s: number) => zones?.[String(s)] ?? sceneZoneBase(s)
+// the conductor's zone for a scene: the code's own while it is not changed
+export function sceneZoneOf(zones: SceneZones | undefined, s: number): Zone {
+  const own = zones?.[String(s)]
+  return own ? soundZoneOf(`cena${s}`, own) : ZONES[((s % ZONES.length) + ZONES.length) % ZONES.length]
+}
+export function normalizeSceneZones(raw: unknown, maxScene: number): SceneZones | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const out: SceneZones = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const s = Number(k)
+    if (Number.isInteger(s) && s >= 0 && s <= maxScene && v && typeof v === 'object') out[String(s)] = { ...normalizeSoundZone(v), life: 0, priority: 1, music: true }
+  }
+  return Object.keys(out).length ? out : undefined
 }
 
 // a short reading of a chain: "+3ª", "+1 oit", "eco"…

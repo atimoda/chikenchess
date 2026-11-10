@@ -180,3 +180,93 @@ test("the instruments' notes bounce off the surfaces too, playing through the it
   assert.equal(shot.bounces, 1); assert.ok(shot.vx < 0)
   assert.equal(shot.note.midi, first + 12, "the flute's chain: an octave up")
 })
+
+// ---------- the tags, the change patterns, the walls' life and the scenes' zones ----------
+
+const zc = loadTs('lib/pigchicken/zone-changes.ts')
+const life = loadTs('lib/pigchicken/zone-life.ts')
+const settings = loadTs('lib/pigchicken/patio-settings.ts')
+
+test("each tag steps its parameter; the progression counts down and wraps to the last", () => {
+  const z = sz.defaultSoundZone(ZONES[0]) // Dó, Pentatônica maior, I V vi IV
+  assert.equal(zc.ZONE_STEP.root({ ...z, root: 59 }).root % 12, 0, 'Si → Dó')
+  assert.equal(zc.ZONE_STEP.scale(z).scale, 'minorPenta')
+  const i = zc.progressionIndex(z.progression)
+  assert.ok(i > 0)
+  assert.deepEqual(zc.ZONE_STEP.progression(z).progression, zc.PROGRESSIONS[i - 1].degrees)
+  assert.deepEqual(zc.ZONE_STEP.progression({ ...z, progression: zc.PROGRESSIONS[0].degrees }).progression, zc.PROGRESSIONS.at(-1).degrees)
+  assert.deepEqual(zc.ZONE_STEP.progression({ ...z, progression: [2, 2, 1] }).progression, zc.PROGRESSIONS.at(-1).degrees, 'a custom one goes to the last')
+  assert.equal(zc.ZONE_STEP.chain(z).chain.length, 1)
+  assert.equal(zc.ZONE_STEP.birds(z).birds.length, 1)
+  assert.equal(zc.ZONE_STEP.change(z).change, zc.ZONE_CHANGES[1].id)
+})
+
+test('the change patterns: random shuffles, the harmonic ones move the key, every result is a clean zone', () => {
+  const z = sz.normalizeSoundZone({ ...sz.defaultSoundZone(ZONES[0]), life: 5 })
+  assert.equal(z.life, 5); assert.equal(z.change, 'random')
+  let seed = 1
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  const r = sz.applyZoneChange(z, 'random', rnd)
+  assert.notDeepEqual({ ...r, life: 0 }, { ...z, life: 0 }); assert.equal(r.life, 5, 'the walls stay')
+  assert.equal(sz.applyZoneChange(z, 'relative').root % 12, 9, 'Dó maior → Lá menor')
+  assert.equal(sz.applyZoneChange(z, 'relative').scale, 'minorPenta')
+  assert.equal(sz.applyZoneChange(z, 'parallel').root, z.root)
+  assert.equal(sz.applyZoneChange(z, 'doubleTime').bpm, 200)
+  assert.deepEqual(sz.applyZoneChange(z, 'retrograde').progression, z.progression.slice().reverse())
+  const m = sz.applyZoneChange(z, 'mirror')
+  assert.equal(m.chain[0].kind, 'mirror'); assert.equal(sz.applyZoneChange(m, 'mirror').chain.length, 0, 'toggles')
+  for (const c of zc.ZONE_CHANGES) { const out = sz.applyZoneChange(z, c.id, rnd); assert.deepEqual(sz.normalizeSoundZone(out), out, c.id) }
+})
+
+test("a zone with life: notes crossing its walls bounce and count; at 0 it changes and fills again", () => {
+  const zone = sz.normalizeSoundZone({ ...sz.defaultSoundZone(ZONES[0]), life: 2, change: 'fifths' })
+  const boxes = life.liveZones([{ id: 'w', x: 0, y: 0, w: 100, h: 100, zone }])
+  assert.equal(life.zoneWallHit(boxes, 50, 50, 60, 50), null, 'inside, no wall')
+  assert.equal(life.zoneWallHit(boxes, 95, 50, 105, 50).flipX, true, 'leaving by the right side')
+  assert.equal(life.zoneWallHit(boxes, 50, -5, 50, 5).flipX, false, 'coming in from the top')
+  assert.equal(life.zoneWallHit(life.liveZones([{ id: 'w', x: 0, y: 0, w: 100, h: 100, zone: { ...zone, life: 0 } }]), 95, 50, 105, 50), null, 'no life, no walls')
+  life.liveZones([{ id: 'w', x: 0, y: 0, w: 100, h: 100, zone }])
+  assert.equal(life.hitZone('w'), null)
+  const died = life.hitZone('w')
+  assert.equal(died.root, zone.root + 7 > 72 ? zone.root - 5 : zone.root + 7)
+  assert.equal(life.zoneLiveStore.get('w').hp, 2)
+  assert.equal(life.liveZones([{ id: 'w', x: 0, y: 0, w: 100, h: 100, zone }])[0].zone.root, died.root, 'it plays changed')
+  assert.equal(life.liveZones([{ id: 'w', x: 0, y: 0, w: 100, h: 100, zone: { ...zone } }])[0].zone.root, zone.root, 'an edited zone starts over')
+})
+
+test("the scenes' own zones: the code's until the Pátio changes one, saved in its settings", () => {
+  assert.equal(sz.sceneZoneOf(undefined, 0), ZONES[0])
+  assert.equal(sz.sceneZoneOf(undefined, 6), ZONES[1])
+  const own = { ...sz.defaultSoundZone(ZONES[0]), bpm: 140, life: 9 }
+  const s = settings.normalizePatioSettings({ sceneZones: { 0: own, 99: own, x: own } })
+  assert.deepEqual(Object.keys(s.sceneZones), ['0'])
+  assert.equal(s.sceneZones[0].life, 0, 'a scene has no walls')
+  assert.equal(sz.sceneZoneOf(s.sceneZones, 0).bpm, 140)
+  assert.equal(sz.sceneZoneOf(s.sceneZones, 1), ZONES[1])
+  assert.equal(settings.normalizePatioSettings({ sceneZones: {} }), undefined)
+})
+
+test('a Pátio keeps its own Camadas: cleaned, in range, Escalas up to 3x', () => {
+  const settings = loadTs('lib/pigchicken/patio-settings.ts')
+  const s = settings.normalizePatioSettings({ layers: { backdrop: 140, zones: -3, scale: 42.6, scaleSize: 9, scaleFade: 'x', scaleLines: 30, hitboxes: true } })
+  assert.deepEqual(s.layers, { backdrop: 100, zones: 0, scale: 43, scaleSize: 3, scaleFade: 50, scaleLines: 30, hitboxes: true })
+  assert.equal(settings.normalizePatioSettings({ layers: 'nope' }), undefined)
+})
+
+test('zone chords always fit the melody scale, and the drone stays near the key with the chord\'s own fifth', () => {
+  const zc = loadTs('lib/pigchicken/zone-changes.ts')
+  const music = loadTs('lib/pigchicken/music.ts')
+  const fits = (scale, chords) => music.SCALES[scale].steps.every(s => music.SCALES[chords].steps.includes(s)) || scale === 'blues'
+  assert.deepEqual(zc.chordScalesFor('minorPenta').slice().sort(), ['dorian', 'minor'])
+  let z = sz.normalizeSoundZone({ scale: 'majorPenta', chordScale: 'major' })
+  for (let i = 0; i < 30; i++) { z = { ...z, ...zc.ZONE_STEP.scale(z) }; assert.ok(fits(z.scale, z.chordScale), `${z.scale}/${z.chordScale}`) }
+  for (let i = 0; i < 10; i++) { z = { ...z, ...zc.ZONE_STEP.chordScale(z) }; assert.ok(fits(z.scale, z.chordScale), `${z.scale}/${z.chordScale}`) }
+  let seed = 1; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  for (let i = 0; i < 40; i++) for (const id of ['random', 'modal', 'penta', 'relative', 'parallel']) { z = sz.applyZoneChange(z, id, rnd); assert.ok(fits(z.scale, z.chordScale), `${id}: ${z.scale}/${z.chordScale}`) }
+  // C major, I bVII IV: B° on degree 7 has a tritone, and the bass never leaps more than a tritone from C
+  const zone = { ...music.ZONES[0], root: 60, chordScale: 'major' }
+  const vii = music.droneOf(zone, music.chordOn(zone, 6))
+  assert.equal(vii.fifth, 6); assert.equal(vii.third, 3); assert.equal(vii.root, 59)
+  assert.equal(music.droneOf(zone, music.chordOn(zone, 5)).third, 3); assert.equal(music.droneOf(zone, music.chordOn(zone, 3)).third, 4)
+  for (let d = 0; d < 7; d++) { const r = music.droneOf(zone, music.chordOn(zone, d)).root; assert.ok(r >= 55 && r <= 66, `${d}: ${r}`) }
+})

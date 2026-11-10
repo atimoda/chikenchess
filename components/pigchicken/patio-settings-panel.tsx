@@ -23,13 +23,14 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
   const width = worldScenes(screens) * SCENE_W
   return (
     <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 420 : 260, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-[#ffd166]/40 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex shrink-0 cursor-move items-center gap-2">
+      <div data-drag-handle className="flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Configurações do Pátio</h2>
         {canEdit && <button type="button" onClick={() => set({ screens: DEFAULT_PARQUINHO.screens, height: PATIO_HEIGHT.default, inventory: PATIO_INVENTORY.default })} title="Volta largura, altura e limite do inventário para o padrão" className="h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]">Padrão</button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><X className="h-4 w-4" /></button>
       </div>
       {canEdit ? (
         <>
+          <div className="grid gap-[3px]">
           <PatioRange label="Largura limite" min={PATIO_SCREENS.min} max={PATIO_SCREENS.max} step={PATIO_SCREENS.step} value={screens}
             display={`${screens} ${screens === 1 ? "tela" : "telas"}`} onChange={v => set({ screens: v })}
             hint={`Telas do Parquinho antes do Templo e da Vila. O mundo inteiro tem ${units(width)} unidades de largura.`} />
@@ -39,6 +40,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <PatioRange label="Limite do inventário" min={PATIO_INVENTORY.min} max={PATIO_INVENTORY.max} step={PATIO_INVENTORY.step} value={inventory}
             display={itemsLabel} onChange={v => set({ inventory: v })} onReset={() => set({ inventory: PATIO_INVENTORY.default })}
             hint="Quantos itens cada player carrega neste Pátio. Baixar o limite não tira itens de ninguém; só não cabem novos." />
+          </div>
         </>
       ) : (
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 text-[#dfe8df]">

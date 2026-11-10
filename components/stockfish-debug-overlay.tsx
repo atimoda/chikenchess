@@ -87,7 +87,7 @@ export function StockfishDebugOverlay({ cityColor, trace, analysis, onClose, onR
     >
       <Power className="h-4 w-4 drop-shadow-[0_0_8px_currentColor]" />
     </button>
-    <div ref={dragHandleRef} className="relative z-10 flex h-9 shrink-0 cursor-move touch-none select-none items-center justify-center px-8" title="Arraste para mover o Debug stockfish">
+    <div ref={dragHandleRef} className="relative z-10 flex h-9 shrink-0 touch-none select-none items-center justify-center px-8" title="Arraste para mover o Debug stockfish">
       <span className="truncate text-center text-xs font-bold uppercase tracking-wider text-white">DEBUG STOCKFISH</span>
       {trace?.phase === 'error' && <button type="button" data-no-drag="true" onPointerDown={event => event.stopPropagation()} onClick={onRetry} className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-300 hover:text-amber-100">Retry</button>}
     </div>

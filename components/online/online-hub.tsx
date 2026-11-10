@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, Dice5, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Music2, Play, Plus, RefreshCw, Shuffle, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
+import { ArrowLeft, Bot, Check, ChevronRight, Copy, DoorOpen, Dice5, EyeOff, Gamepad2, Globe2, Loader2, LogIn, MoreVertical, Music2, Plus, RefreshCw, Shuffle, Shirt, Trash2, UserPlus, Users, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -175,7 +175,7 @@ function RunningGameMiniature({ game }: { game: RunningGame }) {
   )
 }
 
-export type OnlineHubTab = 'rooms' | 'friends' | 'profile' | 'room'
+export type OnlineHubTab = 'rooms' | 'friends' | 'profile' | 'wardrobe' | 'room'
 export interface OnlineHubProps {
   onMatch: (matchId: string) => void
   playerProfile: PlayerProfile | null
@@ -303,29 +303,65 @@ export function AddFriendButton({ targetCode, className, iconOnly = false }: { t
   </div>
 }
 
-function KitPreview({ member, identity, unlockedCities, onChooseKit, disabled, play, stop, cancelHover, confirmHover }: {
+/** Each replacement is clipped independently, including its delayed outgoing copy. */
+function KitSlide({ children, previous, delay = 0, className }: {
+  children: ReactNode; previous?: ReactNode; delay?: number; className?: string
+}) {
+  return <span className={cn(styles.kitSlide, className)}>
+    {previous && <span aria-hidden="true" className={styles.kitSlideOutgoing} style={{ animationDelay: `${delay}ms` }}>{previous}</span>}
+    <span className={previous ? styles.kitSlideIncoming : styles.kitSlideContent} style={{ animationDelay: `${delay}ms` }}>{children}</span>
+  </span>
+}
+
+type KitPreviewData = { cityId: string; kit: CreativeSession }
+
+function KitPreview({ member, identity, randomCities, unlockedCities, onChooseKit, disabled, play, stop, cancelHover, confirmHover }: {
   member: RoomMember
   identity: ReactNode
   unlockedCities?: CityData[]
+  randomCities: CityData[]
   onChooseKit?: (cityId: string) => void
   disabled?: boolean
 } & ReturnType<typeof useLobbyKitAudition>) {
-  const city = getCityById(member.city_id)
   const [expanded, setExpanded] = useState(true)
   const [randomExpanded, setRandomExpanded] = useState(false)
-  const [kit, setKit] = useState<CreativeSession | null>(null)
+  const [preview, setPreview] = useState<(KitPreviewData & { previous?: KitPreviewData; delays: number[] }) | null>(null)
+  const kit = preview?.kit
+  const city = getCityById(preview?.cityId ?? member.city_id)
+  const previousCity = preview?.previous && getCityById(preview.previous.cityId)
+  const changing = Boolean(preview?.previous) || preview?.cityId !== member.city_id
   const lastHover = useRef<{ id: string; time: number } | null>(null)
   const previewOwner = `${member.user_id}:${member.city_id}`
   useEffect(() => () => stop(previewOwner), [previewOwner, stop])
   useEffect(() => {
     let mounted = true
-    setKit(null)
-    if (member.city_id === DEFAULT_CITY_ID) return () => { mounted = false }
+    setExpanded(true)
+    setRandomExpanded(false)
+    if (member.city_id === DEFAULT_CITY_ID) {
+      setPreview(null)
+      return () => { mounted = false }
+    }
     void import('@/lib/music/city-kits').then(({ defaultCityKit }) => {
-      if (mounted) setKit(defaultCityKit(member.city_id))
+      if (!mounted) return
+      const nextKit = defaultCityKit(member.city_id)
+      if (!nextKit) return
+      const next = { cityId: member.city_id, kit: nextKit }
+      const delays = Array.from({ length: 19 }, () => Math.floor(Math.random() * 141))
+      setPreview(current => ({ ...next, delays, previous: current && current.cityId !== next.cityId
+        ? { cityId: current.cityId, kit: current.kit } : undefined }))
     }).catch(() => {})
     return () => { mounted = false }
   }, [member.city_id, member.color])
+  useEffect(() => {
+    if (!preview?.previous) return
+    const timer = window.setTimeout(() => setPreview(current => current === preview ? { ...current, previous: undefined } : current), 520)
+    return () => window.clearTimeout(timer)
+  }, [preview])
+  const rollKit = () => {
+    if (disabled || changing || !onChooseKit) return
+    const choices = randomCities.filter(candidate => candidate.id !== member.city_id)
+    if (choices.length) onChooseKit(choices[Math.floor(Math.random() * choices.length)].id)
+  }
   if (member.city_id === DEFAULT_CITY_ID) return <div className={styles.kitPreviewContainer}>
     <div className={styles.kitPreviewTop}>
       {identity}
@@ -347,23 +383,28 @@ function KitPreview({ member, identity, unlockedCities, onChooseKit, disabled, p
       <div className="ml-auto flex min-w-0 items-center gap-2">
         <button type="button" aria-expanded={expanded} onClick={() => { if (expanded) stop(previewOwner); setExpanded(value => !value) }} className={cn(styles.kitPreviewHeading, 'group cursor-pointer text-right')}>
           <span className="flex min-h-14 min-w-0 flex-col justify-center">
-            <span className="text-sm" style={{ color: city.color }}>{city.year} {city.name}</span>
-            <span className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-white/55 group-hover:text-white"><ChevronRight aria-hidden="true" className={cn('size-3 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-90')} />{city.genre}</span>
+            <KitSlide key={`title:${city.id}`} delay={preview?.delays[0]} previous={previousCity && <span style={{ color: previousCity.color }}>{previousCity.year} {previousCity.name}</span>} className="text-sm">
+              <span style={{ color: city.color }}>{city.year} {city.name}</span>
+            </KitSlide>
+            <span className="mt-1 inline-flex min-w-0 items-center justify-end gap-1 text-xs text-white/55 group-hover:text-white"><ChevronRight aria-hidden="true" className={cn('size-3 shrink-0 transition-transform motion-reduce:transition-none', expanded && 'rotate-90')} /><KitSlide key={`genre:${city.id}`} delay={preview?.delays[1]} previous={previousCity?.genre}>{city.genre}</KitSlide></span>
           </span>
-          <img src={city.image} alt="" className="h-14 w-20 rounded object-cover" loading="lazy" />
+          <KitSlide key={`image:${city.id}`} delay={preview?.delays[2]} className="h-14 w-20 rounded" previous={previousCity && <img src={previousCity.image} alt="" className="h-14 w-20 object-cover" />}>
+            <img src={city.image} alt="" className="h-14 w-20 object-cover" />
+          </KitSlide>
         </button>
-        {onChooseKit && <button type="button" aria-label="Select Random kit" title="Random" disabled={disabled} onClick={() => onChooseKit(DEFAULT_CITY_ID)} className="flex h-14 w-8 shrink-0 items-center justify-center rounded border border-white/20 text-white/65 hover:border-primary hover:text-primary disabled:opacity-50"><Dice5 aria-hidden="true" className="size-4" /></button>}
+        {onChooseKit && <button type="button" aria-label="Select Random kit" title="Roll another kit" disabled={disabled || changing || !randomCities.some(candidate => candidate.id !== member.city_id)} onClick={rollKit} className="flex h-14 w-8 shrink-0 items-center justify-center rounded border border-white/20 text-white/65 hover:border-primary hover:text-primary disabled:opacity-50"><Dice5 aria-hidden="true" className="size-4" /></button>}
       </div>
     </div>
     <div className={styles.kitInstrumentReveal} data-expanded={expanded} aria-hidden={!expanded} inert={!expanded}>
       <div className={styles.kitInstrumentList}>
-        {kit?.pieces.filter(piece => piece.color === member.color).map(piece => <button
-          key={piece.id}
+        {kit?.pieces.filter(piece => piece.color === member.color).map((piece, index) => <button
+          key={piece.origin}
+          disabled={changing}
           type="button"
           className="group flex min-w-0 items-start gap-1 text-left hover:text-primary focus-visible:text-primary focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary"
           aria-label={`Play ${kit.instruments[piece.id]?.name || piece.type} at ${piece.origin}`}
           onPointerEnter={event => {
-            if (event.pointerType !== 'mouse') return
+            if (changing || event.pointerType !== 'mouse') return
             lastHover.current = { id: piece.id, time: Date.now() }
             play(kit, piece, previewOwner, 'hover')
           }}
@@ -376,9 +417,17 @@ function KitPreview({ member, identity, unlockedCities, onChooseKit, disabled, p
             play(kit, piece, previewOwner, 'press')
           }}
         >
+          <KitSlide key={`${city.id}:${piece.origin}`} className="flex-1" delay={preview?.delays[index + 3]} previous={preview?.previous && <span className="flex min-w-0 items-start gap-1">
+            <span className="shrink-0 font-mono text-white/35">{piece.origin}</span>
+            <span aria-hidden="true" className={styles.kitPieceIcon} dangerouslySetInnerHTML={stableHtml(PiecesSVG[`${member.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG] || '')} />
+            <span className="min-w-0 break-words">{preview.previous?.kit.instruments[piece.id]?.name || piece.type}</span>
+          </span>}>
+          <span className="flex min-w-0 items-start gap-1">
+          <span className="shrink-0 font-mono text-white/35">{piece.origin}</span>
           <span aria-hidden="true" className={styles.kitPieceIcon} dangerouslySetInnerHTML={stableHtml(PiecesSVG[`${member.color}${piece.type.toUpperCase()}` as keyof typeof PiecesSVG] || '')} />
-          <span className="min-w-0 break-words"><span className="font-mono text-white/35">{piece.origin}</span> {kit.instruments[piece.id]?.name || piece.type}</span>
-          <Play aria-hidden="true" className="mt-0.5 size-3 shrink-0 text-white/35 group-hover:text-primary group-focus-visible:text-primary" />
+          <span className="min-w-0 break-words">{kit.instruments[piece.id]?.name || piece.type}</span>
+          </span>
+          </KitSlide>
         </button>)}
       </div>
     </div>
@@ -424,6 +473,15 @@ function saveHiddenFriendCodes(userId: string | undefined, hidden: Set<string>) 
   } catch {
     // Ignore storage errors
   }
+}
+
+/** Wardrobe tab: placeholder until its contents are defined. */
+function WardrobePane() {
+  return <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-white/15 px-4 py-10 text-center">
+    <Shirt aria-hidden="true" className="size-8 text-primary/70" />
+    <p className="text-sm font-medium text-white/80">Vestiário</p>
+    <p className="text-xs text-white/50">Em breve: roupas e acessórios para a sua galinha.</p>
+  </div>
 }
 
 function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) => void }) {
@@ -651,7 +709,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
   const [internalOpen, setInternalOpen] = useState(Boolean(inviteCode))
   const isOpen = open ?? internalOpen
   const [lobbyOpen, setLobbyOpen] = useState(false)
-  const [tab, setTab] = useState<OnlineHubTab>(initialTab === 'profile' ? 'profile' : initialTab === 'friends' ? 'friends' : 'rooms')
+  const [tab, setTab] = useState<OnlineHubTab>(initialTab === 'profile' || initialTab === 'friends' || initialTab === 'wardrobe' ? initialTab : 'rooms')
   const [_showDirectory, setShowDirectory] = useState(false)
   const [directoryError, setDirectoryError] = useState<string | null>(null)
   const roomsRefreshRevision = useRef(0)
@@ -663,7 +721,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
   const [serverKitCatalog, setServerKitCatalog] = useState<string[] | null>(null)
 
   useEffect(() => {
-    if (!configured || !isOpen || serverKitCatalog) return
+    if (!configured || (!isOpen && !lobbyOpen) || serverKitCatalog) return
     let active = true
     void onlineRpc<string[]>('online_kit_catalog')
       .then((catalog) => {
@@ -673,7 +731,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       })
       .catch(() => {})
     return () => { active = false }
-  }, [configured, isOpen, serverKitCatalog])
+  }, [configured, isOpen, lobbyOpen, serverKitCatalog])
 
   const availableCities = useMemo(() => {
     if (!serverKitCatalog || !serverKitCatalog.length) return cities
@@ -699,6 +757,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     }
     return matched.length > 0 ? matched : cities
   }, [serverKitCatalog])
+  const randomCities = useMemo(() => serverKitCatalog ? cities.filter(city => serverKitCatalog.includes(city.id)) : [], [serverKitCatalog])
   const unlockedCities = useMemo(() => availableCities.filter((city) => getCityById(city.id) && isCityUnlocked(city.id)), [availableCities])
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
@@ -1087,6 +1146,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     { id: 'rooms', label: 'Lobbies', icon: Globe2 },
     { id: 'friends', label: 'Friends', icon: Users },
     { id: 'profile', label: 'Profile', icon: UserRound },
+    { id: 'wardrobe', label: 'Vestiário', icon: Shirt },
   ]
   const selectTab = (id: OnlineHubTab) => {
     if (id === 'room') {
@@ -1164,10 +1224,10 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     <Dialog modal={false} open={isOpen} onOpenChange={setOpen}>
       {isOpen && <DialogContent floating closeOnInteractOutside className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent)} closeLabel="Close online panel">
         <DialogHeader className="sr-only">
-          <DialogTitle>{tab === 'rooms' ? 'Lobbies' : tab === 'friends' ? 'Friends' : 'Your profile'}</DialogTitle>
-          <DialogDescription>{tab === 'rooms' ? 'Play ChickenChess online with another player, powers, and each team’s kits.' : tab === 'friends' ? 'Add friends with their profile code or email and manage received requests.' : 'Your name, progress, and online account.'}</DialogDescription>
+          <DialogTitle>{tab === 'rooms' ? 'Lobbies' : tab === 'friends' ? 'Friends' : tab === 'wardrobe' ? 'Vestiário' : 'Your profile'}</DialogTitle>
+          <DialogDescription>{tab === 'rooms' ? 'Play ChickenChess online with another player, powers, and each team’s kits.' : tab === 'friends' ? 'Add friends with their profile code or email and manage received requests.' : tab === 'wardrobe' ? 'Your chicken’s outfits.' : 'Your name, progress, and online account.'}</DialogDescription>
         </DialogHeader>
-        <nav aria-label="Online area" className="grid grid-cols-3 gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2">
+        <nav aria-label="Online area" className="grid grid-cols-4 gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2">
           {tabs.map(({ id, label, icon: Icon }) => (
             <div key={id} className="min-w-0">
               <Button
@@ -1188,6 +1248,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
           ))}
         </nav>
         {tab === 'profile' ? <ProfilePane playerProfile={playerProfile} onSignIn={() => { setOpen(false); openLogin() }} />
+          : tab === 'wardrobe' ? <WardrobePane />
           : !configured ? <p className="rounded-md border border-white/15 p-4 text-sm leading-relaxed text-white/65">{ONLINE_CONFIGURATION_MESSAGE}</p>
           : tab === 'friends' ? <FriendsPane onCreateGame={handleCreateGameWithFriend} />
           : <div className="space-y-4">
@@ -1218,8 +1279,8 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-3">
-            {room.members.map((member) => <div key={member.user_id} className={cn('space-y-3 rounded-md border p-3', member.ready ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
-              <KitPreview key={`${member.user_id}:${member.city_id}`} member={member} identity={<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-xl leading-none">🐔</span><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (you)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'White' : 'Black'} · {member.profile.code}</p></div></div>{member.ready && <span className="inline-flex items-center gap-1 text-xs text-primary"><Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />Ready</span>}</div>} unlockedCities={member.user_id === user?.id ? unlockedCities : undefined} disabled={Boolean(busy) || room.status !== 'open'} onChooseKit={member.user_id === user?.id && room.status === 'open' ? (cityId) => void roomAction('kit', room.code, cityId) : undefined} play={playKitInstrument} stop={stopKitInstrument} cancelHover={cancelKitHover} confirmHover={confirmKitHover} />
+            {room.members.map((member) => <div key={member.user_id} className="space-y-3 border-b border-white/10 py-3 last:border-b-0">
+              <KitPreview key={member.user_id} randomCities={randomCities} member={member} identity={<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-xl leading-none">🐔</span><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (you)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'White' : 'Black'} · {member.profile.code}</p></div></div>{member.ready && <span className="inline-flex items-center gap-1 text-xs text-primary"><Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />Ready</span>}</div>} unlockedCities={member.user_id === user?.id ? unlockedCities : undefined} disabled={Boolean(busy) || room.status !== 'open'} onChooseKit={member.user_id === user?.id && room.status === 'open' ? (cityId) => void roomAction('kit', room.code, cityId) : undefined} play={playKitInstrument} stop={stopKitInstrument} cancelHover={cancelKitHover} confirmHover={confirmKitHover} />
             </div>)}
             {activeBot && <div className={cn('space-y-3 rounded-md border p-3', botReady ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
               <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2"><Bot aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">Campaign bot</p><p className="text-[11px] text-white/45">Uses your kit in the campaign</p></div></div><div className="flex items-center gap-2"><button type="button" className="cursor-pointer text-xs text-white/55 underline decoration-white/25 underline-offset-2 hover:text-white disabled:cursor-default disabled:opacity-50" disabled={Boolean(busy)} onClick={removeBot}>Remove</button><span role="status" aria-live="polite" className={cn('inline-flex items-center gap-1 text-xs', botReady ? 'text-primary' : 'text-white/40')}>{botReady && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{botReady ? 'Ready' : 'Choosing a kit'}</span></div></div>

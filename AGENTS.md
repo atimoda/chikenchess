@@ -1,6 +1,7 @@
 # Mecânica e documentação
 
 - Toda alteração de mecânica ou interface deve ser aplicada em todos os modos de jogo, salvo quando o pedido indicar explicitamente um modo específico.
+- Ao criar ou ajustar interfaces, priorize uma apresentação minimalista: remova ícones, fundos e ornamentos redundantes e mostre só o conteúdo necessário. Quando a aparência já comunica claramente o estado momentâneo de um objeto ou controle, não acrescente instrução textual para repetir o óbvio; prefira que a própria aparência acompanhe o estado.
 
 - Antes de alterar regras de jogo, gestos, áudio, widgets, mapa ou persistência, consulte o arquivo do assunto em `docs/mechanics/` (o índice `GAME_MECHANICS.md` diz qual).
 - Na mesma alteração, atualize esse arquivo com o comportamento realmente implementado: gatilho, efeitos, retorno/cancelamento, prioridades e escopo por modo/engine.

@@ -226,3 +226,18 @@
 @media (prefers-reduced-motion: reduce) {
   .kitPreviewGrid, .kitInstrumentReveal { transition: none; }
 }
+
+/* Downward swaps stay inside each title, picture or instrument row. */
+.kitSlide { display: block; position: relative; min-width: 0; overflow: hidden; }
+.kitSlideContent, .kitSlideIncoming, .kitSlideOutgoing { display: block; min-width: 0; }
+.kitSlideIncoming { animation: kitSlideIn 360ms cubic-bezier(.22, .68, .25, 1) both; }
+.kitSlideOutgoing { position: absolute; inset: 0; pointer-events: none; animation: kitSlideOut 360ms cubic-bezier(.22, .68, .25, 1) both; }
+@keyframes kitSlideIn { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes kitSlideOut { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .kitSlideIncoming { animation: none; }
+  .kitSlideOutgoing { display: none; animation: none; }
+}
+
+.kitInstrumentList > button:enabled:hover .kitPieceIcon,
+.kitInstrumentList > button:focus-visible .kitPieceIcon { background: var(--primary); }

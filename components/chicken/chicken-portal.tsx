@@ -19,6 +19,7 @@ import { isLiteDevice } from "@/lib/performance"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
+import { stageWidth } from "@/lib/stage-size"
 
 const PAD = 34 // room around the ring for the glow, arcs and sparks
 const OPACITY = 0.5 // the ring is half transparent
@@ -258,7 +259,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   const [layout, setLayout] = useState<{ d: number; right: number } | null>(null)
   const [entering, setEntering] = useState(false)
   const [touching, setTouching] = useState(false)
-  const enterRef = useRef<(() => void) | null>(null)
+  const enterRef = useRef<((allowWalk?: boolean) => void) | null>(null)
   const [buttonW, setButtonW] = useState(170)
   // the button (and the switch under it): the animation keeps it over the ring
   const buttonRef = useRef<HTMLDivElement>(null)
@@ -292,7 +293,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   // size and place: in the right corner of the ground
   useEffect(() => {
     const place = () => {
-      const { d, right } = worldD ? { d: worldD, right: 0 } : portalLayout(window.innerWidth)
+      const { d, right } = worldD ? { d: worldD, right: 0 } : portalLayout(stageWidth())
       setLayout(l => (l && l.d === d && l.right === right ? l : { d, right }))
     }
     place()
@@ -325,7 +326,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     let strands = makeStrands(strandCount(), r, 6, strandPoints())
     let arcs: Arc[] = []
     const sparks: Spark[] = []
-    let portalPressPointer: number | null = null
+    let portalPressPointer: { id: number; walk: boolean } | null = null
     let rot = 0, last = performance.now(), nextStrands = 0, drawnAt = 0
     let power = 1 // glow strength: rises as she comes close, flares on entering
     let enteredAt = transitionRef.current?.at ?? 0, raf = 0
@@ -339,7 +340,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     const visualCenter = (center: { x: number; y: number }) => {
       const zoom = inWorld ? liveCamera.zoom : 1
       return {
-        x: window.innerWidth / 2 + (center.x - window.innerWidth / 2) * zoom,
+        x: stageWidth() / 2 + (center.x - stageWidth() / 2) * zoom,
         y: window.innerHeight / 2 + (center.y - window.innerHeight / 2) * zoom,
       }
     }
@@ -349,12 +350,13 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       return !!shown && Math.hypot(x - shown.x, y - shown.y) <= r * (inWorld ? liveCamera.zoom : 1)
     }
     const onPortalPointerDown = (e: PointerEvent) => {
-      portalPressPointer = !document.body.classList.contains('pigchicken-camera-mode') && e.isPrimary && e.button === 0 && insidePortal(e.clientX, e.clientY) ? e.pointerId : null
+      portalPressPointer = !document.body.classList.contains('pigchicken-camera-mode') && e.isPrimary && e.button === 0 && insidePortal(e.clientX, e.clientY) ? { id: e.pointerId, walk: e.pointerType === 'mouse' && !!buttonRef.current?.querySelector('button')?.contains(e.target as Node) } : null
     }
     const onPortalPointerUp = (e: PointerEvent) => {
-      const beganInside = portalPressPointer === e.pointerId
+      const press = portalPressPointer
+      const beganInside = press?.id === e.pointerId
       portalPressPointer = null
-      if (beganInside && !document.body.classList.contains('pigchicken-camera-mode') && insidePortal(e.clientX, e.clientY)) enterRef.current?.()
+      if (beganInside && !document.body.classList.contains('pigchicken-camera-mode') && insidePortal(e.clientX, e.clientY)) enterRef.current?.(press?.walk)
     }
     const onPortalPointerCancel = () => { portalPressPointer = null }
     window.addEventListener("pointerdown", onPortalPointerDown, true)
@@ -385,7 +387,13 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       }, ENTER_MS) }
     }
 
-    enterRef.current = enter
+    enterRef.current = (allowWalk = false) => {
+      if (enteredAt || !runtimeRef.current.enabled || !visibleRef.current) return
+      if (candidateRef.current) { enter(); return }
+      const center = centerRef.current
+      const actor = engineRef.current
+      if (allowWalk && center && actor) actor.walkToPortal(portalId, center)
+    }
 
     const frame = (now: number) => {
       raf = requestGameFrame(frame)
@@ -396,7 +404,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       if (inWorld && world) box = canvas.getBoundingClientRect()
       const zoom = inWorld ? liveCamera.zoom : 1
       const pcxScreen = box.left + cx * zoom, pcyScreen = box.top + cy * zoom
-      const pcx = (pcxScreen - window.innerWidth / 2) / zoom + window.innerWidth / 2
+      const pcx = (pcxScreen - stageWidth() / 2) / zoom + stageWidth() / 2
       const pcy = (pcyScreen - window.innerHeight / 2) / zoom + window.innerHeight / 2
       centerRef.current = { x: pcx, y: pcy }
       if (enteredAt) enteringEngine?.setPortalEntry({ x: pcx, y: pcy, durationMs: ENTER_MS })
@@ -423,7 +431,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         const characters = runtime.actors?.() ?? (eng ? [eng] : [])
         for (const actor of characters) {
           const st = actor.getMotionState()
-          const gate = portalGate(actor, portalId).update(st, { x: pcx, y: pcy, r }, actor.peekUse(now), active)
+          const gate = portalGate(actor, portalId).update(st, { x: pcx, y: pcy, r }, actor.peekUse(now), active, actor.isWalkingToPortal(portalId))
+          if (!active || gate.blocked) actor.cancelPortalWalk(portalId)
           suppressed ||= gate.blocked
           near = Math.max(near, 1 - Math.hypot(st.x - pcx, st.y - 80 * st.scale - pcy) / (r * 3.5))
           if (gate.touching && !candidate) candidate = actor
@@ -433,7 +442,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         setTouching(!!candidate)
         const pointer = pointerRef.current
         const hovered = pointer && Math.hypot(pointer.x - pcxScreen, pointer.y - pcyScreen) <= r * zoom
-        const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+        const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > 0 && box.top < window.innerHeight
         setShowInstruction(!!(active && onScreen && !suppressed && (candidate || (label.trim() && (hovered || runtime.instructionMode === 'always')))))
       }
       // Contact is sampled every game frame, even when the ring draws at ~30 FPS.
@@ -444,7 +453,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       const btn = buttonRef.current
       if (btn) {
         const w = btn.offsetWidth
-        btn.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - w, pcxScreen - w / 2))}px`
+        btn.style.left = `${Math.max(8, Math.min(stageWidth() - 8 - w, pcxScreen - w / 2))}px`
         btn.style.top = `${pcyScreen - btn.offsetHeight / 2}px`
       }
       const dt = Math.min(0.05, elapsed / 1000); last = now
@@ -458,7 +467,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       }
       // Contact/arrival gates above still run for offscreen local players. Only
       // the decorative canvas work sleeps; a transition always keeps drawing.
-      const onScreen = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+      const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > 0 && box.top < window.innerHeight
       if (!onScreen && !enteredAt) { sparks.length = 0; arcs = []; nextStrands = now; return }
       const enterT = enteredAt ? Math.min(1, (now - enteredAt) / ENTER_MS) : 0
       const target = 1 + near * 0.8 + enterT * 2.4
@@ -513,6 +522,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       window.removeEventListener("pointerup", onPortalPointerUp, true)
       window.removeEventListener("pointercancel", onPortalPointerCancel, true)
       enterRef.current = null
+      const characters = runtimeRef.current.actors?.() ?? (engineRef.current ? [engineRef.current] : [])
+      characters.forEach(actor => actor.cancelPortalWalk(portalId))
     }
   }, [layout, router, href, worldD, host, portalId, label])
 
@@ -532,7 +543,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   // first place of the button (the animation keeps it on the ring from then on)
   const c = centerRef.current
   const cOnScreen = c && (world
-    ? { x: window.innerWidth / 2 + (c.x - window.innerWidth / 2) * liveCamera.zoom, y: window.innerHeight / 2 + (c.y - window.innerHeight / 2) * liveCamera.zoom }
+    ? { x: stageWidth() / 2 + (c.x - stageWidth() / 2) * liveCamera.zoom, y: window.innerHeight / 2 + (c.y - window.innerHeight / 2) * liveCamera.zoom }
     : c)
   const btnStyle: React.CSSProperties = c
     ? { left: Math.max(8, cOnScreen!.x - buttonW / 2), top: cOnScreen!.y - 18 }
@@ -554,9 +565,9 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
             type="button"
             aria-label="Usar portal"
             aria-description={label.trim() || undefined}
-            onClick={e => { if (e.detail === 0) enterRef.current?.() }}
-            disabled={!touching}
-            title={touching ? "Usar portal (mesmo comando de Pegar)" : "Aproxime o boneco para usar o portal"}
+            onClick={e => { if (e.detail === 0) enterRef.current?.(true) }}
+            disabled={!touching && !engine?.canPointAndClick()}
+            title={touching ? "Usar portal (mesmo comando de Pegar)" : engine?.canPointAndClick() ? "Ir até o portal e entrar" : "Aproxime o boneco para usar o portal"}
             className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 disabled:cursor-default"
           >
             {label.trim() ? label : "Usar"}

@@ -10,6 +10,7 @@ import { loadChickenControls, setTouchMoveStick, subscribeChickenControls, type 
 import { magnetVector } from "@/lib/chicken/analog-magnet"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { clampDelta, finishTouchLayoutEdit, getServerTouchLayout, getTouchLayout, resetTouchLayout, setTouchOffset, subscribeTouchLayout, type TouchControlId } from "@/lib/chicken/touch-layout"
+import { stageWidth } from "@/lib/stage-size"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
 export const CHICKEN_GROUND_H = 30
@@ -67,7 +68,7 @@ export function Movable({ id, className = "", style, children }: { id: TouchCont
   const move = (e: ReactPointerEvent) => {
     const d = drag.current
     if (!d || d.pid !== e.pointerId) return
-    const c = clampDelta(d.rect, e.clientX - d.sx, e.clientY - d.sy, window.innerWidth, window.innerHeight)
+    const c = clampDelta(d.rect, e.clientX - d.sx, e.clientY - d.sy, stageWidth(), window.innerHeight)
     setTouchOffset(id, { x: Math.round(d.ox + c.x), y: Math.round(d.oy + c.y) })
   }
   const up = () => { drag.current = null }

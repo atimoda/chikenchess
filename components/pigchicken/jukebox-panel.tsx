@@ -91,7 +91,7 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
   return (
     <FloatingPanel id="pigchicken-jukebox" aria-label="Jukebox" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(520, vw - 24) - 12), y: 64, w: Math.min(520, vw - 24), h: Math.min(720, vh - 104) })} minW={300}
       className="rounded-[22px] border-2 bg-[#07130d] font-mono text-xs text-[#dfe8df] shadow-[0_0_24px_rgba(57,255,136,0.25),0_20px_60px_rgba(0,0,0,0.6)]" style={{ borderColor: NEON }}>
-      <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
+      <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <Disc3 className="h-4 w-4" style={{ color: NEON }} />
         <h2 className="min-w-0 flex-1 truncate text-sm text-white">Jukebox</h2>
         <button type="button" aria-label="Fechar jukebox" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>

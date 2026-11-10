@@ -60,17 +60,26 @@ function noise(a: AudioContext) {
   const s = a.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s
 }
 
-export type Held = { setPitch: (midi: number) => void; stop: () => void }
+export type Held = { setPitch: (midi: number) => void; setVolume?: (v: number) => void; stop: () => void }
 
-// plays one note; `at` is a delay in seconds (to land on the grid), `dur` how long it is held
-export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?: number; vel?: number; sustain?: boolean } = {}): Held | null {
+// plays one note; `at` is a delay in seconds (to land on the grid), `dur` how long it is held; `fade` (seconds)
+// adds a gentle fade-in on top of the voice's own attack, so even plucked voices start without a click
+export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?: number; vel?: number; sustain?: boolean; fade?: number } = {}): Held | null {
   const a = ctx()
   if (!a || !bus || noteVol <= 0) return null
   const t = a.currentTime + Math.max(0, opts.at ?? 0)
   const vel = Math.max(0.05, Math.min(1, opts.vel ?? 0.8))
   const dur = opts.dur ?? 0.3
   const f = midiHz(midi)
-  const out = a.createGain(); out.connect(bus)
+  const out = a.createGain()
+  // a held note's loudness on top of its envelope (setVolume: the aim's distance on the violin's beam)
+  const level = a.createGain()
+  out.connect(level)
+  const fade = Math.max(0, opts.fade ?? 0)
+  if (fade > 0) {
+    const fg = a.createGain(); fg.gain.setValueAtTime(0, t); fg.gain.linearRampToValueAtTime(1, t + fade)
+    level.connect(fg); fg.connect(bus)
+  } else level.connect(bus)
   const sources: AudioScheduledSourceNode[] = []
   const freqs: AudioParam[] = [] // pitched params that follow setPitch (each with its ratio)
   const ratios: number[] = []
@@ -194,6 +203,7 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       const now = a.currentTime, nf = midiHz(m)
       freqs.forEach((p, i) => { p.cancelScheduledValues(now); p.setValueAtTime(p.value, now); p.exponentialRampToValueAtTime(nf * ratios[i], now + 0.06) })
     },
+    setVolume(x: number) { level.gain.setTargetAtTime(Math.max(0, Math.min(1, x)), a.currentTime, 0.03) },
     stop() { const now = a.currentTime; v.end = now; out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), now); out.gain.exponentialRampToValueAtTime(0.0001, now + 0.25); sources.forEach(s => { try { s.stop(now + 0.3) } catch { /* ok */ } }) },
   }
 }
@@ -242,22 +252,25 @@ export function playDrum(kind: Drum, at = 0, vel = 1) {
 export function createDrone() {
   let nodes: { o: OscillatorNode[]; g: GainNode; lp: BiquadFilterNode } | null = null
   return {
-    set(root: number | null) {
+    // root: MIDI (played two octaves down); fifth: semitones above it; third: semitones above it, sounded an octave
+    // higher (major 4 or minor 3: the chord's type)
+    set(root: number | null, fifth = 7, third = 4) {
       const a = ctx()
       if (!a || !amb) return
       const now = a.currentTime
       if (root === null) { if (nodes) { const n = nodes; n.g.gain.setTargetAtTime(0.0001, now, 0.3); n.o.forEach(o => o.stop(now + 2)); nodes = null } return }
-      const r = midiHz(root - 24)
+      const r = midiHz(root - 24), f5 = Math.pow(2, fifth / 12), f3 = Math.pow(2, (12 + third) / 12)
       if (!nodes) {
         const g = a.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.setTargetAtTime(0.09, now, 0.8)
         const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 0.8
         const lfo = osc(a, 'sine', 0.13, now), lg = a.createGain(); lg.gain.value = 160; lfo.connect(lg); lg.connect(lp.frequency)
-        const o = [osc(a, 'sawtooth', r, now), osc(a, 'sawtooth', r * 1.004, now), osc(a, 'sawtooth', r * 1.5, now), lfo]
-        o.slice(0, 3).forEach(x => x.connect(lp)); lp.connect(g); g.connect(amb); o.forEach(x => x.start(now))
+        const o = [osc(a, 'sawtooth', r, now), osc(a, 'sawtooth', r * 1.004, now), osc(a, 'sawtooth', r * f5, now), osc(a, 'triangle', r * f3, now), lfo]
+        o.slice(0, 4).forEach(x => x.connect(lp)); lp.connect(g); g.connect(amb); o.forEach(x => x.start(now))
         nodes = { o, g, lp }
       } else {
-        const [a1, a2, a3] = nodes.o
-        a1.frequency.setTargetAtTime(r, now, 0.15); a2.frequency.setTargetAtTime(r * 1.004, now, 0.15); a3.frequency.setTargetAtTime(r * 1.5, now, 0.15)
+        const [a1, a2, a3, a4] = nodes.o
+        // a quick change of note, not a slide (a slow glide between the bars' roots sounded like a moan)
+        a1.frequency.setTargetAtTime(r, now, 0.015); a2.frequency.setTargetAtTime(r * 1.004, now, 0.015); a3.frequency.setTargetAtTime(r * f5, now, 0.015); a4.frequency.setTargetAtTime(r * f3, now, 0.015)
       }
     },
   }

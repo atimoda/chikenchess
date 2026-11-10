@@ -56,7 +56,7 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
     x: Math.max(8, vw - 390), y: 64, w: Math.min(vw - 16, 376), h: Math.min(vh - 78, 660),
   })} minW={245} minH={170} keepInViewport
     className={`rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs text-[#dfe8df] shadow-[0_20px_60px_#0009] ${dragging ? "pointer-events-none opacity-0" : ""}`}>
-    <div data-drag-handle className="flex shrink-0 cursor-move items-center justify-between border-b border-white/10 px-3 py-2">
+    <div data-drag-handle className="flex shrink-0 items-center justify-between border-b border-white/10 px-3 py-2">
       <h2 className="text-sm text-white">{previewDrag ? "Criador de árvores" : "Editar árvore"}</h2>
       <button type="button" className={BUTTON} aria-label="Fechar editor de árvores" onClick={onClose}><X size={16} /></button>
     </div>
@@ -75,32 +75,40 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
         <button type="button" className={`${BUTTON} justify-self-end`} onClick={() => style(randomTree(tree.style).tree)}><Dice5 size={15} /> Sortear</button>
       </div>
       <TreeGroup title="Tronco">
+        <div className="grid gap-[3px]">
         {range("trunkHeight", "Altura do tronco", "%")}
         {range("trunkWidth", "Espessura da base", "%")}
         {range("taper", "Espessura da ponta", "%")}
         {range("lean", "Inclinação lateral", "%")}
+        </div>
         <PatioSelect label="Casca" options={TREE_BARKS} value={tree.bark} onChange={bark => set({ bark })} />
         {color("barkColor", "Cor da casca")}
         {toggle("flip", "Espelhar")}
       </TreeGroup>
       <TreeGroup title="Galhos e folhas">
+        <div className="grid gap-[3px]">
         {range("branches", "Quantidade de galhos")}
         {range("angle", "Inclinação dos galhos", "%")}
+        </div>
         <PatioSelect label="Copa" options={TREE_CROWNS} value={tree.crown} onChange={crown => set({ crown })} />
+        <div className="grid gap-[3px]">
         {range("spread", "Abertura da copa", "%")}
         {range("density", "Grupos de folhas")}
         {range("leafSize", "Tamanho dos grupos", "%")}
         {range("sharpness", "Pontas das folhas", "%")}
+        </div>
         <PatioSelect label="Floração" options={TREE_BLOOMS} value={tree.bloom} onChange={bloom => set({ bloom })} />
         {tree.bloom === "custom" && color("flowerColor", "Cor das flores")}
         <div className="grid grid-cols-2 gap-2">{color("leafColor", "Folhas")}{color("accentColor", "Destaques")}</div>
       </TreeGroup>
       <TreeGroup title="Movimento e efeitos">
+        <div className="grid gap-[3px]">
         {range("trunkSway", "Balanço do tronco", "°", tree.climbTrunk || tree.walkBranches || tree.walkCrown
           ? "O tronco fica firme com apoios ligados." : "Balanço manual em tempo calmo. Rajadas podem somar movimento.")}
         {range("wind", "Balanço da copa", "°", tree.walkCrown || (tree.crown === "fronds" && tree.walkBranches)
           ? "A folhagem com apoios fica firme." : undefined)}
         {range("windPeriod", "Duração do balanço", " s")}
+        </div>
         {worldX !== undefined && !legacy && <button type="button" className={`${BUTTON} justify-self-end`} onClick={() => {
           stopGust.current?.()
           stopGust.current = gustSceneryWind({ strength: 5, durationMs: 1800, fromX: worldX - 700, toX: worldX + 700 })

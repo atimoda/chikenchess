@@ -1,7 +1,7 @@
 import { cities } from '../cities-data'
 import { STYLE_PROFILES } from '../music/kit-profiles/catalog'
 
-export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'egg-rewards' | 'names' | 'music-profile' | 'music-preset' | 'music-reactions' | 'pigchicken-items'
+export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'egg-rewards' | 'names' | 'music-profile' | 'music-preset' | 'music-reactions' | 'chicken-controls' | 'pigchicken-items'
 export interface AdminEntry {
   id: string
   title: string
@@ -24,8 +24,10 @@ export const ADMIN_ENTRIES: AdminEntry[] = [
   ui('bots', 'Perfis dos bots', 'Configurações de dificuldade, atraso e poderes dos bots Pure Chess e ChickenBot.', 'bots'),
   { ...ui('egg-rewards', 'Recompensas de ovos', 'Teto de golden eggs na partida, quantos lances Best/Worst rendem ovos conforme o número de lances possíveis, e quanto tempo os ovos ficam nas casas depois das setas.', 'egg-rewards'), group: 'Regras da partida' },
   { ...ui('baptism-names', 'Nomes de batismo', 'Títulos, adjetivos, substantivos e epítetos. Depois de salvar, gere a migração para publicar o catálogo no Supabase.', 'names'), group: 'Contas' },
-  { id: 'pigchicken-items', title: 'Itens do PigChicKen', group: 'PigChicKen', kind: 'pigchicken-items', path: 'data/pigchicken/items.json',
-    description: 'Fichas oficiais dos itens: só o que difere do código (pontos de giro e das asas, números, modos). O botão Salvar no game do painel Itens grava aqui.' },
+  { id: 'chicken-controls', title: 'Controles padrão', group: 'Pátio', kind: 'chicken-controls', path: 'data/chicken/default-controls.json',
+    description: 'Binds e opções do painel Controles para quem nunca mexeu neles e para Restaurar padrão. O painel Controles grava aqui com Salvar no game.' },
+  { id: 'pigchicken-items', title: 'Itens padrão (armas e instrumentos)', group: 'Pátio', kind: 'pigchicken-items', path: 'data/pigchicken/default-items.json',
+    description: 'Números e opções de cada item do painel Itens (armas, instrumentos, esportivos, consumíveis, asa e bicada) para quem nunca mexeu neles. O painel Itens grava aqui com Salvar no game.' },
   { id: 'reactions', title: 'Estados e Eventos globais', group: 'Kits musicais', kind: 'music-reactions', path: 'data/music/reactions.json',
     description: 'Regras oficiais de Estados e Eventos usadas por todos os kits; cada kit pode sobrescrever gatilhos no Criativo.' },
   ...Object.keys(STYLE_PROFILES).map(cityId => {

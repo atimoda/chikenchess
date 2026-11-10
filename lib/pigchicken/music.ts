@@ -60,6 +60,15 @@ export function chordOn(zone: Zone, degree: number, seventh = false) {
   return notes
 }
 
+// the drone's notes for a chord: its root kept within a fourth/fifth of the key's root (the bass does not leap an
+// octave between bars), its own third (major or minor: what makes the chord's type heard) and fifth (a diminished
+// chord's is a tritone, not a perfect fifth)
+export function droneOf(zone: Zone, chord: number[]) {
+  const up = ((((chord[0] - zone.root) % 12) + 12) % 12)
+  const iv = (n: number) => ((((n - chord[0]) % 12) + 12) % 12)
+  return { root: zone.root + (up > 6 ? up - 12 : up), third: iv(chord[1]), fifth: iv(chord[2]) }
+}
+
 // pitch classes of a chord spread over a register
 export function chordNotes(chord: number[], lo: number, hi: number) {
   const pcs = new Set(chord.map(n => ((n % 12) + 12) % 12))
@@ -119,12 +128,16 @@ export function createConductor() {
     secondsPerBeat: spb,
     // the note the aim plays: pointing higher plays higher, always inside the chord (or the scale)
     noteFor(angle: number, set: PitchSet, octave: number, span = 2) {
-      const center = 60 + 12 * octave
-      const lo = center - 6 * span + 1, hi = center + 6 * span
-      const pool = set === 'chord' ? chordNotes(this.chord(true), lo, hi) : scaleNotes(zone.root, zone.scale, lo, hi)
+      const pool = this.aimPool(set, octave, span)
       const up = Math.max(-1, Math.min(1, -Math.sin(angle))) // -1 down … 1 up
       const i = Math.round(((up + 1) / 2) * (pool.length - 1))
       return pool[Math.max(0, Math.min(pool.length - 1, i))]
+    },
+    // the notes the aim goes through, low (pointing down) to high (pointing up): one lane of the aim's fan each
+    aimPool(set: PitchSet, octave: number, span = 2) {
+      const center = 60 + 12 * octave
+      const lo = center - 6 * span + 1, hi = center + 6 * span
+      return set === 'chord' ? chordNotes(this.chord(true), lo, hi) : scaleNotes(zone.root, zone.scale, lo, hi)
     },
     // notes `n` steps away inside the chord or the scale (for arpeggios and phrases)
     walk(from: number, n: number, set: PitchSet) {

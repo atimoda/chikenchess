@@ -1,20 +1,20 @@
 "use client"
 
 // Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
-// picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live. The admin's "Salvar no game"
-// writes every item's changes from the code to the game's official sheet (data/pigchicken/items.json, local Admin).
+// picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
 import { PatioRange } from "@/components/ui/patio-range"
+import { PatioDualRange } from "@/components/ui/patio-dual-range"
+import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
-import { Database, X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, GAME_ITEMS, itemsDiff, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, SPORTS_IDS, WEAPON_IDS, loadItems, saveItems, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
+import { X } from "lucide-react"
+import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, SPORTS_IDS, WEAPON_IDS, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
 import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
+import { SaveToGameButton } from "@/components/admin/save-to-game-button"
+import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
 import { ItemPointsEditor } from "./item-points-editor"
-import { useOnline } from "@/components/online/online-provider"
-import { isAdminUser } from "@/lib/admin/access"
-import { saveOfficialItems } from "@/lib/admin/items-file-client"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
   { value: "semi", label: "Semi (um por toque)" },
@@ -45,20 +45,9 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
     setItems(loadItems())
     return subscribeItems(setItems)
   }, [])
-  const it = items[sel], base = GAME_ITEMS[sel]
-  const online = useOnline()
-  const isAdmin = isAdminUser(online.user)
-  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null)
-  const [saving, setSaving] = useState(false)
-  // "Salvar no game": every item's changes from the code become the game's sheet (after the deploy, for everyone)
-  const saveToGame = async () => {
-    setSaving(true); setNotice(null)
-    try {
-      await saveOfficialItems(itemsDiff(items, DEFAULT_ITEMS))
-      setNotice({ text: "Itens salvos no game (data/pigchicken/items.json). Chegam a todos no próximo deploy." })
-    } catch (error) { setNotice({ text: error instanceof Error ? error.message : "Não foi possível salvar no game.", error: true }) }
-    finally { setSaving(false) }
-  }
+  // the main player equips an item while the panel is open: the dropdown jumps to it
+  useEffect(() => subscribeHeldItem(id => { if (id) setSel(id) }), [])
+  const it = items[sel], base = DEFAULT_ITEMS[sel]
   // items held at the hand (sports tools, consumables, a grenade charged in the hand) keep the hand's own pose
   const handHeld = it.reticle === "grenade" && it.fireMode === "charge"
   const update = (fn: (d: ItemDef) => void) => {
@@ -69,7 +58,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   }
   return (
     <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
+      <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <select aria-label="Item" value={sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
           <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Armas"><option value="peck">{items.peck.name} (sem item)</option>{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
@@ -77,13 +66,10 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value="wing">{items.wing.name}</option>
         </select>
-        {isAdmin && <button type="button" disabled={saving} onClick={() => void saveToGame()} title="Grava as fichas de todos os itens como as do game (Admin local)" className="inline-flex h-8 items-center gap-1 rounded-md border border-[#ffd166]/60 px-2 text-[#ffd166] hover:border-[#ffd166] disabled:opacity-40"><Database className="h-3.5 w-3.5" />{saving ? "Salvando…" : "Salvar no game"}</button>}
-        <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do game" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+        <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do código" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {notice && <p role="status" className={`px-4 pt-3 text-[11px] ${notice.error ? "text-[#ff8a7a]" : "text-[#7bd88f]"}`}>{notice.text}</p>}
-        <p className="px-4 pt-3 text-[10px] text-[#93a79a]">Família: {it.family}. {sel === "peck" && "Sem item selecionado: segure Atirar para recolher o pescoço e solte para bicar na direção da mira. Golpe continua dando uma asada. "}Vale na hora no Parquinho e fica salvo neste navegador. Duplo clique numa barra volta o valor do game.</p>
         {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld)).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a] hover:text-white">{g}</summary>
@@ -144,6 +130,13 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <label className="flex items-center justify-between gap-3"><span>No ritmo (quantizar)</span><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Nota sustentada em feixe</span><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Carga em glissando</span><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><span>Sem trastes (tremolo livre)</span><input type="checkbox" checked={it.fretless} onChange={e => { const v = e.target.checked; update(d => { d.fretless = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <PatioDualRange label="Volume pela distância" min={0} max={1} step={0.01} lo={it.volMin} hi={it.volMax} snap={VOLUME_SNAP}
+                    display={it.volMin === it.volMax ? "sem variação" : `${Math.round(it.volMin * 100)}–${Math.round(it.volMax * 100)}%`}
+                    changed={it.volMin !== DEFAULT_ITEMS[it.id].volMin || it.volMax !== DEFAULT_ITEMS[it.id].volMax}
+                    hint="Mira perto dela: volume mínimo; longe: máximo. Pontos juntos = sem variação"
+                    onChange={(lo, hi) => update(d => { d.volMin = lo; d.volMax = hi })}
+                    onReset={() => update(d => { d.volMin = DEFAULT_ITEMS[d.id].volMin; d.volMax = DEFAULT_ITEMS[d.id].volMax })} />
                 </>
               )}
               {g === "Efeito" && (
@@ -177,7 +170,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                       <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push("down") })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
                     )}
                     {it.combo.join() !== base.combo.join() && (
-                      <button type="button" title="Volta a ordem do game" onClick={() => update(d => { d.combo = base.combo.slice() })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+                      <button type="button" title="Volta a ordem do código" onClick={() => update(d => { d.combo = base.combo.slice() })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
                     )}
                   </div>
                 </div>
@@ -194,9 +187,10 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Golpe" && sel !== "peck" && (
                 <label className="flex items-center justify-between gap-3">
                   <span>Rastro: cor</span>
-                  <input type="color" aria-label="Cor do rastro" value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? "Nos instrumentos o rastro pega a cor da nota do acorde" : "Duplo clique volta a cor do game"} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
+                  <input type="color" aria-label="Cor do rastro" value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? "Nos instrumentos o rastro pega a cor da nota do acorde" : "Duplo clique volta a cor do código"} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
                 </label>
               )}
+              <div className="grid gap-[3px]">
               {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail")))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
@@ -208,9 +202,12 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   onChange={n => update(d => { (d as Record<string, unknown>)[m.key] = n })}
                   onReset={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })} />
               })}
+              </div>
             </div>
           </details>
         ))}
+        {/* admins: every item's current numbers become the game's default (data/pigchicken/default-items.json) */}
+        <SaveToGameButton path="data/pigchicken/default-items.json" save={() => saveDefaultItems(items)} className="justify-end px-4 py-3" />
       </div>
     </FloatingPanel>
   )

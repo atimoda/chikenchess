@@ -146,7 +146,7 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <FloatingPanel id="pigchicken-aliens" aria-label="Catálogo de aliens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(560, vw - 24), h: vh - 104 })} minW={300} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex cursor-move items-center gap-2 border-b border-white/10 px-4 py-2.5">
+      <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         {v ? (
           <>
             <button type="button" aria-label="Voltar ao catálogo" title="Voltar ao catálogo" onClick={() => pick(null)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><ArrowLeft className="h-4 w-4" /></button>
@@ -190,7 +190,7 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                   ? <button type="button" onClick={reset} disabled={!changed} title="Volta esta variação para os valores do código" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary disabled:opacity-40">Padrão</button>
                   : <button type="button" onClick={remove} title="Apaga esta variação" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/20 px-2 hover:border-[#ff6b5b]"><Trash2 className="h-3.5 w-3.5" />Excluir</button>}
               </div>
-              <p className="pt-2 text-[10px] text-[#93a79a]">Nas músicas: <code className="text-white/80">{v.id}</code>. Duplo clique numa barra volta o valor {base ? "do código" : "da espécie"}.</p>
+              <p className="pt-2 text-[10px] text-[#93a79a]">Nas músicas: <code className="text-white/80">{v.id}</code>.</p>
             </div>
             {VARIANT_GROUPS.map(g => (
               <details key={g} open={!!open[g]} onToggle={e => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(s => ({ ...s, [g]: o })) }} className="border-b border-white/10">
@@ -286,6 +286,7 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                       </select>
                     </label>
                   )}
+                  <div className="grid gap-[3px]">
                   {VARIANT_NUMBERS.filter(m => m.group === g && (g !== "Sons" || !m.path.startsWith("death.musical") || v.death.musical.kind === "notes")).map(m => {
                     const n = getPath(v, m.path) as number
                     const was = getPath(base ?? BUILTIN_BY_ID[v.species], m.path) as number
@@ -294,6 +295,7 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                       onChange={x => update(d => setPath(d, m.path, x))}
                       onReset={() => update(d => setPath(d, m.path, was))} />
                   })}
+                  </div>
                 </div>
               </details>
             ))}

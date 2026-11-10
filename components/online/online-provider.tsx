@@ -376,7 +376,17 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     } catch {
       /* offline or no friends */
     }
-    transferRef.current = { sourceUserId: current.id, sourceAccessToken: data.session.access_token, sourceProfile, sourceFriendsCount }
+    // A new visitor profile starts with 10 eggs and 10 historical points. Do not
+    // start an account-transfer flow for that untouched starter profile.
+    const hasGuestProgress = sourceProfile.goldenEggs !== 10
+      || sourceProfile.points !== 10
+      || sourceProfile.winsCount > 0
+      || sourceProfile.conqueredCityIds.length > 0
+      || sourceFriendsCount > 0
+    transferRef.current = hasGuestProgress
+      ? { sourceUserId: current.id, sourceAccessToken: data.session.access_token, sourceProfile, sourceFriendsCount }
+      : null
+    if (!hasGuestProgress) setPendingTransfer(null)
   }, [ensureGuest, refreshProfile, flushLocalProfile])
 
   const resolveProfileTransfer = useCallback(async (_choice?: 'source' | 'target' | 'merge'): Promise<MigrationSummary | null> => {

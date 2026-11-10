@@ -25,6 +25,7 @@ import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampol
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
 import { LIMIT_BORDER } from './limits'
+import { stageWidth } from "../stage-size"
 
 export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
@@ -38,6 +39,7 @@ export type ChickenRemote = { x: number; y: number; vx: number; vy: number; face
 // the states a remote chicken animates; anything else (portal, cling, the shocking jump's wind-up) looks like the nearest one
 const REMOTE_STATE: Record<string, string> = { cling: 'jump', shockingPrepare: 'brood', portal: 'idle', portalArrival: 'idle' }
 const REMOTE_SNAP = 400
+const WALK_ACTIONS: ChickenAction[] = ['left', 'right', 'up', 'down', 'crouch', 'jump', 'run']
 
 export type ChickenEngine = {
   setRemote: (source: (() => ChickenRemote | null) | null) => void
@@ -51,6 +53,10 @@ export type ChickenEngine = {
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
   peekActions: () => Record<ChickenAction, boolean>
   peekUse: (now: number) => boolean
+  canPointAndClick: () => boolean
+  walkToPortal: (id: string, point: { x: number; y: number }) => boolean
+  isWalkingToPortal: (id: string) => boolean
+  cancelPortalWalk: (id: string) => void
   isShiftHeld: () => boolean
   // Freeze gameplay and shrink/fade the drawn rig into a screen-space portal centre.
   // Repeated calls update the target without restarting; null cancels the transition.
@@ -64,6 +70,8 @@ export type ChickenEngine = {
   setGroundHeight: (h: number) => void
   // magnification of the shared Pátio camera
   setCameraZoom: (zoom: number) => void
+  // the Pátio's point-and-click: walk to this spot (screen pixels as clicked, before the camera's zoom)
+  walkTo: (point: { x: number; y: number }) => void
   setGame: (game: ChickenGame) => void
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
@@ -272,10 +280,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
   const R = { ...CHICKEN_PARAMS, ...config.params } as ChickenParams
-  let W = window.innerWidth, H = window.innerHeight, groundY = H - opts.groundHeight
+  let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     rigMatrices.clear()
-    W = window.innerWidth; H = window.innerHeight; groundY = H - opts.groundHeight
+    W = stageWidth(); H = window.innerHeight; groundY = H - opts.groundHeight
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
@@ -313,6 +321,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (isChickenControlsListening() || isTextField(e.target) || (e.target as HTMLElement | null)?.closest?.('[role="dialog"], [role="alertdialog"]')) return
     const tok = 'Key:' + e.code
     if (!usedKey(tok)) return
+    if (WALK_ACTIONS.some(action => keyBinds[action].includes(tok))) goal = null
     e.preventDefault()
     const t = e.target as HTMLElement | null
     if (t && t !== document.body && t.blur) t.blur()
@@ -320,7 +329,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     held.add(tok)
   }
   const onKeyUp = (e: KeyboardEvent) => { held.delete('Key:' + e.code); shifts.delete(e.code) }
-  const onBlur = () => { held.clear(); shifts.clear(); Object.keys(virt).forEach(k => { virt[k as ChickenAction] = false }) }
+  const onBlur = () => { goal = null; tap = null; held.clear(); shifts.clear(); Object.keys(virt).forEach(k => { virt[k as ChickenAction] = false }) }
   let pointer: { x: number; y: number } | null = null
   const onPointerMove = (e: PointerEvent) => { pointer = { x: e.clientX, y: e.clientY }; moveDrag(e) }
   window.addEventListener('keydown', onKeyDown)
@@ -479,7 +488,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const inputDir = (Rh ? 1 : 0) - (Lh ? 1 : 0)
     let dir = inputDir
     // point-and-click: any control of her own cancels the walk to the clicked spot
-    if (goal && (dir !== 0 || J || Dk || C || U || S.held || S.cl)) goal = null
+    if (goal && (Lh || Rh || RUN || J || Dk || C || U || S.held || S.cl)) goal = null
     const auto = !!goal && goalStep(dt)
     if (auto && !game.throwHeld) dir = Math.sign(goal!.x - S.x)
     buildSegs(); heldDir = dir
@@ -492,8 +501,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const against = inputDir !== 0 && S.turnDir === inputDir && S.turnFace === -inputDir && nowS - S.turnT < SWITCH_GRACE
     if (S.held) { heldStep(dt); return }
     if (S.cl) { clingStep(dt, dir, U, D || C, jumpPressed, RUN, against); return }
-    // floating walls grab only while no movement control is held
-    S.noGrab = Lh || Rh || U || Dk || C || J || RUN
+    // Floating walls grab while she passes without a movement control, or if she is looking straight up.
+    // Up is therefore the one direction that does not block an airborne grab on contact.
+    S.noGrab = Lh || Rh || Dk || C || J || RUN
     // standing on a floating edge: ride along when it moves, fall when walking off its end
     if (S.grounded && S.plat) {
       let sg = segById(S.plat), fy = sg ? floorY(sg, S.x) : null
@@ -523,7 +533,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (S.grounded && S.justLanded && C && !brooding && speed0 >= R.slideMinSpeed) S.sliding = true
     S.justLanded = false
     if (S.sliding && (!C || !S.grounded || speed0 < R.slideMinSpeed || brooding)) S.sliding = false
-    const crouching = S.grounded && C && !brooding && !S.sliding
+    // Agachar temporarily overlays the brood pose; a fixed brood latch remains active underneath.
+    const crouching = S.grounded && C && !S.sliding
     // run start: initial impulse + cluck
     const runIntent = RUN && dir !== 0 && S.grounded && !brooding && !crouching && !S.sliding
     if (runIntent && !S.runIntent) {
@@ -682,7 +693,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const speed = Math.abs(S.vx) * movementFactor()
     let st: string
     if (!S.grounded) st = mode || 'jump'
-    else if (brooding) st = 'brood'
+    else if (brooding && !C) st = 'brood'
     else if (S.sliding) st = 'slide'
     else if (crouching) st = 'crouch'
     else if (speed > 5) st = (RUN && speed > R.walkSpeed * 1.1) ? 'run' : 'walk'
@@ -1225,6 +1236,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const fy = Math.min(sg.ay, sg.by)
       if (fy >= S.y - 2 || fy < S.y - STEP_UP * s) return
       if (Math.max(sg.ax, sg.bx) < x0 || Math.min(sg.ax, sg.bx) > x1) return
+      // a floor that goes on from another one (the next piece of a slope or a bend in a Chão) is walked onto,
+      // not stepped onto: only a free end facing her (a box's top, a step over a wall) is a step
+      if (continuesFloor(sg, heldDir || S.face)) return
       if (fy < bestY) { best = sg; bestY = fy }
     })
     if (!best) return
@@ -1233,10 +1247,18 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     land(bestY, sg); S.squash = 0.35
   }
 
+  // the end of a floor she meets walking in `dir` is joined to another floor (within 2 px)
+  function continuesFloor(sg: Seg, dir: number) {
+    const [nx, ny] = (sg.ax < sg.bx) === (dir > 0) ? [sg.ax, sg.ay] : [sg.bx, sg.by]
+    return SEGS.some(o => o !== sg && !o.wall && (Math.hypot(o.ax - nx, o.ay - ny) < 2 || Math.hypot(o.bx - nx, o.by - ny) < 2))
+  }
+
   // ---------- point-and-click: a click or tap sends her walking to that spot ----------
   // She gives up (back to idle) on arriving under it, when something stops her, or on any input of her own.
-  let goal: { x: number; y: number; checkT: number; checkX: number } | null = null
+  let goal: { x: number; y: number; checkT: number; checkX: number; portalId?: string } | null = null
   let tap: { id: number; x: number; y: number; t: number } | null = null
+  const canPointAndClick = () => !game.gameMode && !remote && !portalEntry && (!devices || devices.includes('mouse'))
+  const manualWalkInput = () => WALK_ACTIONS.some(action => input(action))
   const ignoreTap = (t: EventTarget | null) => {
     const n = t as Element | null
     return !!n && (el.root.contains(n) || !!n.closest?.('[data-chicken-ignore], [role="dialog"], [role="alertdialog"]'))
@@ -1271,6 +1293,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- drag and drop: pick her up with the pointer; let go and she falls ----------
   const drag = { on: false, id: null as number | null, x0: 0, y0: 0, ox: 0, oy: 0, px: 0, py: 0 }
+  // the Pátio's camera zoom scales the drawing around the screen's centre: a pointer in her own pixels
+  let camZoom = 1
+  const local = (x: number, y: number) => camZoom === 1 ? { x, y } : { x: W / 2 + (x - W / 2) / camZoom, y: H / 2 + (y - H / 2) / camZoom }
   function heldStep(dt: number) {
     const tx = drag.px - drag.ox, ty = drag.py - drag.oy
     S.vx = ease(S.vx, (tx - S.x) / Math.max(dt, 1e-3), 12, dt); S.vy = ease(S.vy, (ty - S.y) / Math.max(dt, 1e-3), 12, dt)
@@ -1279,14 +1304,18 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     animate(dt, 'held', false, 0)
   }
   const onRootDown = (e: PointerEvent) => {
-    if (portalEntry || e.button !== 0 || game.gameMode) return
+    // the Pátio (game mode) can pick her up too; a remote chicken (online) is not ours to move
+    if (portalEntry || e.button !== 0 || remote) return
+    goal = null
     e.preventDefault(); e.stopPropagation(); ensureAudio()
-    drag.id = e.pointerId; drag.x0 = e.clientX; drag.y0 = e.clientY; drag.on = false
+    const p = local(e.clientX, e.clientY)
+    drag.id = e.pointerId; drag.x0 = p.x; drag.y0 = p.y; drag.on = false
   }
   function moveDrag(e: PointerEvent) {
     if (drag.id !== e.pointerId) return
-    drag.px = e.clientX; drag.py = e.clientY
-    if (!drag.on && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 5) {
+    const p = local(e.clientX, e.clientY)
+    drag.px = p.x; drag.py = p.y
+    if (!drag.on && Math.hypot(p.x - drag.x0, p.y - drag.y0) > 5) {
       drag.on = true
       if (S.cl) { startTurn(); S.x = S.cl.px + S.cl.n[0] * 40 * R.scale; S.y = Math.min(groundY, S.cl.py + 30 * R.scale); S.cl = null }
       drag.ox = drag.x0 - S.x; drag.oy = drag.y0 - S.y
@@ -1302,7 +1331,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   // Mobile browsers ignore touch-action on SVG shapes: a finger moving on her starts a page pan, which
   // fires pointercancel and drops her. Blocking the touch's default keeps the pointer stream alive.
-  const blockTouch = (e: TouchEvent) => { if (e.cancelable && !game.gameMode) e.preventDefault() }
+  const blockTouch = (e: TouchEvent) => { if (e.cancelable && !remote) e.preventDefault() }
   const blockTouchMove = (e: TouchEvent) => { if (drag.id !== null && e.cancelable) e.preventDefault() }
   el.root.addEventListener('pointerdown', onRootDown)
   el.root.addEventListener('touchstart', blockTouch, { passive: false })
@@ -1833,8 +1862,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       opts.groundHeight = h; groundY = H - h
       if (S.grounded && !S.plat && !S.cl) S.y = groundY
     },
-    setCameraZoom(zoom) { svg.style.transform = zoom === 1 ? '' : `scale(${Math.max(0.5, Math.min(2.5, zoom))})` },
+    setCameraZoom(zoom) { camZoom = Math.max(0.5, Math.min(2.5, zoom)); svg.style.transform = zoom === 1 ? '' : `scale(${Math.max(0.5, Math.min(2.5, zoom))})` },
     setVirtual(action, on) {
+      if (on && WALK_ACTIONS.includes(action)) goal = null
       ensureAudio()
       if (on && !virt[action]) virtTapped.add(action)
       virt[action] = on
@@ -1842,6 +1872,23 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // Full snapshots remain eager; camera/contact queries need no SVG geometry.
     getState: () => ({ ...motionState(), shoulder: shoulder() }),
     getMotionState: motionState,
+    canPointAndClick,
+    walkToPortal(id, point) {
+      pollPad()
+      if (!canPointAndClick() || S.held || S.cl || manualWalkInput()) return false
+      const m = 40 * R.scale
+      goal = { x: clamp(point.x, m, W - m), y: point.y, checkT: .3, checkX: S.x, portalId: id }
+      if (R.broodStandOnMove) S.broodLatch = false
+      return true
+    },
+    isWalkingToPortal(id) {
+      // Check live input here too: portal/physics frame ordering must not beat a cancellation.
+      if (goal?.portalId !== id) return false
+      pollPad()
+      if (!canPointAndClick() || S.held || S.cl || manualWalkInput()) goal = null
+      return goal?.portalId === id
+    },
+    cancelPortalWalk(id) { if (goal?.portalId === id) goal = null },
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
@@ -1886,7 +1933,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (drag.on) drag.ox -= dx
     },
     setBounds(next) { bounds = next },
-    setGame(next) { Object.assign(game, next); showAura() },
+    // entering game mode drops a globe walk; the Pátio's own point-and-click (walkTo) survives the per-frame updates
+    setGame(next) { Object.assign(game, next); if (next.gameMode) goal = null; showAura() },
+    walkTo(point) {
+      if (remote || portalEntry || S.held || S.cl) return
+      const p = local(point.x, point.y), m = 40 * R.scale
+      goal = { x: clamp(p.x, m, W - m), y: p.y, checkT: .3, checkX: S.x }
+      if (R.broodStandOnMove) S.broodLatch = false
+    },
     setPeck(next) { if (!portalEntry) peckNow = next },
     setSwing(next) { swingNow = next; if (next) throwTransition.reset() },
     heldPoint(angle, x, y) {
@@ -1950,6 +2004,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     setDevices(next) {
       if (next === devices || (next && devices && next.length === devices.length && next.every((d, i) => d === devices![i]))) return
+      goal = null
       devices = next ? [...next] : null
       rebind()
       held.clear(); pressed.clear(); gameTaps.clear(); pad = {}

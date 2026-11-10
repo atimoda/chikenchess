@@ -116,7 +116,7 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
     window.setTimeout(() => { suppressClick.current = false }, 0)
   }
 
-  return <aside className="absolute left-3 md:left-6 top-[6.25rem] md:top-24 bottom-0 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col pointer-events-none pl-2" aria-label="Campanhas e cidades">
+  return <aside className="absolute left-3 md:left-6 top-[6.25rem] md:top-24 bottom-0 z-40 flex w-[min(30rem,calc(100vw-1rem))] flex-col pointer-events-none pl-2" aria-label="Campanhas e cidades">
     <button type="button" className="pointer-events-auto md:hidden mb-2 -ml-2 self-start rounded-md border border-white/20 bg-[#10131c]/90 px-3 py-2 text-left text-[13px] text-white" onClick={() => { if (collapsing) return; if (expanded) setCollapsing(true); else setExpanded(true) }} aria-expanded={expanded && !collapsing}>Campanhas {expanded && !collapsing ? '−' : '+'}</button>
     <div ref={viewport} className={`${expanded ? 'block' : 'hidden md:block'} ${styles.viewport} ${hidingRows ? styles.leaving : ''} pointer-events-none min-h-0 flex-1 overflow-y-auto overscroll-contain pb-24 text-[13px] select-none`}
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onPointerLeave={() => onFocus(null)}
@@ -128,7 +128,7 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
             const conquered = getCityEras(city).some(era => conqueredCities.includes(era.id))
             const active = focusedCityId === city.id || pinHoveredCityId === city.id || openCityIds.includes(city.id)
             return <li key={city.id} className={styles.row} style={{ '--row': rowIndex.get(city.id) } as CSSProperties}>
-              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' } as CSSProperties} className={`${styles.cityButton} pointer-events-none inline-flex w-full max-w-full items-center gap-1.5 text-left text-[14.5px] font-semibold uppercase leading-5 tracking-[0.025em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer sm:text-base sm:leading-[22px] md:text-[18.5px] md:leading-[26px]`}
+              <button type="button" data-city-id={city.id} data-active={active} style={{ '--city-color': city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums', zIndex: active ? 1 : undefined } as CSSProperties} className={`${styles.cityButton} pointer-events-none relative inline-flex w-full max-w-full items-center gap-1.5 text-left text-[14.5px] font-semibold uppercase leading-5 tracking-[0.025em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer sm:text-base sm:leading-[22px] md:text-[18.5px] md:leading-[26px]`}
                 onPointerEnter={() => { onFocus(city.id); playHover(city.id) }} onFocus={() => { onFocus(city.id); playHover(city.id) }} onPointerLeave={() => { if (lastHoveredCity.current === city.id) lastHoveredCity.current = null; onFocus(null) }} onBlur={() => onFocus(null)}
                 onClick={() => { if (!suppressClick.current) { onFocus(city.id); onOpen(city) } }}>
                 <span className="pointer-events-auto shrink-0">{city.year} {city.name}</span>

@@ -5,6 +5,7 @@ import { type Combat } from "@/lib/pigchicken/combat"
 import { wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
 import { drawItem, type Ctx } from "./shared"
+import { stageWidth } from "@/lib/stage-size"
 
 export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
   const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0 && !d.meleeOnly
@@ -159,9 +160,8 @@ export const invRowY = (row: number) => INV_STACK.top + row * (INV_SIZE + INV_ST
 export const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap + INV_SIZE + INV_STACK.soulGap
 // the hotbar at the bottom (desktop and tablet): big slots apart from each other, the key numbers under them; the
 // world is lifted so her ground sits above it
-// label: the room left of each group's first slot for its key (Próximo instrumento / arma / utilitário); middle: the
-// least space between the instruments (on the left of the screen) and the other groups (on the right)
-export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16, groupGap: 10, minSize: 30, label: 30, middle: 24 }
+// label: the room left of each group's first slot for its key (Próximo instrumento / arma / utilitário)
+export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16, groupGap: 10, minSize: 30, label: 30 }
 export const BAR_GROUND_H = 100
 // the small rows: 3 px between slots, 5 px more between groups; they shrink (down to 18 px) to fit the screen
 const ROW = { gap: 3, groupGap: 5, minSize: 18, margin: 12 }
@@ -183,38 +183,34 @@ function fitSize(groups: readonly number[], room: number, max: number, min: numb
   const n = Math.max(1, groups.length), spaces = barSlots(groups, 0, gap, groupGap, lead).w
   return Math.max(min, Math.min(max, Math.floor((room - spaces) / n)))
 }
-// a mouse is the main pointer (desktop): the slot numbers (keys 1-9) only show there
+// a mouse is the main pointer (desktop): the slot numbers (keys 1-9, then 0 for slot ten) only show there
 export const desktopPointer = typeof window !== "undefined" ? window.matchMedia("(hover: hover) and (pointer: fine)") : null
-// the key hints (the 1-9 numbers under the slots, each group's key beside it) need a mouse and a roomy screen: phones and
+// the key hints (the 1-9 and 0 numbers under the slots, each group's key beside it) need a mouse and a roomy screen: phones and
 // small windows show none
 export const SMALL_SCREEN_W = 768
-export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof window === "undefined" || window.innerWidth >= SMALL_SCREEN_W)
+export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof window === "undefined" || stageWidth() >= SMALL_SCREEN_W)
 // where a player's bar sits. bottom: the first player's big bar, at the bottom on the right (desktop and tablet).
 // Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
 // but the first on desktop and tablet; everyone on a phone held upright)
 // groups: each shown slot's group (Combat.inventoryGroups). The page's invisible slot buttons use the same numbers.
-// labels: the big bar shows each group's key left of its first slot. The big bar spans the screen: the instruments
-// on the left, the utilities on the right and the weapons centred between them (xs are from the bar's left end)
-export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = window.innerWidth, H = window.innerHeight, labels = false) {
+// labels: the big bar shows each group's key left of its first slot. The big bar is centred on the screen: the
+// instruments, then the weapons, then the utilities (xs are from the bar's left end). When it does not fit even with
+// the smallest slots, it slides so the held slot (cur) sits as near the centre as the bar's ends allow
+export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false, cur = 0) {
   if (!bottom) {
     const size = fitSize(groups, W - invRight - ROW.margin, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
     const { xs, w } = barSlots(groups, size, ROW.gap, ROW.groupGap)
     return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false, lead: 0 }
   }
-  const lead = labels ? BAR.label : 0
-  // three parts across the screen: the instruments on the left, the utilities (and the empty slot) on the right, and
-  // the weapons centred in the free space between them; at least BAR.middle between two parts
-  const parts = [0, 1, 2].map(k => groups.filter(g => g === k))
-  const shown = parts.filter(p => p.length).length
-  const room = W - BAR.side * 2 - BAR.middle * Math.max(0, shown - 1)
-  const spaces = parts.reduce((sum, p) => sum + barSlots(p, 0, BAR.gap, BAR.groupGap, lead).w, 0)
-  const size = Math.max(BAR.minSize, Math.min(BAR.size, Math.floor((room - spaces) / Math.max(1, groups.length))))
-  const [L, M, R] = parts.map(p => barSlots(p, size, BAR.gap, BAR.groupGap, lead))
-  const w = Math.max(W - BAR.side * 2, L.w + M.w + R.w + BAR.middle * Math.max(0, shown - 1))
-  const freeL = L.w + (parts[0].length ? BAR.middle : 0), freeR = w - R.w - (parts[2].length ? BAR.middle : 0)
-  const mx = Math.max(freeL, Math.min((L.w + w - R.w - M.w) / 2, freeR - M.w))
-  const xs = [...L.xs, ...M.xs.map(x => x + mx), ...R.xs.map(x => x + w - R.w)]
-  const x = W - BAR.side - w, y = H - BAR.bottom - BAR.tab - size
+  const lead = labels ? BAR.label : 0, room = W - BAR.side * 2
+  const size = fitSize(groups, room, BAR.size, BAR.minSize, BAR.gap, BAR.groupGap, lead)
+  const { xs, w } = barSlots(groups, size, BAR.gap, BAR.groupGap, lead)
+  let x = (W - w) / 2
+  if (w > room) {
+    const at = xs[Math.max(0, Math.min(cur, xs.length - 1))] ?? 0
+    x = Math.min(BAR.side, Math.max(W - BAR.side - w, W / 2 - at - size / 2))
+  }
+  const y = H - BAR.bottom - BAR.tab - size
   return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size, gap: BAR.gap, groupGap: BAR.groupGap, xs, w, tabs: true, lead }
 }
 // the slot under a point along a bar (px from its left end): the nearest one, and whether the point is on its right half
@@ -264,12 +260,11 @@ export function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, 
 export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null) {
   const slots = combat.inventory, n = slots.length, groups = combat.inventoryGroups
   const showLabels = bottom && !!labels?.some(Boolean)
-  const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels), { size, gap } = g
+  const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels, combat.current), { size, gap } = g
   const x0 = g.x, y = g.y
-  // where the groups after the instruments start (on the big bar they sit apart, on the right): the effects' circles
-  // go left of them
-  const firstRest = groups.findIndex(k => k !== 0), restX = x0 + (firstRest > 0 ? g.xs[firstRest] - g.lead : 0)
-  // the slot numbers (keys 1-9) are the first player's, with a mouse
+  // the effects' circles go left of the bar (of its first group's key, on the big bar)
+  const restX = x0 + (g.xs[0] ?? 0) - g.lead
+  // the slot numbers (keys 1-9, then 0 for slot ten) are the first player's, with a mouse
   const numbers = g.tabs && row === 0 && showKeyHints()
   const r = Math.max(3, Math.round(size * (bottom ? 0.16 : 0.15)))
   ctx.save()
@@ -333,13 +328,13 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
         ctx.fillStyle = k > 0.5 ? "#7bd88f" : k > 0.25 ? "#ffd166" : "#ff6b5b"; ctx.fillRect(x + 6, ly, bw * k, 2)
       }
     }
-    // the key number under the slot (keys 1-9)
-    if (numbers && i < 9) {
+    // the key number under the slot (keys 1-9, then 0 for slot ten)
+    if (numbers && i < 10) {
       const tx = x + size / 2, tw = 16, th = 13, ty = y + size + 3
       roundRect(ctx, tx - tw / 2, ty, tw, th, 3); ctx.fillStyle = on ? "rgba(38,92,88,0.9)" : "rgba(18,22,26,0.72)"; ctx.fill()
       ctx.lineWidth = 1; ctx.strokeStyle = on ? "#5ee8d8" : "rgba(255,255,255,0.28)"; ctx.stroke()
       ctx.font = "bold 9px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = on ? "#ffffff" : "rgba(255,255,255,0.75)"
-      ctx.fillText(String(i + 1), tx, ty + th / 2 + 0.5)
+      ctx.fillText(String((i + 1) % 10), tx, ty + th / 2 + 0.5)
     }
   }
   ctx.globalAlpha = 1
@@ -396,21 +391,19 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     const d = held ? combat.item(held.item) : null
     const name = d ? d.name : "Mãos vazias"
     const info = held && d ? [d.mag > 0 ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? `${held.durability} golpes` : ""].filter(Boolean).join(" · ") : ""
-    ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"
+    ctx.font = "600 12px ui-sans-serif, system-ui, sans-serif"
     const nw = ctx.measureText(name).width
-    ctx.font = "11px ui-monospace, monospace"
-    const iw = info ? ctx.measureText(info).width + 14 : 0
-    const icon = held ? 26 : 0, pw = Math.ceil(12 + icon + nw + iw + 12), ph = 26
+    ctx.font = "400 11px ui-monospace, monospace"
+    const iw = info ? ctx.measureText(info).width + 7 : 0
+    const pw = Math.ceil(nw + iw)
     // on the big bar, over the held slot (kept on the screen)
     const at = x0 + (g.xs[Math.min(combat.current, n - 1)] ?? 0) + size / 2
-    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, window.innerWidth - pw - 8)) : x0 + g.w - pw), py = bottom ? y - ph - 10 : y + size + 6
+    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, stageWidth() - pw - 8)) : x0 + g.w - pw), py = bottom ? y - 12 : y + size + 12
     ctx.globalAlpha = since > PILL_TIME - 300 ? (PILL_TIME - since) / 300 : 1
-    roundRect(ctx, px, py, pw, ph, 7); ctx.fillStyle = "rgba(24,30,28,0.78)"; ctx.fill()
-    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.stroke()
-    let cx = px + 12
-    if (held) { ctx.save(); ctx.translate(cx + 10, py + ph / 2); drawItem(ctx, held.item, 20, 16); ctx.restore(); cx += icon }
-    ctx.textAlign = "left"; ctx.fillStyle = "#ffffff"; ctx.font = "bold 12px ui-sans-serif, system-ui, sans-serif"; ctx.fillText(name, cx, py + ph / 2 + 0.5)
-    if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, cx + nw + 14, py + ph / 2 + 0.5) }
+    ctx.shadowBlur = 0; ctx.shadowColor = "transparent"
+    ctx.textAlign = "left"
+    if (info) { ctx.fillStyle = "#aeb5be"; ctx.font = "400 11px ui-monospace, monospace"; ctx.fillText(info, px, py) }
+    ctx.fillStyle = "#ffffff"; ctx.font = "600 12px ui-sans-serif, system-ui, sans-serif"; ctx.fillText(name, px + iw, py)
     ctx.globalAlpha = 1
   }
   ctx.restore()
@@ -420,7 +413,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
 // inventory is displayed in the desktop bottom bar.
 export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: string, offset?: { x: number; y: number }) {
   const size = INV_STACK.size, r = size / 2
-  const x = window.innerWidth - INV_STACK.right - size - INV_STACK.avatarGap - size + (offset?.x ?? 0)
+  const x = stageWidth() - INV_STACK.right - size - INV_STACK.avatarGap - size + (offset?.x ?? 0)
   const y = invRowY(row) + (offset?.y ?? 0)
   ctx.save()
   ctx.beginPath(); ctx.arc(x + r, y + r, r - 1, 0, Math.PI * 2)
@@ -439,7 +432,7 @@ export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: st
 // ---------- the inventory wheel: her items plus the empty slot (while there is room), in equal slices ----------
 // centred on the screen; the first slot at the top, then clockwise in the inventory's order
 export function wheelGeom() {
-  const W = window.innerWidth, H = window.innerHeight
+  const W = stageWidth(), H = window.innerHeight
   const rOut = Math.max(120, Math.min(230, Math.min(W, H) * 0.42))
   return { cx: W / 2, cy: H / 2, rOut, rIn: rOut * 0.5 }
 }
@@ -450,7 +443,7 @@ export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number)
   const ease = 1 - (1 - open) ** 3
   ctx.save()
   ctx.globalAlpha = ease
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
+  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, stageWidth(), window.innerHeight)
   ctx.translate(cx, cy); ctx.scale(0.88 + 0.12 * ease, 0.88 + 0.12 * ease)
   const mid = (rIn + rOut) / 2, ring = rOut - rIn
   ctx.beginPath(); ctx.arc(0, 0, rIn - 3, 0, Math.PI * 2); ctx.fillStyle = "rgba(14,17,22,0.92)"; ctx.fill()

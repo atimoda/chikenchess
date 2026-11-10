@@ -3,8 +3,6 @@ const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const items = loadTs('lib/pigchicken/items.ts')
 const { LOOK_ART } = loadTs('lib/chicken/look-art.ts')
-const { ADMIN_ENTRIES } = loadTs('lib/admin/catalog.ts')
-const { validateAdminValue } = loadTs('lib/admin/validation.ts')
 
 function withStorage(saved, run) {
   const previous = globalThis.window
@@ -39,15 +37,11 @@ test('every beak names her mouth', () => {
   for (const [id, beak] of Object.entries(LOOK_ART.art.beak)) assert.ok(Array.isArray(beak.mouth) && beak.mouth.length === 2, id)
 })
 
-test('this browser saves only what differs from the game, and the points load back clamped', () => {
-  withStorage(undefined, store => {
+test('the points are saved in this browser and load back clamped', () => {
+  withStorage(undefined, () => {
     const next = items.loadItems()
     next.flute.pivotAt = 'shoulder'; next.flute.handX = 12.5; next.sax.backOn = false
     items.saveItems(next)
-    const saved = JSON.parse(store.value)
-    assert.deepEqual(saved.flute, { pivotAt: 'shoulder', handX: 12.5 })
-    assert.deepEqual(saved.sax, { backOn: false })
-    assert.equal(saved.pistol, undefined)
     const back = items.loadItems()
     assert.equal(back.flute.pivotAt, 'shoulder'); assert.equal(back.flute.handX, 12.5); assert.equal(back.sax.backOn, false)
     assert.equal(back.trumpet.pivotAt, 'mouth')
@@ -59,14 +53,11 @@ test('this browser saves only what differs from the game, and the points load ba
   })
 })
 
-test('"Salvar no game" keeps the changes from the code, and the admin catalog accepts them', () => {
+test('"Salvar no game" writes the points with the rest of the sheet, and the file accepts them', () => {
   const next = structuredClone(items.DEFAULT_ITEMS)
-  next.trumpet.handX = 3; next.guitar.combo = ['up']
-  const diff = items.itemsDiff(next, items.DEFAULT_ITEMS)
-  assert.deepEqual(diff, { trumpet: { handX: 3 }, guitar: { combo: ['up'] } })
-  const entry = ADMIN_ENTRIES.find(e => e.id === 'pigchicken-items')
-  assert.equal(entry.path, 'data/pigchicken/items.json')
-  validateAdminValue(entry, diff)
-  validateAdminValue(entry, require('../data/pigchicken/items.json'))
-  assert.throws(() => validateAdminValue(entry, { trumpet: { handX: { x: 1 } } }))
+  next.trumpet.handX = 3; next.pistol.handOn = true; next.guitar.pivotAt = 'mouth'
+  const file = items.itemsDefaultsFile(next)
+  assert.equal(file.trumpet.handX, 3); assert.equal(file.pistol.handOn, true); assert.equal(file.guitar.pivotAt, 'mouth')
+  assert.equal(items.itemsFileProblem(file), null)
+  assert.notEqual(items.itemsFileProblem({ flute: { pivotAt: 'elbow' } }), null)
 })

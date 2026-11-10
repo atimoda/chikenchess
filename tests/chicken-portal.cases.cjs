@@ -64,3 +64,29 @@ test('portal arrival markers are destination-specific and consumed once, includi
     assert.equal(takePortalArrival('patio'), false)
   } finally { globalThis.window = previous }
 })
+
+test('an explicit walk to this portal enters on contact, without a second Use press', () => {
+  const gate = createPortalGate()
+  assert.equal(gate.update(outside, circle, false, true, true).enter, false)
+  assert.equal(gate.update(body, circle, false, true, true).enter, true)
+  gate.block()
+  assert.equal(gate.update(body, circle, false, true, true).enter, false)
+})
+
+test('cancelled walks and walks to a different portal never auto-enter', () => {
+  const gate = createPortalGate()
+  gate.update(outside, circle, false, true, true)
+  assert.equal(gate.update(body, circle, false, true, false).enter, false)
+  gate.update(body, circle, false)
+  assert.equal(gate.update(body, circle, true).enter, true, 'manual Use still works after cancellation')
+})
+
+test('walking cannot override disabled portals, arrival or the full-exit block', () => {
+  const gate = createPortalGate()
+  assert.equal(gate.update(body, circle, false, false, true).enter, false)
+  gate.block()
+  assert.equal(gate.update({ ...body, state: 'portalArrival' }, circle, false, true, true).enter, false)
+  assert.equal(gate.update(body, circle, false, true, true).enter, false)
+  gate.update(outside, circle, false)
+  assert.equal(gate.update(body, circle, false, true, true).enter, true)
+})

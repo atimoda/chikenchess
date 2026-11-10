@@ -11,6 +11,7 @@ import type { ChickenEngine } from "@/lib/chicken/engine"
 import { isChickenControlsListening } from "@/lib/chicken/controls"
 import { CHAT_MAX, LOCAL_CHAT_PLAYER, getChickenChatHistory, getChickenChats, sendChickenChat, subscribeChickenChat, type ChickenChatMessage } from "@/lib/chicken/chat"
 import { cn } from "@/lib/utils"
+import { stageWidth } from "@/lib/stage-size"
 
 // the top of her head (with the comb) above her feet, and forward of them, in rig units
 const HEAD_TOP = 215, HEAD_FWD = 30
@@ -180,7 +181,7 @@ function ChatBubble({ msg, engine }: { msg: ChickenChatMessage; engine: ChickenE
       const fwd = s.face * HEAD_FWD * s.scale
       const hx = s.x + Math.sin(s.angle) * h + Math.cos(s.angle) * fwd, hy = s.y - Math.cos(s.angle) * h + Math.sin(s.angle) * fwd
       const w = box.offsetWidth, bh = box.offsetHeight
-      const vw = window.innerWidth
+      const vw = stageWidth()
       const left = Math.min(vw - EDGE - w, Math.max(EDGE, hx - w / 2))
       const top = Math.max(EDGE + 56, hy - 14 - bh)
       box.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`
