@@ -776,6 +776,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
   const roomRefreshRevision = useRef(0)
   const roomActionPending = useRef(false)
   const consumedCreateRequests = useRef(new Set<number>())
+  const autoJoinedInvite = useRef<string | null>(null)
   const isRoomMember = Boolean(room?.members.some((member) => member.user_id === user?.id))
 
   const setOpen = useCallback((next: boolean) => { setInternalOpen(next); onOpenChange?.(next) }, [onOpenChange])
@@ -975,16 +976,37 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     setError(null)
     void (async () => {
       const current = await ensureGuest()
-      const next = await onlineRpc<OnlineRoom>('online_room', { p_action: 'get', p_code: inviteCode.trim().toUpperCase() })
-      if (active && identityRef.current === current.id && generation === roomGeneration.current) {
-        roomGeneration.current += 1
-        applyRoom(next)
-        setOpen(false)
-        setLobbyOpen(true)
+      const inviteRoomCode = inviteCode.trim().toUpperCase()
+      let next = await onlineRpc<OnlineRoom>('online_room', { p_action: 'get', p_code: inviteRoomCode })
+      if (!active || identityRef.current !== current.id || generation !== roomGeneration.current) return
+      // The invitation link admits the visitor at once; a full, started or closed
+      // lobby stays as a preview with the server's reason.
+      let joinError: unknown = null
+      const isMember = next.members.some((member) => member.user_id === current.id)
+      if (isMember) autoJoinedInvite.current = inviteRoomCode
+      else if (autoJoinedInvite.current !== inviteRoomCode && next.status === 'open' && next.members.length < 2) {
+        try {
+          await refreshProfile()
+          if (!active || identityRef.current !== current.id || generation !== roomGeneration.current) return
+          const joined = await onlineRpc<OnlineRoom | null>('online_room', { p_action: 'join', p_code: inviteRoomCode, p_public: true, p_city_id: DEFAULT_CITY_ID })
+          if (joined) next = joined
+          autoJoinedInvite.current = inviteRoomCode
+        } catch (cause) {
+          joinError = cause
+          next = await onlineRpc<OnlineRoom>('online_room', { p_action: 'get', p_code: inviteRoomCode }).catch(() => next)
+        }
+        if (!active || identityRef.current !== current.id || generation !== roomGeneration.current) return
       }
+      roomGeneration.current += 1
+      applyRoom(next)
+      setShowDirectory(false)
+      setOpen(false)
+      setLobbyOpen(true)
+      if (joinError && !next.members.some((member) => member.user_id === current.id)) setError(roomErrorMessage(joinError) || onlineErrorMessage(joinError))
+      else if (!isMember && autoJoinedInvite.current !== inviteRoomCode && next.status === 'open' && next.members.length >= 2) setError(roomErrorMessage(new Error('ROOM_FULL')))
     })().catch((cause) => { if (active) setError(roomErrorMessage(cause) || onlineErrorMessage(cause)) }).finally(() => { if (active) setBusy(null) })
     return () => { active = false }
-  }, [inviteCode, configured, user?.id, ensureGuest, applyRoom])
+  }, [inviteCode, configured, user?.id, ensureGuest, refreshProfile, applyRoom])
 
   const roomAction = useCallback(async (action: 'create' | 'join' | 'leave' | 'kit' | 'ready' | 'cancel-ready' | 'visibility', roomCode?: string, cityId = DEFAULT_CITY_ID, isPublic = true) => {
     if (roomActionPending.current || busy) return false
