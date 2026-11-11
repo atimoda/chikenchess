@@ -129,3 +129,24 @@ test('an instrument blow plays the note of the fan lane she aims at', () => {
   assert.ok(Math.min(...high.played) > Math.max(...low.played) - 1, `${low.played} / ${high.played}`)
   assert.notEqual(low.played[0], high.played[0])
 })
+
+test('natural vibrato: one per item, passed with every note; the beam waves with it and with the bend', () => {
+  assert.equal(DEFAULT_ITEMS.violin.vibrato, 1)
+  const { createCombat } = loadTs('lib/pigchicken/combat.ts')
+  const body = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
+  const c = createCombat(), vibs = []
+  c.setMusicOut({ note: (v, m, at, dur, vel, fade, vib) => vibs.push(vib), hold: (v, m, vib) => { vibs.push(vib); return { setPitch() {}, stop() {} } }, drum: () => {} })
+  const step = (input = {}, angle = 0) => c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, angle,
+    { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...input },
+    [], 1000, () => {}, { peckOrigin: { x: 0, y: 0 } })
+  c.give('violin'); step({ slot: 1 }); vibs.length = 0
+  step({ fire: true, firePressed: true }); step({ fire: true })
+  assert.deepEqual(vibs, [1])
+  assert.equal(c.beam.bend, 0)
+  step({ fire: true }, -0.05)
+  assert.ok(Math.abs(c.beam.bend) > 0, 'the beam knows the bend')
+  const { beamWave } = loadTs('components/pigchicken/draw/effects.ts')
+  assert.equal(beamWave(1, 0), 3)
+  assert.equal(beamWave(0, 0), 1)
+  assert.ok(beamWave(1, 0.5) > beamWave(1, 0.1))
+})

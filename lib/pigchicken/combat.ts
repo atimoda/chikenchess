@@ -29,8 +29,9 @@ import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type Du
 
 // where the instruments' sound goes (the Parquinho plugs the synth in)
 export type MusicOut = {
-  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, fade?: number) => void
-  hold: (voice: VoiceId, midi: number) => Held | null
+  // vib: the item's "Vibrato natural" (× the voice's own vibrato; missing = 1)
+  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, fade?: number, vib?: number) => void
+  hold: (voice: VoiceId, midi: number, vib?: number) => Held | null
   drum: (kind: Drum, at: number, vel?: number) => void
 }
 // the ambience where a note is rebated (the song tells it): what it forces, the scale it fits, whose rule counts
@@ -257,7 +258,7 @@ export function createCombat() {
   const music = createConductor()
   let out: MusicOut = SILENT
   let arpStep = 0, arpIdle = 0, phraseBase = 0, glissNext = 0, glissSteps = 0, bonusTextT = 0
-  let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null = null
+  let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null = null
   let beamHeld: Held | null = null, beamMidi = 0
   // the aim's tremolo (lib/pigchicken/tremolo.ts): semitones the held instrument's notes bend right now
   let trem: TremoloState = newTremolo(), tremBend = 0
@@ -574,7 +575,7 @@ export function createCombat() {
     peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
-    beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
+    beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: Soul[]
     trem: TremoloState; tremBend: number; aimReach: number
   }
@@ -749,7 +750,7 @@ export function createCombat() {
         bonus = d.beatBonus
         if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
-      notes.forEach((m, i) => out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d)))
+      notes.forEach((m, i) => out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d), undefined, d.vibrato))
     }
     const speed = d.speed * power
     const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
@@ -1023,7 +1024,7 @@ export function createCombat() {
     if (!wing && d.instrument) {
       const t = tones(d), base = t.note()
       const n = Math.max(1, Math.min(4, Math.round(d.meleeNotes)))
-      for (let i = 0; i < n; i++) out.note(d.voice, (i ? t.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d))
+      for (let i = 0; i < n; i++) out.note(d.voice, (i ? t.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d), undefined, d.vibrato)
       color = t.color(base)
     }
     // an item in the wing rides on its tip: the blow reaches its length further
@@ -1297,10 +1298,11 @@ export function createCombat() {
     const color = t.color(midi)
     // the sound bends with the aim's tremolo; the note (colour, harmony) stays the lane's
     const pitch = midi + tremBend + detuneNow()
-    if (!beamHeld) { beamHeld = out.hold(d.voice, pitch); beamMidi = pitch }
+    if (!beamHeld) { beamHeld = out.hold(d.voice, pitch, d.vibrato); beamMidi = pitch }
     else if (Math.abs(pitch - beamMidi) > 0.005) { beamHeld.setPitch(pitch); beamMidi = pitch }
     beamHeld?.setVolume?.(noteVol(d))
-    beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null }
+    // bend: semitones the aim's tremolo is bending it right now; vib: its "Vibrato natural" (the beam's wave shows both)
+    beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null, bend: tremBend, vib: d.vibrato }
     h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
     if (hit && offKey(hit, midi, x, y)) hit = null
@@ -1998,7 +2000,7 @@ export function createCombat() {
               glissNext -= dt
               if (glissNext <= 0 && glissSteps < 7) {
                 const t = tones(d)
-                out.note(d.voice, t.walk(t.note(), glissSteps, d.pitchSet), 0, 0.25, (0.35 + 0.3 * p) * noteVol(d))
+                out.note(d.voice, t.walk(t.note(), glissSteps, d.pitchSet), 0, 0.25, (0.35 + 0.3 * p) * noteVol(d), undefined, d.vibrato)
                 glissSteps++; glissNext = Math.max(0.04, 0.16 - 0.12 * p)
               }
             }

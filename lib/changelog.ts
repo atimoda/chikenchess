@@ -10,6 +10,7 @@ const RECENT = [
     title: 'Ajudas e atrapalhos das almas soltas, almas soltas, pintinhos e roubo no Pátio online, editor das fichas de almas para admin e coleção de almas na conta; zonas sonoras em silêncio, com batidas, baixos e limites arrastáveis',
     groups: [
       { title: 'Pátio', items: [
+        'Instrumentos ganharam Vibrato natural (Itens → Música): controla a ondulação própria do timbre de flauta, sax, trompete e violino, que existe mesmo com a mira parada; 0 deixa a nota reta. A onda do feixe do violino agora acompanha o som: fica mais alta enquanto o tremolo da mira entorta a nota e segue o Vibrato natural.',
         'Biblioteca de almas, para admin: o lápis no cabeçalho do painel liga a edição das fichas. Cada alma abre com nome, raridade, classe de voo, forma, tamanho do pixel, cores e olho brilhante para mudar, mais os números de voo só dela por cima dos da classe.',
         'Nas almas raras o admin também edita a receita (espécies, estado, instrumentos, notas e armas), muda a ordem na lista (a primeira receita que serve leva a alma), cria uma nova, duplica qualquer alma como rara e exclui.',
         'O que o admin muda nas fichas vale na hora no próprio navegador, inclusive para as almas que já voam soltas. Padrão volta uma ficha, ou todas, para as do game, e Salvar no game grava as fichas pelo Admin local para publicar para todos.',

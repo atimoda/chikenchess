@@ -54,9 +54,11 @@ function env(a: AudioContext, g: GainNode, t: number, peak: number, attack: numb
   return t + attack + hold + release
 }
 function osc(a: AudioContext, type: OscillatorType, f: number, t: number) { const o = a.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); return o }
+// the voices' own vibrato: `vibScale` is the note's "Vibrato natural" (playNote's opts.vib; 1 = the voice's own depth, 0 = none)
+let vibScale = 1
 function vibrato(a: AudioContext, targets: AudioParam[], f: number, depth: number, t: number, delay: number) {
   const lfo = osc(a, 'sine', 5.5, t), g = a.createGain()
-  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(f * depth, t + delay + 0.15)
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(f * depth * vibScale, t + delay + 0.15)
   lfo.connect(g); targets.forEach(p => g.connect(p))
   return lfo
 }
@@ -90,9 +92,10 @@ export type Held = { setPitch: (midi: number) => void; setVolume?: (v: number) =
 
 // plays one note; `at` is a delay in seconds (to land on the grid), `dur` how long it is held; `fade` (seconds)
 // adds a gentle fade-in on top of the voice's own attack, so even plucked voices start without a click
-export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?: number; vel?: number; sustain?: boolean; fade?: number } = {}): Held | null {
+export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?: number; vel?: number; sustain?: boolean; fade?: number; vib?: number } = {}): Held | null {
   const a = ctx()
   if (!a || !bus || noteVol <= 0) return null
+  vibScale = Number.isFinite(opts.vib) ? Math.max(0, Math.min(4, opts.vib as number)) : 1
   const t = a.currentTime + Math.max(0, opts.at ?? 0)
   const vel = Math.max(0.05, Math.min(1, opts.vel ?? 0.8))
   const dur = opts.dur ?? 0.3

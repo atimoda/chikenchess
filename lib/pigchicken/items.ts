@@ -144,6 +144,7 @@ export type ItemDef = {
   gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
   tremoloRange: number // semitones the tremolo can bend a note each way
+  vibrato: number // × the voice's own vibrato (flute, sax, trumpet, violin, hum, guzheng have one); 0 = none
   volMin: number // 0..1: loudness of its notes with the aim close to her (lib/pigchicken/aim-volume.ts)
   volMax: number // 0..1: with the aim far; equal to volMin = the distance changes nothing
   meleeNotes: number // notes of the blow's strum, from the aim's lane note up the chord (1 = just that note)
@@ -197,7 +198,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, vibrato: 1, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
@@ -551,6 +552,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'stun', label: 'Paralisa', min: 0, max: 3, step: 0.1, unit: 's', group: 'Música', hint: 'O inimigo fica parado depois da nota' },
   { key: 'strum', label: 'Rasgueado', min: 0, max: 0.1, step: 0.002, unit: 's', group: 'Música', hint: 'Intervalo entre as notas do acorde' },
   { key: 'tremolo', label: 'Tremolo', min: 0, max: 1, step: 0.05, unit: '×', group: 'Música', hint: 'Tremer a mira dentro da mesma faixa do leque entorta a nota; 0 = desligado' },
+  { key: 'vibrato', label: 'Vibrato natural', min: 0, max: 3, step: 0.05, unit: '×', group: 'Música', hint: 'A ondulação própria do timbre (flauta, sax, trompete, violino), mesmo com a mira parada; 0 = nota reta' },
   { key: 'tremoloRange', label: 'Tremolo: limite', min: 0.05, max: 3, step: 0.05, unit: 'semitons', group: 'Música', hint: 'Até quanto a nota sobe ou desce para cada lado' },
   { key: 'meleeNotes', label: 'Notas do golpe', min: 1, max: 4, step: 1, group: 'Música', hint: 'O golpe toca a nota da faixa do leque para onde a mira aponta e sobe o acorde a partir dela' },
   { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },

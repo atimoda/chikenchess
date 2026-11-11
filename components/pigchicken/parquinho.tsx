@@ -537,8 +537,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const net = createNetWorldSync(combat)
     // instruments, the enemies' answers and the zone's ambience play on PigChicKen's own synth
     combat.setMusicOut({
-      note: (voice, midi, at, dur, vel, fade) => { playNote(voice, midi, { at, dur, vel, fade }) },
-      hold: (voice, midi) => playNote(voice, midi, { sustain: true, vel: 0.8 }),
+      note: (voice, midi, at, dur, vel, fade, vib) => { playNote(voice, midi, { at, dur, vel, fade, vib }) },
+      hold: (voice, midi, vib) => playNote(voice, midi, { sustain: true, vel: 0.8, vib }),
       drum: (kind, at, vel) => playDrum(kind, at, vel ?? 1),
     })
     // the temple's mini-game (its state is plain data, stepped with the beats: ready to be shared in multiplayer)

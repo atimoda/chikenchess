@@ -24,20 +24,23 @@ export function drawNote(ctx: Ctx, b: Combat["bullets"][number], x: number, puls
   ctx.globalAlpha = 1; ctx.textBaseline = "alphabetic"
 }
 
-// the violin's beam: a vibrating string of light from the muzzle, with notes running along it
+// the violin's beam: a vibrating string of light from the muzzle, with notes running along it. The wave is as tall
+// as the sound is moving: beamWave() px from the item's "Vibrato natural" plus the aim's tremolo bending it now
+export const beamWave = (vib = 1, bend = 0) => 1 + 2 * Math.max(0, Math.min(3, vib)) + 9 * Math.min(2, Math.abs(bend))
 export function drawBeam(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
   const b = combat.beam
   if (!b) return
   if (!intersectsView({ x: Math.min(b.x1, b.x2), y: Math.min(b.y1, b.y2), w: Math.abs(b.x2 - b.x1), h: Math.abs(b.y2 - b.y1) }, view, 32)) return
   const x1 = b.x1 - camX, x2 = b.x2 - camX, len = Math.hypot(x2 - x1, b.y2 - b.y1) || 1
   const ux = (x2 - x1) / len, uy = (b.y2 - b.y1) / len, t = performance.now() / 1000
+  const amp = beamWave(b.vib, b.bend)
   ctx.save()
   ctx.shadowColor = b.color; ctx.shadowBlur = 12
   ;[[5, 0.25], [2, 0.9]].forEach(([w, a]) => {
     ctx.strokeStyle = b.color; ctx.globalAlpha = a; ctx.lineWidth = w
     ctx.beginPath()
     for (let s = 0; s <= len; s += 8) {
-      const o = Math.sin(s * 0.08 - t * 40) * 3 * Math.sin((s / len) * Math.PI)
+      const o = Math.sin(s * 0.08 - t * 40) * amp * Math.sin((s / len) * Math.PI)
       const px = x1 + ux * s - uy * o, py = b.y1 + uy * s + ux * o
       if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py)
     }
