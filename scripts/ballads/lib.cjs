@@ -229,13 +229,15 @@ async function build(song) {
 }
 
 /** Reactions in the same spirit as the Tango's, with each stage's own sections. */
-function reactions(prefix, { record, lift, contrast, lament, calm, finale, climax, solo }) {
+function reactions(prefix, { lift, contrast, lament, calm, finale, climax, solo }) {
   const rule = (rid, trigger, target, duration, quantize, actions, instruments) => ({ id: `${prefix}-${rid}`, trigger, enabled: true, quantize, target, duration, actions, ...(instruments ? { instruments } : {}) })
   const action = (type, value = 0, extra = {}) => ({ type, value, ...extra })
   return {
     overrides: ['opening', 'middle', 'endgame', 'check', 'capture', 'queenCapture', 'firstCastle', 'quiet', 'tension', 'captureDrought', 'promotion', 'evalSwing', 'minimumBoth', 'mate'],
     rules: [
-      rule('opening', 'opening', 'both', 1, true, [action('hpf', record.hpf), action('lpf', record.lpf, { rampBars: 4 }), action('gain', -4)]),
+      // The "old record" filter lives in each Intro's section params, not here: a filter rule would hold
+      // for the first 20 plies and override the low-pass the player sets in Piece Parameters.
+      rule('opening', 'opening', 'both', 1, true, [action('gain', -4)]),
       rule('middle', 'middle', 'both', 1, true, [action('bpm', 2, { rampBars: 8 }), action('gain', 2)]),
       rule('endgame', 'endgame', 'both', 1, true, [action('bpm', 3, { rampBars: 8 }), action('variation', solo), action('gain', 4)], 'lead'),
       rule('check', 'check', 'actor', 1, false, [action('activate'), action('variation', contrast), action('gain', 4)]),

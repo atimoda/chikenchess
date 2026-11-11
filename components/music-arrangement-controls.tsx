@@ -40,7 +40,8 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
   compact?: boolean
   /** Section picked for the instrument editor's Section scope; a click picks it at once. */
   selectedId?: string | null
-  onSelect?: (sectionId: string) => void
+  /** null when a single click lands on the section that was already selected. */
+  onSelect?: (sectionId: string | null) => void
 }) {
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const position = arrangementPosition(arrangement, frame.cycle, beatsPerBar(frame.transport?.meter))
@@ -177,6 +178,12 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
 
   const clickSection = (section: Section, detail: number) => {
     if (suppressClick.current && detail !== 0) return
+    // A single click on the selected section deselects it (Piece Parameters go back to All) without seeking.
+    if (detail === 1 && onSelect && selectedId === section.id && !editingId) {
+      clearPendingSeek()
+      onSelect(null)
+      return
+    }
     onSelect?.(section.id)
     // Keyboard requests are immediate; pointer clicks wait to distinguish a double click/tap.
     if (detail === 0) {

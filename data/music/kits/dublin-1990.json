@@ -26,19 +26,6 @@
         "duration": 1,
         "actions": [
           {
-            "type": "hpf",
-            "value": 240,
-            "scale": "Maior",
-            "harmony": "static"
-          },
-          {
-            "type": "lpf",
-            "rampBars": 4,
-            "value": 3800,
-            "scale": "Maior",
-            "harmony": "static"
-          },
-          {
             "type": "gain",
             "value": -4,
             "scale": "Maior",
@@ -373,7 +360,7 @@
   },
   "reactionPresetRevision": "reactions-2026-10-23-global-v2",
   "harmony": "kit",
-  "catalogRevision": "dublin-1990-2026-11-10-ballads-v1",
+  "catalogRevision": "dublin-1990-2026-11-11-ballads-v2",
   "version": 7,
   "name": "Jig session",
   "cityId": "dublin-1990",

@@ -159,19 +159,6 @@
         "duration": 1,
         "actions": [
           {
-            "type": "hpf",
-            "value": 240,
-            "scale": "Maior",
-            "harmony": "static"
-          },
-          {
-            "type": "lpf",
-            "rampBars": 4,
-            "value": 3800,
-            "scale": "Maior",
-            "harmony": "static"
-          },
-          {
             "type": "gain",
             "value": -4,
             "scale": "Maior",

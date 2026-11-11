@@ -217,6 +217,15 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
       setSelectedId(null)
     }
   }, [pieces])
+  /** Turns Solo off and brings back the pieces that played before it (and those soloed meanwhile). */
+  const endSolo = useCallback(() => {
+    const aliveIds = new Set(pieces.map(piece => piece.id))
+    const restoreIds = [...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current].filter(id => aliveIds.has(id))
+    setSoloRestoredIds(current => new Set([...current, ...restoreIds]))
+    soloMemoryRef.current = null
+    soloCycleIdsRef.current = new Set()
+    setSoloIds(new Set())
+  }, [pieces])
   // `select: false` keeps the current selection (Song & Instruments list).
   const togglePiece = useCallback((square: Square, select = true) => {
     const piece = pieces.find(p => p.square === square)
@@ -224,16 +233,19 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     if (!piece || !currentKit || canEditPieceRef.current?.(piece.id) === false) return false
     const active = resolved.snapshot.pieces.some(p => p.id === piece.id && p.active)
     const enabled = currentKit.instruments[piece.id]?.loopEnabled !== false
-    const turnOn = !active || !enabled
+    // Under Solo another piece is muted, so a click turns it on (and ends the Solo).
+    const soloMuted = soloIds.size > 0 && !soloIds.has(piece.id)
+    const turnOn = soloMuted || !active || !enabled
     if (select) setSelectedId(piece.id)
     if (turnOn) setManuallyActiveIds(current => new Set(current).add(piece.id))
+    if (soloMuted) endSolo()
     const nextInstrument = { ...currentKit.instruments[piece.id], loopEnabled: turnOn }
     const nextKit = { ...currentKit, instruments: { ...currentKit.instruments, [piece.id]: nextInstrument } }
     kitRef.current = nextKit
     setKit(nextKit)
     onPieceChangeRef.current?.(piece.id, nextInstrument, effectsRef.current[piece.id])
     return turnOn
-  }, [pieces, resolved.snapshot.pieces])
+  }, [pieces, resolved.snapshot.pieces, soloIds, endSolo])
   const toggleSolo = useCallback((id: string, select = true) => {
     if (!pieces.some(piece => piece.id === id)) return false
     endAudition()
@@ -262,6 +274,16 @@ export function useMusic(game: Chess, city: CityData, playing: boolean, bpm: num
     setSoloIds(current => new Set([...current, id]))
     return true
   }, [pieces, endAudition, soloIds, resolved.snapshot])
+  // A piece switched on by a move (or a States & Events rule) while a Solo plays ends the Solo.
+  const lastActiveRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    const now = new Set(resolved.snapshot.pieces
+      .filter(piece => piece.active && resolved.snapshot.instruments?.[piece.id]?.loopEnabled !== false)
+      .map(piece => piece.id))
+    const before = lastActiveRef.current
+    lastActiveRef.current = now
+    if (soloIds.size && [...now].some(id => !before.has(id) && !soloIds.has(id))) endSolo()
+  }, [resolved.snapshot, soloIds, endSolo])
   useEffect(() => {
     if (!soloIds.size) return
     const aliveIds = new Set(pieces.map(piece => piece.id))

@@ -6,6 +6,9 @@
 const { composer, build, reactions, SAMPLE } = require('./lib.cjs')
 const C = composer('12/8', 'Maior')
 const { mel, rep, hits, relative, strum, up, vel, set } = C
+// A soft touch: velocities pulled toward .6 so no note jumps out of the band.
+const soft = (notes, floor = .6, keep = .55) => notes.map(n => ({ ...n, velocity: Math.round((floor + (n.velocity - floor) * keep) * 100) / 100 }))
+const VOICE = { strong: .86, beat: .78, off: .7 }
 
 // C major. Roots: 0 C, 1 Dm, 3 F, 4 G, 5 Am.
 const A = [0, 0, 3, 0, 4, 4, 0, 0]
@@ -26,16 +29,16 @@ const FILL = 7
 const on = (...indices) => FORM.map((_, i) => indices.includes(i) || null)
 
 // ---------- tunes (absolute degrees of C major; ^1 bends the blue third up into E) ----------
-const TUNE = mel('r:3 4:2 5:1 7:3 5:3 | 4:6~ 2:3^1 0:3 | r:3 3:2 5:1 7:3 8:3 | 7:6~ 5:3 4:3 | r:3 4:2 6:1 8:3 6:3 | 8:6 7:3 6:3 | 4:3 2:2^1 0:1 2:3 4:3 | 0:9~* r:3')
-const BRIDGE = mel('5:3 7:3 8:6~ | 7:3 5:3 3:6 | 4:3 7:3 9:6~ | 7:3 4:3 2:6^1 | 1:3 3:3 5:6~ | 8:3 7:3 5:6 | 4:3 6:3 8:3 11:3 | 10:6~ 8:3 6:3')
+const TUNE = mel('r:3 4:2? 5:1 7:3 5:3 | 4:6~ 2:3^1 0:3 | r:3 3:2? 5:1 7:3 8:3 | 7:6~ 5:3 4:3 | r:3 4:2?? 6:1 8:3 6:3 | 8:6 7:3 6:2 5:1?? | 4:3 2:2^1 0:1? 2:3 4:3 | 0:9~* r:2 4:1??', { accent: VOICE })
+const BRIDGE = mel('5:3 7:3 8:6~ | 7:3 5:3 3:6 | 4:3 7:3 9:6~ | 7:3 4:3 2:6^1 | 1:3 3:3 5:6~ | 8:3 7:3 5:6 | 4:3 6:3 8:3 11:3 | 10:6~ 8:3 6:3', { accent: VOICE })
 const SOLO = mel([
   '7:3 7:2^2 9:1 7:3 4:3', '6:2 8:1 11:3~ 8:3 6:3', '5:2 7:1 8:3 10:3 8:3', '7:6~ 5:3 3:3',
   '9:2^1 7:1 4:3 9:2^1 7:1 4:3', '8:3 6:3 4:3 1:3', '2:2^1 0:1 2:3 4:3 7:3', '6:12~',
   '14:3~ 12:2 11:1 9:3 7:3', '11:6~ 8:3 6:3', '10:2 8:1 7:2 5:1 7:6~', '3:3 5:3 7:3 10:3',
   '9:1^1 7:1 4:1 9:1^1 7:1 4:1 9:1^1 7:1 4:1 9:3', '8:6~ 6:6', '7:3 4:3 2:2^1 0:1 2:3', '4:6 r:6',
-].join('|'), { accent: { beat: .88, off: .76 } })
+].join('|'), { accent: { strong: .86, beat: .8, off: .72 } })
 const PARADE = mel('r:3 7:2 7:1 9:3 7:3 | 4:6~ r:3 4:2 5:1 | 7:3 9:3 7:3 4:3 | 2:9~ r:3 | r:3 6:2 6:1 8:3 6:3 | 4:6 r:3 4:3 | 7:2 7:1 9:2 7:1 4:3 2:3 | 0:9~* r:3', { accent: { off: .8 } })
-const TAG = mel('r:3 7:2 9:1 7:3 4:3 | 5:6~ 3:3 5:3 | 4:3 2:2^1 0:1 2:3 4:3 | 0:9~* r:3')
+const TAG = mel('r:3 7:2 9:1 7:3 4:3 | 5:6~ 3:3 5:3 | 4:3 2:2^1 0:1 2:3 4:3 | 0:9~* r:3', { accent: VOICE })
 
 // ---------- a1 Upright bass: boogie (root, 3rd, 5th, 6th, octave) ----------
 const boogie = mel(rep('0:3 2:3 4:3 5:3 | 7:3 5:3 4:3 2:3', 4), { gate: .8 })
@@ -68,21 +71,33 @@ const ghost = { 1: hits(rep('..g..g..g.?g', 8)), 3: hits(rep('..g..g..?..g', 16)
 // ---------- b1 Tenor sax ----------
 const sax = {
   0: relative(mel('r:12 | r:12 | r:6 4:2 5:1 7:3 | 6:6~ r:6'), H(0)),
-  1: relative(TUNE, H(1)),
-  2: relative(set(BRIDGE, { velocity: .7 }), H(2)),
-  3: relative(SOLO, H(3)),
+  1: relative(soft(TUNE, .62, .6), H(1)),
+  2: relative(set(BRIDGE, { velocity: .66 }), H(2)),
+  3: relative(soft(SOLO, .62, .6), H(3)),
   4: relative(set(up(PARADE, -2), { velocity: .75 }), H(4)),
   6: relative(TAG, H(6)),
 }
 
 // ---------- c1 Piano right hand: the rolling triplets (chord on one, dyads after) ----------
-const triplets = (bars, low = '2,4') => mel(rep(`0,2,4:1 ${Array.from({ length: 11 }, () => `${low}:1`).join(' ')}`, bars), { gate: .8, accent: { strong: .95, beat: .82, off: .6 } })
+// An ostinato with small changes: four bar shapes in turn, soft off-beats, a few left to chance,
+// so the eight-bar verse doesn't play the same bar eight times.
+const ROLL = {
+  a: "0,2,4:1 2,4:1' 2,4:1' 2,4:1 2,4:1' 2,4:1' 2,4:1 2,4:1' 2,4:1' 2,4:1 2,4:1' 2,4:1'",
+  b: "0,2,4:1 2,4:1' 2,4:1?' r:1 2,4:1' 2,4:1' 2,4:1 2,4:1' 2,4:1??' 2,4:1 r:1 2,4:1'",
+  c: "2,4:1 4,7:1' 4,7:1' 2,4:1 4,7:1' 4,7:1?' 2,4:1 2,4:1' r:1 0,2,4:3",
+  d: "0,2,4:1 2,4:1' 2,4:1' 2,4:1 2,4:1' 2,4:1?' 7:1 9:1' 7:1' 4:1 2:1' 0:1'",
+  s: "4:1 4:1' 4:1?' 4:1 4:1' r:1 4:1 4:1' 4:1?' 4:1 r:1 4:1'",
+  t: "2,4:1 4:1' 4:1' 2,4:1 r:1 4:1?' 2,4:1 4:1' 4:1' r:3",
+}
+const ROLLING = { strong: .78, beat: .7, off: .64 }
+const rolling = shapes => soft(mel(shapes.split('').map(k => ROLL[k]).join(' | '), { gate: .8, accent: ROLLING }))
 const pianoRight = {
-  0: triplets(4), 1: triplets(8), 2: mel(rep('0,2,4:3 2,4:3 2,4:3 2,4:3', 8), { gate: .9 }), 3: triplets(16, '4'),
-  4: mel(rep('r:3 2,4:2 2,4:1 r:3 2,4:2 2,4:1', 8)),
-  5: mel(rep('0,2,4,5:1! r:5 r:2 7:1 9:1 11:1 9:1 | 7:1 4:1 2:1 0:1 2:1 4:1 7:1 9:1 11:1 14:3', 4), { accent: { off: .8 } }),
-  6: mel('0,2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 | 0,2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 | 0,2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 2,4:1 | 0,2,4,5:6~* r:6', { gate: .8 }),
-  [FILL]: mel('7:1 9:1 11:1 14:1 11:1 9:1 7:1 4:1 2:1 0:3', { accent: { off: .78 } }),
+  0: rolling('abac'), 1: rolling('abacabcd'), 2: soft(mel(rep('0,2,4:3 2,4:3 2,4:3? 2,4:3', 4) + ' | ' + rep('0,2,4:3 2,4:3 4,7:3? 2,4:3', 4), { gate: .9, accent: ROLLING })),
+  3: rolling('ststststststsstd'),
+  4: soft(mel(rep("r:3 2,4:2 2,4:1' r:3 2,4:2 2,4:1?'", 8), { accent: ROLLING })),
+  5: soft(mel(rep('0,2,4,5:1 r:5 r:2 7:1 9:1 11:1 9:1 | 7:1 4:1 2:1 0:1 2:1 4:1 7:1 9:1 11:1 14:3', 4), { accent: { strong: .8, beat: .72, off: .66 } })),
+  6: soft(mel([ROLL.a, ROLL.b, ROLL.d, '0,2,4,5:6~* r:6'].join(' | '), { gate: .8, accent: ROLLING })),
+  [FILL]: soft(mel("7:1 9:1' 11:1' 14:1 11:1' 9:1' 7:1 4:1' 2:1' 0:3", { accent: ROLLING })),
 }
 
 // ---------- d1 Trumpet: riffs with the trombone, the parade lead ----------
@@ -117,9 +132,9 @@ const guitar = {
 
 // ---------- g1 Piano left hand: octaves in the intro, the stop-time hits and the end ----------
 const pianoLeft = {
-  0: mel('-7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:3 r:3 -3:3 r:3'),
-  5: mel(rep('-7,0:1! r:11 | r:12', 4)),
-  6: mel('-7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:6* r:6'),
+  0: soft(mel('-7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:3 r:3 -3:3 r:3')),
+  5: soft(mel(rep('-7,0:1 r:11 | r:12', 4))),
+  6: soft(mel('-7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:3 -5:3 -3:3 -2:3 | -7,0:6* r:6')),
 }
 
 // ---------- h1 Clarinet: the bridge's obbligato and the parade's high line ----------
@@ -137,12 +152,12 @@ const PARTS = [
   P('a2', 'Kick', 'rhythm', 'pulse', SAMPLE('percussion', 'kick', 0, false), kick, on(1, 2, 3, 4, 5, 6, 7, 8, 9),
     { octave: 2, gain: .11, attack: .001, decay: .25, sustain: 0, release: .1, clip: .8, lpf: 4000, hpf: 30, effects: { reverb: .04 }, design: { role: 'drums' } }),
   P('b1', 'Tenor sax', 'melody', 'phrase', SAMPLE('band', 'tenor-sax', 1), sax, on(0, 2, 3, 4, 5, 6, 8, 9),
-    { octave: 3, gain: .1, attack: .025, decay: .3, sustain: .75, release: .2, clip: 1, lpf: 6500, hpf: 110, effects: { reverb: .16, pan: -.1 },
-      reverbRange: { first: .14, second: .2, frequency: 'section' }, design: { role: 'lead', vibrato: 4.8, vibratoDepth: .14 } }),
+    { octave: 3, gain: .095, attack: .06, decay: .4, sustain: .8, release: .35, clip: 1, lpf: 3600, hpf: 120, effects: { reverb: .2, pan: -.1 },
+      reverbRange: { first: .18, second: .24, frequency: 'section' }, design: { role: 'lead', vibrato: 4.6, vibratoDepth: .07 } }),
   P('b2', 'Snare', 'rhythm', 'pulse', SAMPLE('percussion', 'snare', 0, false), snare, on(1, 2, 3, 4, 6, 8, 9),
     { octave: 2, gain: .08, attack: .001, decay: .18, sustain: 0, release: .1, clip: .7, lpf: 7000, hpf: 150, fills: { 3: FILL, 4: FILL, 8: FILL }, effects: { reverb: .1 }, design: { role: 'drums' } }),
   P('c1', 'Piano', 'harmony', 'phrase', SAMPLE('classical', 'concert-piano'), pianoRight, on(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
-    { octave: 4, gain: .075, attack: .002, decay: .4, sustain: .35, release: .25, clip: 1, lpf: 7000, hpf: 120, fills: { 0: FILL, 3: FILL }, effects: { reverb: .14, pan: .1 } }),
+    { octave: 4, gain: .07, attack: .004, decay: .5, sustain: .4, release: .4, clip: 1, lpf: 4200, hpf: 90, fills: { 0: FILL, 3: FILL }, effects: { reverb: .18, pan: .1 } }),
   P('c2', 'Ride', 'rhythm', 'pulse', SAMPLE('percussion', 'ride', 0, false), ride, on(0, 1, 2, 4, 5, 8, 9),
     { octave: 2, gain: .035, attack: .001, decay: .4, sustain: 0, release: .3, clip: .6, lpf: 9000, hpf: 600, effects: { reverb: .08, pan: .3 }, design: { role: 'drums' } }),
   P('d1', 'Trumpet', 'response', 'phrase', SAMPLE('classical', 'orchestra-trumpet'), trumpet, on(4, 5, 6, 8, 9),
@@ -159,7 +174,7 @@ const PARTS = [
   P('f2', 'Handclaps', 'rhythm', 'pulse', SAMPLE('brasil', 'palmas', 0, false), claps, on(6, 8),
     { octave: 2, gain: .045, attack: .001, decay: .12, sustain: 0, release: .08, clip: .6, lpf: 8000, hpf: 300, effects: { reverb: .2, pan: -.2 }, design: { role: 'drums' } }),
   P('g1', 'Piano left hand', 'bass', 'phrase', SAMPLE('classical', 'concert-piano'), pianoLeft, on(0, 7, 9),
-    { octave: 3, gain: .08, attack: .002, decay: .5, sustain: .4, release: .3, clip: 1, lpf: 5000, hpf: 40, effects: { reverb: .12 } }),
+    { octave: 3, gain: .075, attack: .004, decay: .5, sustain: .4, release: .4, clip: 1, lpf: 3500, hpf: 40, effects: { reverb: .16 } }),
   P('g2', 'Parade bass drum', 'rhythm', 'pulse', SAMPLE('classical', 'concert-bass-drum', 0, false), bigDrum, on(6),
     { octave: 2, gain: .07, attack: .001, decay: .4, sustain: 0, release: .2, clip: .7, lpf: 3000, hpf: 30, effects: { reverb: .12 }, design: { role: 'drums' } }),
   P('h1', 'Clarinet', 'response', 'phrase', SAMPLE('classical', 'orchestra-clarinet'), clarinet, on(3, 6, 7),
@@ -175,9 +190,9 @@ for (const part of PARTS) part.sections = part.sections.map((present, i) => pres
 const SHELLAC = { hpf: 300, lpfRange: { first: 2800, second: 3400 }, reverbRange: { first: .03, second: .06 } }
 const SECTION_PARAMS = {
   a1: { 0: { lpfRange: { first: 1400, second: 1600 } }, 6: { driveRange: { first: 1, second: 1.5 } } },
-  b1: { 0: SHELLAC, 2: { gain: .085 }, 5: { gain: .12, driveRange: { first: 1, second: 1.6 }, reverbRange: { first: .1, second: .14 } }, 9: { reverbRange: { first: .3, second: .4 } } },
+  b1: { 0: SHELLAC, 2: { gain: .085 }, 5: { gain: .11, driveRange: { first: 0, second: .6 }, reverbRange: { first: .14, second: .18 } }, 9: { reverbRange: { first: .3, second: .4 } } },
   b2: { 2: { gain: .06 }, 6: { gain: .1, resonance: 3 } },
-  c1: { 0: SHELLAC, 2: { gain: .06, reverbRange: { first: .2, second: .24 } }, 7: { gain: .095 } },
+  c1: { 0: SHELLAC, 2: { gain: .056, reverbRange: { first: .22, second: .26 } }, 7: { gain: .08 } },
   c2: { 0: SHELLAC },
   d1: { 6: { gain: .08, driveRange: { first: 1, second: 1.4 } }, 9: { reverbRange: { first: .3, second: .38 } } },
   e1: { 6: { gain: .085 } },
@@ -190,7 +205,7 @@ for (const part of PARTS) part.params = SECTION_PARAMS[part.slot]
 build({
   id: 'new-orleans-1953', kitName: 'Rhythm & blues', profileName: 'Rhythm & blues · New Orleans 1953',
   bpm: 72, meter: '12/8', root: 'C', scale: 'Maior', form: FORM, parts: PARTS, ternary: true,
-  reactions: reactions('new-orleans', { record: { hpf: 280, lpf: 3400 }, lift: 5, contrast: 4, lament: 2, calm: 5, finale: 6, climax: 4, solo: 3 }),
+  reactions: reactions('new-orleans', { lift: 5, contrast: 4, lament: 2, calm: 5, finale: 6, climax: 4, solo: 3 }),
   reference: 'Rhythm and blues de Nova Orleans no início dos anos 1950 (estúdio de Cosimo Matassa, banda de Dave Bartholomew, gravações de Fats Domino na Imperial); composição original: tercinas de piano em 12/8, boogie de contrabaixo, sax tenor com blue notes, forma AABA, blues de 8 compassos, quebra de second line e stop-time.',
   url: 'https://musicrising.tulane.edu/discover/people/f/',
 }).catch(error => { console.error(error); process.exit(1) })

@@ -188,7 +188,7 @@ for (const part of PARTS) part.params = SECTION_PARAMS[part.slot]
 build({
   id: 'memphis-1967', kitName: 'Southern soul', profileName: 'Southern soul · Memphis 1967',
   bpm: 64, meter: '12/8', root: 'F', scale: 'Maior', form: FORM, parts: PARTS, ternary: true,
-  reactions: reactions('memphis', { record: { hpf: 220, lpf: 4200 }, lift: 1, contrast: 5, lament: 4, calm: 1, finale: 6, climax: 3, solo: 5 }),
+  reactions: reactions('memphis', { lift: 1, contrast: 5, lament: 4, calm: 1, finale: 6, climax: 3, solo: 5 }),
   reference: 'Soul sulista de Memphis em 1967 (banda da casa da Stax: Booker T. & the M.G.\'s e os Memphis Horns com Otis Redding); composição original: 12/8 com backbeat paciente, órgão e piano em tercinas, respostas de guitarra em sextas, naipe de metais, quebra gospel de "amém", solo acelerado e o último refrão meio tom acima.',
   url: 'https://staxrecords.com/songwriter/steve-cropper-and-otis-redding/',
 }).catch(error => { console.error(error); process.exit(1) })

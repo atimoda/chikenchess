@@ -162,7 +162,7 @@ for (const part of PARTS) part.params = SECTION_PARAMS[part.slot]
 build({
   id: 'london-1977', kitName: 'Arena rock in six', profileName: 'Arena rock in six · London 1977',
   bpm: 66, meter: '6/8', root: 'D', scale: 'Maior', form: FORM, parts: PARTS, ternary: true,
-  reactions: reactions('london', { record: { hpf: 260, lpf: 3600 }, lift: 2, contrast: 4, lament: 6, calm: 0, finale: 0, climax: 3, solo: 5 }),
+  reactions: reactions('london', { lift: 2, contrast: 4, lament: 6, calm: 0, finale: 0, climax: 3, solo: 5 }),
   reference: 'Rock de arena britânico ao piano no fim dos anos 1970 (refrões de estádio em 6/8, guitarras orquestradas em harmonia, coros sobrepostos e o music hall como herança); composição original, clara e sem distorção pesada, com interlúdio de music hall, quebra a cappella e o último refrão um tom acima.',
   url: 'https://www.guitarplayer.com/music/brian-may-on-freddie-mercury-and-the-mega-hit-that-changed-queens-relationship-with-their-audience-we-all-looked-at-fred-and-said-really',
 }).catch(error => { console.error(error); process.exit(1) })

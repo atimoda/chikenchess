@@ -257,7 +257,7 @@ for (const part of PARTS) part.params = SECTION_PARAMS[part.slot]
 build({
   id: 'manchester-1999', kitName: 'Nu-jazz breaks', profileName: 'Nu-jazz breaks · Manchester 1999', writeProfile: false,
   bpm: 94, meter: '4/4', root: 'G', scale: 'Dórica', form: FORM, parts: PARTS, ternary: false,
-  reactions: reactions('manchester', { record: { hpf: 300, lpf: 3200 }, lift: 5, contrast: 5, lament: 6, calm: 3, finale: 0, climax: 2, solo: 4 }),
+  reactions: reactions('manchester', { lift: 5, contrast: 5, lament: 6, calm: 3, finale: 0, climax: 2, solo: 4 }),
   reference: 'Downtempo nu-jazz de Manchester no fim dos anos 1990 (Grand Central Records, Mr Scruff, Keep It Unreal, 1999); composição original: breaks empoeirados, contrabaixo, Rhodes em Dórico, flauta e sopros soul-jazz, desvio de bossa e um break big beat.',
   url: 'https://ninjatune.com/artist/mr-scruff',
 }).catch(error => { console.error(error); process.exit(1) })

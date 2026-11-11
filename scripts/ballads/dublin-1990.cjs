@@ -214,7 +214,7 @@ for (const part of PARTS) part.params = SECTION_PARAMS[part.slot]
 build({
   id: 'dublin-1990', kitName: 'Jig session', profileName: 'Jig session · Dublin 1990',
   bpm: 100, meter: '6/8', root: 'D', scale: 'Maior', form: FORM, parts: PARTS, ternary: true,
-  reactions: reactions('dublin', { record: { hpf: 240, lpf: 3800 }, lift: 2, contrast: 4, lament: 5, calm: 0, finale: 2, climax: 6, solo: 6 }),
+  reactions: reactions('dublin', { lift: 2, contrast: 4, lament: 5, calm: 0, finale: 2, climax: 6, solo: 6 }),
   reference: 'Sessão de música tradicional irlandesa em Dublin no revival de 1990: air lento sobre bordão e duas double jigs em forma AABB (a segunda em Mi dórico), com whistle, rabeca, flauta, concertina, bouzouki, violão, piano de céilí e bodhrán; composição original com quebra de hard-shoe em stop-time e um lamento de harpa e violoncelo.',
   url: 'https://jsmi.musicologyireland.ie/index.php/journal/article/view/215',
 }).catch(error => { console.error(error); process.exit(1) })

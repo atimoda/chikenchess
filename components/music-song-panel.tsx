@@ -61,7 +61,7 @@ export function MusicSongSections({ arrangement, harmony, monitor, onChange, onS
   onSeek: (sectionId: string) => void
   /** Section whose parameters the instrument editor's Section scope edits. */
   selectedSectionId?: string | null
-  onSelectSection?: (sectionId: string) => void
+  onSelectSection?: (sectionId: string | null) => void
 }) {
   return <section aria-label="Global Sections" className="min-w-0">
     <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onChange} onSeek={onSeek} selectedId={selectedSectionId} onSelect={onSelectSection} />
@@ -99,7 +99,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   onArrangementChange?: (arrangement: Arrangement) => void
   onSeek: (sectionId: string) => void
   selectedSectionId?: string | null
-  onSelectSection?: (sectionId: string) => void
+  onSelectSection?: (sectionId: string | null) => void
   /** Null deselects. */
   onSelect: (square: Square | null) => void
   onToggle: (square: Square) => void

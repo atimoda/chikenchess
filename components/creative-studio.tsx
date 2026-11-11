@@ -299,6 +299,14 @@ export function CreativeStudio() {
   function toggleActive(id: string) {
     const piece = boardPieces.find(p => p.id === id)
     if (!piece) return
+    // Switching on a piece outside the Solo ends it: the pieces from before come back with this one.
+    if (soloIds.size && !soloIds.has(id)) {
+      const restore = new Set([...(soloMemoryRef.current ?? []), ...soloCycleIdsRef.current, ...boardPieces.filter(p => p.active).map(p => p.id), id])
+      clearSolo()
+      setBoardActive(p => restore.has(p.id))
+      setPlaying(true)
+      return
+    }
     if (!piece.active) setPlaying(true)
     else if (activeCount === 1) setPlaying(false)
     setBoardActive(p => p.id === id ? !p.active : p.active)
@@ -658,7 +666,7 @@ export function CreativeStudio() {
       onArrangementChange={arrangement => setSession(s => updateCreativeArrangement(s, arrangement))}
       onSeek={music.seekSection}
       selectedSectionId={sectionExists ? selectedSectionId : null}
-      onSelectSection={id => { setSelectedSectionId(id); params.showSection() }}
+      onSelectSection={id => { setSelectedSectionId(id); if (id) params.showSection() }}
       onSelect={square => {
         const piece = square && boardPieces.find(item => item.square === square)
         if (piece) select(piece.id)
