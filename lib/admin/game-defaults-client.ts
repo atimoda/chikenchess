@@ -3,6 +3,9 @@ import { getOnlineClient } from '../online/client'
 import { chickenControlsDefaultsFile, type ChickenControls } from '../chicken/controls'
 import { itemsDefaultsFile, type ItemDef, type ItemId } from '../pigchicken/items'
 import { soulsFile, type SoulEntry } from '../pigchicken/soul-library'
+import { patioSettingsDefaultsFile, type PatioSettings } from '../pigchicken/patio-settings'
+import type { PatioLayers } from '../pigchicken/patio-layers'
+import { parquinhoDefaultsFile, type ParquinhoSettings } from '../pigchicken/settings'
 
 // "Salvar no game": admins write a game defaults file of the repository through the local Admin service
 // (npm run admin:dev), which checks the session and validates the content; publishing is commit + deploy.
@@ -16,6 +19,7 @@ export function watchAdminSession(onChange: (admin: boolean) => void) {
   return () => data.subscription.unsubscribe()
 }
 
+// value: the file's new content, or how to make it from the content it has now
 async function saveAdminFile(id: string, value: unknown) {
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   if (!isLocal) throw new Error('Só funciona no Admin local (npm run admin:dev).')
@@ -30,7 +34,7 @@ async function saveAdminFile(id: string, value: unknown) {
   const response = await fetch(url, {
     method: 'PUT', cache: 'no-store',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ revision: payload.revision, value }),
+    body: JSON.stringify({ revision: payload.revision, value: typeof value === 'function' ? value(payload.value) : value }),
   })
   const saved = await response.json().catch(() => null)
   if (!response.ok) throw new Error(saved?.error || 'Não deu para salvar no game.')
@@ -42,3 +46,13 @@ export const saveDefaultChickenControls = (controls: ChickenControls) => saveAdm
 export const saveDefaultItems = (items: Record<ItemId, ItemDef>) => saveAdminFile('pigchicken-items', itemsDefaultsFile(items))
 /** Writes this catalogue of souls (what differs from the code's) to data/pigchicken/default-souls.json. */
 export const saveDefaultSouls = (entries: readonly SoulEntry[]) => saveAdminFile('pigchicken-souls', soulsFile(entries))
+
+// data/pigchicken/default-patio.json has one part per panel: each writes its own and keeps the others as they are
+const savePatioPart = (part: 'settings' | 'layers' | 'camera', value: unknown) =>
+  saveAdminFile('pigchicken-patio', (current: unknown) => ({ ...(current && typeof current === 'object' ? current : {}), [part]: value }))
+/** Writes this Pátio's settings (its width as shown) as what a new empty Pátio starts with. */
+export const saveDefaultPatioSettings = (settings: PatioSettings | undefined, screens: number) => savePatioPart('settings', patioSettingsDefaultsFile(settings, screens))
+/** Writes these layers as the Camadas panel's defaults. */
+export const saveDefaultPatioLayers = (layers: PatioLayers) => savePatioPart('layers', layers)
+/** Writes these settings as the Câmera de Mira panel's defaults. */
+export const saveDefaultCamera = (settings: ParquinhoSettings) => savePatioPart('camera', parquinhoDefaultsFile(settings))

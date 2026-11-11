@@ -134,6 +134,40 @@ test('item defaults: the file validates, feeds DEFAULT_ITEMS and round-trips wha
   assert.throws(() => validateAdminValue(entry, { ...file, laser: {} }))
 })
 
+test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and Câmera de Mira, and round-trips what the panels write', () => {
+  const PS = loadTs('lib/pigchicken/patio-settings.ts')
+  const layers = loadTs('lib/pigchicken/patio-layers.ts')
+  const camera = loadTs('lib/pigchicken/settings.ts')
+  const layout = loadTs('lib/pigchicken/layout.ts')
+  const sky = loadTs('lib/pigchicken/sky.ts')
+  const entry = ADMIN_ENTRIES.find(item => item.id === 'pigchicken-patio')
+  assert.equal(entry.path, 'data/pigchicken/default-patio.json')
+  const file = JSON.parse(fs.readFileSync(path.join(__dirname, '..', entry.path), 'utf8'))
+  validateAdminValue(entry, file)
+  // each part is what the game uses
+  assert.deepEqual(layout.emptyLayout().settings ?? {}, file.settings)
+  assert.deepEqual(PS.DEFAULT_PATIO_SETTINGS, file.settings)
+  assert.deepEqual(layers.LAYERS_DEFAULT, file.layers)
+  assert.deepEqual(camera.parquinhoDefaultsFile(camera.DEFAULT_PARQUINHO), file.camera)
+  // what each panel writes is accepted
+  const settings = PS.patioSettingsDefaultsFile({ ground: 160, temple: false, sky: sky.SKY_DEFAULT, sceneZones: { 0: {} }, layers: file.layers }, 3)
+  assert.deepEqual(Object.keys(settings).sort(), ['ground', 'height', 'inventory', 'screens', 'sky', 'temple'])
+  assert.equal(settings.ground, 160); assert.equal(settings.screens, 3)
+  validateAdminValue(entry, { ...file, settings })
+  validateAdminValue(entry, { ...file, layers: { ...file.layers, zones: 0, hitboxes: true } })
+  validateAdminValue(entry, { ...file, camera: camera.parquinhoDefaultsFile({ ...camera.DEFAULT_PARQUINHO, aimRelease: Infinity, lag: 12 }) })
+  assert.equal(camera.parquinhoOver({ aimRelease: null }).aimRelease, Infinity)
+  assert.equal(camera.parquinhoOver({ screens: 7, debug: true }).screens, 4)
+  // and what the game would change is refused
+  assert.throws(() => validateAdminValue(entry, { ...file, settings: { ground: 5 } }))
+  assert.throws(() => validateAdminValue(entry, { ...file, settings: { layers: file.layers } }))
+  assert.throws(() => validateAdminValue(entry, { ...file, layers: { ...file.layers, zones: 500 } }))
+  assert.throws(() => validateAdminValue(entry, { ...file, camera: { ...file.camera, lag: 99 } }))
+  assert.throws(() => validateAdminValue(entry, { ...file, camera: { ...file.camera, debug: true } }))
+  assert.throws(() => validateAdminValue(entry, { settings: {}, layers: file.layers }))
+  assert.throws(() => validateAdminValue(entry, { ...file, extra: 1 }))
+})
+
 test('soul sheets: the file validates, feeds the catalogue and round-trips what the library editor writes', () => {
   const souls = loadTs('lib/pigchicken/soul-library.ts')
   const entry = ADMIN_ENTRIES.find(item => item.id === 'pigchicken-souls')

@@ -21,6 +21,7 @@
 | Galinha: controles, teclado, gamepad, toque e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
 | Pintinhos: espécie de ave menor, estilos de cor, bots que seguem a galinha, captura como almas e Pátio online | [Pintinhos](docs/mechanics/chicken/chicks.md) |
 | Pátio: mundo, limites e botão Sol, parallax, portais, Vila, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
+| Pátio: espaço abaixo do chão, Salvar no game (Configurações do Pátio, Camadas, Câmera de Mira, Ajustes) e ícones do cabeçalho dos painéis | [Padrões do jogo](docs/mechanics/patio/game-defaults.md) |
 | Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, salvar/abrir | [Editor do Pátio](docs/mechanics/patio/editor.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
@@ -71,6 +72,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Online 1v1: partida, confirmação, análise, áudio e rede](docs/mechanics/online/match.md) | 14 KB |
 | [Pátio: combate, mira, golpe, bicada e arremesso](docs/mechanics/patio/combat.md) | 29 KB |
 | [Pátio: modo editor, layout e salvar/abrir](docs/mechanics/patio/editor.md) | 17 KB |
+| [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 4 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
 | [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 20 KB |
 | [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 12 KB |

@@ -3,22 +3,28 @@
 // backdrop, zones, scale: 0 to 100 (0 hides the layer, above that its opacity). scaleSize: the Escalas fan's size in
 // x. scaleFade: the fan's fade toward the circle (0 none, 50 linear, 100 a long soft ease-out). scaleLines: how
 // strongly the fan's dividing lines show (0 to 100). hitboxes: on or off.
+import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
+
 export type PatioLayers = { backdrop: number; zones: number; scale: number; scaleSize: number; scaleFade: number; scaleLines: number; hitboxes: boolean }
 
-export const LAYERS_DEFAULT: PatioLayers = { backdrop: 100, zones: 33, scale: 0, scaleSize: 0.3, scaleFade: 50, scaleLines: 100, hitboxes: false }
+// the layers as written in the code; the game's defaults are these with data/pigchicken/default-patio.json over them
+// (its `layers`, which the Camadas panel writes with "Salvar no game")
+const CODE_LAYERS: PatioLayers = { backdrop: 100, zones: 33, scale: 0, scaleSize: 0.3, scaleFade: 50, scaleLines: 100, hitboxes: false }
 export const LAYERS_SIZE = { min: 0.1, max: 3, step: 0.05 } as const
 
 const pct = (v: unknown, d: number) => typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.max(0, Math.min(100, v))) : d
 
-export function normalizePatioLayers(raw: unknown): PatioLayers | undefined {
+function readLayers(raw: unknown, d: PatioLayers): PatioLayers | undefined {
   if (!raw || typeof raw !== 'object') return undefined
   const r = raw as Record<string, unknown>
-  const d = LAYERS_DEFAULT
   return {
     backdrop: pct(r.backdrop, d.backdrop), zones: pct(r.zones, d.zones), scale: pct(r.scale, d.scale), scaleFade: pct(r.scaleFade, d.scaleFade), scaleLines: pct(r.scaleLines, d.scaleLines),
     scaleSize: typeof r.scaleSize === 'number' && Number.isFinite(r.scaleSize) ? Math.round(Math.max(LAYERS_SIZE.min, Math.min(LAYERS_SIZE.max, r.scaleSize)) * 100) / 100 : d.scaleSize,
     hitboxes: r.hitboxes === true,
   }
 }
+
+export const LAYERS_DEFAULT: PatioLayers = readLayers(DEFAULTS_FILE.layers, CODE_LAYERS) ?? CODE_LAYERS
+export const normalizePatioLayers = (raw: unknown) => readLayers(raw, LAYERS_DEFAULT)
 
 export const sameLayers = (a: PatioLayers, b: PatioLayers) => (Object.keys(LAYERS_DEFAULT) as (keyof PatioLayers)[]).every(k => a[k] === b[k])

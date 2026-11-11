@@ -1,14 +1,14 @@
 "use client"
 
 // Pátio da Galinha: the game's playground where the player chicken is tuned. The panel edits a draft of
-// the central configuration (lib/chicken/config.ts) that the chicken here follows live; "Salvar padrão"
+// the central configuration (lib/chicken/config.ts) that the chicken here follows live; "Salvar no game"
 // (admin account only) saves it for every screen that draws the chicken.
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
-import { Bird, Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Pencil, Save, SlidersHorizontal, Sun, Swords, Users, X } from "lucide-react"
+import { Bird, Bug, Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -38,7 +38,7 @@ import { GlobeGridIcon } from "@/components/game-presentation"
 import { FpsCounter } from "@/components/fps-preferences"
 import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
-import { BAR_GROUND_H, INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
+import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { AlienCatalogPanel } from "@/components/pigchicken/alien-catalog-panel"
 import { SoulLibraryPanel } from "@/components/pigchicken/soul-library-panel"
@@ -55,7 +55,10 @@ import { PatioEditor } from "@/components/pigchicken/patio-editor"
 import { LayerEyes, usePatioLayers } from "@/components/pigchicken/layer-eyes"
 import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
-import { patioInventoryLimit, patioSceneMusic, patioScreens, patioTemple, patioWorldTop } from "@/lib/pigchicken/patio-settings"
+import { patioGround, patioInventoryLimit, patioSceneMusic, patioScreens, patioTemple, patioWorldTop } from "@/lib/pigchicken/patio-settings"
+import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
+import { saveDefaultCamera } from "@/lib/admin/game-defaults-client"
+import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { deviceId, forgetPatio, lobbyFromUrl, onPatioOpenRequest, openPatioLobby } from "@/lib/pigchicken/patio-store"
 import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
@@ -105,8 +108,6 @@ export function ChickenPatio() {
   const showTouch = useChickenTouch(), portrait = usePortrait()
   const lifted = showTouch && portrait
   const controlsBottom = lifted ? 16 : undefined
-  // on desktop and tablet the world rises so her ground sits above the inventory bar at the bottom
-  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : BAR_GROUND_H
   // tela cheia: segue o estado real do navegador (Esc também sai)
   const [fullscreen, setFullscreen] = useState(false)
   useEffect(() => {
@@ -509,7 +510,7 @@ export function ChickenPatio() {
 
   const save = async () => {
     setSaving(true)
-    setStatus({ kind: "info", text: "Salvando…" })
+    setStatus(null)
     try {
       const next = await saveChickenConfig(draft)
       setSaved(next)
@@ -528,6 +529,9 @@ export function ChickenPatio() {
   // old "Largura do mundo") and its ceiling; the Câmera de Mira settings with that width
   const screens = patioScreens(patio?.layout.settings, pq.screens)
   const worldTop = patioWorldTop(patio?.layout.settings)
+  // on desktop and tablet the world rises so her ground sits above the inventory bar at the bottom, by as much as
+  // the Pátio says (Configurações do Pátio → Espaço abaixo do chão); a phone held upright keeps the touch controls' room
+  const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : patioGround(patio?.layout.settings)
   const pqWorld = useMemo(() => ({ ...pq, screens }), [pq, screens])
   // the entry portal (to the globe, and where she arrives) as the layout places it
   const entry = useMemo(() => entryPortalIn(elementsInWorld(patio?.layout ?? { v: 0, elements: [] }, screens)), [patio?.layout, screens])
@@ -692,7 +696,7 @@ export function ChickenPatio() {
         <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
             <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
-            <button type="button" onClick={() => { setPq(DEFAULT_PARQUINHO); saveParquinho(DEFAULT_PARQUINHO) }} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+            <button type="button" aria-label="Padrão" title="Padrão: volta tudo para o padrão do jogo" onClick={() => { const next = { ...DEFAULT_PARQUINHO, debug: pq.debug }; setPq(next); saveParquinho(next) }} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
             <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
@@ -711,6 +715,7 @@ export function ChickenPatio() {
           <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
           <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
           <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
+          <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end" />
           </div>
         </FloatingPanel>
       )}
@@ -745,27 +750,10 @@ export function ChickenPatio() {
           <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Ajustes</h2>
             {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
+            <button type="button" aria-label="Desfazer" title="Desfazer: volta à versão salva no game" disabled={!dirty} onClick={() => replaceDraft(saved.config)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-45 disabled:hover:border-white/15"><Undo2 className="h-4 w-4" /></button>
+            <button type="button" aria-label="Padrão" title="Padrão: volta todos os valores para os que vêm no código do jogo" onClick={() => replaceDraft(defaultChickenConfig())} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
+            <button type="button" aria-label="Debug" aria-pressed={pq.debug} onClick={() => setPqValue("debug", !pq.debug)} title="Debug: a linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas" className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md border hover:border-primary", pq.debug ? "border-primary bg-primary/15 text-white" : "border-white/15")}><Bug className="h-4 w-4" /></button>
             <button type="button" aria-label="Fechar ajustes" onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
-          </div>
-
-          <div className="grid gap-2 border-b border-white/10 px-4 py-3">
-            <div className="flex flex-wrap gap-2">
-              {isAdmin ? (
-                <button type="button" disabled={!dirty || saving} onClick={() => void save()} className="h-8 rounded-md border border-primary bg-primary px-3 font-bold text-[#05060c] disabled:cursor-default disabled:opacity-45">Salvar padrão</button>
-              ) : (
-                <button type="button" onClick={online.openLogin} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary">Entrar para salvar</button>
-              )}
-              <button type="button" disabled={!dirty} onClick={() => replaceDraft(saved.config)} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-45">Desfazer</button>
-              <button type="button" onClick={() => replaceDraft(defaultChickenConfig())} title="Volta todos os valores para o padrão que vem no código do jogo" className="h-8 rounded-md border border-white/20 px-3 hover:border-primary">Valores do código</button>
-              <button type="button" aria-pressed={pq.debug} onClick={() => setPqValue("debug", !pq.debug)} title="Mostra as informações de debug: a linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas" className={cn("h-8 rounded-md border px-3 hover:border-primary", pq.debug ? "border-primary bg-primary/15 text-white" : "border-white/20")}>Debug</button>
-            </div>
-            <p className={cn("leading-relaxed", status?.kind === "error" ? "text-red-300" : "text-[#93a79a]")}>
-              {status?.text ?? (isAdmin
-                ? "Os ajustes valem aqui na hora. “Salvar padrão” grava para todas as telas e para todo mundo."
-                : online.user && !online.user.is_anonymous
-                  ? "Os ajustes valem só aqui, neste navegador. Só a conta admin salva a configuração central."
-                  : "Os ajustes valem só aqui, neste navegador. Entre com a conta admin para salvar para todas as telas.")}
-            </p>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -778,6 +766,13 @@ export function ChickenPatio() {
                 {CHICKEN_PARAM_META.filter(p => p.group === g).map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} />)}
               </Group>
             ))}
+            {/* admin only: the draft becomes the central configuration, for every screen and everyone, at once */}
+            {isAdmin && (
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 px-4 py-3">
+                {status && <span role="status" className={cn("min-w-0 text-[11px]", status.kind === "error" ? "text-red-300" : "text-[#8a9a8a]")}>{status.text}</span>}
+                <button type="button" disabled={!dirty || saving} onClick={() => void save()} title="Grava a configuração central da galinha: vale na hora para todas as telas e para todo mundo" className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50">{saving ? "Salvando…" : "Salvar no game"}</button>
+              </div>
+            )}
           </div>
         </FloatingPanel>
       )}

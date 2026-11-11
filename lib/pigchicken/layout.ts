@@ -8,7 +8,7 @@
 import { CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, type ItemId } from './items'
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
 import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, templeScene, villageScene, worldScenes } from './world'
-import { PATIO_LOWEST_TOP, normalizePatioSettings, type PatioSettings } from './patio-settings'
+import { DEFAULT_PATIO_SETTINGS, PATIO_LOWEST_TOP, normalizePatioSettings, type PatioSettings } from './patio-settings'
 import type { Box } from './combat'
 import { rackRespawnDelay } from './racks'
 import { HOUSE_SIZE, housePreset, houseRoof, houseWallPolygon, newHouseSeed, normalizeHouse, type HouseParams } from './houses'
@@ -227,9 +227,11 @@ export function entryPortalElement(): LayoutElement {
 export function entryPortalIn(shown: LayoutElement[]): LayoutElement {
   return shown.find(e => e.kind === 'entry') ?? entryPortalElement()
 }
-// a Pátio with nothing in it but the entry portal (no Templo do Gongo nor Vila at the end: settings.temple)
+// a Pátio with nothing in it but the entry portal, with the game's default settings for a new one
+// (data/pigchicken/default-patio.json: no Templo do Gongo nor Vila at the end until "Salvar no game" says otherwise)
 export function emptyLayout(): PatioLayout {
-  return { v: LAYOUT_VERSION, elements: [entryPortalElement()], settings: { temple: false } }
+  const settings = structuredClone(DEFAULT_PATIO_SETTINGS)
+  return { v: LAYOUT_VERSION, elements: [entryPortalElement()], ...(Object.keys(settings).length ? { settings } : {}) }
 }
 
 export function portalPartner(portal: LayoutElement, elements: LayoutElement[]) {

@@ -18,6 +18,7 @@ import type { StyleProfile } from '../music/kit-profiles/types'
 import { CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES } from '../chicken/controls'
 import { itemsFileProblem } from '../pigchicken/items'
 import { soulsFileProblem } from '../pigchicken/soul-library'
+import { patioDefaultsProblem } from '../pigchicken/patio-defaults'
 
 const hasControl = (value: string, multiline = false) => [...value].some(character => { const code = character.codePointAt(0)!; return (code < 32 || code === 127) && !(multiline && [9, 10, 13].includes(code)) })
 const text = z.string().min(1).max(4000).refine(value => value.trim().length > 0 && !hasControl(value, true), 'Texto vazio ou com caracteres de controle.')
@@ -140,6 +141,11 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
     }
     case 'pigchicken-souls': {
       const problem = soulsFileProblem(value)
+      if (problem) throw new Error(problem)
+      break
+    }
+    case 'pigchicken-patio': {
+      const problem = patioDefaultsProblem(value)
       if (problem) throw new Error(problem)
       break
     }

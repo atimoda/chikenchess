@@ -4,7 +4,8 @@
 // map's) and Escalas (debug: each player's aim fan with the notes) have a slider from 0 to 100%: 0 turns the layer
 // off, above that it is how strongly it shows; Escalas (Tamanho) and Escalas (Degradê) shape the fan. Hit-boxes
 // (debug) is on or off, and below it this browser's FPS options (Contador de FPS, limit). Each Pátio starts from its own saved values (or the defaults): anyone may change them here,
-// and whoever may edit the Pátio saves them into it with "Salvar no pátio".
+// and whoever may edit the Pátio saves them into it with "Salvar no pátio". An admin also sees "Salvar no game": the values
+// become the defaults of every Pátio that saved none (data/pigchicken/default-patio.json).
 import { useCallback, useEffect, useState } from "react"
 import { Eye, X } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -12,6 +13,9 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import { useFramePreferences } from "@/components/fps-preferences"
 import { GAME_FPS_LIMIT, setFramePreference } from "@/lib/game-frame"
+import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
+import { saveDefaultPatioLayers } from "@/lib/admin/game-defaults-client"
+import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { LAYERS_DEFAULT, LAYERS_SIZE as SIZE, sameLayers, type PatioLayers } from "@/lib/pigchicken/patio-layers"
 
 export type { PatioLayers }
@@ -81,6 +85,7 @@ export function LayerEyes({ layers, set, base, onSave }: ReturnType<typeof usePa
               Salvar no pátio
             </button>
           )}
+          <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultPatioLayers(layers)} className="mt-1 justify-end" />
         </div>
       </FloatingPanel>
     )}

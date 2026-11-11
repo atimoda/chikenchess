@@ -1,7 +1,7 @@
 import { cities } from '../cities-data'
 import { STYLE_PROFILES } from '../music/kit-profiles/catalog'
 
-export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'egg-rewards' | 'names' | 'music-profile' | 'music-preset' | 'music-reactions' | 'chicken-controls' | 'pigchicken-items' | 'pigchicken-souls'
+export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'egg-rewards' | 'names' | 'music-profile' | 'music-preset' | 'music-reactions' | 'chicken-controls' | 'pigchicken-items' | 'pigchicken-souls' | 'pigchicken-patio'
 export interface AdminEntry {
   id: string
   title: string
@@ -30,6 +30,8 @@ export const ADMIN_ENTRIES: AdminEntry[] = [
     description: 'Números e opções de cada item do painel Itens (armas, instrumentos, esportivos, consumíveis, asa e bicada) para quem nunca mexeu neles. O painel Itens grava aqui com Salvar no game.' },
   { id: 'pigchicken-souls', title: 'Almas (fichas da biblioteca)', group: 'Pátio', kind: 'pigchicken-souls', path: 'data/pigchicken/default-souls.json',
     description: 'O que muda nas fichas das almas em relação ao código (nome, raridade, voo, aparência) e a lista das raras com as receitas. O editor da Biblioteca de almas grava aqui com Salvar no game.' },
+  { id: 'pigchicken-patio', title: 'Pátio padrão (configurações, camadas e câmera)', group: 'Pátio', kind: 'pigchicken-patio', path: 'data/pigchicken/default-patio.json',
+    description: 'settings: o que um Pátio vazio novo recebe (Configurações do Pátio). layers: o painel Camadas de um Pátio que não salvou o seu. camera: o painel Câmera de Mira para quem nunca mexeu nele e para Padrão. Cada painel grava a sua parte com Salvar no game.' },
   { id: 'reactions', title: 'Estados e Eventos globais', group: 'Kits musicais', kind: 'music-reactions', path: 'data/music/reactions.json',
     description: 'Regras oficiais de Estados e Eventos usadas por todos os kits; cada kit pode sobrescrever gatilhos no Criativo.' },
   ...Object.keys(STYLE_PROFILES).map(cityId => {

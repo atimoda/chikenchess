@@ -1,5 +1,6 @@
 // Screen-space HUD: the reticle, the throw path, the inventory bars and the item wheel.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
+import { PATIO_GROUND } from "@/lib/pigchicken/patio-settings"
 import { ARP_GLYPHS, CONSUMABLE_LIMITS, type Arp, type ItemId } from "@/lib/pigchicken/items"
 import { DEGREE_COLORS } from "@/lib/pigchicken/music"
 import { type Combat } from "@/lib/pigchicken/combat"
@@ -163,7 +164,7 @@ export const invRight = INV_STACK.right + INV_SIZE + INV_STACK.avatarGap + INV_S
 // world is lifted so her ground sits above it
 // label: the room left of each group's first slot for its key (Próximo instrumento / arma / utilitário)
 export const BAR = { size: 56, gap: 6, tab: 16, bottom: 12, side: 16, groupGap: 10, minSize: 30, label: 30 }
-export const BAR_GROUND_H = 100
+export const BAR_GROUND_H = PATIO_GROUND.default
 // the small rows: 3 px between slots, 5 px more between groups; they shrink (down to 18 px) to fit the screen
 const ROW = { gap: 3, groupGap: 5, minSize: 18, margin: 12 }
 // where each slot sits along a bar (from its left end) and how wide the bar is: `gap` between slots, `groupGap`

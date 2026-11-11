@@ -184,7 +184,7 @@ test('the empty and the example Pátios have no Templo nor Vila', () => {
   assert.equal(EX.sunsetPowerLayout().settings.temple, false)
   assert.equal(PS.patioTemple(undefined), true)
   assert.equal(PS.patioTemple(PS.normalizePatioSettings({ temple: false })), false)
-  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(L.emptyLayout()))).settings, { temple: false })
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(L.emptyLayout()))).settings, L.emptyLayout().settings)
 })
 
 test('the sky\'s texture: size, streaks, grain and blend', () => {

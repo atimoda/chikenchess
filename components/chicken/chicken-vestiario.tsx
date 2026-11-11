@@ -2,7 +2,7 @@
 
 // Vestiário (ported from the "Pátio da Caipira" prototype): picks the chicken's look by breed or part by
 // part, with art thumbnails and a big preview. It edits the look of the Pátio's draft of the central
-// configuration, so "Salvar padrão" in Ajustes saves it for every screen together with the params.
+// configuration, so "Salvar no game" in Ajustes saves it for every screen together with the params.
 import { useEffect, useState } from "react"
 import { Lock, X } from "lucide-react"
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from "@/lib/chicken/look-art"
@@ -134,7 +134,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
             </section>
           </div>
           <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 px-4 py-2.5">
-            <p className="flex-1 text-[#93a79a]">{dirty ? "Visual alterado. “Salvar padrão” em Ajustes grava para todas as telas." : "Visual igual ao salvo."}</p>
+            <p className="flex-1 text-[#93a79a]">{dirty ? "Visual alterado. “Salvar no game” em Ajustes grava para todas as telas." : "Visual igual ao salvo."}</p>
             <label className="flex items-center gap-2 text-[11px] text-[#93a79a]"><input type="checkbox" checked={unlockAll} onChange={e => toggleUnlock(e.target.checked)} className="accent-[var(--primary)]" />Tudo liberado (dev)</label>
             <button type="button" disabled={!dirty} onClick={() => onChange(savedLook)} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-45">Desfazer</button>
           </footer>

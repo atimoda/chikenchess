@@ -1,6 +1,7 @@
 // Parquinho (PigChicKen's creative mode) settings, saved in this browser.
 import type { CameraMode } from './camera'
 import { migrateLegacyBackpedal } from '../chicken/config'
+import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
 
 export type ParquinhoSettings = {
   camera: CameraMode
@@ -17,33 +18,55 @@ export type ParquinhoSettings = {
   debug: boolean // the debug readouts: the HUD line, the scenes' labels and the shaped floors' lines
 }
 
-export const DEFAULT_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, lookAhead: 140, lookAheadSpeed: 2.5, aimRelease: 0, reticleDist: 200, jumpShake: 3, superJumpShake: 8, quantize: true, debug: false }
+// the settings as written in the code; the game's defaults are these with data/pigchicken/default-patio.json over
+// them (its `camera`, which the Câmera de Mira panel writes with "Salvar no game")
+const CODE_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, lookAhead: 140, lookAheadSpeed: 2.5, aimRelease: 0, reticleDist: 200, jumpShake: 3, superJumpShake: 8, quantize: true, debug: false }
 
 // the aim-release slider: 0..AIM_RELEASE_MAX seconds, and one step past it is "never" (Infinity)
 export const AIM_RELEASE_MAX = 5
 
 const STORE = 'pigchicken-parquinho-v1'
 
+// `base` with what is valid in `saved` over it. file: the defaults file, which has neither the width nor Debug
+function readParquinho(base: ParquinhoSettings, saved: unknown, file = false): ParquinhoSettings {
+  const out = { ...base }
+  if (!saved || typeof saved !== 'object') return out
+  const r = saved as Record<string, unknown>
+  if (r.camera === 'follow' || r.camera === 'scenes' || r.camera === 'fixed') out.camera = r.camera
+  const num = (k: keyof ParquinhoSettings, lo: number, hi: number) => {
+    const v = r[k]
+    if (typeof v === 'number' && Number.isFinite(v)) (out as Record<string, unknown>)[k] = Math.min(hi, Math.max(lo, v))
+  }
+  if (!file) num('screens', 1, 8)
+  num('deadband', 0, 400); num('lag', 1, 20); num('lookAhead', 0, 500); num('lookAheadSpeed', 0.5, 12); num('jumpShake', 0, 30); num('superJumpShake', 0, 30); num('reticleDist', 60, 500)
+  // saved as null when infinite (JSON has no Infinity). Saves before aimV2 (03/11) had ∞ as the default, which kept
+  // the left stick from ever aiming again: those fall back to the new default (0 s), and only an ∞ chosen since stays
+  if (typeof r.aimRelease === 'number' && Number.isFinite(r.aimRelease)) out.aimRelease = Math.min(AIM_RELEASE_MAX, Math.max(0, r.aimRelease))
+  else if (r.aimRelease === null && (file || r.aimV2)) out.aimRelease = Infinity
+  if (typeof r.quantize === 'boolean') out.quantize = r.quantize
+  if (!file && typeof r.debug === 'boolean') out.debug = r.debug
+  return out
+}
+
+/** The code's settings with a defaults file's `camera` over them. */
+export const parquinhoOver = (camera: unknown) => readParquinho(CODE_PARQUINHO, camera, true)
+export const DEFAULT_PARQUINHO: ParquinhoSettings = parquinhoOver(DEFAULTS_FILE.camera)
+
+/** The defaults file's `camera` for these settings (what "Salvar no game" writes): no width (the Pátio's own) nor Debug. */
+export function parquinhoDefaultsFile(s: ParquinhoSettings) {
+  return {
+    camera: s.camera, deadband: s.deadband, lag: s.lag, lookAhead: s.lookAhead, lookAheadSpeed: s.lookAheadSpeed,
+    aimRelease: Number.isFinite(s.aimRelease) ? s.aimRelease : null,
+    reticleDist: s.reticleDist, jumpShake: s.jumpShake, superJumpShake: s.superJumpShake, quantize: s.quantize,
+  }
+}
+
 export function loadParquinho(): ParquinhoSettings {
   migrateLegacyBackpedal()
-  const base = { ...DEFAULT_PARQUINHO }
   try {
-    const saved = JSON.parse(window.localStorage.getItem(STORE) || 'null')
-    if (!saved) return base
-    if (saved.camera === 'follow' || saved.camera === 'scenes' || saved.camera === 'fixed') base.camera = saved.camera
-    const num = (k: keyof ParquinhoSettings, lo: number, hi: number) => {
-      const v = saved[k]
-      if (typeof v === 'number' && Number.isFinite(v)) (base as Record<string, unknown>)[k] = Math.min(hi, Math.max(lo, v))
-    }
-    num('screens', 1, 8); num('deadband', 0, 400); num('lag', 1, 20); num('lookAhead', 0, 500); num('lookAheadSpeed', 0.5, 12); num('jumpShake', 0, 30); num('superJumpShake', 0, 30); num('reticleDist', 60, 500)
-    // saved as null when infinite (JSON has no Infinity). Saves before aimV2 (03/11) had ∞ as the default, which kept
-    // the left stick from ever aiming again: those fall back to the new default (0 s), and only an ∞ chosen since stays
-    if (typeof saved.aimRelease === 'number' && Number.isFinite(saved.aimRelease)) base.aimRelease = Math.min(AIM_RELEASE_MAX, Math.max(0, saved.aimRelease))
-    else if (saved.aimRelease === null && saved.aimV2) base.aimRelease = Infinity
-    if (typeof saved.quantize === 'boolean') base.quantize = saved.quantize
-    if (typeof saved.debug === 'boolean') base.debug = saved.debug
+    return readParquinho(DEFAULT_PARQUINHO, JSON.parse(window.localStorage.getItem(STORE) || 'null'))
   } catch { /* storage unavailable */ }
-  return base
+  return { ...DEFAULT_PARQUINHO }
 }
 
 export function saveParquinho(next: ParquinhoSettings) {

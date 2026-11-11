@@ -48,6 +48,11 @@ test('vertical camera follows the Pátio height limit', () => {
   assert.equal(settings.patioWorldTop({ height: 1500 }), top)
   assert.deepEqual(settings.normalizePatioSettings({ screens: 12, height: 50 }), { screens: 8, height: 400 })
   assert.equal(settings.normalizePatioSettings({}), undefined)
+  // the ground below the floor (room for the inventory bar): 100 px unless the Pátio says otherwise
+  assert.equal(settings.patioGround(undefined), 100)
+  assert.equal(settings.patioGround({ ground: 160 }), 160)
+  assert.deepEqual(settings.normalizePatioSettings({ ground: 5 }), { ground: 30 })
+  assert.deepEqual(settings.normalizePatioSettings({ ground: 9999 }), { ground: 400 })
   assert.equal(settings.patioScreens(undefined, 6), 6)
   assert.equal(settings.patioScreens({ screens: 2 }, 6), 2)
 })

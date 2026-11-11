@@ -3,12 +3,15 @@
 // The Sun button's panel: the current Pátio's own settings (its limits), saved with the Pátio like its layout.
 // Whoever may edit the Pátio changes them; everyone else sees them.
 import { useState } from "react"
-import { X } from "lucide-react"
+import { RotateCcw, X } from "lucide-react"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioHeight, patioInventoryLimit, patioSceneMusic, patioTemple, type PatioSettings } from "@/lib/pigchicken/patio-settings"
+import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioGround, patioHeight, patioInventoryLimit, patioSceneMusic, patioTemple, type PatioSettings } from "@/lib/pigchicken/patio-settings"
+import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
+import { saveDefaultPatioSettings } from "@/lib/admin/game-defaults-client"
+import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
@@ -21,6 +24,9 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
   onChange: (layout: PatioLayout) => void; onClose: () => void
 }) {
   const height = patioHeight(layout.settings)
+  const ground = patioGround(layout.settings)
+  // Padrão: what a new empty Pátio gets (the game's defaults file, the code's values where it has none)
+  const base = { screens: DEFAULT_PATIO_SETTINGS.screens ?? DEFAULT_PARQUINHO.screens, height: patioHeight(DEFAULT_PATIO_SETTINGS), ground: patioGround(DEFAULT_PATIO_SETTINGS), inventory: patioInventoryLimit(DEFAULT_PATIO_SETTINGS) }
   const inventory = patioInventoryLimit(layout.settings)
   const itemsLabel = `${inventory} ${inventory === 1 ? "item" : "itens"}`
   const set = (next: PatioSettings) => onChange({ ...layout, settings: { ...layout.settings, ...next } })
@@ -33,7 +39,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
     <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
         <h2 className="flex-1 text-sm text-white">Configurações do Pátio</h2>
-        {canEdit && <button type="button" onClick={() => set({ screens: DEFAULT_PARQUINHO.screens, height: PATIO_HEIGHT.default, inventory: PATIO_INVENTORY.default })} title="Volta largura, altura e limite do inventário para o padrão" className="h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]">Padrão</button>}
+        {canEdit && <button type="button" aria-label="Padrão" onClick={() => set(base)} title="Padrão: volta largura, altura, espaço abaixo do chão e limite do inventário para o padrão do jogo" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><RotateCcw className="h-4 w-4" /></button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -44,10 +50,13 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             display={`${screens} ${screens === 1 ? "tela" : "telas"}`} onChange={v => set({ screens: v })}
             hint={`Telas do Parquinho antes do Templo e da Vila. O mundo inteiro tem ${units(width)} unidades de largura.`} />
           <PatioRange label="Altura limite" min={PATIO_HEIGHT.min} max={PATIO_HEIGHT.max} step={PATIO_HEIGHT.step} value={height}
-            display={`${units(height)} u`} onChange={v => set({ height: v })} onReset={() => set({ height: PATIO_HEIGHT.default })}
+            display={`${units(height)} u`} onChange={v => set({ height: v })} onReset={() => set({ height: base.height })}
             hint="Do chão até o teto do mundo. A câmera para no teto e a galinha pode escalá-lo." />
+          <PatioRange label="Espaço abaixo do chão" min={PATIO_GROUND.min} max={PATIO_GROUND.max} step={PATIO_GROUND.step} value={ground}
+            display={`${ground} px`} onChange={v => set({ ground: v })} onReset={() => set({ ground: base.ground })}
+            hint="Quanto chão aparece abaixo dos bonecos, no pé da tela, onde fica a barra do inventário. No celular em pé, o espaço é o dos controles de toque." />
           <PatioRange label="Limite do inventário" min={PATIO_INVENTORY.min} max={PATIO_INVENTORY.max} step={PATIO_INVENTORY.step} value={inventory}
-            display={itemsLabel} onChange={v => set({ inventory: v })} onReset={() => set({ inventory: PATIO_INVENTORY.default })}
+            display={itemsLabel} onChange={v => set({ inventory: v })} onReset={() => set({ inventory: base.inventory })}
             hint="Quantos itens cada player carrega neste Pátio. Baixar o limite não tira itens de ninguém; só não cabem novos." />
           <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Cada cena toca a sua zona (Campo, Noite, Feira…). Desligado, só as Zonas sonoras do mapa tocam; fora delas não há percussão nem drone.">
             <span>Zonas das cenas</span>
@@ -86,6 +95,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 px-4 text-[#dfe8df]">
           <dt>Largura limite</dt><dd className="font-bold">{screens} {screens === 1 ? "tela" : "telas"} · {units(width)} u</dd>
           <dt>Altura limite</dt><dd className="font-bold">{units(height)} u</dd>
+          <dt>Espaço abaixo do chão</dt><dd className="font-bold">{ground} px</dd>
           <dt>Limite do inventário</dt><dd className="font-bold">{itemsLabel}</dd>
           <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
           <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
@@ -93,6 +103,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
         </dl>
       )}
+      <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultPatioSettings(layout.settings, screens)} className="justify-end px-4 py-3" />
       {!canEdit && <p className="px-4 py-3 text-[10px] leading-relaxed text-[#93a79a]">Só quem pode editar este Pátio muda as configurações.</p>}
       </div>
     </FloatingPanel>

@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "temple": false
+  },
+  "layers": {
+    "backdrop": 100,
+    "zones": 33,
+    "scale": 0,
+    "scaleSize": 0.3,
+    "scaleFade": 50,
+    "scaleLines": 100,
+    "hitboxes": false
+  },
+  "camera": {
+    "camera": "follow",
+    "deadband": 80,
+    "lag": 6,
+    "lookAhead": 140,
+    "lookAheadSpeed": 2.5,
+    "aimRelease": 0,
+    "reticleDist": 200,
+    "jumpShake": 3,
+    "superJumpShake": 8,
+    "quantize": true
+  }
+}
