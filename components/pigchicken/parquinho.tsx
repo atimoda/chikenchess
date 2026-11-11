@@ -63,6 +63,7 @@ import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { drawAbductions, drawFreedSouls } from "@/components/pigchicken/draw/souls"
+import { SOUL_RARITIES, collectSoul } from "@/lib/pigchicken/soul-library"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { stageWidth } from "@/lib/stage-size"
 
@@ -1114,6 +1115,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- sound ----------
       setWeaponVolume(mixGain("weapons"))
       combat.sounds.splice(0).forEach(e => playWeaponSound(e.kind, e.item))
+      // the souls just caught go into the library: a new one says its name where it was caught, a new note or
+      // weapon of one already there shows a star
+      for (const n of combat.soulNews.splice(0)) {
+        const got = collectSoul(n.soul)
+        if (got.first || got.trait) combat.addText(n.x, n.y - 44, got.first ? got.entry.name : "★", SOUL_RARITIES[got.entry.rarity].color, 15)
+      }
       // aiming in (brood with an item): a soft sound on the weapons that have one
       if (aimLock && !wasLocked) playWeaponSound("aim", combat.inventory[combat.current]?.item ?? null)
       wasLocked = aimLock

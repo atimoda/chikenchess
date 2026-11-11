@@ -306,3 +306,36 @@ test('the souls of a player who left the game fly away', () => {
   for (let t = 0; t < 5; t += 0.016) step(c)
   assert.equal(c.freedSouls.length, 0)
 })
+
+// ---------- the library: what is news, and how an entry flies ----------
+test('only a soul caught from the wild is news for the library; let out, it flies as its entry does', () => {
+  const c = world('passagua')
+  basketOf(c, 2)
+  const news = c.soulNews.splice(0)
+  assert.equal(news.length, 2, 'each chick caught')
+  assert.deepEqual(news.map(n => n.owner), ['p1', 'p1'])
+  assert.deepEqual(news.map(n => n.soul), [...c.basket], 'the very souls that got to the basket')
+  assert.ok(Math.abs(news[0].x - 40) < 1 && Math.abs(news[0].y) < 1, 'where it was caught')
+
+  // let out and caught again with the Passaguá: the same soul, no news
+  c.releaseSoul({ x: 40, y: 0 })
+  const f = c.freedSouls[0]
+  for (let i = 0; i < 50; i++) { holdSoul(f, 40, 0); step(c, { melee: i === 0 }) }
+  land(c)
+  assert.equal(c.capturedSouls, 2)
+  assert.equal(c.soulNews.length, 0, 'it only came back')
+  // called back: no news either
+  c.releaseSoul({ x: 40, y: 0 })
+  for (let t = 0; t < 0.6; t += 0.016) step(c)
+  assert.equal(c.callSouls(), 1)
+  land(c)
+  assert.equal(c.capturedSouls, 2)
+  assert.equal(c.soulNews.length, 0)
+
+  // a keys soul escorts her; the same one killed by an arrow on the tonic is a rare one that patrols
+  const keys = { id: 5000, species: 'shell', state: 'dead', shot: 'keys', note: 'tonic', weapon: 'bullet', rarity: 'uncommon', color: '#ffffff', bird: 'pardal' }
+  c.basket.push(keys); c.releaseSoul({ x: 40, y: 0 })
+  assert.equal(c.freedSouls[c.freedSouls.length - 1].params.pattern, 'orbit')
+  c.basket.push({ ...keys, id: 5001, weapon: 'arrow' }); c.releaseSoul({ x: 40, y: 0 })
+  assert.equal(c.freedSouls[c.freedSouls.length - 1].params.pattern, 'eight')
+})

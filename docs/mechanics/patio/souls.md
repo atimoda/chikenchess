@@ -1,12 +1,12 @@
 # Pátio: almas capturadas
 
-Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). O Passaguá como item fica em [items.md](items.md); as mortes dos aliens e os pássaros em [temple.md](temple.md); os pintinhos em [../chicken/chicks.md](../chicken/chicks.md); o pouso e a fuga dos pássaros nos fios em [sky-and-power.md](sky-and-power.md).
+Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). O Passaguá como item fica em [items.md](items.md); as mortes dos aliens e os pássaros em [temple.md](temple.md); os pintinhos em [../chicken/chicks.md](../chicken/chicks.md); o pouso e a fuga dos pássaros nos fios em [sky-and-power.md](sky-and-power.md); o catálogo, o desenho de cada alma, a coleção e o painel em [soul-library.md](soul-library.md).
 
 Código: `lib/pigchicken/souls.ts` (identidade, raridade, abdução; puro), `lib/pigchicken/soul-follow.ts` (voo do bot amigo, ficha de parâmetros e classes; puro), ganchos em `lib/pigchicken/combat.ts` (`markSoul`, `convert`, `spawnUndead`, `strike`, cesto por player, `releaseSoul`, `callSouls`, `freedSouls`), contador em `drawSoulCounter`/`soulCounterBox` (`components/pigchicken/draw/hud.ts`), voo até o contador e almas soltas em `components/pigchicken/draw/souls.ts`, clique no contador em `components/pigchicken/parquinho.tsx` (`onSoulDown`). Testes: `tests/pigchicken-souls.cases.cjs` e `tests/pigchicken-soul-follow.cases.cjs`.
 
 ## Identidade da alma (10/11, v2.7.0)
 
-Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde veio. Hoje só a classe do projétil (e a espécie Pintinho) muda o comportamento: ela escolhe a classe de voo da alma solta. O resto é o que as próximas etapas (biblioteca, ajudas) vão ler.
+Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde veio. Esses eixos decidem qual entrada da biblioteca ela é ([soul-library.md](soul-library.md)), e a entrada dá o desenho e a classe de voo da alma solta. As ajudas de cada classe ainda vão ler o resto.
 
 | Eixo | Valores | De onde sai |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde
 
 - **Sem origem conhecida:** pintinhos não têm classe de projétil nem tipo de nota. Um pássaro que nasceu sem esses dados (por exemplo vindo de outro navegador) fica com eles vazios e a espécie Horda.
 - **Raridade** (`soulRarity`): cada eixo soma pontos (Dragão 3, Lanterna 1, Gêmeos 1; Tensão 1, Sensível 2, Fora da escala 3; Morta 1). 0 comum, 1 incomum, 2 a 4 rara, 5 ou mais lendária. Os pesos ficam em `RARITY_POINTS`/`RARITY_AT`.
-- **Cor e desenho:** a alma viva guarda a cor do alien; a morta, a cor da nota que a ressuscitou (a dos olhos); o pintinho, amarelo. Ela guarda também o tipo de pássaro em que voava.
+- **Cor:** a alma viva guarda a cor do alien; a morta, a cor da nota que a ressuscitou (a dos olhos); o pintinho, amarelo. Ela guarda também o tipo de pássaro em que voava, mas depois de capturada é desenhada como a sua entrada da biblioteca.
 
 ## Cesto e contador (10/11, v2.7.0)
 
@@ -28,7 +28,7 @@ Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde
 ## Abdução (10/11, v2.7.0)
 
 - **Gatilho:** o Passaguá acerta um pássaro vivo, um pássaro morto-vivo ou um pintinho (as mesmas regras de alcance de antes).
-- **Efeito:** o pássaro some do mundo numa nuvem e a alma voa em curva até o contador de quem capturou: sobe primeiro, acelera e encolhe, com brilho e rastro na cor dela, em 0,55 s (`ABDUCT_TIME`). Várias capturadas no mesmo golpe saem uma atrás da outra, a cada 0,08 s (`ABDUCT_GAP`). O texto “+N almas” não aparece mais.
+- **Efeito:** o pássaro some do mundo numa nuvem e a alma voa em curva até o contador de quem capturou: sobe primeiro, acelera e encolhe, com brilho e rastro na cor dela, em 0,55 s (`ABDUCT_TIME`). Várias capturadas no mesmo golpe saem uma atrás da outra, a cada 0,08 s (`ABDUCT_GAP`). O texto “+N almas” não aparece mais; a primeira captura de cada entrada da biblioteca mostra o nome dela ([soul-library.md](soul-library.md)).
 - **Contagem:** a alma entra no cesto, e o número sobe, só quando chega ao contador; o círculo cresce e volta em 0,3 s (`SOUL_PULSE`).
 - **Câmera:** o ponto de partida é do mundo e o de chegada é da tela, então o voo acompanha a câmera e o zoom enquanto dura.
 - **Cancelamento:** não há. Se o player que capturou sair do lobby antes de a alma chegar, ela se perde.
@@ -38,7 +38,7 @@ Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde
 
 - **Gatilho:** clique ou toque no contador de um player com almas no cesto. Qualquer ponteiro vale para qualquer contador (o mouse solta as almas do player 2 clicando no contador dele). O clique não atira, não bica e não faz a galinha andar. Não vale com a tecla de câmera segurada nem com um painel por cima.
 - **Efeito:** sai a alma do topo do cesto, a última capturada (`combat.releaseSoul`), uma por clique. Ela nasce pequena no ponto do mundo que está embaixo do contador naquele instante, cresce em 0,35 s e voa para o seu lugar perto do dono. O número desce na hora e o contador pulsa.
-- **Aparência:** o pássaro que ela era (a morta, cinza com os olhos na cor), com um brilho redondo na cor da alma. Com mais de um player local, um anel na cor do dono em volta de cada uma.
+- **Aparência:** o desenho da entrada dela na biblioteca (forma pela família do instrumento; a morta, cinza com o olho na cor), com um brilho redondo na cor da alma. Com mais de um player local, um anel na cor do dono em volta de cada uma.
 - **Mouse em cima:** quando um clique faria algo (cesto com almas, ou Callback), o contador acende na cor do player, a mira some e o cursor vira o de botão.
 - **Sem tecla nem botão de controle ainda:** só clique ou toque.
 - **Escopo:** Pátio e Templo, todos os players locais. As almas soltas valem só na sessão e, no Pátio online, cada navegador vê só as suas.
@@ -72,7 +72,7 @@ Ficha de parâmetros (`SoulFollowParams`; limites em `SOUL_FOLLOW_RANGES`). Aind
 | `loopEvery` | 0 a 30 s | Intervalo das voltinhas no descanso (0: nunca) |
 | `restless` | 0 a 1 | Quanto vagueia em volta do lugar |
 
-Classes (`SOUL_CLASSES`, escolhidas por `soulClassOf`):
+Classes (`SOUL_CLASSES`). A alma voa na classe da sua entrada da biblioteca: a da família do instrumento (`soulClassOf`), ou a própria de uma rara:
 
 | Classe | Alma | dist | altura | folga | velocidade | No lugar |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -97,4 +97,4 @@ Classes (`SOUL_CLASSES`, escolhidas por `soulClassOf`):
 
 ## Ainda não implementado
 
-Tecla e botão de controle para soltar e chamar, painel para editar a ficha, pouso das almas soltas nos fios e fuga de outros players, roubo no Pátio online, a biblioteca de almas e as ajudas (e atrapalhos) de cada classe. O plano está fora do código, no documento “Almas capturadas: plano”.
+Tecla e botão de controle para soltar e chamar, painel para editar a ficha, pouso das almas soltas nos fios e fuga de outros players, roubo no Pátio online e as ajudas (e atrapalhos) de cada classe. O plano está fora do código, no documento “Almas capturadas: plano”.

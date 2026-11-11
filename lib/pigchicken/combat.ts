@@ -7,7 +7,8 @@ import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zone
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
 import { birdPerchParams, perchEnd, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
 import { ABDUCT_GAP, CHICK_SOUL_COLOR, SOUL_PULSE, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, weaponClass, type Abduction, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
-import { createSoulBrain, soulFollowParams, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
+import { createSoulBrain, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
+import { entryFollowParams, entryOf } from './soul-library'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
@@ -558,6 +559,9 @@ export function createCombat() {
   // souls on their way to a counter (the world's: each one knows whose it is) and how long each counter still swells
   const abductions: Abduction[] = []
   const soulPulses = new Map<string, number>()
+  // the souls caught from the wild since the screen last asked (not the ones that only changed baskets or came back):
+  // whoever draws takes them from here to the library (lib/pigchicken/soul-library.ts)
+  const soulNews: { soul: Soul; owner: string; x: number; y: number }[] = []
   // the souls out of the baskets (the world's: each one knows whose it is), the world's clock for them and when each
   // player last let one out
   const freed: FreeSoul[] = []
@@ -1019,7 +1023,7 @@ export function createCombat() {
     sw.hit = true
     collectInSwing(sw, origin)
     if ((sw.item as Owned | null)?.item === 'passagua') {
-      const caught: { x: number; y: number; soul: Soul }[] = []
+      const caught: { x: number; y: number; soul: Soul; wild: boolean }[] = []
       // Undead birds stay Targets while circling; the other undead phases are not capturable.
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
@@ -1029,32 +1033,33 @@ export function createCombat() {
         const x = t.x, y = t.y - t.h / 2
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35)) continue
         if (u.perch && perchWorld) perchEnd(perchWorld, u.perch)
-        targets.splice(i, 1); caught.push({ x, y, soul: newSoul(nextId++, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird) })
+        targets.splice(i, 1); caught.push({ x, y, wild: true, soul: newSoul(nextId++, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird) })
       }
       // Converted living birds fly as critters rather than targets and use the same capture sweep.
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]
         if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16)) continue
         if (c.perch && perchWorld) perchEnd(perchWorld, c.perch)
-        critters.splice(i, 1); caught.push({ x: c.x, y: c.y, soul: newSoul(nextId++, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null) })
+        critters.splice(i, 1); caught.push({ x: c.x, y: c.y, wild: true, soul: newSoul(nextId++, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null) })
       }
       // souls flying free, whoever let them out: they change baskets (or go back to their own)
       for (let i = freed.length - 1; i >= 0; i--) {
         const f = freed[i]
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
-        freed.splice(i, 1); caught.push({ x: f.x, y: f.y, soul: f.soul })
+        freed.splice(i, 1); caught.push({ x: f.x, y: f.y, wild: false, soul: f.soul })
       }
       // the chicks that follow her: caught like the birds, they count as souls too
       catchables = catchables.filter(c => {
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r)) return true
-        c.catch(); caught.push({ x: c.x, y: c.y, soul: newSoul(nextId++, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null) })
+        c.catch(); caught.push({ x: c.x, y: c.y, wild: true, soul: newSoul(nextId++, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null) })
         return false
       })
       if (caught.length) {
         // each one leaves a little cloud and flies to this player's counter, where it counts (one after the other)
-        caught.forEach(({ x, y, soul }, i) => {
+        caught.forEach(({ x, y, soul, wild }, i) => {
           puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
           abductions.push({ soul, owner: active, x, y, t: -i * ABDUCT_GAP })
+          if (wild) soulNews.push({ soul, owner: active, x, y })
         })
         sound('puff', null)
       }
@@ -1298,6 +1303,8 @@ export function createCombat() {
     get soulPulse() { return (soulPulses.get(active) ?? 0) / SOUL_PULSE },
     // every player's souls flying to their counters (lib/pigchicken/souls.ts)
     get abductions() { return abductions as readonly Abduction[] },
+    // the souls caught from the wild, to be taken (spliced) by whoever keeps the library; (x, y): where, in world px
+    soulNews,
     // the souls out of the baskets, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
     get freedSouls() { return freed as readonly FreeSoul[] },
     get looseSouls() { let n = 0; for (const f of freed) if (f.owner === active) n++; return n },
@@ -1305,7 +1312,8 @@ export function createCombat() {
     releaseSoul(from: { x: number; y: number }) {
       const soul = souls.pop()
       if (!soul) return null
-      const params = soulFollowParams(soul), brain = createSoulBrain(from.x, from.y, params)
+      // how it flies is its entry's in the library (the class of its family, or a rare one's own)
+      const params = entryFollowParams(entryOf(soul)), brain = createSoulBrain(from.x, from.y, params)
       // it pops out of the counter, down and to one side
       brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
       freed.push({ soul, owner: active, x: from.x, y: from.y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null })

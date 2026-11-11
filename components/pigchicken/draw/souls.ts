@@ -1,16 +1,13 @@
 // Souls on their way to a counter: each one flies from where it was caught (the world) to the counter of the player
 // who caught it (the screen), shrinking, with a glow and a streak in its colour. And the souls let out of the
-// baskets, flying with their owners in the world.
-import { BIRDS } from "@/lib/pigchicken/birds"
+// baskets, flying with their owners in the world. Each one is drawn as its entry in the library (./soul-art.ts).
 import { ABDUCT_TIME, abductPoint } from "@/lib/pigchicken/souls"
 import { type Combat } from "@/lib/pigchicken/combat"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { stageWidth } from "@/lib/stage-size"
-import { drawBirdArt } from "./creatures"
 import { soulCounterBox } from "./hud"
 import { type Ctx } from "./shared"
-
-const UNDEAD_BODY = "#8d9096"
+import { drawSoulArt, soulLook } from "./soul-art"
 
 // rows: each local player's row in the counters' stack; cam: the world's camera and zoom this frame.
 // Drawn in screen px, over the counters
@@ -39,8 +36,7 @@ export function drawAbductions(ctx: Ctx, combat: Combat, rows: ReadonlyMap<strin
     ctx.beginPath(); ctx.arc(p.x, p.y, 16 * size, 0, Math.PI * 2); ctx.fill()
     ctx.globalAlpha = 1
     ctx.translate(p.x, p.y); ctx.scale(size, size)
-    const dead = a.soul.state === "dead"
-    drawBirdArt(ctx, 0, 0, to.x >= from.x ? 1 : -1, Math.max(0, a.t) + a.soul.id * 0.37, a.soul.bird ? BIRDS[a.soul.bird] : null, dead ? UNDEAD_BODY : a.soul.color, dead, a.soul.color)
+    drawSoulArt(ctx, 0, 0, to.x >= from.x ? 1 : -1, Math.max(0, a.t) + a.soul.id * 0.37, soulLook(a.soul))
     ctx.restore()
   }
 }
@@ -48,19 +44,19 @@ export function drawAbductions(ctx: Ctx, combat: Combat, rows: ReadonlyMap<strin
 // a soul just out of the counter is small (as it was when it went in) and grows in this long (s)
 const RELEASE_GROW = 0.35
 
-// The souls flying free, in world px (inside the world's transform): the bird each one was, with a glow in its
+// The souls flying free, in world px (inside the world's transform): each one as its entry, with a glow in its
 // colour. tints: each local player's colour, given only when more than one plays here; a ring says whose it is.
 export function drawFreedSouls(ctx: Ctx, combat: Combat, camX: number, view: ViewRect, tints?: Readonly<Record<string, string>> | null) {
   for (const f of combat.freedSouls) {
     if (!intersectsView({ x: f.x - 40, y: f.y - 40, w: 80, h: 80 }, view, 32)) continue
-    const dead = f.soul.state === "dead", grow = Math.min(1, 0.3 + (f.t / RELEASE_GROW) * 0.7), tint = tints?.[f.owner]
+    const grow = Math.min(1, 0.3 + (f.t / RELEASE_GROW) * 0.7), tint = tints?.[f.owner]
     ctx.save()
     ctx.translate(f.x - camX, f.y); ctx.scale(grow, grow)
     ctx.globalAlpha = 0.2; ctx.fillStyle = f.soul.color
     ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill()
     if (tint) { ctx.globalAlpha = 0.75; ctx.strokeStyle = tint; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.stroke() }
     ctx.globalAlpha = 1
-    drawBirdArt(ctx, 0, 0, f.face, f.t + f.soul.id * 0.37, f.soul.bird ? BIRDS[f.soul.bird] : null, dead ? UNDEAD_BODY : f.soul.color, dead, f.soul.color)
+    drawSoulArt(ctx, 0, 0, f.face, f.t + f.soul.id * 0.37, soulLook(f.soul))
     ctx.restore()
   }
 }
