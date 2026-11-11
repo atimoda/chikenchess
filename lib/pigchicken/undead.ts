@@ -8,6 +8,7 @@
 import type { Drum, VoiceId } from './synth'
 import type { NoteOut } from './transforms'
 import type { BirdId, UndeadMode } from './birds'
+import type { PerchState } from './bird-perch'
 
 // ---------- the two deaths ----------
 
@@ -74,6 +75,7 @@ export type UndeadState = {
   homeX: number; homeY: number // where a bird circles
   leaveIn: number | null // s until it leaves (null: the music is still playing)
   whistleIn: number // a bird's next whistle (s)
+  perch?: PerchState | null // resting on a wire (lib/pigchicken/bird-perch.ts); null: it already tried
   params: UndeadParams
   born: number // order of arrival (the oldest leaves first)
 }

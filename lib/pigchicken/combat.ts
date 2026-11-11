@@ -5,6 +5,7 @@ import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
+import { birdPerchParams, perchEnd, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
 import { ABDUCT_GAP, CHICK_SOUL_COLOR, SOUL_PULSE, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, weaponClass, type Abduction, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
@@ -47,6 +48,7 @@ export type Critter = {
   kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number
   bird?: BirdId; homeX?: number; homeY?: number; whistleIn?: number
   soul?: SoulOrigin // a bird: the alien it was and how it became one (lib/pigchicken/souls.ts)
+  perch?: PerchState | null // resting on a wire (lib/pigchicken/bird-perch.ts); null: it already tried
 }
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
@@ -171,6 +173,8 @@ export function createCombat() {
   // other catchable birds in the world (the chicks that follow her): where they are (world px, their middle and
   // size) and what to do when the Passaguá catches one (the Parquinho removes it)
   let catchables: Catchable[] = []
+  // the wires of the Postes and Torres the birds rest on (the Parquinho keeps it up to date)
+  let perchWorld: PerchWorld | null = null
   let nextId = 1
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
@@ -1010,12 +1014,14 @@ export function createCombat() {
         if (!u?.bird || (u.phase !== 'bird' && u.phase !== 'leave')) continue
         const x = t.x, y = t.y - t.h / 2
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35)) continue
+        if (u.perch && perchWorld) perchEnd(perchWorld, u.perch)
         targets.splice(i, 1); caught.push({ x, y, soul: newSoul(nextId++, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird) })
       }
       // Converted living birds fly as critters rather than targets and use the same capture sweep.
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]
         if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16)) continue
+        if (c.perch && perchWorld) perchEnd(perchWorld, c.perch)
         critters.splice(i, 1); caught.push({ x: c.x, y: c.y, soul: newSoul(nextId++, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null) })
       }
       // the chicks that follow her: caught like the birds, they count as souls too
@@ -1258,6 +1264,7 @@ export function createCombat() {
   return {
     setBlastActors(actors: { box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
     setCatchables(list: Catchable[]) { catchables = list },
+    setPerchWorld(w: PerchWorld | null) { perchWorld = w },
     // Local players: each one has their own items, aim, cooldowns and swing (a loadout); the world (targets,
     // enemies, shots, pickups, music) is shared. use(id) makes that player's loadout the current one; the
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
@@ -1820,6 +1827,21 @@ export function createCombat() {
         if (t.kind !== 'undead' || t.mirror) continue
         const u = t.data as UndeadState
         t.animT += dt
+        // an undead bird may rest on a wire after circling a while, and runs from whoever comes near
+        if (u.bird && u.perch !== null && perchWorld?.spans.length && t.deadT <= 0) {
+          const type = BIRDS[u.bird], pp = birdPerchParams(type.perch)
+          if (u.perch === undefined && u.phase === 'bird' && u.t > 2.5) u.perch = Math.random() < pp.perchChance ? perchStart(perchWorld, t.x, t.y - t.h / 2, pp) : null
+          if (u.perch) {
+            const pos = { x: t.x, y: t.y - t.h / 2, face: t.face }
+            if (perchStep(perchWorld, u.perch, pos, dt, pp) === 'done') { u.perch = null; u.phase = 'leave'; u.t = 0; u.dir = pos.face >= 0 ? 1 : -1 }
+            else {
+              t.x = pos.x; t.y = pos.y + t.h / 2; t.face = pos.face; t.animT += dt
+              u.whistleIn -= dt
+              if (u.whistleIn <= 0) { u.whistleIn = whistleTime(type); whistle(t.x, t.y - t.h / 2, type, u.params.mode) }
+              continue
+            }
+          }
+        }
         if (!stepUndead(t, u, dt, { boxes, groundY, viewL: view.l, viewR: view.r, playing, rand: Math.random })) { targets.splice(i, 1); continue }
         if (u.bird && u.phase === 'bird' && t.deadT <= 0) {
           u.whistleIn -= dt
@@ -1849,6 +1871,20 @@ export function createCombat() {
         const c = critters[i]
         c.t += dt
         const type = c.kind === 'bird' && c.bird ? BIRDS[c.bird] : null
+        // when it would leave, it may rest on a wire of the Postes and Torres instead (and run from whoever comes near)
+        if (type && c.perch === undefined && perchWorld?.spans.length && c.t >= (type.flight === 'leave' ? 0.6 : type.stay)) {
+          const pp = birdPerchParams(type.perch)
+          c.perch = Math.random() < pp.perchChance ? perchStart(perchWorld, c.x, c.y, pp) : null
+        }
+        if (type && c.perch && perchWorld) {
+          if (perchStep(perchWorld, c.perch, c, dt, birdPerchParams(type.perch)) === 'done') {
+            // off the wires: it flies away as it would have
+            c.perch = null; c.t = type.stay; c.vx = c.face * rand(110, 160); c.vy = -rand(140, 200)
+          } else {
+            if (c.whistleIn !== undefined) { c.whistleIn -= dt; if (c.whistleIn <= 0) { c.whistleIn = whistleTime(type); whistle(c.x, c.y, type, null) } }
+            continue
+          }
+        }
         // circling or perched for a while, then away
         const staying = !!type && type.flight !== 'leave' && c.t < type.stay
         if (staying && type) {

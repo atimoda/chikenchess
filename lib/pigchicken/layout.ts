@@ -17,6 +17,7 @@ import { TREE_SIZE, newTreeSeed, normalizeTree, treePreset, treeSurfaces, type T
 import { normalizeTrampoline, type TrampolineParams } from './trampoline'
 import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge } from './village'
 import { VILLAGE_GROUND_ID, defaultSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
+import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from './power-lines'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
@@ -47,7 +48,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -65,6 +66,7 @@ export type ElementParams = {
   zone?: SoundZoneParams // Zona sonora
   lanes?: LanesParams // Faixas fixas
   surface?: SurfaceParams // Chão (biome) and Parede (style): the outline's points
+  power?: PowerParams // Poste de energia and Torre de transmissão: model, line, wires
 }
 
 export type LayoutElement = {
@@ -84,6 +86,9 @@ export type LayoutElement = {
   opacity: number
   // falls until it rests on a solid element (or the ground): settleLayout
   gravity?: boolean
+  // parallax depth (0 with the ground, up to 0.95 almost still on the screen): scenery only, never collides; x is
+  // where it stands with the camera at 0 (on screen it sits at x - camX × (1 - depth)), see live-camera's followDepth
+  depth?: number
   params: ElementParams
 }
 // settings: the Pátio's limits (width in scenes, height up to the ceiling), from the Sun button's panel
@@ -118,7 +123,14 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   lanes: { label: 'Faixas fixas', group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
   ground: { label: 'Chão', group: 'Chãos e paredes', w: 640, h: 200, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 24 },
   wall: { label: 'Parede', group: 'Chãos e paredes', w: 72, h: 320, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 12, minH: 24 },
+  pole: { label: 'Poste de energia', group: 'Energia', w: 120, h: 440, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 16, minH: 60 },
+  tower: { label: 'Torre de transmissão', group: 'Energia', w: 380, h: 920, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 100 },
 }
+// Postes and Torres: their wires join the next one of the same model and line (lib/pigchicken/power-lines.ts)
+export const isPowerElement = (kind: ElementKind): kind is 'pole' | 'tower' => kind === 'pole' || kind === 'tower'
+// what may stand in a parallax depth of its own: the scenery (not the game's things, the music or the entry)
+export const canHaveDepth = (kind: ElementKind) => !ELEMENT_DEFS[kind].entity && !isMusicElement(kind)
+export const elementDepth = (el: Pick<LayoutElement, 'depth'>) => el.depth ?? 0
 // the music's elements: no collisions of their own (the zone is never drawn in the game)
 export const isMusicElement = (kind: ElementKind) => kind === 'zone' || kind === 'lanes'
 // Chãos e Paredes: shaped by their own points (lib/pigchicken/surfaces.ts)
@@ -158,6 +170,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'zone') return { zone: defaultSoundZone() }
   if (kind === 'lanes') return { lanes: defaultLanes() }
   if (isSurfaceElement(kind)) return { surface: defaultSurface(kind) }
+  if (isPowerElement(kind)) return { power: defaultPower(kind) }
   return {}
 }
 
@@ -357,10 +370,15 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.lanes = normalizeLanes(p.lanes)
   } else if (isSurfaceElement(kind)) {
     params.surface = normalizeSurface(kind, p.surface)
+  } else if (isPowerElement(kind)) {
+    params.power = normalizePower(kind, p.power)
   }
   const music = isMusicElement(kind)
-  const rebate = d.entity || music ? undefined : normalizeSurfaceRebate(e.rebate)
-  const region = e.region === 'temple' || e.region === 'village' ? e.region : undefined
+  // in a depth of its own it is only scenery: no collisions of any kind
+  const depth = canHaveDepth(kind) ? normalizeDepth(e.depth) : 0
+  const flat = d.entity || music || depth > 0
+  const rebate = flat ? undefined : normalizeSurfaceRebate(e.rebate)
+  const region = depth === 0 && (e.region === 'temple' || e.region === 'village') ? e.region : undefined
   const x = region
     ? clamp(r1(num(e.x, 0)), -w / 2, SCENE_W - w / 2 - 0.1)
     : r1(clamp(num(e.x, 0), -2000, SCENE_W * worldScenes(LAYOUT_MAX_SCREENS)))
@@ -368,16 +386,17 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     id, kind, ...(region ? { region } : {}),
     x, y: r1(clamp(num(e.y, 0), PATIO_LOWEST_TOP, WORLD_GROUND_Y + 200)),
     w, h, rot, layer, locked: !!e.locked,
-    solid: kind === 'house' || kind === 'trampoline' ? true : kind === 'tree' || d.entity || music ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
-    shots: d.entity || music ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
-    notes: d.entity || music ? false : !!e.notes,
+    solid: depth > 0 ? false : kind === 'house' || kind === 'trampoline' ? true : kind === 'tree' || d.entity || music ? false : typeof e.solid === 'boolean' ? e.solid : d.solid,
+    shots: flat ? false : typeof e.shots === 'boolean' ? e.shots : d.shots,
+    notes: flat ? false : !!e.notes,
     ...(rebate ? { rebate } : {}),
     ...(!d.entity && !music && typeof e.occludesColliders === 'boolean' ? { occludesColliders: e.occludesColliders } : {}),
     // kept when on, and always on grounds and walls (where it starts on)
+    ...(depth > 0 ? { depth } : {}),
     ...(HARD_KINDS.includes(kind) && (isSurfaceElement(kind) || e.hard === true) ? { hard: typeof e.hard === 'boolean' ? e.hard : isSurfaceElement(kind) } : {}),
     hidden: kind === 'zone' ? true : d.entity ? false : !!e.hidden,
     opacity: r1(clamp(num(e.opacity, 1), 0.1, 1) * 100) / 100,
-    ...(e.gravity === true ? { gravity: true } : {}),
+    ...(e.gravity === true && depth === 0 ? { gravity: true } : {}),
     params,
   }
 }
@@ -480,7 +499,7 @@ export const elementOutline = (el: LayoutElement) => isSurfaceElement(el.kind) &
 export function layoutCollisionMasks(elements: LayoutElement[]): CollisionMask[] {
   const masks: CollisionMask[] = []
   elements.forEach((el, index) => {
-    if (!occludesColliders(el) || el.hidden || el.opacity < 1 || el.layer === 'frontGhost') return
+    if (!occludesColliders(el) || el.hidden || el.opacity < 1 || el.layer === 'frontGhost' || el.depth) return
     const polygon = el.params.house
       ? houseWallPolygon(el.params.house).map(([x, y]) => [el.x + x * el.w / 100, el.y + y * el.h / 100] as const)
       : elementOutline(el) ?? elementCorners(el)
@@ -513,11 +532,13 @@ export function elementsInWorld(layout: PatioLayout, screens: number) {
   const end = screens * SCENE_W
   return layout.elements.flatMap(el => {
     if (el.region) return [{ ...el, x: elementWorldX(el, screens) }]
-    return el.x + el.w / 2 < end ? [el] : []
+    return el.depth || el.x + el.w / 2 < end ? [el] : []
   })
 }
 
 export function storeElementPosition(el: LayoutElement, screens: number): LayoutElement {
+  // in a depth of its own its x is a layer's, not the world's: it never belongs to the Templo or the Vila
+  if (el.depth) { const { region: _r, ...rest } = el; return rest }
   const cx = Math.min(el.x + el.w / 2, worldScenes(screens) * SCENE_W - 0.1)
   const region = cx >= regionOrigin('village', screens) ? 'village' : cx >= regionOrigin('temple', screens) ? 'temple' : undefined
   const { region: _old, ...base } = el

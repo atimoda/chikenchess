@@ -13,7 +13,7 @@ import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PanelRight
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
-  ELEMENT_DEFS, HARD_KINDS, HORDE_BUTTONS, isMusicElement, isSurfaceElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
+  ELEMENT_DEFS, HARD_KINDS, HORDE_BUTTONS, canHaveDepth, isMusicElement, isPowerElement, isSurfaceElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
   newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
@@ -21,13 +21,14 @@ import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline
 import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
-import { followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
+import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
+import { ELEMENT_DEPTH, POWER_LINES, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, type PowerParams } from "@/lib/pigchicken/power-lines"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES } from "@/lib/pigchicken/music"
 import { defaultSoundZone, sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
 import { LanesFields, SoundZoneFields, SurfaceRebateFields } from "./sound-zone-panels"
 import { MusicZonesLayer } from "./music-zones-layer"
-import { ElementArt } from "./patio-layout"
+import { DepthLayer, ElementArt } from "./patio-layout"
 import { HOUSE_STYLE_LABELS, HousePanel } from "./house-panel"
 import { houseDraftSize, randomHouse, type HouseParams, type HouseStyle } from "@/lib/pigchicken/houses"
 import { TREE_STYLES, randomTree, treeDraftSize, treePreset, type TreeParams } from "@/lib/pigchicken/trees"
@@ -284,12 +285,14 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       `}</style>
       {active && <div data-patio-editor className="pointer-events-none fixed inset-0 z-[203] overflow-hidden">
         <div ref={worldRef} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
-          {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => (
-            <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
-          ))}
+          {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => {
+            const box = <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
+            // in a parallax depth its handle slides with it
+            return el.depth ? <DepthLayer key={el.id} depth={el.depth}>{box}</DepthLayer> : box
+          })}
           {sel && !sel.locked && isSurfaceElement(sel.kind) && <SurfacePoints el={sel} onChange={update} />}
           {sel && (
-            <Toolbar
+            <DepthLayer depth={sel.depth ?? 0} className="pointer-events-none absolute left-0 top-0 z-[2]"><Toolbar
               el={sel}
               panel={panel}
               setPanel={setPanel}
@@ -301,7 +304,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
               onDuplicate={() => duplicate(sel)}
               onDelete={() => remove(sel.id)}
               deleteBlocked={!!portalPartner(sel, layout.elements)?.locked}
-            />
+            /></DepthLayer>
           )}
         </div>
       </div>}
@@ -312,7 +315,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
           : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} />)}
-      {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} editable opacity={soundLayer}
+      {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
         onScene={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
       {active && soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
@@ -459,6 +462,57 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
   )
 }
 
+// the parallax depth: 0 moves with the ground, near 95% stays almost still on the screen. Changing it keeps the
+// element where it is on the screen now (its stored x and y are a layer's, at the camera's 0)
+function DepthField({ el, onChange }: { el: LayoutElement; onChange: (el: LayoutElement) => void }) {
+  const d = el.depth ?? 0
+  const setDepth = (next: number) => {
+    const a = depthOffset(d), b = depthOffset(next)
+    const { depth: _old, ...rest } = el
+    onChange({ ...rest, x: el.x + a.x - b.x, y: el.y + a.y - b.y, ...(next > 0 ? { depth: next, solid: false, shots: false, notes: false } : {}) })
+  }
+  return <PatioRange label="Profundidade" min={ELEMENT_DEPTH.min * 100} max={ELEMENT_DEPTH.max * 100} step={ELEMENT_DEPTH.step * 100} value={Math.round(d * 100)}
+    display={d ? `${Math.round(d * 100)}%` : "No chão"} changed={d > 0} onChange={v => setDepth(v / 100)} onReset={() => setDepth(0)}
+    hint="Parallax: quanto mais fundo, mais devagar ele passa quando a câmera anda. 0 anda junto com o chão." />
+}
+
+// a Poste's or Torre's model, line and wires
+function PowerFields({ el, power, onChange }: { el: LayoutElement; power: PowerParams; onChange: (el: LayoutElement, step?: string) => void }) {
+  const kind = el.kind as "pole" | "tower"
+  const set = (p: Partial<PowerParams>, step?: string) => onChange({ ...el, params: { ...el.params, power: { ...power, ...p } } }, step)
+  const models = kind === "pole" ? POLE_MODELS : TOWER_MODELS
+  return <>
+    <label className="grid gap-1">
+      <span>Modelo</span>
+      <select aria-label="Modelo" value={power.model} onChange={e => {
+        const m = POWER_MODELS[e.target.value]
+        // keeps its height and stands on the same base, in the new model's proportions
+        const w = Math.round(el.h * m.w / m.h)
+        onChange({ ...el, x: el.x + (el.w - w) / 2, w, params: { ...el.params, power: { ...power, model: m.id } } })
+      }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        {models.map(id => <option key={id} value={id}>{POWER_MODELS[id].label}</option>)}
+      </select>
+    </label>
+    <div className="grid gap-1">
+      <span>Linha</span>
+      <div role="radiogroup" aria-label="Linha" className="grid grid-cols-4 gap-1">
+        {Array.from({ length: POWER_LINES }, (_, i) => i + 1).map(n => (
+          <button key={n} type="button" role="radio" aria-checked={power.line === n} onClick={() => set({ line: n })}
+            className={cn("h-8 rounded-md border", power.line === n ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-white/40")}>{n}</button>
+        ))}
+      </div>
+    </div>
+    <div className="grid gap-[3px]">
+      <PatioRange label="Caimento dos fios" min={POWER_SAG.min} max={POWER_SAG.max} step={POWER_SAG.step} value={power.sag} display={`${power.sag}%`}
+        changed={power.sag !== POWER_SAG.default} onReset={() => set({ sag: POWER_SAG.default })} onChange={sag => set({ sag }, `sag:${el.id}`)} />
+      <PatioRange label="Espessura dos fios" min={POWER_WIRE.min} max={POWER_WIRE.max} step={POWER_WIRE.step} value={power.wire} display={`${power.wire} px`}
+        changed={power.wire !== POWER_WIRE.default} onReset={() => set({ wire: POWER_WIRE.default })} onChange={wire => set({ wire }, `wire:${el.id}`)} />
+      <DepthField el={el} onChange={next => onChange(next)} />
+    </div>
+    <p className="text-[#93a79a]">Os fios ligam {kind === "pole" ? "este poste" : "esta torre"} ao vizinho mais próximo do mesmo modelo e da mesma linha, da esquerda para a direita. Os pássaros pousam neles.</p>
+  </>
+}
+
 // the layer dropdown and the collisions
 function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el: LayoutElement) => void; onClose: () => void }) {
   return (
@@ -475,7 +529,13 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
           </label>
         ))}
       </div>
-      {isMusicElement(el.kind) ? <p className="border-t border-white/10 pt-3 text-[#93a79a]">{el.kind === "zone" ? "A zona sonora é invisível no jogo e não tem colisões." : "As faixas não têm colisões: só mudam as notas que passam por elas."}</p> : <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-t border-white/10 pt-3">
+      {canHaveDepth(el.kind) && <DepthField el={el} onChange={onChange} />}
+      {el.depth ? <div className="grid gap-3 border-t border-white/10 pt-3">
+        <p className="text-[#93a79a]">Na profundidade ele é só cenário: sem colisões.</p>
+        <Toggle label="Invisível no jogo" hint="Só aparece no modo editor" checked={el.hidden} onChange={v => onChange({ ...el, hidden: v })} />
+        <PatioRange label="Opacidade" min={10} max={100} step={5} value={Math.round(el.opacity * 100)}
+          display={`${Math.round(el.opacity * 100)}%`} onChange={v => onChange({ ...el, opacity: v / 100 })} />
+      </div> : isMusicElement(el.kind) ? <p className="border-t border-white/10 pt-3 text-[#93a79a]">{el.kind === "zone" ? "A zona sonora é invisível no jogo e não tem colisões." : "As faixas não têm colisões: só mudam as notas que passam por elas."}</p> : <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-t border-white/10 pt-3">
         {el.kind === 'house'
           ? <p className="text-[#93a79a]">Base, telhado, peitoris e vergas são pisos de mão única. A galinha pode saltar através da fachada.</p>
           : el.kind === 'tree' ? <p className="text-[#93a79a]">Configure os apoios no Editor de árvores.</p>
@@ -579,6 +639,7 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement;
           <input aria-label="Tempo de reposição do item" type="number" min={0} max={RACK_DELAY_MAX} step={0.1} value={el.params.respawnDelay ?? rackRespawnDelay(el.params.item ?? 'pistol')} onChange={e => { if (e.target.value !== '') set({ respawnDelay: Number(e.target.value) }, `rack-delay:${el.id}`) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
         </label>
       </>}
+      {isPowerElement(el.kind) && el.params.power && <PowerFields el={el} power={el.params.power} onChange={onChange} />}
       {isSurfaceElement(el.kind) && el.params.surface && <SurfaceFields el={el} surface={el.params.surface} onChange={surface => set({ surface })} />}
       {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
@@ -621,6 +682,10 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
     ...GROUND_BIOMES.map(style => ({ key: `ground-${style}`, kind: "ground" as ElementKind, label: `Chão · ${SURFACE_STYLE_LABELS[style]}`, params: { surface: defaultSurface("ground", style) } })),
     ...WALL_STYLES.map(style => ({ key: `wall-${style}`, kind: "wall" as ElementKind, label: `Parede · ${SURFACE_STYLE_LABELS[style]}`, params: { surface: defaultSurface("wall", style) } })),
   ] },
+  { group: "Energia", items: [...POLE_MODELS, ...TOWER_MODELS].map(id => {
+    const m = POWER_MODELS[id]
+    return { key: `power-${id}`, kind: m.kind as ElementKind, label: `${m.kind === "pole" ? "Poste" : "Torre"} · ${m.label}`, params: { power: { ...defaultPower(m.kind), model: id } } }
+  }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Música", items: (["zone", "lanes"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
@@ -640,13 +705,16 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "dummy") return <span className="relative block h-9 w-6"><span className="absolute inset-x-0 top-0 h-6 rounded-md bg-[#d9cfb8]" /><span className="absolute left-1/2 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#d6453d] bg-[#f4f1e8]" /><span className="absolute bottom-0 left-1/2 h-3 w-1 -translate-x-1/2 bg-[#5b4630]" /></span>
   if (entry.kind === "zone") return <span className="flex h-7 w-10 items-center justify-center rounded-md border-2 border-dashed border-[#7b8cff] bg-[#7b8cff]/20 text-[13px] text-[#7b8cff]">♫</span>
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
-  const k = Math.min(48 / d.w, 34 / d.h)
-  return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><ElementArt el={{ kind: entry.kind, params: previewParams(entry), w: d.w, h: d.h }} editing /></span>
+  const m = entry.params?.power ? POWER_MODELS[entry.params.power.model] : null
+  const w = m?.w ?? d.w, h = m?.h ?? d.h
+  const k = Math.min(48 / w, (m ? 44 : 34) / h)
+  // the postes and torres take the sky's silhouette colour: light here, on the dark card
+  return <span className="relative block" style={{ width: w * k, height: h * k, ...(m ? { ["--patio-sil" as string]: "#dfe8df" } : {}) }}><ElementArt el={{ kind: entry.kind, params: previewParams(entry), w: w * k, h: h * k }} editing /></span>
 }
 
 // what a palette entry looks like before it is placed
 const previewParams = (entry: Entry): ElementParams =>
-  isMusicElement(entry.kind) ? defaultParams(entry.kind) : isSurfaceElement(entry.kind) ? { ...defaultParams(entry.kind), ...entry.params } : { seed: 4242 }
+  isMusicElement(entry.kind) ? defaultParams(entry.kind) : isSurfaceElement(entry.kind) || isPowerElement(entry.kind) ? { ...defaultParams(entry.kind), ...entry.params } : { seed: 4242 }
 
 const PALETTE_CARD = "flex min-h-16 cursor-grab touch-none flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-[#0b110e] px-1 py-1.5 text-center text-[10px] leading-tight hover:border-[#ffd166] active:cursor-grabbing disabled:opacity-50"
 
@@ -686,6 +754,12 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       // dummies and racks stand on the floor right under where they were dropped
       if (el.kind === "dummy" || el.kind === "rack") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
+      // postes and torres in their model's proportions, planted on the floor under where they were dropped
+      if (el.params.power) {
+        const m = POWER_MODELS[el.params.power.model]
+        el.w = m.w; el.h = m.h; el.x = p.x - m.w / 2
+        el.y = floorBelow(p.x, p.y) - m.h + 6
+      }
       // a new zone starts as the next scene's, so walking in changes the music right away
       if (el.kind === "zone") el.params = { zone: defaultSoundZone(ZONES[(sceneAt(p.x) + 1) % ZONES.length]) }
       onAdd(el)

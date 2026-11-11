@@ -5,9 +5,10 @@
 // the ground. The art is generated once from a fixed seed, so it is the same on every screen and every visit.
 "use client"
 
-import { memo, useEffect, useRef } from "react"
+import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { followParallax, watchCameraRegion } from "@/lib/pigchicken/live-camera"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { classicLook, skyGradient, type SkyLook } from "@/lib/pigchicken/sky"
 
 const G = WORLD_GROUND_Y
 // how far past the world's left edge the layers start, and how much they reach past its right edge (the widest screen)
@@ -86,6 +87,45 @@ function clouds(w: number, seed: number) {
   return out
 }
 
+// the sky's texture: a soft grain with long horizontal streaks, made once per strength as a small tile
+function useSkyTexture(strength: number) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (strength <= 0) { setUrl(null); return }
+    const c = document.createElement("canvas")
+    c.width = 256; c.height = 128
+    const ctx = c.getContext("2d")
+    if (!ctx) return
+    const img = ctx.createImageData(256, 128), r = rng(97)
+    for (let y = 0; y < 128; y++) {
+      // a row's own drift (the streak) plus fine grain
+      let row = r() - 0.5
+      for (let x = 0; x < 256; x++) {
+        row += (r() - 0.5) * 0.08; row *= 0.985
+        const v = 128 + (row * 0.9 + (r() - 0.5) * 0.6) * 255
+        const i = (y * 256 + x) * 4
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, v))
+        img.data[i + 3] = Math.round(255 * Math.min(1, strength) * 0.55)
+      }
+    }
+    ctx.putImageData(img, 0, 0)
+    setUrl(c.toDataURL())
+  }, [strength])
+  return url
+}
+
+// stars: tiny dots high in the sky, one path
+function stars(w: number, seed: number) {
+  const r = rng(seed)
+  let d = ""
+  for (let i = 0; i < w / 9; i++) {
+    const x = r() * w, y = -300 + Math.pow(r(), 1.6) * 900, s = 0.6 + r() * 1.6
+    d += `M${x.toFixed(0)} ${y.toFixed(0)}m-${s} 0a${s} ${s} 0 1 0 ${s * 2} 0a${s} ${s} 0 1 0 -${s * 2} 0`
+  }
+  return d
+}
+const CLASSIC = classicLook()
+
 // one parallax layer: depth p (0 = with the ground, 1 = fixed on the screen)
 function Layer({ p, w, children }: { p: number; w: number; children: React.ReactNode }) {
   const ref = useRef<SVGSVGElement>(null)
@@ -97,7 +137,7 @@ function Layer({ p, w, children }: { p: number; w: number; children: React.React
   )
 }
 
-function Cloud({ c }: { c: ReturnType<typeof clouds>[number] }) {
+function Cloud({ c, lit, shade }: { c: ReturnType<typeof clouds>[number]; lit: string; shade: string }) {
   const ref = useRef<SVGGElement>(null)
   useEffect(() => {
     const l = Math.min(...c.lobes.map(l => l.dx - l.rx)) - c.drift - 16
@@ -105,61 +145,96 @@ function Cloud({ c }: { c: ReturnType<typeof clouds>[number] }) {
     return ref.current ? watchCameraRegion(ref.current, { x: -PAD_L + c.x + l, y: c.y - 100, w: r - l, h: 200 }, 0.9) : undefined
   }, [c])
   return <g ref={ref} className="px-cloud" style={{ ["--d" as string]: `${c.drift}s`, ["--a" as string]: `${c.drift}px` }} opacity={c.o} filter="url(#px-soft)">
-    {c.lobes.map((l, k) => <ellipse key={k} cx={c.x + l.dx} cy={c.y + l.dy} rx={l.rx} ry={l.ry} fill={k === c.lobes.length - 1 ? "#b79fa6" : "#d9d3e2"} />)}
+    {c.lobes.map((l, k) => <ellipse key={k} cx={c.x + l.dx} cy={c.y + l.dy} rx={l.rx} ry={l.ry} fill={k === c.lobes.length - 1 ? shade : lit} />)}
   </g>
 }
 
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW }: { worldW: number }) {
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC }: { worldW: number; look?: SkyLook }) {
   const wSun = layerW(worldW, 0.97), wCloud = layerW(worldW, 0.9), wFar = layerW(worldW, 0.82), wMid = layerW(worldW, 0.66)
   const wHill = layerW(worldW, 0.48), wTreesFar = layerW(worldW, 0.34), wTrees = layerW(worldW, 0.2)
-  const treeFar = trees(wTreesFar, 31, G - 40, 64, 46)
-  const treeNear = trees(wTrees, 47, G - 6, 120, 210)
+  const shapes = useMemo(() => ({
+    far: ridge(wFar, 3, 720, 190, 1.3), mid: ridge(wMid, 7, 790, 160, 1.7), hill: ridge(wHill, 19, 860, 90, 1.1, 32),
+    treeFar: trees(wTreesFar, 31, G - 40, 64, 46), treeNear: trees(wTrees, 47, G - 6, 120, 210),
+    clouds: clouds(wCloud, 11), stars: stars(wSun, 5),
+  }), [wFar, wMid, wHill, wTreesFar, wTrees, wCloud, wSun])
+  const texture = useSkyTexture(look.texture)
+  const { treeFar, treeNear } = shapes
+  const shownClouds = look.clouds.amount >= 1 ? shapes.clouds : shapes.clouds.filter((_, i) => ((i * 0.618) % 1) < look.clouds.amount)
   // the haze at the foot of each range (aerial perspective): the horizon's colour fading up
   const haze = (w: number, id: string, top: number, o: number) => (
     <>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#6a5c6c" stopOpacity="0" />
-          <stop offset="1" stopColor="#6a5c6c" stopOpacity={o} />
+          <stop offset="0" stopColor={look.haze} stopOpacity="0" />
+          <stop offset="1" stopColor={look.haze} stopOpacity={Math.min(1, o * look.hazeAmount)} />
         </linearGradient>
       </defs>
       <rect x={0} y={top} width={w} height={G + 40 - top} fill={`url(#${id})`} />
     </>
   )
+  const sunX = PAD_L + 1350
+  const skyTop = -4200
   return (
     <div aria-hidden="true" className="absolute inset-0">
-      {/* the sky: deep blue up high, a muted mauve at the horizon; it reaches far above the world's top */}
-      <div className="absolute" style={{ left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: -4200, height: G + 4200, background: "linear-gradient(to bottom, #04060f 0, #0a0f20 3000px, #0a0f20 4200px, #121a33 4450px, #222a48 4700px, #3d3f5c 4900px, #5e5468 5020px, #7a6670 5130px)" }} />
+      {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top */}
+      <div className="absolute" style={{
+        left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: G - skyTop,
+        background: skyGradient(look, skyTop, -200, G - 60),
+      }} />
+      {texture && <div className="absolute" style={{
+        left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: -1600, height: G + 1600,
+        backgroundImage: `url(${texture})`, backgroundSize: "1024px 256px", mixBlendMode: "soft-light",
+      }} />}
       <Layer p={0.97} w={wSun}>
         <defs>
           <radialGradient id="px-sun">
-            <stop offset="0" stopColor="#f6dcc0" stopOpacity="0.5" />
-            <stop offset="0.35" stopColor="#d9a08c" stopOpacity="0.2" />
-            <stop offset="1" stopColor="#c08a88" stopOpacity="0" />
+            <stop offset="0" stopColor={look.sun.color} stopOpacity={0.55 * look.sun.glow + 0.05} />
+            <stop offset="0.35" stopColor={look.sun.color} stopOpacity={0.22 * look.sun.glow} />
+            <stop offset="1" stopColor={look.sun.color} stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="px-horizon" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor={look.sun.color} stopOpacity={0.55} />
+            <stop offset="0.5" stopColor={look.horizon} stopOpacity={0.25} />
+            <stop offset="1" stopColor={look.horizon} stopOpacity="0" />
           </radialGradient>
         </defs>
-        <circle cx={PAD_L + 1350} cy={640} r={420} fill="url(#px-sun)" />
-        <circle cx={PAD_L + 1350} cy={640} r={54} fill="#f1d8bc" opacity={0.9} />
+        {look.stars > 0 && <path d={shapes.stars} fill="#f4f1ff" opacity={look.stars * 0.85} />}
+        {look.horizonGlow > 0 && <ellipse cx={sunX} cy={860} rx={1700} ry={420} fill="url(#px-horizon)" opacity={look.horizonGlow} />}
+        {look.moon.opacity > 0 && <>
+          <circle cx={sunX + 900} cy={look.moon.y} r={150} fill="url(#px-sun)" opacity={look.moon.opacity * 0.6} />
+          <circle cx={sunX + 900} cy={look.moon.y} r={30} fill="#eef0ff" opacity={look.moon.opacity} />
+          <circle cx={sunX + 912} cy={look.moon.y - 6} r={26} fill={look.stops[0].color} opacity={look.moon.opacity * 0.85} />
+        </>}
+        {look.sun.opacity > 0 && <>
+          <circle cx={sunX} cy={look.sun.y} r={look.sun.r * 7.8} fill="url(#px-sun)" opacity={look.sun.opacity} />
+          <circle cx={sunX} cy={look.sun.y} r={look.sun.r} fill={look.sun.color} opacity={0.9 * look.sun.opacity} />
+        </>}
       </Layer>
-      <Layer p={0.9} w={wCloud}>
+      {shownClouds.length > 0 && <Layer p={0.9} w={wCloud}>
         <defs><filter id="px-soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="4" /></filter></defs>
         <style>{`
           .px-cloud { animation: px-drift var(--d) ease-in-out infinite alternate; }
           @keyframes px-drift { from { transform: translateX(calc(var(--a) * -1)); } to { transform: translateX(var(--a)); } }
           @media (prefers-reduced-motion: reduce) { .px-cloud { animation: none; } }
         `}</style>
-        {clouds(wCloud, 11).map((c, i) => <Cloud key={i} c={c} />)}
-      </Layer>
-      <Layer p={0.82} w={wFar}><path d={ridge(wFar, 3, 720, 190, 1.3)} fill="#4d4d68" />{haze(wFar, "px-h1", 560, 0.7)}</Layer>
-      <Layer p={0.66} w={wMid}><path d={ridge(wMid, 7, 790, 160, 1.7)} fill="#3d3f58" />{haze(wMid, "px-h2", 680, 0.55)}</Layer>
-      <Layer p={0.48} w={wHill}><path d={ridge(wHill, 19, 860, 90, 1.1, 32)} fill="#30344a" />{haze(wHill, "px-h3", 790, 0.35)}</Layer>
-      <Layer p={0.34} w={wTreesFar}>
-        <path d={treeFar.trunks} fill="#282c40" /><path d={treeFar.crowns} fill="#282d41" />
-        <rect x={0} y={G - 42} width={wTreesFar} height={90} fill="#262a3d" />
-      </Layer>
-      <Layer p={0.2} w={wTrees}>
-        <path d={treeNear.trunks} fill="#1e2232" /><path d={treeNear.crowns} fill="#212637" />
-      </Layer>
+        <g opacity={Math.min(1, look.clouds.opacity)}>
+          {shownClouds.map((c, i) => <Cloud key={i} c={look.clouds.opacity > 1 ? { ...c, o: Math.min(0.85, c.o * look.clouds.opacity) } : c} lit={look.clouds.lit} shade={look.clouds.shade} />)}
+        </g>
+      </Layer>}
+      {look.mountains && <>
+        <Layer p={0.82} w={wFar}><path d={shapes.far} fill={look.ranges[0]} />{haze(wFar, "px-h1", 560, 0.7)}</Layer>
+        <Layer p={0.66} w={wMid}><path d={shapes.mid} fill={look.ranges[1]} />{haze(wMid, "px-h2", 680, 0.55)}</Layer>
+        <Layer p={0.48} w={wHill}><path d={shapes.hill} fill={look.ranges[2]} />{haze(wHill, "px-h3", 790, 0.35)}</Layer>
+      </>}
+      {look.forest && <>
+        <Layer p={0.34} w={wTreesFar}>
+          <path d={treeFar.trunks} fill={look.trees[0]} /><path d={treeFar.crowns} fill={look.trees[0]} />
+          <rect x={0} y={G - 42} width={wTreesFar} height={90} fill={look.trees[0]} />
+        </Layer>
+        <Layer p={0.2} w={wTrees}>
+          <path d={treeNear.trunks} fill={look.trees[1]} /><path d={treeNear.crowns} fill={look.trees[1]} />
+        </Layer>
+      </>}
     </div>
   )
 })

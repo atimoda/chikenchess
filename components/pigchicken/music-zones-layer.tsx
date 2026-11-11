@@ -18,8 +18,9 @@ import { ZoneTags } from "./zone-tags"
 
 const noop = () => {}
 
-export function MusicZonesLayer({ elements, screens, sceneZones, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, opacity = 1 }: {
-  elements: LayoutElement[]; screens: number; sceneZones?: SceneZones; editable: boolean
+// sceneMusic: false when the Pátio turned the scenes' own zones off (their strips are not shown)
+export function MusicZonesLayer({ elements, screens, sceneZones, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, opacity = 1 }: {
+  elements: LayoutElement[]; screens: number; sceneZones?: SceneZones; sceneMusic?: boolean; editable: boolean
   onZone?: (el: LayoutElement, zone: SoundZoneParams, step?: string) => void
   onScene?: (scene: number, zone: SoundZoneParams, step?: string) => void
   onOpenZone?: (el: LayoutElement) => void; onOpenScene?: (scene: number) => void
@@ -44,6 +45,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, editable, onZon
               </div>
             )
           }
+          if (!sceneMusic) return null
           const z = sceneZoneParams(sceneZones, s)
           return (
             <div key={s} className="absolute" style={{ left: s * SCENE_W, top: WORLD_GROUND_Y - 32, width: SCENE_W, height: 32, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>

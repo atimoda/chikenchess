@@ -8,7 +8,8 @@ import { ELEMENT_DEFS, elementBounds, elementCorners, elementFloorLine, elementO
 import { houseSurfaces, normalizeHouse } from "@/lib/pigchicken/houses"
 import { TRAMPOLINE_DEFAULTS, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
-import { followCamera } from "@/lib/pigchicken/live-camera"
+import { followCamera, followDepth } from "@/lib/pigchicken/live-camera"
+import { PowerArt, PowerLines } from "./power-art"
 import { TreeArt, TreeStyles } from "./patio-trees"
 import { SceneryRegion } from "./scenery-region"
 import { HouseArt } from "./house-art"
@@ -18,7 +19,8 @@ import { LanesArt, ZoneArt } from "./sound-zone-art"
 import { SurfaceArt } from "./surface-art"
 
 // one element's art filling its box
-export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h">; worldX?: number; editing?: boolean }) {
+export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h"> & { depth?: number }; worldX?: number; editing?: boolean }) {
+  if ((el.kind === "pole" || el.kind === "tower") && el.params.power) return <PowerArt kind={el.kind} power={el.params.power} w={el.w} depth={el.depth} />
   if (el.kind === "zone") return el.params.zone ? <ZoneArt zone={el.params.zone} /> : null
   if (el.kind === "lanes") return el.params.lanes ? <LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing={editing} /> : null
   if (el.kind === "house") return <HouseArt house={el.params.house ?? normalizeHouse(null)} />
@@ -46,15 +48,26 @@ export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el
   return null
 })
 
+// something in a parallax depth of its own: slides with the camera inside the layer that already follows it
+export function DepthLayer({ depth, children, className = "pointer-events-none absolute left-0 top-0" }: { depth: number; children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => (ref.current ? followDepth(ref.current, depth) : undefined), [depth])
+  return <div ref={ref} className={className}>{children}</div>
+}
+
 // the scenery of one layer, in world units (the parent moves with the camera)
-export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, editing }: { elements: LayoutElement[]; layer: LayoutLayer; editing: boolean }) {
+// power: only the Postes and Torres with their wires (true), or everything else (false); missing: all of it. The
+// world draws the power apart from the sky's light filter: they already have the silhouette's colour, faded by depth.
+export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, editing, power }: { elements: LayoutElement[]; layer: LayoutLayer; editing: boolean; power?: boolean }) {
   return (
     <>
       {elements.map(el => {
         if (ELEMENT_DEFS[el.kind].entity || el.layer !== layer) return null
+        if (power !== undefined && power !== (el.kind === "pole" || el.kind === "tower")) return null
         if (el.hidden && !editing) return null
-        return (
+        const art = (
           <SceneryRegion
+            depth={el.depth}
             key={el.id}
             bounds={elementBounds(el)}
             aria-hidden="true"
@@ -63,14 +76,17 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
             style={{
               left: el.x, top: el.y, width: el.w, height: el.h,
               transform: el.rot ? `translate3d(0,0,0) rotate(${el.rot}deg)` : (el.kind === "pine" || el.kind === "blossom") ? "translate3d(0,0,0)" : undefined,
-              opacity: el.hidden ? 0.35 * el.opacity : el.opacity,
+              // other scenery in a depth fades into the sky behind it (the haze of Céu e luz)
+              opacity: el.hidden ? 0.35 * el.opacity : el.depth && el.kind !== "pole" && el.kind !== "tower" ? `calc(${el.opacity} * (1 - ${el.depth} * var(--patio-haze, 0.5)))` : el.opacity,
               outline: el.hidden ? "2px dashed rgba(255,255,255,0.5)" : undefined,
             }}
           >
             <ElementArt el={el} editing={editing} worldX={el.kind === "tree" || el.kind === "pine" || el.kind === "blossom" ? el.x + el.w / 2 : undefined} />
           </SceneryRegion>
         )
+        return el.depth ? <DepthLayer key={el.id} depth={el.depth}>{art}</DepthLayer> : art
       })}
+      {power !== false && <PowerLines elements={elements} layer={layer} />}
     </>
   )
 })
@@ -116,6 +132,8 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
     <div data-chicken-platforms className="pointer-events-none absolute inset-0">
       {elements.map((el, index) => {
         const depth = layoutCollisionDepth(el, index)
+        // in a parallax depth it is only scenery
+        if (el.depth) return null
         if (el.kind === "tree" && el.params.tree) {
           const tree = el.params.tree
           if (!tree.climbTrunk && !tree.walkBranches && !tree.walkCrown) return null
@@ -138,11 +156,12 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
 })
 
 // a full-screen layer above or below the chicken whose world element follows the camera
-export function FollowLayer({ z, opacity = 1, width, children }: { z: number; opacity?: number; width: number; children: React.ReactNode }) {
+// filter: the sky's light on the scenery (Configurações do Pátio → Céu e luz)
+export function FollowLayer({ z, opacity = 1, width, filter = "none", children }: { z: number; opacity?: number; width: number; filter?: string; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => (ref.current ? followCamera(ref.current) : undefined), [])
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: z, opacity }}>
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: z, opacity, filter: filter === "none" ? undefined : filter }}>
       <div ref={ref} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
         {children}
       </div>

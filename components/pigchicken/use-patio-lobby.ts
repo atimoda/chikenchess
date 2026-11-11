@@ -7,7 +7,7 @@
 // applied) everything keeps working in this browser.
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type PatioRecord } from "@/lib/pigchicken/patio-store"
+import { keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type NewPatioKind, type PatioRecord } from "@/lib/pigchicken/patio-store"
 import {
   favoritePatioLobby, fetchDefaultPatio, fetchPatioLobby, isPatioConflict, isPatioOffline, isPatioServerMissing, patioErrorMessage,
   patioOnlineAvailable, playedPatioLobby, renamePatioLobby, savePatioLobby, setDefaultPatioLobby, type PatioLobby,
@@ -248,8 +248,8 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     await load(id)
   }, [flushKeep, saveNow, load])
 
-  // a new Pátio of mine: a copy of the default one, or an empty one (kept here at once, so it reopens empty)
-  const startNew = useCallback(async (creatorId: string, empty = false) => {
+  // a new Pátio of mine: a copy of the default one, or an empty one or an example (kept here at once, so it reopens as made)
+  const startNew = useCallback(async (creatorId: string, empty: NewPatioKind = false) => {
     flushKeep()
     if (cur.current?.dirty && ctx.current.canEdit && ctx.current.saver) await saveNow({ silent: true })
     loadSeq.current++

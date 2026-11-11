@@ -216,7 +216,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   isAdmin: boolean
   isAccount: boolean
   onOpen: (id: string | null) => void
-  onNew: (empty?: boolean) => void
+  onNew: (empty?: boolean | 'sunset') => void
   onLogin: () => void
   onDeleted: (id: string) => void | Promise<void>
   onClose: () => void
@@ -288,6 +288,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
         <button type="button" onClick={() => onNew(false)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
         <button type="button" onClick={() => onNew(true)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio vazio</button>
       </div>
+      <button type="button" onClick={() => onNew("sunset")} title="Um Pátio de exemplo: céu de pôr do sol em contraluz, torres de transmissão em várias profundidades, postes com fios onde os pássaros pousam" className={cn(btn, "h-9 shrink-0 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio de exemplo: pôr do sol com torres</button>
 
       <Row
         title={def?.name ?? "Pátio padrão"} sub={def?.creatorName ? `de ${def.creatorName}` : undefined} current={currentId === null}

@@ -6,9 +6,11 @@ import { X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioHeight, patioInventoryLimit, type PatioSettings } from "@/lib/pigchicken/patio-settings"
+import { PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioHeight, patioInventoryLimit, patioSceneMusic, type PatioSettings } from "@/lib/pigchicken/patio-settings"
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
+import { hourLabel } from "@/lib/pigchicken/sky"
+import { SkyFields } from "./sky-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 
@@ -22,7 +24,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
   const set = (next: PatioSettings) => onChange({ ...layout, settings: { ...layout.settings, ...next } })
   const width = worldScenes(screens) * SCENE_W
   return (
-    <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 420 : 260, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-[#ffd166]/40 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-[#ffd166]/40 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Configurações do Pátio</h2>
         {canEdit && <button type="button" onClick={() => set({ screens: DEFAULT_PARQUINHO.screens, height: PATIO_HEIGHT.default, inventory: PATIO_INVENTORY.default })} title="Volta largura, altura e limite do inventário para o padrão" className="h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]">Padrão</button>}
@@ -40,13 +42,26 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <PatioRange label="Limite do inventário" min={PATIO_INVENTORY.min} max={PATIO_INVENTORY.max} step={PATIO_INVENTORY.step} value={inventory}
             display={itemsLabel} onChange={v => set({ inventory: v })} onReset={() => set({ inventory: PATIO_INVENTORY.default })}
             hint="Quantos itens cada player carrega neste Pátio. Baixar o limite não tira itens de ninguém; só não cabem novos." />
+          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Cada cena toca a sua zona (Campo, Noite, Feira…). Desligado, só as Zonas sonoras do mapa tocam; fora delas não há percussão nem drone.">
+            <span>Zonas das cenas</span>
+            <input type="checkbox" checked={patioSceneMusic(layout.settings)} onChange={e => {
+              const { sceneMusic: _old, ...rest } = layout.settings ?? {}
+              onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, sceneMusic: false } })
+            }} className="h-5 w-5 accent-[var(--primary)]" />
+          </label>
           </div>
+          <SkyFields sky={layout.settings?.sky} onChange={sky => {
+            const { sky: _old, ...rest } = layout.settings ?? {}
+            onChange({ ...layout, settings: sky ? { ...rest, sky } : rest })
+          }} />
         </>
       ) : (
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 text-[#dfe8df]">
           <dt>Largura limite</dt><dd className="font-bold">{screens} {screens === 1 ? "tela" : "telas"} · {units(width)} u</dd>
           <dt>Altura limite</dt><dd className="font-bold">{units(height)} u</dd>
           <dt>Limite do inventário</dt><dd className="font-bold">{itemsLabel}</dd>
+          <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
+          <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
         </dl>
       )}
       <p className="text-[10px] leading-relaxed text-[#93a79a]">
