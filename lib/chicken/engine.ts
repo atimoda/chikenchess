@@ -863,7 +863,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
             if (ay === by) {
               if (r.top + ay < groundY - 4) add(`${id}:w${group}:${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, true)
             } else {
-              add(`${id}:w${group}:${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, true, false, true)
+              // floating, like a non-hard outline's walls: from the ground only Up grabs them, never walking into them
+              add(`${id}:w${group}:${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, false, true)
             }
           }
         })
