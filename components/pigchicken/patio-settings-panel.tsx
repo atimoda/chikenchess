@@ -12,7 +12,7 @@ import { PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioHeight, patioInvento
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
-import { CloudFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
+import { CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 
@@ -76,6 +76,10 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           {group("Nuvens", <CloudFields clouds={layout.settings?.clouds} skyClouds={layout.settings?.sky?.clouds} onChange={clouds => {
             const { clouds: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: clouds ? { ...rest, clouds } : rest })
+          }} />)}
+          {group("Neve caindo", <SnowfallFields snowfall={layout.settings?.snowfall} onChange={snowfall => {
+            const { snowfall: _old, ...rest } = layout.settings ?? {}
+            onChange({ ...layout, settings: snowfall ? { ...rest, snowfall } : rest })
           }} />)}
         </>
       ) : (

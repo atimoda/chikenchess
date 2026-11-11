@@ -234,3 +234,40 @@ test('links survive normalizing, deduplicated and capped', () => {
   assert.equal(p.links.length, P.POWER_LINKS_MAX)
   assert.equal(P.normalizePower('pole', {}).links, undefined)
 })
+
+const MD = loadTs('lib/pigchicken/mountain-draw.ts')
+const MT = loadTs('lib/pigchicken/mountains.ts')
+const SF = loadTs('lib/pigchicken/snowfall.ts')
+
+test('mountains: every peak type draws peaks the snow and the shading can find', () => {
+  for (const type of ['wave', 'sharp', 'geo']) {
+    const rg = MD.ridge(4000, 3, 720, 190, 1.3, type === 'wave' ? 24 : 16, type, 5000)
+    assert.ok(rg.peaks.length >= 3, type)
+    assert.ok(rg.peaks.every(p => p.lo <= p.i && p.i <= p.hi && p.y >= rg.top), type)
+    for (const style of ['slopes', 'split', 'creases']) assert.ok(MD.shadeFaces(rg, style, 5000, 1).length > 0, `${type} ${style}`)
+    for (const style of ['tongues', 'waves', 'soft', 'streaks', 'ridge']) assert.ok(MD.snowRegion(rg, { amount: 0.6, perPeak: true, style, edge: 0.5, side: 0.5 }, 7), `${type} ${style}`)
+    assert.equal(MD.snowRegion(rg, { amount: 0, perPeak: true, style: 'tongues', edge: 0.5, side: 0 }, 7), null)
+  }
+})
+
+test('mountains: snow on every peak gives each peak its own cap; one line leaves the low ones bare', () => {
+  const rg = MD.ridge(4000, 7, 790, 160, 1.7, 16, 'geo', 5000)
+  const caps = s => (s.match(/M /g) || []).length
+  const each = MD.snowRegion(rg, { amount: 0.3, perPeak: true, style: 'soft', edge: 0.3, side: 0 }, 1)
+  const line = MD.snowRegion(rg, { amount: 0.3, perPeak: false, style: 'soft', edge: 0.3, side: 0 }, 1)
+  assert.equal(caps(each), rg.peaks.length)
+  assert.ok(!line || caps(line) < caps(each))
+})
+
+test('mountains and snowfall: the new settings are cleaned and kept with the Pátio', () => {
+  const m = MT.normalizeMountains({ peak: 'geo', shadeStyle: 'split', snowStyle: 'ridge', snowSide: 140, opacity: 5, outline: 30, outlineColor: '#ABCDEF', snowPeaks: false })
+  assert.equal(m.peak, 'geo'); assert.equal(m.shadeStyle, 'split'); assert.equal(m.snowStyle, 'ridge')
+  assert.equal(m.snowSide, 100); assert.equal(m.opacity, MT.MOUNTAIN_OPACITY.min); assert.equal(m.outlineColor, '#abcdef'); assert.equal(m.snowPeaks, false)
+  const old = MT.normalizeMountains({ snow: 40 })
+  assert.equal(old.peak, 'wave'); assert.equal(old.snowStyle, 'tongues'); assert.equal(old.snowPeaks, true); assert.equal(old.opacity, 100)
+  assert.equal(MT.normalizeMountains({ peak: 'blob' }).peak, 'wave')
+  const f = SF.normalizeSnowfall({ amount: 150, wind: -500, size: 1 })
+  assert.deepEqual([f.amount, f.wind, f.size], [100, -100, SF.SNOWFALL_SIZE.min])
+  assert.equal(PS.normalizePatioSettings({ snowfall: { amount: 30 } }).snowfall.amount, 30)
+  assert.equal(SF.flakeCount(100, 1600, 900), 450)
+})

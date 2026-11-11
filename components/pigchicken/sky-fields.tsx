@@ -7,10 +7,23 @@ import { Plus, X } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { cn } from "@/lib/utils"
 import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_RADIAL_X, SKY_SCALE, SKY_STAR_COUNT, SKY_BLENDS, SKY_STAR_GLOW, SKY_STOPS, SKY_SUN, SKY_TEX_SCALE, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
-import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_PCT, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHAPES, type MountainParams } from "@/lib/pigchicken/mountains"
+import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OPACITY, MOUNTAIN_PCT, MOUNTAIN_PEAKS, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHADES, MOUNTAIN_SHAPES, MOUNTAIN_SNOWS, type MountainParams } from "@/lib/pigchicken/mountains"
+import { SNOWFALL_DEFAULT, SNOWFALL_OPACITY, SNOWFALL_PCT, SNOWFALL_SIZE, SNOWFALL_SPEED, SNOWFALL_WIND, type SnowfallParams } from "@/lib/pigchicken/snowfall"
 import { CLOUDS_DEFAULT, CLOUD_OPACITY, CLOUD_PCT, CLOUD_SCALE, CLOUD_SHAPES, CLOUD_WIND, type CloudParams } from "@/lib/pigchicken/clouds"
 
 const BTN = "h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]"
+
+// a row of options, one chosen
+function Choice<T extends string>({ label, options, value, onChange, title }: { label: string; options: { id: T; label: string }[]; value: T; onChange: (v: T) => void; title?: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} title={title} className="grid gap-1 py-0.5" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      {options.map(o => (
+        <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
+          className={cn("h-8 truncate rounded-md border px-1", value === o.id ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-white/40")}>{o.label}</button>
+      ))}
+    </div>
+  )
+}
 
 export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onChange: (sky: SkyParams | undefined) => void }) {
   const s = sky ?? SKY_DEFAULT
@@ -138,7 +151,7 @@ export function StarFields({ sky, onChange }: { sky: SkyParams | undefined; onCh
 export function MountainFields({ mountains, onChange }: { mountains: MountainParams | undefined; onChange: (m: MountainParams | undefined) => void }) {
   const m = mountains ?? MOUNTAINS_DEFAULT
   const set = (p: Partial<MountainParams>) => onChange({ ...m, ...p })
-  const pctRange = (label: string, key: "shade" | "snowEdge" | "snowShade", hint: string) => (
+  const pctRange = (label: string, key: "shade" | "snowEdge" | "snowShade" | "gradient" | "snowSide", hint: string) => (
     <PatioRange label={label} min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m[key]} display={`${m[key]}%`}
       changed={m[key] !== MOUNTAINS_DEFAULT[key]} onReset={() => set({ [key]: MOUNTAINS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
@@ -159,14 +172,35 @@ export function MountainFields({ mountains, onChange }: { mountains: MountainPar
           changed={m.ranges !== MOUNTAINS_DEFAULT.ranges} onReset={() => set({ ranges: MOUNTAINS_DEFAULT.ranges })} onChange={ranges => set({ ranges })} hint="Quantas fileiras de montanhas, da mais distante para a mais perto." />
         <PatioRange label="Altura" min={MOUNTAIN_LIFT.min} max={MOUNTAIN_LIFT.max} step={MOUNTAIN_LIFT.step} value={m.lift} display={m.lift > 0 ? `+${m.lift}` : m.lift}
           changed={m.lift !== MOUNTAINS_DEFAULT.lift} onReset={() => set({ lift: MOUNTAINS_DEFAULT.lift })} onChange={lift => set({ lift })} hint="Sobe (ou afunda) as montanhas na tela." />
+        <Choice label="Tipo de pico" options={MOUNTAIN_PEAKS} value={m.peak} onChange={peak => set({ peak })} title="Ondulado: morros arredondados. Pontudo: encostas côncavas e recortadas. Geométrico: triângulos retos." />
         {range("Inclinação", "height", "Quão íngremes e altos são os picos em relação ao pé.")}
         {range("Recorte", "rough", "Mais alto: picos mais estreitos e numerosos. Mais baixo: morros largos e suaves.")}
-        {pctRange("Relevo", "shade", "Escurece as encostas do lado oposto à luz, como faces de um desenho.")}
+        {pctRange("Relevo", "shade", "Escurece as faces do lado oposto à luz, como num desenho.")}
+        {m.shade > 0 && <Choice label="Sombra" options={MOUNTAIN_SHADES} value={m.shadeStyle} onChange={shadeStyle => set({ shadeStyle })} title="Encostas: cada descida à direita. Meio a meio: o pico rachado do topo ao pé. Vincos: cunhas descendo dos picos." />}
+        {pctRange("Degradê", "gradient", "Mais escuras no alto e mais claras no pé.")}
+        <PatioRange label="Opacidade" min={MOUNTAIN_OPACITY.min} max={MOUNTAIN_OPACITY.max} step={MOUNTAIN_OPACITY.step} value={m.opacity} display={`${m.opacity}%`}
+          changed={m.opacity !== MOUNTAINS_DEFAULT.opacity} onReset={() => set({ opacity: MOUNTAINS_DEFAULT.opacity })} onChange={opacity => set({ opacity })} hint="Abaixo de 100%, uma cordilheira deixa ver a de trás." />
+        <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
+          <input type="color" aria-label="Cor do contorno" value={m.outlineColor} onChange={e => set({ outlineColor: e.target.value, outline: m.outline || 40 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
+          <PatioRange label="Contorno" min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m.outline} display={`${m.outline}%`}
+            changed={m.outline !== MOUNTAINS_DEFAULT.outline} onReset={() => set({ outline: MOUNTAINS_DEFAULT.outline })} onChange={outline => set({ outline })} hint="Uma linha ao longo dos picos, na cor escolhida." />
+        </div>
         <PatioRange label="Neve nos picos" min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m.snow} display={`${m.snow}%`}
           changed={m.snow !== MOUNTAINS_DEFAULT.snow} onReset={() => set({ snow: MOUNTAINS_DEFAULT.snow })} onChange={snow => set({ snow })} hint="Até onde a neve desce. Ela pega a luz do sol." />
         {m.snow > 0 && <>
-          {pctRange("Pontas da neve", "snowEdge", "Línguas de neve descendo pelas encostas. 0: uma borda lisa.")}
+          <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3" title="Cada pico com a sua capa, do tamanho dele. Desligado: uma linha só, a partir do pico mais alto.">
+            <span>Neve em cada pico</span>
+            <input type="checkbox" checked={m.snowPeaks} onChange={e => set({ snowPeaks: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
+          </label>
+          <Choice label="Borda da neve" options={MOUNTAIN_SNOWS} value={m.snowStyle} onChange={snowStyle => set({ snowStyle })} title="Línguas descendo, ondas arredondadas, borda suave, estrias pela encosta ou uma faixa na aresta." />
+          {pctRange("Recorte da neve", "snowEdge", "Quanto a borda escolhida aparece: línguas mais longas, ondas mais fundas, mais estrias, faixa mais grossa.")}
+          {pctRange("Lado da luz", "snowSide", "Puxa a neve para a encosta iluminada. 100%: nada do lado da sombra.")}
           {pctRange("Sombra da neve", "snowShade", "As faces da neve do lado oposto à luz ficam azuladas.")}
+          <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
+            <input type="color" aria-label="Cor da neve" value={m.snowTint} onChange={e => set({ snowTint: e.target.value, snowTintAmount: m.snowTintAmount || 60 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
+            <PatioRange label="Cor da neve" min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m.snowTintAmount} display={`${m.snowTintAmount}%`}
+              changed={m.snowTintAmount !== MOUNTAINS_DEFAULT.snowTintAmount} onReset={() => set({ snowTintAmount: MOUNTAINS_DEFAULT.snowTintAmount })} onChange={snowTintAmount => set({ snowTintAmount })} hint="Quanto a cor escolhida tinge a neve. 0: a luz do sol." />
+          </div>
         </>}
         <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
           <input type="color" aria-label="Cor das montanhas" value={m.tint} onChange={e => set({ tint: e.target.value, tintAmount: m.tintAmount || 50 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
@@ -206,6 +240,27 @@ export function CloudFields({ clouds, skyClouds, onChange }: { clouds: CloudPara
         <PatioRange label="Cor" min={CLOUD_PCT.min} max={CLOUD_PCT.max} step={CLOUD_PCT.step} value={c.tintAmount} display={`${c.tintAmount}%`}
           changed={c.tintAmount !== CLOUDS_DEFAULT.tintAmount} onReset={() => set({ tintAmount: CLOUDS_DEFAULT.tintAmount })} onChange={tintAmount => set({ tintAmount })} hint="Quanto a cor escolhida tinge as nuvens. 0: só a luz do céu." />
       </div>
+    </div>
+  )
+}
+
+// Configurações do Pátio → Neve caindo: flakes over the far scenery (0 turns it off)
+export function SnowfallFields({ snowfall, onChange }: { snowfall: SnowfallParams | undefined; onChange: (s: SnowfallParams | undefined) => void }) {
+  const f = snowfall ?? SNOWFALL_DEFAULT
+  const set = (p: Partial<SnowfallParams>) => onChange({ ...f, ...p })
+  const range = (label: string, key: keyof SnowfallParams, r: { min: number; max: number; step: number }, hint: string, display?: string) => (
+    <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={f[key]} display={display ?? `${f[key]}%`}
+      changed={f[key] !== SNOWFALL_DEFAULT[key]} onReset={() => set({ [key]: SNOWFALL_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
+  return (
+    <div className="grid gap-[3px] px-4 pb-4">
+      {range("Quantidade", "amount", SNOWFALL_PCT, "Quantos flocos caem. 0: nenhum.")}
+      {f.amount > 0 && <>
+        {range("Tamanho", "size", SNOWFALL_SIZE, "O tamanho dos flocos.")}
+        {range("Velocidade", "speed", SNOWFALL_SPEED, "Quão rápido eles caem. 0: parados no ar.")}
+        {range("Vento", "wind", SNOWFALL_WIND, "Para a esquerda (negativo) ou para a direita.", f.wind > 0 ? `+${f.wind}` : String(f.wind))}
+        {range("Opacidade", "opacity", SNOWFALL_OPACITY, "Quão visíveis eles são.")}
+      </>}
     </div>
   )
 }
