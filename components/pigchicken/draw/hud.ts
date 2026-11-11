@@ -269,7 +269,8 @@ export function drawArpGlyph(ctx: Ctx, arp: Arp, cx: number, top: number, big: b
   return { l: cx - w / 2, r: cx + w / 2, t: top - arpGlyphHeight(big), b: top }
 }
 // the inventory bar, moved by the player's saved offset (edit mode of the touch controls). Only her items show, plus
-// one empty slot while there is room (instruments, weapons, then the other items). Each slot is a glass tile; the
+// one empty slot while there is room (instruments, weapons, then the other items); with no item at all no slot shows
+// (only a running effect's circle and the name over the bar). Each slot is a glass tile; the
 // current one glows teal. A bar along the bottom shows the ammo (a badge counts a consumable's doses), a thin line
 // what is left of an item that wears.
 // labels: each group's key (Próximo instrumento / arma / utilitário), shown left of the group's first slot on the
@@ -277,8 +278,10 @@ export function drawArpGlyph(ctx: Ctx, arp: Arp, cx: number, top: number, big: b
 // Returns the arpeggiator glyphs drawn over its instruments (the item and the area a click turns to its next option).
 export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null) {
   const glyphs: { item: ItemId; box: { l: number; r: number; t: number; b: number } }[] = []
-  const slots = combat.inventory, n = slots.length, groups = combat.inventoryGroups
-  const showLabels = bottom && !!labels?.some(Boolean)
+  const slots = combat.inventory, groups = combat.inventoryGroups
+  // no item at all: the bar hides (not even the empty slot shows)
+  const empty = !slots.some(Boolean), n = empty ? 0 : slots.length
+  const showLabels = !empty && bottom && !!labels?.some(Boolean)
   const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels, combat.current), { size, gap } = g
   const x0 = g.x, y = g.y
   // the effects' circles go left of the bar (of its first group's key, on the big bar)
@@ -377,7 +380,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     ctx.restore()
   }
   // the other local players: a dot of their colour at the start of the bar
-  if (color && row > 0) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x0 - 8, y + size / 2, 4, 0, Math.PI * 2); ctx.fill() }
+  if (color && row > 0 && !empty) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x0 - 8, y + size / 2, 4, 0, Math.PI * 2); ctx.fill() }
   // each group's key, left of its first slot (the empty slot counts as the last group: Próximo utilitário stops there)
   if (showLabels) {
     ctx.font = "bold 10px ui-monospace, monospace"; ctx.textAlign = "center"

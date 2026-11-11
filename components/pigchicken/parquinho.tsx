@@ -279,9 +279,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // the groups of the slots the inventory bar shows (her items plus the empty one while there is room), as a key
   // ("0012": two instruments, a weapon, the empty slot) so the page lays its invisible slots out like the canvas, and
   // after ":" the held slot (a bar too long for the screen slides to keep it near the centre)
-  const [invKey, setInvKey] = useState("2:0")
+  // the bar's groups, the slot held and whether she carries any item ("0": the bar hides)
+  const [invKey, setInvKey] = useState("2:0:0")
   const invGroups = useMemo(() => invKey.split(":")[0].split("").map(Number), [invKey])
-  const invCur = Number(invKey.split(":")[1] ?? 0)
+  const invCur = Number(invKey.split(":")[1] ?? 0), invEmpty = invKey.split(":")[2] === "0"
   // which of those slots hold an item (the empty one does not drag)
   const barItems = useRef<boolean[]>([false])
   // a slot dragged on the first player's bar (null: none) and a drop waiting for the next frame
@@ -512,7 +513,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     window.addEventListener("blur", cancelPeckInput)
     window.addEventListener("pointercancel", cancelPeckInput)
-    let slotsShown = "2:0", wheelDrawn = false, fireBlock = false, prevFire = false
+    let slotsShown = "2:0:0", wheelDrawn = false, fireBlock = false, prevFire = false
     // horde settings, changed by shooting their buttons
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
@@ -790,7 +791,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // pointed at equips it and closes the wheel too
       combat.setInventoryLimit(inventoryLimitRef.current)
       const slots = combat.inventory, nSlots = slots.length
-      const slotsKey = `${combat.inventoryGroups.join("")}:${combat.current}`
+      const slotsKey = `${combat.inventoryGroups.join("")}:${combat.current}:${slots.some(Boolean) ? 1 : 0}`
       if (slotsKey !== slotsShown) { slotsShown = slotsKey; setInvKey(slotsKey) }
       barItems.current = slots.map(Boolean)
       let wheelPick = 0
@@ -1421,7 +1422,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             className="pointer-events-none fixed z-[190]"
             style={lifted ? { right: invRight, top: invRowY(0), width: g.w, height: g.size } : { left: g.x, bottom: BAR.bottom + BAR.tab, width: g.w, height: g.size }}
           >
-            {!editing && (
+            {!editing && !invEmpty && (
               <div data-chicken-ignore role="toolbar" aria-label="Inventário: clique para equipar, arraste para mudar a ordem" className="relative h-full w-full">
                 {g.xs.map((x, i) => (
                   <button
