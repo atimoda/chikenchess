@@ -29,6 +29,7 @@ const RECENT = [
         'Montanhas: Altura agora sobe as cordilheiras na tela, o antigo Altura virou Inclinação, Cordilheiras vai até 6, Relevo sombreia as encostas, e a neve ganha Pontas (línguas descendo pelas encostas) e Sombra azulada.',
         'Céu e luz ganha Cor do sol e Alcance do brilho; Configurações do Pátio ganham as categorias Estrelas (quantidade, tamanho e intensidade) e Nuvens: quantidade, tamanho, altura no céu, espalhamento, opacidade, suavidade, volume, vento, cor e Sortear forma.',
         'A textura do céu ganha Tamanho, Estrias, Grão e a mistura com o céu (Suave, Forte, Escurece ou Clareia), e não mostra mais emenda entre os ladrilhos.',
+        'Com o zoom-out total, as montanhas e a mata do fundo descem até o pé da tela (sem a faixa do céu por baixo), e tudo o que fica além do limite do Pátio é preto.',
         'Sem nenhum item, a barra do inventário fica escondida (nem a casa vazia aparece) e volta assim que ela pega o primeiro item; vale para todos os players locais.',
       ] },
     ],

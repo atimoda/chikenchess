@@ -37,6 +37,13 @@ Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAM
 - Em Configurações do Pátio, **Templo e Vila** (ligado por padrão). Desligado: o Templo do Gongo (desenho, telhados que são pisos, gongo, pedra Recomeçar, jukebox e os cinco suportes de armas e instrumentos da entrada, com os itens que estavam neles) e o desenho da Vila dos Telhados (a montanha no fim) saem; a música do Templo não toca. As duas cenas continuam no mundo como espaço vazio (a largura não muda). Os elementos do layout que estiverem lá continuam.
 - O **Pátio vazio** (`emptyLayout`) e o **Pátio de exemplo do pôr do sol** já nascem com ele desligado; Pátios salvos antes continuam com Templo e Vila.
 
+## Pé das camadas do fundo (11/11, v2.8.0)
+
+`BOTTOM` em `components/pigchicken/parallax.tsx`.
+
+- Toda camada do fundo (sol e estrelas, nuvens, cordilheiras, mata ao longe e perto) vai até 4000 unidades abaixo do horizonte: as cordilheiras e suas sombras fecham lá embaixo, a névoa de cada cordilheira fica na cor mais densa abaixo do horizonte e a faixa da mata ao longe desce até o fim. O céu também continua na sua última cor até lá.
+- Assim, com o zoom-out total e a câmera alta, nenhuma faixa do céu aparece por baixo da mata ou das montanhas; abaixo do chão, a moldura do Pátio já cobre tudo de preto ([Mundo](world.md)).
+
 ## Profundidade (parallax) de qualquer cenário (10/11, v2.7.0)
 
 `LayoutElement.depth` em `lib/pigchicken/layout.ts`, `followDepth`/`setCameraRestY`/`depthOffset`/`onCameraMove` em `lib/pigchicken/live-camera.ts`, `DepthLayer` em `components/pigchicken/patio-layout.tsx`.

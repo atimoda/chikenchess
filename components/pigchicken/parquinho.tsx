@@ -190,16 +190,19 @@ function useSkyLook(sky: SkyParams | undefined): SkyLook {
 const NO_SCENE_ZONE: Zone = { id: "sem-zona", name: "Sem zona", root: 60, scale: "major", chordScale: "major", bpm: 100, feel: "straight", progression: [0], color: "#93a79a", ambience: SILENCE }
 
 // The Pátio's limits: a black frame LIMIT_BORDER thick inside the world's sides and its ceiling, closed at the
-// bottom of the ground the page shows. The chicken's walls and ceiling are its inner edge (ParquinhoPlay).
+// bottom of the ground the page shows, and all black beyond it (LIMIT_OUTSIDE on every side, more than the widest
+// zoom-out reveals), so nothing of the sky or the scenery shows outside the Pátio. The chicken's walls and ceiling
+// are its inner edge (ParquinhoPlay).
+const LIMIT_OUTSIDE = 8000
 function WorldLimits({ width, top, bottom }: { width: number; top: number; bottom: number }) {
-  const b = LIMIT_BORDER, h = bottom - top
+  const b = LIMIT_BORDER, o = LIMIT_OUTSIDE, h = bottom - top
   const band = { position: "absolute", background: LIMIT_BORDER_COLOR } as const
   return (
     <div aria-hidden="true" data-patio-limits>
-      <div style={{ ...band, left: 0, top, width: b, height: h }} />
-      <div style={{ ...band, left: width - b, top, width: b, height: h }} />
-      <div style={{ ...band, left: 0, top, width, height: b }} />
-      <div style={{ ...band, left: 0, top: bottom - b, width, height: b }} />
+      <div style={{ ...band, left: -o, top: top - o, width: o + b, height: h + 2 * o }} />
+      <div style={{ ...band, left: width - b, top: top - o, width: o + b, height: h + 2 * o }} />
+      <div style={{ ...band, left: 0, top: top - o, width, height: o + b }} />
+      <div style={{ ...band, left: 0, top: bottom - b, width, height: o + b }} />
     </div>
   )
 }

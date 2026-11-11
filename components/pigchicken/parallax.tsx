@@ -13,6 +13,8 @@ import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, type MountainParams } from "@/lib/pig
 import { CLOUDS_DEFAULT, type CloudParams } from "@/lib/pigchicken/clouds"
 
 const G = WORLD_GROUND_Y
+// how far down every layer reaches below the horizon: zoomed all the way out, the camera never shows the layers' foot
+const BOTTOM = G + 4000
 // how far past the world's left edge the layers start, and how much they reach past its right edge (the widest screen)
 const PAD_L = 1600, PAD_R = 4200
 
@@ -35,7 +37,7 @@ const layerW = (worldW: number, p: number) => Math.ceil(worldW * (1 - p)) + PAD_
 function ridgeTop(w: number, seed: number, base: number, amp: number, rough: number, step = 24) {
   const r = rng(seed)
   const waves = Array.from({ length: 5 }, (_, i) => ({ k: (0.0016 + r() * 0.002) * (i + 1) * rough, ph: r() * 6.28, a: amp / (i + 1.3) }))
-  const pts: string[] = [`M 0 ${G + 40}`], crest: [number, number][] = []
+  const pts: string[] = [`M 0 ${BOTTOM}`], crest: [number, number][] = []
   let top = base
   for (let x = 0; x <= w + step; x += step) {
     let y = base
@@ -43,7 +45,7 @@ function ridgeTop(w: number, seed: number, base: number, amp: number, rough: num
     top = Math.min(top, y)
     pts.push(`L ${x} ${Math.round(y)}`); crest.push([x, Math.round(y)])
   }
-  pts.push(`L ${w + step} ${G + 40} Z`)
+  pts.push(`L ${w + step} ${BOTTOM} Z`)
   return { d: pts.join(" "), top, crest }
 }
 
@@ -55,9 +57,9 @@ function shadeFaces(crest: [number, number][]) {
     if (crest[i][1] <= crest[i - 1][1]) continue
     const start = i - 1
     while (i + 1 < crest.length && crest[i + 1][1] > crest[i][1]) i++
-    d += `M ${crest[start][0]} ${G + 40}`
+    d += `M ${crest[start][0]} ${BOTTOM}`
     for (let k = start; k <= i; k++) d += ` L ${crest[k][0]} ${crest[k][1]}`
-    d += ` L ${crest[i][0]} ${G + 40} Z `
+    d += ` L ${crest[i][0]} ${BOTTOM} Z `
   }
   return d
 }
@@ -186,7 +188,7 @@ function Layer({ p, w, children }: { p: number; w: number; children: React.React
   const ref = useRef<SVGSVGElement>(null)
   useEffect(() => ref.current ? followParallax(ref.current, p) : undefined, [p])
   return (
-    <svg ref={ref} aria-hidden="true" className="absolute" viewBox={`0 0 ${w} ${G + 40}`} style={{ left: -PAD_L, top: 0, width: w, height: G + 40, overflow: "hidden" }}>
+    <svg ref={ref} aria-hidden="true" className="absolute" viewBox={`0 0 ${w} ${BOTTOM}`} style={{ left: -PAD_L, top: 0, width: w, height: BOTTOM, overflow: "hidden" }}>
       {children}
     </svg>
   )
@@ -262,17 +264,19 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         </linearGradient>
       </defs>
       <rect x={0} y={top} width={w} height={G + 40 - top} fill={`url(#${id})`} />
+      {/* below the horizon the haze stays at its densest, down to the layer's foot */}
+      <rect x={0} y={G + 39} width={w} height={BOTTOM - G - 39} fill={look.haze} opacity={Math.min(1, o * look.hazeAmount)} />
     </>
   )
   const sunX = PAD_L + 1350
   const skyTop = -4200
   return (
     <div aria-hidden="true" className="absolute inset-0">
-      {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top */}
+      {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top and, in its last colour, down to the layers' foot */}
       {look.radial.amount > 0
-        ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={G - skyTop} cx={sunX - PAD_L} />
+        ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={BOTTOM - skyTop} cx={sunX - PAD_L} />
         : <div className="absolute" style={{
-          left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: G - skyTop,
+          left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: BOTTOM - skyTop,
           background: skyGradient(look, skyTop, -200, G - 60),
         }} />}
       {texture && <div className="absolute" style={{
@@ -337,7 +341,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
       {look.forest && <>
         <Layer p={0.34} w={wTreesFar}>
           <path d={treeFar.trunks} fill={look.trees[0]} /><path d={treeFar.crowns} fill={look.trees[0]} />
-          <rect x={0} y={G - 42} width={wTreesFar} height={90} fill={look.trees[0]} />
+          <rect x={0} y={G - 42} width={wTreesFar} height={BOTTOM - G + 42} fill={look.trees[0]} />
         </Layer>
         <Layer p={0.2} w={wTrees}>
           <path d={treeNear.trunks} fill={look.trees[1]} /><path d={treeNear.crowns} fill={look.trees[1]} />
