@@ -1,5 +1,8 @@
 // The Pátio's volume mixer: a master volume over one volume per sound layer, saved in this browser.
 // Every sound source asks `mixGain(layer)` (master × layer) when it plays, so a change is heard at once.
+// The defaults are the code's with data/pigchicken/default-patio.json over them (its `volume`, which the Volume
+// panel writes with "Salvar no game"): they apply to who never moved a slider here and to Padrão.
+import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
 
 export type MixLayer = 'notes' | 'ambience' | 'weapons' | 'effects' | 'chicken'
 export type Mix = { master: number } & Record<MixLayer, number>
@@ -12,7 +15,7 @@ export const MIX_LAYERS: { key: MixLayer; label: string; hint: string }[] = [
   { key: 'chicken', label: 'Galinha', hint: 'Os cacarejos dela (em todas as telas)' },
 ]
 
-export const DEFAULT_MIX: Mix = { master: 1, notes: 0.7, ambience: 0.35, weapons: 0.6, effects: 0.6, chicken: 1 }
+const CODE_MIX: Mix = { master: 1, notes: 0.7, ambience: 0.35, weapons: 0.6, effects: 0.6, chicken: 1 }
 
 const STORE = 'pigchicken-mixer-v1'
 // before the mixer, three of these volumes lived in the Parquinho settings
@@ -22,6 +25,16 @@ let mix: Mix | null = null
 const listeners = new Set<() => void>()
 
 const clamp = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null)
+
+/** The code's volumes with a defaults file's `volume` over them. */
+export function mixOver(raw: unknown): Mix {
+  const out = { ...CODE_MIX }
+  if (raw && typeof raw === 'object') (Object.keys(out) as (keyof Mix)[]).forEach(k => { const v = clamp((raw as Record<string, unknown>)[k]); if (v !== null) out[k] = v })
+  return out
+}
+export const DEFAULT_MIX: Mix = mixOver(DEFAULTS_FILE.volume)
+/** The defaults file's `volume` for these volumes (what "Salvar no game" writes). */
+export const mixDefaultsFile = (m: Mix): Mix => mixOver(m)
 
 function load(): Mix {
   const base = { ...DEFAULT_MIX }

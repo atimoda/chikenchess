@@ -140,6 +140,7 @@ test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and 
   const camera = loadTs('lib/pigchicken/settings.ts')
   const layout = loadTs('lib/pigchicken/layout.ts')
   const sky = loadTs('lib/pigchicken/sky.ts')
+  const mixer = loadTs('lib/pigchicken/mixer.ts')
   const entry = ADMIN_ENTRIES.find(item => item.id === 'pigchicken-patio')
   assert.equal(entry.path, 'data/pigchicken/default-patio.json')
   const file = JSON.parse(fs.readFileSync(path.join(__dirname, '..', entry.path), 'utf8'))
@@ -149,6 +150,7 @@ test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and 
   assert.deepEqual(PS.DEFAULT_PATIO_SETTINGS, file.settings)
   assert.deepEqual(layers.LAYERS_DEFAULT, file.layers)
   assert.deepEqual(camera.parquinhoDefaultsFile(camera.DEFAULT_PARQUINHO), file.camera)
+  assert.deepEqual(mixer.DEFAULT_MIX, file.volume)
   // what each panel writes is accepted
   const settings = PS.patioSettingsDefaultsFile({ ground: 160, temple: false, sky: sky.SKY_DEFAULT, sceneZones: { 0: {} }, layers: file.layers }, 3)
   assert.deepEqual(Object.keys(settings).sort(), ['ground', 'height', 'inventory', 'screens', 'sky', 'temple'])
@@ -156,6 +158,9 @@ test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and 
   validateAdminValue(entry, { ...file, settings })
   validateAdminValue(entry, { ...file, layers: { ...file.layers, zones: 0, hitboxes: true } })
   validateAdminValue(entry, { ...file, camera: camera.parquinhoDefaultsFile({ ...camera.DEFAULT_PARQUINHO, aimRelease: Infinity, lag: 12 }) })
+  validateAdminValue(entry, { ...file, volume: mixer.mixDefaultsFile({ ...mixer.DEFAULT_MIX, master: 0.5, ambience: 0 }) })
+  assert.throws(() => validateAdminValue(entry, { ...file, volume: { ...file.volume, master: 2 } }))
+  assert.throws(() => validateAdminValue(entry, { ...file, volume: { ...file.volume, clucks: true } }))
   assert.equal(camera.parquinhoOver({ aimRelease: null }).aimRelease, Infinity)
   assert.equal(camera.parquinhoOver({ screens: 7, debug: true }).screens, 4)
   // and what the game would change is refused
@@ -164,7 +169,7 @@ test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and 
   assert.throws(() => validateAdminValue(entry, { ...file, layers: { ...file.layers, zones: 500 } }))
   assert.throws(() => validateAdminValue(entry, { ...file, camera: { ...file.camera, lag: 99 } }))
   assert.throws(() => validateAdminValue(entry, { ...file, camera: { ...file.camera, debug: true } }))
-  assert.throws(() => validateAdminValue(entry, { settings: {}, layers: file.layers }))
+  assert.throws(() => validateAdminValue(entry, { settings: {}, layers: file.layers, camera: file.camera }))
   assert.throws(() => validateAdminValue(entry, { ...file, extra: 1 }))
 })
 

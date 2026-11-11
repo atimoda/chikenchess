@@ -6,6 +6,7 @@ import { soulsFile, type SoulEntry } from '../pigchicken/soul-library'
 import { patioSettingsDefaultsFile, type PatioSettings } from '../pigchicken/patio-settings'
 import type { PatioLayers } from '../pigchicken/patio-layers'
 import { parquinhoDefaultsFile, type ParquinhoSettings } from '../pigchicken/settings'
+import { mixDefaultsFile, type Mix } from '../pigchicken/mixer'
 
 // "Salvar no game": admins write a game defaults file of the repository through the local Admin service
 // (npm run admin:dev), which checks the session and validates the content; publishing is commit + deploy.
@@ -48,7 +49,7 @@ export const saveDefaultItems = (items: Record<ItemId, ItemDef>) => saveAdminFil
 export const saveDefaultSouls = (entries: readonly SoulEntry[]) => saveAdminFile('pigchicken-souls', soulsFile(entries))
 
 // data/pigchicken/default-patio.json has one part per panel: each writes its own and keeps the others as they are
-const savePatioPart = (part: 'settings' | 'layers' | 'camera', value: unknown) =>
+const savePatioPart = (part: 'settings' | 'layers' | 'camera' | 'volume', value: unknown) =>
   saveAdminFile('pigchicken-patio', (current: unknown) => ({ ...(current && typeof current === 'object' ? current : {}), [part]: value }))
 /** Writes this Pátio's settings (its width as shown) as what a new empty Pátio starts with. */
 export const saveDefaultPatioSettings = (settings: PatioSettings | undefined, screens: number) => savePatioPart('settings', patioSettingsDefaultsFile(settings, screens))
@@ -56,3 +57,5 @@ export const saveDefaultPatioSettings = (settings: PatioSettings | undefined, sc
 export const saveDefaultPatioLayers = (layers: PatioLayers) => savePatioPart('layers', layers)
 /** Writes these settings as the Câmera de Mira panel's defaults. */
 export const saveDefaultCamera = (settings: ParquinhoSettings) => savePatioPart('camera', parquinhoDefaultsFile(settings))
+/** Writes these volumes as the Volume panel's defaults. */
+export const saveDefaultVolume = (mix: Mix) => savePatioPart('volume', mixDefaultsFile(mix))

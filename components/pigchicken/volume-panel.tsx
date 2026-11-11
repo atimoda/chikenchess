@@ -1,14 +1,18 @@
 "use client"
 
 // The Pátio header's volume button and its popup: the master volume on top and one slider per sound layer
-// (lib/pigchicken/mixer.ts). Everything is saved in this browser and heard at once.
+// (lib/pigchicken/mixer.ts). Everything is saved in this browser and heard at once. An admin also sees
+// "Salvar no game": the volumes become the game's defaults (data/pigchicken/default-patio.json).
 import { PatioRange } from "@/components/ui/patio-range"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
-import { Volume1, Volume2, VolumeX, X } from "lucide-react"
+import { RotateCcw, Volume1, Volume2, VolumeX, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { DEFAULT_MIX, MIX_LAYERS, getMix, setMix, subscribeMix, type Mix } from "@/lib/pigchicken/mixer"
+import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
+import { saveDefaultVolume } from "@/lib/admin/game-defaults-client"
+import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { loadChickenControls, saveChickenControls, subscribeChickenControls } from "@/lib/chicken/controls"
 
 export function VolumeButton({ className }: { className?: string }) {
@@ -34,12 +38,13 @@ export function VolumeButton({ className }: { className?: string }) {
       </button>
       {/* in the body: the header is its own stacking context, under the game's canvases */}
       {open && createPortal(
-        <FloatingPanel id="patio-volume" aria-label="Volume" initial={(vw, vh) => { const w = Math.min(300, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(560, vh - 80) } }} minW={240} minH={260} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-          <div data-drag-handle className="flex shrink-0 items-center gap-2">
+        <FloatingPanel id="patio-volume" aria-label="Volume" initial={(vw, vh) => { const w = Math.min(300, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(560, vh - 80) } }} minW={240} minH={260} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+          <div data-drag-handle className="flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Volume</h2>
-            <button type="button" onClick={() => setMix(DEFAULT_MIX)} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
-            <button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+            <button type="button" aria-label="Padrão" title="Padrão: volta todos os volumes para o padrão do jogo" onClick={() => setMix(DEFAULT_MIX)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
+            <button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
+          <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto px-4 py-3">
           <VolumeRange label="Master volume" value={mix.master} onChange={v => setMix({ master: v })} strong />
           <div className="grid gap-3 border-t border-white/10 pt-3">
             <div className="grid gap-[3px]">
@@ -49,6 +54,8 @@ export function VolumeButton({ className }: { className?: string }) {
               <input type="checkbox" checked={clucks} onChange={e => toggleClucks(e.target.checked)} className="accent-[var(--primary)]" />
               Cacarejos
             </label>
+          </div>
+          <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultVolume(mix)} className="justify-end" />
           </div>
         </FloatingPanel>,
         document.body,

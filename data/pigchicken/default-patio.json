@@ -22,5 +22,13 @@
     "jumpShake": 3,
     "superJumpShake": 8,
     "quantize": true
+  },
+  "volume": {
+    "master": 1,
+    "notes": 0.7,
+    "ambience": 0.35,
+    "weapons": 0.6,
+    "effects": 0.6,
+    "chicken": 1
   }
 }
