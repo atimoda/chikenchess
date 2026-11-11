@@ -5,8 +5,8 @@
 // card opens with how many were caught and the notes and weapons already seen (the ones missing stay hidden).
 // The cards stand still: only the one under the pointer or focused beats its wings, so the whole library costs one
 // drawing a frame. The collection lives in this browser (lib/pigchicken/soul-library.ts).
-// An admin gets the pencil: with it on, every card opens its sheet to edit (name, rarity, flight, look, and a rare
-// one's recipe), kept as a draft in this browser and followed live by the souls in the game; "Salvar no game" writes
+// An admin gets the pencil: with it on, every card opens its sheet to edit (name, rarity, flight, look, what it does
+// let out, and a rare one's recipe), kept as a draft in this browser and followed live by the souls in the game; "Salvar no game" writes
 // it to the game's file.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowDown, ArrowLeft, ArrowUp, Cloud, CloudOff, Copy, Pencil, Plus, Trash2, X } from "lucide-react"
@@ -16,10 +16,11 @@ import { SaveToGameButton, useIsAdmin } from "@/components/admin/save-to-game-bu
 import { saveDefaultSouls } from "@/lib/admin/game-defaults-client"
 import { soulSyncState, subscribeSoulSyncState } from "@/lib/pigchicken/soul-online"
 import { SOUL_COLS, SOUL_ROWS, drawSoulArt } from "@/components/pigchicken/draw/soul-art"
+import { SOUL_ACT_DEFAULTS, SOUL_ACT_RANGES, SOUL_HELPS, SOUL_HINDERS, type SoulActParams, type SoulHelp, type SoulHinder } from "@/lib/pigchicken/soul-acts"
 import { SOUL_CLASSES, SOUL_FOLLOW_DEFAULTS, SOUL_FOLLOW_RANGES, SOUL_PATTERNS, SOUL_SIDES, type SoulClassId, type SoulFollowParams, type SoulPattern, type SoulSide } from "@/lib/pigchicken/soul-follow"
 import {
   SOUL_ENTRIES, SOUL_LOOK_COLOURS, SOUL_NAME_MAX, SOUL_NOTES, SOUL_NOTE_ORDER, SOUL_PIXEL, SOUL_RARITIES, SOUL_SHAPES, SOUL_SHOTS, SOUL_SHOT_ORDER, SOUL_SPECIES, SOUL_SPECIES_ORDER,
-  SOUL_STATES, SOUL_WEAPONS, SOUL_WEAPON_ORDER, addRare, changeEntry, cleanRecipe, collectionProgress, entryClassName, entryColor, entryFollowParams, entryTraits,
+  SOUL_STATES, SOUL_WEAPONS, SOUL_WEAPON_ORDER, addRare, changeEntry, cleanRecipe, collectionProgress, entryActBase, entryActParams, entryClassName, entryColor, entryFollowParams, entryTraits,
   loadCollection, loadSoulEntries, moveRare, removeRare, resetEntry, saveSoulEntries, subscribeCollection, subscribeSoulEntries,
   type SoulCollection, type SoulEntry, type SoulLook, type SoulRecipe, type SoulShape,
 } from "@/lib/pigchicken/soul-library"
@@ -69,8 +70,18 @@ const FOLLOW_NUMBERS: { key: FollowNumber; label: string; unit?: string; hint: s
   { key: "loopEvery", label: "Voltinha a cada", unit: "s", hint: "Intervalo das voltinhas no descanso (0: nunca)." },
   { key: "restless", label: "Inquietação", hint: "Quanto vagueia em volta do lugar." },
 ]
+type ActNumber = keyof typeof SOUL_ACT_RANGES
+const ACT_NUMBERS: Record<ActNumber, { label: string; unit?: string; hint: string }> = {
+  every: { label: "A cada", unit: "s", hint: "Intervalo das ações. A cada volta ela pode atrapalhar; se não, fica pronta para ajudar assim que houver o que fazer." },
+  range: { label: "Alcance", unit: "px", hint: "Até onde ela age, contado de onde ela está (o aviso de perigo conta do dono)." },
+  power: { label: "Força da ajuda", hint: "Quanto de harmonia a nota dá, ou a altura do degrau." },
+  chance: { label: "Chance de atrapalhar", hint: "A cada volta do intervalo. Alma de nota fora da escala soma 15%." },
+  force: { label: "Força do atrapalho", hint: "Tamanho do empurrão, do quique, do desvio da mira, da bicada, ou o tempo desafinada." },
+}
+// what a soul of this entry does against its owner, for the card
+const hinderName = (e: SoulEntry, p: SoulActParams) => (p.hinder !== "own" ? SOUL_HINDERS[p.hinder] : e.state === "dead" ? "Pela arma que a matou" : "Desafinar")
 const COLOUR_LABELS: Record<(typeof SOUL_LOOK_COLOURS)[number], string> = { body: "Corpo", wing: "Asa", belly: "Barriga", beak: "Bico", eye: "Olho" }
-const GROUPS = ["Ficha", "Aparência", "Voo", "Receita"] as const
+const GROUPS = ["Ficha", "Aparência", "Voo", "Ações", "Receita"] as const
 const field = "h-8 w-44 min-w-0 rounded-md border border-white/15 bg-[#0b110e] px-2"
 const small = "inline-flex h-8 items-center gap-1.5 rounded-md border border-white/20 px-2 hover:border-primary disabled:opacity-40"
 
@@ -85,7 +96,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
   const [entries, setEntries] = useState<readonly SoulEntry[]>(() => loadSoulEntries())
   const [sel, setSel] = useState<string | null>(null)
   const [edit, setEdit] = useState(false)
-  const [open, setOpen] = useState<Record<string, boolean>>({ Ficha: true, Aparência: true, Voo: false, Receita: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Ficha: true, Aparência: true, Voo: false, Ações: false, Receita: true })
   const admin = useIsAdmin(), editing = admin && edit
   const cards = useRef(new Map<string, HTMLCanvasElement>())
   const preview = useRef<HTMLCanvasElement | null>(null)
@@ -169,6 +180,18 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
     if (value === ofClass[key]) delete own[key]; else own[key] = value
     return { ...e, follow: own }
   })
+  // what it does let out: its own over its class's and its state's, the same way
+  const actBase = v ? entryActBase(v) : SOUL_ACT_DEFAULTS, acts = v ? entryActParams(v) : SOUL_ACT_DEFAULTS
+  const setAct = <K extends keyof SoulActParams>(key: K, value: SoulActParams[K]) => update(e => {
+    const own: Partial<SoulActParams> = { ...e.act }
+    if (value === entryActBase(e)[key]) delete own[key]; else own[key] = value
+    return { ...e, act: own }
+  })
+  const actRange = (key: ActNumber) => {
+    const n = acts[key], r = SOUL_ACT_RANGES[key], m = ACT_NUMBERS[key]
+    return <PatioRange key={key} label={m.label} min={r.min} max={r.max} step={r.step} value={n} display={key === "chance" ? `${Math.round(n * 100)}%` : `${Math.round(n * 100) / 100}${m.unit ? ` ${m.unit}` : ""}`}
+      changed={n !== actBase[key]} hint={m.hint} onChange={x => setAct(key, x)} onReset={() => setAct(key, actBase[key])} />
+  }
   const setRecipe = (patch: Partial<SoulRecipe>) => update(e => ({ ...e, recipe: cleanRecipe({ ...e.recipe, ...patch }) }))
   const toggle = <T extends string>(list: readonly T[] | undefined, x: T) => (list?.includes(x) ? list.filter(o => o !== x) : [...(list ?? []), x])
   const base = v ? SOUL_ENTRIES.find(e => e.id === v.id) ?? null : null
@@ -269,6 +292,8 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                   {v.species !== "chick" && <div className={row}><span>Estado</span><span className="text-white">{stateOf(v)}</span></div>}
                   {v.species !== "chick" && <div className={row}><span>Instrumento</span><span className="text-white">{shotOf(v)}</span></div>}
                   <div className={row}><span>Voo</span><span className="text-white">{entryClassName(v)}</span></div>
+                  {acts.help !== "none" && <div className={row}><span>Ajuda</span><span className="text-white">{SOUL_HELPS[acts.help]}</span></div>}
+                  {acts.hinder !== "none" && acts.chance > 0 && <div className={row}><span>Atrapalho</span><span className="text-white">{hinderName(v, acts)}</span></div>}
                   {got && <div className={row}><span>Capturadas</span><span className="text-white">{got.n}</span></div>}
                   {got && got.at > 0 && <div className={row}><span>Primeira captura</span><span className="text-white">{new Date(got.at).toLocaleDateString("pt-BR")}</span></div>}
                 </div>
@@ -343,6 +368,22 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                             changed={n !== ofClass[m.key]} hint={m.hint} onChange={x => setFollow(m.key, x)} onReset={() => setFollow(m.key, ofClass[m.key])} />
                         })}
                       </div>
+                    </>
+                  )}
+                  {g === "Ações" && (
+                    <>
+                      <label className={row}><span>Ajuda</span>
+                        <select value={acts.help} onChange={e => setAct("help", e.target.value as SoulHelp)} className={field}>
+                          {(Object.keys(SOUL_HELPS) as SoulHelp[]).map(h => <option key={h} value={h}>{SOUL_HELPS[h]}</option>)}
+                        </select>
+                      </label>
+                      <div className="grid gap-[3px]">{(["every", "range", "power"] as const).map(actRange)}</div>
+                      <label className={row} title="O da própria alma: a morta, pelo que a matou (explosão empurra, bala faz quicar, flecha desvia a mira, impacto bica); a viva de nota fora da escala desafina"><span>Atrapalho</span>
+                        <select value={acts.hinder} onChange={e => setAct("hinder", e.target.value as SoulHinder)} className={field}>
+                          {(Object.keys(SOUL_HINDERS) as SoulHinder[]).map(h => <option key={h} value={h}>{SOUL_HINDERS[h]}</option>)}
+                        </select>
+                      </label>
+                      <div className="grid gap-[3px]">{(["chance", "force"] as const).map(actRange)}</div>
                     </>
                   )}
                   {g === "Receita" && v.recipe && (

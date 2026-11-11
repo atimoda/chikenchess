@@ -7,10 +7,13 @@
 // - entryOf: the entry a soul is (a rare recipe first, in the list's order; else the one of its species, state and
 //   family). Its look (a shape by the family, colours by the species) and how it flies come from the entry.
 // - recordSoul / mergeCollections: the collection only grows (first capture, how many, notes and weapons seen).
+// - How a soul flies when let out and what it does then (its help, its hindering) are its entry's: its class's
+//   numbers with the entry's own over them (entryFollowParams, entryActParams).
 // - The sheets: the game's catalogue is the code's with data/pigchicken/default-souls.json over it ("Salvar no game"),
 //   and an admin's browser may keep a draft over the code's. setSoulEntries says which one is in use.
 import DEFAULTS_FILE from '../../data/pigchicken/default-souls.json'
 import { UNDEAD_LOOK } from './birds'
+import { SOUL_ACT_RANGES, SOUL_HELPS, SOUL_HINDERS, soulActBase, type SoulActParams } from './soul-acts'
 import { SOUL_CLASSES, SOUL_FOLLOW_DEFAULTS, SOUL_FOLLOW_RANGES, SOUL_PATTERNS, SOUL_SIDES, soulClassOf, type SoulClassId, type SoulFollowParams } from './soul-follow'
 import { CHICK_SOUL_COLOR, originOf, soulRarity, type SoulNote, type SoulOrigin, type SoulRarity, type SoulShot, type SoulSpecies, type SoulState, type SoulWeapon } from './souls'
 
@@ -69,6 +72,7 @@ export type SoulEntry = {
   cls: SoulClassId // how it flies when let out (lib/pigchicken/soul-follow.ts)
   look: SoulLook
   follow?: Partial<SoulFollowParams> // its own numbers over its class's
+  act?: Partial<SoulActParams> // what it does let out (lib/pigchicken/soul-acts.ts): its own over its class's
   recipe?: SoulRecipe // a rare one
 }
 
@@ -109,6 +113,17 @@ function cleanFollow(raw: unknown): Partial<SoulFollowParams> | undefined {
   if (has(SOUL_PATTERNS, r.pattern)) out.pattern = r.pattern
   return Object.keys(out).length ? out : undefined
 }
+function cleanAct(raw: unknown): Partial<SoulActParams> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const r = raw as Record<string, unknown>, out: Partial<SoulActParams> = {}
+  for (const k of Object.keys(SOUL_ACT_RANGES) as (keyof typeof SOUL_ACT_RANGES)[]) {
+    const v = r[k], range = SOUL_ACT_RANGES[k]
+    if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.max(range.min, Math.min(range.max, v))
+  }
+  if (has(SOUL_HELPS, r.help)) out.help = r.help
+  if (has(SOUL_HINDERS, r.hinder)) out.hinder = r.hinder
+  return Object.keys(out).length ? out : undefined
+}
 function some<T extends string>(raw: unknown, order: readonly T[]): T[] | undefined {
   if (!Array.isArray(raw)) return undefined
   const got = order.filter(x => raw.includes(x))
@@ -139,13 +154,13 @@ function baseEntry(species: SoulSpecies, state: SoulState, shot: SoulShot): Soul
 }
 // a rare one: its shape is its family's unless it says another, its colours come from `body` unless it says others
 // a rare one as the sheets keep it, and as an entry (what its recipe fixes is its species, state and family)
-export type SoulRare = { id: string; name: string; rarity: SoulRarity; cls: SoulClassId; look: SoulLook; follow?: Partial<SoulFollowParams>; recipe: SoulRecipe }
+export type SoulRare = { id: string; name: string; rarity: SoulRarity; cls: SoulClassId; look: SoulLook; follow?: Partial<SoulFollowParams>; act?: Partial<SoulActParams>; recipe: SoulRecipe }
 const rareLook = (shape: SoulShape, body: string): SoulLook => ({ shape, pixel: SOUL_SHAPES[shape].pixel, ...soulPalette(body), beak: '#fff3b0', eye: EYE, halo: false })
 const rareEntry = (r: SoulRare): SoulEntry => ({
   id: r.id, name: r.name, species: r.recipe.species?.length === 1 ? r.recipe.species[0] : null, state: r.recipe.state ?? 'alive',
-  shot: r.recipe.shot?.length === 1 ? r.recipe.shot[0] : null, rarity: r.rarity, cls: r.cls, look: r.look, ...(r.follow ? { follow: r.follow } : {}), recipe: r.recipe,
+  shot: r.recipe.shot?.length === 1 ? r.recipe.shot[0] : null, rarity: r.rarity, cls: r.cls, look: r.look, ...(r.follow ? { follow: r.follow } : {}), ...(r.act ? { act: r.act } : {}), recipe: r.recipe,
 })
-const asRare = (e: SoulEntry): SoulRare => ({ id: e.id, name: e.name, rarity: e.rarity, cls: e.cls, look: e.look, ...(e.follow ? { follow: e.follow } : {}), recipe: e.recipe ?? {} })
+const asRare = (e: SoulEntry): SoulRare => ({ id: e.id, name: e.name, rarity: e.rarity, cls: e.cls, look: e.look, ...(e.follow ? { follow: e.follow } : {}), ...(e.act ? { act: e.act } : {}), recipe: e.recipe ?? {} })
 function rare(id: string, name: string, rarity: SoulRarity, asks: SoulRecipe, body: string, over: Partial<SoulLook> & { cls?: SoulClassId } = {}): SoulEntry {
   const recipe = cleanRecipe(asks), shot = recipe.shot?.length === 1 ? recipe.shot[0] : null
   const { cls, ...look } = over
@@ -179,7 +194,7 @@ export const CODE_SOUL_ENTRIES: readonly SoulEntry[] = [...BASE_SOULS, ...RARE_S
 // ---------- the sheets: what an admin changed over the code's catalogue ----------
 // A soul of the rule keeps its id, species, state and family; its sheet holds only what differs from the code's. The
 // rare ones are a list of their own, kept whole once anything in it differs from the code's.
-export type SoulSheet = { name?: string; rarity?: SoulRarity; cls?: SoulClassId; look?: Partial<SoulLook>; follow?: Partial<SoulFollowParams> }
+export type SoulSheet = { name?: string; rarity?: SoulRarity; cls?: SoulClassId; look?: Partial<SoulLook>; follow?: Partial<SoulFollowParams>; act?: Partial<SoulActParams> }
 export type SoulsFile = { sheets?: Record<string, SoulSheet>; rares?: SoulRare[] }
 function cleanRare(raw: unknown, taken: Set<string>): SoulRare | null {
   if (!raw || typeof raw !== 'object') return null
@@ -187,10 +202,10 @@ function cleanRare(raw: unknown, taken: Set<string>): SoulRare | null {
   const id = typeof r.id === 'string' && /^rare\.[a-z0-9-]{1,40}$/.test(r.id) ? r.id : null, name = cleanName(r.name)
   if (!id || !name || taken.has(id)) return null
   taken.add(id)
-  const recipe = cleanRecipe(r.recipe), shot = recipe.shot?.length === 1 ? recipe.shot[0] : null, follow = cleanFollow(r.follow)
+  const recipe = cleanRecipe(r.recipe), shot = recipe.shot?.length === 1 ? recipe.shot[0] : null, follow = cleanFollow(r.follow), act = cleanAct(r.act)
   return {
     id, name, rarity: has(SOUL_RARITIES, r.rarity) ? r.rarity : 'rare', cls: has(SOUL_CLASSES, r.cls) ? r.cls : soulClassOf({ species: 'horde', shot }),
-    look: cleanLook(r.look, rareLook(shot ?? 'wind', '#9aa0a8')), ...(follow ? { follow } : {}), recipe,
+    look: cleanLook(r.look, rareLook(shot ?? 'wind', '#9aa0a8')), ...(follow ? { follow } : {}), ...(act ? { act } : {}), recipe,
   }
 }
 /** The code's catalogue with a sheets file over it (whatever it holds: the unknown is dropped). */
@@ -200,8 +215,8 @@ export function soulEntriesOver(file: unknown): SoulEntry[] {
   const base = BASE_SOULS.map(e => {
     const s = sheets[e.id]
     if (!s || typeof s !== 'object') return e
-    const r = s as Record<string, unknown>, follow = cleanFollow(r.follow)
-    return { ...e, name: cleanName(r.name) ?? e.name, rarity: has(SOUL_RARITIES, r.rarity) ? r.rarity : e.rarity, cls: has(SOUL_CLASSES, r.cls) ? r.cls : e.cls, look: cleanLook(r.look, e.look), ...(follow ? { follow } : {}) }
+    const r = s as Record<string, unknown>, follow = cleanFollow(r.follow), act = cleanAct(r.act)
+    return { ...e, name: cleanName(r.name) ?? e.name, rarity: has(SOUL_RARITIES, r.rarity) ? r.rarity : e.rarity, cls: has(SOUL_CLASSES, r.cls) ? r.cls : e.cls, look: cleanLook(r.look, e.look), ...(follow ? { follow } : {}), ...(act ? { act } : {}) }
   })
   if (!Array.isArray(f.rares)) return [...base, ...RARE_SOULS]
   const taken = new Set<string>()
@@ -222,6 +237,7 @@ export function soulsFile(entries: readonly SoulEntry[]): SoulsFile {
     for (const k of Object.keys(code.look) as (keyof SoulLook)[]) if (e.look[k] !== code.look[k]) (look as Record<string, unknown>)[k] = e.look[k]
     if (Object.keys(look).length) s.look = look
     if (e.follow && Object.keys(e.follow).length) s.follow = e.follow
+    if (e.act && Object.keys(e.act).length) s.act = e.act
     if (Object.keys(s).length) sheets[code.id] = s
   }
   if (Object.keys(sheets).length) out.sheets = sheets
@@ -286,6 +302,9 @@ export function entryLookFor(e: SoulEntry, color: string): SoulLook {
 }
 // how it flies when let out: its class's numbers, with its own over them
 export const entryFollowParams = (e: SoulEntry): SoulFollowParams => ({ ...SOUL_FOLLOW_DEFAULTS, ...SOUL_CLASSES[e.cls].params, ...e.follow })
+// what it does then, for her and against her: its class's and its state's numbers (soulActBase), with its own over them
+export const entryActBase = (e: SoulEntry): SoulActParams => soulActBase(e.cls, e.state, e.rarity)
+export const entryActParams = (e: SoulEntry): SoulActParams => ({ ...entryActBase(e), ...e.act })
 
 // ---------- traits: the notes and the weapons an entry can be found with ----------
 const traits = new WeakMap<readonly SoulEntry[], Map<string, { notes: SoulNote[]; weapons: SoulWeapon[] }>>()

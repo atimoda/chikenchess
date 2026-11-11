@@ -11,6 +11,8 @@
 //   the soul flies to it at its own speed; it rests again when it gets there. Left behind it hurries (up to 3 times
 //   its speed); lost (a portal), it comes in from beside the screen.
 // Every number is a parameter (SoulFollowParams); a class is a set of them, picked from what the soul is.
+// - An errand (soulErrandStep): what it does for or against her (lib/pigchicken/soul-acts.ts) may take it off its
+//   spot for a moment, straight to a point; then it flies back.
 import type { Soul, SoulShot } from './souls'
 
 export type SoulSide = 'behind' | 'front' | 'any'
@@ -232,4 +234,18 @@ export function soulFollowStep(b: SoulBrain, me: SoulFlyer, owner: SoulOwner, p:
     else if (b.mode === 'rest' && Math.abs(owner.x - nx) > 12) me.face = owner.x > nx ? 1 : -1
   }
   me.x = nx; me.y = ny
+}
+
+// An errand: the soul leaves its spot and flies straight to a point at `speed` px/s (no pattern, no wandering; it
+// faces where it goes). Returns how far from the point it still is. Its next soulFollowStep takes it back to its spot.
+export function soulErrandStep(b: SoulBrain, me: SoulFlyer, to: { x: number; y: number }, speed: number, dt: number): number {
+  // from where it is drawn: its pattern folds away at once
+  b.x = me.x; b.y = me.y; b.settle = 0; b.loop = -1; b.mode = 'follow'; b.wait = 0
+  const dx = to.x - b.x, dy = to.y - b.y, d = Math.hypot(dx, dy)
+  if (dt <= 0 || d < 0.01) return d
+  const go = Math.min(d, speed * dt)
+  b.x += (dx / d) * go; b.y += (dy / d) * go; b.vx = (dx / d) * speed; b.vy = (dy / d) * speed
+  if (Math.abs(dx) > 2) me.face = dx > 0 ? 1 : -1
+  me.x = b.x; me.y = b.y
+  return d - go
 }

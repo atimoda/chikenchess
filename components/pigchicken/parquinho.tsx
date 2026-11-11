@@ -894,6 +894,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
         }
       }
+      // a soul that shakes her aim (lib/pigchicken/soul-acts.ts): it sways for a moment
+      const skew = combat.aimSkew
+      if (skew) { const a = aim.angle + skew; aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) } }
       const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
         // brooding does not freeze her: "frente + chocar" walks at its own speed (0 keeps her still), aiming with the item;
@@ -968,9 +971,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       buttonLabels.aliens = "SOLTAR ALIENS"; buttonLabels.pattern = `PADRÃO: ${ALIEN_PATTERNS[horde.pattern].label.toUpperCase()}`
       buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
       // Register every local player before the shared projectile update, including its owner.
+      // (id: the local player each one is, for what their souls flying free do to them; the chicks have none)
+      const playerOf = new Map([[engine, "p1"] as const, ...Array.from(extras?.current?.entries() ?? [], ([id, e]) => [e, id] as const)])
       combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? []), ...Array.from(chicks?.current?.values() ?? [])].map(eng => {
         const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
-        return { box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
+        return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
       }))
       if (perches.spans.length) {
         perches.camX = camX; perches.camY = camY - yr.lo; perches.time += dt
@@ -1021,7 +1026,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xkb = keysAimFor(devs)
         const xkx = xkb ? (xa.right ? 1 : 0) - (xa.left ? 1 : 0) : 0, xky = xkb ? (xa.crouch ? 1 : 0) - (xa.up ? 1 : 0) : 0
         const xKeys = xkx !== 0 || xky !== 0
-        const angle = aimStick ? magnetAngle(Math.atan2(aimStick.y, aimStick.x), an.aimMagnetDeg) : xKeys ? Math.atan2(xky, xkx) : ahead
+        const angle = (aimStick ? magnetAngle(Math.atan2(aimStick.y, aimStick.x), an.aimMagnetDeg) : xKeys ? Math.atan2(xky, xkx) : ahead) + combat.aimSkew
         const xo = eng.getState().shoulder
         const xm = xArmed ? eng.heldPoint(xd.turnRate > 0 ? combat.aimAngle : angle, xd.muzzleX, xd.muzzleY) : xo
         const xrepeat = extraQuickSwitch.get(id) ?? newQuickSwitchRepeat()

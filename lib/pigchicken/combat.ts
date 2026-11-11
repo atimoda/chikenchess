@@ -7,8 +7,9 @@ import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zone
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
 import { birdPerchParams, perchEnd, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
 import { ABDUCT_GAP, CHICK_SOUL_COLOR, SOUL_PULSE, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, weaponClass, type Abduction, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
-import { createSoulBrain, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
-import { entryFollowParams, entryOf } from './soul-library'
+import { SOUL_FLIGHT, createSoulBrain, soulErrandStep, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
+import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
+import { entryActParams, entryFollowParams, entryOf } from './soul-library'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
@@ -54,8 +55,16 @@ export type Critter = {
 }
 // a soul let out of its owner's basket: it flies with them as a friend (lib/pigchicken/soul-follow.ts) until it is
 // called back (recallIn: s until it leaves for the counter) or a Passaguá catches it. away: s since its owner left
-// the game (it flies off); null while it has one
-export type FreeSoul = { soul: Soul; owner: string; x: number; y: number; face: number; t: number; brain: SoulBrain; params: SoulFollowParams; recallIn: number | null; away: number | null }
+// the game (it flies off); null while it has one. act, clock: what it does for and against its owner, and when
+// (lib/pigchicken/soul-acts.ts); job: what it is off doing right now; acts: how many helps it has done; warned: the
+// enemy it last warned of
+export type FreeSoul = {
+  soul: Soul; owner: string; x: number; y: number; face: number; t: number; brain: SoulBrain; params: SoulFollowParams; recallIn: number | null; away: number | null
+  act: SoulActParams; clock: SoulActClock; job: SoulJob | null; acts: number; warned: { id: number; at: number } | null
+}
+// an errand of a soul: fetching an item (fetch: on its way to it; carry: bringing it), a step under its owner's feet,
+// or something against her. t: s on it; item: the one it goes for or carries; side: the side of her it comes from
+export type SoulJob = { kind: 'fetch' | 'carry' | 'step' | Exclude<SoulHinder, 'own' | 'none' | 'detune'>; t: number; item?: Pickup; side?: 1 | -1 }
 export const CALLBACK_GAP = 0.2 // s between two souls called back
 export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on the counter can call them back
 
@@ -177,7 +186,8 @@ export function createCombat() {
   let throwItem: Owned | null = null, throwVoid = false
   let consumption: { item: ItemId; left: number; total: number } | null = null
   let effects: Effect[] = []
-  let blastActors: { box: BlastBox; push: (vx: number, vy: number) => void }[] = []
+  // id: the local player it is (the souls act on their owner through it); the chicks have none
+  let blastActors: { id?: string; box: BlastBox; push: (vx: number, vy: number) => void }[] = []
   // other catchable birds in the world (the chicks that follow her): where they are (world px, their middle and
   // size) and what to do when the Passaguá catches one (the Parquinho removes it)
   let catchables: Catchable[] = []
@@ -412,15 +422,16 @@ export function createCombat() {
   }
 
   // what the bird it becomes will remember: the instrument and the note that landed last (the ones that fill its bar)
-  function markSoul(t: Target, note: NoteInfo, by: ItemId | 'rebate' | null) {
-    if (t.kind !== 'alien' && t.kind !== 'undead') return
+  // (a note sung by a soul flying free leaves no mark: the player's last note still says what the bird is)
+  function markSoul(t: Target, note: NoteInfo, by: ItemId | 'rebate' | 'soul' | null) {
+    if (by === 'soul' || (t.kind !== 'alien' && t.kind !== 'undead')) return
     const z = music.zone
     t.soul = { ...t.soul, shot: shotClass(by, note.voice), note: noteClass(note.midi, z.root, SCALES[z.scale].steps) }
   }
 
   // a note lands: it fills the harmony bar instead of hurting; the enemy answers with a note of its own
-  // by: the instrument that played it ('rebate': a note sent back by a blow)
-  function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number, by: ItemId | 'rebate' | null = null) {
+  // by: the instrument that played it ('rebate': a note sent back by a blow; 'soul': sung by a soul flying free)
+  function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number, by: ItemId | 'rebate' | 'soul' | null = null) {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
     if (t.kind === 'undead' && (t.data as UndeadState).bird) return
@@ -719,7 +730,7 @@ export function createCombat() {
         bonus = d.beatBonus
         if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
-      notes.forEach((m, i) => out.note(pz ? 'pizz' : d.voice, m + tremBend, at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d)))
+      notes.forEach((m, i) => out.note(pz ? 'pizz' : d.voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d)))
     }
     const speed = d.speed * power
     const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
@@ -732,7 +743,8 @@ export function createCombat() {
       }
       if (d.instrument) {
         const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
-        b.note = { midi: m, color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: pz ? 'pizz' : d.voice }
+        // (a soul singing out of tune near her: the note itself goes off, not only its sound)
+        b.note = { midi: m + detuneNow(), color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: pz ? 'pizz' : d.voice }
         b.ring = d.ringNotes; b.ghost = true
       }
       // instant shots travel their whole way now and leave a tracer
@@ -1054,7 +1066,7 @@ export function createCombat() {
       for (let i = freed.length - 1; i >= 0; i--) {
         const f = freed[i]
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
-        freed.splice(i, 1); caught.push({ x: f.x, y: f.y, wild: false, soul: f.soul })
+        letGo(f); freed.splice(i, 1); caught.push({ x: f.x, y: f.y, wild: false, soul: f.soul })
       }
       // the chicks that follow her: caught like the birds, they count as souls too
       catchables = catchables.filter(c => {
@@ -1255,7 +1267,7 @@ export function createCombat() {
     const t = tones(d), midi = t.note()
     const color = t.color(midi)
     // the sound bends with the aim's tremolo; the note (colour, harmony) stays the lane's
-    const pitch = midi + tremBend
+    const pitch = midi + tremBend + detuneNow()
     if (!beamHeld) { beamHeld = out.hold(d.voice, pitch); beamMidi = pitch }
     else if (Math.abs(pitch - beamMidi) > 0.005) { beamHeld.setPitch(pitch); beamMidi = pitch }
     beamHeld?.setVolume?.(noteVol(d))
@@ -1279,6 +1291,174 @@ export function createCombat() {
   }
   function stopBeam() { beamHeld?.stop(); beamHeld = null; beam = null }
 
+  // ---------- what the souls flying free do for and against their owners (lib/pigchicken/soul-acts.ts) ----------
+  // each owner's fall (a step in the air needs to know she is falling); what a soul did to a player: the sway of
+  // their aim, how far off their notes play, how long their item does not answer (s); the floors of the world in this
+  // frame; the beat the last frame was in
+  const falls = new Map<string, { y: number; vy: number; air: number }>()
+  const aimSways = new Map<string, { amp: number; left: number; total: number; seed: number }>()
+  const detunes = new Map<string, { semis: number; left: number }>()
+  const locks = new Map<string, number>()
+  const detuneNow = () => detunes.get(active)?.semis ?? 0
+  let actGround: StepCtx = { boxes: [], groundY: 0 }, actBeat = NaN
+  const bodyOf = (id: string) => (id === active ? lastBody : loadouts.get(id)?.lastBody) ?? null
+  const invOf = (id: string): readonly Owned[] => (id === active ? inv : loadouts.get(id)?.inv ?? [])
+  const actorOf = (id: string) => blastActors.find(a => a.id === id)
+  const soulVoice = (s: Soul): VoiceId => (s.bird ? BIRDS[s.bird].voice : 'bird')
+  // the k-th note of the chord playing, `up` semitones above
+  const chordNote = (k: number, up = 12) => { const chord = music.chord(true); return chord[((k % chord.length) + chord.length) % chord.length] + up }
+  const alive = (t: Target) => t.deadT <= 0 && t.state !== 'converted' && t.state !== 'dead'
+  // an enemy a sung note may fill; one that may hurt her
+  const fillable = (t: Target) => alive(t) && (t.shield ?? 0) < 1 && (t.kind === 'alien' || t.kind === 'zombie' || (t.kind === 'undead' && !(t.data as UndeadState).bird))
+  const threat = (t: Target) => alive(t) && (t.kind === 'alien' || t.kind === 'zombie' || (t.kind === 'undead' && ((t.data as UndeadState).phase === 'walk' || (t.data as UndeadState).phase === 'rise')))
+  function trackFall(id: string, dt: number) {
+    const her = bodyOf(id), was = falls.get(id)
+    if (!her) { falls.delete(id); return }
+    falls.set(id, { y: her.y, vy: was && dt > 0 ? Math.max(-3000, Math.min(3000, (her.y - was.y) / dt)) : 0, air: her.grounded ? 0 : (was?.air ?? 0) + dt })
+  }
+  // the item it carries hangs under it, and nobody takes it from the air
+  const hang = (f: FreeSoul, p: Pickup) => { p.x = f.x; p.y = f.y + SOUL_ACT.fetch.hang; p.resting = true; p.vy = 0; p.noPick = Math.max(p.noPick, 0.2) }
+  // a soul stops what it was off doing: what it carried falls from where it is
+  function letGo(f: FreeSoul) {
+    const item = f.job?.kind === 'carry' ? f.job.item : null
+    if (item && pickups.includes(item)) { item.resting = false; item.vy = 0; item.noPick = 0.15 }
+    f.job = null
+  }
+
+  // a note of the chord to the nearest enemy it reaches: it fills its harmony a little
+  function soulSings(f: FreeSoul, onBeat: boolean) {
+    let best: Target | null = null, near = f.act.range
+    for (const t of targets) {
+      if (!fillable(t)) continue
+      const d = Math.hypot(t.x - f.x, t.y - t.h / 2 - f.y)
+      if (d < near) { near = d; best = t }
+    }
+    if (!best) return false
+    const m = chordNote(f.acts), color = DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length]
+    const note: NoteInfo = { midi: m, color, sym: NOTE_SYMBOLS[m % NOTE_SYMBOLS.length], wave: 0, phase: 0, voice: soulVoice(f.soul) }
+    const x = best.x, y = best.y - best.h / 2
+    // nobody played this one a note yet: the bird it becomes takes after the soul that sang to it
+    if ((best.kind === 'alien' || best.kind === 'undead') && !best.soul?.shot) { const z = music.zone; best.soul = { ...best.soul, shot: f.soul.shot ?? 'wind', note: noteClass(m, z.root, SCALES[z.scale].steps) } }
+    out.note(note.voice, m, 0, SOUL_ACT.sing.dur, SOUL_ACT.sing.vel)
+    texts.push({ x: f.x, y: f.y - 18, text: note.sym, life: 0.7, color, size: 16 })
+    // its note on the way to the enemy
+    const n = Math.min(14, Math.max(3, Math.round(near / SOUL_ACT.sing.trail)))
+    for (let i = 1; i <= n; i++) sparks.push({ x: f.x + ((x - f.x) * i) / (n + 1), y: f.y + ((y - f.y) * i) / (n + 1), vx: 0, vy: -20, life: 0.2 + (i / n) * 0.3, max: 0.5, color, size: 3 })
+    harmonize(best, SOUL_ACT.sing.amount * f.act.power * (onBeat ? SOUL_ACT.sing.beat : 1), 0, x, y, note, 0, 'soul')
+    return true
+  }
+  // an item lying loose within its reach (thrown, dropped; not the ones on the racks) that its owner does not carry
+  // and has room for: it goes for it
+  function soulFetches(f: FreeSoul, her: Body) {
+    const hers = invOf(f.owner)
+    let best: Pickup | null = null, near = f.act.range
+    for (const p of pickups) {
+      if (!p.resting || p.noPick > 0 || Math.hypot(p.x - her.x, p.y - her.y) < SOUL_ACT.fetch.near * her.scale || racks.some(r => r.pickupId === p.id) || freed.some(o => o.job?.item === p)) continue
+      const has = hers.find(o => o.item === p.owned.item)
+      if (has ? has.ammo >= (CONSUMABLE_LIMITS[has.item] ?? 0) : hers.length >= limit) continue
+      const d = Math.hypot(p.x - f.x, p.y - f.y)
+      if (d < near) { near = d; best = p }
+    }
+    if (!best) return false
+    f.job = { kind: 'fetch', t: 0, item: best }
+    return true
+  }
+  // the nearest enemy she has her back to, within its reach of her: a cry, and a mark over the enemy
+  function soulWarns(f: FreeSoul, her: Body) {
+    let best: Target | null = null, near = f.act.range
+    for (const t of targets) {
+      if (!threat(t) || (t.x - her.x) * her.face >= 0) continue
+      if (f.warned?.id === t.id && soulClock - f.warned.at < f.act.every * SOUL_ACT.warn.again) continue
+      const d = Math.hypot(t.x - her.x, t.y - her.y)
+      if (d < near) { near = d; best = t }
+    }
+    if (!best) return false
+    f.warned = { id: best.id, at: soulClock }
+    const m = chordNote(0, 24), v = soulVoice(f.soul)
+    out.note(v, m, 0, 0.07, 0.55); out.note(v, m, 0.12, 0.07, 0.55)
+    texts.push({ x: f.x, y: f.y - 22, text: '!', life: 0.9, color: '#ff6b5b', size: 22 }, { x: best.x, y: best.y - best.h - 14, text: '!', life: 0.9, color: '#ff6b5b', size: 18 })
+    return true
+  }
+  // she is falling, high above the floor, and it is near: it dives under her feet
+  function soulSteps(f: FreeSoul, her: Body) {
+    const fall = falls.get(f.owner), S = SOUL_ACT.step
+    if (!fall || her.grounded || fall.air < S.air || fall.vy < S.fall || !actorOf(f.owner)) return false
+    if (Math.hypot(her.x - f.x, her.y - f.y) > f.act.range || floorUnder(actGround, her.x, her.y) - her.y < S.drop) return false
+    f.job = { kind: 'step', t: 0 }
+    return true
+  }
+  // against her: out of tune at once, from where it is; the others, it flies at her first
+  function soulHinders(f: FreeSoul, her: Body) {
+    const kind = hinderOf(f.act, f.soul)
+    if (kind === 'none') return
+    if (kind !== 'detune') { f.job = { kind, t: 0, side: f.x >= her.x ? 1 : -1 }; return }
+    detunes.set(f.owner, { semis: (Math.random() < 0.5 ? -1 : 1) * SOUL_ACT.detune.semis, left: actLerp(SOUL_ACT.detune.time, f.act.force) })
+    const m = chordNote(0), v = soulVoice(f.soul)
+    out.note(v, m, 0, 0.3, 0.5); out.note(v, m + 1, 0, 0.3, 0.5)
+    texts.push({ x: f.x, y: f.y - 20, text: '♭', life: 1, color: '#9aa0a8', size: 20 })
+  }
+  // a frame of what a soul is off doing; false: done or given up (it flies back to its spot)
+  function soulJobStep(f: FreeSoul, her: Body, dt: number): boolean {
+    const job = f.job!, E = SOUL_ACT.errand, s = her.scale, fall = falls.get(f.owner)
+    job.t += dt
+    let speed = Math.max(E.min, f.params.speed * E.speed), time = E.time, to: { x: number; y: number }
+    if (job.kind === 'fetch') {
+      // (somebody took it first)
+      if (!job.item || !pickups.includes(job.item) || !job.item.resting || job.item.noPick > 0) return false
+      to = { x: job.item.x, y: job.item.y - SOUL_ACT.fetch.hang }
+    } else if (job.kind === 'carry') {
+      if (!job.item || !pickups.includes(job.item)) return false
+      to = { x: her.x, y: her.y - (SOUL_FLIGHT.head + SOUL_ACT.fetch.drop) * s }; time = SOUL_ACT.fetch.time
+    } else if (job.kind === 'step') {
+      if (her.grounded || !fall) return false
+      to = { x: her.x, y: her.y + 12 }; speed = Math.max(speed, fall.vy + SOUL_ACT.step.chase); time = SOUL_ACT.step.time
+    } else if (job.kind === 'push') to = { x: her.x + (job.side ?? 1) * SOUL_ACT.push.beside * s, y: her.y - 80 * s }
+    else if (job.kind === 'bounce') to = { x: her.x, y: her.y - 14 * s }
+    else if (job.kind === 'aim') to = { x: her.x + her.face * 60 * s, y: her.y - 150 * s }
+    else to = { x: her.x, y: her.y - 170 * s }
+    if (job.t > time) return false
+    const left = soulErrandStep(f.brain, f, to, speed, dt)
+    if (job.kind === 'carry' && job.item) hang(f, job.item)
+    // coming at her, it leaves a red trail
+    else if (job.kind !== 'fetch' && job.kind !== 'step' && Math.random() < dt * 40) sparks.push({ x: f.x, y: f.y, vx: 0, vy: 0, life: 0.25, max: 0.25, color: '#ff6b5b', size: 2 })
+    if (left > E.reach) return true
+    // it got there
+    const actor = actorOf(f.owner), force = f.act.force, v = soulVoice(f.soul)
+    if (job.kind === 'fetch') { job.kind = 'carry'; job.t = 0; if (job.item) hang(f, job.item); out.note(v, chordNote(1, 24), 0, 0.08, 0.35); return true }
+    if (job.kind === 'carry') return false
+    if (job.kind === 'step') {
+      // whatever her fall was, she leaves upwards
+      actor?.push(0, -(actLerp(SOUL_ACT.step.lift, f.act.power) + Math.max(0, fall?.vy ?? 0)))
+      if (fall) { fall.air = 0; fall.vy = 0 }
+      burst(her.x, her.y, 10, f.soul.color, 180, 3)
+      out.note(v, chordNote(0), 0, 0.1, 0.5); out.note(v, chordNote(2), 0.07, 0.14, 0.5)
+    } else if (job.kind === 'push') {
+      const r = SOUL_ACT.push.r, strength = actLerp(SOUL_ACT.push.strength, force)
+      for (const a of blastActors) { const p = explosionImpulse(f.x, f.y, r, strength, a.box); if (p) a.push(p.x, p.y - Math.abs(p.x) * SOUL_ACT.push.up) }
+      booms.push({ x: f.x, y: f.y, r: r * 0.5, life: 0.3, color: f.soul.color }); sound('puff', null); burst(f.x, f.y, 14, f.soul.color, 300, 3)
+    } else if (job.kind === 'bounce') {
+      actor?.push(rand(-1, 1) * SOUL_ACT.bounce.side, -actLerp(SOUL_ACT.bounce.lift, force)); sound('bounce', null); burst(her.x, her.y, 8, f.soul.color, 200, 3)
+    } else if (job.kind === 'aim') {
+      const T = actLerp(SOUL_ACT.aim.time, force)
+      aimSways.set(f.owner, { amp: actLerp(SOUL_ACT.aim.deg, force) * DEG, left: T, total: T, seed: rand(0, Math.PI * 2) })
+      burst(f.x, f.y, 6, f.soul.color, 160, 2); out.note(v, chordNote(0, 25), 0, 0.12, 0.45)
+    } else {
+      // a peck: a knock away from it, and her item does not answer for a moment
+      const dir = f.x >= her.x ? -1 : 1, p = actLerp(SOUL_ACT.peck.push, force)
+      actor?.push(dir * p, -p * 0.6); locks.set(f.owner, Math.max(locks.get(f.owner) ?? 0, actLerp(SOUL_ACT.peck.lock, force)))
+      sound('bite', null); burst(f.x, f.y, 8, '#ff6b5b', 200, 3)
+    }
+    return false
+  }
+  // a frame of a soul at its spot: its clock, and its help as soon as there is something to do
+  function soulActs(f: FreeSoul, her: Body, dt: number, onBeat: boolean) {
+    if (actClockStep(f.clock, f.act, f.soul, dt)) { soulHinders(f, her); return }
+    if (!f.clock.ready) return
+    const h = f.act.help
+    const did = h === 'sing' ? soulSings(f, false) : h === 'beat' ? onBeat && soulSings(f, true) : h === 'fetch' ? soulFetches(f, her) : h === 'warn' ? soulWarns(f, her) : h === 'step' ? soulSteps(f, her) : false
+    if (did) { actDone(f.clock, f.act); f.acts++ }
+  }
+
   const env = (groundY: number, playerX: number, playerY: number, bounds?: { l: number; r: number }): EnemyEnv => ({
     playerX, playerY, groundY, viewL: bounds?.l ?? view.l, viewR: bounds?.r ?? view.r,
     // online: the other browsers' chickens count too (the nearest one is chased)
@@ -1296,7 +1476,7 @@ export function createCombat() {
   })
 
   return {
-    setBlastActors(actors: { box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
+    setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
     setCatchables(list: Catchable[]) { catchables = list },
     setPerchWorld(w: PerchWorld | null) { perchWorld = w },
     setSoulAir(air: SoulAir | null) { soulAir = air },
@@ -1315,7 +1495,7 @@ export function createCombat() {
     // the souls caught from the wild, to be taken (spliced) by whoever keeps the library; (x, y): where, in world px
     soulNews,
     // the library's sheets changed: the souls flying free take the numbers their entries have now
-    refreshSouls() { for (const f of freed) f.params = entryFollowParams(entryOf(f.soul)) },
+    refreshSouls() { for (const f of freed) { const e = entryOf(f.soul); f.params = entryFollowParams(e); f.act = entryActParams(e) } },
     // the souls out of the baskets, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
     get freedSouls() { return freed as readonly FreeSoul[] },
     get looseSouls() { let n = 0; for (const f of freed) if (f.owner === active) n++; return n },
@@ -1323,11 +1503,11 @@ export function createCombat() {
     releaseSoul(from: { x: number; y: number }) {
       const soul = souls.pop()
       if (!soul) return null
-      // how it flies is its entry's in the library (the class of its family, or a rare one's own)
-      const params = entryFollowParams(entryOf(soul)), brain = createSoulBrain(from.x, from.y, params)
+      // how it flies and what it does are its entry's in the library (the class of its family, or a rare one's own)
+      const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry), brain = createSoulBrain(from.x, from.y, params)
       // it pops out of the counter, down and to one side
       brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
-      freed.push({ soul, owner: active, x: from.x, y: from.y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null })
+      freed.push({ soul, owner: active, x: from.x, y: from.y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null })
       lastRelease.set(active, soulClock); soulPulses.set(active, SOUL_PULSE)
       sound('puff', null)
       return soul
@@ -1342,7 +1522,7 @@ export function createCombat() {
       mine.forEach((f, i) => { f.recallIn = i * CALLBACK_GAP })
       return mine.length
     },
-    drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id); for (const f of freed) if (f.owner === id && f.away === null) f.away = 0 } },
+    drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id); for (const f of freed) if (f.owner === id && f.away === null) { letGo(f); f.away = 0 } } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
     // each shown slot's group (the empty slot counts as the last group)
@@ -1388,6 +1568,10 @@ export function createCombat() {
     get hoverSwaps() { return !room() && !inv.some(o => o.item === hover?.owned.item) },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
+    // what a soul's mischief does to this player right now (lib/pigchicken/soul-acts.ts): how far it turns their aim
+    // (radians: the screen adds it to the aim it gives the step) and how far off their notes play (semitones)
+    get aimSkew() { const j = aimSways.get(active); if (!j) return 0; return j.amp * (j.left / j.total) * Math.sin((j.total - j.left) * SOUL_ACT.aim.rate + j.seed) },
+    get detune() { return detuneNow() },
     // the aim's reach (0..1) for the current player, set by the page before step; the loudness it gives the held item
     setAimReach(r: number) { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1 },
     get aimReach() { return aimReach },
@@ -1526,6 +1710,8 @@ export function createCombat() {
         throwT = 0; throwItem = null; throwVoid = input.throwHeld
         input = { ...input, ...NO_SWITCH, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
       }
+      // pecked by a soul (lib/pigchicken/soul-acts.ts): her item does not answer for a moment
+      if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
       const d = def()
       if (consumption) {
         consumption.left -= dt
@@ -1973,6 +2159,14 @@ export function createCombat() {
       }
       // the souls flying free: each one flies with its owner; called back, it leaves for the counter in its turn
       soulClock += dt
+      // what they do needs each owner's fall, the floors and the beat; what they did to a player wears off
+      actGround = ctx
+      for (const id of new Set(freed.map(f => f.owner))) trackFall(id, dt)
+      aimSways.forEach((j, id) => { j.left -= dt; if (j.left <= 0) aimSways.delete(id) })
+      detunes.forEach((d, id) => { d.left -= dt; if (d.left <= 0) detunes.delete(id) })
+      locks.forEach((left, id) => { if (left > dt) locks.set(id, left - dt); else locks.delete(id) })
+      const beatNow = Math.floor(music.beat), onBeat = !Number.isNaN(actBeat) && beatNow !== actBeat
+      actBeat = beatNow
       for (let i = freed.length - 1; i >= 0; i--) {
         const f = freed[i]
         f.t += dt
@@ -1984,10 +2178,15 @@ export function createCombat() {
         }
         if (f.recallIn !== null) {
           f.recallIn -= dt
-          if (f.recallIn <= 0) { freed.splice(i, 1); abductions.push({ soul: f.soul, owner: f.owner, x: f.x, y: f.y, t: 0 }); sound('puff', null); continue }
+          if (f.recallIn <= 0) { letGo(f); freed.splice(i, 1); abductions.push({ soul: f.soul, owner: f.owner, x: f.x, y: f.y, t: 0 }); sound('puff', null); continue }
         }
-        const her = f.owner === active ? lastBody : loadouts.get(f.owner)?.lastBody
-        if (her) soulFollowStep(f.brain, f, her, f.params, { beat: Math.floor(music.beat), air: soulAir }, dt)
+        const her = bodyOf(f.owner)
+        if (!her) continue
+        // called back, it drops everything; off doing something, it does not follow
+        if (f.job && (f.recallIn !== null || !soulJobStep(f, her, dt))) letGo(f)
+        if (f.job) continue
+        soulFollowStep(f.brain, f, her, f.params, { beat: beatNow, air: soulAir }, dt)
+        if (f.recallIn === null) soulActs(f, her, dt, onBeat)
       }
       spreadSouls(freed, dt)
       // souls on their way: each one counts in its owner's basket when it gets to the counter

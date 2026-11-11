@@ -47,6 +47,8 @@ Raras (`RARE_SOULS`; eixo que a receita não cita vale qualquer):
 
 A classe de voo da alma solta vem da entrada (`entryFollowParams`): a da família do instrumento, ou a própria da rara (tabela acima). Uma entrada pode ter números próprios por cima dos da classe (`follow`); o editor de fichas grava esses números. As classes estão em [souls.md](souls.md).
 
+As ações da alma solta (ajuda e atrapalho) saem da entrada do mesmo jeito (`entryActParams`): os números da classe, a chance de atrapalhar da Morta pela raridade da entrada e os próprios da entrada por cima (`act`). As regras estão em [souls.md](souls.md).
+
 ## Coleção (10/11, v2.7.0)
 
 - **Gatilho:** o Passaguá captura um pássaro vivo, um pássaro morto-vivo ou um pintinho que estava no mundo. Alma solta recapturada, tomada de outro player ou chamada pelo Callback não conta de novo.
@@ -74,7 +76,7 @@ Banco em `supabase/migrations/202611110001_pigchicken_souls.sql` (uma linha por 
 - **Lista:** uma seção por espécie, depois Pintinho e Raras, cada uma com quantas já foram encontradas. No cabeçalho, almas encontradas de 88 e estrelas ganhas do total.
 - **Nunca capturada:** só a silhueta preta e “???”; não abre. Nas entradas da regra, parar o mouse em cima diz o estado e a família; as raras não dão dica.
 - **Capturada:** o desenho com brilho, o nome, a raridade na sua cor e as estrelas (ganhas de possíveis). Só o cartão sob o ponteiro ou em foco bate as asas.
-- **Ficha (clique no cartão):** desenho maior, raridade, espécie, estado, instrumento, voo, quantas capturadas, data da primeira captura e as marcas de Notas e Armas: as já vistas com ★ e nome, as que faltam como “?”. Nas raras, o eixo que a receita não fixa aparece como “Qualquer”.
+- **Ficha (clique no cartão):** desenho maior, raridade, espécie, estado, instrumento, voo, a ajuda que ela dá solta e, se a chance não for zero, o atrapalho (“Pela arma que a matou” quando é o da própria alma), quantas capturadas, data da primeira captura e as marcas de Notas e Armas: as já vistas com ★ e nome, as que faltam como “?”. Nas raras, o eixo que a receita não fixa aparece como “Qualquer”.
 - **Escopo:** todos os Pátios e o Templo. Edição só para admin (abaixo).
 
 ## Editor de fichas (admin) (11/11, v2.8.0)
@@ -82,11 +84,11 @@ Banco em `supabase/migrations/202611110001_pigchicken_souls.sql` (uma linha por 
 Só para contas admin (`useIsAdmin`); para as outras o painel não muda.
 
 - **Gatilho:** o lápis no cabeçalho do painel liga e desliga a edição. Ligada, todas as almas aparecem desenhadas e abrem, capturadas ou não.
-- **Ficha aberta:** o nome vira campo de texto (até 40 letras; vazio, a alma fica com o último nome). Grupos: **Ficha** (raridade e classe de voo), **Aparência** (forma, tamanho do pixel de 2 a 8, cores de corpo, asa, barriga, bico e olho, olho brilhante), **Voo** (lado, o que faz no lugar e os dez números; cada um vale por cima do da classe e pode voltar ao dela) e, só nas raras, **Receita** (espécies, estado, instrumentos, notas e armas; eixo sem nada marcado vale qualquer; marcar uma arma fixa o estado em Morta; receita que nenhuma alma cumpre mostra um aviso).
+- **Ficha aberta:** o nome vira campo de texto (até 40 letras; vazio, a alma fica com o último nome). Grupos: **Ficha** (raridade e classe de voo), **Aparência** (forma, tamanho do pixel de 2 a 8, cores de corpo, asa, barriga, bico e olho, olho brilhante), **Voo** (lado, o que faz no lugar e os dez números; cada um vale por cima do da classe e pode voltar ao dela), **Ações** (ajuda, intervalo, alcance e força da ajuda; atrapalho, chance e força do atrapalho; também por cima dos da classe) e, só nas raras, **Receita** (espécies, estado, instrumentos, notas e armas; eixo sem nada marcado vale qualquer; marcar uma arma fixa o estado em Morta; receita que nenhuma alma cumpre mostra um aviso).
 - **Raras:** “Nova rara”, no cabeçalho da seção, cria uma no começo da lista. “Duplicar como rara” copia a alma aberta; a cópia de uma alma da regra pede a espécie, o estado e a família dela. As setas mudam a ordem (a primeira receita que serve leva a alma) e “Excluir” apaga. Cabem até 40 raras. As 76 almas da regra não se criam nem se apagam, e a espécie, o estado e a família delas não mudam.
 - **Padrão:** na ficha, volta aquela alma para a do game; no fim da lista, volta todas.
-- **Efeito imediato:** cada mudança vale na hora neste navegador: a biblioteca, qual entrada cada alma é, o desenho das almas no mundo e o voo das que já estão soltas (`setSoulEntries`, `combat.refreshSouls`). Fica como rascunho do navegador (`localStorage`, chave `pigchicken-soul-sheets-v1`); rascunho igual ao catálogo do game é apagado.
-- **Salvar no game:** grava `data/pigchicken/default-souls.json` pelo Admin local (`npm run admin:dev`; no Admin, a entrada “Almas (fichas da biblioteca)”). Publicar para todos é commit e deploy. O arquivo guarda só o que difere do código: `sheets` (por alma da regra: nome, raridade, classe, o que mudou na aparência e os números de voo) e `rares` (a lista inteira das raras, quando difere). A validação (`soulsFileProblem`) recusa alma ou campo desconhecido e valor que o jogo mudaria (fora dos limites, cor inválida, id repetido).
+- **Efeito imediato:** cada mudança vale na hora neste navegador: a biblioteca, qual entrada cada alma é, o desenho das almas no mundo, e o voo e as ações das que já estão soltas (`setSoulEntries`, `combat.refreshSouls`). Fica como rascunho do navegador (`localStorage`, chave `pigchicken-soul-sheets-v1`); rascunho igual ao catálogo do game é apagado.
+- **Salvar no game:** grava `data/pigchicken/default-souls.json` pelo Admin local (`npm run admin:dev`; no Admin, a entrada “Almas (fichas da biblioteca)”). Publicar para todos é commit e deploy. O arquivo guarda só o que difere do código: `sheets` (por alma da regra: nome, raridade, classe, o que mudou na aparência, os números de voo em `follow` e os de ações em `act`) e `rares` (a lista inteira das raras, quando difere). A validação (`soulsFileProblem`) recusa alma ou campo desconhecido e valor que o jogo mudaria (fora dos limites, cor inválida, id repetido).
 - **Coleção dos jogadores:** é guardada pelo id da entrada. Excluir uma rara ou mudar uma receita não apaga o que já foi capturado: a entrada some da biblioteca e volta com as capturas se o id voltar.
 - **Escopo:** todos os Pátios e o Templo.
 

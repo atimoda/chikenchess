@@ -2,11 +2,11 @@
 
 Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). O Passaguá como item fica em [items.md](items.md); as mortes dos aliens e os pássaros em [temple.md](temple.md); os pintinhos em [../chicken/chicks.md](../chicken/chicks.md); o pouso e a fuga dos pássaros nos fios em [sky-and-power.md](sky-and-power.md); o catálogo, o desenho de cada alma, a coleção e o painel em [soul-library.md](soul-library.md).
 
-Código: `lib/pigchicken/souls.ts` (identidade, raridade, abdução; puro), `lib/pigchicken/soul-follow.ts` (voo do bot amigo, ficha de parâmetros e classes; puro), ganchos em `lib/pigchicken/combat.ts` (`markSoul`, `convert`, `spawnUndead`, `strike`, cesto por player, `releaseSoul`, `callSouls`, `freedSouls`), contador em `drawSoulCounter`/`soulCounterBox` (`components/pigchicken/draw/hud.ts`), voo até o contador e almas soltas em `components/pigchicken/draw/souls.ts`, clique no contador em `components/pigchicken/parquinho.tsx` (`onSoulDown`). Testes: `tests/pigchicken-souls.cases.cjs` e `tests/pigchicken-soul-follow.cases.cjs`.
+Código: `lib/pigchicken/souls.ts` (identidade, raridade, abdução; puro), `lib/pigchicken/soul-follow.ts` (voo do bot amigo, ficha de parâmetros e classes; puro), `lib/pigchicken/soul-acts.ts` (ajudas e atrapalhos: ficha de ações, classes, relógio; puro), ganchos em `lib/pigchicken/combat.ts` (`markSoul`, `convert`, `spawnUndead`, `strike`, cesto por player, `releaseSoul`, `callSouls`, `freedSouls`, `soulActs`, `soulJobStep`, `aimSkew`, `detune`), contador em `drawSoulCounter`/`soulCounterBox` (`components/pigchicken/draw/hud.ts`), voo até o contador e almas soltas em `components/pigchicken/draw/souls.ts`, clique no contador em `components/pigchicken/parquinho.tsx` (`onSoulDown`). Testes: `tests/pigchicken-souls.cases.cjs`, `tests/pigchicken-soul-follow.cases.cjs` e `tests/pigchicken-soul-acts.cases.cjs`.
 
 ## Identidade da alma (10/11, v2.7.0)
 
-Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde veio. Esses eixos decidem qual entrada da biblioteca ela é ([soul-library.md](soul-library.md)), e a entrada dá o desenho e a classe de voo da alma solta. As ajudas de cada classe ainda vão ler o resto.
+Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde veio. Esses eixos decidem qual entrada da biblioteca ela é ([soul-library.md](soul-library.md)), e a entrada dá o desenho, a classe de voo e as ações da alma solta. O atrapalho da alma lê ainda a arma da morte e o tipo de nota (abaixo).
 
 | Eixo | Valores | De onde sai |
 | --- | --- | --- |
@@ -95,6 +95,57 @@ Classes (`SOUL_CLASSES`). A alma voa na classe da sua entrada da biblioteca: a d
 
 - O Passaguá de qualquer player local captura almas soltas no arco do golpe, com a mesma abdução. A alma (a mesma, com a identidade dela) vai para o cesto de quem capturou: a de outro player muda de dono; a própria volta para o próprio cesto.
 
+## Ajudas e atrapalhos (11/11, v2.8.0)
+
+A alma solta age pelo dono, e às vezes contra ele (`lib/pigchicken/soul-acts.ts`; os efeitos em `combat.ts`). Cada alma tem uma ficha de ações (`SoulActParams`) que vem da entrada dela na biblioteca: os números da classe de voo, a chance da Morta pela raridade e, por cima, os próprios da entrada (`entryActParams`). O admin muda tudo no grupo Ações do editor de fichas ([soul-library.md](soul-library.md)).
+
+| Parâmetro | Faixa | Padrão |
+| --- | --- | --- |
+| Ajuda | Nenhuma, Cantar nas harmonias, Cantar no tempo, Buscar item, Avisar perigo, Degrau no ar | A da classe |
+| A cada | 1 a 30 s | 6 s |
+| Alcance | 50 a 800 px | 300 px |
+| Força da ajuda | 0 a 1 | 0,5 |
+| Atrapalho | O da própria alma, Nenhum, Empurrar, Quicar, Desviar a mira, Bicar, Desafinar | O da própria alma |
+| Chance de atrapalhar | 0 a 1 | Viva 0; Morta pela raridade |
+| Força do atrapalho | 0 a 1 | 0,3 |
+
+- **Relógio:** a primeira volta chega entre 40% e 100% de “A cada” depois de solta; as outras, a cada “A cada”. Em cada volta a alma sorteia o atrapalho pela chance. Se não sair, fica pronta e ajuda assim que houver o que fazer; feita a ajuda, o intervalo recomeça. Pronta e sem o que fazer, continua sorteando o atrapalho a cada volta.
+- **Recado:** para buscar item, ser degrau ou atrapalhar de perto, ela larga o lugar e voa reto até o ponto, a 2,2 vezes a velocidade dela (520 px/s no mínimo). Desiste depois de 4 s (9 s carregando item, 1,5 s no degrau) e volta ao lugar.
+- **Cancelamento:** chamada pelo Callback, capturada por um Passaguá ou com o dono fora do jogo, ela para o que fazia; o item que carregava cai de onde ela está.
+
+### Ajudas
+
+| Classe | Ajuda | Números próprios |
+| --- | --- | --- |
+| Sentinela | Cantar nas harmonias | Alcance 600 |
+| Patrulheira | Avisar perigo | Alcance 520 |
+| Escolta | Degrau no ar | |
+| Ritmada | Cantar no tempo | A cada 3 s, alcance 450, força 0,35 |
+| Preguiçosa | Buscar item | A cada 10 s, alcance 600 |
+| Pintinho | Nenhuma | |
+
+- **Cantar nas harmonias:** com um inimigo que nota enche (alien, zumbi ou morto-vivo que ainda não é pássaro, sem escudo total) a até Alcance da alma, ela canta uma nota do acorde da zona, uma oitava acima, na voz do pássaro que ela era; cada canto anda uma nota no acorde. O símbolo da nota aparece sobre a alma e um rastro de faíscas vai até o inimigo mais perto. A harmonia dele sobe 20 × Força da ajuda (10 no padrão), como uma nota de instrumento sem atordoar: vale “Dano só no tom”, o inimigo responde e, com a barra cheia, vira pássaro. A nota da alma não troca a marca que decide que alma o pássaro será (vale a última nota do player); se ninguém tocou nele, fica a família da alma que cantou. Bonecos de treino ficam de fora.
+- **Cantar no tempo:** a mesma nota, só no quadro em que a batida vira, valendo 1,5 vez.
+- **Buscar item:** com um item solto no chão (arremessado, ou largado numa troca; os dos cavaletes não) a até Alcance da alma, a mais de 110 px do dono, que o dono não carrega e para o qual tem lugar (ou consumível que ainda cabe na pilha), ela voa até ele, pega, leva até 50 px acima da cabeça do dono e solta. O item vai pendurado embaixo dela e ninguém o pega no ar; solto, cai aos pés do dono, que pega com Pegar. Duas almas não vão ao mesmo item; se alguém o pegar antes, ela desiste.
+- **Avisar perigo:** com um inimigo (alien, zumbi ou morto-vivo de pé) a até Alcance do dono e do lado para o qual ele está de costas, ela dá dois pios curtos e um “!” vermelho aparece sobre ela e sobre o inimigo mais perto. Não repete o mesmo inimigo antes de 3 intervalos.
+- **Degrau no ar:** com o dono no ar há 0,3 s ou mais, caindo a 220 px/s ou mais, a 150 px ou mais do chão embaixo dele, e a alma a até Alcance dele, ela mergulha até debaixo dos pés (500 px/s mais rápida que a queda). Ao chegar, a queda zera e ele sai para cima a 520 a 980 px/s conforme a Força da ajuda (750 no padrão, pouco mais que um pulo), com faíscas e duas notas. Se ele pousar antes, ela desiste e só fica pronta na volta seguinte.
+
+### Atrapalhos
+
+- **Tipo:** “O da própria alma” (padrão) lê a alma: a Morta atrapalha pela arma que a matou; a Viva de nota Fora da escala desafina; as outras Vivas não atrapalham. A ficha pode fixar outro tipo, ou Nenhum.
+- **Chance:** a da Morta vem da raridade da entrada (comum 10%, incomum 20%, rara 30%, lendária 45%); a da Viva é 0. A alma de nota Fora da escala soma 15% (até 100%).
+- **Aviso:** a alma que vem atrapalhar deixa um rastro vermelho no voo. Capturá-la com o Passaguá antes de ela chegar cancela.
+
+| Atrapalho | De quem, no padrão | Efeito (Força do atrapalho de 0 a 1) |
+| --- | --- | --- |
+| Empurrar | Morta por Explosão | Voa até o lado do dono e estoura sem dano: empurrão radial de 500 a 1500, raio de 230 px, um pouco para cima, em todo boneco e pintinho no raio |
+| Quicar | Morta por Bala | Vai aos pés dele e ele quica: sobe a 420 a 1000 px/s, com até 160 px/s para um lado |
+| Desviar a mira | Morta por Flecha | Passa na frente dele e a mira balança até 12° a 55°, por 0,7 a 1,6 s, cada vez menos. Vale para arma, instrumento e arremesso (`combat.aimSkew`, somado à mira em `parquinho.tsx`) |
+| Bicar | Morta por Impacto | Bica a cabeça: tranco de 160 a 520 px/s para longe dela, e Atirar e Golpe não respondem por 0,25 a 0,9 s |
+| Desafinar | Viva de nota Fora da escala | De onde está, canta um intervalo azedo e mostra “♭”. Por 3 a 9 s as notas do dono saem 0,5 semitom fora, no som e na nota: em zona com “Dano só no tom” não enchem harmonia, e o pássaro que nascer delas conta como Fora da escala |
+
+- **Escopo:** Pátio e Templo, todos os players locais. Cada alma age sobre o próprio dono; o empurrão pega quem estiver no raio. No Pátio online cada navegador vê só as próprias almas e os efeitos delas.
+
 ## Ainda não implementado
 
-Tecla e botão de controle para soltar e chamar, pouso das almas soltas nos fios e fuga de outros players, roubo no Pátio online e as ajudas (e atrapalhos) de cada classe. O plano está fora do código, no documento “Almas capturadas: plano”.
+Tecla e botão de controle para soltar e chamar, pouso das almas soltas nos fios e fuga de outros players, e roubo no Pátio online. O plano está fora do código, no documento “Almas capturadas: plano”.
