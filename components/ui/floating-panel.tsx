@@ -2,9 +2,11 @@
 
 // A popup panel that floats over the page: drag it by its header or any other part that is not a control (a button,
 // a field, a slider, a link, an element with its own pointer handling), resize it by its sides and corners. A press
-// anywhere on it brings it in front of the other panels, and a panel that opens comes in front. Its place and size are
-// remembered in this browser under `id`.
+// anywhere on it brings it in front of the other panels, and a panel that opens comes in front (it is drawn straight in
+// the page's <main>, so no header or layer of its own keeps it behind another panel). The first time, it opens centred
+// near the button that opened it; once moved or resized, its place and size are remembered in this browser under `id`.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import { stageWidth } from "@/lib/stage-size"
 
@@ -43,6 +45,28 @@ function dropPanel(token: number) {
   emit()
 }
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
+
+// The button pressed last, for a moment: a panel that opens without a saved place centres itself on it.
+const OPENER_MS = 1000
+let opener: { rect: DOMRect; at: number } | null = null
+if (typeof window !== "undefined") {
+  window.addEventListener("click", e => {
+    const b = (e.target as Element | null)?.closest?.('button, a, [role="button"], [role="menuitem"]')
+    opener = b ? { rect: b.getBoundingClientRect(), at: performance.now() } : null
+  }, true)
+}
+// centred under the button (above it when it does not fit below), whole on the screen
+function nearOpener(r: Rect): Rect | null {
+  const o = opener
+  opener = null
+  if (!o || performance.now() - o.at > OPENER_MS) return null
+  const vw = stageWidth(), vh = window.innerHeight, b = o.rect
+  const w = Math.min(r.w, vw), h = Math.min(r.h, vh)
+  const x = Math.min(vw - w, Math.max(0, b.left + b.width / 2 - w / 2))
+  const below = b.bottom + 8, above = b.top - 8 - h
+  const y = below + h <= vh || above < 0 ? Math.min(vh - h, below) : above
+  return { x, y: Math.max(0, y), w, h }
+}
 
 // Esc closes the panel opened last (still open and shown) through its own close button, so it closes exactly as a
 // click would. Whoever uses Esc for something else first (cancel a drag, clear a selection, stop waiting for a key)
@@ -125,7 +149,11 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
   const [rect, setRect] = useState<Rect | null>(null)
   const panelRef = useRef<HTMLElement | null>(null)
-  const shown = !!rect
+  // where it is drawn: the page's <main> (or the body), found from a mark left where it is declared
+  const markRef = useRef<HTMLSpanElement | null>(null)
+  const [host, setHost] = useState<HTMLElement | null>(null)
+  useEffect(() => { setHost(markRef.current?.parentElement?.closest("main") ?? document.body) }, [])
+  const shown = !!rect && !!host
   useEffect(() => (shown && panelRef.current ? registerEscClose(panelRef.current) : undefined), [shown])
   const op = useRef<{ pointer: number; edge: Edge | "move"; sx: number; sy: number; start: Rect; armed?: boolean } | null>(null)
   const key = `floating-panel:${id}`
@@ -136,7 +164,9 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
 
   useEffect(() => {
     let r = initial(stageWidth(), window.innerHeight)
-    try { const saved = JSON.parse(window.localStorage.getItem(key) || "null"); if (saved && [saved.x, saved.y, saved.w, saved.h].every(Number.isFinite)) r = saved } catch { /* ignore */ }
+    let saved: Rect | null = null
+    try { const s = JSON.parse(window.localStorage.getItem(key) || "null"); if (s && [s.x, s.y, s.w, s.h].every(Number.isFinite)) saved = s } catch { /* ignore */ }
+    r = saved ?? nearOpener(r) ?? r
     setRect(fit(r, minW, minH, keepInViewport))
     const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport))
     window.addEventListener("resize", onResize)
@@ -182,8 +212,8 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
     setRect(cur => { if (cur) { try { window.localStorage.setItem(key, JSON.stringify(cur)) } catch { /* ignore */ } } return cur })
   }
 
-  if (!rect) return null
-  return (
+  if (!rect || !host) return <span ref={markRef} hidden />
+  return createPortal(
     <aside
       ref={panelRef}
       data-chicken-ignore
@@ -208,6 +238,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
       {EDGES.map(({ edge, className: c, cursor }) => (
         <div key={edge} aria-hidden className={cn("absolute z-10 touch-none", c)} style={{ cursor }} onPointerDown={begin(edge)} />
       ))}
-    </aside>
+    </aside>,
+    host,
   )
 }

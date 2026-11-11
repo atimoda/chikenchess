@@ -35,7 +35,7 @@ import { stageInset, subscribeStageInset } from "@/lib/stage-size"
 import { isChickenControlsListening, loadChickenControls } from "@/lib/chicken/controls"
 import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
-import { GamePreferences } from "@/components/game-preferences"
+import { FpsCounter } from "@/components/fps-preferences"
 import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { BAR_GROUND_H, INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
@@ -616,12 +616,13 @@ export function ChickenPatio() {
           <SlidersHorizontal className="h-4 w-4" />
         </button>
         <VolumeButton />
-        <GamePreferences className="border-white/15 bg-transparent text-[#b9c7b9] hover:border-primary" />
         <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>
         </div>
       </header>
+      {/* the FPS counter (Camadas → Contador de FPS) */}
+      <FpsCounter />
       {/* the avatars: one per local player, at the right end of that player's inventory (drawn by the Parquinho) */}
       <div data-chicken-ignore className="pointer-events-none fixed z-[190] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
         {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] }))].map(row => {
@@ -670,6 +671,7 @@ export function ChickenPatio() {
           currentId={patio?.id ?? null} me={meId} isAdmin={isAdmin} isAccount={isAccount}
           onOpen={switchLobby} onNew={startNewPatio} onLogin={online.openLogin}
           onDeleted={async id => { if (id === patio?.id) await switchLobby(null, false); forgetPatio(id) }}
+          onFavoriteCurrent={pl.favorite}
           onClose={() => setOpenOpen(false)}
         />
       )}

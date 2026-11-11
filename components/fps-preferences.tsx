@@ -13,7 +13,7 @@ export function FpsPreferences() {
   const prefs = useFramePreferences()
   return <div className="grid gap-2 border-t border-border/40 px-2 py-2 text-sm">
     <label className="flex cursor-pointer items-center justify-between gap-5">
-      Mostrar contador de FPS
+      Contador de FPS
       <input type="checkbox" className="size-4 accent-primary" checked={prefs.counter} onChange={e => setFramePreference("counter", e.target.checked)} />
     </label>
     <label className="flex cursor-pointer items-center justify-between gap-5">

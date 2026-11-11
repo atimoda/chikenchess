@@ -5,7 +5,7 @@
 //   only the creator or the godparent rename it), favourite, "Salvar agora" (it also saves itself every minute),
 //   a conflict with someone else's save, and the people: creator, godparent, who edited and who played.
 //   Abrir: a new Pátio (a copy of the default), the default one, my lobbies (or, for the admin, everyone's) with
-//   delete, duplicate and "set as default".
+//   a star to favourite, delete, duplicate and "set as default".
 import { useEffect, useMemo, useState } from "react"
 import { Copy, Crown, FolderOpen, Home, Loader2, Plus, Save, Star, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 import type { PatioRecord } from "@/lib/pigchicken/patio-store"
 import { localPatios } from "@/lib/pigchicken/patio-store"
 import {
-  deletePatioLobby, duplicatePatioLobby, listPatioLobbies, patioErrorMessage, patioOnlineAvailable, setDefaultPatioLobby, unsavedDaysLeft,
+  deletePatioLobby, duplicatePatioLobby, favoritePatioLobby, listPatioLobbies, patioErrorMessage, patioOnlineAvailable, setDefaultPatioLobby, unsavedDaysLeft,
   UNSAVED_DAYS, type PatioLobby, type PatioLobbyInfo, type PatioPerson,
 } from "@/lib/pigchicken/patio-online"
 import type { PatioSaveState } from "./use-patio-lobby"
@@ -210,7 +210,7 @@ function sortRows(rows: PatioLobbyInfo[], sort: Sort, live: PatioLiveCounts) {
   return [...rows].sort(by[sort])
 }
 
-export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNew, onLogin, onDeleted, onClose }: {
+export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNew, onLogin, onDeleted, onFavoriteCurrent, onClose }: {
   currentId: string | null
   me: string | null
   isAdmin: boolean
@@ -219,6 +219,8 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   onNew: (empty?: boolean | 'sunset') => void
   onLogin: () => void
   onDeleted: (id: string) => void | Promise<void>
+  // the star on the open Pátio's row goes through its own state, so the Salvar panel shows it too
+  onFavoriteCurrent: (on: boolean) => Promise<void>
   onClose: () => void
 }) {
   const server = patioOnlineAvailable() && !!me
@@ -267,6 +269,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
       title={r.name ?? "Lobby não salvo"}
       unsaved={!r.name}
       favorite={r.favorite}
+      onFavorite={() => void act(r.id, () => (r.id === currentId ? onFavoriteCurrent(!r.favorite) : favoritePatioLobby(r.id, !r.favorite)))}
       current={r.id === currentId}
       playing={playing(r.id)}
       sub={[r.creatorName && (r.creatorId === me ? "seu" : `de ${r.creatorName}`), r.favorites > 0 && `★ ${r.favorites}`, date(r.updatedAt), !r.name && `apaga em ${unsavedDaysLeft(r)} dias`].filter(Boolean).join(" · ")}
@@ -323,7 +326,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
 
       {server && (
         <ListBox
-          title="Favoritos" emptyText={favAll ? "Ninguém favoritou um Pátio ainda." : "Favorite um Pátio no painel Salvar (estrela)."}
+          title="Favoritos" emptyText={favAll ? "Ninguém favoritou um Pátio ainda." : "Favorite um Pátio pela estrela."}
           all={favAll} onAll={setFavAll} allHint="Todos os Pátios que alguém favoritou"
           sort={favSort} onSort={setFavSort} loading={rows === null}
         >
@@ -392,13 +395,19 @@ function IconBtn({ label, onClick, children }: { label: string; onClick: () => v
   return <button type="button" aria-label={label} title={label} onClick={onClick} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary">{children}</button>
 }
 
-function Row({ title, sub, current, unsaved, favorite, icon, busy, playing = 0, onOpen, children }: {
-  title: string; sub?: string; current?: boolean; unsaved?: boolean; favorite?: boolean; icon?: React.ReactNode; busy?: boolean; playing?: number; onOpen: () => void; children?: React.ReactNode
+// onFavorite: the star toggles the favourite (rows from the server only)
+function Row({ title, sub, current, unsaved, favorite, onFavorite, icon, busy, playing = 0, onOpen, children }: {
+  title: string; sub?: string; current?: boolean; unsaved?: boolean; favorite?: boolean; onFavorite?: () => void; icon?: React.ReactNode; busy?: boolean; playing?: number; onOpen: () => void; children?: React.ReactNode
 }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-1.5 rounded-md border p-2", current ? "border-primary/60 bg-primary/10" : "border-white/10")}>
       {icon}
-      {favorite && <Star className="h-3.5 w-3.5 shrink-0 fill-[#ffd166] text-[#ffd166]" aria-label="Favorito" />}
+      {onFavorite && (
+        <button type="button" aria-label="Favoritar" aria-pressed={!!favorite} title={favorite ? "Desfavoritar" : "Favoritar"} disabled={busy} onClick={onFavorite}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#93a79a] hover:text-[#ffd166]">
+          <Star className={cn("h-4 w-4", favorite && "fill-[#ffd166] text-[#ffd166]")} />
+        </button>
+      )}
       <div className="min-w-0 flex-1">
         <p className={cn("truncate", unsaved ? "italic text-[#ffd166]" : "text-white")}>{title}</p>
         {sub && <p className="truncate text-[10px] text-[#93a79a]">{sub}</p>}
