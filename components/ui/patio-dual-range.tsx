@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils'
 
 // A slider with two points in the look of PatioRange: drag either point (the nearest to the press); points closer
 // than `snap` join (same value). Arrow keys move the focused point; a double click resets.
-export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0, display, hint, hintBelow = false, changed, onChange, onReset }: {
+export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0, display, hint, changed, onChange, onReset }: {
   label: ReactNode; min: number; max: number; step?: number; lo: number; hi: number; snap?: number; display?: ReactNode
-  hint?: string; hintBelow?: boolean; changed?: boolean; onChange: (lo: number, hi: number) => void; onReset?: () => void
+  hint?: string; changed?: boolean; onChange: (lo: number, hi: number) => void; onReset?: () => void
 }) {
   const box = useRef<HTMLDivElement>(null)
   const which = useRef<0 | 1>(0)
@@ -46,6 +46,5 @@ export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0,
       </div>
       {thumb(0, lo)}{thumb(1, hi)}
     </div>
-    {hint && hintBelow && <span className="text-[10px] text-[#93a79a]">{hint}</span>}
   </div>
 }

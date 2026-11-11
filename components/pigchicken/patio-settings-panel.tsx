@@ -30,12 +30,13 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
     <PatioDisclosure title={title} open={!!open[title]} onToggle={v => setOpen(o => ({ ...o, [title]: v }))}>{open[title] && children}</PatioDisclosure>
   )
   return (
-    <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="overflow-y-auto rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
         <h2 className="flex-1 text-sm text-white">Configurações do Pátio</h2>
         {canEdit && <button type="button" onClick={() => set({ screens: DEFAULT_PARQUINHO.screens, height: PATIO_HEIGHT.default, inventory: PATIO_INVENTORY.default })} title="Volta largura, altura e limite do inventário para o padrão" className="h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]">Padrão</button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><X className="h-4 w-4" /></button>
       </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {canEdit ? (
         <>
           <div className="grid gap-[3px] border-b border-white/10 px-4 pb-4">
@@ -87,10 +88,8 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
         </dl>
       )}
-      <p className="px-4 py-3 text-[10px] leading-relaxed text-[#93a79a]">
-        {canEdit ? "Salvo junto com o Pátio. " : "Só quem pode editar este Pátio muda as configurações. "}
-        Os quatro limites têm uma borda preta: a galinha escala as paredes e o teto, e pendura de cabeça para baixo nele.
-      </p>
+      {!canEdit && <p className="px-4 py-3 text-[10px] leading-relaxed text-[#93a79a]">Só quem pode editar este Pátio muda as configurações.</p>}
+      </div>
     </FloatingPanel>
   )
 }

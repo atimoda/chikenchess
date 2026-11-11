@@ -47,6 +47,7 @@ import { SongEditorPanel } from "@/components/pigchicken/song-editor-panel"
 import { MidiPanel } from "@/components/pigchicken/midi-panel"
 import { onOpenJukebox, onOpenMidiGenerator, onOpenSongEditor } from "@/lib/pigchicken/song-library"
 import { songsOnlineAvailable, startSongSync } from "@/lib/pigchicken/song-online"
+import { startSoulSync } from "@/lib/pigchicken/soul-online"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
@@ -146,6 +147,8 @@ export function ChickenPatio() {
   // the jukebox's songs go to the account of whoever is signed in (guests keep them in this browser)
   const songUser = online.user && !online.user.is_anonymous && songsOnlineAvailable() ? online.user.id : null
   useEffect(() => startSongSync(songUser), [songUser])
+  // and so does the soul collection of the Biblioteca de almas
+  useEffect(() => startSoulSync(songUser), [songUser])
   useEffect(() => { setPq(loadParquinho()) }, [])
   const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
@@ -684,12 +687,13 @@ export function ChickenPatio() {
       {midiOpen && <MidiPanel onClose={() => setMidiOpen(false)} />}
       {editingSong && <SongEditorPanel key={editingSong} songId={editingSong} onClose={() => setEditingSong(null)} />}
       {pqOpen && (
-        <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-          <div data-drag-handle className="flex shrink-0 items-center gap-2">
+        <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+          <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
             <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
             <button type="button" onClick={() => { setPq(DEFAULT_PARQUINHO); saveParquinho(DEFAULT_PARQUINHO) }} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
             <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
           <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
             <select aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
               {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -705,6 +709,7 @@ export function ChickenPatio() {
           <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
           <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
           <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
+          </div>
         </FloatingPanel>
       )}
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} editLayout />
@@ -811,11 +816,11 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
   }
   const n = value as number
   return <PatioRange label={<CombinationLabel meta={meta} />} name={meta.label} min={meta.min} max={meta.max} step={meta.step}
-    value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} hintBelow changed={changed}
+    value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed}
     onChange={value => onChange(meta.key, value)} onReset={() => onChange(meta.key, saved.params[meta.key])} />
 }
 
 function PqRange({ label, unit, min, max, step, value, onChange, hint, format }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string; format?: (v: number) => string }) {
-  return <PatioRange label={label} min={min} max={max} step={step} value={value} onChange={onChange} hint={hint} hintBelow
+  return <PatioRange label={label} min={min} max={max} step={step} value={value} onChange={onChange} hint={hint}
     display={format ? format(value) : `${value}${unit ? ` ${unit}` : ""}`} />
 }

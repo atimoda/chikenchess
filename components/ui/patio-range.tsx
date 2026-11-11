@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils'
 
 const RANGE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
 
-export function PatioRange({ label, name, min, max, step = 1, value, display = value, hint, hintBelow = false, changed, onChange, onReset, onEnd }: {
+export function PatioRange({ label, name, min, max, step = 1, value, display = value, hint, changed, onChange, onReset, onEnd }: {
   label: ReactNode; name?: string; min: number; max: number; step?: number; value: number; display?: ReactNode
-  hint?: string; hintBelow?: boolean; changed?: boolean; onChange: (value: number) => void; onReset?: () => void; onEnd?: () => void
+  hint?: string; changed?: boolean; onChange: (value: number) => void; onReset?: () => void; onEnd?: () => void
 }) {
   const fill = Math.max(0, Math.min(100, (value - min) / (max - min) * 100))
   const title = [hint, onReset && 'Duplo clique para voltar ao padrão.'].filter(Boolean).join(' ') || undefined
@@ -25,6 +25,5 @@ export function PatioRange({ label, name, min, max, step = 1, value, display = v
         onPointerCancel={e => e.currentTarget.blur()} onBlur={onEnd}
         className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
     </div>
-    {hint && hintBelow && <span className="text-[10px] text-[#93a79a]">{hint}</span>}
   </div>
 }
