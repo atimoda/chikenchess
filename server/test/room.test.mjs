@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,7 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
-  for (const type of ['foes', 'hits', 'spawn', 'shots']) room.onMessage(type, m => seen[type].push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -156,5 +156,37 @@ test('shared world: the owner sends the enemies, hits and spawns go to the owner
   assert.equal(a.seen.foes.length, 0, 'a follower cannot send enemies, nor the owner gets its own')
   assert.equal(b.seen.foes.length, 1)
   assert.equal(b.seen.hits.length + c.seen.hits.length + b.seen.spawn.length, 0)
+  for (const x of [a, b, c]) await x.room.leave()
+})
+
+test('souls flying free: each browser sends its own to everyone else; one asked for and given goes only to the browser named', async () => {
+  const patioId = '0f000000-0000-4000-8000-000000000005'
+  const a = await browser({ patioId, name: 'Dona' })
+  const b = await browser({ patioId, name: 'Bia' })
+  const c = await browser({ patioId, name: 'Caio' })
+  assert.equal(a.seen.hello.caps.souls, 1, 'the server says it relays them')
+  const pa = a.seen.hello.pid, pb = b.seen.hello.pid, pc = c.seen.hello.pid
+  // anyone flies souls, not only the owner
+  const l = [[pb * 10_000_000 + 7, 500, 200, 1, ['jelly', 'alive', 'wind', 'tonic', null, '#c77dff', 'sabia']]]
+  b.room.send('souls', { l })
+  assert.deepEqual(await until(() => a.seen.souls[0]), { pid: pb, l })
+  await until(() => c.seen.souls[0])
+  // Caio's Passaguá went over it: only Bia hears, and only Caio gets it
+  const take = { k: 's', id: l[0][0] }
+  c.room.send('take', { to: pb, take })
+  assert.deepEqual(await until(() => b.seen.take[0]), { pid: pc, take })
+  const give = { ...take, soul: l[0][4] }
+  b.room.send('give', { to: pc, give })
+  assert.deepEqual(await until(() => c.seen.give[0]), { pid: pb, give })
+  // nobody to give to, itself, too much to carry: dropped
+  b.room.send('take', { to: 99, take })
+  b.room.send('take', { to: pb, take })
+  b.room.send('give', { to: pa, give: { ...give, junk: 'x'.repeat(500) } })
+  b.room.send('souls', { l: Array.from({ length: 65 }, () => l[0]) })
+  await wait(150)
+  assert.equal(b.seen.souls.length, 0, 'its own souls do not come back')
+  assert.equal(a.seen.souls.length, 1); assert.equal(c.seen.souls.length, 1)
+  assert.equal(a.seen.take.length + c.seen.take.length + b.seen.take.length, 1)
+  assert.equal(a.seen.give.length + b.seen.give.length, 0)
   for (const x of [a, b, c]) await x.room.leave()
 })

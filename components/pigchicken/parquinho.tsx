@@ -17,6 +17,8 @@ import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, lookDoses, type Box, type Combat, type Effect } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
+import { getNetState } from "@/lib/chicken/online-room"
+import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { INVENTORY_MAX, inventorySlotFromCode, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
 import { announceHeldItem, bowed, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
@@ -1251,7 +1253,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       lookTargets.push({ x: body.x, y: body.y - 170 * st.scale })
       inWorld()
       drawWorld(ctx, combat, camX, view)
-      drawFreedSouls(ctx, combat, camX, view, extraList.length ? colorsRef.current : null)
+      // online, the other browsers' souls wear a ring in their browser's colour
+      const netPlayers = combat.netSouls.length ? getNetState().info?.players : null
+      drawFreedSouls(ctx, combat, camX, view, extraList.length ? colorsRef.current : null, netPlayers ? pid => { const p = netPlayers.find(q => q.pid === pid); return p ? PLAYER_COLORS[p.color % PLAYER_COLORS.length] : undefined } : undefined)
       drawTempleShots(ctx, temple, camX, view)
       drawStageFan(ctx, stage, combat.noteShots, camX, combat.music.time, combat.music.beatPhase)
       drawNoteShots(ctx, combat.noteShots, camX, view)

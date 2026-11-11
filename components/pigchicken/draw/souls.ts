@@ -1,7 +1,7 @@
 // Souls on their way to a counter: each one flies from where it was caught (the world) to the counter of the player
 // who caught it (the screen), shrinking, with a glow and a streak in its colour. And the souls let out of the
 // baskets, flying with their owners in the world. Each one is drawn as its entry in the library (./soul-art.ts).
-import { ABDUCT_TIME, abductPoint } from "@/lib/pigchicken/souls"
+import { ABDUCT_TIME, abductPoint, type Soul } from "@/lib/pigchicken/souls"
 import { type Combat } from "@/lib/pigchicken/combat"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { stageWidth } from "@/lib/stage-size"
@@ -46,10 +46,11 @@ const RELEASE_GROW = 0.35
 
 // The souls flying free, in world px (inside the world's transform): each one as its entry, with a glow in its
 // colour. tints: each local player's colour, given only when more than one plays here; a ring says whose it is.
-export function drawFreedSouls(ctx: Ctx, combat: Combat, camX: number, view: ViewRect, tints?: Readonly<Record<string, string>> | null) {
-  for (const f of combat.freedSouls) {
-    if (!intersectsView({ x: f.x - 40, y: f.y - 40, w: 80, h: 80 }, view, 32)) continue
-    const grow = Math.min(1, 0.3 + (f.t / RELEASE_GROW) * 0.7), tint = tints?.[f.owner]
+// Online, the other browsers' souls fly here too (combat.netSouls), each with a ring in its browser's colour (netTint).
+export function drawFreedSouls(ctx: Ctx, combat: Combat, camX: number, view: ViewRect, tints?: Readonly<Record<string, string>> | null, netTint?: (pid: number) => string | undefined) {
+  const one = (f: { x: number; y: number; face: number; t: number; soul: Soul }, tint: string | undefined) => {
+    if (!intersectsView({ x: f.x - 40, y: f.y - 40, w: 80, h: 80 }, view, 32)) return
+    const grow = Math.min(1, 0.3 + (f.t / RELEASE_GROW) * 0.7)
     ctx.save()
     ctx.translate(f.x - camX, f.y); ctx.scale(grow, grow)
     ctx.globalAlpha = 0.2; ctx.fillStyle = f.soul.color
@@ -59,4 +60,7 @@ export function drawFreedSouls(ctx: Ctx, combat: Combat, camX: number, view: Vie
     drawSoulArt(ctx, 0, 0, f.face, f.t + f.soul.id * 0.37, soulLook(f.soul))
     ctx.restore()
   }
+  for (const f of combat.freedSouls) one(f, tints?.[f.owner])
+  // one this browser asked for is on its way out: the little cloud is all that shows
+  for (const m of combat.netSouls) if (m.asked === null) one(m, netTint?.(m.pid))
 }

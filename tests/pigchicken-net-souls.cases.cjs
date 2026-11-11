@@ -1,0 +1,265 @@
+// The souls flying free in the online Pátio (lib/pigchicken/net-souls.ts and the combat's hooks): each browser's
+// souls mirrored on the others, a Passaguá over a mirror asking its browser for the soul, and the undead birds
+// asked of the lobby's owner.
+const { test } = require('node:test')
+const assert = require('node:assert/strict')
+const { loadTs } = require('./helpers/music.cjs')
+const S = loadTs('lib/pigchicken/souls.ts')
+const N = loadTs('lib/pigchicken/net-souls.ts')
+const W = loadTs('lib/pigchicken/net-world.ts')
+const { createCombat } = loadTs('lib/pigchicken/combat.ts')
+
+const me = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
+function step(c, input = {}, angle = 0, world = true) {
+  c.step(0.016, me, { x: 0, y: 0 }, { x: 0, y: 0 }, angle,
+    { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...input },
+    [], 40, () => {}, { world, peckOrigin: { x: 0, y: 0 } })
+}
+function world(item) {
+  const c = createCombat()
+  c.setMusicOut({ note: () => {}, hold: () => null, drum: () => {} })
+  c.setView(-1000, 1000)
+  c.setNetOn(true)
+  if (item) { c.give(item); step(c, { slot: 1 }) }
+  return c
+}
+const land = c => { for (let t = 0; t < S.ABDUCT_TIME + 0.4; t += 0.016) step(c) }
+// n chicks caught, one sweep each
+function basketOf(c, n) {
+  for (let k = 0; k < n; k++) {
+    c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
+    for (let i = 0; i < 50; i++) step(c, { melee: i === 0 })
+  }
+  c.setCatchables([])
+  land(c)
+}
+const holdSoul = (f, x, y) => { Object.assign(f.brain, { x, y, ax: x, ay: y, vx: 0, vy: 0, mode: 'rest', settle: 0 }); f.x = x; f.y = y }
+const holdMirror = (m, x, y) => Object.assign(m, { x, y, netX: x, netY: y })
+const A = 3, B = 5 // the browsers' pids
+
+test('what a soul is travels whole, and junk is not a soul', () => {
+  const soul = S.newSoul(12, S.originOf('lantern', 'dead', { shot: 'strings', note: 'leading', weapon: 'arrow' }), '#ff3b3b', 'sabia')
+  const who = N.soulWho(soul)
+  assert.deepEqual(who, ['lantern', 'dead', 'strings', 'leading', 'arrow', '#ff3b3b', 'sabia'])
+  assert.deepEqual(N.soulFromWho(JSON.parse(JSON.stringify(who)), 12), soul, 'the same soul on the other side, rarity and all')
+  assert.equal(N.soulFromWho(who, 77).id, 77, 'with the id the browser that takes it gives')
+  const chick = N.soulFromWho(['chick', 'alive', null, null, null, S.CHICK_SOUL_COLOR, 'sabia'], 1)
+  assert.deepEqual({ bird: chick.bird, weapon: chick.weapon, rarity: chick.rarity }, { bird: null, weapon: null, rarity: 'common' })
+  assert.equal(N.soulFromWho(['jelly', 'dead', 'nope', 'nope', 'nope', '#fff', 'nope'], 1).weapon, 'impact', 'a dead one always died of something')
+  assert.deepEqual((({ shot, note, bird }) => ({ shot, note, bird }))(N.soulFromWho(['jelly', 'alive', 'nope', 7, {}, '#fff', 'nope'], 1)), { shot: null, note: null, bird: null })
+  for (const junk of [null, 'jelly', [], ['nope', 'alive', null, null, null, '#fff', null], ['jelly', 'asleep', null, null, null, '#fff', null], ['jelly', 'alive', null, null, null, 'url(javascript:1)', null], ['jelly', 'alive', null, null, null, 7, null], ['constructor', 'alive', null, null, null, '#fff', null]])
+    assert.equal(N.soulFromWho(junk, 1), null, JSON.stringify(junk))
+  assert.deepEqual(N.cleanTake({ k: 's', id: 30000007, junk: 1 }), { k: 's', id: 30000007 })
+  for (const junk of [null, { k: 'x', id: 1 }, { k: 's', id: 'a' }, { k: 's', id: -1 }, { k: 'f' }]) assert.equal(N.cleanTake(junk), null)
+  assert.deepEqual(N.cleanGive({ k: 'f', id: 5, soul: [...who, 'more'] }), { k: 'f', id: 5, soul: who })
+  assert.equal(N.cleanGive({ k: 's', id: 5, soul: ['nope'] }), null)
+  assert.equal(N.cleanGive({ k: 's', id: 5 }), null)
+})
+
+test("a browser's souls show on the others as mirrors that glide to where they are, and leave when they do", () => {
+  const a = world('passagua'), b = world()
+  basketOf(a, 2)
+  a.releaseSoul({ x: 300, y: -300 }); a.releaseSoul({ x: 300, y: -300 })
+  for (let t = 0; t < 1; t += 0.016) step(a)
+  const [one, other] = a.freedSouls
+  holdSoul(one, 200, -150); holdSoul(other, -400, -200)
+  const told = new Set()
+  const first = N.exportSouls(a.freedSouls, A, told, false)
+  assert.equal(first.length, 2)
+  assert.deepEqual(first[0], [W.netIdFor(A, one.soul.id), 200, -150, one.face, N.soulWho(one.soul)], 'what it is goes the first time')
+  b.importNetSouls(A, JSON.parse(JSON.stringify(first)))
+  assert.equal(b.netSouls.length, 2)
+  const m = b.netSouls[0]
+  assert.deepEqual({ net: m.net, pid: m.pid, x: m.x, y: m.y, asked: m.asked }, { net: first[0][0], pid: A, x: 200, y: -150, asked: null })
+  assert.deepEqual(m.soul, { ...one.soul }, 'the same soul: it is drawn as its entry in the library')
+  // it moves there: only the place travels now, and the mirror glides to it
+  holdSoul(one, 260, -150)
+  const next = N.exportSouls(a.freedSouls, A, told, false)
+  assert.ok(next.every(e => e.length === 4), 'what it is is not told again')
+  assert.equal(N.exportSouls(a.freedSouls, A, told, true)[0].length, 5, 'unless everything is (someone joined, or now and then)')
+  b.importNetSouls(A, next)
+  step(b)
+  assert.ok(m.x > 200 && m.x < 260 && m.netX === 260, `on its way (${m.x})`)
+  for (let i = 0; i < 60; i++) step(b)
+  assert.ok(Math.abs(m.x - 260) < 0.5)
+  // a browser that only now hears of it (no `who` yet) waits; a portal takes it straight there
+  const late = world()
+  late.importNetSouls(A, next)
+  assert.equal(late.netSouls.length, 0)
+  holdSoul(one, 5000, -150)
+  b.importNetSouls(A, N.exportSouls(a.freedSouls, A, told, false))
+  assert.equal(m.x, 5000)
+  // souls that are not that browser's are refused; another browser's list does not touch these
+  b.importNetSouls(B, [[W.netIdFor(A, 999), 0, 0, 1, N.soulWho(one.soul)], [W.netIdFor(B, 1), 1e9, 0, 1, N.soulWho(one.soul)], 'junk', [W.netIdFor(B, 2), 10, 20, -1, ['nope']]])
+  assert.equal(b.netSouls.length, 2)
+  b.importNetSouls(B, [[W.netIdFor(B, 2), 10, 20, -1, N.soulWho(other.soul)]])
+  assert.deepEqual(b.netSouls.map(x => x.pid), [A, A, B])
+  assert.equal(b.netSouls[2].face, -1)
+  // called back on its browser: it stops being sent, and leaves here in a little cloud
+  step(a); a.callSouls()
+  for (let t = 0; t < 1.5; t += 0.016) step(a)
+  assert.equal(a.freedSouls.length, 0)
+  const puffs = b.puffs.length
+  b.importNetSouls(A, N.exportSouls(a.freedSouls, A, told, false))
+  assert.deepEqual(b.netSouls.map(x => x.pid), [B])
+  assert.equal(b.puffs.length, puffs + 2)
+  assert.equal(told.size, 0)
+  // a browser that left the lobby takes its souls with it; offline, none of the others' stay
+  b.keepNetSouls(new Set([A]))
+  assert.equal(b.netSouls.length, 0)
+  b.importNetSouls(B, [[W.netIdFor(B, 2), 10, 20, -1, N.soulWho(other.soul)]])
+  b.setNetOn(false)
+  assert.equal(b.netSouls.length, 0)
+  // no more than 64 of one browser
+  const many = Array.from({ length: 80 }, (_, i) => ({ soul: { ...one.soul, id: i + 1 }, x: i, y: 0, face: 1 }))
+  assert.equal(N.exportSouls(many, A, new Set(), true).length, N.NET_SOULS_MAX)
+})
+
+test("a Passaguá over another browser's soul asks that browser for it; it is given once and changes baskets", () => {
+  const a = world('passagua'), b = world('passagua'), c = world('passagua')
+  basketOf(a, 1)
+  const soul = a.basket[0]
+  a.releaseSoul({ x: 40, y: 0 })
+  const told = new Set()
+  const sync = () => { const l = N.exportSouls(a.freedSouls, A, told, true); b.importNetSouls(A, l); c.importNetSouls(A, l) }
+  sync()
+  const m = b.netSouls[0], id = m.net
+  // B sweeps where it is: a little cloud, the mirror hides, and nothing counts yet
+  b.soulNews.length = 0
+  for (let i = 0; i < 40; i++) { holdMirror(m, 40, 0); step(b, { melee: i === 0 }) }
+  assert.deepEqual(b.netTakes, [{ k: 's', id, pid: A }], 'asked once, of the browser that flies it')
+  assert.equal(m.asked !== null, true)
+  assert.ok(b.puffs.length > 0 || b.sounds.some(s => s.kind === 'puff'))
+  land(b)
+  assert.equal(b.capturedSouls, 0, 'not in the basket before the answer')
+  assert.equal(b.abductions.length, 0)
+  // C asks too, a moment later
+  for (let i = 0; i < 40; i++) { holdMirror(c.netSouls[0], 40, 0); step(c, { melee: i === 0 }) }
+  // A gives it to the first one that asked, and has nothing for the second
+  const take = N.cleanTake(b.netTakes.splice(0)[0])
+  const who = a.giveNetTake(take, A)
+  assert.deepEqual(who, N.soulWho(soul))
+  assert.equal(a.freedSouls.length, 0, 'it left the browser that flew it')
+  assert.equal(a.capturedSouls, 0, 'and its basket')
+  assert.equal(a.giveNetTake(N.cleanTake(c.netTakes.splice(0)[0]), A), null, 'given once')
+  assert.equal(a.giveNetTake({ k: 's', id: W.netIdFor(B, soul.id) }, A), null, "another browser's id is not this one's soul")
+  // the answer: it flies to B's counter and counts; it is new to B's library
+  assert.equal(b.applyNetGive(N.cleanGive({ ...take, soul: who })), true)
+  assert.equal(b.abductions.length, 1)
+  assert.deepEqual({ x: b.abductions[0].x, y: b.abductions[0].y, owner: b.abductions[0].owner }, { x: 40, y: 0, owner: 'p1' }, 'from where it was caught')
+  land(b)
+  assert.equal(b.capturedSouls, 1)
+  const got = b.basket[0]
+  assert.deepEqual(N.soulWho(got), N.soulWho(soul), 'the same soul')
+  assert.equal(b.soulNews.length, 1)
+  assert.equal(b.soulNews[0].soul, got)
+  assert.equal(b.applyNetGive(N.cleanGive({ ...take, soul: who })), false, 'the same answer twice counts once')
+  assert.equal(c.applyNetGive({ k: 's', id: 123, soul: who }), false, 'an answer nobody asked for is nothing')
+  // A no longer sends it: the mirrors leave (no second cloud where a Passaguá just made one)
+  const puffs = c.puffs.length
+  sync()
+  assert.equal(b.netSouls.length + c.netSouls.length, 0)
+  assert.equal(c.puffs.length, puffs)
+  // and B lets it out: now it is B's, and A sees it
+  b.releaseSoul({ x: 0, y: -100 })
+  a.importNetSouls(B, N.exportSouls(b.freedSouls, B, new Set(), true))
+  assert.deepEqual(N.soulWho(a.netSouls[0].soul), N.soulWho(soul))
+})
+
+test('a soul asked for and never answered shows again; a late answer is nothing', () => {
+  const a = world('passagua'), b = world('passagua')
+  basketOf(a, 1)
+  a.releaseSoul({ x: 40, y: 0 })
+  b.importNetSouls(A, N.exportSouls(a.freedSouls, A, new Set(), true))
+  const m = b.netSouls[0]
+  for (let i = 0; i < 40; i++) { holdMirror(m, 40, 0); step(b, { melee: i === 0 }) }
+  const take = b.netTakes.splice(0)[0]
+  assert.ok(m.asked !== null)
+  for (let t = 0; t < N.TAKE_WAIT; t += 0.016) step(b)
+  assert.equal(m.asked, null, 'back in sight')
+  for (let t = 0; t < N.TAKE_WAIT * 1.2; t += 0.016) step(b)
+  assert.equal(b.applyNetGive({ k: take.k, id: take.id, soul: N.soulWho(a.freedSouls[0].soul) }), false)
+  // offline nothing is asked
+  b.setNetOn(false)
+  assert.equal(b.netTakes.length, 0)
+})
+
+test("the lobby owner's undead bird is asked of the owner by the other browsers, and caught once", () => {
+  const random = Math.random
+  Math.random = () => 0.5
+  const owner = world('flute'), follower = world('passagua')
+  follower.setNetFollower(() => {}); follower.setNetAsks(true)
+  // a training alien of the Catálogo (the lobby shares those), shot down and brought back by notes
+  owner.targets.push({ id: 900, kind: 'alien', home: 0, x: 200, y: 15, w: 40, h: 30, hp: 0.0001, maxHp: 1, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'hold', animT: 0, data: { kind: 'temple', species: 'jelly', color: '#c77dff', variant: 'v1' } })
+  owner.give('pistol'); step(owner, { slot: 2 })
+  step(owner, { fire: true, firePressed: true })
+  for (let t = 0; t < 3; t += 0.016) step(owner)
+  const u = owner.undead[0]
+  Math.random = random
+  step(owner, { slot: 1 })
+  for (let i = 0; i < 40 && !u.data.bird; i++) step(owner, { fire: true, firePressed: i % 2 === 0 }, Math.atan2(30, 200))
+  assert.ok(u.data.bird, 'an undead bird on the owner')
+  const formations = new Map(), cache = W.newFoeCache()
+  const sync = () => { const msg = W.exportFoes(owner.targets, A, cache, true); W.importFoes(follower.targets, { ...msg, l: msg.l.filter(e => !follower.netFoeTaken(e[0])) }, formations) }
+  sync()
+  const m = follower.targets.find(t => t.mirror && t.kind === 'undead')
+  assert.ok(m && m.net === u.net, 'mirrored on the other browser')
+  // its Passaguá goes over the mirror: it is asked of the owner and hides, even when the owner's list comes again
+  for (let i = 0; i < 40; i++) { Object.assign(m, { x: 40, y: m.h / 2, netX: 40, netY: m.h / 2 }); step(follower, { melee: i === 0 }) }
+  assert.deepEqual(follower.netTakes, [{ k: 'f', id: u.net }])
+  assert.equal(follower.targets.includes(m), false)
+  assert.equal(follower.netFoeTaken(u.net), true)
+  sync()
+  assert.equal(follower.targets.some(t => t.net === u.net), false, 'it does not come back while the answer is on its way')
+  land(follower)
+  assert.equal(follower.capturedSouls, 0, 'and it is not a soul yet: it cannot be caught twice')
+  // the owner lets it go and says what it is: the dead soul it would be there, with the weapon that killed it
+  const take = follower.netTakes.splice(0)[0]
+  const who = owner.giveNetTake(take, A)
+  assert.deepEqual(who.slice(0, 5), ['jelly', 'dead', 'wind', u.soul.note, 'bullet'])
+  assert.equal(owner.targets.includes(u), false)
+  assert.equal(owner.giveNetTake(take, A), null, 'once')
+  assert.equal(follower.applyNetGive(N.cleanGive({ ...take, soul: who })), true)
+  land(follower)
+  assert.equal(follower.capturedSouls, 1)
+  assert.deepEqual((({ species, state, shot, weapon, bird }) => ({ species, state, shot, weapon, bird }))(follower.basket[0]), { species: 'jelly', state: 'dead', shot: 'wind', weapon: 'bullet', bird: u.data.bird })
+  for (let t = 0; t < N.TAKE_WAIT; t += 0.016) step(follower)
+  assert.equal(follower.netFoeTaken(u.net), false)
+  // a game server that does not pass the asking on: the mirror is caught here, as before
+  const old = world('passagua')
+  old.setNetFollower(() => {})
+  old.targets.push({ ...m, data: { ...m.data } })
+  const copy = old.targets[old.targets.length - 1]
+  for (let i = 0; i < 40; i++) { Object.assign(copy, { x: 40, y: copy.h / 2, netX: 40, netY: copy.h / 2 }); step(old, { melee: i === 0 }) }
+  land(old)
+  assert.equal(old.netTakes.length, 0)
+  assert.equal(old.capturedSouls, 1)
+  // a bird that is not one yet (or an enemy that is not a bird) is not given
+  owner.targets.push({ id: 901, net: W.netIdFor(A, 901), kind: 'zombie', home: 0, x: 0, y: 0, w: 40, h: 80, hp: 10, maxHp: 10, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'walk', animT: 0 })
+  assert.equal(owner.giveNetTake({ k: 'f', id: W.netIdFor(A, 901) }, A), null)
+})
+
+test("online, a note sung by a soul fills the owner's enemy without changing what it remembers; the bird a browser sees takes after its own last note", () => {
+  const owner = world(), follower = world()
+  const hits = []
+  follower.setNetFollower(h => hits.push(h))
+  const alien = { id: 900, kind: 'alien', home: 0, x: 200, y: 15, w: 40, h: 30, hp: 100, maxHp: 100, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'hold', animT: 0, data: { kind: 'temple', species: 'jelly', color: '#c77dff', variant: 'v1' } }
+  owner.targets.push(alien)
+  W.importFoes(follower.targets, W.exportFoes(owner.targets, A, W.newFoeCache(), true), new Map())
+  const m = follower.targets.find(t => t.mirror)
+  // the owner hears a flute note from the other browser: the alien remembers the flute
+  const root = owner.music.zone.root
+  assert.equal(owner.applyNetHit({ id: alien.net, d: 10, px: 0, x: 200, y: 0, n: { m: root, c: '#fff', s: '♪', v: 'flute', w: 0 }, st: 0 }), true)
+  assert.deepEqual(alien.soul, { shot: 'wind', note: 'tonic' })
+  // then a soul's song (a bird's voice): it fills, and the flute is still what it remembers
+  assert.equal(owner.applyNetHit({ id: alien.net, d: 10, px: 0, x: 200, y: 0, n: { m: root + 7, c: '#fff', s: '♪', v: 'bird', w: 0 }, st: 0 }), true)
+  assert.equal(alien.harmony, 20)
+  assert.deepEqual(alien.soul, { shot: 'wind', note: 'tonic' })
+  // on the other browser, its own flute note marks the mirror it sees
+  follower.give('flute'); step(follower, { slot: 1 })
+  for (let i = 0; i < 60 && !hits.length; i++) step(follower, { fire: true, firePressed: i % 2 === 0 })
+  assert.ok(hits.length && hits[0].n, 'the note was reported to the owner')
+  assert.equal(m.soul.shot, 'wind')
+  follower.netChange(m, 'convert')
+  assert.equal(follower.critters[0].soul.shot, 'wind', 'and the bird it becomes here remembers it')
+})

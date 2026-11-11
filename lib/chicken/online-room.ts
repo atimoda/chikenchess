@@ -6,6 +6,7 @@ import { Client, type Room } from '@colyseus/sdk'
 import { receiveChickenChat, setChickenChatTransport } from './chat'
 import { byteAngle, decodeNetSnapshot, encodeNetState, NET_MAX_BROWSERS, type NetChicken } from './net-protocol'
 import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world'
+import type { NetGive, NetSoul, NetTake } from '../pigchicken/net-souls'
 
 /* global process */
 // ws(s)://host[:port] of the game server; in development it defaults to the one `cd server && npm start` runs
@@ -32,18 +33,26 @@ const savedListeners = new Set<SavedListener>()
 export function onNetLayout(fn: LayoutListener) { layoutListeners.add(fn); return () => { layoutListeners.delete(fn) } }
 export function onNetSaved(fn: SavedListener) { savedListeners.add(fn); return () => { savedListeners.delete(fn) } }
 // the shared world (lib/pigchicken/net-world-sync.ts): the owner's enemies, hits and spawns asked of the owner,
-// everyone's shots. Unchecked: the listener cleans them.
+// everyone's shots; the souls each browser flies, and the ones asked of it and given (lib/pigchicken/net-souls.ts).
+// Unchecked: the listener cleans them.
 export type NetWorldMsg =
   | { type: 'foes'; foes: NetFoes }
   | { type: 'hits'; pid: number; list: unknown[] }
   | { type: 'spawn'; pid: number; spawn: unknown }
   | { type: 'shots'; pid: number; list: unknown[] }
+  | { type: 'souls'; pid: number; list: unknown[] }
+  | { type: 'take'; pid: number; take: unknown }
+  | { type: 'give'; pid: number; give: unknown }
 type WorldListener = (m: NetWorldMsg) => void
 const worldListeners = new Set<WorldListener>()
 export function onNetWorld(fn: WorldListener) { worldListeners.add(fn); return () => { worldListeners.delete(fn) } }
 const toWorld = (m: NetWorldMsg) => worldListeners.forEach(fn => fn(m))
 let room: Room | null = null
 let seq = 0
+// what the server says it relays beyond its first messages (an older one says nothing: a message it does not know
+// would close the connection, so those are only sent to a server that asked for them)
+let caps: Record<string, unknown> = {}
+export const netCan = (cap: 'souls') => !!caps[cap]
 const listeners = new Set<() => void>()
 const remotes = new Map<string, RemoteChicken>()
 const set = (patch: Partial<NetState>) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()) }
@@ -98,7 +107,8 @@ export async function joinPatioOnline(opts: JoinOptions): Promise<{ ok: true } |
 function attach(r: Room) {
   room = r
   remotes.clear()
-  r.onMessage('hello', (m: { pid: number; room: NetRoomInfo }) => set({ status: 'online', myPid: m.pid, info: m.room }))
+  caps = {}
+  r.onMessage('hello', (m: { pid: number; room: NetRoomInfo; caps?: Record<string, unknown> }) => { caps = m.caps && typeof m.caps === 'object' ? m.caps : {}; set({ status: 'online', myPid: m.pid, info: m.room }) })
   r.onMessage('room', (info: NetRoomInfo) => {
     // chickens of browsers that left (or fewer chickens now) stop being drawn
     const alive = new Set(info.players.flatMap(p => Array.from({ length: p.chickens }, (_, s) => `${p.pid}:${s}`)))
@@ -123,11 +133,14 @@ function attach(r: Room) {
   r.onMessage('hits', (m: { pid: number; list: unknown[] }) => { if (Array.isArray(m?.list)) toWorld({ type: 'hits', pid: m.pid, list: m.list }) })
   r.onMessage('spawn', (m: { pid: number; spawn: unknown }) => toWorld({ type: 'spawn', pid: m?.pid, spawn: m?.spawn }))
   r.onMessage('shots', (m: { pid: number; list: unknown[] }) => { if (m?.pid !== state.myPid && Array.isArray(m?.list)) toWorld({ type: 'shots', pid: m.pid, list: m.list }) })
+  r.onMessage('souls', (m: { pid: number; l: unknown[] }) => { if (m?.pid !== state.myPid && Array.isArray(m?.l)) toWorld({ type: 'souls', pid: m.pid, list: m.l }) })
+  r.onMessage('take', (m: { pid: number; take: unknown }) => toWorld({ type: 'take', pid: m?.pid, take: m?.take }))
+  r.onMessage('give', (m: { pid: number; give: unknown }) => toWorld({ type: 'give', pid: m?.pid, give: m?.give }))
   r.onMessage('denied', (m: { reason: string }) => set({ notice: m.reason }))
   r.onMessage('kicked', (m: { reason: string }) => set({ notice: m.reason }))
   r.onLeave(() => {
     if (room !== r) return
-    room = null; remotes.clear(); setChickenChatTransport(null)
+    room = null; caps = {}; remotes.clear(); setChickenChatTransport(null)
     set({ status: 'off', info: null, myPid: null })
   })
   // this screen's messages go to the room too (the server sends them to everyone else)
@@ -136,7 +149,7 @@ function attach(r: Room) {
 
 export async function leavePatioOnline() {
   const r = room
-  room = null
+  room = null; caps = {}
   remotes.clear()
   setChickenChatTransport(null)
   if (r) { try { await r.leave() } catch { /* already gone */ } }
@@ -162,6 +175,11 @@ export const sendNetFoes = (foes: NetFoes) => live()?.send('foes', foes)
 export const sendNetHits = (list: NetHit[]) => live()?.send('hits', { list })
 export const sendNetSpawn = (spawn: NetSpawn) => live()?.send('spawn', { spawn })
 export const sendNetShots = (list: NetShot[]) => live()?.send('shots', { list })
+// the souls flying free: the ones this browser flies; one asked of the browser `to`; one given to it
+const soulful = () => (netCan('souls') ? live() : null)
+export const sendNetSouls = (l: NetSoul[]) => soulful()?.send('souls', { l })
+export const sendNetTake = (to: number, take: NetTake) => soulful()?.send('take', { to, take })
+export const sendNetGive = (to: number, give: NetGive) => soulful()?.send('give', { to, give })
 
 const httpBase = () => GAME_SERVER_URL.replace(/^ws/, 'http')
 /** the public lobbies on the server, oldest first (empty when it cannot be reached) */

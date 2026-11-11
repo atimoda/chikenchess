@@ -17,7 +17,8 @@ import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, pizzicato, 
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
-import { glideMirror, isSharedTarget, type NetHit, type NetShot } from './net-world'
+import { glideMirror, isSharedTarget, netIdFor, type NetHit, type NetShot } from './net-world'
+import { TAKE_WAIT, glideSoulMirror, importSouls, soulFromWho, soulWho, type NetGive, type NetSoulWho, type NetTake, type SoulMirror } from './net-souls'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
@@ -440,6 +441,8 @@ export function createCombat() {
       t.flash = 0.12; t.tint = note.color
       texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
       burst(x, y, 4, note.color, 120, 3)
+      // the bird this browser will see takes after the last note played to it here
+      markSoul(t, note, by)
       reportHit({ id: t.net, d: amount, px: pushX, x, y, n: { m: note.midi, c: note.color, s: note.sym, v: note.voice, w: note.wave }, st: stun })
       return
     }
@@ -584,6 +587,16 @@ export function createCombat() {
   // the souls out of the baskets (the world's: each one knows whose it is), the world's clock for them and when each
   // player last let one out
   const freed: FreeSoul[] = []
+  // online (lib/pigchicken/net-souls.ts): the souls the other browsers fly, drawn here; what this browser asks of the
+  // others, for the sync to send (pid: the browser that flies the soul; none: the lobby's owner); who asked and
+  // where, until the answer comes; the owner's undead birds asked for, hidden meanwhile (s left)
+  const soulMirrors: SoulMirror[] = []
+  const netTakes: (NetTake & { pid?: number })[] = []
+  const asked = new Map<string, { owner: string; x: number; y: number; t: number }>()
+  const takenFoes = new Map<number, number>()
+  // whether the others can be asked at all (the game server relays it): without it, the owner's undead bird is caught
+  // here as it always was
+  let netAsks = false
   const lastRelease = new Map<string, number>()
   let soulClock = 0
   // the walls of the world and the top of the sky the camera shows (the Parquinho keeps it up to date)
@@ -1052,6 +1065,8 @@ export function createCombat() {
         if (!u?.bird || (u.phase !== 'bird' && u.phase !== 'leave')) continue
         const x = t.x, y = t.y - t.h / 2
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35)) continue
+        // the lobby owner's bird, on another browser: it is asked of the owner, and hides here until the answer
+        if (t.mirror && reportHit && netAsks && t.net !== undefined) { targets.splice(i, 1); takenFoes.set(t.net, TAKE_WAIT); askFor({ k: 'f', id: t.net }, x, y); continue }
         if (u.perch && perchWorld) perchEnd(perchWorld, u.perch)
         targets.splice(i, 1); caught.push({ x, y, wild: true, soul: newSoul(nextId++, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird) })
       }
@@ -1067,6 +1082,11 @@ export function createCombat() {
         const f = freed[i]
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
         letGo(f); freed.splice(i, 1); caught.push({ x: f.x, y: f.y, wild: false, soul: f.soul })
+      }
+      // online, a soul another browser flies: it is asked of that browser
+      for (const m of soulMirrors) {
+        if (m.asked !== null || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, m.x, m.y, 16)) continue
+        m.asked = 0; askFor({ k: 's', id: m.net, pid: m.pid }, m.x, m.y)
       }
       // the chicks that follow her: caught like the birds, they count as souls too
       catchables = catchables.filter(c => {
@@ -1318,6 +1338,14 @@ export function createCombat() {
   }
   // the item it carries hangs under it, and nobody takes it from the air
   const hang = (f: FreeSoul, p: Pickup) => { p.x = f.x; p.y = f.y + SOUL_ACT.fetch.hang; p.resting = true; p.vy = 0; p.noPick = Math.max(p.noPick, 0.2) }
+  const cloud = (x: number, y: number) => puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
+  // online: this player's Passaguá went over something another browser decides. A little cloud now; the soul flies
+  // to their counter when that browser gives it
+  function askFor(take: NetTake & { pid?: number }, x: number, y: number) {
+    cloud(x, y); sound('puff', null)
+    asked.set(take.k + take.id, { owner: active, x, y, t: 0 })
+    netTakes.push(take)
+  }
   // a soul stops what it was off doing: what it carried falls from where it is
   function letGo(f: FreeSoul) {
     const item = f.job?.kind === 'carry' ? f.job.item : null
@@ -1650,7 +1678,7 @@ export function createCombat() {
     setNetFollower(fn: ((h: NetHit) => void) | null) { reportHit = fn },
     get netFollower() { return !!reportHit },
     // while online, the shots fired here are kept for the sync to send (it empties the list)
-    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; netBodies = [] } },
+    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
     netShots,
     setNetBodies(list: { x: number; y: number }[]) { netBodies = list },
     addRemoteShots,
@@ -1658,7 +1686,8 @@ export function createCombat() {
     applyNetHit(h: NetHit) {
       const t = targets.find(g => g.net === h.id && !g.mirror)
       if (!t) return false
-      if (h.n) harmonize(t, h.d, h.px, h.x, h.y, { midi: h.n.m, color: h.n.c, sym: h.n.s, wave: h.n.w, phase: 0, voice: h.n.v as VoiceId }, h.st ?? 0)
+      // a note in a voice no instrument has was sung by a soul flying free: it fills, and leaves no mark
+      if (h.n) harmonize(t, h.d, h.px, h.x, h.y, { midi: h.n.m, color: h.n.c, sym: h.n.s, wave: h.n.w, phase: 0, voice: h.n.v as VoiceId }, h.st ?? 0, shotClass(null, h.n.v) ? null : 'soul')
       else hitTarget(t, h.d, h.px, h.x, h.y)
       return true
     },
@@ -1672,6 +1701,46 @@ export function createCombat() {
       else if (change === 'zombieDie') sound('zombieDie', null)
       else if (change === 'undeadDie') { burst(t.x, t.y - t.h / 2, 20, '#8d9096', 240, 4); sound('alienDie', null) }
       else { burst(t.x, t.y - t.h / 2, 16, (t.data as UndeadState | undefined)?.eye ?? '#ffffff', 200, 4); addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6') }
+    },
+    // ---------- online: the souls flying free (lib/pigchicken/net-souls.ts) ----------
+    // the souls the other browsers fly, drawn here
+    get netSouls() { return soulMirrors as readonly SoulMirror[] },
+    // a browser's souls as it just sent them; the ones that left (called back, caught) go in a little cloud
+    importNetSouls(pid: number, list: unknown) { for (const m of importSouls(soulMirrors, pid, list)) if (m.asked === null) cloud(m.x, m.y) },
+    // only these browsers are still in the lobby
+    keepNetSouls(pids: ReadonlySet<number>) { for (let i = soulMirrors.length - 1; i >= 0; i--) if (!pids.has(soulMirrors[i].pid)) soulMirrors.splice(i, 1) },
+    // what this browser asks of the others (the sync empties the list), and whether it can ask
+    netTakes,
+    setNetAsks(on: boolean) { netAsks = on },
+    // an undead bird of the owner's this browser asked for: hidden until the answer has had time to come
+    netFoeTaken(id: number) { return takenFoes.has(id) },
+    // another browser's Passaguá went over a soul this browser flies (pid: this browser's) or, on the lobby's owner,
+    // over one of its undead birds: it leaves here and what it is goes back (null: it is not here any more)
+    giveNetTake(take: NetTake, pid: number): NetSoulWho | null {
+      if (take.k === 's') {
+        const i = freed.findIndex(f => netIdFor(pid, f.soul.id) === take.id)
+        if (i < 0) return null
+        const [f] = freed.splice(i, 1)
+        letGo(f); cloud(f.x, f.y); sound('puff', null)
+        return soulWho(f.soul)
+      }
+      const i = targets.findIndex(t => t.net === take.id && !t.mirror && t.kind === 'undead' && t.deadT <= 0)
+      const t = targets[i], u = t?.data as UndeadState | undefined
+      if (!t || !u?.bird || (u.phase !== 'bird' && u.phase !== 'leave')) return null
+      if (u.perch && perchWorld) perchEnd(perchWorld, u.perch)
+      targets.splice(i, 1)
+      cloud(t.x, t.y - t.h / 2); sound('puff', null)
+      return soulWho(newSoul(0, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird))
+    },
+    // the answer: the soul flies from where it was caught to the counter of the player who caught it, and is new
+    // to this browser's library
+    applyNetGive(g: NetGive) {
+      const a = asked.get(g.k + g.id), soul = a ? soulFromWho(g.soul, nextId++) : null
+      if (!a || !soul) return false
+      asked.delete(g.k + g.id)
+      abductions.push({ soul, owner: a.owner, x: a.x, y: a.y, t: 0 })
+      soulNews.push({ soul, owner: a.owner, x: a.x, y: a.y })
+      return true
     },
     // the owner's world becomes this browser's (it is the new owner): the mirrors move here from now on
     adoptMirrors() { targets.forEach(t => { if (t.mirror) { t.mirror = false; t.netX = undefined; t.netY = undefined } }) },
@@ -2189,6 +2258,10 @@ export function createCombat() {
         if (f.recallIn === null) soulActs(f, her, dt, onBeat)
       }
       spreadSouls(freed, dt)
+      // online: the other browsers' souls glide to where they are; what was asked and never answered is forgotten
+      for (const m of soulMirrors) glideSoulMirror(m, dt)
+      asked.forEach((a, key) => { if ((a.t += dt) > TAKE_WAIT * 2) asked.delete(key) })
+      takenFoes.forEach((left, id) => { if (left > dt) takenFoes.set(id, left - dt); else takenFoes.delete(id) })
       // souls on their way: each one counts in its owner's basket when it gets to the counter
       for (const a of stepAbductions(abductions, dt)) {
         const basket = a.owner === active ? souls : loadouts.get(a.owner)?.souls

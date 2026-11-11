@@ -41,7 +41,7 @@ Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde
 - **Aparência:** o desenho da entrada dela na biblioteca (forma pela família do instrumento; a morta, cinza com o olho na cor), com um brilho redondo na cor da alma. Com mais de um player local, um anel na cor do dono em volta de cada uma.
 - **Mouse em cima:** quando um clique faria algo (cesto com almas, ou Callback), o contador acende na cor do player, a mira some e o cursor vira o de botão.
 - **Sem tecla nem botão de controle ainda:** só clique ou toque.
-- **Escopo:** Pátio e Templo, todos os players locais. As almas soltas valem só na sessão e, no Pátio online, cada navegador vê só as suas.
+- **Escopo:** Pátio e Templo, todos os players locais. As almas soltas valem só na sessão. No Pátio online aparecem para todos os navegadores ([abaixo](#no-pátio-online-1111-v280)).
 
 ## Bot amigo (10/11, v2.7.0)
 
@@ -144,8 +144,20 @@ A alma solta age pelo dono, e às vezes contra ele (`lib/pigchicken/soul-acts.ts
 | Bicar | Morta por Impacto | Bica a cabeça: tranco de 160 a 520 px/s para longe dela, e Atirar e Golpe não respondem por 0,25 a 0,9 s |
 | Desafinar | Viva de nota Fora da escala | De onde está, canta um intervalo azedo e mostra “♭”. Por 3 a 9 s as notas do dono saem 0,5 semitom fora, no som e na nota: em zona com “Dano só no tom” não enchem harmonia, e o pássaro que nascer delas conta como Fora da escala |
 
-- **Escopo:** Pátio e Templo, todos os players locais. Cada alma age sobre o próprio dono; o empurrão pega quem estiver no raio. No Pátio online cada navegador vê só as próprias almas e os efeitos delas.
+- **Escopo:** Pátio e Templo, todos os players locais. Cada alma age sobre o próprio dono; o empurrão pega quem estiver no raio. No Pátio online os outros navegadores veem a alma voar, mas não as notas, os avisos, o item carregado nem os atrapalhos; a harmonia que ela enche num inimigo do lobby vale para todos.
+
+## No Pátio online (11/11, v2.8.0)
+
+`lib/pigchicken/net-souls.ts` (dados e regras), `lib/pigchicken/net-world-sync.ts` (envio), ganchos em `combat.ts`, repasse em `server/src/patio-room.mjs`; testes em `tests/pigchicken-net-souls.cases.cjs` e `server/test/room.test.mjs`.
+
+- **Quem decide:** cada navegador simula as almas que os seus players soltaram e manda todas 10 vezes por segundo (`souls`: id, posição e lado; o que a alma é vai só na primeira vez, e tudo de novo a cada 2 s ou quando alguém entra; até 64 por navegador). Os outros desenham cópias que deslizam até a posição recebida (saltam acima de 400 px), com o desenho da entrada da biblioteca e um anel na cor do navegador dono. As cópias não agem.
+- **Roubo:** o Passaguá de um player sobre a cópia mostra a nuvem na hora, esconde a cópia e pede a alma ao navegador que a simula (`take`). Esse navegador tira a alma do ar (ela larga o que carregava) e responde com o que ela é (`give`); só então ela voa até o contador de quem pediu e conta no cesto dele. Conta também como captura na Biblioteca de quem roubou. Com dois pedidos pela mesma alma, o primeiro a chegar leva e o segundo não recebe nada. Sem resposta em 1,5 s (`TAKE_WAIT`) a cópia volta a aparecer; uma resposta depois de 3 s é ignorada.
+- **Sumiço:** quando a alma deixa de ser enviada (Callback, capturada, o navegador saiu do lobby), a cópia some numa nuvem. Sair do online apaga as cópias; as almas soltas deste navegador continuam, locais.
+- **Pássaro morto-vivo:** é um inimigo do dono do lobby. Num navegador que não é o dono, o Passaguá sobre ele some com a cópia e faz o mesmo pedido ao dono do lobby, que tira o pássaro do mundo e responde com a alma morta (espécie, instrumento, nota e a arma que o matou, que só ele conhece). Antes, a cópia capturada voltava em até 2 s e dava outra alma.
+- **Pássaro vivo:** continua de cada tela: cada navegador vê nascer o seu quando o alien vira pássaro e pode capturar o seu. Ele lembra a última nota que aquele navegador tocou no alien; sem nota dali, instrumento e nota ficam em branco. A nota cantada por uma alma enche a harmonia no dono do lobby sem mudar o que o alien lembra.
+- **Servidor:** só repassa, conferindo tamanho, quantidade e ritmo (`souls` para os outros; `take` e `give` só para o navegador indicado). Ele avisa em `hello.caps.souls` que conhece essas mensagens; com um servidor antigo o navegador não as envia (uma mensagem desconhecida derruba a conexão) e as almas ficam locais.
+- **Não enviado:** o cesto e o contador dos outros, o voo até o contador e os pintinhos.
 
 ## Ainda não implementado
 
-Tecla e botão de controle para soltar e chamar, pouso das almas soltas nos fios e fuga de outros players, e roubo no Pátio online. O plano está fora do código, no documento “Almas capturadas: plano”.
+Tecla e botão de controle para soltar e chamar, pouso das almas soltas nos fios e fuga de outros players, e os pintinhos dos outros navegadores no Pátio online. O plano está fora do código, no documento “Almas capturadas: plano”.
