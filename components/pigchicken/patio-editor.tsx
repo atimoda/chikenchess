@@ -22,7 +22,7 @@ import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
-import { ELEMENT_DEPTH, POWER_LINES, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, spreadPower, type PowerParams } from "@/lib/pigchicken/power-lines"
+import { ELEMENT_DEPTH, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, dropLinks, linkedTo, spreadPower, toggleLink, type PowerParams } from "@/lib/pigchicken/power-lines"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES } from "@/lib/pigchicken/music"
 import { asSceneZone, defaultSoundZone, moveSceneEdge, sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
@@ -103,7 +103,12 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   const selectedRef = useRef(selected)
   selectedRef.current = selected
 
-  const select = useCallback((id: string | null) => { setSelected(id); setPanel("") }, [])
+  const select = useCallback((id: string | null) => { setSelected(id); setPanel(""); setLinking(false) }, [])
+  // "Ligar fios" on the selected pole or tower: a click on another one of its kind wires them, or unwires them
+  const [linking, setLinking] = useState(false)
+  const linkingRef = useRef(linking)
+  linkingRef.current = linking
+  useEffect(() => { if (panel !== "edit") setLinking(false) }, [panel])
   // switching the editor off lets go of the selection and its panels
   useEffect(() => { if (!active) { select(null); setScenePanel(null) } }, [active, select])
   // a deleted (or undone) element is no longer selected
@@ -145,7 +150,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     if (!el || el.kind === 'entry') return
     const partner = portalPartner(el, layoutRef.current.elements)
     if (partner?.locked) return
-    commit({ ...layoutRef.current, elements: layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id) }); select(null)
+    commit({ ...layoutRef.current, elements: dropLinks(layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id), id) }); select(null)
   }, [commit, select])
   const append = useCallback((elements: LayoutElement[], worldPosition = true) => {
     const current = layoutRef.current
@@ -163,7 +168,10 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       if (source) append(duplicatePortalPair(source, elements), false)
       return
     }
-    append([{ ...structuredClone(el), id: newElementId(el.kind), x: el.x + 32, y: el.y - 32, locked: false }])
+    const copy = { ...structuredClone(el), id: newElementId(el.kind), x: el.x + 32, y: el.y - 32, locked: false }
+    // a pole's or tower's copy comes wired to the original, to go on with the line
+    if (copy.params.power) copy.params.power.links = [el.id]
+    append([copy])
   }, [append])
   const floorBelow = useCallback((x: number, y: number) =>
     layoutFloorBelow(elementsInWorld(layoutRef.current, screens), x, y), [screens])
@@ -209,6 +217,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       const mod = e.ctrlKey || e.metaKey
       if (e.code === "Escape" && selectedRef.current) { e.preventDefault(); select(null); return }
       if (mod && e.code === "KeyZ") { e.preventDefault(); if (e.shiftKey) forward(); else back(); return }
+      if (e.code === "Escape" && linkingRef.current) { e.preventDefault(); setLinking(false); return }
       if (mod && e.code === "KeyY") { e.preventDefault(); forward(); return }
       if (mod && e.code === "KeyD") {
         e.preventDefault()
@@ -239,6 +248,14 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     e.preventDefault(); e.stopPropagation()
     // the first click only selects: dragging needs the element selected
     if (selectedRef.current !== el.id) { select(el.id); return }
+    // wiring: another pole or tower of the same kind is wired to the selected one (or unwired); a new wire moves
+    // the selection to it, to go on with the line
+    const from = selectedRef.current
+    if (linkingRef.current && from && from !== el.id) {
+      const r = toggleLink(layoutRef.current.elements, from, el.id)
+      if (r) { commit({ ...layoutRef.current, elements: r.elements }); if (r.linked) setSelected(el.id) }
+      return
+    }
     if (el.locked) return
     gesture.current = { kind, id: el.id, pointer: e.pointerId, sx: e.clientX, sy: e.clientY, start: el, corner, moved: false }
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
@@ -290,6 +307,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   const width = worldScenes(screens) * SCENE_W
 
   return (
+  const wired = useMemo(() => linking && selected ? linkedTo(layout.elements, selected) : new Set<string>(), [linking, selected, layout.elements])
     <>
       <style>{`
         [data-patio-hit] { cursor: pointer; }
@@ -298,12 +316,15 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         [data-patio-hit][data-sel][data-locked] { outline-color: #9aa0a8; cursor: not-allowed; }
         .patio-corner { position: absolute; width: 28px; height: 28px; touch-action: none; display: grid; place-items: center; }
         .patio-corner span { width: 12px; height: 12px; border: 0 solid #ffd166; }
+        [data-patio-hit][data-link] { outline: 1px dashed rgba(123,223,242,.8); outline-offset: 2px; cursor: crosshair; }
+        [data-patio-hit][data-link="on"] { outline: 2px solid #7bdff2; }
         @media (pointer: coarse) { .patio-corner { width: 44px; height: 44px; } .patio-corner span { width: 16px; height: 16px; } }
       `}</style>
       {active && <div data-patio-editor className="pointer-events-none fixed inset-0 z-[203] overflow-hidden">
         <div ref={worldRef} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
           {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => {
-            const box = <HitBox key={el.id} el={el} selected={el.id === selected} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
+            const link = linking && sel && el.id !== sel.id && el.kind === sel.kind ? (wired.has(el.id) ? "on" : "can") : undefined
+            const box = <HitBox key={el.id} el={el} selected={el.id === selected} link={link} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
             // in a parallax depth its handle slides with it
             return el.depth ? <DepthLayer key={el.id} depth={el.depth}>{box}</DepthLayer> : box
           })}
@@ -331,7 +352,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         : selectedTree
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
-          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} />)}
+          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} />)}
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
@@ -362,8 +383,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
 }
 
 // one element's hit area (turned like it) with its corners when selected
-const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp, edit }: {
-  el: LayoutElement; selected: boolean
+const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, edit }: {
+  el: LayoutElement; selected: boolean; link?: "on" | "can"
   begin: (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => void
   onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void; edit: (el: LayoutElement) => void
 }) {
@@ -376,6 +397,7 @@ const HitBox = memo(function HitBox({ el, selected, begin, onMove, onUp, edit }:
       data-locked={el.locked || undefined}
       aria-label={d.label}
       className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry") && "z-[1]")}
+      data-link={link}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
       onPointerMove={onMove}
@@ -495,7 +517,7 @@ function DepthField({ el, onChange }: { el: LayoutElement; onChange: (el: Layout
 }
 
 // a Poste's or Torre's model, line and wires
-function PowerFields({ el, power, onChange }: { el: LayoutElement; power: PowerParams; onChange: (el: LayoutElement, step?: string) => void }) {
+function PowerFields({ el, power, onChange, linking = false, onLinking }: { el: LayoutElement; power: PowerParams; onChange: (el: LayoutElement, step?: string) => void; linking?: boolean; onLinking?: (on: boolean) => void }) {
   const kind = el.kind as "pole" | "tower"
   const set = (p: Partial<PowerParams>, step?: string) => onChange({ ...el, params: { ...el.params, power: { ...power, ...p } } }, step)
   const models = kind === "pole" ? POLE_MODELS : TOWER_MODELS
@@ -511,15 +533,9 @@ function PowerFields({ el, power, onChange }: { el: LayoutElement; power: PowerP
         {models.map(id => <option key={id} value={id}>{POWER_MODELS[id].label}</option>)}
       </select>
     </label>
-    <div className="grid gap-1">
-      <span>Linha</span>
-      <div role="radiogroup" aria-label="Linha" className="grid grid-cols-4 gap-1">
-        {Array.from({ length: POWER_LINES }, (_, i) => i + 1).map(n => (
-          <button key={n} type="button" role="radio" aria-checked={power.line === n} onClick={() => set({ line: n })}
-            className={cn("h-8 rounded-md border", power.line === n ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-white/40")}>{n}</button>
-        ))}
-      </div>
-    </div>
+    {onLinking && <button type="button" aria-pressed={linking} onClick={() => onLinking(!linking)}
+      title={`Clique em ${kind === "pole" ? "outro poste" : "outra torre"} para ligar os fios, ou desligar se já estiverem ligados. A seleção passa para ${kind === "pole" ? "o ligado" : "a ligada"}, para seguir a linha. Esc termina.`}
+      className={cn("h-9 rounded-md border", linking ? "border-[#7bdff2] bg-[#7bdff2]/15 text-white" : "border-white/15 hover:border-white/40")}>Ligar fios</button>}
     <div className="grid gap-[3px]">
       <PatioRange label="Caimento dos fios" min={POWER_SAG.min} max={POWER_SAG.max} step={POWER_SAG.step} value={power.sag} display={`${power.sag}%`}
         changed={power.sag !== POWER_SAG.default} onReset={() => set({ sag: POWER_SAG.default })} onChange={sag => set({ sag }, `sag:${el.id}`)} />
@@ -531,14 +547,14 @@ function PowerFields({ el, power, onChange }: { el: LayoutElement; power: PowerP
       <span>Fios como plataforma</span>
       <input type="checkbox" checked={power.floor} onChange={e => set({ floor: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
     </label>
-    <p className="text-[#93a79a]">Os fios ligam {kind === "pole" ? "este poste" : "esta torre"} ao vizinho mais próximo do mesmo modelo e da mesma linha, da esquerda para a direita. Trocar o modelo troca o da linha inteira. Os pássaros pousam nos fios.</p>
+    <p className="text-[#93a79a]">Trocar o modelo troca o de {kind === "pole" ? "todos os postes ligados" : "todas as torres ligadas"} a {kind === "pole" ? "este" : "esta"}. Os pássaros pousam nos fios.</p>
   </>
 }
 
 // the layer dropdown and the collisions
 function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el: LayoutElement) => void; onClose: () => void }) {
   return (
-    <FloatingPanel id="patio-layers" aria-label="Camada e colisões" initial={vw => ({ x: Math.max(12, vw - 312), y: 64, w: 300, h: 470 })} minW={240} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <FloatingPanel id="patio-layers" overDock aria-label="Camada e colisões" initial={vw => ({ x: Math.max(12, vw - 312), y: 64, w: 300, h: 470 })} minW={240} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Camada · {ELEMENT_DEFS[el.kind].label}</h2>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -579,7 +595,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
 }
 
 // the Edit panel for elements that do not have their own customizer
-function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void }) {
+function EditPanel({ el, onChange, onClose, onSpawnEnemy, linking, onLinking }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void }) {
   const set = (p: ElementParams, step?: string) => onChange({ ...el, params: { ...el.params, ...p } }, step)
   const [msg, setMsg] = useState(el.params.message ?? "")
   const editSession = useId()
@@ -587,7 +603,7 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement;
   const endSlider = () => { sliderGesture.current++ }
   const bounce = el.params.trampoline
   return (
-    <FloatingPanel id="patio-edit" aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <FloatingPanel id="patio-edit" overDock aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Editar · {ELEMENT_DEFS[el.kind].label}</h2>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -661,7 +677,7 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy }: { el: LayoutElement;
           <input aria-label="Tempo de reposição do item" type="number" min={0} max={RACK_DELAY_MAX} step={0.1} value={el.params.respawnDelay ?? rackRespawnDelay(el.params.item ?? 'pistol')} onChange={e => { if (e.target.value !== '') set({ respawnDelay: Number(e.target.value) }, `rack-delay:${el.id}`) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
         </label>
       </>}
-      {isPowerElement(el.kind) && el.params.power && <PowerFields el={el} power={el.params.power} onChange={onChange} />}
+      {isPowerElement(el.kind) && el.params.power && <PowerFields el={el} power={el.params.power} onChange={onChange} linking={linking} onLinking={onLinking} />}
       {isSurfaceElement(el.kind) && el.params.surface && <SurfaceFields el={el} surface={el.params.surface} onChange={surface => set({ surface })} />}
       {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
@@ -706,7 +722,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   ] },
   { group: "Energia", items: [...POLE_MODELS, ...TOWER_MODELS].map(id => {
     const m = POWER_MODELS[id]
-    return { key: `power-${id}`, kind: m.kind as ElementKind, label: `${m.kind === "pole" ? "Poste" : "Torre"} · ${m.label}`, params: { power: { ...defaultPower(m.kind), model: id } } }
+    return { key: `power-${id}`, kind: m.kind as ElementKind, label: `${m.kind === "pole" ? "Poste" : "Torre"} · ${m.label}`, params: { power: { ...defaultPower(m.kind), model: id, links: [] } } }
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Música", items: (["zone", "lanes"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
@@ -865,7 +881,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
 function SceneZonePanel({ scene, zones, onChange, onReset, onClose }: { scene: number; zones?: SceneZones; onChange: (z: SoundZoneParams, step?: string) => void; onReset: () => void; onClose: () => void }) {
   const zone = sceneZoneParams(zones, scene), changed = !!zones?.[String(scene)]
   return (
-    <FloatingPanel id="patio-scene-zone" aria-label={`Zona da cena ${scene + 1}`} initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 560 })} minW={260} minH={220} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <FloatingPanel id="patio-scene-zone" overDock aria-label={`Zona da cena ${scene + 1}`} initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 560 })} minW={260} minH={220} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Zona da cena {scene + 1}</h2>
         <button type="button" className={TOOL} onClick={onClose} title="Fechar" aria-label="Fechar"><X className="h-4 w-4" /></button>

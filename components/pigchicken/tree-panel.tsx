@@ -52,7 +52,7 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
       {legacy ?? <CustomTreeArt tree={tree} worldX={worldX} />}
     </span>
   </span>
-  return <FloatingPanel id="patio-tree" aria-label="Editor de árvores" initial={(vw, vh) => ({
+  return <FloatingPanel id="patio-tree" overDock aria-label="Editor de árvores" initial={(vw, vh) => ({
     x: Math.max(8, vw - 390), y: 64, w: Math.min(vw - 16, 376), h: Math.min(vh - 78, 660),
   })} minW={245} minH={170} keepInViewport
     className={`rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs text-[#dfe8df] shadow-[0_20px_60px_#0009] ${dragging ? "pointer-events-none opacity-0" : ""}`}>

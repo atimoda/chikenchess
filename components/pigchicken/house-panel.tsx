@@ -28,7 +28,7 @@ export function HousePanel({ house, dimensions = houseDraftSize(house), onChange
   const preview = <div className="absolute inset-x-4 top-2 bottom-4 flex justify-center">
     <div className="relative h-full max-w-full" style={{ aspectRatio: `${dimensions.w} / ${dimensions.h}` }}><HouseArt house={house} /></div>
   </div>
-  return <FloatingPanel id="patio-house" aria-label="Criador de casas" initial={(vw, vh) => ({ x: Math.max(8, vw - 390), y: 64, w: Math.min(vw - 16, 376), h: Math.min(vh - 78, 660) })}
+  return <FloatingPanel id="patio-house" overDock aria-label="Criador de casas" initial={(vw, vh) => ({ x: Math.max(8, vw - 390), y: 64, w: Math.min(vw - 16, 376), h: Math.min(vh - 78, 660) })}
     minW={245} minH={170} keepInViewport
     className={`rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs text-[#dfe8df] shadow-[0_20px_60px_#0009] ${dragging ? 'pointer-events-none opacity-0' : ''}`}>
     <div data-drag-handle className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2">

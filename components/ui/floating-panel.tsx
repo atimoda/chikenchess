@@ -5,10 +5,13 @@
 // anywhere on it brings it in front of the other panels, and a panel that opens comes in front (it is drawn straight in
 // the page's <main>, so no header or layer of its own keeps it behind another panel). The first time, it opens centred
 // near the button that opened it; once moved or resized, its place and size are remembered in this browser under `id`.
+// A panel marked `overDock` that opens while the Modo editor is docked at the right covers that dock instead: it is
+// drawn over the whole page, with the dock's place and size, may be moved anywhere on the window, and its place is
+// not remembered (the next time it covers the dock again).
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
-import { stageWidth } from "@/lib/stage-size"
+import { stageInset, stageWidth } from "@/lib/stage-size"
 
 type Rect = { x: number; y: number; w: number; h: number }
 type Edge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw"
@@ -130,16 +133,17 @@ function canDragFrom(target: Element, panel: Element, x: number, y: number, touc
   return true
 }
 
-function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean): Rect {
-  const vw = stageWidth(), vh = window.innerHeight
+function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean, vw = stageWidth()): Rect {
+  const vh = window.innerHeight
   const w = Math.max(Math.min(minW, vw), Math.min(r.w, vw)), h = Math.max(Math.min(minH, vh), Math.min(r.h, vh))
   const x = keepInViewport ? Math.min(vw - w, Math.max(0, r.x)) : Math.min(vw - KEEP, Math.max(KEEP - w, r.x))
   const y = Math.min(vh - (keepInViewport ? h : KEEP), Math.max(0, r.y))
   return { w, h, x, y }
 }
 
-export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewport = false, className, children, ...rest }: {
+export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewport = false, overDock = false, className, children, ...rest }: {
   id: string
+  overDock?: boolean
   initial: (vw: number, vh: number) => Rect
   minW?: number
   minH?: number
@@ -152,7 +156,17 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   // where it is drawn: the page's <main> (or the body), found from a mark left where it is declared
   const markRef = useRef<HTMLSpanElement | null>(null)
   const [host, setHost] = useState<HTMLElement | null>(null)
-  useEffect(() => { setHost(markRef.current?.parentElement?.closest("main") ?? document.body) }, [])
+  // covering the docked Modo editor (decided when it opens): drawn on the body, over the whole window
+  const onDock = useRef(false)
+  const viewW = () => (onDock.current ? window.innerWidth : stageWidth())
+  // on the body it keeps the text colour of the page it belongs to
+  const [color, setColor] = useState<string | undefined>()
+  useEffect(() => {
+    const main = markRef.current?.parentElement?.closest("main") ?? null
+    onDock.current = overDock && stageInset() > 0
+    if (onDock.current && main) setColor(window.getComputedStyle(main).color)
+    setHost(onDock.current ? document.body : main ?? document.body)
+  }, [])
   const shown = !!rect && !!host
   useEffect(() => (shown && panelRef.current ? registerEscClose(panelRef.current) : undefined), [shown])
   const op = useRef<{ pointer: number; edge: Edge | "move"; sx: number; sy: number; start: Rect; armed?: boolean } | null>(null)
@@ -163,12 +177,19 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   useEffect(() => { raisePanel(token); return () => dropPanel(token) }, [token])
 
   useEffect(() => {
+    const dock = overDock ? stageInset() : 0
     let r = initial(stageWidth(), window.innerHeight)
-    let saved: Rect | null = null
-    try { const s = JSON.parse(window.localStorage.getItem(key) || "null"); if (s && [s.x, s.y, s.w, s.h].every(Number.isFinite)) saved = s } catch { /* ignore */ }
-    r = saved ?? nearOpener(r) ?? r
-    setRect(fit(r, minW, minH, keepInViewport))
-    const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport))
+    if (dock) {
+      const w = Math.max(dock, Math.min(minW, window.innerWidth))
+      r = { x: window.innerWidth - w, y: 0, w, h: window.innerHeight }
+      opener = null
+    } else {
+      let saved: Rect | null = null
+      try { const s = JSON.parse(window.localStorage.getItem(key) || "null"); if (s && [s.x, s.y, s.w, s.h].every(Number.isFinite)) saved = s } catch { /* ignore */ }
+      r = saved ?? nearOpener(r) ?? r
+    }
+    setRect(fit(r, minW, minH, keepInViewport || !!dock, dock ? window.innerWidth : stageWidth()))
+    const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport, viewW()))
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
   }, [key])
@@ -195,13 +216,13 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
     let { x, y, w, h } = s
     if (o.edge === "move") { x += dx; y += dy }
     else {
-      const vw = stageWidth(), vh = window.innerHeight
+      const vw = viewW(), vh = window.innerHeight
       if (o.edge.includes("e")) w = Math.min(vw - s.x, Math.max(minW, s.w + dx))
       if (o.edge.includes("s")) h = Math.min(vh - s.y, Math.max(minH, s.h + dy))
       if (o.edge.includes("w")) { w = Math.max(minW, s.w - dx); w = Math.min(w, s.x + s.w); x = s.x + s.w - w }
       if (o.edge.includes("n")) { h = Math.max(minH, s.h - dy); h = Math.min(h, s.y + s.h); y = s.y + s.h - h }
     }
-    setRect(fit({ x, y, w, h }, minW, minH, keepInViewport))
+    setRect(fit({ x, y, w, h }, minW, minH, keepInViewport, viewW()))
   }
   const end = (e: React.PointerEvent<HTMLElement>) => {
     if (op.current?.pointer !== e.pointerId) return
@@ -209,6 +230,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
     op.current = null
     if (armed) return
     document.body.style.userSelect = ""
+    if (onDock.current) return
     setRect(cur => { if (cur) { try { window.localStorage.setItem(key, JSON.stringify(cur)) } catch { /* ignore */ } } return cur })
   }
 
@@ -218,7 +240,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
       ref={panelRef}
       data-chicken-ignore
       {...rest}
-      style={{ ...rest.style, left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: PANEL_Z + Math.max(0, place) }}
+      style={{ color, ...rest.style, left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: PANEL_Z + Math.max(0, place) }}
       className={cn("fixed flex flex-col overflow-hidden", className)}
       onPointerDownCapture={e => { rest.onPointerDownCapture?.(e); raisePanel(token) }}
       onPointerDown={e => {
