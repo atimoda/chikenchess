@@ -73,9 +73,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -118,7 +124,11 @@
         "mode": "accent"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "passagua": {
     "peckPull": 38,
@@ -194,9 +204,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -232,7 +248,11 @@
       "spin"
     ],
     "rebateChain": [],
-    "trailColor": "#cceef0"
+    "trailColor": "#cceef0",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "pistol": {
     "peckPull": 38,
@@ -308,9 +328,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -353,7 +379,11 @@
         "mode": "staccato"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "smg": {
     "peckPull": 38,
@@ -429,9 +459,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -474,7 +510,11 @@
         "mode": ""
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "rifle": {
     "peckPull": 38,
@@ -550,9 +590,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -595,7 +641,11 @@
         "mode": "degree"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "pump": {
     "peckPull": 38,
@@ -671,9 +721,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -716,7 +772,11 @@
         "mode": "cluster"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "sniper": {
     "peckPull": 38,
@@ -792,9 +852,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -843,7 +909,11 @@
         "mode": "staccato"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "launcher": {
     "peckPull": 38,
@@ -919,9 +989,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -964,7 +1040,11 @@
         "mode": "dotted"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "grenade": {
     "peckPull": 38,
@@ -1040,9 +1120,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1085,7 +1171,11 @@
         "mode": "random"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "bow": {
     "peckPull": 38,
@@ -1161,9 +1251,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1206,7 +1302,11 @@
         "mode": "thirds"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "flute": {
     "peckPull": 38,
@@ -1282,9 +1382,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0.35,
+    "vibratoDepth": 10,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.12,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1327,7 +1433,15 @@
         "mode": "fixed"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
   },
   "sax": {
     "peckPull": 38,
@@ -1403,9 +1517,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0.5,
+    "vibratoDepth": 14,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.1,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1448,7 +1568,15 @@
         "mode": "degree"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
   },
   "trumpet": {
     "peckPull": 38,
@@ -1524,9 +1652,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0.4,
+    "vibratoDepth": 9,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.2,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1569,7 +1703,15 @@
         "mode": "power"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
   },
   "guitar": {
     "peckPull": 38,
@@ -1645,9 +1787,15 @@
     "stun": 0,
     "strum": 0.022,
     "tremolo": 0.45,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1696,7 +1844,15 @@
         "mode": "up"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
   },
   "violin": {
     "peckPull": 38,
@@ -1772,9 +1928,15 @@
     "stun": 0.4,
     "strum": 0.018,
     "tremolo": 1,
+    "vibratoDepth": 12,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.25,
     "tremoloRange": 2,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1823,7 +1985,15 @@
         "mode": "legato"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
   },
   "keys": {
     "peckPull": 38,
@@ -1899,9 +2069,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 6,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -1944,7 +2120,15 @@
         "mode": "seventh"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
   },
   "tambourine": {
     "peckPull": 38,
@@ -2020,9 +2204,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 10,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -2071,7 +2261,15 @@
         "mode": "jingle"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
   },
   "harp": {
     "peckPull": 38,
@@ -2147,9 +2345,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -2198,7 +2402,146 @@
         "mode": "up"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary",
+      "fifths",
+      "tension",
+      "spiral",
+      "harmonic"
+    ],
+    "spiralDescending": false
+  },
+  "hangdrum": {
+    "peckPull": 38,
+    "rate": 8,
+    "burst": 3,
+    "chargeTime": 0.1,
+    "chargeMin": 0.3,
+    "mag": 40,
+    "reloadTime": 0.9,
+    "refillTime": 0.5,
+    "refillAmount": 1,
+    "speed": 800,
+    "drop": 0,
+    "damage": 14,
+    "pierce": 0,
+    "range": 950,
+    "size": 11,
+    "pellets": 1,
+    "explodeRadius": 0,
+    "explodePush": 0,
+    "explodeDamage": 0,
+    "fuse": 0,
+    "bounce": 0,
+    "spreadBase": 1,
+    "spreadShot": 0.5,
+    "spreadMax": 9,
+    "spreadRecover": 14,
+    "spreadMove": 1.5,
+    "spreadAir": 3,
+    "crouchMult": 0.7,
+    "broodMult": 0.5,
+    "recoilKick": 1,
+    "recoilPush": 0,
+    "weight": 1,
+    "turnRate": 0,
+    "muzzleX": 58,
+    "muzzleY": -6,
+    "length": 60,
+    "pivotX": 0,
+    "pivotY": 0,
+    "handX": 0,
+    "handY": 0,
+    "backX": 0,
+    "backY": 0,
+    "meleeDamage": 10,
+    "meleeRange": 95,
+    "meleeArc": 110,
+    "meleeCooldown": 0,
+    "meleeTime": 0.2,
+    "meleePush": 260,
+    "comboWindow": 0.45,
+    "meleeArcUp": 110,
+    "meleeArcFlat": 110,
+    "trailWidth": 20,
+    "trailTime": 0.2,
+    "trailWisps": 5,
+    "trailOpacity": 0.7,
+    "durability": 0,
+    "rebateSnap": 15,
+    "rebateSnapForce": 0.4,
+    "rebateSpeed": 1,
+    "throwDamage": 10,
+    "throwMin": 275,
+    "throwSpeed": 1100,
+    "throwCharge": 1,
+    "octave": 0,
+    "span": 2,
+    "arpRate": 10,
+    "noteLen": 1.5,
+    "wave": 3,
+    "quantWindow": 60,
+    "beatBonus": 1.5,
+    "stun": 0,
+    "strum": 0.018,
+    "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
+    "tremoloRange": 0.5,
+    "meleeNotes": 3,
+    "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
+    "effectTime": 0,
+    "effectSpeed": 1,
+    "effectAccel": 1,
+    "effectRamp": 0.5,
+    "fireMode": "semi",
+    "pathShow": "off",
+    "landShow": "always",
+    "autoReload": true,
+    "slideFire": true,
+    "shellReload": false,
+    "hitscan": false,
+    "quantize": true,
+    "beam": false,
+    "gliss": false,
+    "fretless": false,
+    "meleeInterrupt": true,
+    "rebateTok": false,
+    "pivotAt": "shoulder",
+    "handOn": false,
+    "backOn": false,
+    "wingFlip": false,
+    "arp": "off",
+    "pitchSet": "scale",
+    "volMin": 0.8,
+    "volMax": 0.8,
+    "voice": "hang",
+    "effectCurve": "linear",
+    "effectLook": "none",
+    "combo": [
+      "down",
+      "up",
+      "flat",
+      "spin"
+    ],
+    "rebateChain": [
+      {
+        "kind": "echo",
+        "chance": 1,
+        "n": 2,
+        "mode": "dotted"
+      }
+    ],
+    "trailColor": "#fff4dc",
+    "scales": [
+      "hang"
+    ],
+    "spiralDescending": false
   },
   "maryjane": {
     "peckPull": 38,
@@ -2274,9 +2617,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 15,
     "effectSpeed": 1.33,
     "effectAccel": 1,
@@ -2312,7 +2661,11 @@
       "spin"
     ],
     "rebateChain": [],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "cok": {
     "peckPull": 38,
@@ -2388,9 +2741,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 15,
     "effectSpeed": 0.78,
     "effectAccel": 1.33,
@@ -2426,7 +2785,11 @@
       "spin"
     ],
     "rebateChain": [],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "wing": {
     "peckPull": 38,
@@ -2502,9 +2865,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -2547,7 +2916,11 @@
         "mode": "soft"
       }
     ],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   },
   "peck": {
     "peckPull": 38,
@@ -2623,9 +2996,15 @@
     "stun": 0,
     "strum": 0.018,
     "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
     "tremoloRange": 0.5,
     "meleeNotes": 3,
     "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
     "effectTime": 0,
     "effectSpeed": 1,
     "effectAccel": 1,
@@ -2661,6 +3040,10 @@
       "spin"
     ],
     "rebateChain": [],
-    "trailColor": "#fff4dc"
+    "trailColor": "#fff4dc",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
   }
 }
