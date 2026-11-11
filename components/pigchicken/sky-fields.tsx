@@ -26,7 +26,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
     const at = Math.round(((stops[gap].at + stops[gap + 1].at) / 2) * 100) / 100
     set({ follow: false, stops: [...stops, { at, color: stopColor(stops, at) }].sort((a, b) => a.at - b.at) })
   }
-  const scaled = (label: string, key: "glowSize" | "starCount" | "starSize" | "starGlow", r: { min: number; max: number; step: number }, hint: string) => (
+  const scaled = (label: string, key: "glowSize", r: { min: number; max: number; step: number }, hint: string) => (
     <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={s[key]} display={`${s[key]}%`}
       changed={!!sky && s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
@@ -102,12 +102,6 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         {pct("Contraluz", "silhouette", "O cenário escurece até virar silhueta contra o céu. Bonecos, itens e tiros mantêm as cores.")}
         {pct("Luz no pátio", "light", "Quanto a hora do dia ilumina, escurece e esquenta o cenário do Pátio.")}
       </div>
-      <div className="grid gap-[3px]">
-        <span className="pt-1 text-[10px] uppercase tracking-wider text-[#93a79a]">Estrelas</span>
-        {scaled("Quantidade", "starCount", SKY_STAR_COUNT, "Quantas estrelas. Elas aparecem conforme a hora e o escuro do céu.")}
-        {scaled("Tamanho", "starSize", SKY_SCALE, "O tamanho de cada estrela.")}
-        {scaled("Intensidade", "starGlow", SKY_STAR_GLOW, "O brilho das estrelas; acima de 100% elas já aparecem no crepúsculo.")}
-      </div>
       <div className="grid">
         <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span>Mata ao longe</span>
           <input type="checkbox" checked={s.forest} onChange={e => set({ forest: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" /></label>
@@ -117,6 +111,28 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
 }
 
 const PREVIEW = 120, PREVIEW_W = 96
+
+// Configurações do Pátio → Estrelas: how many, how big, how bright. Saved in the sky (settings.sky); with the
+// classic sky, changing one starts the Pátio's own sky. When they show still follows the hour and the sky's dark.
+export function StarFields({ sky, onChange }: { sky: SkyParams | undefined; onChange: (sky: SkyParams) => void }) {
+  const s = sky ?? SKY_DEFAULT
+  const set = (p: Partial<SkyParams>) => onChange({ ...s, ...p })
+  const changed = s.starCount !== SKY_DEFAULT.starCount || s.starSize !== SKY_DEFAULT.starSize || s.starGlow !== SKY_DEFAULT.starGlow
+  const range = (label: string, key: "starCount" | "starSize" | "starGlow", r: { min: number; max: number; step: number }, hint: string) => (
+    <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={s[key]} display={`${s[key]}%`}
+      changed={s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
+  return (
+    <div className="grid gap-[3px] px-4 pb-4">
+      {changed && <div className="flex justify-end pb-1">
+        <button type="button" className={BTN} onClick={() => set({ starCount: SKY_DEFAULT.starCount, starSize: SKY_DEFAULT.starSize, starGlow: SKY_DEFAULT.starGlow })}>Padrão</button>
+      </div>}
+      {range("Quantidade", "starCount", SKY_STAR_COUNT, "Quantas estrelas. Elas aparecem conforme a hora e o escuro do céu.")}
+      {range("Tamanho", "starSize", SKY_SCALE, "O tamanho de cada estrela.")}
+      {range("Intensidade", "starGlow", SKY_STAR_GLOW, "O brilho das estrelas; acima de 100% elas já aparecem no crepúsculo.")}
+    </div>
+  )
+}
 
 // Configurações do Pátio → Montanhas: the far ranges' shape; their colours still follow the sky
 export function MountainFields({ mountains, onChange }: { mountains: MountainParams | undefined; onChange: (m: MountainParams | undefined) => void }) {
