@@ -6,14 +6,14 @@
 // the ones made here their cover's style and Excluir; Gerar de MIDI opens the generator. A line says where the songs are kept
 // (this browser, or the account), and the admin can list everyone's songs, hear one or copy it.
 import { useEffect, useRef, useState } from "react"
-import { Cloud, CloudOff, Copy, Disc3, FileMusic, Pencil, Play, Plus, Save, Trash2, Users, X } from "lucide-react"
+import { Cloud, CloudOff, Copy, Disc3, FileMusic, Pencil, Play, Plus, Save, Square, Trash2, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import { listAllSongs, songApi, songErrorMessage, subscribeSyncState, syncState, type SongInfo } from "@/lib/pigchicken/song-online"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
 import {
-  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, openMidiGenerator, openSongEditor, pickSong, playDraft, playSongNow, saveSongAs,
+  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, nowPlaying, openMidiGenerator, openSongEditor, pickSong, playDraft, playSongNow, saveSongAs, stopSongNow,
   songSeconds, subscribeLibrary, updateSong, type Library, type LibrarySong,
 } from "@/lib/pigchicken/song-library"
 import { loadCatalog } from "@/lib/pigchicken/alien-catalog"
@@ -42,6 +42,12 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
   const [lib, setLib] = useState<Library>(() => loadLibrary())
   const [naming, setNaming] = useState<string | null>(null)
   useEffect(() => subscribeLibrary(setLib), [])
+  // a song (or the campaign) playing: Tocar turns into Parar
+  const [playing, setPlaying] = useState(() => !!nowPlaying.id || nowPlaying.campaign)
+  useEffect(() => {
+    const id = window.setInterval(() => setPlaying(!!nowPlaying.id || nowPlaying.campaign), 200)
+    return () => window.clearInterval(id)
+  }, [])
   const online = useOnline()
   const isAdmin = isAdminUser(online.user)
   const [sync, setSync] = useState(syncState)
@@ -132,7 +138,9 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 px-4 pb-3">
-          <button type="button" onClick={() => { playSongNow(lib.picked); onClose() }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: NEON }}><Play className="h-4 w-4" />Tocar</button>
+          {playing
+            ? <button type="button" onClick={() => { stopSongNow(); setPlaying(false) }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: "#ff6b5b" }}><Square className="h-4 w-4" />Parar</button>
+            : <button type="button" onClick={() => { playSongNow(lib.picked); onClose() }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: NEON }}><Play className="h-4 w-4" />Tocar</button>}
           {!isCampaign && <button type="button" onClick={() => setNaming(n => (n === null ? `${picked?.name ?? "Música"} 2` : null))} aria-expanded={naming !== null} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Save className="h-4 w-4" />Salvar como</button>}
           {picked && <button type="button" onClick={() => openSongEditor(picked.id)} title={picked.builtin ? "Esta é do jogo: salve as mudanças com outro nome" : undefined} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Pencil className="h-4 w-4" />Editar</button>}
           <button type="button" onClick={() => openSongEditor(newSong(lib).id)} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Plus className="h-4 w-4" />Nova música</button>

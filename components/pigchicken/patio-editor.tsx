@@ -37,6 +37,8 @@ import { TreePanel } from "./tree-panel"
 import { SurfacePoints } from "./surface-points"
 import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
+import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, GONG_TITLE_MAX, type GongParams } from "@/lib/pigchicken/gong"
+import { loadLibrary, subscribeLibrary } from "@/lib/pigchicken/song-library"
 import { EditorDock, useEditorDocked } from "./editor-dock"
 
 const UI = "header, aside, button, input, select, textarea, a, label, [data-chicken-ignore], [role='dialog']"
@@ -681,6 +683,7 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy, linking, onLinking }: 
       {isSurfaceElement(el.kind) && el.params.surface && <SurfaceFields el={el} surface={el.params.surface} onChange={surface => set({ surface })} />}
       {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
+      {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
       {el.kind === "button" && (
         <label className="grid gap-1">
           <span>Ação ao acertar</span>
@@ -692,6 +695,33 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy, linking, onLinking }: 
 
     </FloatingPanel>
   )
+}
+
+// a Gongo: the song it plays (picked here, not in the jukebox), the strikes, its title and how it forgets
+function GongFields({ gong, onChange }: { gong: GongParams; onChange: (gong: GongParams, step?: string) => void }) {
+  const [songs, setSongs] = useState(() => loadLibrary().songs)
+  useEffect(() => subscribeLibrary(l => setSongs(l.songs)), [])
+  const set = (patch: Partial<GongParams>, step?: string) => onChange({ ...gong, ...patch }, step)
+  const known = songs.some(s => s.id === gong.song)
+  return <>
+    <label className="grid gap-1">
+      <span>Música</span>
+      <select aria-label="Música do gongo" value={gong.song} onChange={e => set({ song: e.target.value })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        {!known && <option value={gong.song}>(música que não está nesta jukebox)</option>}
+        {songs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
+    </label>
+    <label className="grid gap-1">
+      <span>Título</span>
+      <input aria-label="Título do gongo" maxLength={GONG_TITLE_MAX} value={gong.title} placeholder="Sem título" onChange={e => set({ title: e.target.value }, "gong-title")} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
+    </label>
+    <div className="grid gap-[3px]">
+      <PatioRange label="Batidas para começar" min={GONG_HITS.min} max={GONG_HITS.max} value={gong.hits} onChange={hits => set({ hits }, "gong-hits")} />
+      <PatioRange label="Batidas para parar a música" min={GONG_STOP_HITS.min} max={GONG_STOP_HITS.max} value={gong.stopHits} display={gong.stopHits || "Não para"} onChange={stopHits => set({ stopHits }, "gong-stop")} />
+      <PatioRange label="Esquecer as batidas depois de" min={GONG_FORGET.min} max={GONG_FORGET.max} value={gong.forget} display={gong.forget ? `${gong.forget} s` : "Nunca"} onChange={forget => set({ forget }, "gong-forget")} />
+    </div>
+    <label className="flex items-center gap-2"><input type="checkbox" checked={gong.lamps} onChange={e => set({ lamps: e.target.checked })} />Lâmpadas das batidas</label>
+  </>
 }
 
 // a Chão's biome or a Parede's style, and how its outline is edited
@@ -725,7 +755,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
     return { key: `power-${id}`, kind: m.kind as ElementKind, label: `${m.kind === "pole" ? "Poste" : "Torre"} · ${m.label}`, params: { power: { ...defaultPower(m.kind), model: id, links: [] } } }
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
-  { group: "Música", items: (["zone", "lanes"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
+  { group: "Música", items: (["zone", "lanes", "gong", "jukebox"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
   { group: "Esportivos", items: SPORTS_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Armas", items: WEAPON_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
@@ -742,6 +772,8 @@ function Thumb({ entry }: { entry: Entry }) {
   }
   if (entry.kind === "dummy") return <span className="relative block h-9 w-6"><span className="absolute inset-x-0 top-0 h-6 rounded-md bg-[#d9cfb8]" /><span className="absolute left-1/2 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#d6453d] bg-[#f4f1e8]" /><span className="absolute bottom-0 left-1/2 h-3 w-1 -translate-x-1/2 bg-[#5b4630]" /></span>
   if (entry.kind === "zone") return <span className="flex h-7 w-10 items-center justify-center rounded-md border-2 border-dashed border-[#7b8cff] bg-[#7b8cff]/20 text-[13px] text-[#7b8cff]">♫</span>
+  if (entry.kind === "gong") return <span aria-hidden="true" className="relative block h-8 w-9"><span className="absolute inset-x-0 top-0 h-1 rounded-sm bg-[#b3261e]" /><span className="absolute bottom-0 left-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute bottom-0 right-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute left-1/2 top-2 h-5 w-5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f2c46d,#c58b2e_55%,#7a4f12)]" /></span>
+  if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
   const m = entry.params?.power ? POWER_MODELS[entry.params.power.model] : null
   const w = m?.w ?? d.w, h = m?.h ?? d.h
@@ -790,7 +822,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       const p = screenToWorld(e.clientX, e.clientY)
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       // dummies and racks stand on the floor right under where they were dropped
-      if (el.kind === "dummy" || el.kind === "rack") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       // postes and torres in their model's proportions, planted on the floor under where they were dropped
       if (el.params.power) {

@@ -259,8 +259,13 @@ export const onPlayDraft = (fn: (r: DraftRequest) => void) => {
   window.addEventListener(DRAFT, h)
   return () => window.removeEventListener(DRAFT, h)
 }
-// what the stage plays now (the game writes it each frame; the editor's playhead reads it)
-export const nowPlaying: { id: string | null; beat: number; draft: boolean } = { id: null, beat: NaN, draft: false }
+// what the stage plays now (the game writes it each frame; the editor's playhead and the jukebox's Parar read it;
+// campaign: the Campanha do Gongo is on)
+export const nowPlaying: { id: string | null; beat: number; draft: boolean; campaign: boolean } = { id: null, beat: NaN, draft: false, campaign: false }
+// the jukebox's Parar: the song (or the campaign) stops now
+const STOP = 'pigchicken-song-stop'
+export const stopSongNow = () => window.dispatchEvent(new CustomEvent(STOP))
+export const onStopSong = (fn: () => void) => { window.addEventListener(STOP, fn); return () => window.removeEventListener(STOP, fn) }
 export const onPlaySong = (fn: (id: string) => void) => {
   const h = (e: Event) => fn(String((e as CustomEvent).detail))
   window.addEventListener(PLAY, h)

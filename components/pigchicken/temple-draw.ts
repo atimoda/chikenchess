@@ -314,9 +314,17 @@ function drawDragon(ctx: Ctx, g: Target, x: number, flash: string | null, look: 
 
 // the gong totem: a lacquered frame with golden caps and a bronze gong that swings after each strike
 export function drawGong(ctx: Ctx, g: Target, x: number, temple: Temple) {
-  const s = temple.state, t = performance.now() / 1000
-  const ground = g.y + 40, cy = g.y - 72, R = 58
+  const s = temple.state
   const waiting = s.phase === "idle" || s.phase === "cleared" || s.phase === "failed" || s.phase === "victory"
+  const label = s.phase === "idle" ? "BATA NO GONGO" : s.phase === "cleared" ? `FASE ${s.stage + 2}: BATA NO GONGO` : s.phase === "failed" ? "TENTAR DE NOVO" : "JOGAR DE NOVO"
+  drawGongTotem(ctx, g, x, { ring: s.gongRing, waiting, hits: s.gongHits, need: s.gongNeed, label, lamps: true })
+}
+// the totem itself (the temple's, or a Gongo placed in the Modo editor): its strikes so far, its label ("" = none)
+export type GongLook = { ring: number; waiting: boolean; hits: number; need: number; label: string; lamps: boolean }
+export function drawGongTotem(ctx: Ctx, g: Target, x: number, look: GongLook) {
+  const t = performance.now() / 1000
+  const ground = g.y + 40, cy = g.y - 72, R = 58
+  const waiting = look.waiting
   // the frame
   ctx.fillStyle = "#8d1b14"
   ctx.fillRect(x - 88, ground - 220, 14, 220); ctx.fillRect(x + 74, ground - 220, 14, 220)
@@ -326,7 +334,7 @@ export function drawGong(ctx: Ctx, g: Target, x: number, temple: Temple) {
   ctx.fillStyle = "#ffd166"; [-81, 81].forEach(k => { ctx.beginPath(); ctx.arc(x + k, ground - 238, 7, 0, Math.PI * 2); ctx.fill() })
   ctx.fillRect(x - 92, ground - 216, 184, 3)
   // swinging after the strike
-  const k = s.gongRing
+  const k = look.ring
   const swing = Math.sin(k * 13) * Math.exp(-k * 2.6) * 0.16
   ctx.save()
   ctx.translate(x, ground - 214); ctx.rotate(swing); ctx.translate(-x, -(ground - 214))
@@ -352,12 +360,15 @@ export function drawGong(ctx: Ctx, g: Target, x: number, temple: Temple) {
   }
   // how many strikes so far: little lamps over the frame
   if (waiting) {
-    for (let i = 0; i < s.gongNeed; i++) {
-      const lx = x + (i - (s.gongNeed - 1) / 2) * 22, ly = ground - 264
-      ctx.fillStyle = i < s.gongHits ? "#ffd166" : "rgba(255,255,255,0.18)"
-      ctx.beginPath(); ctx.arc(lx, ly, 6, 0, Math.PI * 2); ctx.fill()
+    // many strikes: the lamps get closer and smaller so they stay over the frame
+    const gap = Math.min(22, 200 / Math.max(1, look.need)), lr = Math.min(6, gap * 0.3)
+    if (look.lamps) for (let i = 0; i < look.need; i++) {
+      const lx = x + (i - (look.need - 1) / 2) * gap, ly = ground - 264
+      ctx.fillStyle = i < look.hits ? "#ffd166" : "rgba(255,255,255,0.18)"
+      ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill()
     }
-    const label = s.phase === "idle" ? "BATA NO GONGO" : s.phase === "cleared" ? `FASE ${s.stage + 2}: BATA NO GONGO` : s.phase === "failed" ? "TENTAR DE NOVO" : "JOGAR DE NOVO"
+    const label = look.label
+    if (!label) return
     // the label rests right on top of the frame's top beam, between its two gold knobs
     ctx.font = "bold 12px ui-monospace, monospace"; ctx.textAlign = "center"
     const w = Math.min(148, ctx.measureText(label).width + 14)

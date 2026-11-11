@@ -241,7 +241,8 @@ export type NoteStageIO = {
   targets: Target[]
   music: Conductor
   sceneL: number; sceneW: number; groundY: number
-  inside: boolean // she is in the temple
+  inside: boolean // she is in the temple (always, for a song a Gongo or a Jukebox of the layout started)
+  gongX?: number // where the gong that speaks stands (the temple's, if left out)
   center: { x: number; y: number } // her fan's centre (world)
   discHit: boolean // start the song picked (the gong's strikes, or Tocar in the jukebox's panel)
   resetHit: boolean // the reset stone was struck
@@ -491,7 +492,7 @@ export function createNoteStage() {
       if (t.place !== 'balao') continue
       const v = t.who.startsWith('alien:') ? t.who.slice(6) : null
       if (t.who === 'galinha') { t.x = s.center.x; t.y = s.center.y - 110; t.over = true }
-      else if (t.who === 'gongo') { t.x = io.sceneL + GONG_X; t.y = io.groundY - 300; t.over = true }
+      else if (t.who === 'gongo') { t.x = io.gongX ?? io.sceneL + GONG_X; t.y = io.groundY - 300; t.over = true }
       else if (v) {
         let best: StageAlien | null = null
         for (const a of s.aliens) if (a.v.id === v && (!best || Math.hypot(a.x - s.center.x, a.y - s.center.y) < Math.hypot(best.x - s.center.x, best.y - s.center.y))) best = a

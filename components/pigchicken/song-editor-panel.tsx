@@ -8,7 +8,7 @@
 // the half circle around her at the cursor (or at the song's beat while it plays), and "Tocar daqui" plays the
 // draft in the temple from the cursor's bar.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, ChevronUp, MessageSquare, Pause, Play, Redo2, Save, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react"
+import { ChevronDown, ChevronUp, MessageSquare, Pause, Play, Plus, Redo2, Save, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantFor, type Catalog } from "@/lib/pigchicken/alien-catalog"
 import { DEGREE_COLORS, SCALES, type ScaleId } from "@/lib/pigchicken/music"
@@ -21,7 +21,7 @@ import {
   keyName, loadLibrary, normalizeSong, nowPlaying, playDraft, saveSongAs, stopDraft, updateSong, type LibrarySong,
 } from "@/lib/pigchicken/song-library"
 import {
-  NOTHING, addAlien, addLine, addNote, copyItems, insertPause, isEmpty, laneNotes, laneOf, moveAliens, moveLines, moveNote, pasteClip, removeItems,
+  NOTHING, addAlien, addLine, addNote, copyItems, insertPause, isEmpty, laneNotes, laneOf, moveAliens, moveLines, moveNote, movePause, pasteClip, removeItems,
   removeNote, retune, setPauseBars, snapBeat, timelineSpan, updateAlien, updateLine, updatePause, type Clip, type Selection,
 } from "@/lib/pigchicken/song-edit"
 import { SPECIES } from "@/lib/pigchicken/temple"
@@ -38,6 +38,7 @@ type Drag =
   | { kind: "aliens"; idx: number[]; sx: number; sy: number; db: number; dl: number; moved: boolean }
   | { kind: "note"; ai: number; ni: number; sx: number; sy: number; db: number; dl: number; moved: boolean }
   | { kind: "lines"; idx: number[]; sx: number; sy: number; db: number; dl: number; moved: boolean }
+  | { kind: "pause"; idx: number[]; sx: number; sy: number; db: number; dl: number; moved: boolean }
 
 function degreeIn(root: number, steps: number[], m: number) {
   const pc = (((m - root) % 12) + 12) % 12
@@ -51,6 +52,7 @@ function applyDrag(s: LibrarySong, d: Drag | null): LibrarySong {
   if (!d || !d.moved) return s
   if (d.kind === "aliens") return moveAliens(s, d.idx, d.db, d.dl)
   if (d.kind === "note") return moveNote(s, d.ai, d.ni, d.db, d.dl)
+  if (d.kind === "pause") return movePause(s, d.idx[0], d.db).song
   return moveLines(s, d.idx, d.db)
 }
 
@@ -74,6 +76,8 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
   const [note, setNote] = useState("")
   const [small, setSmall] = useState(false)
   const [playhead, setPlayhead] = useState(NaN)
+  // dragging on the ruler: the cursor follows the pointer and the preview shows that beat (even while it plays)
+  const [scrub, setScrub] = useState(false)
   // the lanes fill the timeline's height (between 18 and 34 px each)
   const [fit, setFit] = useState(300)
   const clip = useRef<Clip | null>(null)
@@ -170,14 +174,17 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
       const cur = dragRef.current
       if (!cur) return
       const dx = e.clientX - cur.sx, dy = e.clientY - cur.sy
-      const next = { ...cur, moved: cur.moved || Math.hypot(dx, dy) > 4, db: snapBeat(dx / ppb, grid), dl: cur.kind === "lines" ? 0 : -Math.round(dy / laneH) }
+      const next = { ...cur, moved: cur.moved || Math.hypot(dx, dy) > 4, db: snapBeat(dx / ppb, cur.kind === "pause" ? 4 : grid), dl: cur.kind === "lines" || cur.kind === "pause" ? 0 : -Math.round(dy / laneH) }
       if (next.db !== cur.db || next.dl !== cur.dl || next.moved !== cur.moved) { dragRef.current = next; setDrag(next) }
     }
     const up = () => {
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up)
       const cur = dragRef.current
       dragRef.current = null; setDrag(null)
-      if (cur?.moved && (cur.db || cur.dl) && draftRef.current) commit(applyDrag(draftRef.current, cur))
+      if (cur?.moved && (cur.db || cur.dl) && draftRef.current) {
+        if (cur.kind === "pause") { const r = movePause(draftRef.current, cur.idx[0], cur.db); commit(r.song, { ...NOTHING, pauses: [r.index] }) }
+        else commit(applyDrag(draftRef.current, cur))
+      }
     }
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up)
   }
@@ -236,7 +243,28 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
   const pickPause = (i: number) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.stopPropagation()
+    scroller.current?.focus({ preventScroll: true })
     setSel({ ...NOTHING, pauses: [i] })
+    beginDrag({ kind: "pause", idx: [i], sx: e.clientX, sy: e.clientY, db: 0, dl: 0, moved: false })
+  }
+  // a new alien of the variation picked in the bar, at the cursor, on the middle lane
+  const insertAlien = (id: string) => {
+    if (!lanes.length) return
+    const r = addAlien(draft, snapBeat(cursor, grid), lanes[Math.floor(lanes.length / 2)], kindOf(id))
+    commit(r.song, { ...NOTHING, aliens: [r.index] })
+  }
+  // the ruler: press and drag to move the cursor through the song; let go while it plays and it plays from there
+  const rulerBeat = (e: React.PointerEvent) => { const r = e.currentTarget.getBoundingClientRect(); return snapBeat(B0 + (e.clientX - r.left) / ppb, grid) }
+  const onRulerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setScrub(true); setCursor(rulerBeat(e))
+  }
+  const onRulerMove = (e: React.PointerEvent) => { if (scrub) setCursor(rulerBeat(e)) }
+  const onRulerUp = (e: React.PointerEvent) => {
+    if (!scrub) return
+    setScrub(false)
+    if (!Number.isNaN(playhead)) playDraft(draft, Math.max(0, rulerBeat(e)))
   }
 
   // ---------- the keys ----------
@@ -294,6 +322,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
   const setZone = (patch: Partial<LibrarySong["music"]["zone"]>, key: string) => commit({ ...draft, music: { ...draft.music, zone: { ...draft.music.zone, ...patch } } }, undefined, key)
 
   const playing = !Number.isNaN(playhead)
+  const shown = playing && !scrub ? playhead : cursor
   const one = sel.aliens.length === 1 ? draft.aliens[sel.aliens[0]] : null
   const line = sel.lines.length === 1 && !sel.aliens.length ? (draft.lines ?? [])[sel.lines[0]] : null
   const pause = sel.pauses.length === 1 ? (draft.pauses ?? [])[sel.pauses[0]] : null
@@ -306,7 +335,13 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
       {/* the header: drag it; the song's name; play, stop, undo, save */}
       {/* collapsed: only a small bar in the corner, clear of the song's score */}
       <div data-drag-handle className={cn("pointer-events-auto flex items-center gap-1.5 px-3 py-2", small ? "w-fit max-w-full self-start rounded-[18px] border-2 bg-[#07130d]" : "flex-wrap border-b border-white/10")} style={small ? { borderColor: NEON } : undefined}>
-        <h2 className={cn("min-w-0 truncate text-sm text-white", small ? "max-w-40" : "flex-1")}><span style={{ color: z.color }}>{draft.name}</span>{dirty && <span className="text-[#93a79a]"> · não salva</span>}</h2>
+        {small
+          ? <h2 className="min-w-0 max-w-40 truncate text-sm text-white"><span style={{ color: z.color }}>{draft.name}</span>{dirty && <span className="text-[#93a79a]"> · não salva</span>}</h2>
+          : <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <input aria-label="Nome da música" value={draft.name} maxLength={60} onChange={e => setSong({ name: e.target.value }, "name")}
+                className="h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-sm font-bold outline-none hover:border-white/15 focus:border-primary" style={{ color: z.color }} />
+              {dirty && <span className="shrink-0 text-[#93a79a]">não salva</span>}
+            </div>}
         <button type="button" onClick={play} className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 font-bold text-[#05060c]" style={{ background: NEON }} title="Toca no templo a partir do compasso do cursor"><Play className="h-4 w-4" />Tocar daqui</button>
         <button type="button" onClick={() => stopDraft()} disabled={!playing} className={btn} aria-label="Parar"><Square className="h-3.5 w-3.5" /></button>
         {!small && <>
@@ -327,26 +362,22 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
         )}
         {/* the song's settings and the tools */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/10 px-3 py-2">
-          <label className="flex items-center gap-1.5">Nome<input value={draft.name} maxLength={60} onChange={e => setSong({ name: e.target.value }, "name")} className={cn(field, "w-36")} /></label>
           <label className="flex items-center gap-1.5">bpm<input type="number" min={40} max={200} value={z.bpm} onChange={e => setZone({ bpm: Math.max(40, Math.min(200, Number(e.target.value) || z.bpm)) }, "bpm")} className={cn(field, "w-16")} /></label>
-          <label className="flex items-center gap-1.5">Tom
-            <select value={((z.root % 12) + 12) % 12} onChange={e => { const pc = Number(e.target.value); const root = ROOTS.find(r => r % 12 === pc) ?? 60; commit(retune(draft, root, z.scale)) }} className={field}>
+          <select aria-label="Tom" title="Tom" value={((z.root % 12) + 12) % 12} onChange={e => { const pc = Number(e.target.value); const root = ROOTS.find(r => r % 12 === pc) ?? 60; commit(retune(draft, root, z.scale)) }} className={field}>
               {ROOTS.map(r => <option key={r} value={r % 12}>{keyName(r)}</option>)}
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5">Escala
-            <select value={z.scale} onChange={e => commit(retune(draft, z.root, e.target.value as ScaleId))} className={field}>
+          </select>
+          <select aria-label="Escala" title="Escala" value={z.scale} onChange={e => commit(retune(draft, z.root, e.target.value as ScaleId))} className={field}>
               {(Object.keys(SCALES) as ScaleId[]).map(k => <option key={k} value={k}>{SCALES[k].label}</option>)}
-            </select>
-          </label>
+          </select>
           <label className="flex items-center gap-1.5">Intro<input type="number" min={1} max={8} value={draft.introBars} onChange={e => setSong({ introBars: Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 1))) }, "intro")} className={cn(field, "w-12")} />comp.</label>
-          <label className="flex items-center gap-1.5">Cor<input type="color" value={z.color} onChange={e => setZone({ color: e.target.value }, "color")} className="h-8 w-9 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" /></label>
+          <input type="color" aria-label="Cor" title="Cor" value={z.color} onChange={e => setZone({ color: e.target.value }, "color")} className="h-8 w-9 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
           <span className="mx-1 h-5 w-px bg-white/10" />
-          <label className="flex items-center gap-1.5">Novo alien
-            <select value={brush} onChange={e => setBrush(e.target.value)} className={cn(field, "max-w-36")}>
+          <div className="flex items-center">
+            <button type="button" onClick={() => insertAlien(brush)} className={cn(btn, "rounded-r-none")} title="Põe um alien desta variação no cursor (ou dê duplo clique numa faixa)"><Plus className="h-4 w-4" />Alien</button>
+            <select aria-label="Variação do alien" title="Escolher uma variação já põe um alien dela no cursor" value={brush} onChange={e => { setBrush(e.target.value); insertAlien(e.target.value) }} className={cn(field, "max-w-36 rounded-l-none border-l-0")}>
               {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>)}
             </select>
-          </label>
+          </div>
           <button type="button" onClick={() => { const r = insertPause(draft, snapBeat(cursor, 4), 2); commit(r.song, { ...NOTHING, pauses: [r.index] }) }} className={btn} title="Abre 2 compassos no cursor e empurra o resto para depois"><Pause className="h-4 w-4" />Pausa</button>
           <button type="button" onClick={() => { const r = addLine(draft, { beat: cursor, who: "narrador", text: "", secs: 3, place: "banner", blip: true }); commit(r.song, { ...NOTHING, lines: [r.index] }) }} className={btn}><MessageSquare className="h-4 w-4" />Fala</button>
           <span className="mx-1 h-5 w-px bg-white/10" />
@@ -361,11 +392,11 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
               {/* the ruler: bars and beats; a click puts the cursor */}
               <div className="sticky top-0 z-20 flex" style={{ height: RULER_H }}>
                 <div className="sticky left-0 z-10 shrink-0 border-b border-r border-white/10 bg-[#07130d]" style={{ width: LABEL_W }} />
-                <div className="relative cursor-pointer border-b border-white/10 bg-[#0a1a12]" style={{ width: gridW }} onPointerDown={e => { const r = e.currentTarget.getBoundingClientRect(); setCursor(snapBeat(B0 + (e.clientX - r.left) / ppb, grid)) }}>
+                <div className="relative cursor-ew-resize touch-none border-b border-white/10 bg-[#0a1a12]" style={{ width: gridW }} onPointerDown={onRulerDown} onPointerMove={onRulerMove} onPointerUp={onRulerUp} onPointerCancel={() => setScrub(false)}>
                   {Array.from({ length: Math.ceil((span.to - B0) / 4) }, (_, i) => B0 + i * 4).map(b => (
                     <span key={b} className="absolute top-0.5 text-[10px] text-[#93a79a]" style={{ left: xOf(b) + 3 }}>{b >= 0 ? b / 4 + 1 : b >= -draft.introBars * 4 ? `intro ${b / 4 + draft.introBars + 1}` : ""}</span>
                   ))}
-                  <div className="absolute bottom-0 h-2 w-0 border-l-2" style={{ left: xOf(cursor), borderColor: NEON }} />
+                  <div className="pointer-events-none absolute bottom-0 h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[7px] border-x-transparent" style={{ left: xOf(cursor), borderTopColor: NEON }} />
                 </div>
               </div>
               <div className="flex">
@@ -389,7 +420,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
                     return (
                       <div key={`p${i}`}>
                         <div className="pointer-events-none absolute top-0" style={{ left: xOf(p.beat), width: p.bars * 4 * ppb, height: lanesH, background: "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 6px, transparent 6px 12px)" }} />
-                        <div onPointerDown={pickPause(i)} className={cn("absolute flex cursor-pointer items-start rounded-md border px-1.5 py-0.5 text-[10px]", on ? "border-white bg-white/15 text-white" : "border-white/25 bg-white/5 text-[#c9ced6]")}
+                        <div onPointerDown={pickPause(i)} className={cn("absolute flex cursor-grab items-start rounded-md border px-1.5 py-0.5 text-[10px]", on ? "border-white bg-white/15 text-white" : "border-white/25 bg-white/5 text-[#c9ced6]")}
                           style={{ left: xOf(p.beat), width: p.bars * 4 * ppb, top: lanesH + 2, height: TALK_H - 4 }}>
                           {p.silent ? "Pausa · silêncio" : "Pausa"} · {p.bars} comp.
                         </div>
@@ -418,8 +449,8 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
           </div>
           {/* the preview and the inspector */}
           <div className="grid w-[264px] shrink-0 content-start gap-2 overflow-y-auto border-l border-white/10 p-3">
-            <Preview song={view} catalog={catalog} beat={playing ? playhead : cursor} />
-            <div className="text-[10px] text-[#93a79a]">{playing ? "tocando" : "cursor"}: compasso {Math.floor((playing ? playhead : cursor) / 4) + 1}, tempo {Math.floor(((((playing ? playhead : cursor) % 4) + 4) % 4) * 4) / 4 + 1}</div>
+            <Preview song={view} catalog={catalog} beat={shown} />
+            <div className="text-[10px] text-[#93a79a]">{playing && !scrub ? "tocando" : "cursor"}: compasso {Math.floor(shown / 4) + 1}, tempo {Math.floor((((shown % 4) + 4) % 4) * 4) / 4 + 1}</div>
             {note && <div className="rounded-md border border-white/15 bg-white/5 px-2 py-1.5 text-[11px] text-white">{note}</div>}
             {one && <AlienInspector a={one} catalog={catalog} onChange={(fn, key) => commit(updateAlien(draft, sel.aliens, fn), sel, key)} onDelete={() => commit(removeItems(draft, sel), NOTHING)} />}
             {sel.aliens.length > 1 && (
@@ -450,7 +481,10 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
                   <textarea value={draft.intro} maxLength={400} rows={3} onChange={e => setSong({ intro: e.target.value }, "intro-text")} className="rounded-md border border-white/15 bg-[#0b110e] p-2 text-xs text-white" />
                 </label>
                 <ul className="grid gap-0.5 text-[11px] text-[#93a79a]">
+                  <li>+ Alien ou escolher a variação: um alien no cursor</li>
                   <li>Duplo clique: um alien (ou uma fala, nos Diálogos)</li>
+                  <li>Arrastar na régua: o cursor e a prévia</li>
+                  <li>Arrastar uma pausa: muda de lugar</li>
                   <li>Arrastar: no tempo e entre as faixas</li>
                   <li>Ctrl+clique: uma nota no alien escolhido</li>
                   <li>Botão direito numa nota: tira</li>

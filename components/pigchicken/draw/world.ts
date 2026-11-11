@@ -12,13 +12,14 @@ import { type NoteStage } from "@/lib/pigchicken/note-stage"
 import { drawJukebox } from "@/components/pigchicken/note-stage-draw"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
 import { CAMPAIGN, type Library } from "@/lib/pigchicken/song-library"
-import { drawGong, drawResetStone, drawTempleAlien } from "@/components/pigchicken/temple-draw"
+import { drawGong, drawGongTotem, drawResetStone, drawTempleAlien, type GongLook } from "@/components/pigchicken/temple-draw"
 import { lookTargets, drawBird, drawUndead, drawPerson, drawButton, drawAlien, drawZombie, drawDummy, drawDummyTip } from "./creatures"
 import { drawNote, drawPuff } from "./effects"
 import { drawItem, type Ctx } from "./shared"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
-export const templeDraw: { temple: Temple | null; stage: NoteStage | null; charges: Map<number, number>; library: Library | null; catalog: Catalog | null; jukeRing: number } = { temple: null, stage: null, charges: new Map(), library: null, catalog: null, jukeRing: 9 }
+// gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the jukebox struck last (its ring)
+export const templeDraw: { temple: Temple | null; stage: NoteStage | null; charges: Map<number, number>; library: Library | null; catalog: Catalog | null; jukeRing: number; jukeLast: string; gongs: Map<string, GongLook> } = { temple: null, stage: null, charges: new Map(), library: null, catalog: null, jukeRing: 9, jukeLast: "jukebox", gongs: new Map() }
 
 // the hint over the items the local players can grab (set every frame): the first player to stand on one shows theirs
 export const pickupMarks = new Map<Pickup, { c: string; t: string }>()
@@ -82,10 +83,11 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }
-    if (g.kind === "button" && g.label === "jukebox") {
+    if (g.kind === "button" && g.label?.startsWith("gong:")) { const look = templeDraw.gongs.get(g.label); if (look) drawGongTotem(ctx, g, x, look); return }
+    if (g.kind === "button" && (g.label === "jukebox" || g.label?.startsWith("jukebox:"))) {
       const st = templeDraw.stage, lib = templeDraw.library
       const picked = lib?.songs.find(x => x.id === (st?.active ? st.song.id : lib.picked)) ?? null
-      drawJukebox(ctx, g, x, { cover: coverCanvas(picked, 96, templeDraw.catalog ?? undefined), playing: !!st?.active, color: picked?.music.zone.color ?? CAMPAIGN.color, beatPhase: combat.music.beatPhase, ring: templeDraw.jukeRing })
+      drawJukebox(ctx, g, x, { cover: coverCanvas(picked, 96, templeDraw.catalog ?? undefined), playing: !!st?.active, color: picked?.music.zone.color ?? CAMPAIGN.color, beatPhase: combat.music.beatPhase, ring: g.label === templeDraw.jukeLast ? templeDraw.jukeRing : 9 })
       return
     }
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }

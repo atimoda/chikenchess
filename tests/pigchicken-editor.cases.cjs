@@ -73,6 +73,26 @@ test('copy and paste at the cursor; another key keeps each note in its lane', ()
   s.aliens.forEach((a, i) => a.notes.forEach((n, k) => assert.equal(after.indexOf(t.aliens[i].notes[k].midi), before.indexOf(n.midi))))
 })
 
+test('a pause dragged later or earlier: what was between the two places goes to the other side of it', () => {
+  const s = song()
+  const r = ed.insertPause(s, 8, 2)
+  // two bars later: what started in the two bars after the pause now comes before it
+  const later = ed.movePause(r.song, r.index, 8)
+  assert.deepEqual(later.song.pauses, [{ beat: 16, bars: 2, silent: false }])
+  assert.equal(later.index, 0)
+  s.aliens.forEach((a, i) => {
+    const b = firstBeat(a)
+    assert.equal(firstBeat(later.song.aliens[i]), b >= 16 ? b + 8 : b, `alien ${i}`)
+  })
+  // and back where it was: the same song as before the drag
+  const back = ed.movePause(later.song, later.index, -8)
+  assert.deepEqual(back.song.aliens.map(firstBeat), r.song.aliens.map(firstBeat))
+  assert.deepEqual(back.song.pauses, r.song.pauses)
+  // never before the first beat; a drag of nothing changes nothing
+  assert.equal(ed.movePause(r.song, r.index, -40).song.pauses[0].beat, 0)
+  assert.equal(ed.movePause(r.song, r.index, 0).song, r.song)
+})
+
 test('pauses and lines are kept when saved, and cleaned', () => {
   const raw = { ...song(), id: 'x', pauses: [{ beat: 8, bars: 99, silent: true }, { beat: 'no' }], lines: [{ beat: 4, who: 'alien:jelly-x', text: 'a'.repeat(500), secs: 99, place: 'balao' }, { beat: 2, who: 'ninguém', text: 'Oi', place: 'chão', blip: false }] }
   const s = lib.normalizeSong(raw)

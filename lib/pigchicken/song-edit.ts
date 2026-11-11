@@ -88,6 +88,14 @@ export function insertPause<S extends Song>(s: S, beat: number, bars = 2, silent
   const pauses = [...(moved.pauses ?? []), { beat: r4(beat), bars, silent }].sort((a, b) => a.beat - b.beat)
   return { song: { ...moved, pauses }, index: pauses.findIndex(p => p.beat === r4(beat) && p.bars === bars) }
 }
+// a pause dragged in time (whole bars): its room closes where it was and opens where it goes, so what was between
+// the two places moves to the other side of it (the pause's beat is counted with its room closed)
+export function movePause<S extends Song>(s: S, i: number, dBeat: number): { song: S; index: number } {
+  const p = (s.pauses ?? [])[i]
+  if (!p || !dBeat) return { song: s, index: i }
+  const closed = removeItems(s, { aliens: [], lines: [], pauses: [i] })
+  return insertPause(closed, Math.max(0, p.beat + dBeat), p.bars, p.silent)
+}
 // a longer or shorter pause pushes or pulls what comes after it
 export function setPauseBars<S extends Song>(s: S, i: number, bars: number): S {
   const p = (s.pauses ?? [])[i]
