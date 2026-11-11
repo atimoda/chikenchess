@@ -9,7 +9,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, SPORTS_IDS, WEAPON_IDS, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
-import { VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
+import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
@@ -71,7 +71,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld)).map(g => (
+        {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld)).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g}</summary>
             <div className="grid gap-3 px-4 pb-4">
@@ -112,7 +112,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <label className="flex items-center justify-between gap-3">
                     <span>Som</span>
                     <select value={it.voice} onChange={e => { const v = e.target.value as VoiceId; update(d => { d.voice = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {(Object.keys(VOICE_LABELS) as VoiceId[]).map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
+                      {(Object.keys(VOICE_LABELS) as VoiceId[]).filter(v => v !== "hangSlap").map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
                     </select>
                   </label>
                   <label className="flex items-center justify-between gap-3">
@@ -156,6 +156,15 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     onChange={(lo, hi) => update(d => { d.volMin = lo; d.volMax = hi })}
                     onReset={() => update(d => { d.volMin = DEFAULT_ITEMS[d.id].volMin; d.volMax = DEFAULT_ITEMS[d.id].volMax })} />
                 </>
+              )}
+              {g === "Hangdrum" && (
+                <label className="flex items-center justify-between gap-3" title="O timbre do hangdrum; a batida entre as notas é sempre a mesma">
+                  <span>Tipo de som</span>
+                  <select value={HANG_VOICES.includes(it.voice) ? it.voice : ""} onChange={e => { const v = e.target.value as VoiceId; update(d => { d.voice = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                    {!HANG_VOICES.includes(it.voice) && <option value="">{VOICE_LABELS[it.voice]}</option>}
+                    {HANG_VOICES.map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
+                  </select>
+                </label>
               )}
               {g === "Efeito" && (
                 <>
@@ -209,7 +218,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 </label>
               )}
               <div className="grid gap-[3px]">
-              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail")))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(m.key === "hangNotes2" && it.hangRows < 2)).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers

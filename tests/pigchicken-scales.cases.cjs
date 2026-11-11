@@ -132,7 +132,8 @@ test('the arpeggiator: a glyph per option tracing its pattern; a click goes roun
 
 test('instruments start with every scale and a weapon for the reload sound; lists are cleaned', () => {
   for (const id of INSTRUMENT_IDS) {
-    assert.deepEqual(DEFAULT_ITEMS[id].scales, ['primary', 'fifths', 'tension', 'spiral', 'harmonic'])
+    // the Hangdrum plays on its own scale (the hang's ding and rows)
+    assert.deepEqual(DEFAULT_ITEMS[id].scales, id === 'hangdrum' ? ['hang'] : ['primary', 'fifths', 'tension', 'spiral', 'harmonic'])
     assert.equal(DEFAULT_ITEMS[id].spiralDescending, false)
     assert.ok(INSTRUMENT_WEAPON[id] && !DEFAULT_ITEMS[INSTRUMENT_WEAPON[id]].instrument)
   }
@@ -209,4 +210,67 @@ test('Dano só no tom: off by default; the key or the bar’s chord when the zon
   music.setZone({ ...base, id: 'h', inKey: 'chord' }); music.step(60 / base.bpm * 4)
   const chord = music.chord(true).map(pc)
   for (let m = 60; m < 72; m++) assert.equal(music.fits(m), chord.includes(pc(m)))
+})
+
+test('Hangdrum: the ding (tonic) in the middle, 8 notes from the fifth up in a zig-zag, the top note straight up', () => {
+  const s = INSTRUMENT_SCALES.hang, music = createConductor()
+  const lay = s.layout(music, { octave: 0, hang: { rows: 1, notes: 8, notes2: 7 } })
+  assert.equal(lay.fields.length, 9)
+  // the first zone (Campo) is C major pentatonic: the ding C3, then G3 A3 C4 D4 E4 G4 A4 C5
+  assert.equal(lay.fields[0].midi, 48)
+  assert.deepEqual(lay.fields.slice(1).map(f => f.midi), [55, 57, 60, 62, 64, 67, 69, 72])
+  // the lowest at the bottom, the highest at the top, the others alternating sides
+  assert.ok(lay.fields[1].y > 0.6 && Math.abs(lay.fields[1].x) < 1e-9)
+  assert.ok(lay.fields[8].y < -0.6 && Math.abs(lay.fields[8].x) < 1e-9)
+  for (let i = 2; i < 8; i++) assert.ok(Math.sign(lay.fields[i].x) !== Math.sign(lay.fields[i + 1].x) || i === 7)
+  // on a note: the clean note; in the middle: the ding; between notes: a slap that rings the nearest one
+  const q = (angle, reach) => ({ angle, reach, set: 'scale', octave: 0, span: 2, hang: { rows: 1, notes: 8, notes2: 7 } })
+  assert.equal(s.noteFor(music, q(UP, 1)), 72)
+  assert.equal(s.isSlap(music, q(UP, 1)), false)
+  assert.equal(s.noteFor(music, q(UP, 0)), 48)
+  assert.equal(s.isSlap(music, q(UP, 0.1)), false)
+  assert.equal(s.isSlap(music, q(UP, 0.37)), true)
+  const gap = Math.PI / 2 + Math.PI / 8
+  assert.equal(s.isSlap(music, q(gap, 1)), true)
+  assert.ok([55, 57].includes(s.noteFor(music, q(gap, 1))))
+  // walking goes over the hang's own notes
+  assert.equal(s.walk(music, 60, 1, 'scale', UP, 1, q(UP, 1)), 62)
+  assert.equal(s.walk(music, 48, 1, 'chord', UP, 1, q(UP, 1)), 55)
+})
+
+test('Hangdrum: a second row continues up the scale between the first one\'s notes; counts are clamped', () => {
+  const { cleanHang, hangZigzag } = loadTs('lib/pigchicken/instrument-scales.ts')
+  const s = INSTRUMENT_SCALES.hang, music = createConductor()
+  const lay = s.layout(music, { octave: 0, hang: { rows: 2, notes: 8, notes2: 9 } })
+  assert.equal(lay.fields.length, 18)
+  const row2 = lay.fields.filter(f => f.row === 2)
+  assert.equal(row2.length, 9)
+  assert.ok(row2[0].midi > lay.fields[8].midi)
+  assert.ok(row2.every(f => Math.hypot(f.x, f.y) > 0.7))
+  assert.deepEqual(cleanHang({ rows: 5, notes: 2, notes2: 40 }), { rows: 2, notes: 5, notes2: 9 })
+  assert.deepEqual(hangZigzag(8), [0, 1, 7, 2, 6, 3, 5, 4])
+  assert.deepEqual(hangZigzag(5), [0, 1, 4, 2, 3])
+})
+
+test('Hangdrum in the hands: a shot on a note sounds its kind of hang; between the notes, the slap', () => {
+  const { createCombat } = loadTs('lib/pigchicken/combat.ts')
+  const body = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
+  const shoot = (angle, voice) => {
+    const items = structuredClone(DEFAULT_ITEMS); if (voice) items.hangdrum.voice = voice
+    const c = createCombat(); c.setItems(items)
+    const played = []
+    c.setMusicOut({ note: (v, midi) => played.push({ v, midi }), hold: () => null, drum() {} })
+    c.give('hangdrum'); c.setAimReach(1)
+    const ctl = { fire: true, firePressed: true, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 }
+    for (let i = 0; i < 3; i++) { c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, angle, ctl, [], 1000, () => {}); ctl.fire = false; ctl.firePressed = false }
+    // the shot's note (the equip sound comes before it)
+    return played[played.length - 1]
+  }
+  assert.deepEqual(shoot(UP), { v: 'hang', midi: 72 })
+  assert.deepEqual(shoot(UP, 'hangSteel'), { v: 'hangSteel', midi: 72 })
+  const slap = shoot(Math.PI / 2 + Math.PI / 8)
+  assert.equal(slap.v, 'hangSlap')
+  assert.ok([55, 57].includes(slap.midi))
+  assert.equal(DEFAULT_ITEMS.hangdrum.instrument, true)
+  assert.equal(INSTRUMENT_WEAPON.hangdrum, 'pistol')
 })

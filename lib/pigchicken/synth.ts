@@ -5,9 +5,14 @@ import { midiHz } from './music'
 import type { BassTone, DroneTone } from './zone-ambience'
 
 export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass' | 'pizz'
+  | 'hang' | 'handpan' | 'hangSteel' | 'hangSlap'
 export const VOICE_LABELS: Record<VoiceId, string> = {
   flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo', pizz: 'Violino pizzicato',
+  hang: 'Hang clássico', handpan: 'Handpan nitretado', hangSteel: 'Handpan inox', hangSlap: 'Hang (batida entre notas)',
 }
+// the hangdrum's kinds of sound (its "Tipo de som"): each one a voice below
+export const HANG_VOICES: VoiceId[] = ['hang', 'handpan', 'hangSteel']
+export const isHangVoice = (v: VoiceId) => v === 'hang' || v === 'handpan' || v === 'hangSteel' || v === 'hangSlap'
 
 const MAX_VOICES = 18
 let bus: GainNode | null = null, amb: GainNode | null = null, comp: DynamicsCompressorNode | null = null
@@ -59,6 +64,26 @@ let noiseBuf: AudioBuffer | null = null
 function noise(a: AudioContext) {
   if (!noiseBuf) { noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1 }
   const s = a.createBufferSource(); s.buffer = noiseBuf; s.loop = true; return s
+}
+
+// ---------- the hangdrum ----------
+// A tone field of a hang / handpan is a dent in the steel shell tuned on three modes: the fundamental, its octave and
+// the compound fifth (the 12th, 3 × f). The finger's strike is short and soft, so the attack is a quick "ping" (a few
+// untuned high modes and a little thump that die in milliseconds); then the octave swells a hair after the
+// fundamental (the energy moving between the tuned modes, the instrument's "bloom") and everything rings long, lower
+// notes longer. Each mode is a pair of slightly mistuned sines, which gives the slow shimmer of real steel.
+// hang: the classic (PANArt, nitrided steel): warm, round, a soft fifth; handpan: a modern nitrided pan, brighter,
+// a clearer octave and a little pitch drop at the strike; hangSteel: a stainless pan, the purest and longest ring
+type HangShape = { oct: number; fifth: number; ping: number; click: number; ring: number; beat: number; glide: number; attack: number }
+const HANG_SHAPES: Record<'hang' | 'handpan' | 'hangSteel', HangShape> = {
+  hang: { oct: 0.34, fifth: 0.15, ping: 0.05, click: 0.06, ring: 1, beat: 0.0007, glide: 0.002, attack: 0.004 },
+  handpan: { oct: 0.48, fifth: 0.2, ping: 0.09, click: 0.08, ring: 1.25, beat: 0.0009, glide: 0.005, attack: 0.003 },
+  hangSteel: { oct: 0.26, fifth: 0.07, ping: 0.035, click: 0.03, ring: 1.7, beat: 0.0013, glide: 0.001, attack: 0.008 },
+}
+// seconds a hang note takes to die away completely: low notes longer (about 6.5 s at A3), `dur` (the item's Duração
+// da nota, 1.5 s by default) stretching or shortening it
+function hangRing(f: number, dur: number, ring: number) {
+  return Math.max(0.8, Math.min(12, 6.5 * Math.pow(220 / f, 0.35) * ring * Math.max(0.35, Math.min(2.5, dur / 1.5))))
 }
 
 export type Held = { setPitch: (midi: number) => void; setVolume?: (v: number) => void; stop: () => void }
@@ -194,6 +219,54 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       o1.connect(out); o2.connect(g2); g2.connect(lp); lp.connect(out); track(o1.frequency, 1); track(o2.frequency, 1)
       sources.push(o1, o2)
       end = env(a, out, t, 0.45 * vel, 0.006, Math.max(0, dur - 0.05), 0.12); break
+    }
+    case 'hang': case 'handpan': case 'hangSteel': {
+      const sh = HANG_SHAPES[voice], dec = hangRing(f, dur, sh.ring)
+      // a mode: two sines a hair apart (the shimmer), with its own swell and ring
+      const mode = (ratio: number, peak: number, swell: number, ring: number) => {
+        const g = a.createGain()
+        g.gain.setValueAtTime(0.0001, t)
+        if (swell > 0) { g.gain.exponentialRampToValueAtTime(peak * 0.45, t + sh.attack); g.gain.exponentialRampToValueAtTime(peak, t + swell) }
+        else g.gain.exponentialRampToValueAtTime(peak, t + sh.attack)
+        g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(swell, sh.attack) + ring)
+        g.connect(out)
+        for (const d of [1 - sh.beat, 1 + sh.beat]) {
+          const o = osc(a, 'sine', f * ratio * d * (1 + sh.glide), t)
+          o.frequency.exponentialRampToValueAtTime(f * ratio * d, t + 0.05)
+          o.connect(g); track(o.frequency, ratio * d); sources.push(o)
+        }
+      }
+      mode(1, 0.5, 0, dec)
+      mode(2, sh.oct, 0.09, dec * 0.62)
+      mode(3, sh.fifth, 0.04, dec * 0.45)
+      // the strike: two untuned high modes and the finger's thump
+      for (const [r, k] of [[4.27, 1], [6.14, 0.6]] as const) {
+        const o = osc(a, 'sine', f * r, t), g = a.createGain(); env(a, g, t, sh.ping * k, 0.002, 0, 0.09)
+        o.connect(g); g.connect(out); sources.push(o)
+      }
+      if (sh.click > 0) {
+        const n = noise(a), lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(4000, f * 6)
+        const g = a.createGain(); env(a, g, t, sh.click, 0.001, 0, 0.02); n.connect(lp); lp.connect(g); g.connect(out); sources.push(n)
+      }
+      out.gain.setValueAtTime(0.42 * vel, t)
+      end = t + dec + 0.1; break
+    }
+    // a hand between the notes: a dry "tak" of the skin on the steel, the shell's knock, the air inside booming
+    // (the Helmholtz resonance of the body, the "Gu") and the nearest note ringing faintly in sympathy (`midi`)
+    case 'hangSlap': {
+      const tak = noise(a), bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2300; bp.Q.value = 0.9
+      const tg = a.createGain(); env(a, tg, t, 0.5 * vel, 0.001, 0, 0.045); tak.connect(bp); bp.connect(tg); tg.connect(out)
+      const knock = osc(a, 'sine', 210, t); knock.frequency.exponentialRampToValueAtTime(130, t + 0.06)
+      const kg = a.createGain(); env(a, kg, t, 0.32 * vel, 0.002, 0, 0.13); knock.connect(kg); kg.connect(out)
+      const gu = osc(a, 'sine', 92, t); gu.frequency.exponentialRampToValueAtTime(86, t + 0.3)
+      const gg = a.createGain(); env(a, gg, t, 0.3 * vel, 0.006, 0, 0.42); gu.connect(gg); gg.connect(out)
+      sources.push(tak, knock, gu)
+      for (const [r, peak, dec] of [[1, 0.07, 0.9], [2, 0.03, 0.5], [2.71, 0.035, 0.12], [4.13, 0.025, 0.08]] as const) {
+        const o = osc(a, 'sine', f * r, t), g = a.createGain(); env(a, g, t, peak * vel, 0.003, 0, dec)
+        o.connect(g); g.connect(out); track(o.frequency, r); sources.push(o)
+      }
+      out.gain.setValueAtTime(1.6, t)
+      end = t + 0.95; break
     }
     case 'bird': {
       const o1 = osc(a, 'sine', f * 2, t); o1.frequency.exponentialRampToValueAtTime(f * 3, t + 0.05); o1.frequency.exponentialRampToValueAtTime(f * 2, t + 0.1)

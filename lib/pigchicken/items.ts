@@ -15,7 +15,7 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
 export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
-  | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp'
+  | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum'
   | 'maryjane' | 'cok' | 'passagua'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
@@ -152,6 +152,10 @@ export type ItemDef = {
   // before the next item
   scales: InstrumentScaleId[]
   spiralDescending: boolean // the Espiral from the highest note (outside) to the lowest (inside)
+  // the Hangdrum scale: rows of notes around the ding (1 or 2) and the notes in the first and second rows (5 to 9)
+  hangRows: number
+  hangNotes: number
+  hangNotes2: number
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
   consumable: boolean
@@ -194,6 +198,7 @@ export const TRAIL_CREAM = '#fff4dc'
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
+  hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
 }
@@ -397,6 +402,17 @@ const HARP: ItemDef = {
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
 }
+// Idiofones → pistol: a hangdrum, one struck note per press on its own scale (the hang's ding and rows); the aim
+// between its notes slaps it (a percussive hit). Its kind of sound is its voice (Hang clássico, Handpan nitretado,
+// Handpan inox)
+const HANGDRUM: ItemDef = {
+  ...PISTOL, ...MUSIC_MELEE, id: 'hangdrum', name: 'Hangdrum', family: 'Idiofones', reticle: 'dot',
+  rate: 8, mag: 40, reloadTime: 0.9, speed: 800, damage: 14, size: 11, range: 950, spreadBase: 1, spreadShot: 0.5,
+  recoilKick: 1, muzzleX: 58, muzzleY: -6, length: 60,
+  instrument: true, voice: 'hang', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 0.8, volMax: 0.8,
+  scales: ['hang'], hangRows: 1, hangNotes: 8, hangNotes2: 7,
+  rebateChain: chain(['echo', 'dotted', 2]),
+}
 
 // ---------- consumables (special abilities): Fire uses a dose and puts an effect on her for a while ----------
 const CONSUMABLE = {
@@ -420,14 +436,14 @@ const COK: ItemDef = {
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
-  flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP,
+  flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM,
   maryjane: MARYJANE, cok: COK,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
-export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp']
+export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
 // each instrument is built on a weapon family's sheet: switching its scale makes that weapon's reload sound
 export const INSTRUMENT_WEAPON: Partial<Record<ItemId, ItemId>> = {
-  flute: 'pistol', sax: 'smg', trumpet: 'rifle', guitar: 'pump', violin: 'sniper', keys: 'launcher', tambourine: 'grenade', harp: 'bow',
+  flute: 'pistol', sax: 'smg', trumpet: 'rifle', guitar: 'pump', violin: 'sniper', keys: 'launcher', tambourine: 'grenade', harp: 'bow', hangdrum: 'pistol',
 }
 export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
@@ -440,11 +456,13 @@ export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_I
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
-const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true }
+const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true, hang: true, handpan: true, hangSteel: true }
 // the violin (a beam instrument) bows its held note with the arpeggiator off; with it on, it plucks the arpeggio
 // (pizzicato: short notes, the bow's seconds spent note by note)
 export const bowed = (d: ItemDef) => d.beam && d.arp === 'off'
 export const pizzicato = (d: ItemDef) => d.beam && d.arp !== 'off'
+// the shape of an item's Hangdrum scale (lib/pigchicken/instrument-scales.ts)
+export const hangOf = (d: ItemDef) => ({ rows: d.hangRows, notes: d.hangNotes, notes2: d.hangNotes2 })
 // the arpeggiator's glyph over an instrument's slot in the inventory: one dot per column, its height (0 low … 3 high)
 // the note the pattern plays there; null leaves a gap. Off: one held line; Frase: two short climbing groups
 export const ARP_GLYPHS: Record<Arp, (number | null)[]> = {
@@ -536,6 +554,9 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'tremoloRange', label: 'Tremolo: limite', min: 0.05, max: 3, step: 0.05, unit: 'semitons', group: 'Música', hint: 'Até quanto a nota sobe ou desce para cada lado' },
   { key: 'meleeNotes', label: 'Notas do golpe', min: 1, max: 4, step: 1, group: 'Música', hint: 'O golpe toca a nota da faixa do leque para onde a mira aponta e sobe o acorde a partir dela' },
   { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },
+  { key: 'hangRows', label: 'Fileiras', min: 1, max: 2, step: 1, group: 'Hangdrum', hint: 'Fileiras de notas em volta da nota central (ding)' },
+  { key: 'hangNotes', label: 'Notas da 1ª fileira', min: 5, max: 9, step: 1, group: 'Hangdrum' },
+  { key: 'hangNotes2', label: 'Notas da 2ª fileira', min: 5, max: 9, step: 1, group: 'Hangdrum' },
   { key: 'effectTime', label: 'Duração do efeito', min: 1, max: 120, step: 1, unit: 's', group: 'Efeito', hint: 'Doses acumulam: cada uma tem o seu tempo e os multiplicadores se multiplicam' },
   { key: 'effectSpeed', label: 'Velocidade final', min: 0.3, max: 2.5, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%; 0,78 = −22%' },
   { key: 'effectAccel', label: 'Aceleração', min: 0.3, max: 3, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%' },

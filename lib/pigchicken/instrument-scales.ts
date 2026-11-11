@@ -17,11 +17,15 @@
 //   Campo harmônico: the zone's key as a wheel of 7 houses, one per degree (I ii iii IV V vi vii° in a major key),
 //     each with its triad. The wheel turns with the key: the I sits where the key's tonic is on the circle of fifths
 //     (C straight up, G 30° clockwise, D 60°…), so another zone asks for another angle. Only the direction counts.
+//   Hangdrum: the top of a hang seen from above: the big low note in the middle (the ding, the zone's tonic) and one
+//     or two rows of round notes around it (5 to 9 each), going up the zone's scale from the fifth in a zig-zag,
+//     left and right, from the bottom to the top, like a real handpan. The aim's point (direction and reach) on a
+//     note plays it clean; between the notes it is a slap (`isSlap`), a percussive hit that rings the nearest note.
 // Angles are screen radians (0 = right, π/2 = down, -π/2 = up).
 import { SCALES, chordOn, scaleNotes, type Conductor, type PitchSet, type Zone } from './music'
 
-export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic'
-export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic']
+export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic' | 'hang'
+export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic', 'hang']
 
 export const SECTORS = 12
 // reach below it: the inner ring ("a mira pela metade"); from it on: the outer ring ("a mira esticada inteira")
@@ -58,7 +62,8 @@ export type ScaleRegion = {
 
 // what the combat asks: the notes for the aim, with the item's pitch set, octave and span (descending: the spiral
 // turned around, the item's `spiralDescending`)
-export type ToneQuery = { angle: number; reach: number; set: PitchSet; octave: number; span: number; descending?: boolean }
+// hang: the Hangdrum's rows around the ding (1 or 2) and the notes in each (the item's hangRows / hangNotes / hangNotes2)
+export type ToneQuery = { angle: number; reach: number; set: PitchSet; octave: number; span: number; descending?: boolean; hang?: HangShape }
 
 // the notes in letters (cifra)
 export const LETTERS = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B']
@@ -83,9 +88,11 @@ export abstract class InstrumentScale {
   // the note the aim plays
   abstract noteFor(music: Conductor, q: ToneQuery): number
   // `n` steps away from `from` inside the chord (or the scale) the aim is on
-  abstract walk(music: Conductor, from: number, n: number, set: PitchSet, angle: number, reach: number): number
+  abstract walk(music: Conductor, from: number, n: number, set: PitchSet, angle: number, reach: number, q?: ToneQuery): number
   // the note's colour index (its degree)
   abstract degreeOf(music: Conductor, m: number, angle: number, reach: number): number
+  // the aim falls between the notes: a percussive hit instead of the clean note (only the Hangdrum has gaps)
+  isSlap(_music: Conductor, _q: ToneQuery): boolean { return false }
 }
 
 // Escala primária: the leque as it always was (the zone's chord or scale, by how high the aim points)
@@ -321,8 +328,89 @@ export class HarmonicFieldScale extends InstrumentScale {
   }
 }
 
+// Hangdrum: the hang seen from above (see the top of the file). Units: the chart's radius is 1, like the aim's reach
+export type HangShape = { rows: number; notes: number; notes2: number }
+export const HANG_DEFAULT: HangShape = { rows: 1, notes: 8, notes2: 7 }
+export const HANG_ROWS_MAX = 2, HANG_NOTES_MIN = 5, HANG_NOTES_MAX = 9
+export type HangField = { midi: number; x: number; y: number; r: number; row: number; letter: string; degree: number }
+export type HangLayout = { fields: HangField[]; ring: number; edge: number } // fields[0] is the ding; ring: the outer row's radius; edge: its outer edge
+const clampInt = (v: number, lo: number, hi: number, d: number) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : d)
+export function cleanHang(h: Partial<HangShape> | undefined): HangShape {
+  return {
+    rows: clampInt(h?.rows ?? HANG_DEFAULT.rows, 1, HANG_ROWS_MAX, HANG_DEFAULT.rows),
+    notes: clampInt(h?.notes ?? HANG_DEFAULT.notes, HANG_NOTES_MIN, HANG_NOTES_MAX, HANG_DEFAULT.notes),
+    notes2: clampInt(h?.notes2 ?? HANG_DEFAULT.notes2, HANG_NOTES_MIN, HANG_NOTES_MAX, HANG_DEFAULT.notes2),
+  }
+}
+// where each slot of a row sits for its place in the zig-zag: 0 at the bottom, then right, left, right… up to the top
+export function hangZigzag(n: number) {
+  const order: number[] = [0]
+  for (let k = 1; order.length < n; k++) { order.push(k); if (order.length < n && n - k !== k) order.push(n - k) }
+  return order
+}
+// the rows' radii and their notes' size: one row in the middle of the space, two rows one inside the other
+const HANG_ROWS = [
+  { ding: 0.25, rows: [{ R: 0.64, cap: 0.2 }] },
+  { ding: 0.2, rows: [{ R: 0.47, cap: 0.135 }, { R: 0.8, cap: 0.15 }] },
+]
+export class HangScale extends InstrumentScale {
+  readonly id = 'hang' as const
+  readonly label = 'Hangdrum'
+  // the ding: the zone's tonic low in the item's register (from 14 semitones under its centre: D3 for octave 0);
+  // the rows: the zone's scale from the fifth above it, one note after another through the zig-zag, row after row
+  layout(music: Conductor, q: Pick<ToneQuery, 'octave' | 'hang'>): HangLayout {
+    const sh = cleanHang(q.hang), z = music.zone, geo = HANG_ROWS[sh.rows - 1]
+    const center = 60 + 12 * q.octave
+    const ding = center - 14 + pc(z.root - (center - 14))
+    const counts = [sh.notes, sh.notes2].slice(0, sh.rows)
+    const notes = scaleNotes(z.root, z.scale, ding + 7, ding + 72)
+    const field = (midi: number, x: number, y: number, r: number, row: number): HangField => ({ midi, x, y, r, row, letter: LETTERS[pc(midi)], degree: music.degreeOf(midi) + 1 })
+    const fields = [field(ding, 0, 0, geo.ding, 0)]
+    let next = 0
+    counts.forEach((n, row) => {
+      const { R, cap } = geo.rows[row], r = Math.min(cap, R * Math.sin(Math.PI / n) * 0.78)
+      // the outer row turns half a slot, its notes between the inner ones
+      const start = Math.PI / 2 + (row ? Math.PI / n : 0)
+      hangZigzag(n).forEach(slot => {
+        const a = start + (slot * TAU) / n
+        fields.push(field(notes[Math.min(notes.length - 1, next++)] ?? ding + 12, Math.cos(a) * R, Math.sin(a) * R, r, row + 1))
+      })
+    })
+    const last = geo.rows[sh.rows - 1], lastR = fields[fields.length - 1].r
+    return { fields, ring: last.R, edge: last.R + lastR }
+  }
+  // the aim's point on the hang: past the outer row only the direction counts (a stick or the keys, stretched all
+  // the way, still choose between a note and a gap); the field under it (index) or, between them, the nearest one
+  touch(lay: HangLayout, angle: number, reach: number): { index: number; slap: boolean } {
+    const rr = Math.max(0, reach > lay.edge ? lay.ring : reach)
+    const x = Math.cos(angle) * rr, y = Math.sin(angle) * rr
+    let best = 0, bestD = Infinity
+    for (let i = 0; i < lay.fields.length; i++) {
+      const f = lay.fields[i], d = Math.hypot(x - f.x, y - f.y) - f.r
+      if (d <= 0) return { index: i, slap: false }
+      if (d < bestD) { bestD = d; best = i }
+    }
+    return { index: best, slap: true }
+  }
+  pool(music: Conductor, q: ToneQuery) { return this.layout(music, q).fields.map(f => f.midi).sort((a, b) => a - b) }
+  noteFor(music: Conductor, q: ToneQuery) {
+    const lay = this.layout(music, q)
+    return lay.fields[this.touch(lay, q.angle, q.reach).index].midi
+  }
+  isSlap(music: Conductor, q: ToneQuery) { return this.touch(this.layout(music, q), q.angle, q.reach).slap }
+  // arpeggios and phrases walk over the hang's own notes, low to high (a real hang has only these)
+  walk(music: Conductor, from: number, n: number, set: PitchSet, _angle: number, _reach: number, q?: ToneQuery) {
+    if (!q) return music.walk(from, n, set)
+    const pool = this.pool(music, q)
+    let i = pool.findIndex(m => m >= from)
+    if (i < 0) i = pool.length - 1
+    return pool[Math.max(0, Math.min(pool.length - 1, i + n))] ?? from
+  }
+  degreeOf(music: Conductor, m: number) { return music.degreeOf(m) }
+}
+
 export const INSTRUMENT_SCALES: Record<InstrumentScaleId, InstrumentScale> = {
-  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(), harmonic: new HarmonicFieldScale(),
+  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(), harmonic: new HarmonicFieldScale(), hang: new HangScale(),
 }
 export const isInstrumentScaleId = (v: unknown): v is InstrumentScaleId => typeof v === 'string' && (INSTRUMENT_SCALE_IDS as string[]).includes(v)
 

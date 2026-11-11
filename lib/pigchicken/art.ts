@@ -164,6 +164,18 @@ const ART: Partial<Record<ItemId, Art>> = {
     <rect x="47" y="-5.6" width="5.2" height="11.2" rx="1" fill="#d7192a"/>
     <path d="M48 -5.6 L48 5.6 M49.8 -5.6 L49.8 5.6 M51.4 -5.6 L51.4 5.6" stroke="#9c0f1c" stroke-width="0.6"/>`,
   },
+  // Hangdrum: the hang seen from the side, two steel domes joined at the rim, the ding on top and dents of notes
+  hangdrum: {
+    box: [-2, -15, 64, 26],
+    svg: `<path d="M0 1 Q30 15 60 1 Z" fill="#3e2a19"/>
+    <ellipse cx="30" cy="7.5" rx="6" ry="1.6" fill="#1d130b"/>
+    <path d="M0 1 Q30 -22 60 1 Z" fill="#7a5532"/>
+    <path d="M7 -3 Q30 -16 53 -3" fill="none" stroke="#a37848" stroke-width="1.4" opacity="0.7"/>
+    ${[[9, -2.4, 3.2], [51, -2.4, 3.2], [17, -6.4, 4], [43, -6.4, 4]].map(([x, y, rx]) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="1.5" fill="#5f4126" stroke="#9c7244" stroke-width="0.6"/>`).join('')}
+    <ellipse cx="30" cy="-10.6" rx="6.5" ry="2.4" fill="#8f6a40" stroke="#4a3220" stroke-width="0.8"/>
+    <ellipse cx="28.5" cy="-11.2" rx="2.6" ry="0.8" fill="#d8b47a" opacity="0.7"/>
+    <ellipse cx="30" cy="1" rx="30" ry="1.8" fill="#4f361f"/>`,
+  },
   tambourine: {
     box: [-8, -24, 46, 48],
     svg: `<circle cx="14" cy="0" r="20" fill="#e8d3a6" stroke="#9a5b2e" stroke-width="5"/>

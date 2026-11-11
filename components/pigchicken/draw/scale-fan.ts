@@ -6,7 +6,8 @@
 // lanes are the same on both sides; the labels go on the side she aims at.
 import type { Combat } from "@/lib/pigchicken/combat"
 import { DEGREE_COLORS, NOTE_NAMES, SCALES, type PitchSet } from "@/lib/pigchicken/music"
-import { CHART_HOLE, HarmonicFieldScale, RING_SPLIT, SpiralScale, fieldHouses, fieldTurn, houseAt, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
+import { CHART_HOLE, HangScale, HarmonicFieldScale, RING_SPLIT, SpiralScale, fieldHouses, fieldTurn, houseAt, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type HangLayout, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
+import { hangOf } from "@/lib/pigchicken/items"
 
 
 const noteName = (m: number) => `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`
@@ -37,6 +38,11 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
   if (chart instanceof SpiralScale) {
     const d = combat.def(), lay = chart.layout(combat.music, { octave: d.octave, span: d.span, descending: d.spiralDescending })
     drawSpiral(ctx, lay, chart.pieceAt(lay, aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    return
+  }
+  if (chart instanceof HangScale) {
+    const d = combat.def(), lay = chart.layout(combat.music, { octave: d.octave, hang: hangOf(d) })
+    drawHang(ctx, lay, chart.touch(lay, aim, combat.aimReach), aim, combat.aimReach, cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
     return
   }
   if (chart instanceof HarmonicFieldScale) {
@@ -243,6 +249,45 @@ function drawHarmonicWheel(ctx: CanvasRenderingContext2D, music: Combat["music"]
     ctx.font = `${Math.round(font * 0.7)}px monospace`
     ctx.fillText(h.numeral, px, py - font * 0.55)
     ctx.globalAlpha = 1
+  }
+  ctx.restore()
+}
+
+// The Hangdrum: the hang seen from above, a steel disc with the big ding in the middle and its rows of round notes,
+// each one coloured by its degree with the note in letters and, small above it, its degree number. The note she
+// aims at is lit; between the notes (a slap) a small ring marks where the hand lands.
+function drawHang(ctx: CanvasRenderingContext2D, lay: HangLayout, now: { index: number; slap: boolean }, aim: number, reach: number, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+  ctx.save()
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.beginPath()
+  ctx.arc(cx, cy, rOut * Math.min(1, lay.edge + 0.06), 0, Math.PI * 2)
+  ctx.fillStyle = hexA("#6b4a2b", alpha * 0.28)
+  ctx.fill()
+  if (lines > 0) { ctx.lineWidth = 1; ctx.strokeStyle = hexA("#e8c896", alpha * 0.35 * lines); ctx.stroke() }
+  lay.fields.forEach((f, i) => {
+    const on = i === now.index && !now.slap, color = DEGREE_COLORS[(f.degree - 1) % DEGREE_COLORS.length]
+    const x = cx + f.x * rOut, y = cy + f.y * rOut, r = f.r * rOut
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fillStyle = hexA(color, alpha * (on ? 0.65 : 0.22))
+    ctx.fill()
+    if (lines > 0) { ctx.lineWidth = 1; ctx.strokeStyle = hexA("#ffffff", alpha * (i === now.index && now.slap ? 0.8 : 0.35) * lines); ctx.stroke() }
+    const font = Math.max(8, Math.min(i ? 14 : 18, r * 0.62))
+    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.fillStyle = "#ffffff"
+    ctx.font = `${on ? "bold " : ""}${Math.round(font)}px monospace`
+    ctx.fillText(f.letter, x, y + font * 0.35)
+    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.font = `${Math.round(font * 0.7)}px monospace`
+    ctx.fillText(String(f.degree), x, y - font * 0.55)
+    ctx.globalAlpha = 1
+  })
+  if (now.slap) {
+    const rr = (reach > lay.edge ? lay.ring : reach) * rOut
+    ctx.beginPath()
+    ctx.arc(cx + Math.cos(aim) * rr, cy + Math.sin(aim) * rr, Math.max(3, rOut * 0.035), 0, Math.PI * 2)
+    ctx.lineWidth = 1.5; ctx.strokeStyle = hexA("#ffffff", alpha * 0.9); ctx.stroke()
   }
   ctx.restore()
 }

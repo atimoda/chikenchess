@@ -57,8 +57,8 @@ test('the default layout is the Pátio the code always drew: same platform boxes
   const trees = lay.elements.filter(e => e.kind === 'pine' || e.kind === 'blossom')
   assert.equal(trees.length, L.defaultTrees(L.LAYOUT_MAX_SCREENS).length)
   trees.forEach(t => { assert.equal(t.layer, 'frontGhost'); assert.equal(t.solid, false) })
-  // 8 weapons, 8 instruments and the 2 consumables (Maryjane, Cok)
-  assert.equal(lay.elements.filter(e => e.kind === 'rack').length, 18)
+  // 8 weapons, 9 instruments (the Hangdrum at the end of the shelf) and the 2 consumables (Maryjane, Cok)
+  assert.equal(lay.elements.filter(e => e.kind === 'rack').length, 19)
   assert.equal(lay.elements.filter(e => e.kind === 'button').length, 4)
   const dummies = lay.elements.filter(e => e.kind === 'dummy')
   assert.equal(dummies.length, 5)
@@ -586,4 +586,17 @@ test('every Pátio has exactly one entry portal: moved and kept, never duplicate
   const empty = L.emptyLayout()
   assert.deepEqual(empty.elements.map(e => e.kind), ['entry'])
   assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(empty))), empty)
+})
+
+test('the default Pátio saved before the Hangdrum (v6) gets its rack on the shelf once; other Pátios do not', () => {
+  const saved = { v: 6, elements: [{ id: 'rack-harp', kind: 'rack', x: 1642, y: 0, w: 76, h: 62, params: { item: 'harp' } }] }
+  const def = L.normalizeLayout(saved, true)
+  const rack = def.elements.find(e => e.kind === 'rack' && e.params.item === 'hangdrum')
+  assert.ok(rack)
+  assert.equal(rack.y + rack.h, world.SHELF_TOP)
+  assert.ok(rack.x >= 1718 && rack.x + rack.w <= 154 + 1651)
+  assert.equal(L.normalizeLayout(saved, false).elements.some(e => e.params.item === 'hangdrum'), false)
+  // saved again (v7) without it: the admin removed it, it stays removed
+  const again = L.normalizeLayout({ ...def, elements: def.elements.filter(e => e.params.item !== 'hangdrum') }, true)
+  assert.equal(again.elements.some(e => e.params.item === 'hangdrum'), false)
 })

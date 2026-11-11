@@ -13,7 +13,7 @@ import { entryActParams, entryFollowParams, entryOf } from './soul-library'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
-import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
@@ -268,12 +268,14 @@ export function createCombat() {
   const scaleOf = (h: Owned | null | undefined, d: ItemDef): InstrumentScale => scaleAt(d.instrument ? d.scales : undefined, h?.scale)
   function tones(d: ItemDef) {
     const sc = scaleOf(held(), d), angle = aimAngle, reach = aimReach
-    const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending }
+    const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending, hang: hangOf(d) }
     return {
       scale: sc,
       note: () => sc.noteFor(music, q),
+      // the aim between the Hangdrum's notes: a percussive slap instead of the clean note
+      slap: () => sc.isSlap(music, q),
       pool: () => sc.pool(music, q),
-      walk: (from: number, n: number, set: PitchSet) => sc.walk(music, from, n, set, angle, reach),
+      walk: (from: number, n: number, set: PitchSet) => sc.walk(music, from, n, set, angle, reach, q),
       color: (m: number) => DEGREE_COLORS[sc.degreeOf(music, m, angle, reach) % DEGREE_COLORS.length],
     }
   }
@@ -737,6 +739,8 @@ export function createCombat() {
     // the violin's pizzicato: plucked notes at the arpeggio's speed, each one a slice of the bow's seconds and of
     // its harmony per second
     const pz = pizzicato(d), pzRate = Math.max(1, d.arpRate)
+    // the Hangdrum's aim between its notes: the hit is a percussive slap (its voice), ringing the nearest note
+    const voice: VoiceId = pz ? 'pizz' : d.instrument && tones(d).slap() ? 'hangSlap' : d.voice
     if (d.instrument) {
       notes = shotNotes(d, n)
       const g = music.toGrid()
@@ -745,7 +749,7 @@ export function createCombat() {
         bonus = d.beatBonus
         if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
-      notes.forEach((m, i) => out.note(pz ? 'pizz' : d.voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d)))
+      notes.forEach((m, i) => out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d)))
     }
     const speed = d.speed * power
     const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
@@ -759,7 +763,7 @@ export function createCombat() {
       if (d.instrument) {
         const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
         // (a soul singing out of tune near her: the note itself goes off, not only its sound)
-        b.note = { midi: m + detuneNow(), color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: pz ? 'pizz' : d.voice }
+        b.note = { midi: m + detuneNow(), color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice }
         b.ring = d.ringNotes; b.ghost = true
       }
       // instant shots travel their whole way now and leave a tracer

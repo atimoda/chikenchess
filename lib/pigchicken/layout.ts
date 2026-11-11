@@ -23,7 +23,8 @@ import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, nor
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
 // Vila's fixed ground (`terrain`) into a ground element. v6 seats the default portals on their starting platforms.
-export const LAYOUT_VERSION = 6
+// v7 puts the Hangdrum's rack at the end of the instruments' shelf of the default Pátio.
+export const LAYOUT_VERSION = 7
 // the widest world the Pátio offers (its width setting): the default layout covers it, a narrower world hides the rest
 export const LAYOUT_MAX_SCREENS = 8
 const FIRST_SCENE_PLATFORMS = SCENE_PLATFORMS[0]
@@ -279,6 +280,12 @@ export function defaultTrees(screens: number): TreeSeed[] {
 }
 
 // the consumables' racks: on the floor of the second scene, between the horde buttons and the dummies
+// the Hangdrum's rack: at the right end of the instruments' long shelf (first scene), after the Harpa
+const SHELF = SCENE_PLATFORMS[0][0]
+function hangdrumRack(): LayoutElement {
+  const d = ELEMENT_DEFS.rack, x = SHELF.x + SHELF.w - d.w - 4
+  return { id: 'rack-hangdrum', kind: 'rack', x: r1(x), y: r1(SHELF_TOP - d.h), w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: { item: 'hangdrum', respawnDelay: rackRespawnDelay('hangdrum') } }
+}
 function consumableRacks(): LayoutElement[] {
   const d = ELEMENT_DEFS.rack
   return CONSUMABLE_IDS.map((id, i) => {
@@ -326,8 +333,8 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   // the weapons' racks on the floor of the first scene, the instruments on the long shelf above them
   const rack = ELEMENT_DEFS.rack
   WEAPON_IDS.forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, G - rack.h, rack.w, rack.h, { item: id })) })
-  INSTRUMENT_IDS.forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, SHELF_TOP - rack.h, rack.w, rack.h, { item: id })) })
-  out.push(...consumableRacks())
+  INSTRUMENT_IDS.filter(id => id !== 'hangdrum').forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, SHELF_TOP - rack.h, rack.w, rack.h, { item: id })) })
+  out.push(hangdrumRack(), ...consumableRacks())
   // the horde buttons on the second scene
   HORDE_BUTTONS.forEach((id, i) => { const cx = SCENE_W * (1.06 + i * 0.09); out.push(base('button', `btn-${id}`, cx - 20, G - 46 - 40, 40, 40, { action: id })) })
   // the training dummies, each with its own tip
@@ -458,6 +465,12 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
         el.y = target.y
       }
     }
+  }
+  // the default Pátio saved before the Hangdrum (v7): its rack joins once, unless one already holds it
+  if (isDefault && !(typeof v === 'number' && v >= 7) && !elements.some(e => e.kind === 'rack' && e.params.item === 'hangdrum') && elements.length < LAYOUT_MAX_ELEMENTS) {
+    const rack = hangdrumRack()
+    if (seen.has(rack.id)) rack.id = newElementId('rack')
+    seen.add(rack.id); elements.push(rack)
   }
   // saved before v5: the Vila's fixed ground (with its edited ridge, `terrain`) becomes the first element, so it is
   // drawn and collides behind everything else in its layer, as before
