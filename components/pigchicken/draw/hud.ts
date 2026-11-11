@@ -437,17 +437,24 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
 
 // Each player's captured birds remain as a soul count beside their avatar, including when the first player's
 // inventory is displayed in the desktop bottom bar.
+// where a player's counter is (screen px): the souls caught fly to its middle
+export function soulCounterBox(row: number, offset?: { x: number; y: number }) {
+  const size = INV_STACK.size
+  return { x: stageWidth() - INV_STACK.right - size - INV_STACK.avatarGap - size + (offset?.x ?? 0), y: invRowY(row) + (offset?.y ?? 0), size }
+}
+// the count of the basket; the inner arc takes the colour of the soul on top of it, and the circle swells for a
+// moment when one arrives
 export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: string, offset?: { x: number; y: number }) {
-  const size = INV_STACK.size, r = size / 2
-  const x = stageWidth() - INV_STACK.right - size - INV_STACK.avatarGap - size + (offset?.x ?? 0)
-  const y = invRowY(row) + (offset?.y ?? 0)
+  const { x, y, size } = soulCounterBox(row, offset), r = size / 2
+  const basket = combat.basket, top = basket[basket.length - 1], pulse = combat.soulPulse
   ctx.save()
+  if (pulse > 0) { const k = 1 + 0.22 * pulse; ctx.translate(x + r, y + r); ctx.scale(k, k); ctx.translate(-x - r, -y - r) }
   ctx.beginPath(); ctx.arc(x + r, y + r, r - 1, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(8,15,13,0.94)'; ctx.fill()
   ctx.lineWidth = 2.2; ctx.strokeStyle = color; ctx.stroke()
   ctx.beginPath(); ctx.arc(x + r, y + r, r - 4, -Math.PI * 0.82, -Math.PI * 0.18)
-  ctx.strokeStyle = 'rgba(220,250,245,0.32)'; ctx.lineWidth = 1; ctx.stroke()
-  const count = String(combat.capturedSouls)
+  ctx.strokeStyle = top ? top.color : 'rgba(220,250,245,0.32)'; ctx.lineWidth = top ? 1.6 : 1; ctx.stroke()
+  const count = String(basket.length)
   const fontSize = count.length > 3 ? 8 : count.length > 2 ? 10 : 12
   ctx.font = `bold ${fontSize}px ui-monospace, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
   ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(count, x + r, y + r + 0.5)

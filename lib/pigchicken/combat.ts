@@ -5,6 +5,7 @@ import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
+import { ABDUCT_GAP, CHICK_SOUL_COLOR, SOUL_PULSE, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, weaponClass, type Abduction, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
@@ -45,6 +46,7 @@ export type Catchable = { x: number; y: number; r: number; catch: () => void }
 export type Critter = {
   kind: 'bird' | 'person'; x: number; y: number; vx: number; vy: number; t: number; color: string; face: number; groundY: number
   bird?: BirdId; homeX?: number; homeY?: number; whistleIn?: number
+  soul?: SoulOrigin // a bird: the alien it was and how it became one (lib/pigchicken/souls.ts)
 }
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
@@ -87,6 +89,8 @@ export type Target = {
   // online (lib/pigchicken/net-world.ts): its id in the lobby; mirror: the owner's enemy drawn here (not moved here),
   // gliding to where the owner has it (netX, netY)
   net?: number; mirror?: boolean; netX?: number; netY?: number
+  // what the soul it leaves will remember: the weapon that killed it, the instrument and the note that finished it
+  soul?: SoulMark
 }
 export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
 // how long the tip stays up after it is destroyed (and after each hit while wrecked)
@@ -282,7 +286,7 @@ export function createCombat() {
     for (let i = 0; i < n; i++) { const a = rand(0, Math.PI * 2), v = rand(speed * 0.3, speed); sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rand(0.25, 0.5), max: 0.5, color, size }) }
   }
 
-  function hitTarget(t: Target, damage: number, pushX: number, x: number, y: number) {
+  function hitTarget(t: Target, damage: number, pushX: number, x: number, y: number, by: SoulWeapon | null = null) {
     if (t.deadT > 0 || damage <= 0) return
     // a button: any hit presses it
     if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
@@ -308,7 +312,7 @@ export function createCombat() {
       t.deadT = ALIEN_DEATH; burst(t.x, t.y - t.h / 2, 24, color, 260, 5); kills.aliens++; sound('alienDie', null)
       // its physical death on the grid, and the undead it leaves
       playNotes(deathNotes(deathSoundsFor(t.data).physical, music.chord(true), music.secondsPerBeat()), 'chip')
-      spawnUndead(t, pushX)
+      spawnUndead(t, pushX, by)
     } else if (t.kind === 'zombie') {
       t.state = 'dead'; t.animT = 0; t.deadT = ZOMBIE_TIMES.dead + ZOMBIE_TIMES.fade; kills.zombies++; sound('zombieDie', null)
     }
@@ -388,8 +392,16 @@ export function createCombat() {
     return true
   }
 
+  // what the bird it becomes will remember: the instrument and the note that landed last (the ones that fill its bar)
+  function markSoul(t: Target, note: NoteInfo, by: ItemId | 'rebate' | null) {
+    if (t.kind !== 'alien' && t.kind !== 'undead') return
+    const z = music.zone
+    t.soul = { ...t.soul, shot: shotClass(by, note.voice), note: noteClass(note.midi, z.root, SCALES[z.scale].steps) }
+  }
+
   // a note lands: it fills the harmony bar instead of hurting; the enemy answers with a note of its own
-  function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number) {
+  // by: the instrument that played it ('rebate': a note sent back by a blow)
+  function harmonize(t: Target, amount: number, pushX: number, x: number, y: number, note: NoteInfo, stun: number, by: ItemId | 'rebate' | null = null) {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
     if (t.kind === 'undead' && (t.data as UndeadState).bird) return
@@ -408,6 +420,7 @@ export function createCombat() {
       mendDummy(t, amount, note.color); answerDummy(t)
       return
     }
+    markSoul(t, note, by)
     t.harmony = (t.harmony ?? 0) + amount; t.flash = 0.12; t.tint = note.color; t.vx += pushX * 0.3
     t.stun = Math.max(t.stun ?? 0, stun)
     if (t.kind === 'zombie' && t.state === 'walk' && stun > 0) { t.state = 'hurt'; t.animT = 0 }
@@ -436,7 +449,7 @@ export function createCombat() {
       // a bird of the place: its own look, flight and whistle
       const type = BIRDS[pickBird(birdsFor(music.zone.id, zoneBirds))]
       critters.push({ kind: 'bird', x: t.x, y: top, vx: away * rand(90, 160) + (t.blast?.vx ?? 0), vy: -rand(140, 220) + (t.blast?.vy ?? 0), t: 0, color, face: away, groundY: 0,
-        bird: type.id, homeX: t.x, homeY: top - 60, whistleIn: whistleTime(type) })
+        bird: type.id, homeX: t.x, homeY: top - 60, whistleIn: whistleTime(type), soul: originOf(soulSpecies(t.data), 'alive', t.soul) })
       conv.birds++
       // its musical death on the grid
       playNotes(deathNotes(deathSoundsFor(t.data).musical, chord, music.secondsPerBeat()), 'bird')
@@ -454,7 +467,7 @@ export function createCombat() {
   // ---------- the undead ----------
   const harmonyNow = () => { const z = music.zone; return { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() } }
   const whistleTime = (type: BirdType) => (type.whistle.max > 0 ? rand(type.whistle.min, type.whistle.max) : Infinity)
-  function spawnUndead(t: Target, pushX: number) {
+  function spawnUndead(t: Target, pushX: number, weapon: SoulWeapon | null = null) {
     const look = t.data as { kind?: string; species?: string } | undefined
     // the dragon breaks apart: no undead
     if (look?.kind === 'temple' && (look.species === 'dragon' || look.species === 'dragonHead')) return
@@ -467,7 +480,7 @@ export function createCombat() {
     }
     pendingUndead.push({
       id: nextId++, kind: 'undead', home: 0, x: t.x, y: t.y, w: t.w, h: t.h, hp: t.maxHp, maxHp: t.maxHp, flash: 0, wobble: 0, vx: 0, deadT: 0,
-      face: t.face, state: 'undead', animT: 0, harmony: 0,
+      face: t.face, state: 'undead', animT: 0, harmony: 0, soul: { weapon },
       data: newUndead(t.data, Math.sign(pushX) * Math.min(260, Math.abs(pushX) * 0.5) + (t.blast?.vx ?? 0), -260, { ...UNDEAD_DEFAULTS, ...((t.data as { undead?: Partial<UndeadParams> } | undefined)?.undead ?? {}) }, undeadBorn++, Math.random),
     })
   }
@@ -524,19 +537,23 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: number
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: Soul[]
     trem: TremoloState; tremBend: number; aimReach: number
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
-  let souls = 0
+  // her basket of souls, a stack: the last one caught is the first one out
+  let souls: Soul[] = []
+  // souls on their way to a counter (the world's: each one knows whose it is) and how long each counter still swells
+  const abductions: Abduction[] = []
+  const soulPulses = new Map<string, number>()
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: 0, trem: newTremolo(), tremBend: 0, aimReach: 1,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: [], trem: newTremolo(), tremBend: 0, aimReach: 1,
   })
   function useLoadout(id: string) {
     if (id === active) return
@@ -760,7 +777,7 @@ export function createCombat() {
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
       const dist = Math.hypot(cx - x, cy - y)
       if (dist > r) return
-      hitTarget(t, damage * (1 - dist / r), 0, cx, cy)
+      hitTarget(t, damage * (1 - dist / r), 0, cx, cy, 'blast')
     })
   }
 
@@ -776,7 +793,7 @@ export function createCombat() {
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
       const dist = Math.hypot(cx - x, cy - y)
       if (dist > r) return
-      harmonize(t, amount * (1 - 0.5 * dist / r), 0, cx, cy, note, items[b.item].stun)
+      harmonize(t, amount * (1 - 0.5 * dist / r), 0, cx, cy, note, items[b.item].stun, b.item)
     })
     const n = Math.round(b.ring ?? 0)
     for (let i = 0; i < n; i++) {
@@ -817,8 +834,8 @@ export function createCombat() {
             if (b.hits.size > b.pierce) { b.x = x; b.y = y; burst(x, y, 4, b.note ? b.note.color : '#ffd166', 120, 2); return true }
             break
           }
-          if (b.note) harmonize(t, b.damage, Math.sign(b.vx) * 40, x, y, b.note, items[b.item].stun)
-          else hitTarget(t, b.damage, Math.sign(b.vx) * 40, x, y)
+          if (b.note) harmonize(t, b.damage, Math.sign(b.vx) * 40, x, y, b.note, items[b.item].stun, b.item)
+          else hitTarget(t, b.damage, Math.sign(b.vx) * 40, x, y, weaponClass(b.item))
           b.hits.add(t.id)
           if (b.hits.size > b.pierce) return true
           break
@@ -984,8 +1001,7 @@ export function createCombat() {
     sw.hit = true
     collectInSwing(sw, origin)
     if ((sw.item as Owned | null)?.item === 'passagua') {
-      let caught = 0
-      const caughtAt: { x: number; y: number }[] = []
+      const caught: { x: number; y: number; soul: Soul }[] = []
       // Undead birds stay Targets while circling; the other undead phases are not capturable.
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
@@ -994,24 +1010,26 @@ export function createCombat() {
         if (!u?.bird || (u.phase !== 'bird' && u.phase !== 'leave')) continue
         const x = t.x, y = t.y - t.h / 2
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35)) continue
-        targets.splice(i, 1); caught++; caughtAt.push({ x, y })
+        targets.splice(i, 1); caught.push({ x, y, soul: newSoul(nextId++, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird) })
       }
       // Converted living birds fly as critters rather than targets and use the same capture sweep.
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]
         if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16)) continue
-        critters.splice(i, 1); caught++; caughtAt.push({ x: c.x, y: c.y })
+        critters.splice(i, 1); caught.push({ x: c.x, y: c.y, soul: newSoul(nextId++, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null) })
       }
       // the chicks that follow her: caught like the birds, they count as souls too
       catchables = catchables.filter(c => {
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r)) return true
-        c.catch(); caught++; caughtAt.push({ x: c.x, y: c.y })
+        c.catch(); caught.push({ x: c.x, y: c.y, soul: newSoul(nextId++, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null) })
         return false
       })
-      if (caught) {
-        souls += caught
-        caughtAt.forEach(({ x, y }) => puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' }))
-        addText(origin.x, origin.y - 54, `+${caught} alma${caught === 1 ? '' : 's'}`, '#cceef0')
+      if (caught.length) {
+        // each one leaves a little cloud and flies to this player's counter, where it counts (one after the other)
+        caught.forEach(({ x, y, soul }, i) => {
+          puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
+          abductions.push({ soul, owner: active, x, y, t: -i * ABDUCT_GAP })
+        })
         sound('puff', null)
       }
       return
@@ -1025,7 +1043,7 @@ export function createCombat() {
       diff = Math.atan2(Math.sin(diff), Math.cos(diff))
       if (Math.abs(diff) > sw.arc / 2 && dist > 10) return
       const hx = cx - Math.sign(dx) * t.w / 2
-      hitTarget(t, sw.damage, Math.sign(dx || 1) * sw.push, hx, cy)
+      hitTarget(t, sw.damage, Math.sign(dx || 1) * sw.push, hx, cy, 'impact')
       sw.impacts.push({ x: hx - origin.x, y: cy - origin.y })
       sw.hits++
     })
@@ -1178,7 +1196,7 @@ export function createCombat() {
       if (hit) {
         const note: NoteInfo = { midi: n.midi, color: n.color, sym: '♪', wave: 0, phase: 0, voice: 'bells' }
         // (a full harmony turns it into a bird)
-        harmonize(hit, hit.maxHp * REBATE_HARMONY, Math.sign(n.vx) * 120, n.x, n.y, note, 0.3)
+        harmonize(hit, hit.maxHp * REBATE_HARMONY, Math.sign(n.vx) * 120, n.x, n.y, note, 0.3, 'rebate')
         noteShots.splice(i, 1); continue
       }
       if (n.t > REBATE_LIFE) noteShots.splice(i, 1)
@@ -1213,9 +1231,9 @@ export function createCombat() {
       else hit.harmony = (hit.harmony ?? 0) + d.damage * dt
       hit.tint = color
       if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
-      if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun)
+      if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun, h.item)
       if (hit.kind === 'button' && hit.flash <= 0) hitTarget(hit, 1, 0, x, y)
-      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) fullHarmony(hit, note)
+      if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) { markSoul(hit, note, h.item); fullHarmony(hit, note) }
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
   }
@@ -1245,7 +1263,13 @@ export function createCombat() {
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
     use(id: string) { useLoadout(id) },
     get player() { return active },
-    get capturedSouls() { return souls },
+    // this player's souls: how many are in the basket, the basket itself (the last one caught on top) and how much
+    // the counter swells now (1 right when one arrives, 0 at rest)
+    get capturedSouls() { return souls.length },
+    get basket() { return souls as readonly Soul[] },
+    get soulPulse() { return (soulPulses.get(active) ?? 0) / SOUL_PULSE },
+    // every player's souls flying to their counters (lib/pigchicken/souls.ts)
+    get abductions() { return abductions as readonly Abduction[] },
     drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id) } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
@@ -1552,7 +1576,7 @@ export function createCombat() {
               targets.forEach(t => {
                 if (hit.has(t.id) || t.deadT > 0 || x < t.x - t.w / 2 || x > t.x + t.w / 2 || y < t.y - t.h || y > t.y) return
                 hit.add(t.id)
-                hitTarget(t, d.meleeDamage, Math.cos(peck!.angle) * d.meleePush, x, y)
+                hitTarget(t, d.meleeDamage, Math.cos(peck!.angle) * d.meleePush, x, y, 'impact')
               })
               for (const p of pickups) if (Math.hypot(x - p.x, y - (p.y - PICKUP_HIT_R)) <= PICKUP_HIT_R) touched.add(p)
             }
@@ -1696,7 +1720,7 @@ export function createCombat() {
         if (!t.hit) for (const g of targets) {
           if (g.deadT > 0) continue
           if (Math.abs(t.x - g.x) < g.w / 2 + 10 && t.y > g.y - g.h && t.y < g.y) {
-            if (!t.remote) hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y)
+            if (!t.remote) hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y, 'impact')
             t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
@@ -1846,6 +1870,13 @@ export function createCombat() {
         const stay = c.bird ? BIRDS[c.bird].stay : 0
         if (c.t > stay && (c.y < -120 || c.t > 9 + stay || c.x < view.l - 500 || c.x > view.r + 500)) critters.splice(i, 1)
       }
+      // souls on their way: each one counts in its owner's basket when it gets to the counter
+      for (const a of stepAbductions(abductions, dt)) {
+        const basket = a.owner === active ? souls : loadouts.get(a.owner)?.souls
+        if (!basket) continue
+        basket.push(a.soul); soulPulses.set(a.owner, SOUL_PULSE)
+      }
+      soulPulses.forEach((left, id) => { if (left > 0) soulPulses.set(id, Math.max(0, left - dt)) })
       for (let i = puffs.length - 1; i >= 0; i--) { puffs[i].t += dt; if (puffs[i].t >= puffs[i].life) puffs.splice(i, 1) }
       for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.life <= 0) sparks.splice(i, 1) }
       for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1) }

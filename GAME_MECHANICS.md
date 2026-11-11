@@ -24,6 +24,7 @@
 | Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, salvar/abrir | [Editor do Pátio](docs/mechanics/patio/editor.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
+| Pátio: almas capturadas (identidade, raridade, cesto, contador e abdução) | [Almas](docs/mechanics/patio/souls.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução) e troca de escala no inventário | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: golpe, bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
@@ -69,6 +70,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: combate, mira, golpe, bicada e arremesso](docs/mechanics/patio/combat.md) | 29 KB |
 | [Pátio: modo editor, layout e salvar/abrir](docs/mechanics/patio/editor.md) | 17 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
+| [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 5 KB |
 | [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 5 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 12 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |

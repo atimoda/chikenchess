@@ -58,6 +58,7 @@ import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/com
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
+import { drawAbductions } from "@/components/pigchicken/draw/souls"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { stageWidth } from "@/lib/stage-size"
 
@@ -1172,6 +1173,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       arpBoxes.push(...drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
       combat.use("p1"); drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", offsets.inventory)
       extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", offsets.inventory) })
+      // the souls just caught, flying to the counter of whoever caught them
+      if (combat.abductions.length) drawAbductions(ctx, combat, new Map<string, number>([["p1", 0], ...extraList.map(([id], i): [string, number] => [id, i + 1])]), offsets.inventory, { x: camX, y: camY, zoom })
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []
