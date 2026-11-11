@@ -23,23 +23,24 @@ export const POWER_SAG = { min: 0, max: 100, step: 1, default: 40 } as const
 export const POWER_WIRE = { min: 1, max: 8, step: 0.5, default: 2 } as const
 export const ELEMENT_DEPTH = { min: 0, max: 0.95, step: 0.01 } as const
 
-// model, line (1 to 4), how much the wires to the next one sag (0 to 100) and how thick they are (px)
-export type PowerParams = { model: string; line: number; sag: number; wire: number }
-export const defaultPower = (kind: PowerKind): PowerParams => ({ model: kind === 'pole' ? 'madeira' : 'trelica', line: 1, sag: POWER_SAG.default, wire: POWER_WIRE.default })
+// model, line (1 to 4), how much the wires to the next one sag (0 to 100) and how thick they are (px); floor: the
+// wires are one-way floors she can stand on (Fios como plataforma, on by default; only wires on the ground's depth)
+export type PowerParams = { model: string; line: number; sag: number; wire: number; floor: boolean }
+export const defaultPower = (kind: PowerKind): PowerParams => ({ model: kind === 'pole' ? 'madeira' : 'trelica', line: 1, sag: POWER_SAG.default, wire: POWER_WIRE.default, floor: true })
 
 const num = (v: unknown, d: number, a: number, b: number) => typeof v === 'number' && Number.isFinite(v) ? Math.max(a, Math.min(b, v)) : d
 export function normalizePower(kind: PowerKind, raw: unknown): PowerParams {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const d = defaultPower(kind)
   const model = typeof r.model === 'string' && POWER_MODELS[r.model]?.kind === kind ? r.model : d.model
-  return { model, line: Math.round(num(r.line, 1, 1, POWER_LINES)), sag: Math.round(num(r.sag, d.sag, POWER_SAG.min, POWER_SAG.max)), wire: Math.round(num(r.wire, d.wire, POWER_WIRE.min, POWER_WIRE.max) * 2) / 2 }
+  return { model, line: Math.round(num(r.line, 1, 1, POWER_LINES)), sag: Math.round(num(r.sag, d.sag, POWER_SAG.min, POWER_SAG.max)), wire: Math.round(num(r.wire, d.wire, POWER_WIRE.min, POWER_WIRE.max) * 2) / 2, floor: r.floor !== false }
 }
 export const normalizeDepth = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.max(ELEMENT_DEPTH.min, Math.min(ELEMENT_DEPTH.max, v)) * 100) / 100 : 0
 
 // ---------- spans: one wire between two neighbours ----------
 type Pole = { id: string; kind: string; x: number; y: number; w: number; h: number; depth?: number; params: { power?: PowerParams } }
 export type WireEnd = { x: number; y: number; d: number }
-export type Span = { id: string; group: string; a: WireEnd; b: WireEnd; sag: number; wire: number; depth: number }
+export type Span = { id: string; group: string; a: WireEnd; b: WireEnd; sag: number; wire: number; depth: number; floor: boolean }
 
 export const powerGroup = (kind: string, p: PowerParams) => `${kind}:${p.model}:${p.line}`
 
@@ -64,12 +65,35 @@ export function powerSpans(elements: readonly Pole[]): Span[] {
           id: `${A.id}>${B.id}:${k}`, group,
           a: { x: A.x + (px / 100) * A.w, y: A.y + (py / 100) * A.h, d: da },
           b: { x: B.x + (qb[0] / 100) * B.w, y: B.y + (qb[1] / 100) * B.h, d: db },
-          sag: pa.sag, wire: pa.wire, depth: Math.max(da, db),
+          sag: pa.sag, wire: pa.wire, depth: Math.max(da, db), floor: pa.floor,
         })
       })
     }
   })
   return out
+}
+
+// One line's look is shared: changing the model or "Fios como plataforma" of one pole or tower changes every other
+// one joined to it (same kind, model and line before the change). A new model keeps each one's height and base
+// centre, in the model's own proportions. `after` replaces `before`; the rest of the list stays as it is.
+export function spreadPower<T extends Pole>(elements: readonly T[], before: T, after: T): T[] {
+  const was = before.params.power, now = after.params.power
+  if (!was || !now || (was.model === now.model && was.floor === now.floor)) return elements.map(e => (e.id === after.id ? after : e))
+  const group = powerGroup(before.kind, was), model = POWER_MODELS[now.model]
+  return elements.map(e => {
+    if (e.id === after.id) return after
+    const p = e.params.power
+    if (e.kind !== before.kind || !p || powerGroup(e.kind, p) !== group) return e
+    const w = was.model === now.model ? e.w : Math.round(e.h * model.w / model.h)
+    return { ...e, x: e.x + (e.w - w) / 2, w, params: { ...e.params, power: { ...p, model: now.model, floor: now.floor } } }
+  })
+}
+
+// a span as a one-way floor: `n` straight pieces along its curve, with the camera at rest (its ends on the
+// ground's depth); null when an end is in a parallax depth or its line has the floor off
+export function spanFloor(s: Span, n = 12) {
+  if (!s.floor || s.a.d || s.b.d) return null
+  return Array.from({ length: n + 1 }, (_, i) => spanPoint(s, i / n, 0, 0))
 }
 
 // where a span's ends are in the world with the camera at (camX, camY) (live-camera's: x at the screen's left,

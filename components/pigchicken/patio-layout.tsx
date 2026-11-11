@@ -9,7 +9,7 @@ import { houseSurfaces, normalizeHouse } from "@/lib/pigchicken/houses"
 import { TRAMPOLINE_DEFAULTS, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { followCamera, followDepth } from "@/lib/pigchicken/live-camera"
-import { PowerArt, PowerLines } from "./power-art"
+import { PowerArt, PowerFloors, PowerLines } from "./power-art"
 import { TreeArt, TreeStyles } from "./patio-trees"
 import { SceneryRegion } from "./scenery-region"
 import { HouseArt } from "./house-art"
@@ -151,6 +151,7 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
         const line = elementFloorLine(el)
         return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${b.x},${b.y},${b.w},${b.h}`} data-chicken-line={line ?? undefined} className="absolute" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />
       })}
+      <PowerFloors elements={elements} />
     </div>
   )
 })

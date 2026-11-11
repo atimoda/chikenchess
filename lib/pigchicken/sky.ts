@@ -3,19 +3,23 @@
 // stops: the gradient from the top of the sky (0) to the horizon (1), when the colours do not follow the hour.
 // The rest are 0 to 100: sun size and glow, how many clouds, the texture over the sky, the haze toward the horizon,
 // how dark the scenery turns against the light (contraluz) and how much the hour lights the Pátio's scenery.
+// radial (0 to 100) curves the bands into rings around a centre under the sun (0: straight bands); radialX
+// (-100 to 100) moves that centre sideways and radialY (0 to 100) sinks it below the horizon (flatter, wider rings).
+// The mountains have their own settings (lib/pigchicken/mountains.ts).
 // A Pátio without `sky` keeps the classic dusk the code always drew (classicLook).
 
 export type SkyStop = { at: number; color: string }
 export type SkyParams = {
   hour: number; follow: boolean; stops: SkyStop[]
   sunSize: number; glow: number; clouds: number; texture: number; haze: number; silhouette: number; light: number
-  mountains: boolean; forest: boolean
+  forest: boolean; radial: number; radialX: number; radialY: number
 }
 
 export const SKY_HOUR = { min: 0, max: 24, step: 0.1 } as const
 export const SKY_STOPS = { min: 2, max: 8 } as const
 export const SKY_PCT = { min: 0, max: 100, step: 1 } as const
 export const SKY_SUN = { min: 10, max: 100, step: 1 } as const
+export const SKY_RADIAL_X = { min: -100, max: 100, step: 1 } as const
 
 // ---------- colours ----------
 const HEX = /^#[0-9a-f]{6}$/i
@@ -73,7 +77,7 @@ export const hourStops = (hour: number) => evenStops(keyAt(hour).c)
 
 export const SKY_DEFAULT: SkyParams = {
   hour: 18.2, follow: true, stops: hourStops(18.2), sunSize: 45, glow: 65, clouds: 45, texture: 25, haze: 50, silhouette: 70, light: 60,
-  mountains: true, forest: true,
+  forest: true, radial: 0, radialX: 0, radialY: 0,
 }
 
 // ---------- cleaning ----------
@@ -96,7 +100,8 @@ export function normalizeSky(raw: unknown): SkyParams | undefined {
     hour, follow, stops: normalizeStops(r.stops) ?? hourStops(hour),
     sunSize: Math.round(num(r.sunSize, d.sunSize, SKY_SUN.min, SKY_SUN.max)), glow: pct(r.glow, d.glow), clouds: pct(r.clouds, d.clouds),
     texture: pct(r.texture, d.texture), haze: pct(r.haze, d.haze), silhouette: pct(r.silhouette, d.silhouette), light: pct(r.light, d.light),
-    mountains: r.mountains !== false, forest: r.forest !== false,
+    forest: r.forest !== false, radial: pct(r.radial, d.radial),
+    radialX: Math.round(num(r.radialX, d.radialX, SKY_RADIAL_X.min, SKY_RADIAL_X.max)), radialY: pct(r.radialY, d.radialY),
   }
 }
 
@@ -124,7 +129,9 @@ export function randomSky(rand: () => number = Math.random, keep?: Partial<SkyPa
     ...SKY_DEFAULT, ...keep, hour, follow: false, stops,
     sunSize: Math.round(between(25, 90)), glow: Math.round(between(35, 100)), clouds: Math.round(between(0, 90)),
     texture: Math.round(between(0, 60)), haze: Math.round(between(20, 85)), silhouette: Math.round(between(40, 100)),
-    light: keep?.light ?? SKY_DEFAULT.light, mountains: rand() < 0.75, forest: rand() < 0.75,
+    light: keep?.light ?? SKY_DEFAULT.light, forest: rand() < 0.75,
+    // half the time the bands curve round the sun
+    radial: rand() < 0.5 ? 0 : Math.round(between(20, 90)), radialX: Math.round(between(-40, 40)), radialY: Math.round(between(0, 60)),
   }
 }
 
@@ -138,7 +145,10 @@ export type SkyLook = {
   clouds: { amount: number; lit: string; shade: string; opacity: number }
   // the landscape's far ranges and tree lines, back to front, and the haze at their feet
   ranges: [string, string, string]; trees: [string, string]; haze: string; hazeAmount: number
-  texture: number; mountains: boolean; forest: boolean
+  texture: number; forest: boolean
+  // the bands' curvature (0 straight, 1 round) and where their centre sits: x in sky heights from under the sun,
+  // y in sky heights below the horizon
+  radial: { amount: number; x: number; y: number }
   // the CSS filter on the Pátio's scenery (the hour's light and the contraluz); 'none' when it changes nothing
   scenery: string
   // the colour things turn against the light, and the horizon it fades into (postes, torres, far scenery)
@@ -157,7 +167,7 @@ export function classicLook(): SkyLook {
     sun: { y: 640, r: 54, color: '#f1d8bc', glow: 0.82, opacity: 1 }, moon: { y: 0, opacity: 0 }, horizonGlow: 0, stars: 0,
     clouds: { amount: 1, lit: '#d9d3e2', shade: '#b79fa6', opacity: 1 },
     ranges: ['#4d4d68', '#3d3f58', '#30344a'], trees: ['#282d41', '#212637'], haze: '#6a5c6c', hazeAmount: 1,
-    texture: 0, mountains: true, forest: true, scenery: 'none', silhouette: '#0b0a12', horizon: '#7a6670',
+    texture: 0, forest: true, radial: { amount: 0, x: 0, y: 0 }, scenery: 'none', silhouette: '#0b0a12', horizon: '#7a6670',
   }
 }
 
@@ -193,7 +203,7 @@ export function skyLook(p: SkyParams | undefined): SkyLook {
     stars: Math.max(k.stars, clamp(0.35 - luma(top) * 2, 0, 1)) * (p.follow ? 1 : clamp(1 - luma(top) * 4, 0, 1)),
     clouds: { amount: p.clouds / 100, lit: mix(mix(k.sun, '#ffffff', 0.35), nearHorizon, 0.35), shade: mix(stopColor(stops, 0.35), silhouette, 0.25), opacity: 1.6 },
     ranges: [scen[0], scen[1], scen[2]], trees: [scen[3], scen[4]], haze: hazeTo, hazeAmount: haze * 1.2,
-    texture: p.texture / 100, mountains: p.mountains, forest: p.forest, scenery: filter, silhouette, horizon,
+    texture: p.texture / 100, forest: p.forest, radial: { amount: p.radial / 100, x: p.radialX / 100 * 1.4, y: p.radialY / 100 * 1.2 }, scenery: filter, silhouette, horizon,
   }
 }
 
@@ -201,6 +211,21 @@ export function skyLook(p: SkyParams | undefined): SkyLook {
 export function skyGradient(look: SkyLook, top: number, y0: number, y1: number) {
   const at = (y: number) => `${Math.round(y - top)}px`
   return `linear-gradient(to bottom, ${look.space} 0, ${look.space} ${at(y0 - 2400)}, ${look.stops.map(s => `${s.color} ${at(y0 + s.at * (y1 - y0))}`).join(', ')})`
+}
+
+// The same bands curved into rings (Curvatura): a CSS radial gradient, or null when the bands are straight.
+// top: the div's top in world y; y0 and y1 as in skyGradient; cx: the x under the sun in the div's own pixels.
+// The ring through the horizon is an ellipse rx × ry with ry from the centre up to y0; rx shrinks from 14 × ry
+// (almost straight) to 0.7 × ry (taller than wide) as the curvature grows.
+export function skyRadial(look: SkyLook, top: number, y0: number, y1: number, cx: number) {
+  const a = look.radial.amount
+  if (a <= 0) return null
+  const h = y1 - y0
+  const x = cx + look.radial.x * h, cy = y1 + look.radial.y * h
+  const ry = cy - y0, rx = ry * lerp(14, 0.7, Math.pow(a, 0.6))
+  const at = (y: number) => `${((cy - y) / ry * 100).toFixed(2)}%`
+  const bands = [...look.stops].reverse().map(s => `${s.color} ${at(y0 + s.at * h)}`)
+  return `radial-gradient(${Math.round(rx)}px ${Math.round(ry)}px at ${Math.round(x)}px ${Math.round(cy - top)}px, ${bands.join(', ')}, ${look.space} ${at(y0 - 2400)})`
 }
 
 // a short reading of the hour: "18:12"

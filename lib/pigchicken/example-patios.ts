@@ -7,6 +7,7 @@ import { POWER_MODELS, defaultPower } from './power-lines'
 import { treePreset } from './trees'
 import { WORLD_GROUND_Y } from './world'
 import type { SkyParams } from './sky'
+import { MOUNTAINS_DEFAULT } from './mountains'
 
 const G = WORLD_GROUND_Y
 
@@ -27,7 +28,7 @@ export const SUNSET_SKY: SkyParams = {
     { at: 0, color: '#161a46' }, { at: 0.2, color: '#3d2a6b' }, { at: 0.38, color: '#7e3577' }, { at: 0.55, color: '#c94a66' },
     { at: 0.7, color: '#ef6f43' }, { at: 0.84, color: '#ffa33a' }, { at: 0.94, color: '#ffd36a' }, { at: 1, color: '#fff0b8' },
   ],
-  sunSize: 58, glow: 85, clouds: 35, texture: 30, haze: 55, silhouette: 85, light: 70, mountains: false, forest: true,
+  sunSize: 58, glow: 85, clouds: 35, texture: 30, haze: 55, silhouette: 85, light: 70, forest: true, radial: 45, radialX: 0, radialY: 25,
 }
 
 export function sunsetPowerLayout(): PatioLayout {
@@ -57,5 +58,5 @@ export function sunsetPowerLayout(): PatioLayout {
   out.push(el('rack', 420, G, { item: 'passagua', respawnDelay: 2 }))
   out.push(el('rack', 520, G, { item: 'flute', respawnDelay: 2 }))
   out.push(el('button', 900, G - 46, { action: 'aliens' }))
-  return { v: LAYOUT_VERSION, elements: out.map(e => normalizeElement(e)!), settings: { screens: 3, sky: SUNSET_SKY } }
+  return { v: LAYOUT_VERSION, elements: out.map(e => normalizeElement(e)!), settings: { screens: 3, sky: SUNSET_SKY, mountains: { ...MOUNTAINS_DEFAULT, show: false } } }
 }

@@ -56,6 +56,9 @@ const RECENT = [
         'Os pássaros que saem voando, vivos e mortos-vivos, podem pousar nos fios, enfileirados como notas numa pauta, e ficar um tempo parados. Quando alguém chega perto eles andam de lado pelo fio e às vezes voam para outro ponto, sempre mais devagar que a galinha; cada tipo de pássaro tem o seu jeito (o canário é o mais arisco, a coruja quase não se importa).',
         'Em Configurações do Pátio, Zonas das cenas pode ser desligado: as cenas deixam de tocar a zona delas e só as Zonas sonoras do mapa mudam a música.',
         'Playgrounds ganha Novo Pátio de exemplo: pôr do sol com torres, com céu em contraluz, torres em várias profundidades, postes com fios ao alcance das plataformas, palmeiras, o Passaguá e o botão de soltar aliens.',
+        'O céu pode ter faixas curvas: Curvatura, Centro e Centro abaixo do horizonte em Céu e luz fazem anéis em volta do sol.',
+        'Configurações do Pátio ganham as categorias expansíveis Céu e luz e Montanhas (cordilheiras, altura, recorte, neve nos picos, cor e Sortear forma); os títulos das categorias dos painéis ficam amarelos.',
+        'Trocar o modelo de um poste ou torre troca o da linha inteira ligada a ele, e Fios como plataforma (ligado por padrão) deixa a galinha pousar e andar nos fios.',
       ] },
       { title: 'Música', items: [
         'Buenos Aires vira 1913 Buenos Aires - Tango, com o kit refeito do zero e inspirado nos tangos que fizeram a tangomania de Paris (El Choclo, La Morocha). São oito seções em Ré menor: a introdução soa como um disco antigo e se abre no Tema A do bandoneón; depois vêm o tema lírico do violino, o arrastre em 3-3-2 com chicharra, o trío de violoncelo e flauta, a variación do bandoneón e o chan-chan final.',

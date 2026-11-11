@@ -22,7 +22,7 @@ import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
-import { ELEMENT_DEPTH, POWER_LINES, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, type PowerParams } from "@/lib/pigchicken/power-lines"
+import { ELEMENT_DEPTH, POWER_LINES, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, spreadPower, type PowerParams } from "@/lib/pigchicken/power-lines"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES } from "@/lib/pigchicken/music"
 import { defaultSoundZone, sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
@@ -111,7 +111,11 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
 
   const update = useCallback((el: LayoutElement, step?: string) => {
     const clean = normalizeElement(storeElementPosition(el, screens))
-    if (clean) commit(replaceEl(layoutRef.current, clean), step)
+    if (!clean) return
+    const cur = layoutRef.current, before = cur.elements.find(e => e.id === clean.id)
+    // a pole's or tower's model and "Fios como plataforma" go to the whole line joined to it
+    if (before && isPowerElement(clean.kind)) commit({ ...cur, elements: spreadPower(cur.elements, before, clean) }, step)
+    else commit(replaceEl(cur, clean), step)
   }, [commit, screens])
   // a scene's own zone, saved in the Pátio's settings (null: back to the code's)
   const setSceneZone = useCallback((scene: number, zone: SoundZoneParams | null, step?: string) => {
@@ -509,7 +513,11 @@ function PowerFields({ el, power, onChange }: { el: LayoutElement; power: PowerP
         changed={power.wire !== POWER_WIRE.default} onReset={() => set({ wire: POWER_WIRE.default })} onChange={wire => set({ wire }, `wire:${el.id}`)} />
       <DepthField el={el} onChange={next => onChange(next)} />
     </div>
-    <p className="text-[#93a79a]">Os fios ligam {kind === "pole" ? "este poste" : "esta torre"} ao vizinho mais próximo do mesmo modelo e da mesma linha, da esquerda para a direita. Os pássaros pousam neles.</p>
+    <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="A galinha pode pousar e andar nos fios, como numa plataforma de mão única. Só vale para os fios no plano do chão (sem Profundidade). Muda a linha inteira.">
+      <span>Fios como plataforma</span>
+      <input type="checkbox" checked={power.floor} onChange={e => set({ floor: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
+    </label>
+    <p className="text-[#93a79a]">Os fios ligam {kind === "pole" ? "este poste" : "esta torre"} ao vizinho mais próximo do mesmo modelo e da mesma linha, da esquerda para a direita. Trocar o modelo troca o da linha inteira. Os pássaros pousam nos fios.</p>
   </>
 }
 

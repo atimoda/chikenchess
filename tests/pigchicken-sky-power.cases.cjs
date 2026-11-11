@@ -108,3 +108,52 @@ test('the example Pátio survives saving and has wires, a sky and the Passaguá'
   assert.ok(layout.settings.sky)
   if (process.env.DUMP_EXAMPLE) require('fs').writeFileSync(process.env.DUMP_EXAMPLE, JSON.stringify(layout))
 })
+
+test('changing one pole\'s model or wire floor changes its whole line', () => {
+  const a = pole(200), b = pole(700), c = pole(1200), other = pole(900, {}, { line: 2 })
+  const els = [a, b, c, other]
+  const changed = { ...b, params: { power: { ...b.params.power, model: 'rua' } } }
+  const out = P.spreadPower(els, b, changed)
+  assert.deepEqual(out.map(e => e.params.power.model), ['rua', 'rua', 'rua', 'madeira'])
+  // same height and base centre, in the new proportions
+  const m = P.POWER_MODELS.rua
+  assert.equal(out[0].w, Math.round(a.h * m.w / m.h))
+  assert.equal(out[0].x + out[0].w / 2, a.x + a.w / 2)
+  const off = P.spreadPower(els, a, { ...a, params: { power: { ...a.params.power, floor: false } } })
+  assert.deepEqual(off.map(e => e.params.power.floor), [false, false, false, true])
+  // only those two spread: the sag stays each one's own
+  const sag = P.spreadPower(els, a, { ...a, params: { power: { ...a.params.power, sag: 90 } } })
+  assert.deepEqual(sag.map(e => e.params.power.sag), [90, 40, 40, 40])
+})
+
+test('wires on the ground\'s depth are floors unless their line turns it off', () => {
+  assert.equal(P.normalizePower('pole', {}).floor, true)
+  assert.equal(P.normalizePower('pole', { floor: false }).floor, false)
+  const [s] = P.powerSpans([pole(200), pole(700)])
+  const pts = P.spanFloor(s)
+  assert.equal(pts.length, 13)
+  assert.ok(pts[6].y > pts[0].y)
+  assert.equal(P.spanFloor(P.powerSpans([pole(200), pole(700, { depth: 0.3 })])[0]), null)
+  assert.equal(P.spanFloor(P.powerSpans([pole(200, {}, { floor: false }), pole(700, {}, { floor: false })])[0]), null)
+})
+
+test('the sky can curve its bands round the sun', () => {
+  const flat = S.skyLook(S.SKY_DEFAULT)
+  assert.equal(S.skyRadial(flat, 0, 0, 100, 50), null)
+  const sky = S.normalizeSky({ ...S.SKY_DEFAULT, radial: 60, radialX: 300, radialY: 20 })
+  assert.equal(sky.radialX, 100)
+  const css = S.skyRadial(S.skyLook(sky), 0, 0, 100, 50)
+  assert.match(css, /^radial-gradient\(\d+px \d+px at 190px 124px, /)
+  // the horizon's colour at the centre, the top's further out, then the space above
+  const look = S.skyLook(sky)
+  assert.ok(css.indexOf(look.stops[look.stops.length - 1].color) < css.indexOf(look.stops[0].color))
+  assert.ok(css.endsWith(`${look.space} ${(2524 / 124 * 100).toFixed(2)}%)`))
+})
+
+test('mountains: normalized, and the sky\'s old on/off moves to them', () => {
+  const M = loadTs('lib/pigchicken/mountains.ts')
+  assert.deepEqual(M.normalizeMountains({ ranges: 9, height: 1, snow: 50, tint: '#ABCDEF', shape: 5.4 }),
+    { ...M.MOUNTAINS_DEFAULT, ranges: 3, height: 20, snow: 50, tint: '#abcdef', shape: 5 })
+  assert.equal(PS.normalizePatioSettings({ sky: { ...S.SKY_DEFAULT, mountains: false } }).mountains.show, false)
+  assert.equal(PS.normalizePatioSettings({ sky: S.SKY_DEFAULT }).mountains, undefined)
+})

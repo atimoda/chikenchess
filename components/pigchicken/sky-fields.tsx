@@ -1,11 +1,13 @@
 "use client"
 
-// Configurações do Pátio → Céu e luz: the hour, the sky's gradient (by the hour or band by band), sun, clouds,
-// texture, haze, the contraluz and the light on the Pátio, and Randomize. Saved with the Pátio (settings.sky).
+// Configurações do Pátio → Céu e luz: the hour, the sky's gradient (by the hour or band by band) and its curvature,
+// sun, clouds, texture, haze, the contraluz and the light on the Pátio, and Randomize. Saved with the Pátio
+// (settings.sky). → Montanhas: MountainFields (settings.mountains).
 import { Plus, X } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { cn } from "@/lib/utils"
-import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_STOPS, SKY_SUN, hourLabel, hourStops, randomSky, skyLook, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
+import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_RADIAL_X, SKY_STOPS, SKY_SUN, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
+import { MOUNTAINS_DEFAULT, MOUNTAIN_PCT, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHAPES, type MountainParams } from "@/lib/pigchicken/mountains"
 
 const BTN = "h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]"
 
@@ -23,20 +25,20 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
     const at = Math.round(((stops[gap].at + stops[gap + 1].at) / 2) * 100) / 100
     set({ follow: false, stops: [...stops, { at, color: stopColor(stops, at) }].sort((a, b) => a.at - b.at) })
   }
-  const pct = (label: string, key: "glow" | "clouds" | "texture" | "haze" | "silhouette" | "light", hint: string) => (
+  const pct = (label: string, key: "glow" | "clouds" | "texture" | "haze" | "silhouette" | "light" | "radial" | "radialY", hint: string) => (
     <PatioRange label={label} min={SKY_PCT.min} max={SKY_PCT.max} step={SKY_PCT.step} value={s[key]} display={`${s[key]}%`}
       changed={!!sky && s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
-  const gradient = `linear-gradient(to bottom, ${stops.map(st => `${st.color} ${Math.round(st.at * 100)}%`).join(", ")})`
+  // the preview: the same gradient over a box PREVIEW px tall, the sun in its middle
+  const gradient = skyRadial(look, 0, 0, PREVIEW, PREVIEW_W / 2) ?? skyGradient(look, 0, 0, PREVIEW)
   return (
-    <section className="grid gap-2 border-t border-white/10 pt-3" aria-label="Céu e luz">
-      <div className="flex items-center gap-2">
-        <h3 className="flex-1 text-[10px] uppercase tracking-wider text-[#93a79a]">Céu e luz</h3>
+    <div className="grid gap-2 px-4 pb-4">
+      <div className="flex items-center justify-end gap-2">
         <button type="button" className={BTN} onClick={() => onChange(randomSky(Math.random, sky ? { light: s.light } : undefined))} title="Sorteia hora, faixas de cor, sol, nuvens, textura, névoa e contraluz">Randomize</button>
         {sky && <button type="button" className={BTN} onClick={() => onChange(undefined)} title="Volta ao entardecer clássico do Pátio">Clássico</button>}
       </div>
-      <div className="grid grid-cols-[44px_1fr] gap-2">
-        <div aria-hidden="true" className="relative h-full min-h-24 overflow-hidden rounded-md border border-white/10" style={{ background: gradient }}>
+      <div className="grid grid-cols-[96px_1fr] gap-2">
+        <div aria-hidden="true" className="relative overflow-hidden rounded-md border border-white/10" style={{ background: gradient, width: PREVIEW_W, height: PREVIEW }}>
           {look.sun.opacity > 0 && <span className="absolute left-1/2 size-3 -translate-x-1/2 rounded-full" style={{ top: `${Math.max(4, Math.min(92, (look.sun.y / 900) * 100))}%`, background: look.sun.color, boxShadow: `0 0 10px ${look.sun.color}` }} />}
         </div>
         <div className="grid gap-[3px]">
@@ -62,6 +64,12 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         <button type="button" disabled={stops.length >= SKY_STOPS.max} onClick={addStop} className={cn(BTN, "inline-flex items-center justify-center gap-1 disabled:opacity-30")}><Plus className="h-3.5 w-3.5" />Cor</button>
       </div>}
       <div className="grid gap-[3px]">
+        {pct("Curvatura", "radial", "Curva as faixas do céu em anéis em volta do sol. 0: faixas retas.")}
+        {s.radial > 0 && <>
+          <PatioRange label="Centro" min={SKY_RADIAL_X.min} max={SKY_RADIAL_X.max} step={SKY_RADIAL_X.step} value={s.radialX} display={s.radialX === 0 ? "sob o sol" : `${s.radialX > 0 ? "+" : ""}${s.radialX}`}
+            changed={s.radialX !== SKY_DEFAULT.radialX} onReset={() => set({ radialX: SKY_DEFAULT.radialX })} onChange={radialX => set({ radialX })} hint="Move o centro dos anéis para os lados, a partir de baixo do sol." />
+          {pct("Centro abaixo do horizonte", "radialY", "Afunda o centro dos anéis: mais fundo, curvas mais abertas.")}
+        </>}
         <PatioRange label="Tamanho do sol" min={SKY_SUN.min} max={SKY_SUN.max} step={SKY_SUN.step} value={s.sunSize} display={`${s.sunSize}`}
           changed={!!sky && s.sunSize !== SKY_DEFAULT.sunSize} onReset={() => set({ sunSize: SKY_DEFAULT.sunSize })} onChange={sunSize => set({ sunSize })} />
         {pct("Brilho do sol", "glow", "O halo do sol e a luz ao longo do horizonte embaixo dele.")}
@@ -71,12 +79,45 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         {pct("Contraluz", "silhouette", "O cenário escurece até virar silhueta contra o céu. Bonecos, itens e tiros mantêm as cores.")}
         {pct("Luz no pátio", "light", "Quanto a hora do dia ilumina, escurece e esquenta o cenário do Pátio.")}
       </div>
-      <div className="grid grid-cols-2 gap-1.5">
-        <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span>Montanhas</span>
-          <input type="checkbox" checked={s.mountains} onChange={e => set({ mountains: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" /></label>
+      <div className="grid">
         <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span>Mata ao longe</span>
           <input type="checkbox" checked={s.forest} onChange={e => set({ forest: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" /></label>
       </div>
-    </section>
+    </div>
+  )
+}
+
+const PREVIEW = 120, PREVIEW_W = 96
+
+// Configurações do Pátio → Montanhas: the far ranges' shape; their colours still follow the sky
+export function MountainFields({ mountains, onChange }: { mountains: MountainParams | undefined; onChange: (m: MountainParams | undefined) => void }) {
+  const m = mountains ?? MOUNTAINS_DEFAULT
+  const set = (p: Partial<MountainParams>) => onChange({ ...m, ...p })
+  const range = (label: string, key: "height" | "rough", hint: string) => (
+    <PatioRange label={label} min={MOUNTAIN_SCALE.min} max={MOUNTAIN_SCALE.max} step={MOUNTAIN_SCALE.step} value={m[key]} display={`${m[key]}%`}
+      changed={m[key] !== MOUNTAINS_DEFAULT[key]} onReset={() => set({ [key]: MOUNTAINS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
+  return (
+    <div className="grid gap-[3px] px-4 pb-4">
+      <div className="flex items-center gap-2 pb-1">
+        <label className="flex h-9 flex-1 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span>Mostrar</span>
+          <input type="checkbox" checked={m.show} onChange={e => set({ show: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" /></label>
+        <button type="button" className={BTN} disabled={!m.show} onClick={() => set({ shape: (m.shape + 1 + Math.floor(Math.random() * (MOUNTAIN_SHAPES - 1))) % MOUNTAIN_SHAPES })} title="Desenha outras montanhas com a mesma altura e recorte">Sortear forma</button>
+        {mountains && <button type="button" className={BTN} onClick={() => onChange(undefined)} title="Volta às montanhas de sempre">Padrão</button>}
+      </div>
+      {m.show && <>
+        <PatioRange label="Cordilheiras" min={MOUNTAIN_RANGES.min} max={MOUNTAIN_RANGES.max} step={MOUNTAIN_RANGES.step} value={m.ranges} display={m.ranges}
+          changed={m.ranges !== MOUNTAINS_DEFAULT.ranges} onReset={() => set({ ranges: MOUNTAINS_DEFAULT.ranges })} onChange={ranges => set({ ranges })} hint="Quantas fileiras de montanhas, da mais distante para a mais perto." />
+        {range("Altura", "height", "A altura dos picos.")}
+        {range("Recorte", "rough", "Mais alto: picos mais estreitos e numerosos. Mais baixo: morros largos e suaves.")}
+        <PatioRange label="Neve nos picos" min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m.snow} display={`${m.snow}%`}
+          changed={m.snow !== MOUNTAINS_DEFAULT.snow} onReset={() => set({ snow: MOUNTAINS_DEFAULT.snow })} onChange={snow => set({ snow })} hint="Até onde a neve desce. Ela pega a luz do sol." />
+        <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
+          <input type="color" aria-label="Cor das montanhas" value={m.tint} onChange={e => set({ tint: e.target.value, tintAmount: m.tintAmount || 50 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
+          <PatioRange label="Cor" min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m.tintAmount} display={`${m.tintAmount}%`}
+            changed={m.tintAmount !== MOUNTAINS_DEFAULT.tintAmount} onReset={() => set({ tintAmount: MOUNTAINS_DEFAULT.tintAmount })} onChange={tintAmount => set({ tintAmount })} hint="Quanto a cor escolhida tinge as montanhas. 0: só a luz do céu." />
+        </div>
+      </>}
+    </div>
   )
 }

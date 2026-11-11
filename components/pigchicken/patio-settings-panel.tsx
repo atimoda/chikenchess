@@ -2,7 +2,9 @@
 
 // The Sun button's panel: the current Pátio's own settings (its limits), saved with the Pátio like its layout.
 // Whoever may edit the Pátio changes them; everyone else sees them.
+import { useState } from "react"
 import { X } from "lucide-react"
+import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
@@ -10,7 +12,7 @@ import { PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioHeight, patioInvento
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
-import { SkyFields } from "./sky-fields"
+import { MountainFields, SkyFields } from "./sky-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 
@@ -23,16 +25,20 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
   const itemsLabel = `${inventory} ${inventory === 1 ? "item" : "itens"}`
   const set = (next: PatioSettings) => onChange({ ...layout, settings: { ...layout.settings, ...next } })
   const width = worldScenes(screens) * SCENE_W
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const group = (title: string, children: React.ReactNode) => (
+    <PatioDisclosure title={title} open={!!open[title]} onToggle={v => setOpen(o => ({ ...o, [title]: v }))}>{open[title] && children}</PatioDisclosure>
+  )
   return (
-    <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="gap-3 overflow-y-auto rounded-xl border border-[#ffd166]/40 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex shrink-0 items-center gap-2">
+    <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="overflow-y-auto rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
         <h2 className="flex-1 text-sm text-white">Configurações do Pátio</h2>
         {canEdit && <button type="button" onClick={() => set({ screens: DEFAULT_PARQUINHO.screens, height: PATIO_HEIGHT.default, inventory: PATIO_INVENTORY.default })} title="Volta largura, altura e limite do inventário para o padrão" className="h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]">Padrão</button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><X className="h-4 w-4" /></button>
       </div>
       {canEdit ? (
         <>
-          <div className="grid gap-[3px]">
+          <div className="grid gap-[3px] border-b border-white/10 px-4 pb-4">
           <PatioRange label="Largura limite" min={PATIO_SCREENS.min} max={PATIO_SCREENS.max} step={PATIO_SCREENS.step} value={screens}
             display={`${screens} ${screens === 1 ? "tela" : "telas"}`} onChange={v => set({ screens: v })}
             hint={`Telas do Parquinho antes do Templo e da Vila. O mundo inteiro tem ${units(width)} unidades de largura.`} />
@@ -50,21 +56,26 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             }} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
           </div>
-          <SkyFields sky={layout.settings?.sky} onChange={sky => {
+          {group("Céu e luz", <SkyFields sky={layout.settings?.sky} onChange={sky => {
             const { sky: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: sky ? { ...rest, sky } : rest })
-          }} />
+          }} />)}
+          {group("Montanhas", <MountainFields mountains={layout.settings?.mountains} onChange={mountains => {
+            const { mountains: _old, ...rest } = layout.settings ?? {}
+            onChange({ ...layout, settings: mountains ? { ...rest, mountains } : rest })
+          }} />)}
         </>
       ) : (
-        <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 text-[#dfe8df]">
+        <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 px-4 text-[#dfe8df]">
           <dt>Largura limite</dt><dd className="font-bold">{screens} {screens === 1 ? "tela" : "telas"} · {units(width)} u</dd>
           <dt>Altura limite</dt><dd className="font-bold">{units(height)} u</dd>
           <dt>Limite do inventário</dt><dd className="font-bold">{itemsLabel}</dd>
           <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
           <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
+          <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
         </dl>
       )}
-      <p className="text-[10px] leading-relaxed text-[#93a79a]">
+      <p className="px-4 py-3 text-[10px] leading-relaxed text-[#93a79a]">
         {canEdit ? "Salvo junto com o Pátio. " : "Só quem pode editar este Pátio muda as configurações. "}
         Os quatro limites têm uma borda preta: a galinha escala as paredes e o teto, e pendura de cabeça para baixo nele.
       </p>

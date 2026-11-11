@@ -6,9 +6,10 @@
 "use client"
 
 import { memo, useEffect, useMemo, useRef, useState } from "react"
-import { followParallax, watchCameraRegion } from "@/lib/pigchicken/live-camera"
+import { followParallax, onCameraMove, watchCameraRegion } from "@/lib/pigchicken/live-camera"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
-import { classicLook, skyGradient, type SkyLook } from "@/lib/pigchicken/sky"
+import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
+import { MOUNTAINS_DEFAULT, type MountainParams } from "@/lib/pigchicken/mountains"
 
 const G = WORLD_GROUND_Y
 // how far past the world's left edge the layers start, and how much they reach past its right edge (the widest screen)
@@ -29,18 +30,29 @@ function rng(seed: number) {
 const layerW = (worldW: number, p: number) => Math.ceil(worldW * (1 - p)) + PAD_L + PAD_R
 
 // a mountain range: peaks of a few sizes summed, sampled every `step`
-function ridge(w: number, seed: number, base: number, amp: number, rough: number, step = 24) {
+// (its path and its highest point)
+function ridgeTop(w: number, seed: number, base: number, amp: number, rough: number, step = 24) {
   const r = rng(seed)
   const waves = Array.from({ length: 5 }, (_, i) => ({ k: (0.0016 + r() * 0.002) * (i + 1) * rough, ph: r() * 6.28, a: amp / (i + 1.3) }))
   const pts: string[] = [`M 0 ${G + 40}`]
+  let top = base
   for (let x = 0; x <= w + step; x += step) {
     let y = base
     waves.forEach(v => { y -= v.a * (0.5 + 0.5 * Math.sin(x * v.k + v.ph)) })
-    // sharper tops: a little extra on the highest parts
+    top = Math.min(top, y)
     pts.push(`L ${x} ${Math.round(y)}`)
   }
   pts.push(`L ${w + step} ${G + 40} Z`)
-  return pts.join(" ")
+  return { d: pts.join(" "), top }
+}
+
+// the snow line over a range: everything above a gently waving line at y (a clip region)
+function snowLine(w: number, seed: number, y: number, step = 48) {
+  const r = rng(seed)
+  const k1 = 0.004 + r() * 0.004, k2 = 0.013 + r() * 0.01, p1 = r() * 6.28, p2 = r() * 6.28
+  let d = `M 0 -6000 L ${w + step} -6000`
+  for (let x = w + step; x >= 0; x -= step) d += ` L ${x} ${Math.round(y + 26 * Math.sin(x * k1 + p1) + 12 * Math.sin(x * k2 + p2))}`
+  return d + " Z"
 }
 
 // trees along a line: rounded crowns and pines, as one silhouette path per colour
@@ -126,6 +138,14 @@ function stars(w: number, seed: number) {
 }
 const CLASSIC = classicLook()
 
+// the sky with its bands curved round the sun (Curvatura): the rings' centre follows the sun sideways (0.97, like
+// its layer) by a transform only, so moving the camera never repaints the gradient
+function RadialSky({ look, left, width, top, height, cx }: { look: SkyLook; left: number; width: number; top: number; height: number; cx: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => onCameraMove(x => { if (ref.current) ref.current.style.transform = `translate3d(${(x * 0.97).toFixed(2)}px,0,0)` }), [])
+  return <div ref={ref} className="absolute" style={{ left, width, top, height, background: skyRadial(look, top, -200, G - 60, cx - left) ?? undefined }} />
+}
+
 // one parallax layer: depth p (0 = with the ground, 1 = fixed on the screen)
 function Layer({ p, w, children }: { p: number; w: number; children: React.ReactNode }) {
   const ref = useRef<SVGSVGElement>(null)
@@ -149,14 +169,29 @@ function Cloud({ c, lit, shade }: { c: ReturnType<typeof clouds>[number]; lit: s
   </g>
 }
 
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC }: { worldW: number; look?: SkyLook }) {
-  const wSun = layerW(worldW, 0.97), wCloud = layerW(worldW, 0.9), wFar = layerW(worldW, 0.82), wMid = layerW(worldW, 0.66)
-  const wHill = layerW(worldW, 0.48), wTreesFar = layerW(worldW, 0.34), wTrees = layerW(worldW, 0.2)
+// the three ranges, back to front: seed, base (their feet), peaks' height, roughness, sampling step, the haze
+const RANGES = [
+  { p: 0.82, seed: 3, base: 720, amp: 190, rough: 1.3, step: 24, hazeTop: 560, haze: 0.7 },
+  { p: 0.66, seed: 7, base: 790, amp: 160, rough: 1.7, step: 24, hazeTop: 680, haze: 0.55 },
+  { p: 0.48, seed: 19, base: 860, amp: 90, rough: 1.1, step: 32, hazeTop: 790, haze: 0.35 },
+] as const
+
+// mountains: Configurações do Pátio → Montanhas (shape, snow, tint); their light and haze come from the sky
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT }: { worldW: number; look?: SkyLook; mountains?: MountainParams }) {
+  const wSun = layerW(worldW, 0.97), wCloud = layerW(worldW, 0.9)
+  const wTreesFar = layerW(worldW, 0.34), wTrees = layerW(worldW, 0.2)
   const shapes = useMemo(() => ({
-    far: ridge(wFar, 3, 720, 190, 1.3), mid: ridge(wMid, 7, 790, 160, 1.7), hill: ridge(wHill, 19, 860, 90, 1.1, 32),
     treeFar: trees(wTreesFar, 31, G - 40, 64, 46), treeNear: trees(wTrees, 47, G - 6, 120, 210),
     clouds: clouds(wCloud, 11), stars: stars(wSun, 5),
-  }), [wFar, wMid, wHill, wTreesFar, wTrees, wCloud, wSun])
+  }), [wTreesFar, wTrees, wCloud, wSun])
+  const { show, ranges: rangeCount, height, rough, snow, shape } = mountains
+  const ranges = useMemo(() => !show ? [] : RANGES.slice(0, rangeCount).map((r, i) => {
+    const w = layerW(worldW, r.p), amp = r.amp * height / 100, seed = r.seed + shape * 101
+    const { d, top } = ridgeTop(w, seed, r.base, amp, r.rough * rough / 100, r.step)
+    // the snow comes down from the highest peak, at most 60% of the way to the range's feet
+    return { ...r, i, w, d, snow: snow > 0 ? snowLine(w, seed + 7, top + (r.base - top) * (snow / 100) * 0.6) : null }
+  }), [worldW, show, rangeCount, height, rough, snow, shape])
+  const rangeFill = (i: number) => mountains.tintAmount > 0 ? mix(look.ranges[i], mountains.tint, mountains.tintAmount / 100 * 0.8) : look.ranges[i]
   const texture = useSkyTexture(look.texture)
   const { treeFar, treeNear } = shapes
   const shownClouds = look.clouds.amount >= 1 ? shapes.clouds : shapes.clouds.filter((_, i) => ((i * 0.618) % 1) < look.clouds.amount)
@@ -177,10 +212,12 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   return (
     <div aria-hidden="true" className="absolute inset-0">
       {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top */}
-      <div className="absolute" style={{
-        left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: G - skyTop,
-        background: skyGradient(look, skyTop, -200, G - 60),
-      }} />
+      {look.radial.amount > 0
+        ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={G - skyTop} cx={sunX - PAD_L} />
+        : <div className="absolute" style={{
+          left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: G - skyTop,
+          background: skyGradient(look, skyTop, -200, G - 60),
+        }} />}
       {texture && <div className="absolute" style={{
         left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: -1600, height: G + 1600,
         backgroundImage: `url(${texture})`, backgroundSize: "1024px 256px", mixBlendMode: "soft-light",
@@ -221,11 +258,16 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
           {shownClouds.map((c, i) => <Cloud key={i} c={look.clouds.opacity > 1 ? { ...c, o: Math.min(0.85, c.o * look.clouds.opacity) } : c} lit={look.clouds.lit} shade={look.clouds.shade} />)}
         </g>
       </Layer>}
-      {look.mountains && <>
-        <Layer p={0.82} w={wFar}><path d={shapes.far} fill={look.ranges[0]} />{haze(wFar, "px-h1", 560, 0.7)}</Layer>
-        <Layer p={0.66} w={wMid}><path d={shapes.mid} fill={look.ranges[1]} />{haze(wMid, "px-h2", 680, 0.55)}</Layer>
-        <Layer p={0.48} w={wHill}><path d={shapes.hill} fill={look.ranges[2]} />{haze(wHill, "px-h3", 790, 0.35)}</Layer>
-      </>}
+      {ranges.map(r => (
+        <Layer key={r.i} p={r.p} w={r.w}>
+          <path d={r.d} fill={rangeFill(r.i)} />
+          {r.snow && <>
+            <defs><clipPath id={`px-snow${r.i}`}><path d={r.snow} /></clipPath></defs>
+            <path d={r.d} clipPath={`url(#px-snow${r.i})`} fill={mix(rangeFill(r.i), mix("#ffffff", look.clouds.lit, 0.4), 0.6)} />
+          </>}
+          {haze(r.w, `px-h${r.i + 1}`, r.hazeTop, r.haze)}
+        </Layer>
+      ))}
       {look.forest && <>
         <Layer p={0.34} w={wTreesFar}>
           <path d={treeFar.trunks} fill={look.trees[0]} /><path d={treeFar.crowns} fill={look.trees[0]} />

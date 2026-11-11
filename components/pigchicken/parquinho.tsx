@@ -52,6 +52,7 @@ import { CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, openJuke
 import { drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
+import type { MountainParams } from "@/lib/pigchicken/mountains"
 import { skyLook, type SkyLook, type SkyParams } from "@/lib/pigchicken/sky"
 import { createPerchWorld, setPerchSpans } from "@/lib/pigchicken/bird-perch"
 import { powerSpans } from "@/lib/pigchicken/power-lines"
@@ -95,7 +96,8 @@ function onlyThrow(actions: Record<ChickenAction, boolean>): Record<ChickenActio
 // worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
 // backdrop: how strongly the scenery far behind shows (sky, sun, mountains; the layers menu's Fundo, 0 hides it)
 // sky: the Pátio's sky and light (Configurações do Pátio → Céu e luz); without it, the classic dusk
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1, sky }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number; sky?: SkyParams }) {
+// mountains: the far ranges' shape (Configurações do Pátio → Montanhas)
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1, sky, mountains }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number; sky?: SkyParams; mountains?: MountainParams }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
   const templeLeft = templeScene(screens) * SCENE_W
@@ -116,7 +118,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
       <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
-      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} /></div>)}
+      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} /></div>)}
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)", ...lit }} />
       {debug && Array.from({ length: screens }, (_, s) => (

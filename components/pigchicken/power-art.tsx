@@ -5,7 +5,7 @@
 // the haze), so against a sunset they read as black cut-outs. The wires are redrawn only when the camera moves and
 // only when their poles stand in different depths; otherwise their layer just slides with the camera.
 import { memo, useEffect, useMemo, useRef } from "react"
-import { POWER_MODELS, fixedDepth, powerSpans, spanPath, type PowerParams, type Span } from "@/lib/pigchicken/power-lines"
+import { POWER_MODELS, fixedDepth, powerSpans, spanFloor, spanPath, type PowerParams, type Span } from "@/lib/pigchicken/power-lines"
 import { followDepth, onCameraMove } from "@/lib/pigchicken/live-camera"
 import type { LayoutElement } from "@/lib/pigchicken/layout"
 
@@ -122,4 +122,18 @@ export const PowerLines = memo(function PowerLines({ elements, layer }: { elemen
   return <svg aria-hidden="true" data-power-lines className="absolute left-0 top-0 overflow-visible" width={1} height={1}>
     {groups.map(([k, spans]) => <WireGroup key={k} spans={spans} />)}
   </svg>
+})
+
+// the wires she can stand on (Fios como plataforma): one invisible one-way floor per wire on the ground's depth,
+// a polyline along its curve (`data-chicken-line`, in the box's own pixels). Hidden poles and towers have none.
+export const PowerFloors = memo(function PowerFloors({ elements }: { elements: LayoutElement[] }) {
+  const floors = useMemo(() => powerSpans(elements.filter(e => !e.hidden)).flatMap(s => {
+    const pts = spanFloor(s)
+    if (!pts) return []
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y)
+    const x = Math.min(...xs), y = Math.min(...ys)
+    return [{ id: s.id, box: `${x.toFixed(1)},${y.toFixed(1)},${(Math.max(...xs) - x).toFixed(1)},${(Math.max(...ys) - y).toFixed(1)}`,
+      line: pts.map(p => `${(p.x - x).toFixed(1)},${(p.y - y).toFixed(1)}`).join(" ") }]
+  }), [elements])
+  return <>{floors.map(f => <div key={f.id} data-chicken-id={`wire-${f.id}`} data-chicken-world-box={f.box} data-chicken-line={f.line} data-chicken-nearby className="absolute" />)}</>
 })
