@@ -443,23 +443,38 @@ export function soulCounterBox(row: number, offset?: { x: number; y: number }) {
   return { x: stageWidth() - INV_STACK.right - size - INV_STACK.avatarGap - size + (offset?.x ?? 0), y: invRowY(row) + (offset?.y ?? 0), size }
 }
 // the count of the basket; the inner arc takes the colour of the soul on top of it, and the circle swells for a
-// moment when one arrives
-export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: string, offset?: { x: number; y: number }) {
+// moment when one arrives or is let out. A press on it lets the top soul out; with the basket empty and souls of
+// this player's flying free, it is the Callback button instead (a press calls them back). hover: the pointer is on
+// it. Returns its middle and radius (screen px) and whether a press does anything right now.
+export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: string, offset?: { x: number; y: number }, hover = false) {
   const { x, y, size } = soulCounterBox(row, offset), r = size / 2
   const basket = combat.basket, top = basket[basket.length - 1], pulse = combat.soulPulse
+  const callback = !basket.length && combat.looseSouls > 0, on = basket.length > 0 || callback
   ctx.save()
   if (pulse > 0) { const k = 1 + 0.22 * pulse; ctx.translate(x + r, y + r); ctx.scale(k, k); ctx.translate(-x - r, -y - r) }
   ctx.beginPath(); ctx.arc(x + r, y + r, r - 1, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(8,15,13,0.94)'; ctx.fill()
+  // a button looks filled; under the pointer, whatever can be pressed lights up
+  if (callback || (hover && on)) { ctx.globalAlpha = callback ? (hover ? 0.5 : 0.3) : 0.2; ctx.fillStyle = color; ctx.fill(); ctx.globalAlpha = 1 }
   ctx.lineWidth = 2.2; ctx.strokeStyle = color; ctx.stroke()
-  ctx.beginPath(); ctx.arc(x + r, y + r, r - 4, -Math.PI * 0.82, -Math.PI * 0.18)
-  ctx.strokeStyle = top ? top.color : 'rgba(220,250,245,0.32)'; ctx.lineWidth = top ? 1.6 : 1; ctx.stroke()
-  const count = String(basket.length)
-  const fontSize = count.length > 3 ? 8 : count.length > 2 ? 10 : 12
-  ctx.font = `bold ${fontSize}px ui-monospace, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-  ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(count, x + r, y + r + 0.5)
-  ctx.fillStyle = '#e9f4ee'; ctx.fillText(count, x + r, y + r + 0.5)
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  const write = (text: string, dy: number, width: number) => {
+    ctx.lineWidth = width; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(text, x + r, y + r + dy + 0.5)
+    ctx.fillStyle = '#e9f4ee'; ctx.fillText(text, x + r, y + r + dy + 0.5)
+  }
+  if (callback) {
+    ctx.font = 'bold 9px ui-monospace, monospace'
+    write('Call', -4.5, 2); write('back', 4.5, 2)
+  } else {
+    ctx.beginPath(); ctx.arc(x + r, y + r, r - 4, -Math.PI * 0.82, -Math.PI * 0.18)
+    ctx.strokeStyle = top ? top.color : 'rgba(220,250,245,0.32)'; ctx.lineWidth = top ? 1.6 : 1; ctx.stroke()
+    const count = String(basket.length)
+    const fontSize = count.length > 3 ? 8 : count.length > 2 ? 10 : 12
+    ctx.font = `bold ${fontSize}px ui-monospace, monospace`
+    write(count, 0, 2.5)
+  }
   ctx.restore()
+  return { x: x + r, y: y + r, r, on }
 }
 
 // ---------- the inventory wheel: her items plus the empty slot (while there is room), in equal slices ----------

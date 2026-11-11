@@ -203,3 +203,106 @@ test('chicks are souls too; the basket is a stack and each player has their own'
   assert.equal(c.capturedSouls, 1, "the second player's")
   assert.equal(c.basket[0].species, 'chick')
 })
+
+// ---------- let out of the basket: friends, and the Callback ----------
+// n chicks caught, one sweep each
+function basketOf(c, n) {
+  for (let k = 0; k < n; k++) {
+    c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
+    for (let i = 0; i < 50; i++) step(c, { melee: i === 0 })
+  }
+  c.setCatchables([])
+  land(c)
+}
+// keeps a soul flying free at (x, y), whatever its flight wants
+const holdSoul = (f, x, y) => { Object.assign(f.brain, { x, y, ax: x, ay: y, vx: 0, vy: 0, mode: 'rest', settle: 0 }); f.x = x; f.y = y }
+
+test('a press on the counter lets the last soul caught out where the counter is, and it flies with her', () => {
+  const c = world('passagua')
+  assert.equal(c.releaseSoul({ x: 0, y: 0 }), null, 'an empty basket: nothing')
+  basketOf(c, 3)
+  assert.equal(c.capturedSouls, 3)
+  const top = c.basket[2]
+  for (let t = 0; t < 1; t += 0.016) step(c)
+  assert.equal(c.soulPulse, 0)
+  assert.equal(c.releaseSoul({ x: 500, y: -400 }), top, 'the last one in is the first one out')
+  assert.equal(c.capturedSouls, 2)
+  assert.equal(c.looseSouls, 1)
+  const f = c.freedSouls[0]
+  assert.deepEqual({ soul: f.soul, owner: f.owner, x: f.x, y: f.y }, { soul: top, owner: 'p1', x: 500, y: -400 })
+  assert.ok(c.soulPulse > 0.8, 'the counter answers the press')
+  for (let t = 0; t < 8; t += 0.016) step(c)
+  // a chick's soul keeps low and close to her (she stands at 0, 0)
+  assert.ok(Math.abs(f.x) < 200 && f.y < -100 && f.y > -320, `beside and above her (${Math.round(f.x)}, ${Math.round(f.y)})`)
+  assert.equal(c.freedSouls.length, 1, 'it stays')
+})
+
+test('with every soul out, a press calls them back: the nearest one first, one every 0.2 s', () => {
+  const c = world('passagua')
+  basketOf(c, 3)
+  assert.equal(c.callSouls(), 0, 'none out: nothing to call')
+  for (let i = 0; i < 3; i++) c.releaseSoul({ x: 300, y: -300 })
+  assert.equal(c.capturedSouls, 0)
+  assert.equal(c.looseSouls, 3)
+  assert.equal(c.callSouls(), 0, 'a press right after letting the last one out does not call them back')
+  for (let t = 0; t < 1; t += 0.016) step(c)
+  const [far, near, mid] = c.freedSouls
+  holdSoul(far, 500, -90); holdSoul(near, 100, -90); holdSoul(mid, 300, -90)
+  assert.equal(c.callSouls(), 3)
+  assert.equal(c.callSouls(), 0, 'already called')
+  const left = []
+  for (let t = 0; t < 2; t += 0.016) {
+    step(c)
+    for (const a of c.abductions) if (!left.some(l => l.id === a.soul.id)) left.push({ id: a.soul.id, t })
+  }
+  assert.deepEqual(left.map(l => l.id), [near.soul.id, mid.soul.id, far.soul.id])
+  for (const i of [1, 2]) assert.ok(Math.abs(left[i].t - left[i - 1].t - 0.2) < 0.02, `0.2 s apart (${left[i].t - left[i - 1].t})`)
+  assert.equal(c.looseSouls, 0)
+  assert.equal(c.capturedSouls, 3, 'back in the basket')
+  assert.equal(c.basket[2].id, far.soul.id, 'the last one to arrive is on top')
+})
+
+test("a soul flying free goes to the basket of whoever's Passaguá catches it", () => {
+  const c = world('passagua')
+  basketOf(c, 2)
+  c.releaseSoul({ x: 40, y: 0 }); c.releaseSoul({ x: 40, y: 0 })
+  const [one, other] = c.freedSouls
+  c.use('p2'); c.give('passagua'); step(c, { slot: 1 }, 0, false); c.use('p1')
+  // the second player sweeps where one of them is
+  for (let i = 0; i < 50; i++) {
+    holdSoul(one, 40, 0); holdSoul(other, -900, -500)
+    c.use('p2'); step(c, { melee: i === 0 }, 0, false); c.use('p1'); step(c)
+  }
+  land(c)
+  assert.equal(c.looseSouls, 1)
+  assert.equal(c.capturedSouls, 0)
+  c.use('p2')
+  assert.equal(c.capturedSouls, 1)
+  assert.equal(c.basket[0], one.soul, 'the same soul, in the other basket')
+  assert.equal(c.looseSouls, 0, 'it is theirs now')
+  c.use('p1')
+  // and her own Passaguá puts the other one back in her basket
+  for (let i = 0; i < 50; i++) { holdSoul(other, 40, 0); step(c, { melee: i === 0 }) }
+  land(c)
+  assert.equal(c.freedSouls.length, 0)
+  assert.equal(c.capturedSouls, 1)
+  assert.equal(c.basket[0], other.soul)
+})
+
+test('the souls of a player who left the game fly away', () => {
+  const c = world()
+  c.use('p2'); c.give('passagua'); step(c, { slot: 1 }, 0, false)
+  c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
+  for (let i = 0; i < 50; i++) { c.use('p2'); step(c, { melee: i === 0 }, 0, false); c.use('p1'); step(c) }
+  land(c)
+  c.use('p2')
+  assert.ok(c.releaseSoul({ x: 0, y: -200 }))
+  c.use('p1')
+  for (let t = 0; t < 1; t += 0.016) step(c)
+  const f = c.freedSouls[0], y = f.y
+  c.drop('p2')
+  for (let t = 0; t < 1; t += 0.016) step(c)
+  assert.ok(f.y < y - 20, 'up')
+  for (let t = 0; t < 5; t += 0.016) step(c)
+  assert.equal(c.freedSouls.length, 0)
+})

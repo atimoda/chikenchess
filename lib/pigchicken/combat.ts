@@ -7,6 +7,7 @@ import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zone
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
 import { birdPerchParams, perchEnd, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
 import { ABDUCT_GAP, CHICK_SOUL_COLOR, SOUL_PULSE, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, weaponClass, type Abduction, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
+import { createSoulBrain, soulFollowParams, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
@@ -50,6 +51,12 @@ export type Critter = {
   soul?: SoulOrigin // a bird: the alien it was and how it became one (lib/pigchicken/souls.ts)
   perch?: PerchState | null // resting on a wire (lib/pigchicken/bird-perch.ts); null: it already tried
 }
+// a soul let out of its owner's basket: it flies with them as a friend (lib/pigchicken/soul-follow.ts) until it is
+// called back (recallIn: s until it leaves for the counter) or a Passaguá catches it. away: s since its owner left
+// the game (it flies off); null while it has one
+export type FreeSoul = { soul: Soul; owner: string; x: number; y: number; face: number; t: number; brain: SoulBrain; params: SoulFollowParams; recallIn: number | null; away: number | null }
+export const CALLBACK_GAP = 0.2 // s between two souls called back
+export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on the counter can call them back
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
 // beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through); rebate: the
@@ -551,6 +558,13 @@ export function createCombat() {
   // souls on their way to a counter (the world's: each one knows whose it is) and how long each counter still swells
   const abductions: Abduction[] = []
   const soulPulses = new Map<string, number>()
+  // the souls out of the baskets (the world's: each one knows whose it is), the world's clock for them and when each
+  // player last let one out
+  const freed: FreeSoul[] = []
+  const lastRelease = new Map<string, number>()
+  let soulClock = 0
+  // the walls of the world and the top of the sky the camera shows (the Parquinho keeps it up to date)
+  let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach,
@@ -1024,6 +1038,12 @@ export function createCombat() {
         if (c.perch && perchWorld) perchEnd(perchWorld, c.perch)
         critters.splice(i, 1); caught.push({ x: c.x, y: c.y, soul: newSoul(nextId++, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null) })
       }
+      // souls flying free, whoever let them out: they change baskets (or go back to their own)
+      for (let i = freed.length - 1; i >= 0; i--) {
+        const f = freed[i]
+        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
+        freed.splice(i, 1); caught.push({ x: f.x, y: f.y, soul: f.soul })
+      }
       // the chicks that follow her: caught like the birds, they count as souls too
       catchables = catchables.filter(c => {
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r)) return true
@@ -1265,6 +1285,7 @@ export function createCombat() {
     setBlastActors(actors: { box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
     setCatchables(list: Catchable[]) { catchables = list },
     setPerchWorld(w: PerchWorld | null) { perchWorld = w },
+    setSoulAir(air: SoulAir | null) { soulAir = air },
     // Local players: each one has their own items, aim, cooldowns and swing (a loadout); the world (targets,
     // enemies, shots, pickups, music) is shared. use(id) makes that player's loadout the current one; the
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
@@ -1277,7 +1298,32 @@ export function createCombat() {
     get soulPulse() { return (soulPulses.get(active) ?? 0) / SOUL_PULSE },
     // every player's souls flying to their counters (lib/pigchicken/souls.ts)
     get abductions() { return abductions as readonly Abduction[] },
-    drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id) } },
+    // the souls out of the baskets, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
+    get freedSouls() { return freed as readonly FreeSoul[] },
+    get looseSouls() { let n = 0; for (const f of freed) if (f.owner === active) n++; return n },
+    // lets the soul on top of this player's basket out at `from` (world px: where their counter is); it flies with them
+    releaseSoul(from: { x: number; y: number }) {
+      const soul = souls.pop()
+      if (!soul) return null
+      const params = soulFollowParams(soul), brain = createSoulBrain(from.x, from.y, params)
+      // it pops out of the counter, down and to one side
+      brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
+      freed.push({ soul, owner: active, x: from.x, y: from.y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null })
+      lastRelease.set(active, soulClock); soulPulses.set(active, SOUL_PULSE)
+      sound('puff', null)
+      return soul
+    },
+    // Callback: every soul of this player's flying free goes back to the counter, one every CALLBACK_GAP, the one
+    // nearest to them first. Returns how many were called.
+    callSouls() {
+      if (soulClock - (lastRelease.get(active) ?? -Infinity) < CALLBACK_GUARD) return 0
+      const mine = freed.filter(f => f.owner === active && f.recallIn === null && f.away === null)
+      const her = lastBody ? { x: lastBody.x, y: lastBody.y - 90 * lastBody.scale } : null
+      if (her) mine.sort((a, b) => Math.hypot(a.x - her.x, a.y - her.y) - Math.hypot(b.x - her.x, b.y - her.y))
+      mine.forEach((f, i) => { f.recallIn = i * CALLBACK_GAP })
+      return mine.length
+    },
+    drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id); for (const f of freed) if (f.owner === id && f.away === null) f.away = 0 } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
     // each shown slot's group (the empty slot counts as the last group)
@@ -1906,6 +1952,25 @@ export function createCombat() {
         const stay = c.bird ? BIRDS[c.bird].stay : 0
         if (c.t > stay && (c.y < -120 || c.t > 9 + stay || c.x < view.l - 500 || c.x > view.r + 500)) critters.splice(i, 1)
       }
+      // the souls flying free: each one flies with its owner; called back, it leaves for the counter in its turn
+      soulClock += dt
+      for (let i = freed.length - 1; i >= 0; i--) {
+        const f = freed[i]
+        f.t += dt
+        if (f.away !== null) {
+          // its owner left the game: it flies up and away
+          f.away += dt; f.brain.vy = Math.max(-260, f.brain.vy - 240 * dt); f.x += f.face * 130 * dt; f.y += f.brain.vy * dt
+          if (f.away > 5) freed.splice(i, 1)
+          continue
+        }
+        if (f.recallIn !== null) {
+          f.recallIn -= dt
+          if (f.recallIn <= 0) { freed.splice(i, 1); abductions.push({ soul: f.soul, owner: f.owner, x: f.x, y: f.y, t: 0 }); sound('puff', null); continue }
+        }
+        const her = f.owner === active ? lastBody : loadouts.get(f.owner)?.lastBody
+        if (her) soulFollowStep(f.brain, f, her, f.params, { beat: Math.floor(music.beat), air: soulAir }, dt)
+      }
+      spreadSouls(freed, dt)
       // souls on their way: each one counts in its owner's basket when it gets to the counter
       for (const a of stepAbductions(abductions, dt)) {
         const basket = a.owner === active ? souls : loadouts.get(a.owner)?.souls
