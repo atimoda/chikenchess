@@ -5,6 +5,7 @@
 import { DEGREE_COLORS, SCALES, ZONES, type Feel, type ScaleId } from './music'
 import { CHAIN_MAX, newTransform, type Transform, type TransformKind } from './transforms'
 import { BIRD_IDS, type BirdId } from './birds'
+import { BASS_IDS, BEAT_IDS, beatForFeel } from './zone-ambience'
 // type only: sound-zones imports this file
 import type { SoundZoneParams } from './sound-zones'
 
@@ -83,6 +84,9 @@ export const ZONE_STEP = {
     if (i === -2 || i === CHAIN_STEPS.length - 1) return { chain: [] }
     return { chain: [newTransform(CHAIN_STEPS[i + 1])] }
   },
+  // the next beat or bass of the lists (silence first); a beat of its own goes back to the list
+  beat: (z: SoundZoneParams): Partial<SoundZoneParams> => { const { drums: _own, ...rest } = z.ambience; return { ambience: { ...rest, beat: z.ambience.drums ? z.ambience.beat : after(BEAT_IDS, z.ambience.beat) } } },
+  bass: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ ambience: { ...z.ambience, bass: after(BASS_IDS, z.ambience.bass) } }),
   color: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ color: ZONE_COLORS.includes(z.color) ? after(ZONE_COLORS, z.color) : ZONE_COLORS[0] }),
   change: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ change: after(ZONE_CHANGE_IDS, z.change) }),
 }
@@ -116,13 +120,16 @@ function flipMode(z: SoundZoneParams, relative: boolean): Partial<SoundZoneParam
   return { root: relative ? keyBy(z.root, minor ? 3 : -3) : z.root, scale, chordScale: minor ? 'major' : 'minor' }
 }
 
+// a new feel, and the percussion with it while it is one of the three that follow the feel (Reto, Swing, Meio tempo)
+const withFeel = (z: SoundZoneParams, feel: Feel): Partial<SoundZoneParams> => ({ feel, ambience: z.ambience.drums ? z.ambience : { ...z.ambience, beat: beatForFeel(z.ambience.beat, feel) } })
+
 export const ZONE_CHANGES: ZoneChange[] = [
   { id: 'random', label: 'Random', group: 'Geral', hint: 'Embaralha tom, escalas, andamento, balanço e progressão',
-    apply: (_z, rnd) => {
+    apply: (z, rnd) => {
       const scale = pick(SCALE_IDS, rnd)
       return {
         root: rootOf(Math.floor(rnd() * 12)), scale, chordScale: pick(chordScalesFor(scale), rnd),
-        bpm: 60 + 2 * Math.floor(rnd() * 46), feel: pick(FEELS, rnd), progression: pick(PROGRESSIONS, rnd).degrees.slice(),
+        bpm: 60 + 2 * Math.floor(rnd() * 46), ...withFeel(z, pick(FEELS, rnd)), progression: pick(PROGRESSIONS, rnd).degrees.slice(),
       }
     } },
   { id: 'doubleTime', label: 'Tempo dobrado', group: 'Ritmo', hint: 'Dobra o andamento (ou corta pela metade quando passaria do limite)',
@@ -130,7 +137,7 @@ export const ZONE_CHANGES: ZoneChange[] = [
   { id: 'accelerando', label: 'Acelerando', group: 'Ritmo', hint: 'Mais 10 bpm a cada morte; passando de 200 volta a 70',
     apply: z => ({ bpm: z.bpm + 10 > ZONE_BPM.max ? 70 : z.bpm + 10 }) },
   { id: 'feel', label: 'Troca de levada', group: 'Ritmo', hint: 'Reto → swing → meio tempo',
-    apply: z => ({ feel: after(FEELS, z.feel) }) },
+    apply: z => withFeel(z, after(FEELS, z.feel)) },
   { id: 'keyUp', label: 'Sobe meio tom', group: 'Harmonia', hint: 'Modulação de um semitom acima (a do final da música pop)',
     apply: z => ({ root: keyBy(z.root, 1) }) },
   { id: 'fifths', label: 'Ciclo de quintas', group: 'Harmonia', hint: 'Muda o tom uma quinta acima',

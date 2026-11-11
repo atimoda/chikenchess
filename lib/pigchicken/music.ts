@@ -2,6 +2,8 @@
 // the scale, the tempo and a chord progression; the conductor keeps the beat, says which chord is playing and
 // turns the aim into a note that always fits.
 
+import type { ZoneAmbience } from './zone-ambience'
+
 export type ScaleId = 'majorPenta' | 'minorPenta' | 'major' | 'minor' | 'dorian' | 'lydian' | 'mixolydian' | 'harmonicMinor' | 'blues'
 export const SCALES: Record<ScaleId, { label: string; steps: number[] }> = {
   majorPenta: { label: 'Pentatônica maior', steps: [0, 2, 4, 7, 9] },
@@ -17,6 +19,10 @@ export const SCALES: Record<ScaleId, { label: string; steps: number[] }> = {
 
 // feel: how the beat is felt (the ambience's groove and the grid the notes are pulled to)
 export type Feel = 'straight' | 'swing' | 'half'
+// "Dano só no tom": in a zone with it, only notes inside the key (its chord scale) or inside the chord of the bar
+// harmonize the enemies; the others glance off. Off (absent) by default
+export type InKeyRule = 'key' | 'chord'
+export const IN_KEY_RULES: InKeyRule[] = ['key', 'chord']
 export type Zone = {
   id: string; name: string
   root: number // MIDI note of the key (60 = C4)
@@ -26,15 +32,19 @@ export type Zone = {
   feel: Feel
   progression: number[] // scale degrees (0 = I), one chord per bar
   color: string
+  inKey?: InKeyRule
+  // its percussion and bass (zone-ambience.ts); without it, the ones that follow the feel
+  ambience?: ZoneAmbience
 }
 
-// one zone per scene of the Parquinho, so walking through it changes the music
+// the scenes' zones in the code: the key, scale and tempo each scene of the Parquinho starts with (in silence:
+// sound-zones.ts sceneZoneBase) and what "Predefinição" copies, with the ambience each one used to play
 export const ZONES: Zone[] = [
-  { id: 'campo', name: 'Campo', root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#7bd88f' },
-  { id: 'noite', name: 'Noite', root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 88, feel: 'half', progression: [0, 5, 2, 6], color: '#7b8cff' },
-  { id: 'feira', name: 'Feira', root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 112, feel: 'swing', progression: [0, 3, 0, 4], color: '#ffb347' },
-  { id: 'ceu', name: 'Céu', root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 80, feel: 'straight', progression: [0, 1, 0, 1], color: '#7bdff2' },
-  { id: 'blues', name: 'Porão', root: 55, scale: 'blues', chordScale: 'mixolydian', bpm: 96, feel: 'swing', progression: [0, 0, 3, 0, 4, 3, 0, 4], color: '#c77dff' },
+  { id: 'campo', name: 'Campo', root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#7bd88f', ambience: { beat: 'straight', bass: 'drone' } },
+  { id: 'noite', name: 'Noite', root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 88, feel: 'half', progression: [0, 5, 2, 6], color: '#7b8cff', ambience: { beat: 'half', bass: 'drone' } },
+  { id: 'feira', name: 'Feira', root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 112, feel: 'swing', progression: [0, 3, 0, 4], color: '#ffb347', ambience: { beat: 'fair', bass: 'drone' } },
+  { id: 'ceu', name: 'Céu', root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 80, feel: 'straight', progression: [0, 1, 0, 1], color: '#7bdff2', ambience: { beat: 'breeze', bass: 'drone' } },
+  { id: 'blues', name: 'Porão', root: 55, scale: 'blues', chordScale: 'mixolydian', bpm: 96, feel: 'swing', progression: [0, 0, 3, 0, 4, 3, 0, 4], color: '#c77dff', ambience: { beat: 'swing', bass: 'drone' } },
 ]
 
 // colour of each scale degree (notes are tinted by where they sit in the scale)
@@ -145,6 +155,13 @@ export function createConductor() {
       let i = pool.findIndex(m => m >= from)
       if (i < 0) i = pool.length - 1
       return pool[Math.max(0, Math.min(pool.length - 1, i + n))]
+    },
+    // whether a note may harmonize the enemies here (the zone's "Dano só no tom"; always without it)
+    fits(m: number) {
+      if (!zone.inKey) return true
+      const pc = (n: number) => ((n % 12) + 12) % 12
+      if (zone.inKey === 'chord') return this.chord(true).some(c => pc(c) === pc(m))
+      return SCALES[zone.chordScale].steps.includes(pc(m - zone.root))
     },
     degreeOf(m: number) {
       const steps = SCALES[zone.scale].steps

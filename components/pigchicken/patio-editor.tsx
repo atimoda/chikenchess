@@ -25,9 +25,9 @@ import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-
 import { ELEMENT_DEPTH, POWER_LINES, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, spreadPower, type PowerParams } from "@/lib/pigchicken/power-lines"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES } from "@/lib/pigchicken/music"
-import { defaultSoundZone, sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
+import { asSceneZone, defaultSoundZone, moveSceneEdge, sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
 import { LanesFields, SoundZoneFields, SurfaceRebateFields } from "./sound-zone-panels"
-import { MusicZonesLayer } from "./music-zones-layer"
+import { MusicZonesLayer, type ZoneResize } from "./music-zones-layer"
 import { DepthLayer, ElementArt } from "./patio-layout"
 import { HOUSE_STYLE_LABELS, HousePanel } from "./house-panel"
 import { houseDraftSize, randomHouse, type HouseParams, type HouseStyle } from "@/lib/pigchicken/houses"
@@ -117,15 +117,28 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     if (before && isPowerElement(clean.kind)) commit({ ...cur, elements: spreadPower(cur.elements, before, clean) }, step)
     else commit(replaceEl(cur, clean), step)
   }, [commit, screens])
-  // a scene's own zone, saved in the Pátio's settings (null: back to the code's)
+  // a scene's own zone, saved in the Pátio's settings (null: back to the scene's own, in silence)
   const setSceneZone = useCallback((scene: number, zone: SoundZoneParams | null, step?: string) => {
     const cur = layoutRef.current, zones = { ...cur.settings?.sceneZones }
-    if (zone) zones[String(scene)] = { ...zone, life: 0, priority: 1, music: true }
+    if (zone) zones[String(scene)] = asSceneZone(zone)
     else delete zones[String(scene)]
     const settings = { ...cur.settings, sceneZones: Object.keys(zones).length ? zones : undefined }
     if (!settings.sceneZones) delete settings.sceneZones
     commit({ ...cur, settings }, step)
   }, [commit])
+  // the limit between two scenes' zones dragged in the "Zonas sonoras" layer
+  const setSceneEdge = useCallback((scene: number, x: number, step: string) => {
+    const cur = layoutRef.current, sceneEdges = moveSceneEdge(cur.settings?.sceneEdges, screens, scene, x)
+    const settings = { ...cur.settings, sceneEdges }
+    if (!sceneEdges) delete settings.sceneEdges
+    commit({ ...cur, settings }, step)
+  }, [commit, screens])
+  // the sides of Zonas sonoras dragged in the layer (a shared limit moves both zones at once)
+  const resizeZones = useCallback((changes: ZoneResize[], step: string) => {
+    const cur = layoutRef.current
+    const next = new Map(changes.map(c => [c.el.id, normalizeElement(storeElementPosition({ ...c.el, ...c.rect }, screens))]))
+    commit({ ...cur, elements: cur.elements.map(e => next.get(e.id) ?? e) }, step)
+  }, [commit, screens])
   const remove = useCallback((id: string) => {
     const el = layoutRef.current.elements.find(e => e.id === id)
     // the entry portal moves but stays
@@ -319,7 +332,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
           : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} />)}
-      {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
+      {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
+        onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
         onScene={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
       {active && soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
@@ -847,7 +861,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
   )
 }
 
-// a scene's own zone: its music (key, scales, tempo, feel, progression, name and colour), for this Pátio
+// a scene's own zone: the same fields as a Zona sonora of the map (it is one, stuck to the ground), for this Pátio
 function SceneZonePanel({ scene, zones, onChange, onReset, onClose }: { scene: number; zones?: SceneZones; onChange: (z: SoundZoneParams, step?: string) => void; onReset: () => void; onClose: () => void }) {
   const zone = sceneZoneParams(zones, scene), changed = !!zones?.[String(scene)]
   return (
@@ -856,9 +870,8 @@ function SceneZonePanel({ scene, zones, onChange, onReset, onClose }: { scene: n
         <h2 className="flex-1 text-sm text-white">Zona da cena {scene + 1}</h2>
         <button type="button" className={TOOL} onClick={onClose} title="Fechar" aria-label="Fechar"><X className="h-4 w-4" /></button>
       </div>
-      <p className="text-[#93a79a]">Vale para a coluna inteira da cena, do chão ao teto. Uma Zona sonora colocada no mapa vence a da cena.</p>
       <SoundZoneFields key={changed ? "own" : "code"} zone={zone} scene onChange={onChange} />
-      <button type="button" disabled={!changed} onClick={onReset} className="h-9 rounded-md border border-white/15 px-3 hover:border-white/40 disabled:opacity-40">Voltar à zona do código</button>
+      <button type="button" disabled={!changed} onClick={onReset} className="h-9 rounded-md border border-white/15 px-3 hover:border-white/40 disabled:opacity-40">Voltar ao padrão</button>
     </FloatingPanel>
   )
 }

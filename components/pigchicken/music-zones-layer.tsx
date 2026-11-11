@@ -4,23 +4,99 @@
 // its floor, each Zona sonora painted with its colour, the surfaces that rebate notes outlined in gold and the fixed
 // lanes' notes, all over the world and following the camera. The zones' labels are their tags (zone-tags.tsx):
 // editable in the editor, only shown otherwise. Outside the editor the zones show as they play now (with the changes
-// their walls made and their life).
+// their walls made and their life). In the editor the limits are dragged: the sides of each Zona sonora and the
+// line between two scenes' zones.
 import { useEffect, useRef, useSyncExternalStore } from "react"
 import { elementBounds, type LayoutElement } from "@/lib/pigchicken/layout"
-import { followCamera } from "@/lib/pigchicken/live-camera"
+import { followCamera, liveCamera } from "@/lib/pigchicken/live-camera"
+import { cn } from "@/lib/utils"
 import { SCENE_W, WORLD_GROUND_Y, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { zoneLabel } from "@/lib/pigchicken/music"
 import { TEMPLE_IDLE } from "@/lib/pigchicken/temple-music"
-import { sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
+import { sceneEdgeList, sceneZoneParams, type SceneEdges, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
 import { zoneLiveStore } from "@/lib/pigchicken/zone-life"
 import { LanesArt } from "./sound-zone-art"
 import { ZoneTags } from "./zone-tags"
 
 const noop = () => {}
+// how far up the line between two scenes' zones is drawn (over the tallest ceiling a Pátio may have)
+const LIMIT_H = 9000
+
+type Rect = { x: number; y: number; w: number; h: number }
+type Side = "l" | "r" | "t" | "b"
+export type ZoneResize = { el: LayoutElement; rect: Rect }
+const OPPOSITE: Record<Side, Side> = { l: "r", r: "l", t: "b", b: "t" }
+// the smallest a zone gets when its limit is dragged
+const ZONE_MIN = 40
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
+
+// A limit of a zone in the editor: the resize cursor over it, and dragging it reports where the pointer is in the
+// world (x for an upright limit, y for a flat one). One undo step per drag. The cursor is set inline: the Pátio's
+// own rule gives every [data-chicken-ignore] the plain one.
+function LimitHandle({ axis, origin, title, className, style, onStart, onMove }: {
+  axis: "x" | "y"; origin: React.RefObject<HTMLDivElement | null>; title: string; className?: string; style?: React.CSSProperties
+  onStart?: () => void; onMove: (at: number, gesture: string) => void
+}) {
+  const drag = useRef<{ pointer: number; gesture: string } | null>(null)
+  return (
+    <div data-chicken-ignore role="separator" aria-orientation={axis === "x" ? "vertical" : "horizontal"} title={title} aria-label={title}
+      className={cn("pointer-events-auto absolute touch-none hover:bg-white/50", className)} style={{ ...style, cursor: axis === "x" ? "ew-resize" : "ns-resize" }}
+      onPointerDown={e => {
+        if (e.button !== 0) return
+        e.preventDefault(); e.stopPropagation()
+        e.currentTarget.setPointerCapture(e.pointerId)
+        drag.current = { pointer: e.pointerId, gesture: `limit:${e.pointerId}:${Math.round(e.timeStamp)}` }
+        onStart?.()
+      }}
+      onPointerMove={e => {
+        const d = drag.current, r = origin.current?.getBoundingClientRect()
+        // the layer's origin is the world's, moved and zoomed by the camera
+        if (d && d.pointer === e.pointerId && r) onMove(axis === "x" ? (e.clientX - r.left) / liveCamera.zoom : (e.clientY - r.top) / liveCamera.zoom, d.gesture)
+      }}
+      onPointerUp={e => { if (drag.current?.pointer === e.pointerId) drag.current = null }}
+      onPointerCancel={() => { drag.current = null }} />
+  )
+}
+
+// The four limits of a Zona sonora of the map. A zone that shares the dragged limit (its opposite side on the same
+// line, side by side with this one) moves with it, so the limit between two zones stays one.
+function ZoneLimits({ el, zones, origin, onResize }: { el: LayoutElement; zones: LayoutElement[]; origin: React.RefObject<HTMLDivElement | null>; onResize: (changes: ZoneResize[], step: string) => void }) {
+  const start = useRef<{ side: Side; own: Rect; linked: ZoneResize[] } | null>(null)
+  const rectOf = (e: LayoutElement): Rect => ({ x: e.x, y: e.y, w: e.w, h: e.h })
+  const edgeOf = (r: Rect, side: Side) => (side === "l" ? r.x : side === "r" ? r.x + r.w : side === "t" ? r.y : r.y + r.h)
+  const begin = (side: Side) => () => {
+    const own = rectOf(el), upright = side === "l" || side === "r"
+    const linked = zones.filter(z => z.id !== el.id && !z.locked && Math.abs(edgeOf(rectOf(z), OPPOSITE[side]) - edgeOf(own, side)) <= 2
+      && (upright ? z.y < own.y + own.h && z.y + z.h > own.y : z.x < own.x + own.w && z.x + z.w > own.x)).map(z => ({ el: z, rect: rectOf(z) }))
+    start.current = { side, own, linked }
+  }
+  const move = (at: number, gesture: string) => {
+    const s = start.current
+    if (!s) return
+    const first = s.side === "l" || s.side === "t" // the side where the box starts
+    const far = (r: Rect, side: Side) => edgeOf(r, OPPOSITE[side])
+    // neither this zone nor a neighbour gets smaller than the minimum
+    const own = far(s.own, s.side) + (first ? -ZONE_MIN : ZONE_MIN)
+    const others = s.linked.map(k => far(k.rect, OPPOSITE[s.side]) + (first ? ZONE_MIN : -ZONE_MIN))
+    const e = Math.round(first ? clamp(at, Math.max(-Infinity, ...others), own) : clamp(at, own, Math.min(Infinity, ...others)))
+    const to = (r: Rect, side: Side): Rect => side === "l" ? { ...r, x: e, w: r.x + r.w - e } : side === "r" ? { ...r, w: e - r.x } : side === "t" ? { ...r, y: e, h: r.y + r.h - e } : { ...r, h: e - r.y }
+    onResize([{ el, rect: to(s.own, s.side) }, ...s.linked.map(k => ({ el: k.el, rect: to(k.rect, OPPOSITE[s.side]) }))], gesture)
+  }
+  const side = (id: Side, style: React.CSSProperties) => <LimitHandle key={id} axis={id === "l" || id === "r" ? "x" : "y"} origin={origin} title="Arrastar o limite da zona" style={style} onStart={begin(id)} onMove={move} />
+  return <>
+    {side("l", { left: -6, top: 0, bottom: 0, width: 10 })}
+    {side("r", { right: -6, top: 0, bottom: 0, width: 10 })}
+    {side("t", { top: -6, left: 0, right: 0, height: 10 })}
+    {side("b", { bottom: -6, left: 0, right: 0, height: 10 })}
+  </>
+}
+
 
 // sceneMusic: false when the Pátio turned the scenes' own zones off (their strips are not shown)
-export function MusicZonesLayer({ elements, screens, sceneZones, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, opacity = 1 }: {
-  elements: LayoutElement[]; screens: number; sceneZones?: SceneZones; sceneMusic?: boolean; editable: boolean
+export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, onSceneEdge = noop, onResizeZones = noop, opacity = 1 }: {
+  elements: LayoutElement[]; screens: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; editable: boolean
+  // a dragged limit: between scene - 1 and scene, at world x; or the zones' new boxes
+  onSceneEdge?: (scene: number, x: number, step: string) => void; onResizeZones?: (changes: ZoneResize[], step: string) => void
   onZone?: (el: LayoutElement, zone: SoundZoneParams, step?: string) => void
   onScene?: (scene: number, zone: SoundZoneParams, step?: string) => void
   onOpenZone?: (el: LayoutElement) => void; onOpenScene?: (scene: number) => void
@@ -32,10 +108,13 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneMusic = tr
   // the zones' life and changes, live
   useSyncExternalStore(zoneLiveStore.subscribe, zoneLiveStore.version, zoneLiveStore.version)
   const scenes = worldScenes(screens), temple = templeScene(screens)
+  // where each scene's zone starts and ends (a Pátio may move the limits between them)
+  const xs = sceneEdgeList(sceneEdges, screens)
+  const zoneEls = elements.filter(e => e.kind === "zone" && e.params.zone)
   return (
     <div aria-label="Zonas sonoras" className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
       <div ref={ref} className="absolute left-0 top-0">
-        {/* each scene's own zone: it plays in the whole column of the scene, from the floor to the ceiling */}
+        {/* each scene's own zone, stuck to the ground: it plays in the whole column over its floor, up to the ceiling */}
         {Array.from({ length: scenes }, (_, s) => {
           if (s === temple) {
             const z = TEMPLE_IDLE
@@ -48,13 +127,19 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneMusic = tr
           if (!sceneMusic) return null
           const z = sceneZoneParams(sceneZones, s)
           return (
-            <div key={s} className="absolute" style={{ left: s * SCENE_W, top: WORLD_GROUND_Y - 32, width: SCENE_W, height: 32, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
+            <div key={s} className="absolute" style={{ left: xs[s], top: WORLD_GROUND_Y - 32, width: xs[s + 1] - xs[s], height: 32, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
               <div className="absolute left-2 top-0.5 flex max-w-[calc(100%-16px)] flex-wrap gap-1">
                 <ZoneTags zone={z} scene sceneLabel={`Cena ${s + 1}`} editable={editable} onChange={(zone, step) => onScene(s, zone, step && `${step}:cena${s}`)} onOpen={() => onOpenScene(s)} />
               </div>
             </div>
           )
         })}
+        {/* the limit between two scenes' zones, from the ground to over the tallest ceiling */}
+        {editable && sceneMusic && Array.from({ length: Math.max(0, screens - 1) }, (_, i) => i + 1).map(s => (
+          <div key={`limite${s}`} className="absolute border-l border-dashed border-white/40" style={{ left: xs[s], top: WORLD_GROUND_Y - LIMIT_H, height: LIMIT_H, width: 0 }}>
+            <LimitHandle axis="x" origin={ref} title={`Arrastar o limite entre as zonas das cenas ${s} e ${s + 1}`} style={{ left: -6, top: 0, bottom: 0, width: 12 }} onMove={(x, step) => onSceneEdge(s, x, step)} />
+          </div>
+        ))}
         {elements.map(el => {
           if (el.kind === "lanes" && el.params.lanes) {
             return <div key={el.id} className="absolute" style={{ left: el.x, top: el.y, width: el.w, height: el.h, outline: "1px dashed rgba(255,255,255,0.5)" }}><LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing labels /></div>
@@ -70,6 +155,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneMusic = tr
                   <ZoneTags zone={z} editable={editable} live={live && live.src === saved ? { hp: live.hp } : undefined}
                     onChange={(zone, step) => onZone(el, zone, step && `${step}:${el.id}`)} onOpen={() => onOpenZone(el)} />
                 </div>
+                {editable && !el.locked && <ZoneLimits el={el} zones={zoneEls} origin={ref} onResize={onResizeZones} />}
               </div>
             )
           }

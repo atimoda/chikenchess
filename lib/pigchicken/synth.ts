@@ -2,6 +2,7 @@
 // Plain Web Audio oscillators, filters and envelopes, with a cap on simultaneous voices so phones keep up.
 import { audio } from './sfx'
 import { midiHz } from './music'
+import type { BassTone, DroneTone } from './zone-ambience'
 
 export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass' | 'pizz'
 export const VOICE_LABELS: Record<VoiceId, string> = {
@@ -257,29 +258,60 @@ export function playDrum(kind: Drum, at = 0, vel = 1) {
   }
 }
 
-// the drone: two soft saws on the chord's root and fifth, gliding when the chord changes
+// one note of a zone's bass line or synth figure (zone-ambience.ts), on the ambience's bus and outside the cap on
+// voices (short notes that never pile up). sub: a round sine; pluck: a saw and a square closing fast; square: a
+// thin chip voice; saw: a resonant saw that squelches
+export function playBass(tone: BassTone, midi: number, at = 0, dur = 0.2, vel = 1) {
+  const a = ctx()
+  if (!a || !amb || ambVol <= 0) return
+  const t = a.currentTime + Math.max(0, at), f = midiHz(midi)
+  const g = a.createGain(); g.connect(amb)
+  const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.connect(g)
+  const sweep = (from: number, to: number, time: number) => { lp.frequency.setValueAtTime(from, t); lp.frequency.exponentialRampToValueAtTime(to, t + Math.max(0.03, Math.min(dur, time))) }
+  let o: OscillatorNode[], peak: number
+  switch (tone) {
+    case 'sub': o = [osc(a, 'sine', f, t), osc(a, 'triangle', f, t)]; lp.frequency.value = 520; peak = 0.4; break
+    case 'pluck': o = [osc(a, 'sawtooth', f, t), osc(a, 'square', f * 1.004, t)]; lp.Q.value = 4; sweep(1800, 240, 0.25); peak = 0.18; break
+    case 'square': o = [osc(a, 'square', f, t)]; lp.frequency.value = 2400; peak = 0.1; break
+    case 'saw': o = [osc(a, 'sawtooth', f, t)]; lp.Q.value = 9; sweep(2600, 300, 0.18); peak = 0.15; break
+  }
+  const end = env(a, g, t, peak * vel, 0.006, Math.max(0, dur - 0.06), 0.08)
+  o.forEach(x => { x.connect(lp); x.start(t); x.stop(end + 0.05) })
+}
+
+// the drone: soft voices on the chord's root, fifth and third, sustained and changing note with the chord.
+// Timbres: saw (two soft saws: the classic), dark (sines, closed and deep), pad (an octave up, open and airy)
+const DRONES: Record<DroneTone, { waves: OscillatorType[]; up: number; cutoff: number; sweep: number; gain: number }> = {
+  saw: { waves: ['sawtooth', 'sawtooth', 'sawtooth', 'triangle'], up: 1, cutoff: 420, sweep: 160, gain: 0.09 },
+  dark: { waves: ['sine', 'triangle', 'sine', 'sine'], up: 1, cutoff: 260, sweep: 60, gain: 0.16 },
+  pad: { waves: ['triangle', 'sawtooth', 'triangle', 'triangle'], up: 2, cutoff: 1100, sweep: 400, gain: 0.06 },
+}
 export function createDrone() {
-  let nodes: { o: OscillatorNode[]; g: GainNode; lp: BiquadFilterNode } | null = null
+  let nodes: { o: OscillatorNode[]; g: GainNode; lp: BiquadFilterNode; tone: DroneTone } | null = null
   return {
     // root: MIDI (played two octaves down); fifth: semitones above it; third: semitones above it, sounded an octave
-    // higher (major 4 or minor 3: the chord's type)
-    set(root: number | null, fifth = 7, third = 4) {
+    // higher (major 4 or minor 3: the chord's type); tone: its timbre; vol: 0..1
+    set(root: number | null, fifth = 7, third = 4, tone: DroneTone = 'saw', vol = 1) {
       const a = ctx()
       if (!a || !amb) return
       const now = a.currentTime
-      if (root === null) { if (nodes) { const n = nodes; n.g.gain.setTargetAtTime(0.0001, now, 0.3); n.o.forEach(o => o.stop(now + 2)); nodes = null } return }
-      const r = midiHz(root - 24), f5 = Math.pow(2, fifth / 12), f3 = Math.pow(2, (12 + third) / 12)
+      // silence, or another timbre: this one fades out
+      if (nodes && (root === null || nodes.tone !== tone)) { const n = nodes; n.g.gain.setTargetAtTime(0.0001, now, 0.3); n.o.forEach(o => o.stop(now + 2)); nodes = null }
+      if (root === null) return
+      const d = DRONES[tone]
+      const r = midiHz(root - 24) * d.up, f5 = Math.pow(2, fifth / 12), f3 = Math.pow(2, (12 + third) / 12)
       if (!nodes) {
-        const g = a.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.setTargetAtTime(0.09, now, 0.8)
-        const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; lp.Q.value = 0.8
-        const lfo = osc(a, 'sine', 0.13, now), lg = a.createGain(); lg.gain.value = 160; lfo.connect(lg); lg.connect(lp.frequency)
-        const o = [osc(a, 'sawtooth', r, now), osc(a, 'sawtooth', r * 1.004, now), osc(a, 'sawtooth', r * f5, now), osc(a, 'triangle', r * f3, now), lfo]
+        const g = a.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.setTargetAtTime(d.gain * vol, now, 0.8)
+        const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = d.cutoff; lp.Q.value = 0.8
+        const lfo = osc(a, 'sine', 0.13, now), lg = a.createGain(); lg.gain.value = d.sweep; lfo.connect(lg); lg.connect(lp.frequency)
+        const o = [osc(a, d.waves[0], r, now), osc(a, d.waves[1], r * 1.004, now), osc(a, d.waves[2], r * f5, now), osc(a, d.waves[3], r * f3, now), lfo]
         o.slice(0, 4).forEach(x => x.connect(lp)); lp.connect(g); g.connect(amb); o.forEach(x => x.start(now))
-        nodes = { o, g, lp }
+        nodes = { o, g, lp, tone }
       } else {
         const [a1, a2, a3, a4] = nodes.o
         // a quick change of note, not a slide (a slow glide between the bars' roots sounded like a moan)
         a1.frequency.setTargetAtTime(r, now, 0.015); a2.frequency.setTargetAtTime(r * 1.004, now, 0.015); a3.frequency.setTargetAtTime(r * f5, now, 0.015); a4.frequency.setTargetAtTime(r * f3, now, 0.015)
+        nodes.g.gain.setTargetAtTime(d.gain * vol, now, 0.3)
       }
     },
   }

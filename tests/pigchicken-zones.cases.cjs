@@ -184,6 +184,7 @@ test("the instruments' notes bounce off the surfaces too, playing through the it
 // ---------- the tags, the change patterns, the walls' life and the scenes' zones ----------
 
 const zc = loadTs('lib/pigchicken/zone-changes.ts')
+const amb = loadTs('lib/pigchicken/zone-ambience.ts')
 const life = loadTs('lib/pigchicken/zone-life.ts')
 const settings = loadTs('lib/pigchicken/patio-settings.ts')
 
@@ -234,16 +235,86 @@ test("a zone with life: notes crossing its walls bounce and count; at 0 it chang
   assert.equal(life.liveZones([{ id: 'w', x: 0, y: 0, w: 100, h: 100, zone: { ...zone } }])[0].zone.root, zone.root, 'an edited zone starts over')
 })
 
-test("the scenes' own zones: the code's until the Pátio changes one, saved in its settings", () => {
-  assert.equal(sz.sceneZoneOf(undefined, 0), ZONES[0])
-  assert.equal(sz.sceneZoneOf(undefined, 6), ZONES[1])
-  const own = { ...sz.defaultSoundZone(ZONES[0]), bpm: 140, life: 9 }
+test("the scenes' own zones are Zonas sonoras stuck to the ground: silent until the Pátio changes one, under the map's", () => {
+  const base = sz.sceneZoneParams(undefined, 6)
+  assert.equal(base.name, ZONES[1].name); assert.equal(base.root, ZONES[1].root, 'the key of its scene')
+  assert.deepEqual(base.ambience, { beat: 'none', bass: 'none' }, 'in silence')
+  const own = { ...sz.defaultSoundZone(ZONES[0]), bpm: 140, life: 9, music: false, birds: ['sparrow'] }
   const s = settings.normalizePatioSettings({ sceneZones: { 0: own, 99: own, x: own } })
   assert.deepEqual(Object.keys(s.sceneZones), ['0'])
   assert.equal(s.sceneZones[0].life, 0, 'a scene has no walls')
-  assert.equal(sz.sceneZoneOf(s.sceneZones, 0).bpm, 140)
-  assert.equal(sz.sceneZoneOf(s.sceneZones, 1), ZONES[1])
+  assert.equal(s.sceneZones[0].music, false, 'the rest of a Zona sonora is kept')
+  assert.equal(sz.sceneZoneParams(s.sceneZones, 0).bpm, 140)
   assert.equal(settings.normalizePatioSettings({ sceneZones: {} }), undefined)
+  // as boxes of the world: every scene but the Templo, the whole column, under any zone of the map
+  const ground = sz.groundZones(s.sceneZones, undefined, 2)
+  assert.deepEqual(ground.map(g => g.id), ['cena0', 'cena1', 'cena3'], 'no zone for the Templo (scene 2)')
+  assert.deepEqual([ground[1].x, ground[1].w], [1920, 1920])
+  assert.equal(sz.zoneAt(ground, 2000, -5000).id, 'cena1', 'far above its floor')
+  const map = { id: 'm', x: 1900, y: 0, w: 300, h: 300, zone: sz.defaultSoundZone() }
+  assert.equal(sz.zoneAt([map, ...ground], 2000, 100).id, 'm', 'a zone of the map wins, whatever the order')
+  assert.equal(sz.zoneAt([...ground, map], 100, 100, true), null, 'a scene that does not change the music')
+})
+
+test("the limit between two scenes' zones moves: kept apart, never the Templo's, back on its line it is not saved", () => {
+  assert.deepEqual(sz.sceneEdgeList(undefined, 3), [0, 1920, 3840, 5760, 7680, 9600])
+  let edges = sz.moveSceneEdge(undefined, 3, 1, 1000)
+  assert.deepEqual(edges, { 1: 1000 })
+  assert.deepEqual(sz.sceneEdgeList(edges, 3).slice(0, 4), [0, 1000, 3840, 5760])
+  assert.deepEqual(sz.groundZones(undefined, edges, 3).slice(0, 2).map(g => [g.x, g.w]), [[0, 1000], [1000, 2840]])
+  assert.equal(sz.moveSceneEdge(edges, 3, 1, -50)[1], sz.SCENE_ZONE_MIN_W, 'not past the wall')
+  assert.equal(sz.moveSceneEdge(edges, 3, 1, 9999)[1], 3840 - sz.SCENE_ZONE_MIN_W, 'not past the next limit')
+  assert.equal(sz.moveSceneEdge(edges, 3, 3, 5000), edges, "the Templo's limit stays")
+  assert.equal(sz.moveSceneEdge(edges, 3, 1, 1920), undefined, 'back on its line')
+  // a narrower Pátio: a limit saved for a scene that is now the Templo's is ignored
+  assert.deepEqual(sz.sceneEdgeList({ 1: 1000, 2: 3000 }, 2), [0, 1000, 3840, 5760, 7680])
+  assert.deepEqual(settings.normalizePatioSettings({ screens: 2, sceneEdges: { 1: 900.4, 2: 3000, x: 5, 0: 3 } }).sceneEdges, { 1: 900 })
+})
+
+test('the ambience of a zone: silence by default, the old sound for zones saved before it, cleaned like the rest', () => {
+  assert.deepEqual(sz.defaultSoundZone().ambience, { beat: 'none', bass: 'none' })
+  assert.deepEqual(sz.normalizeSoundZone(null).ambience, { beat: 'none', bass: 'none' })
+  // saved before: the percussion of its feel over the drone
+  assert.deepEqual(sz.normalizeSoundZone({ name: 'Velha', feel: 'swing' }).ambience, { beat: 'swing', bass: 'drone' })
+  assert.deepEqual(sz.normalizeSoundZone({ name: 'Velha' }).ambience, { beat: 'half', bass: 'drone' })
+  const z = sz.normalizeSoundZone({ ambience: { beat: 'samba', bass: 'nope', beatVol: 250, bassVol: 40, bassOct: 7, drums: { kick: 'X..?', bogus: 'xxxx', hat: '................' } } })
+  assert.deepEqual(z.ambience, { beat: 'samba', drums: { kick: 'X...............' }, bass: 'none', bassVol: 40, bassOct: 1 })
+  // the conductor takes a zone whose ambience changed
+  const a = sz.defaultSoundZone()
+  assert.notEqual(sz.soundZoneOf('z', a).id, sz.soundZoneOf('z', { ...a, ambience: { beat: 'rock', bass: 'none' } }).id)
+  assert.deepEqual(sz.soundZoneOf('z', a).ambience, a.ambience)
+  for (const zone of ZONES) assert.ok(amb.isBeat(zone.ambience.beat) && amb.isBass(zone.ambience.bass), zone.id)
+})
+
+test('beats and basses: every pattern has 16 steps; hits, lines over the chord of the bar and the sustained voice', () => {
+  for (const b of amb.BEATS) for (const [row, steps] of Object.entries(b.grid)) { assert.equal(steps.length, 16, `${b.id} ${row}`); assert.match(steps, /^[oxX.]+$/, `${b.id} ${row}`) }
+  for (const b of amb.BASSES) { assert.ok(b.drone || b.lines?.length, b.id); for (const l of b.lines ?? []) { assert.equal(l.length, 16, b.id); assert.match(l, /^[13578c.]+$/, b.id) } }
+  assert.deepEqual(amb.beatHits({ beat: 'none', bass: 'none' }, 0), [])
+  assert.deepEqual(amb.beatHits({ beat: 'straight', bass: 'none' }, 4).map(h => h.drum), ['snare', 'hat'])
+  assert.equal(amb.beatHits({ beat: 'straight', bass: 'none', beatVol: 50 }, 0)[0].vel, 0.5)
+  assert.deepEqual(amb.beatHits({ beat: 'straight', bass: 'none', beatVol: 0 }, 0), [])
+  // a grid of its own plays in place of the beat's
+  const own = amb.toggleDrumStep({}, 'clap', 3)
+  assert.deepEqual(own, { clap: '...x............' })
+  assert.deepEqual(amb.beatHits({ beat: 'straight', bass: 'none', drums: own }, 0), [])
+  assert.deepEqual(amb.toggleDrumStep(amb.toggleDrumStep(own, 'clap', 3), 'clap', 3), {}, 'normal → accent → rest')
+  // C major in the bass register (root 36): the walking line goes up the chord, then down from the octave
+  const chord = [60, 64, 67, 71], walk = { beat: 'none', bass: 'walking' }
+  assert.deepEqual([0, 4, 8, 12].map(st => amb.bassNotes(walk, chord, 36, st, 0)[0].midi), [36, 40, 43, 47])
+  assert.equal(amb.bassNotes(walk, chord, 36, 0, 1)[0].midi, 48)
+  assert.deepEqual(amb.bassNotes(walk, chord, 36, 1, 0), [])
+  assert.equal(amb.bassNotes({ ...walk, bassOct: -1, bassVol: 50 }, chord, 36, 0, 0)[0].midi, 24)
+  assert.equal(amb.bassNotes({ ...walk, bassVol: 50 }, chord, 36, 0, 0)[0].vel, 0.5)
+  assert.equal(amb.bassNotes({ beat: 'none', bass: 'stabs' }, chord, 36, 2, 0).length, 3, 'the whole chord')
+  assert.deepEqual(amb.bassNotes({ beat: 'none', bass: 'drone' }, chord, 36, 0, 0), [], 'a drone has no line')
+  assert.deepEqual(amb.ambienceDrone({ beat: 'none', bass: 'pad', bassOct: 1 }), { tone: 'pad', vol: 1, oct: 1 })
+  assert.equal(amb.ambienceDrone(walk), null); assert.equal(amb.ambienceDrone({ beat: 'none', bass: 'none' }), null)
+  // the tags step through the lists from silence; "Troca de levada" keeps the beat with the feel while it follows it
+  const z = sz.defaultSoundZone()
+  assert.equal(zc.ZONE_STEP.beat(z).ambience.beat, 'straight'); assert.equal(zc.ZONE_STEP.bass(z).ambience.bass, 'drone')
+  const feel = zc.zoneChange('feel')
+  assert.equal(feel.apply({ ...z, feel: 'straight', ambience: { beat: 'straight', bass: 'drone' } }).ambience.beat, 'swing')
+  assert.equal(feel.apply({ ...z, feel: 'straight', ambience: { beat: 'samba', bass: 'drone' } }).ambience.beat, 'samba')
 })
 
 test('a Pátio keeps its own Camadas: cleaned, in range, Escalas up to 3x', () => {

@@ -25,7 +25,8 @@ import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { ALIEN_PATTERNS } from "@/lib/pigchicken/enemies"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
-import { createDrone, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
+import { createDrone, playBass, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
+import { SILENCE, ambienceDrone, bassNotes, beatHits, legacyAmbience } from "@/lib/pigchicken/zone-ambience"
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { ZONES, chordName, droneOf, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
@@ -33,7 +34,7 @@ import { getTouchLayout } from "@/lib/chicken/touch-layout"
 import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
-import { placeEnvAt, sceneZoneOf, soundZoneOf, zoneAt, type LanesBox, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
+import { groundZones, placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { drawScaleFan, SCALE_FAN_R } from "@/components/pigchicken/draw/scale-fan"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
@@ -185,8 +186,8 @@ function useSkyLook(sky: SkyParams | undefined): SkyLook {
   return look
 }
 
-// where the scenes' own zones are off: a plain major key for the instruments, and no percussion nor drone
-const NO_SCENE_ZONE: Zone = { id: "sem-zona", name: "Sem zona", root: 60, scale: "major", chordScale: "major", bpm: 100, feel: "straight", progression: [0], color: "#93a79a" }
+// where no zone plays (the scenes' own zones off, or one that does not change the music): a plain major key for the instruments, and no percussion nor drone
+const NO_SCENE_ZONE: Zone = { id: "sem-zona", name: "Sem zona", root: 60, scale: "major", chordScale: "major", bpm: 100, feel: "straight", progression: [0], color: "#93a79a", ambience: SILENCE }
 
 // The Pátio's limits: a black frame LIMIT_BORDER thick inside the world's sides and its ceiling, closed at the
 // bottom of the ground the page shows. The chicken's walls and ceiling are its inner edge (ParquinhoPlay).
@@ -222,7 +223,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -232,6 +233,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // the scenes' own music, as this Pátio changed it
   const sceneZonesRef = useRef(sceneZones)
   sceneZonesRef.current = sceneZones
+  const sceneEdgesRef = useRef(sceneEdges)
+  sceneEdgesRef.current = sceneEdges
   const sceneMusicRef = useRef(sceneMusic)
   sceneMusicRef.current = sceneMusic
   // the Templo do Gongo (Configurações do Pátio → Templo e Vila): off, its gong, stones, jukebox and racks leave
@@ -605,12 +608,16 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let worldMusic: { zones: ZoneBox[]; lanes: LanesBox[] } = { zones: [], lanes: [] }
     // the zones as they play now (the ones with walls change when their life runs out: zone-life.ts)
     let playZones: ZoneBox[] = []
+    // the scenes' own zones: Zonas sonoras stuck to the ground, under the map's (made again when the Pátio changes
+    // them, their limits or its width)
+    let ground: ZoneBox[] = [], groundOf: unknown[] = []
+    const allZones = () => liveZones([...ground, ...worldMusic.zones])
     combat.setPlaceEnv((x, y) => placeEnvAt(playZones, worldMusic.lanes, x, y))
     combat.setZoneWalls((px, py, x, y, count) => {
       const hit = zoneWallHit(playZones, px, py, x, y)
       if (!hit) return null
       const died = count ? hitZone(hit.box.id) : null
-      if (died) playZones = liveZones(worldMusic.zones)
+      if (died) playZones = allZones()
       return { flipX: hit.flipX, color: (died ?? hit.box.zone).color, died: !!died }
     })
     const header = document.querySelector("main header")
@@ -658,7 +665,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         worldBoxes = nextBoxes
         worldMusic = layoutMusic(shown)
         setPerchSpans(perches, powerSpans(shown.filter(e => !e.hidden)))
-        playZones = liveZones(worldMusic.zones)
+        playZones = allZones()
       }
       // the button stays while Pegar is held, so holding it while walking keeps taking items
       const offer = combat.hover ? "take" : combat.hoverOwned ? "equip" : offerShown && engine.peekActions().grab ? offerShown as "take" | "equip" : ""
@@ -1109,11 +1116,17 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- music: the zone of the scene she is in sets key, scale and tempo; ambience on its beat ----------
       // (in the temple: the stage's music, or the temple at rest)
       const templeMusic = stage.music ?? temple.music
-      // a Zona sonora she is in wins over the scene's (not over a song playing in the temple)
+      const groundNow = [sceneZonesRef.current, sceneEdgesRef.current, sceneMusicRef.current, S.screens]
+      if (groundNow.some((v, i) => v !== groundOf[i])) {
+        groundOf = groundNow
+        ground = sceneMusicRef.current ? groundZones(sceneZonesRef.current, sceneEdgesRef.current, S.screens) : []
+        playZones = allZones()
+      }
+      // the zone she is in: a Zona sonora of the map wins over the scene's (not over a song playing in the temple)
       const inZone = templeMusic && inTemple ? null : zoneAt(playZones, body.x, body.y - 90 * body.scale, true)
       combat.setZoneBirds(inZone?.zone.birds ?? null)
       // with the scenes' zones off (Configurações do Pátio), outside a Zona sonora there is no ambience at all
-      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : sceneMusicRef.current ? sceneZoneOf(sceneZonesRef.current, sceneAt(worldX)) : NO_SCENE_ZONE
+      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : inTemple ? templeMusic?.zone ?? TEMPLE_IDLE : NO_SCENE_ZONE
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
       setMusicVolumes(mixGain("notes"), mixGain("ambience"))
@@ -1122,14 +1135,19 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const templeZone = combat.music.zone.id.startsWith("templo")
       events.forEach(e => {
         if (mixGain("ambience") <= 0) return
-        if (e.kind === "bar" && !stage.silent && combat.music.zone.id !== NO_SCENE_ZONE.id) { const d = droneOf(combat.music.zone, combat.music.chord()); drone.set(d.root, d.fifth, d.third) }
+        if (e.kind === "bar" && !stage.silent) {
+          // the temple keeps its drone; a zone plays the sustained voice it chose, if any
+          const z = combat.music.zone, voice = templeZone ? { tone: "saw" as const, vol: 1, oct: 0 } : ambienceDrone(z.ambience ?? legacyAmbience(z.feel))
+          if (voice) { const d = droneOf(z, combat.music.chord()); drone.set(d.root + 12 * voice.oct, d.fifth, d.third, voice.tone, voice.vol) }
+          else drone.set(null)
+        }
         if (e.kind === "step") {
           // a pause in total silence: no background
           if (templeZone) { if (!stage.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }
-          else if (combat.music.zone.id !== NO_SCENE_ZONE.id) ambience(combat.music.zone, e.n % 16, combat.music.secondsPerBeat())
+          else ambience(combat.music.zone, e.n % 16, combat.music.bar, combat.music.chord(true), combat.music.secondsPerBeat())
         }
       })
-      if (mixGain("ambience") <= 0 || stage.silent || combat.music.zone.id === NO_SCENE_ZONE.id) drone.set(null)
+      if (mixGain("ambience") <= 0 || stage.silent) drone.set(null)
 
       // ---------- sound ----------
       setWeaponVolume(mixGain("weapons"))
@@ -1541,26 +1559,14 @@ function effectGame(e: Effect | null, weight: number, doses: readonly Effect[] =
   return { speedMult: weight * (e?.speed ?? 1), accelMult: e?.accel ?? 1, accelPower: e ? curvePower(e.curve) : 1, accelRamp: e?.ramp ?? 0.5, ...lookDoses(doses) }
 }
 
-// ---------- the zone's ambience: percussion on the sixteenths (the drone follows the bars) ----------
-function ambience(zone: Zone, step: number, spb: number) {
-  const sw = zone.feel === "swing" && step % 4 === 2 ? (spb / 4) * 0.33 : 0
-  if (zone.feel === "half") {
-    if (step === 0) playDrum("kick")
-    if (step === 8) playDrum("snare")
-    if (step % 4 === 0) playDrum("hat", 0, 0.7)
-    if (step === 14) playDrum("openHat", 0, 0.6)
-    return
-  }
-  if (zone.id === "ceu") {
-    // the sky: only a soft shaker and a kick per bar
-    if (step === 0) playDrum("kick", 0, 0.6)
-    if (step % 2 === 0) playDrum("shaker", sw, step % 4 === 0 ? 0.8 : 0.5)
-    return
-  }
-  if (step === 0 || step === 8 || (zone.feel === "swing" && step === 10)) playDrum("kick")
-  if (step === 4 || step === 12) playDrum(zone.feel === "swing" ? "clap" : "snare")
-  if (step % 2 === 0) playDrum("hat", sw, step % 4 === 0 ? 0.9 : 0.6)
-  else if (zone.id === "feira") playDrum("shaker", 0, 0.4)
+// ---------- the zone's ambience on a sixteenth: its percussion and its bass line (the sustained voices follow the
+// bars). With swing the off-beat eighths land late ----------
+function ambience(zone: Zone, step: number, bar: number, chord: number[], spb: number) {
+  const a = zone.ambience ?? legacyAmbience(zone.feel)
+  const late = zone.feel === "swing" && step % 4 === 2 ? (spb / 4) * 0.33 : 0
+  for (const hit of beatHits(a, step)) playDrum(hit.drum, late, hit.vel)
+  const notes = bassNotes(a, chord, droneOf(zone, chord).root - 24, step, bar)
+  for (const n of notes) playBass(n.tone, n.midi, late, n.len * (spb / 4), n.vel)
 }
 
 export { BAR, BAR_GROUND_H, INV_STACK } from "@/components/pigchicken/draw/hud"

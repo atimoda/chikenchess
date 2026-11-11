@@ -1,14 +1,19 @@
 "use client"
 
-// The Editor Mode's panels for the map's music: a Zona sonora's key, scale, tempo, ambience chain and priority; the
+// The Editor Mode's panels for the map's music: a Zona sonora's harmony, rhythm, bass and rules (the same fields for
+// a zone of the map and for a scene's own zone); the
 // Faixas fixas' layout and notes; and the "Rebate notas" collision of any surface.
 import { useEffect, useState } from "react"
 import { PatioRange } from "@/components/ui/patio-range"
-import { NOTE_NAMES, SCALES, ZONES, type Feel, type ScaleId } from "@/lib/pigchicken/music"
+import { NOTE_NAMES, SCALES, ZONES, type Feel, type InKeyRule, type ScaleId } from "@/lib/pigchicken/music"
 import {
   LANES_MAX, SURFACE_MODES, ZONE_BPM, ZONE_LIFE, ZONE_PRIORITY, defaultSurfaceRebate, lanesNotes, normalizeLanes, normalizeSoundZone,
   type LanesParams, type SoundZoneParams, type SurfaceRebate,
 } from "@/lib/pigchicken/sound-zones"
+import {
+  AMBIENCE_VOL, BASSES, BASS_GROUPS, BASS_OCT, BEATS, BEAT_GROUPS, DRUM_ROWS, SILENCE, ambienceGrid, beatSilent, drumRow, isBass, isBeat, legacyAmbience, toggleDrumStep,
+  type DrumGrid, type ZoneAmbience,
+} from "@/lib/pigchicken/zone-ambience"
 import { ChainEditor } from "./chain-editor"
 import { BIRDS, BIRD_IDS } from "@/lib/pigchicken/birds"
 import { LanesArt } from "./sound-zone-art"
@@ -18,6 +23,7 @@ const field = "h-9 w-full min-w-0 rounded-md border border-white/15 bg-[#0b110e]
 const SCALE_IDS = Object.keys(SCALES) as ScaleId[]
 const CHORD_SCALES = SCALE_IDS.filter(s => SCALES[s].steps.length === 7)
 const FEEL_LABELS: Record<Feel, string> = { straight: "Reto", swing: "Swing", half: "Meio tempo" }
+const IN_KEY_LABELS: Record<InKeyRule | "", string> = { "": "Todas as notas", key: "Só notas do tom", chord: "Só o acorde da hora" }
 // a key picked by name sits around the middle of the keyboard (Fá♯3 … Fá4), like the scenes' zones
 const rootOf = (pc: number) => 54 + ((pc - 6 + 12) % 12)
 const pcOf = (m: number) => ((m % 12) + 12) % 12
@@ -36,27 +42,66 @@ function KeySelect({ value, onChange, label = "Tom" }: { value: number; onChange
 
 // ---------- Zona sonora ----------
 
-// scene: a scene's own zone (only its music: no priority, walls, birds or chain)
+const SECTION = "mt-1 border-t border-white/10 pt-3 text-[10px] uppercase tracking-[0.12em] text-[#93a79a]"
+const OCTAVES = Array.from({ length: BASS_OCT.max - BASS_OCT.min + 1 }, (_, i) => BASS_OCT.min + i)
+
+// the zone's own beat: one row per drum, sixteen steps; a click goes rest → normal → accent → rest
+function DrumGridEditor({ grid, color, onChange }: { grid: DrumGrid; color: string; onChange: (g: DrumGrid) => void }) {
+  return (
+    <div className="grid gap-[3px]" aria-label="Grade da batida">
+      {DRUM_ROWS.map(r => {
+        const row = drumRow(grid, r.id)
+        return (
+          <div key={r.id} className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-1.5">
+            <span className="truncate text-[10px] text-[#93a79a]">{r.label}</span>
+            <div className="grid grid-cols-[repeat(16,minmax(0,1fr))] gap-px">
+              {Array.from(row, (c, i) => (
+                <button key={i} type="button" aria-label={`${r.label}, passo ${i + 1}`} aria-pressed={c !== "."} onClick={() => onChange(toggleDrumStep(grid, r.id, i))}
+                  className="h-4 rounded-[2px]" style={c === "." ? { background: i % 8 < 4 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)" } : { background: color, opacity: c === "o" ? 0.45 : c === "x" ? 0.75 : 1 }} />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// One component for every Zona sonora. scene: a scene's own zone, stuck to the ground (no priority and no walls:
+// any zone of the map wins over it, and it has no edges for the notes to bounce off)
 export function SoundZoneFields({ zone, onChange, scene = false }: { zone: SoundZoneParams; onChange: (z: SoundZoneParams, step?: string) => void; scene?: boolean }) {
   const set = (p: Partial<SoundZoneParams>, step?: string) => onChange(normalizeSoundZone({ ...zone, ...p }), step)
+  const amb = zone.ambience
+  const setAmb = (p: Partial<ZoneAmbience>, step?: string) => set({ ambience: { ...amb, ...p } }, step)
   const progText = zone.progression.map(d => d + 1).join(" ")
   const [prog, setProg] = useState(progText)
   // a tag on the label changed it: the text follows
   useEffect(() => { setProg(t => (t.split(/[\s,]+/).map(Number).filter(n => n >= 1 && n <= 7).join(" ") === progText ? t : progText)) }, [progText])
   const preset = progressionIndex(zone.progression)
+  // the degrees are typed only for a progression of its own
+  const [ownProg, setOwnProg] = useState(preset < 0)
+  const typing = ownProg || preset < 0
   return (
     <>
-      {!scene && <p className="text-[#93a79a]">Invisível no jogo. Quem entra nela ouve o tom, a escala e o andamento dela, e toda nota rebatida aqui dentro passa pela cadeia do ambiente.</p>}
-      <Field label="Copiar de uma cena">
-        <select aria-label="Copiar de uma cena" value="" onChange={e => { const z = ZONES.find(x => x.id === e.target.value); if (z) { set({ name: z.name, root: z.root, scale: z.scale, chordScale: z.chordScale, bpm: z.bpm, feel: z.feel, progression: z.progression.slice(), color: z.color }); setProg(z.progression.map(d => d + 1).join(" ")) } }} className={field}>
-          <option value="">Escolher…</option>
-          {ZONES.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
-        </select>
-      </Field>
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <Field label="Nome"><input aria-label="Nome da zona" maxLength={40} value={zone.name} onChange={e => set({ name: e.target.value }, "zone-name")} className={field} /></Field>
         <Field label="Cor"><input aria-label="Cor da zona" type="color" value={zone.color} onChange={e => set({ color: e.target.value }, "zone-color")} className="h-9 w-12 rounded-md border border-white/15 bg-transparent" /></Field>
       </div>
+      <Field label="Predefinição">
+        <select aria-label="Predefinição" value="" onChange={e => {
+          if (e.target.value === "silence") return set({ ambience: { ...SILENCE } })
+          const z = ZONES.find(x => x.id === e.target.value)
+          if (!z) return
+          set({ name: z.name, root: z.root, scale: z.scale, chordScale: z.chordScale, bpm: z.bpm, feel: z.feel, progression: z.progression.slice(), color: z.color, ambience: z.ambience ?? legacyAmbience(z.feel) })
+          setProg(z.progression.map(d => d + 1).join(" ")); setOwnProg(false)
+        }} className={field}>
+          <option value="">Escolher…</option>
+          <option value="silence">Silêncio</option>
+          {ZONES.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+        </select>
+      </Field>
+
+      <h3 className={SECTION}>Harmonia</h3>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Tom"><KeySelect value={zone.root} onChange={root => set({ root })} /></Field>
         <Field label="Escala">
@@ -69,59 +114,106 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
             {CHORD_SCALES.map(s => <option key={s} value={s}>{SCALES[s].label}{chordScalesFor(zone.scale).includes(s) ? "" : " (desafina)"}</option>)}
           </select>
         </Field>
-        <Field label="Balanço">
+        <Field label="Progressão" hint="Um acorde por compasso">
+          <select aria-label="Progressão" value={typing ? -1 : preset} onChange={e => {
+            const p = PROGRESSIONS[Number(e.target.value)]
+            setOwnProg(!p)
+            if (p) { set({ progression: p.degrees.slice() }); setProg(p.degrees.map(d => d + 1).join(" ")) }
+          }} className={field}>
+            {PROGRESSIONS.map((p, i) => <option key={p.label} value={i}>{p.label}</option>)}
+            <option value={-1}>Própria</option>
+          </select>
+        </Field>
+      </div>
+      {typing && (
+        <input aria-label="Graus da progressão" title="Graus de 1 a 7, um acorde por compasso. Ex.: 1 5 6 4" value={prog} onChange={e => {
+          setProg(e.target.value)
+          const degrees = e.target.value.split(/[\s,]+/).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 7).map(n => n - 1)
+          if (degrees.length) set({ progression: degrees }, "zone-prog")
+        }} className={field} />
+      )}
+
+      <h3 className={SECTION}>Ritmo</h3>
+      <PatioRange label="Andamento" min={ZONE_BPM.min} max={ZONE_BPM.max} value={zone.bpm} display={`${zone.bpm} bpm`} onChange={bpm => set({ bpm }, "zone-bpm")} />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Batida">
+          <select aria-label="Batida" value={amb.drums ? "own" : amb.beat} onChange={e => { if (isBeat(e.target.value)) { const { drums: _own, ...rest } = amb; set({ ambience: { ...rest, beat: e.target.value } }) } }} className={field}>
+            {amb.drums && <option value="own">Própria</option>}
+            <option value="none">Silêncio</option>
+            {BEAT_GROUPS.map(g => <optgroup key={g} label={g}>{BEATS.filter(b => b.group === g).map(b => <option key={b.id} value={b.id}>{b.label}</option>)}</optgroup>)}
+          </select>
+        </Field>
+        <Field label="Balanço" hint="Como o tempo é sentido: atrasa as notas fracas (Swing) ou puxa tudo para a metade (Meio tempo)">
           <select aria-label="Balanço" value={zone.feel} onChange={e => set({ feel: e.target.value as Feel })} className={field}>
             {(Object.keys(FEEL_LABELS) as Feel[]).map(f => <option key={f} value={f}>{FEEL_LABELS[f]}</option>)}
           </select>
         </Field>
       </div>
-      <PatioRange label="Andamento" min={ZONE_BPM.min} max={ZONE_BPM.max} value={zone.bpm} display={`${zone.bpm} bpm`} onChange={bpm => set({ bpm }, "zone-bpm")} />
-      <Field label="Progressão pronta">
-        <select aria-label="Progressão pronta" value={preset} onChange={e => { const p = PROGRESSIONS[Number(e.target.value)]; if (p) { set({ progression: p.degrees.slice() }); setProg(p.degrees.map(d => d + 1).join(" ")) } }} className={field}>
-          {preset < 0 && <option value={-1}>Própria</option>}
-          {PROGRESSIONS.map((p, i) => <option key={p.label} value={i}>{p.label} ({p.degrees.map(d => d + 1).join(" ")})</option>)}
-        </select>
-      </Field>
-      <Field label="Progressão (graus, um acorde por compasso)" hint="Ex.: 1 5 6 4. Os graus vão de 1 a 7.">
-        <input aria-label="Progressão" value={prog} onChange={e => {
-          setProg(e.target.value)
-          const degrees = e.target.value.split(/[\s,]+/).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 7).map(n => n - 1)
-          if (degrees.length) set({ progression: degrees }, "zone-prog")
-        }} className={field} />
-      </Field>
-      {!scene && <>
-      <PatioRange label="Prioridade" min={ZONE_PRIORITY.min} max={ZONE_PRIORITY.max} value={zone.priority} hint="Onde zonas se sobrepõem, vale a de prioridade maior. Qualquer zona vale mais que a da cena."
-        onChange={priority => set({ priority }, "zone-priority")} />
-      <label className="flex items-center justify-between gap-3" title="Desligado: só muda as notas rebatidas dentro dela">
-        <span>Troca a música ao entrar</span>
-        <input type="checkbox" checked={zone.music} onChange={e => set({ music: e.target.checked })} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
-      </label>
-      <div className="grid gap-1" title="Os aliens convertidos aqui viram estes pássaros (nenhum marcado: os da cena)">
-        <span>Pássaros da zona</span>
-        <div className="flex flex-wrap gap-1.5">
-          {BIRD_IDS.map(id => {
-            const on = zone.birds.includes(id)
-            return <button key={id} type="button" aria-pressed={on} onClick={() => set({ birds: on ? zone.birds.filter(b => b !== id) : [...zone.birds, id] })}
-              className={"h-8 rounded-md border px-2 " + (on ? "border-primary bg-primary/15 text-white" : "border-white/15 text-[#93a79a] hover:border-white/40")}>{BIRDS[id].name}</button>
-          })}
-        </div>
-      </div>
-      <ChainEditor chain={zone.chain} changed={false} title="Cadeia do ambiente"
-        hint="Toda nota rebatida dentro da zona passa por estes passos (a parte “ambiente” da regra de rebate)"
-        onChange={fn => { const chain = structuredClone(zone.chain); fn(chain); set({ chain }) }} />
-      <PatioRange label="Vida das paredes" min={ZONE_LIFE.min} max={ZONE_LIFE.max} value={zone.life} display={zone.life ? `${zone.life} notas` : "Sem paredes"}
-        hint="Com vida, as notas quicam nas bordas da zona e cada uma tira 1 ponto. Quando zera, a zona muda pelo padrão e a vida enche de novo."
-        onChange={life => set({ life }, "zone-life")} />
-      {zone.life > 0 && (
-        <Field label="Padrão de mudança" hint={zoneChange(zone.change).hint}>
-          <select aria-label="Padrão de mudança" value={zone.change} onChange={e => set({ change: e.target.value as ZoneChangeId })} className={field}>
-            {(["Geral", "Ritmo", "Harmonia", "Melodia"] as const).map(g => (
-              <optgroup key={g} label={g}>{ZONE_CHANGES.filter(c => c.group === g).map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</optgroup>
-            ))}
+      {!beatSilent(amb) && <PatioRange label="Volume da batida" min={AMBIENCE_VOL.min} max={AMBIENCE_VOL.max} step={AMBIENCE_VOL.step} value={amb.beatVol ?? 100} display={`${amb.beatVol ?? 100}%`} onChange={beatVol => setAmb({ beatVol }, "zone-beat-vol")} />}
+      <details className="group">
+        <summary className="cursor-pointer select-none text-[#93a79a] hover:text-white">Editar a batida</summary>
+        <div className="pt-2"><DrumGridEditor grid={ambienceGrid(amb)} color={zone.color} onChange={drums => setAmb({ drums })} /></div>
+      </details>
+
+      <h3 className={SECTION}>Baixo</h3>
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <Field label="Som">
+          <select aria-label="Baixo" value={amb.bass} onChange={e => { if (isBass(e.target.value)) setAmb({ bass: e.target.value }) }} className={field}>
+            <option value="none">Silêncio</option>
+            {BASS_GROUPS.map(g => <optgroup key={g} label={g}>{BASSES.filter(b => b.group === g).map(b => <option key={b.id} value={b.id}>{b.label}</option>)}</optgroup>)}
           </select>
         </Field>
-      )}
-      </>}
+        {amb.bass !== "none" && (
+          <Field label="Oitava">
+            <select aria-label="Oitava do baixo" value={amb.bassOct ?? 0} onChange={e => setAmb({ bassOct: Number(e.target.value) })} className={field}>
+              {OCTAVES.map(o => <option key={o} value={o}>{o > 0 ? `+${o}` : o}</option>)}
+            </select>
+          </Field>
+        )}
+      </div>
+      {amb.bass !== "none" && <PatioRange label="Volume do baixo" min={AMBIENCE_VOL.min} max={AMBIENCE_VOL.max} step={AMBIENCE_VOL.step} value={amb.bassVol ?? 100} display={`${amb.bassVol ?? 100}%`} onChange={bassVol => setAmb({ bassVol }, "zone-bass-vol")} />}
+
+      <details className="mt-1 border-t border-white/10 pt-3">
+        <summary className="cursor-pointer select-none text-[10px] uppercase tracking-[0.12em] text-[#93a79a] hover:text-white">Notas e regras</summary>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 pt-3">
+          <Field label="Dano nos inimigos" hint="Notas fora da regra resvalam sem harmonizar">
+            <select aria-label="Dano nos inimigos" value={zone.inKey ?? ""} onChange={e => set({ inKey: (e.target.value || undefined) as InKeyRule | undefined })} className={field}>
+              {(Object.keys(IN_KEY_LABELS) as (InKeyRule | "")[]).map(k => <option key={k} value={k}>{IN_KEY_LABELS[k]}</option>)}
+            </select>
+          </Field>
+          {!scene && <PatioRange label="Prioridade" min={ZONE_PRIORITY.min} max={ZONE_PRIORITY.max} value={zone.priority} hint="Onde zonas se sobrepõem, vale a de prioridade maior. Qualquer zona vale mais que a da cena."
+            onChange={priority => set({ priority }, "zone-priority")} />}
+          <label className="flex items-center justify-between gap-3" title="Desligado: só muda as notas rebatidas dentro dela">
+            <span>Troca a música ao entrar</span>
+            <input type="checkbox" checked={zone.music} onChange={e => set({ music: e.target.checked })} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
+          </label>
+          <div className="grid gap-1" title="Os aliens convertidos aqui viram estes pássaros (nenhum marcado: os da cena)">
+            <span>Pássaros da zona</span>
+            <div className="flex flex-wrap gap-1.5">
+              {BIRD_IDS.map(id => {
+                const on = zone.birds.includes(id)
+                return <button key={id} type="button" aria-pressed={on} onClick={() => set({ birds: on ? zone.birds.filter(b => b !== id) : [...zone.birds, id] })}
+                  className={"h-8 rounded-md border px-2 " + (on ? "border-primary bg-primary/15 text-white" : "border-white/15 text-[#93a79a] hover:border-white/40")}>{BIRDS[id].name}</button>
+              })}
+            </div>
+          </div>
+          <ChainEditor chain={zone.chain} changed={false} title="Cadeia do ambiente"
+            hint="Toda nota rebatida dentro da zona passa por estes passos (a parte “ambiente” da regra de rebate)"
+            onChange={fn => { const chain = structuredClone(zone.chain); fn(chain); set({ chain }) }} />
+          {!scene && <PatioRange label="Vida das paredes" min={ZONE_LIFE.min} max={ZONE_LIFE.max} value={zone.life} display={zone.life ? `${zone.life} notas` : "Sem paredes"}
+            hint="Com vida, as notas quicam nas bordas da zona e cada uma tira 1 ponto. Quando zera, a zona muda pelo padrão e a vida enche de novo."
+            onChange={life => set({ life }, "zone-life")} />}
+          {!scene && zone.life > 0 && (
+            <Field label="Padrão de mudança" hint={zoneChange(zone.change).hint}>
+              <select aria-label="Padrão de mudança" value={zone.change} onChange={e => set({ change: e.target.value as ZoneChangeId })} className={field}>
+                {(["Geral", "Ritmo", "Harmonia", "Melodia"] as const).map(g => (
+                  <optgroup key={g} label={g}>{ZONE_CHANGES.filter(c => c.group === g).map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</optgroup>
+                ))}
+              </select>
+            </Field>
+          )}
+        </div>
+      </details>
     </>
   )
 }

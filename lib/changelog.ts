@@ -7,13 +7,19 @@ const RECENT = [
   {
     version: '2.8.0',
     date: '11/11/2026',
-    title: 'Editor das fichas de almas para admin',
+    title: 'Editor das fichas de almas para admin; zonas sonoras em silêncio, com batidas, baixos e limites arrastáveis',
     groups: [
       { title: 'Pátio', items: [
         'Biblioteca de almas, para admin: o lápis no cabeçalho do painel liga a edição das fichas. Cada alma abre com nome, raridade, classe de voo, forma, tamanho do pixel, cores e olho brilhante para mudar, mais os números de voo só dela por cima dos da classe.',
         'Nas almas raras o admin também edita a receita (espécies, estado, instrumentos, notas e armas), muda a ordem na lista (a primeira receita que serve leva a alma), cria uma nova, duplica qualquer alma como rara e exclui.',
         'O que o admin muda nas fichas vale na hora no próprio navegador, inclusive para as almas que já voam soltas. Padrão volta uma ficha, ou todas, para as do game, e Salvar no game grava as fichas pelo Admin local para publicar para todos.',
         'No mundo, a alma capturada continua com a cor do alien que ela era (a morta, com o olho na cor da nota), menos nas cores que a ficha dela mudou.',
+        'Zonas sonoras começam em Silêncio: as zonas das cenas e toda Zona sonora nova não tocam batida nem baixo até você escolher (o tom, a escala e o andamento continuam valendo para os instrumentos). Vale para o Novo Pátio vazio e para qualquer cena que o Pátio ainda não tinha mudado; zonas que já estavam salvas continuam tocando como antes.',
+        'No painel da zona, Batida escolhe o ritmo entre vários estilos (Reto, Meio tempo, Swing, Rock, Disco, Funk, House, Techno, Trap, Boom bap, Bossa nova, Samba, Baião, Reggae, Reggaeton, Afrobeat, Brisa, Feira e Pulso), com volume próprio, e Editar a batida abre uma grade de 16 passos por tambor para montar a sua: cada clique passa por normal, acento e pausa.',
+        'Baixo escolhe o grave da zona: Drone, Drone grave ou Pad sustentados, linhas de baixo (Pulsado, Colcheias, Oitavas, Caminhando, Sincopado, Reggae, Baião, Bossa nova) e figuras de synth (Arpejo, Arpejo rápido, Sequência ácida, Contratempo, Acordes no contratempo), todos seguindo o acorde do compasso, com oitava e volume próprios.',
+        'A zona de cada cena agora é uma Zona sonora grudada no chão: abre o mesmo painel das outras e ganha Cadeia do ambiente, Pássaros da zona e Troca a música ao entrar. Só não tem prioridade nem paredes, porque qualquer Zona sonora do mapa vence a da cena.',
+        'No Modo editor, com a camada Zonas ligada, passar o mouse no limite de uma zona mostra o cursor de redimensionar e arrastar muda o limite: os quatro lados de cada Zona sonora (duas zonas encostadas movem o limite juntas) e a linha tracejada entre as zonas de duas cenas vizinhas.',
+        'O painel da zona ficou mais enxuto, em blocos Harmonia, Ritmo e Baixo, com o resto recolhido em Notas e regras; Predefinição copia uma das cenas com o som que ela tinha, ou volta ao Silêncio. As tags da zona ganham Batida e Baixo.',
         'O Pátio vazio e o Pátio de exemplo do pôr do sol nascem sem o Templo do Gongo (gongo, jukebox e os suportes de armas da entrada) e sem a Vila no fim; em Configurações do Pátio, Templo e Vila liga ou desliga os dois em qualquer Pátio.',
         'Montanhas: Altura agora sobe as cordilheiras na tela, o antigo Altura virou Inclinação, Cordilheiras vai até 6, Relevo sombreia as encostas, e a neve ganha Pontas (línguas descendo pelas encostas) e Sombra azulada.',
         'Céu e luz ganha Cor do sol, Alcance do brilho e Estrelas (quantidade, tamanho e intensidade); as nuvens ganham a categoria Nuvens: quantidade, tamanho, altura no céu, espalhamento, opacidade, suavidade, volume, vento, cor e Sortear forma.',

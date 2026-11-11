@@ -2,10 +2,12 @@
 // the Faixas fixas element (lanes fixed to the map that force the note of anything rebated inside them) and the
 // "Rebate notas" collision (a surface the notes bounce off, playing through its own chain, the last item's or as
 // they are). All data: the layout stores them, combat asks what a point of the map plays.
-import { SCALES, ZONES, NOTE_NAMES, type Feel, type ScaleId, type Zone } from './music'
+import { IN_KEY_RULES, SCALES, ZONES, NOTE_NAMES, type Feel, type InKeyRule, type ScaleId, type Zone } from './music'
 import { fanLaneAt, fanLanes, fanNotes, type Fan, type FanContent } from './fan'
 import { CHAIN_MAX, TRANSFORMS, cleanTransform, degreeOf, type Transform } from './transforms'
 import { isBirdId, type BirdId } from './birds'
+import { SILENCE, ambienceKey, cleanAmbience, legacyAmbience, type ZoneAmbience } from './zone-ambience'
+import { SCENE_W, templeScene, worldScenes } from './world'
 import { FEELS, SCALE_IDS, ZONE_BPM, ZONE_LIFE, isZoneChange, zoneChange, type ZoneChangeId } from './zone-changes'
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
@@ -34,16 +36,21 @@ export type SoundZoneParams = {
   // (zone-changes.ts) and its life fills again (0: no walls)
   life: number
   change: ZoneChangeId
+  // "Dano só no tom" (music.ts): absent when off
+  inKey?: InKeyRule
+  // its percussion and bass (zone-ambience.ts): silence by default
+  ambience: ZoneAmbience
 }
 export const ZONE_PRIORITY = { min: 1, max: 9 }
 export { ZONE_BPM, ZONE_LIFE }
 
-// a new zone starts as a copy of one of the scenes' (the Noite by default), so it sounds right away
+// a new zone starts with the key, scale and tempo of one of the scenes' (the Noite by default), in silence: no
+// percussion and no bass until they are chosen
 export function defaultSoundZone(from: Zone = ZONES[1]): SoundZoneParams {
   return {
     name: from.name, root: from.root, scale: from.scale, chordScale: from.chordScale, bpm: from.bpm, feel: from.feel,
     progression: from.progression.slice(), color: from.color, chain: [], priority: 1, music: true, birds: [],
-    life: 0, change: 'random',
+    life: 0, change: 'random', ambience: { ...SILENCE },
   }
 }
 
@@ -51,6 +58,7 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
   const d = defaultSoundZone()
   if (!raw || typeof raw !== 'object') return d
   const z = raw as Record<string, unknown>
+  const feel = FEELS.includes(z.feel as Feel) ? (z.feel as Feel) : d.feel
   const prog = Array.isArray(z.progression) ? z.progression.filter(n => typeof n === 'number' && Number.isFinite(n)).map(n => clamp(Math.round(n as number), 0, 6)).slice(0, 16) : []
   return {
     name: String(z.name ?? d.name).trim().slice(0, 40) || d.name,
@@ -58,7 +66,7 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
     scale: isScale(z.scale) ? z.scale : d.scale,
     chordScale: isScale(z.chordScale) && SCALES[z.chordScale].steps.length === 7 ? z.chordScale : d.chordScale,
     bpm: Math.round(clamp(num(z.bpm, d.bpm), ZONE_BPM.min, ZONE_BPM.max)),
-    feel: FEELS.includes(z.feel as Feel) ? (z.feel as Feel) : d.feel,
+    feel,
     progression: prog.length ? prog : d.progression,
     color: typeof z.color === 'string' && COLOR.test(z.color) ? z.color : d.color,
     chain: cleanChain(z.chain),
@@ -67,6 +75,9 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
     birds: Array.isArray(z.birds) ? [...new Set(z.birds.filter(isBirdId))] : [],
     life: Math.round(clamp(num(z.life, 0), ZONE_LIFE.min, ZONE_LIFE.max)),
     change: isZoneChange(z.change) ? z.change : d.change,
+    ...(IN_KEY_RULES.includes(z.inKey as InKeyRule) ? { inKey: z.inKey as InKeyRule } : {}),
+    // saved before the ambience could be chosen: it keeps the percussion of its feel and the drone it played
+    ambience: z.ambience === undefined ? legacyAmbience(feel) : cleanAmbience(z.ambience),
   }
 }
 
@@ -78,29 +89,69 @@ export function applyZoneChange(z: SoundZoneParams, id: ZoneChangeId = z.change,
 // the conductor's zone for a Zona sonora element: its id names the element and what it sounds like, so the conductor
 // keeps it while it stays the same and takes an edited one on the next bar
 export function soundZoneOf(id: string, p: SoundZoneParams): Zone {
-  return { id: `zona:${id}:${p.root}:${p.scale}:${p.chordScale}:${p.bpm}:${p.feel}:${p.progression.join('.')}`, name: p.name, root: p.root, scale: p.scale, chordScale: p.chordScale, bpm: p.bpm, feel: p.feel, progression: p.progression, color: p.color }
+  return { id: `zona:${id}:${p.root}:${p.scale}:${p.chordScale}:${p.bpm}:${p.feel}:${p.progression.join('.')}${p.inKey ? `:${p.inKey}` : ''}:${ambienceKey(p.ambience)}`, name: p.name, root: p.root, scale: p.scale, chordScale: p.chordScale, bpm: p.bpm, feel: p.feel, progression: p.progression, color: p.color, ...(p.inKey ? { inKey: p.inKey } : {}), ambience: p.ambience }
 }
 
-// ---------- the scenes' own zones ----------
+// ---------- the scenes' own zones: Zonas sonoras stuck to the ground ----------
 
-// each scene of the Parquinho plays one of ZONES in turn; a Pátio may change any of them (saved in its settings,
-// by scene number). The Templo has its own music and is not one of them.
+// each scene of the Parquinho (and the Vila) has a zone of its own: the same Zona sonora of the map, but stuck to
+// the ground and playing in the whole column above its stretch of floor. It starts in silence with the key, scale
+// and tempo of one of ZONES in turn; a Pátio may change any of them (saved in its settings, by scene number) and
+// move the limit between two neighbours (sceneEdges). Any Zona sonora of the map wins over them. The Templo has
+// its own music and is not one of them.
 export type SceneZones = Record<string, SoundZoneParams>
 export const sceneZoneBase = (s: number) => defaultSoundZone(ZONES[((s % ZONES.length) + ZONES.length) % ZONES.length])
 export const sceneZoneParams = (zones: SceneZones | undefined, s: number) => zones?.[String(s)] ?? sceneZoneBase(s)
-// the conductor's zone for a scene: the code's own while it is not changed
-export function sceneZoneOf(zones: SceneZones | undefined, s: number): Zone {
-  const own = zones?.[String(s)]
-  return own ? soundZoneOf(`cena${s}`, own) : ZONES[((s % ZONES.length) + ZONES.length) % ZONES.length]
-}
+// what a scene's zone keeps of a Zona sonora: no walls and no priority of its own
+export const asSceneZone = (z: SoundZoneParams): SoundZoneParams => ({ ...z, life: 0, priority: 1 })
 export function normalizeSceneZones(raw: unknown, maxScene: number): SceneZones | undefined {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
   const out: SceneZones = {}
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     const s = Number(k)
-    if (Number.isInteger(s) && s >= 0 && s <= maxScene && v && typeof v === 'object') out[String(s)] = { ...normalizeSoundZone(v), life: 0, priority: 1, music: true }
+    if (Number.isInteger(s) && s >= 0 && s <= maxScene && v && typeof v === 'object') out[String(s)] = asSceneZone(normalizeSoundZone(v))
   }
   return Object.keys(out).length ? out : undefined
+}
+
+// the limits between the scenes' zones moved in this Pátio: world x of the left edge of scene s, by scene number.
+// Only the limits between two scenes of the Parquinho move (1 … screens - 1): the Templo's stay where they are.
+export type SceneEdges = Record<string, number>
+export const SCENE_ZONE_MIN_W = 200
+export function normalizeSceneEdges(raw: unknown, maxScene: number): SceneEdges | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined
+  const out: SceneEdges = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const s = Number(k)
+    if (Number.isInteger(s) && s >= 1 && s <= maxScene && typeof v === 'number' && Number.isFinite(v) && Math.round(v) !== s * SCENE_W) out[String(s)] = Math.round(v)
+  }
+  return Object.keys(out).length ? out : undefined
+}
+// world x of every limit, from the world's left wall (0) to its right one: entry s is the left edge of scene s
+export function sceneEdgeList(edges: SceneEdges | undefined, screens: number): number[] {
+  const scenes = worldScenes(screens), end = screens * SCENE_W, xs = [0]
+  for (let s = 1; s <= scenes; s++) {
+    if (s >= screens) { xs.push(s * SCENE_W); continue }
+    xs.push(Math.round(clamp(num(edges?.[String(s)], s * SCENE_W), xs[s - 1] + SCENE_ZONE_MIN_W, end - (screens - s) * SCENE_ZONE_MIN_W)))
+  }
+  return xs
+}
+// a limit dragged to x: the edges to save (the limit back on its scene's own line is not kept)
+export function moveSceneEdge(edges: SceneEdges | undefined, screens: number, s: number, x: number): SceneEdges | undefined {
+  if (s < 1 || s >= screens) return edges
+  const xs = sceneEdgeList(edges, screens)
+  const at = Math.round(clamp(x, xs[s - 1] + SCENE_ZONE_MIN_W, xs[s + 1] - SCENE_ZONE_MIN_W))
+  return normalizeSceneEdges({ ...edges, [String(s)]: at }, screens - 1)
+}
+// the scenes' zones as boxes of the world, under every Zona sonora of the map (priority 0): each one's stretch of
+// floor, from far under the ground to far over any ceiling. None for the Templo
+const GROUND_SPAN = 1e7
+export function groundZones(zones: SceneZones | undefined, edges: SceneEdges | undefined, screens: number): ZoneBox[] {
+  const xs = sceneEdgeList(edges, screens), temple = templeScene(screens), out: ZoneBox[] = []
+  for (let s = 0; s < worldScenes(screens); s++) {
+    if (s !== temple) out.push({ id: `cena${s}`, x: xs[s], y: -GROUND_SPAN, w: xs[s + 1] - xs[s], h: 2 * GROUND_SPAN, zone: { ...asSceneZone(sceneZoneParams(zones, s)), priority: 0 } })
+  }
+  return out
 }
 
 // a short reading of a chain: "+3ª", "+1 oit", "eco"…
