@@ -325,13 +325,18 @@ export function recordSoul(col: SoulCollection, soul: SoulOrigin, now: number, e
   if (soul.weapon && !weapons.includes(soul.weapon)) { weapons.push(soul.weapon); trait = !!was }
   return { col: { ...col, [entry.id]: { n: (was?.n ?? 0) + 1, at: was?.at ?? now, notes, weapons } }, entry, first: !was, trait }
 }
-// two copies of a collection (this browser's and the account's) into one: nothing found is ever lost
+// two copies of a collection (this browser's and the account's) into one: nothing found is ever lost. The server
+// merges the same way (supabase/migrations/202611110001_pigchicken_souls.sql)
 export function mergeCollections(a: SoulCollection, b: SoulCollection): SoulCollection {
   const out: SoulCollection = {}
   for (const id of new Set([...Object.keys(a), ...Object.keys(b)])) {
     const x = a[id], y = b[id]
     if (!x || !y) { const one = (x ?? y) as SoulFound; out[id] = { ...one, notes: one.notes.slice(), weapons: one.weapons.slice() }; continue }
-    out[id] = { n: Math.max(x.n, y.n), at: Math.min(x.at, y.at), notes: [...new Set([...x.notes, ...y.notes])], weapons: [...new Set([...x.weapons, ...y.weapons])] }
+    // (a date that is not known, 0, never takes the place of one that is)
+    out[id] = {
+      n: Math.max(x.n, y.n), at: x.at > 0 && y.at > 0 ? Math.min(x.at, y.at) : Math.max(x.at, y.at),
+      notes: SOUL_NOTE_ORDER.filter(n => x.notes.includes(n) || y.notes.includes(n)), weapons: SOUL_WEAPON_ORDER.filter(w => x.weapons.includes(w) || y.weapons.includes(w)),
+    }
   }
   return out
 }
@@ -367,6 +372,8 @@ export function collectionProgress(col: SoulCollection, entries: readonly SoulEn
 // ---------- this browser's copy ----------
 const STORE = 'pigchicken-souls-v1'
 const EVENT = 'pigchicken-souls'
+// the same for two collections that hold the same, whatever the order of their entries
+export const collectionKey = (col: SoulCollection) => JSON.stringify(Object.keys(col).sort().map(id => [id, col[id].n, col[id].at, col[id].notes, col[id].weapons]))
 export function loadCollection(): SoulCollection {
   try { return normalizeCollection(JSON.parse(window.localStorage.getItem(STORE) || 'null')?.found) } catch { return {} }
 }

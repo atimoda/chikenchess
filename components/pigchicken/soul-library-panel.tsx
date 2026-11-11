@@ -9,11 +9,12 @@
 // one's recipe), kept as a draft in this browser and followed live by the souls in the game; "Salvar no game" writes
 // it to the game's file.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowDown, ArrowLeft, ArrowUp, Copy, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ArrowDown, ArrowLeft, ArrowUp, Cloud, CloudOff, Copy, Pencil, Plus, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import { SaveToGameButton, useIsAdmin } from "@/components/admin/save-to-game-button"
 import { saveDefaultSouls } from "@/lib/admin/game-defaults-client"
+import { soulSyncState, subscribeSoulSyncState } from "@/lib/pigchicken/soul-online"
 import { SOUL_COLS, SOUL_ROWS, drawSoulArt } from "@/components/pigchicken/draw/soul-art"
 import { SOUL_CLASSES, SOUL_FOLLOW_DEFAULTS, SOUL_FOLLOW_RANGES, SOUL_PATTERNS, SOUL_SIDES, type SoulClassId, type SoulFollowParams, type SoulPattern, type SoulSide } from "@/lib/pigchicken/soul-follow"
 import {
@@ -96,6 +97,8 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
     requestAnimationFrame(() => { if (scroller.current) scroller.current.scrollTop = id ? 0 : listTop.current })
   }
   useEffect(() => subscribeCollection(setCol), [])
+  const [sync, setSync] = useState(soulSyncState)
+  useEffect(() => subscribeSoulSyncState(setSync), [])
   useEffect(() => subscribeSoulEntries(setEntries), [])
   const sections = useMemo(() => sectionsOf(entries), [entries])
   const progress = useMemo(() => collectionProgress(col, entries), [col, entries])
@@ -197,6 +200,18 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
       <div ref={setScroller} className="min-h-0 flex-1 overflow-y-auto">
         {!v && (
           <>
+            {/* where the collection is kept */}
+            {!editing && (
+              <div className="flex items-center gap-1.5 px-4 pt-3 text-[11px] text-[#93a79a]">
+                {sync.status === "local" ? <CloudOff className="h-3.5 w-3.5 shrink-0" /> : <Cloud className={sync.status === "error" ? "h-3.5 w-3.5 shrink-0 text-[#ff6b5b]" : "h-3.5 w-3.5 shrink-0 text-primary"} />}
+                <span className="min-w-0">
+                  {sync.status === "local" ? "Neste navegador. Entre com sua conta para guardar as almas nela."
+                    : sync.status === "syncing" ? "Sincronizando com a sua conta…"
+                    : sync.status === "synced" ? "Na sua conta."
+                    : sync.message}
+                </span>
+              </div>
+            )}
             {sections.filter(s => s.entries.length || (editing && s.id === "rare")).map(s => (
               <section key={s.id} className="px-4 pt-3">
                 <h3 className="flex items-center justify-between gap-2 pb-2 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">

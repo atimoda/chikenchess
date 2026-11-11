@@ -136,6 +136,12 @@ test('two copies of a collection become one, and nothing found is lost', () => {
   assert.deepEqual(m.y, a.y); assert.deepEqual(m.z, b.z)
   assert.notEqual(m.y.weapons, a.y.weapons, 'copies, not the same lists')
   assert.deepEqual(L.mergeCollections(m, {}), m)
+  // the marks in their fixed order whichever copy comes first, and a date that is not known never over one that is
+  const c = { x: { n: 1, at: 0, notes: ['outside', 'tonic'], weapons: ['impact'] } }, d = { x: { n: 1, at: 700, notes: ['consonant'], weapons: ['blast'] } }
+  assert.deepEqual(L.mergeCollections(c, d).x, { n: 1, at: 700, notes: ['tonic', 'consonant', 'outside'], weapons: ['blast', 'impact'] })
+  assert.deepEqual(L.mergeCollections(d, c), L.mergeCollections(c, d))
+  assert.equal(L.collectionKey(L.mergeCollections(a, b)), L.collectionKey(L.mergeCollections(b, a)), 'the same whoever merges')
+  assert.notEqual(L.collectionKey(a), L.collectionKey(b))
 })
 
 test('whatever was stored reads as a collection', () => {

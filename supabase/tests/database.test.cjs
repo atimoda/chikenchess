@@ -918,3 +918,38 @@ test('pigchicken songs: a personal library per account; the admin sees and opens
   await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
   await assert.rejects(db.query('select public.pigchicken_song_list()'),/permission denied/)
 })
+test('pigchicken souls: a collection per account that only grows, whatever the order the browsers send in',async()=>{
+  const [me,other]=[ids[3],ids[4]]
+  const merge=(who,found)=>rpc(who,'pigchicken_souls_merge',[found])
+  assert.deepEqual(await merge(me,{}),{})
+  const a={'horde.alive.wind':{n:3,at:500,notes:['outside','tonic','nope'],weapons:[]},'rare.fenix':{n:1,at:900,notes:['tonic'],weapons:['arrow']}}
+  assert.deepEqual(await merge(me,a),{'horde.alive.wind':{n:3,at:500,notes:['tonic','outside'],weapons:[]},'rare.fenix':{n:1,at:900,notes:['tonic'],weapons:['arrow']}})
+  // another browser, with less of one soul and more of another
+  const b={'horde.alive.wind':{n:2,at:300,notes:['leading'],weapons:['blast']},chick:{n:7,at:0,notes:[],weapons:[]},'rare.fenix':{n:4,at:0,notes:'x',weapons:null}}
+  const m=await merge(me,b)
+  assert.deepEqual(m['horde.alive.wind'],{n:3,at:300,notes:['tonic','leading','outside'],weapons:['blast']})
+  assert.deepEqual(m.chick,{n:7,at:0,notes:[],weapons:[]})
+  assert.deepEqual(m['rare.fenix'],{n:4,at:900,notes:['tonic'],weapons:['arrow']},'an unknown date never takes the place of a known one')
+  // the older copy again changes nothing, and an empty one only reads
+  assert.deepEqual(await merge(me,a),m)
+  assert.deepEqual(await merge(me,{}),m)
+  // what is not an entry is left out
+  const j=await merge(me,{'Bad Id':{n:1},'no.count':{at:5},zero:{n:0},text:'x',neg:{n:-3},frac:{n:2.9,at:-5,notes:['tonic']}})
+  assert.deepEqual(Object.keys(j).sort(),['chick','frac','horde.alive.wind','rare.fenix'])
+  assert.deepEqual(j.frac,{n:2,at:0,notes:['tonic'],weapons:[]})
+  await assert.rejects(merge(me,'[1,2]'),/INVALID_SOULS/)
+  await assert.rejects(merge(me,'"x"'),/INVALID_SOULS/)
+  await assert.rejects(merge(me,Object.fromEntries(Array.from({length:401},(_,i)=>[`e${i}`,{n:1}]))),/TOO_MANY_SOULS/)
+  assert.equal(Object.keys(await merge(me,{})).length,4,'a refused merge leaves nothing behind')
+  // each account its own; nobody reads the table
+  assert.deepEqual(await merge(other,{chick:{n:1,at:10,notes:[],weapons:[]}}),{chick:{n:1,at:10,notes:[],weapons:[]}})
+  assert.equal((await merge(me,{})).chick.n,7)
+  await assert.rejects(asUser(other,'select * from online_private.pigchicken_souls'),/permission denied/)
+  // guests keep theirs in the browser
+  try {
+    await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({is_anonymous:true})])
+    await assert.rejects(merge(other,{}),/ACCOUNT_REQUIRED/)
+  } finally { await db.query("select set_config('request.jwt.claims','',false)") }
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
+  await assert.rejects(db.query("select public.pigchicken_souls_merge('{}'::jsonb)"),/permission denied/)
+})

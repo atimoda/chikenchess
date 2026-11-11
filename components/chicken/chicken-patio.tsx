@@ -48,6 +48,7 @@ import { MidiPanel } from "@/components/pigchicken/midi-panel"
 import { onOpenJukebox, onOpenMidiGenerator, onOpenSongEditor } from "@/lib/pigchicken/song-library"
 import { songsOnlineAvailable, startSongSync } from "@/lib/pigchicken/song-online"
 import { startSoulSync } from "@/lib/pigchicken/soul-online"
+import { startSoulSync } from "@/lib/pigchicken/soul-online"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
@@ -147,6 +148,8 @@ export function ChickenPatio() {
   // the jukebox's songs go to the account of whoever is signed in (guests keep them in this browser)
   const songUser = online.user && !online.user.is_anonymous && songsOnlineAvailable() ? online.user.id : null
   useEffect(() => startSongSync(songUser), [songUser])
+  // and so does the soul collection of the Biblioteca de almas
+  useEffect(() => startSoulSync(songUser), [songUser])
   // and so does the soul collection of the Biblioteca de almas
   useEffect(() => startSoulSync(songUser), [songUser])
   useEffect(() => { setPq(loadParquinho()) }, [])

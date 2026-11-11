@@ -2,7 +2,7 @@
 
 Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). A identidade das almas, o cesto, a abdução e o voo das almas soltas ficam em [souls.md](souls.md).
 
-Código: `lib/pigchicken/soul-library.ts` (catálogo, receitas das raras, aparência, fichas editáveis, coleção; puro, mais as cópias deste navegador), fichas publicadas em `data/pigchicken/default-souls.json` (registro no Admin em `lib/admin/catalog.ts`, `validation.ts` e `game-defaults-client.ts`), desenho em `components/pigchicken/draw/soul-art.ts`, painel em `components/pigchicken/soul-library-panel.tsx`, botão no cabeçalho em `components/chicken/chicken-patio.tsx`, aviso de captura em `combat.soulNews` (`lib/pigchicken/combat.ts`), lido por `components/pigchicken/parquinho.tsx`. Testes: `tests/pigchicken-soul-library.cases.cjs` e o último caso de `tests/pigchicken-souls.cases.cjs`.
+Código: `lib/pigchicken/soul-library.ts` (catálogo, receitas das raras, aparência, fichas editáveis, coleção; puro, mais as cópias deste navegador), fichas publicadas em `data/pigchicken/default-souls.json` (registro no Admin em `lib/admin/catalog.ts`, `validation.ts` e `game-defaults-client.ts`), desenho em `components/pigchicken/draw/soul-art.ts`, painel em `components/pigchicken/soul-library-panel.tsx`, botão no cabeçalho em `components/chicken/chicken-patio.tsx`, aviso de captura em `combat.soulNews` (`lib/pigchicken/combat.ts`), lido por `components/pigchicken/parquinho.tsx`. Testes: `tests/pigchicken-soul-library.cases.cjs`, `tests/pigchicken-soul-sync.cases.cjs` (coleção na conta), os dois últimos casos de `tests/pigchicken-souls.cases.cjs` e, para o banco, o caso das almas em `supabase/tests/database.test.cjs`.
 
 ## Catálogo (10/11, v2.7.0)
 
@@ -52,8 +52,21 @@ A classe de voo da alma solta vem da entrada (`entryFollowParams`): a da famíli
 - **Gatilho:** o Passaguá captura um pássaro vivo, um pássaro morto-vivo ou um pintinho que estava no mundo. Alma solta recapturada, tomada de outro player ou chamada pelo Callback não conta de novo.
 - **Efeito:** a entrada daquela alma soma uma captura; a primeira guarda a data; os tipos de nota e as armas vistos ficam marcados.
 - **Aviso:** na primeira captura de uma entrada, o nome dela sobe no ponto da captura, na cor da raridade. Nota ou arma nova numa entrada já conhecida mostra uma ★. Captura repetida não mostra nada.
-- **Onde fica:** neste navegador (`localStorage`, chave `pigchicken-souls-v1`), uma coleção só para todos os players locais. Ela só cresce; não há como apagar pelo jogo. Ainda não é salva na conta.
+- **Onde fica:** neste navegador (`localStorage`, chave `pigchicken-souls-v1`), uma coleção só para todos os players locais. Ela só cresce; não há como apagar pelo jogo. Com conta, vai também para a conta (abaixo).
 - **Escopo:** Pátio e Templo, todos os players locais. No Pátio online, cada navegador registra só as próprias capturas.
+
+## Coleção na conta (11/11, v2.8.0)
+
+Banco em `supabase/migrations/202611110001_pigchicken_souls.sql` (uma linha por conta em `online_private.pigchicken_souls` e a função `pigchicken_souls_merge`); sincronização em `lib/pigchicken/soul-online.ts`, ligada em `components/chicken/chicken-patio.tsx` junto com a das músicas. A migração precisa estar aplicada no Supabase; sem ela, a coleção continua só no navegador e o painel avisa.
+
+- **Quem:** jogador com conta (não visitante), em qualquer Pátio e no Templo. Visitante, ou jogo sem o online configurado, fica só com a cópia do navegador.
+- **Gatilho:** ao abrir o Pátio com a conta; alguns segundos depois de uma captura (as seguidas vão juntas, e no máximo uma ida a cada 30 s); e ao voltar para a aba depois de 5 minutos, para trazer o que outro navegador capturou.
+- **Efeito:** o navegador manda a coleção dele e recebe a da conta já com ela dentro. Cada lado fica com o que o outro encontrou: por alma, a maior contagem, a data mais antiga conhecida e todas as notas e armas vistas. Como a coleção só cresce, não há conflito entre aparelhos e a ordem dos envios não muda o resultado. A junção é a mesma no navegador (`mergeCollections`) e no servidor.
+- **Contagem:** vale a maior das duas, não a soma. Capturas da mesma alma feitas em dois aparelhos antes de sincronizar não se somam.
+- **Troca de conta:** a cópia do navegador não é apagada ao sair. Quem entrar com outra conta no mesmo navegador leva para ela o que estava ali.
+- **Falhas:** sem conexão, a coleção fica no navegador, e a próxima captura ou a volta à aba tenta de novo. Servidor sem a migração não é chamado de novo até a página recarregar.
+- **Limites do servidor:** até 400 entradas por conta; id de entrada só com minúsculas, números, ponto e hífen; o que não é uma entrada válida é ignorado.
+- **Painel:** no alto da lista, uma linha diz onde a coleção está: “Neste navegador. Entre com sua conta para guardar as almas nela.”, “Sincronizando com a sua conta…”, “Na sua conta.” ou o erro. Ela some enquanto o admin edita as fichas.
 
 ## Painel (10/11, v2.7.0)
 
@@ -79,4 +92,4 @@ Só para contas admin (`useIsAdmin`); para as outras o painel não muda.
 
 ## Ainda não implementado
 
-Coleção salva na conta e som próprio de cada alma.
+Som próprio de cada alma.

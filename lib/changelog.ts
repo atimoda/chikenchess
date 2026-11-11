@@ -7,13 +7,15 @@ const RECENT = [
   {
     version: '2.8.0',
     date: '11/11/2026',
-    title: 'Editor das fichas de almas para admin; zonas sonoras em silêncio, com batidas, baixos e limites arrastáveis',
+    title: 'Editor das fichas de almas para admin e coleção de almas na conta; zonas sonoras em silêncio, com batidas, baixos e limites arrastáveis',
     groups: [
       { title: 'Pátio', items: [
         'Biblioteca de almas, para admin: o lápis no cabeçalho do painel liga a edição das fichas. Cada alma abre com nome, raridade, classe de voo, forma, tamanho do pixel, cores e olho brilhante para mudar, mais os números de voo só dela por cima dos da classe.',
         'Nas almas raras o admin também edita a receita (espécies, estado, instrumentos, notas e armas), muda a ordem na lista (a primeira receita que serve leva a alma), cria uma nova, duplica qualquer alma como rara e exclui.',
         'O que o admin muda nas fichas vale na hora no próprio navegador, inclusive para as almas que já voam soltas. Padrão volta uma ficha, ou todas, para as do game, e Salvar no game grava as fichas pelo Admin local para publicar para todos.',
         'No mundo, a alma capturada continua com a cor do alien que ela era (a morta, com o olho na cor da nota), menos nas cores que a ficha dela mudou.',
+        'A coleção da Biblioteca de almas passa a ser guardada na conta de quem está logado: o que você captura num navegador aparece nos outros, e cada aparelho fica com tudo o que os outros encontraram (por alma, a maior contagem, a primeira data e todas as notas e armas). Visitantes continuam com a coleção só no navegador. Depende de uma migração nova no Supabase: enquanto ela não for aplicada, a coleção fica no navegador e o painel avisa.',
+        'No alto da Biblioteca de almas, uma linha mostra onde a coleção está guardada: neste navegador, sincronizando ou na sua conta.',
         'Zonas sonoras começam em Silêncio: as zonas das cenas e toda Zona sonora nova não tocam batida nem baixo até você escolher (o tom, a escala e o andamento continuam valendo para os instrumentos). Vale para o Novo Pátio vazio e para qualquer cena que o Pátio ainda não tinha mudado; zonas que já estavam salvas continuam tocando como antes.',
         'No painel da zona, Batida escolhe o ritmo entre vários estilos (Reto, Meio tempo, Swing, Rock, Disco, Funk, House, Techno, Trap, Boom bap, Bossa nova, Samba, Baião, Reggae, Reggaeton, Afrobeat, Brisa, Feira e Pulso), com volume próprio, e Editar a batida abre uma grade de 16 passos por tambor para montar a sua: cada clique passa por normal, acento e pausa.',
         'Baixo escolhe o grave da zona: Drone, Drone grave ou Pad sustentados, linhas de baixo (Pulsado, Colcheias, Oitavas, Caminhando, Sincopado, Reggae, Baião, Bossa nova) e figuras de synth (Arpejo, Arpejo rápido, Sequência ácida, Contratempo, Acordes no contratempo), todos seguindo o acorde do compasso, com oitava e volume próprios.',
