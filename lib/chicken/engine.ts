@@ -496,9 +496,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       S.vx -= S.airBoost || 0; S.airBoost = 0; S.vy = 0; S.groundJumpT = Infinity
     }
     if (!S.shocking) S.shockFromGround = false
-    // standing on a floating floor, Crouch + Brood + Jump with no direction flips her under it (no shocking prep)
+    // standing on a floating box, Brood + Jump (with or without a sideways direction, never with Up or Down/Crouch)
+    // flips her under it (no shocking prep); Down + Brood + Jump still drops through, Up + Brood + Jump goes up
     const flipPlat = S.grounded && S.plat && !S.held && !S.cl ? segById(S.plat) : null
-    const flipUnder = jumpPressed && Dk && C && Lh === Rh && !!flipPlat && !flipPlat.solid
+    const flipUnder = jumpPressed && Dk && !C && !U && !!flipPlat && !flipPlat.solid && canHangUnder(flipPlat)
     if (jumpPressed && D && !S.cl && !S.held && !flipUnder) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
     if (S.shocking && !J) {
       if (Dk && !S.grounded && !S.shockFromGround) { airShockReleased = true; airChargeMultiplier = shockingAirMultiplier(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirMaxMultiplier) }
@@ -529,7 +530,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.lastInputDir = inputDir
     const against = inputDir !== 0 && S.turnDir === inputDir && S.turnFace === -inputDir && nowS - S.turnT < SWITCH_GRACE
     if (S.held) { heldStep(dt); return }
-    if (S.cl) { clingStep(dt, dir, U, D || C, jumpPressed, RUN, against); return }
+    if (S.cl) { clingStep(dt, dir, U, D || C, jumpPressed, RUN, against, Dk && !C && !U); return }
     // Floating walls grab while she passes without a movement control, or if she is looking straight up.
     // Up is therefore the one direction that does not block an airborne grab on contact.
     S.noGrab = Lh || Rh || Dk || C || J || RUN
@@ -636,8 +637,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // held, or no direction at all, it is the shocking jump up. Down (crouch) + jump with no sideways direction also
     // drops (with a direction it is the normal super jump up)
     const plat = S.grounded && S.plat ? segById(S.plat) : null
-    // ...but all three together (Crouch + Brood + Jump, no direction) flip her under it, upside down
-    if (flipUnder && jumpPressed && plat && !plat.solid && dir === 0 && hangUnder(plat, S.face)) {
+    // ...but on a floating box, Brood + Jump without Up or Down flips her under it, upside down (see flipUnder)
+    if (flipUnder && jumpPressed && plat && !plat.solid && hangUnder(plat, S.face)) {
       clingPose(dt, U, false); return
     } else if (jumpPressed && plat && !plat.solid && !U && (D ? dir !== 0 || C : C && dir === 0)) {
       S.dropId = plat.id; S.dropT = 0.3; S.grounded = false; S.plat = null; S.sliding = false
@@ -1060,6 +1061,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (n2[0] * toward[0] + n2[1] * toward[1] < 0) n2 = [u2[1], -u2[0]]
     return n2
   }
+  // whether the floating floor is a box top with an underside right below her (where hangUnder would put her)
+  function canHangUnder(plat: Seg) {
+    const bp = boxPart(plat.id)
+    return !!bp && bp.part === 'top' && !!partAt(bp.base, 'under', S.x, null)
+  }
   // standing on a floating box: hang upside down from its underside, right below (switching sides)
   function hangUnder(plat: Seg, look: number) {
     const bp = boxPart(plat.id)
@@ -1113,7 +1119,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.squash = 0.5; sfx('grab')
     return true
   }
-  function clingStep(dt: number, dir: number, U: boolean, Dn: boolean, jumpPressed: boolean, RUN: boolean, against: boolean) {
+  function clingStep(dt: number, dir: number, U: boolean, Dn: boolean, jumpPressed: boolean, RUN: boolean, against: boolean, broodFlip = false) {
     const vup = (U ? 1 : 0) - (Dn ? 1 : 0)
     const c = S.cl, sg = segById(c.id)
     if (!sg) { letGo(0, 0); return }
@@ -1126,8 +1132,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const ux = (sg.bx - sg.ax) / sg.len, uy = (sg.by - sg.ay) / sg.len
     const hanging = c.n[1] > 0.7
     // Jump against her look (or into the collider: Up under a ceiling, toward a wall) on a floating collider
-    // switches her to its other side
-    if (jumpPressed && (hanging ? against || U : dir !== 0 && dir * c.n[0] < 0) && switchSide(sg)) {
+    // switches her to its other side; hanging, Brood + Jump (without Up or Down) does too
+    if (jumpPressed && (hanging ? against || U || broodFlip : dir !== 0 && dir * c.n[0] < 0) && switchSide(sg)) {
       if (S.cl) clingPose(dt, U, Dn)
       else { S.state = 'idle'; animate(dt, 'idle', false, 0) }
       return
