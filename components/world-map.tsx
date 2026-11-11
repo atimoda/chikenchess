@@ -130,10 +130,6 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [showAbout, setShowAbout] = useState(false)
   const [aboutTab, setAboutTab] = useState<'about' | 'releases'>('about')
   const [profileTabRequested, setProfileTabRequested] = useState(false)
-  const [eggLabelExpanded, setEggLabelExpanded] = useState(true)
-  const eggLabelPointerHoveredRef = useRef(false)
-  const eggLabelFocusedRef = useRef(false)
-  const eggLabelAutoCollapsedRef = useRef(false)
   const [currentZoom, setCurrentZoom] = useState(100)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [focusedCityId, setFocusedCityId] = useState<string | null>(null)
@@ -142,23 +138,6 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const introLogoRef = useRef<HTMLDivElement>(null)
 
   const padSoundTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  useEffect(() => {
-    const collapseTimer = window.setTimeout(() => {
-      eggLabelAutoCollapsedRef.current = true
-      if (!eggLabelPointerHoveredRef.current && !eggLabelFocusedRef.current) setEggLabelExpanded(false)
-    }, 5000)
-    return () => {
-      window.clearTimeout(collapseTimer)
-    }
-  }, [])
-
-  const revealEggLabel = () => {
-    setEggLabelExpanded(true)
-  }
-  const hideEggLabel = () => {
-    if (eggLabelAutoCollapsedRef.current && !eggLabelPointerHoveredRef.current && !eggLabelFocusedRef.current) setEggLabelExpanded(false)
-  }
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1352,15 +1331,10 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             size="default"
             aria-label={`Abrir perfil do jogador. ${playerProfile?.goldenEggs ?? 0} ovos dourados`}
             onClick={() => setProfileTabRequested(true)}
-            onMouseEnter={() => { eggLabelPointerHoveredRef.current = true; revealEggLabel() }}
-            onMouseLeave={() => { eggLabelPointerHoveredRef.current = false; hideEggLabel() }}
-            onFocus={() => { eggLabelFocusedRef.current = true; revealEggLabel() }}
-            onBlur={() => { eggLabelFocusedRef.current = false; hideEggLabel() }}
             className="h-9 cursor-pointer gap-[7px] border-white/10 bg-black/50 px-3 font-mono text-xs text-amber-300 backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
             <span className="inline-flex min-w-0 items-center whitespace-nowrap">
               <span>{(playerProfile?.goldenEggs ?? 0).toLocaleString()}</span>
-              <span aria-hidden={!eggLabelExpanded} className={cn("inline-block overflow-hidden whitespace-nowrap transition-[max-width,margin,opacity] duration-500 ease-in-out", eggLabelExpanded ? "ml-[6px] max-w-[90px] opacity-100" : "max-w-0 opacity-0")}>golden eggs</span>
             </span>
             <svg aria-hidden="true" viewBox="0 0 16 20" className="h-5 w-4">
               <path d="M8 1.5c-3.2 0-6 6.3-6 11.3a6 6 0 0 0 12 0c0-5-2.8-11.3-6-11.3Z" fill="#facc15" stroke="#ca8a04" strokeWidth="1.2" />

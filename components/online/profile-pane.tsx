@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, Eye, EyeOff, Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cities } from '@/lib/cities-data'
-import { resetCampaign, resetSeenMatchTips, type PlayerProfile } from '@/lib/game-progression'
+import { resetCampaign, type PlayerProfile } from '@/lib/game-progression'
 import { onlineErrorMessage } from '@/lib/online/client'
 import { useOnline } from './online-provider'
 
@@ -17,7 +17,6 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
   const [showEmail, setShowEmail] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [tipsReset, setTipsReset] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const identityRef = useRef(online.user?.id)
   identityRef.current = online.user?.id
@@ -59,7 +58,6 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
               <div className="flex flex-wrap justify-end gap-2"><Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setEditing(false); setError(null) }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Check />}Save</Button></div>
               {googleName && <button type="button" className="text-xs text-white/55 underline underline-offset-4" disabled={busy} onClick={() => void saveName(googleName)}>Use Google name</button>}
             </form>}
-            {online.profile && <p className="break-words text-xs text-white/60">{online.profile.baptismal_name && online.profile.display_name !== online.profile.baptismal_name && <>Baptismal name: {online.profile.baptismal_name}<br /></>}Profile code: <span className="select-all break-all">{online.profile.code}</span></p>}
             <div className="space-y-1.5 text-xs text-white/60">
               <span className="inline-flex items-center gap-1 text-amber-300">
                 <ProfileEggIcon golden />
@@ -70,37 +68,29 @@ export function ProfilePane({ playerProfile, onSignIn }: { playerProfile: Player
               <p className="flex items-center gap-1"><span aria-hidden="true">🎖️</span>{playerProfile?.rank || 'Novice Beatmaker'}</p>
               <div className="space-y-2">
                 <p><span aria-hidden="true">🏆</span> Campaign (Cities Conquered): <strong className="font-normal text-primary">{playerProfile?.conqueredCityIds?.length || 0}</strong> / {cities.length}</p>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((playerProfile?.conqueredCityIds?.length || 0) / cities.length) * 100}%` }} />
+                <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div aria-hidden="true" className="absolute inset-y-0 right-0 bg-secondary" style={{ left: `${((playerProfile?.conqueredCityIds?.length || 0) / cities.length) * 100}%`, backgroundImage: 'repeating-linear-gradient(90deg, transparent 0 5px, rgba(0, 255, 160, 0.48) 5px 6px), repeating-linear-gradient(0deg, rgba(0, 255, 160, 0.48) 0 2px, transparent 2px 4px)' }} />
+                  <div className="relative h-full bg-primary transition-all duration-500" style={{ width: `${((playerProfile?.conqueredCityIds?.length || 0) / cities.length) * 100}%` }} />
                 </div>
               </div>
             </div>
             {!online.user || online.user.is_anonymous ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Sign in to save your profile</Button>
               : online.pendingTransfer ? <Button className="h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs sm:text-sm" onClick={onSignIn}>Integrar perfil visitante</Button>
-                : online.user.email ? (
-                  <div className="flex items-center gap-1.5 text-xs text-white/60">
-                    <span>Mail:</span>
-                    <button type="button" className="inline-flex size-5 shrink-0 items-center justify-center rounded text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" aria-label={showEmail ? 'Hide email address' : 'Show email address'} title={showEmail ? 'Hide email address' : 'Show email address'} onClick={() => setShowEmail(value => !value)}>
-                      {showEmail ? <EyeOff aria-hidden="true" className="size-3.5" /> : <Eye aria-hidden="true" className="size-3.5" />}
-                    </button>
-                    <span className="break-all">{showEmail ? online.user.email : maskEmail(online.user.email)}</span>
-                  </div>
-                ) : null}
+                : null}
             {(error || online.error) && <p role="alert" className="text-xs text-rose-200">{error || online.error}</p>}
             {message && <p role="status" className="text-xs text-primary">{message}</p>}
-            <div className="flex items-center justify-end gap-3 pt-3">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetSeenMatchTips()
-                    setTipsReset(true)
-                    setTimeout(() => setTipsReset(false), 2000)
-                  }}
-                  className="rounded border border-white/10 px-3 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-amber-400/30 hover:bg-amber-500/10 hover:text-amber-200"
-                >
-                  {tipsReset ? 'TIPS RESET (0)' : 'RESET TIPS'}
-                </button>
+            <div className="flex items-end justify-between gap-3 pt-3">
+              <div className="min-w-0 text-xs text-white/60">
+                {online.profile && <div className="break-words">{online.profile.baptismal_name && online.profile.display_name !== online.profile.baptismal_name && <div>Baptismal name: {online.profile.baptismal_name}</div>}<div>Profile code: <span className="select-all break-all">{online.profile.code}</span></div></div>}
+                {online.user?.email && <div className="flex min-w-0 items-center gap-1.5">
+                  <span>Mail:</span>
+                  <button type="button" className="inline-flex size-4 shrink-0 items-center justify-center rounded text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" aria-label={showEmail ? 'Hide email address' : 'Show email address'} title={showEmail ? 'Hide email address' : 'Show email address'} onClick={() => setShowEmail(value => !value)}>
+                    {showEmail ? <EyeOff aria-hidden="true" className="size-3.5" /> : <Eye aria-hidden="true" className="size-3.5" />}
+                  </button>
+                  <span className="break-all">{showEmail ? online.user.email : maskEmail(online.user.email)}</span>
+                </div>}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
