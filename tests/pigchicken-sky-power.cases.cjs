@@ -194,3 +194,43 @@ test('the sky\'s texture: size, streaks, grain and blend', () => {
   assert.equal(S.normalizeSky({ texBlend: 'difference' }).texBlend, 'soft')
   assert.equal(S.skyLook(S.SKY_DEFAULT).textureLook.blend, 'soft-light')
 })
+
+test('links: any pole to any other of its kind, whatever the model, line or order', () => {
+  const a = pole(200, {}, { links: [] }), b = pole(700, {}, { links: [], line: 3 }), c = pole(1200, {}, { links: [], model: 'rua' })
+  let els = [a, b, c]
+  assert.equal(P.powerSpans(els).length, 0)
+  const r = P.toggleLink(els, a.id, c.id)
+  assert.equal(r.linked, true)
+  els = r.elements
+  assert.deepEqual(P.powerPairs(els).map(([x, y]) => [x.id, y.id]), [[a.id, c.id]])
+  assert.deepEqual([...P.linkedTo(els, c.id)], [a.id])
+  // the same click again takes the wire away, from either end
+  assert.equal(P.toggleLink(els, c.id, a.id).linked, false)
+  assert.equal(P.powerSpans(P.toggleLink(els, c.id, a.id).elements).length, 0)
+  // a tower never joins a pole
+  const t = L.normalizeElement({ ...L.createElement('tower', 900, 500), params: { power: { ...P.defaultPower('tower'), links: [] } } })
+  assert.equal(P.toggleLink([...els, t], a.id, t.id), null)
+  // a removed pole leaves no link behind
+  assert.deepEqual(P.dropLinks(els, c.id).find(e => e.id === a.id).params.power.links, [])
+})
+
+test('links: a Pátio saved before them keeps its wires, and turning them into links keeps the same ones', () => {
+  const els = [pole(1200), pole(200), pole(700)]
+  const before = P.powerPairs(els).map(([x, y]) => `${x.id}|${y.id}`).sort()
+  const made = P.materializeLinks(els)
+  assert.ok(made.every(e => Array.isArray(e.params.power.links)))
+  assert.deepEqual(P.powerPairs(made).map(([x, y]) => `${x.id}|${y.id}`).sort(), before)
+  // a new model goes to every pole reached through the wires, not to an unwired one of the same line
+  const lone = pole(2000, {}, { links: [] })
+  const all = [...made, lone]
+  const after = { ...made[1], params: { ...made[1].params, power: { ...made[1].params.power, model: 'rua' } } }
+  const next = P.spreadPower(all, made[1], after)
+  assert.deepEqual(next.map(e => e.params.power.model), ['rua', 'rua', 'rua', 'madeira'])
+})
+
+test('links survive normalizing, deduplicated and capped', () => {
+  const ids = Array.from({ length: 20 }, (_, i) => `p${i % 15}`)
+  const p = P.normalizePower('pole', { links: [...ids, 3, ''] })
+  assert.equal(p.links.length, P.POWER_LINKS_MAX)
+  assert.equal(P.normalizePower('pole', {}).links, undefined)
+})

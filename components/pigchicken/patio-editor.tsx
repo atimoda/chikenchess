@@ -104,13 +104,13 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   const [scenePanel, setScenePanel] = useState<number | null>(null)
   const selectedRef = useRef(selected)
   selectedRef.current = selected
-
-  const select = useCallback((id: string | null) => { setSelected(id); setPanel(""); setLinking(false) }, [])
   // "Ligar fios" on the selected pole or tower: a click on another one of its kind wires them, or unwires them
   const [linking, setLinking] = useState(false)
   const linkingRef = useRef(linking)
   linkingRef.current = linking
   useEffect(() => { if (panel !== "edit") setLinking(false) }, [panel])
+
+  const select = useCallback((id: string | null) => { setSelected(id); setPanel(""); setLinking(false) }, [])
   // switching the editor off lets go of the selection and its panels
   useEffect(() => { if (!active) { select(null); setScenePanel(null) } }, [active, select])
   // a deleted (or undone) element is no longer selected
@@ -217,9 +217,9 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return
       const mod = e.ctrlKey || e.metaKey
+      if (e.code === "Escape" && linkingRef.current) { e.preventDefault(); setLinking(false); return }
       if (e.code === "Escape" && selectedRef.current) { e.preventDefault(); select(null); return }
       if (mod && e.code === "KeyZ") { e.preventDefault(); if (e.shiftKey) forward(); else back(); return }
-      if (e.code === "Escape" && linkingRef.current) { e.preventDefault(); setLinking(false); return }
       if (mod && e.code === "KeyY") { e.preventDefault(); forward(); return }
       if (mod && e.code === "KeyD") {
         e.preventDefault()
@@ -248,8 +248,6 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   const begin = (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault(); e.stopPropagation()
-    // the first click only selects: dragging needs the element selected
-    if (selectedRef.current !== el.id) { select(el.id); return }
     // wiring: another pole or tower of the same kind is wired to the selected one (or unwired); a new wire moves
     // the selection to it, to go on with the line
     const from = selectedRef.current
@@ -258,6 +256,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       if (r) { commit({ ...layoutRef.current, elements: r.elements }); if (r.linked) setSelected(el.id) }
       return
     }
+    // the first click only selects: dragging needs the element selected
+    if (selectedRef.current !== el.id) { select(el.id); return }
     if (el.locked) return
     gesture.current = { kind, id: el.id, pointer: e.pointerId, sx: e.clientX, sy: e.clientY, start: el, corner, moved: false }
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
@@ -307,19 +307,19 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   const worldRef = useRef<HTMLDivElement>(null)
   useEffect(() => (active && worldRef.current ? followCamera(worldRef.current) : undefined), [active])
   const width = worldScenes(screens) * SCENE_W
+  const wired = useMemo(() => linking && selected ? linkedTo(layout.elements, selected) : new Set<string>(), [linking, selected, layout.elements])
 
   return (
-  const wired = useMemo(() => linking && selected ? linkedTo(layout.elements, selected) : new Set<string>(), [linking, selected, layout.elements])
     <>
       <style>{`
         [data-patio-hit] { cursor: pointer; }
         [data-patio-hit]:hover { outline: 1px solid rgba(255,209,102,.7); outline-offset: 2px; }
         [data-patio-hit][data-sel] { outline: 2px solid #ffd166; outline-offset: 2px; cursor: move; }
         [data-patio-hit][data-sel][data-locked] { outline-color: #9aa0a8; cursor: not-allowed; }
-        .patio-corner { position: absolute; width: 28px; height: 28px; touch-action: none; display: grid; place-items: center; }
-        .patio-corner span { width: 12px; height: 12px; border: 0 solid #ffd166; }
         [data-patio-hit][data-link] { outline: 1px dashed rgba(123,223,242,.8); outline-offset: 2px; cursor: crosshair; }
         [data-patio-hit][data-link="on"] { outline: 2px solid #7bdff2; }
+        .patio-corner { position: absolute; width: 28px; height: 28px; touch-action: none; display: grid; place-items: center; }
+        .patio-corner span { width: 12px; height: 12px; border: 0 solid #ffd166; }
         @media (pointer: coarse) { .patio-corner { width: 44px; height: 44px; } .patio-corner span { width: 16px; height: 16px; } }
       `}</style>
       {active && <div data-patio-editor className="pointer-events-none fixed inset-0 z-[203] overflow-hidden">
@@ -397,9 +397,9 @@ const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, e
       data-patio-hit={el.id}
       data-sel={selected || undefined}
       data-locked={el.locked || undefined}
+      data-link={link}
       aria-label={d.label}
       className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry") && "z-[1]")}
-      data-link={link}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
       onPointerMove={onMove}
@@ -537,7 +537,7 @@ function PowerFields({ el, power, onChange, linking = false, onLinking }: { el: 
     </label>
     {onLinking && <button type="button" aria-pressed={linking} onClick={() => onLinking(!linking)}
       title={`Clique em ${kind === "pole" ? "outro poste" : "outra torre"} para ligar os fios, ou desligar se já estiverem ligados. A seleção passa para ${kind === "pole" ? "o ligado" : "a ligada"}, para seguir a linha. Esc termina.`}
-      className={cn("h-9 rounded-md border", linking ? "border-[#7bdff2] bg-[#7bdff2]/15 text-white" : "border-white/15 hover:border-white/40")}>Ligar fios</button>}
+      className={cn("h-9 shrink-0 rounded-md border", linking ? "border-[#7bdff2] bg-[#7bdff2]/15 text-white" : "border-white/15 hover:border-white/40")}>Ligar fios</button>}
     <div className="grid gap-[3px]">
       <PatioRange label="Caimento dos fios" min={POWER_SAG.min} max={POWER_SAG.max} step={POWER_SAG.step} value={power.sag} display={`${power.sag}%`}
         changed={power.sag !== POWER_SAG.default} onReset={() => set({ sag: POWER_SAG.default })} onChange={sag => set({ sag }, `sag:${el.id}`)} />
