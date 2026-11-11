@@ -46,6 +46,9 @@ const RECENT = [
         'Na Jukebox, enquanto uma música (ou a Campanha do Gongo) toca, o botão Tocar vira Parar.',
         'Editor de música: o botão + Alien põe um alien no cursor, e escolher uma variação na lista ao lado já põe um alien dela; o nome da música é editado direto no título; as pausas podem ser arrastadas para outro compasso; arrastar na régua de tempo move o cursor e a prévia acompanha (com a música tocando, ao soltar ela segue dali); Tom, Escala e Cor perdem os rótulos.',
       ] },
+      { title: 'Mapa', items: [
+        'Na lista de campanhas do globo, as cidades da África, das campanhas World e as últimas do Brazilian voltam a aparecer: no fim da lista algumas linhas ficavam invisíveis depois da animação de entrada.',
+      ] },
     ],
   },
   {

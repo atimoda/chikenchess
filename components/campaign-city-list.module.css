@@ -67,9 +67,12 @@
 
 /* Rows appear one after another, campaign titles included, without sliding
    or fading; when the list leaves they vanish in the same order. The step
-   (18 ms) matches ROW_STEP_MS in campaign-city-list.tsx. */
+   (18 ms) matches ROW_STEP_MS in campaign-city-list.tsx. step-start flips
+   the row as soon as its delay ends; step-end over 1 ms could land on a
+   rounded progress just under 1 for delays past one second and leave the
+   last campaigns hidden. */
 .row {
-  animation: rowAppear 1ms step-end both;
+  animation: rowAppear 1ms step-start both;
   animation-delay: calc(var(--row, 0) * 18ms);
 }
 
