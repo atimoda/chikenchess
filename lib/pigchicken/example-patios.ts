@@ -28,7 +28,7 @@ export const SUNSET_SKY: SkyParams = {
     { at: 0, color: '#161a46' }, { at: 0.2, color: '#3d2a6b' }, { at: 0.38, color: '#7e3577' }, { at: 0.55, color: '#c94a66' },
     { at: 0.7, color: '#ef6f43' }, { at: 0.84, color: '#ffa33a' }, { at: 0.94, color: '#ffd36a' }, { at: 1, color: '#fff0b8' },
   ],
-  sunSize: 58, glow: 85, clouds: 35, texture: 30, haze: 55, silhouette: 85, light: 70, forest: true, radial: 45, radialX: 0, radialY: 25, sunColor: '', glowSize: 120, starCount: 100, starSize: 100, starGlow: 100,
+  sunSize: 58, glow: 85, clouds: 35, texture: 30, haze: 55, silhouette: 85, light: 70, forest: true, radial: 45, radialX: 0, radialY: 25, sunColor: '', glowSize: 120, starCount: 100, starSize: 100, starGlow: 100, texScale: 120, texStreak: 60, texGrain: 40, texBlend: 'soft',
 }
 
 export function sunsetPowerLayout(): PatioLayout {

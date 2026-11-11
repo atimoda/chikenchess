@@ -6,7 +6,7 @@
 import { Plus, X } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { cn } from "@/lib/utils"
-import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_RADIAL_X, SKY_SCALE, SKY_STAR_COUNT, SKY_STAR_GLOW, SKY_STOPS, SKY_SUN, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
+import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_RADIAL_X, SKY_SCALE, SKY_STAR_COUNT, SKY_BLENDS, SKY_STAR_GLOW, SKY_STOPS, SKY_SUN, SKY_TEX_SCALE, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_PCT, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHAPES, type MountainParams } from "@/lib/pigchicken/mountains"
 import { CLOUDS_DEFAULT, CLOUD_OPACITY, CLOUD_PCT, CLOUD_SCALE, CLOUD_SHAPES, CLOUD_WIND, type CloudParams } from "@/lib/pigchicken/clouds"
 
@@ -84,6 +84,20 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         {pct("Brilho do sol", "glow", "A força do halo do sol e da luz ao longo do horizonte embaixo dele.")}
         {scaled("Alcance do brilho", "glowSize", SKY_SCALE, "Até onde o brilho radiante do sol se espalha.")}
         {pct("Textura", "texture", "Um grão suave com estrias horizontais por cima do céu.")}
+        {s.texture > 0 && <>
+          <PatioRange label="Tamanho da textura" min={SKY_TEX_SCALE.min} max={SKY_TEX_SCALE.max} step={SKY_TEX_SCALE.step} value={s.texScale} display={`${s.texScale}%`}
+            changed={s.texScale !== SKY_DEFAULT.texScale} onReset={() => set({ texScale: SKY_DEFAULT.texScale })} onChange={texScale => set({ texScale })} hint="O tamanho das estrias e do grão." />
+          <PatioRange label="Estrias" min={0} max={100} value={s.texStreak} display={`${s.texStreak}%`}
+            changed={s.texStreak !== SKY_DEFAULT.texStreak} onReset={() => set({ texStreak: SKY_DEFAULT.texStreak })} onChange={texStreak => set({ texStreak })} hint="As faixas longas e horizontais, como pinceladas." />
+          <PatioRange label="Grão" min={0} max={100} value={s.texGrain} display={`${s.texGrain}%`}
+            changed={s.texGrain !== SKY_DEFAULT.texGrain} onReset={() => set({ texGrain: SKY_DEFAULT.texGrain })} onChange={texGrain => set({ texGrain })} hint="O pontilhado fino, como papel." />
+          <div role="radiogroup" aria-label="Mistura da textura" className="grid grid-cols-4 gap-1" title="Como a textura se mistura às cores do céu">
+            {SKY_BLENDS.map(b => (
+              <button key={b.id} type="button" role="radio" aria-checked={s.texBlend === b.id} onClick={() => set({ texBlend: b.id })}
+                className={cn("h-8 rounded-md border", s.texBlend === b.id ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-white/40")}>{b.label}</button>
+            ))}
+          </div>
+        </>}
         {pct("Névoa", "haze", "As montanhas, as árvores ao longe e os postes no fundo somem na cor do horizonte.")}
         {pct("Contraluz", "silhouette", "O cenário escurece até virar silhueta contra o céu. Bonecos, itens e tiros mantêm as cores.")}
         {pct("Luz no pátio", "light", "Quanto a hora do dia ilumina, escurece e esquenta o cenário do Pátio.")}

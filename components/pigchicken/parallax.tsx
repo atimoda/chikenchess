@@ -130,8 +130,9 @@ function clouds(w: number, seed: number, size = 1, height = 0.5, spread = 0.5) {
   return out
 }
 
-// the sky's texture: a soft grain with long horizontal streaks, made once per strength as a small tile
-function useSkyTexture(strength: number) {
+// the sky's texture: a soft grain with long horizontal streaks, made once per strength, streaks and grain (0.5 is
+// the usual mix) as a small tile
+function useSkyTexture(strength: number, streak = 0.5, grain = 0.5) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     if (strength <= 0) { setUrl(null); return }
@@ -141,11 +142,14 @@ function useSkyTexture(strength: number) {
     if (!ctx) return
     const img = ctx.createImageData(256, 128), r = rng(97)
     for (let y = 0; y < 128; y++) {
-      // a row's own drift (the streak) plus fine grain
+      // a row's own drift (the streak) plus fine grain. The drift is walked over two tile widths and the two halves
+      // are cross-faded, so the row ends where it starts and the tile repeats without a seam
+      const walk: number[] = []
       let row = r() - 0.5
+      for (let k = 0; k < 512; k++) { row += (r() - 0.5) * 0.08; row *= 0.985; walk.push(row) }
       for (let x = 0; x < 256; x++) {
-        row += (r() - 0.5) * 0.08; row *= 0.985
-        const v = 128 + (row * 0.9 + (r() - 0.5) * 0.6) * 255
+        const t = x / 256, drift = walk[x + 256] * (1 - t) + walk[x] * t
+        const v = 128 + (drift * 1.8 * streak + (r() - 0.5) * 1.2 * grain) * 255
         const i = (y * 256 + x) * 4
         img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.max(0, Math.min(255, v))
         img.data[i + 3] = Math.round(255 * Math.min(1, strength) * 0.55)
@@ -153,7 +157,7 @@ function useSkyTexture(strength: number) {
     }
     ctx.putImageData(img, 0, 0)
     setUrl(c.toDataURL())
-  }, [strength])
+  }, [strength, streak, grain])
   return url
 }
 
@@ -244,7 +248,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   const cloudLit = cloudSet.tintAmount > 0 ? mix(look.clouds.lit, cloudSet.tint, cloudSet.tintAmount / 100) : look.clouds.lit
   const cloudShade = mix(cloudLit, cloudSet.tintAmount > 0 ? mix(look.clouds.shade, cloudSet.tint, cloudSet.tintAmount / 200) : look.clouds.shade, cloudSet.volume / 100)
   const cloudAlpha = look.clouds.opacity * cloudSet.opacity / 100
-  const texture = useSkyTexture(look.texture)
+  const texture = useSkyTexture(look.texture, look.textureLook.streak, look.textureLook.grain)
   const { treeFar, treeNear } = shapes
   const amount = cloudSet.amount / 100
   const shownClouds = amount >= 1 ? cloudList : cloudList.filter((_, i) => ((i * 0.618) % 1) < amount)
@@ -273,7 +277,8 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         }} />}
       {texture && <div className="absolute" style={{
         left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: -1600, height: G + 1600,
-        backgroundImage: `url(${texture})`, backgroundSize: "1024px 256px", mixBlendMode: "soft-light",
+        backgroundImage: `url(${texture})`, backgroundSize: `${Math.round(1024 * look.textureLook.scale)}px ${Math.round(256 * look.textureLook.scale)}px`,
+        mixBlendMode: look.textureLook.blend as React.CSSProperties["mixBlendMode"],
       }} />}
       <Layer p={0.97} w={wSun}>
         <defs>

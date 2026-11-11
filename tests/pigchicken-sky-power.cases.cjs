@@ -186,3 +186,11 @@ test('the empty and the example Pátios have no Templo nor Vila', () => {
   assert.equal(PS.patioTemple(PS.normalizePatioSettings({ temple: false })), false)
   assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(L.emptyLayout()))).settings, { temple: false })
 })
+
+test('the sky\'s texture: size, streaks, grain and blend', () => {
+  const sky = S.normalizeSky({ ...S.SKY_DEFAULT, texScale: 9999, texStreak: 80, texGrain: -4, texBlend: 'multiply' })
+  assert.equal(sky.texScale, 400); assert.equal(sky.texGrain, 0); assert.equal(sky.texBlend, 'multiply')
+  assert.deepEqual(S.skyLook(sky).textureLook, { scale: 4, streak: 0.8, grain: 0, blend: 'multiply' })
+  assert.equal(S.normalizeSky({ texBlend: 'difference' }).texBlend, 'soft')
+  assert.equal(S.skyLook(S.SKY_DEFAULT).textureLook.blend, 'soft-light')
+})

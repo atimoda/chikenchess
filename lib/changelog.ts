@@ -25,6 +25,7 @@ const RECENT = [
         'O Pátio vazio e o Pátio de exemplo do pôr do sol nascem sem o Templo do Gongo (gongo, jukebox e os suportes de armas da entrada) e sem a Vila no fim; em Configurações do Pátio, Templo e Vila liga ou desliga os dois em qualquer Pátio.',
         'Montanhas: Altura agora sobe as cordilheiras na tela, o antigo Altura virou Inclinação, Cordilheiras vai até 6, Relevo sombreia as encostas, e a neve ganha Pontas (línguas descendo pelas encostas) e Sombra azulada.',
         'Céu e luz ganha Cor do sol, Alcance do brilho e Estrelas (quantidade, tamanho e intensidade); as nuvens ganham a categoria Nuvens: quantidade, tamanho, altura no céu, espalhamento, opacidade, suavidade, volume, vento, cor e Sortear forma.',
+        'A textura do céu ganha Tamanho, Estrias, Grão e a mistura com o céu (Suave, Forte, Escurece ou Clareia), e não mostra mais emenda entre os ladrilhos.',
       ] },
     ],
   },

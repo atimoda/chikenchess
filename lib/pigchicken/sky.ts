@@ -6,6 +6,9 @@
 // radial (0 to 100) curves the bands into rings around a centre under the sun (0: straight bands); radialX
 // (-100 to 100) moves that centre sideways and radialY (0 to 100) sinks it below the horizon (flatter, wider rings).
 // sunColor: the sun's colour ('' follows the hour); glowSize: how far its radiant glow reaches (30 to 300%).
+// The texture (Textura = how strong): texScale 25 to 400% (the tile's size), texStreak and texGrain 0 to 100 (the
+// long horizontal streaks and the fine grain; 50 is the usual), texBlend how it mixes with the sky ('soft' soft-light,
+// 'overlay', 'multiply' darkens, 'screen' lightens).
 // starCount, starSize (0/30 to 300%) and starGlow (0 to 200%): how many stars, how big, how bright (the hour still
 // decides when they show). The mountains and the clouds have their own settings (mountains.ts, clouds.ts).
 // A Pátio without `sky` keeps the classic dusk the code always drew (classicLook).
@@ -16,7 +19,14 @@ export type SkyParams = {
   sunSize: number; glow: number; clouds: number; texture: number; haze: number; silhouette: number; light: number
   forest: boolean; radial: number; radialX: number; radialY: number
   sunColor: string; glowSize: number; starCount: number; starSize: number; starGlow: number
+  texScale: number; texStreak: number; texGrain: number; texBlend: SkyBlend
 }
+export type SkyBlend = 'soft' | 'overlay' | 'multiply' | 'screen'
+export const SKY_BLENDS: { id: SkyBlend; label: string; css: string }[] = [
+  { id: 'soft', label: 'Suave', css: 'soft-light' }, { id: 'overlay', label: 'Forte', css: 'overlay' },
+  { id: 'multiply', label: 'Escurece', css: 'multiply' }, { id: 'screen', label: 'Clareia', css: 'screen' },
+]
+export const SKY_TEX_SCALE = { min: 25, max: 400, step: 5 } as const
 
 export const SKY_HOUR = { min: 0, max: 24, step: 0.1 } as const
 export const SKY_STOPS = { min: 2, max: 8 } as const
@@ -85,6 +95,7 @@ export const SKY_DEFAULT: SkyParams = {
   hour: 18.2, follow: true, stops: hourStops(18.2), sunSize: 45, glow: 65, clouds: 45, texture: 25, haze: 50, silhouette: 70, light: 60,
   forest: true, radial: 0, radialX: 0, radialY: 0,
   sunColor: '', glowSize: 100, starCount: 100, starSize: 100, starGlow: 100,
+  texScale: 100, texStreak: 50, texGrain: 50, texBlend: 'soft',
 }
 
 // ---------- cleaning ----------
@@ -114,6 +125,9 @@ export function normalizeSky(raw: unknown): SkyParams | undefined {
     starCount: Math.round(num(r.starCount, d.starCount, SKY_STAR_COUNT.min, SKY_STAR_COUNT.max)),
     starSize: Math.round(num(r.starSize, d.starSize, SKY_SCALE.min, SKY_SCALE.max)),
     starGlow: Math.round(num(r.starGlow, d.starGlow, SKY_STAR_GLOW.min, SKY_STAR_GLOW.max)),
+    texScale: Math.round(num(r.texScale, d.texScale, SKY_TEX_SCALE.min, SKY_TEX_SCALE.max)),
+    texStreak: pct(r.texStreak, d.texStreak), texGrain: pct(r.texGrain, d.texGrain),
+    texBlend: SKY_BLENDS.some(b => b.id === r.texBlend) ? r.texBlend as SkyBlend : d.texBlend,
   }
 }
 
@@ -140,7 +154,7 @@ export function randomSky(rand: () => number = Math.random, keep?: Partial<SkyPa
   return {
     ...SKY_DEFAULT, ...keep, hour, follow: false, stops,
     sunSize: Math.round(between(25, 90)), glow: Math.round(between(35, 100)), clouds: Math.round(between(0, 90)),
-    texture: Math.round(between(0, 60)), haze: Math.round(between(20, 85)), silhouette: Math.round(between(40, 100)),
+    texture: Math.round(between(0, 60)), texScale: Math.round(between(60, 200) / 5) * 5, texStreak: Math.round(between(20, 85)), texGrain: Math.round(between(15, 70)), haze: Math.round(between(20, 85)), silhouette: Math.round(between(40, 100)),
     light: keep?.light ?? SKY_DEFAULT.light, forest: rand() < 0.75,
     // half the time the bands curve round the sun
     radial: rand() < 0.5 ? 0 : Math.round(between(20, 90)), radialX: Math.round(between(-40, 40)), radialY: Math.round(between(0, 60)),
@@ -158,6 +172,8 @@ export type SkyLook = {
   // the landscape's far ranges and tree lines, back to front, and the haze at their feet
   ranges: [string, string, string]; trees: [string, string]; haze: string; hazeAmount: number
   texture: number; forest: boolean
+  // the texture's tile size (1 = usual), streaks and grain (0.5 = usual) and CSS blend mode
+  textureLook: { scale: number; streak: number; grain: number; blend: string }
   // the bands' curvature (0 straight, 1 round) and where their centre sits: x in sky heights from under the sun,
   // y in sky heights below the horizon
   radial: { amount: number; x: number; y: number }
@@ -179,7 +195,7 @@ export function classicLook(): SkyLook {
     sun: { y: 640, r: 54, color: '#f1d8bc', glow: 0.82, glowSize: 1, opacity: 1 }, moon: { y: 0, opacity: 0 }, horizonGlow: 0, stars: 0, starCount: 1, starSize: 1,
     clouds: { amount: 1, lit: '#d9d3e2', shade: '#b79fa6', opacity: 1 },
     ranges: ['#4d4d68', '#3d3f58', '#30344a'], trees: ['#282d41', '#212637'], haze: '#6a5c6c', hazeAmount: 1,
-    texture: 0, forest: true, radial: { amount: 0, x: 0, y: 0 }, scenery: 'none', silhouette: '#0b0a12', horizon: '#7a6670',
+    texture: 0, forest: true, textureLook: { scale: 1, streak: 0.5, grain: 0.5, blend: 'soft-light' }, radial: { amount: 0, x: 0, y: 0 }, scenery: 'none', silhouette: '#0b0a12', horizon: '#7a6670',
   }
 }
 
@@ -216,7 +232,8 @@ export function skyLook(p: SkyParams | undefined): SkyLook {
     starCount: p.starCount / 100, starSize: p.starSize / 100,
     clouds: { amount: p.clouds / 100, lit: mix(mix(p.sunColor || k.sun, '#ffffff', 0.35), nearHorizon, 0.35), shade: mix(stopColor(stops, 0.35), silhouette, 0.25), opacity: 1.6 },
     ranges: [scen[0], scen[1], scen[2]], trees: [scen[3], scen[4]], haze: hazeTo, hazeAmount: haze * 1.2,
-    texture: p.texture / 100, forest: p.forest, radial: { amount: p.radial / 100, x: p.radialX / 100 * 1.4, y: p.radialY / 100 * 1.2 }, scenery: filter, silhouette, horizon,
+    texture: p.texture / 100, forest: p.forest,
+    textureLook: { scale: p.texScale / 100, streak: p.texStreak / 100, grain: p.texGrain / 100, blend: SKY_BLENDS.find(b => b.id === p.texBlend)?.css ?? 'soft-light' }, radial: { amount: p.radial / 100, x: p.radialX / 100 * 1.4, y: p.radialY / 100 * 1.2 }, scenery: filter, silhouette, horizon,
   }
 }
 
