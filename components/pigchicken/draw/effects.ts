@@ -25,8 +25,9 @@ export function drawNote(ctx: Ctx, b: Combat["bullets"][number], x: number, puls
 }
 
 // the violin's beam: a vibrating string of light from the muzzle, with notes running along it. The wave is as tall
-// as the sound is moving: beamWave() px from the item's "Vibrato natural" plus the aim's tremolo bending it now
-export const beamWave = (vib = 1, bend = 0) => 1 + 2 * Math.max(0, Math.min(3, vib)) + 9 * Math.min(2, Math.abs(bend))
+// as the sound is moving: beamWave() px from the item's "Vibrato natural" depth (cents; 12 = the 3 px of always)
+// plus the aim's tremolo bending it now (semitones)
+export const beamWave = (cents = 12, bend = 0) => 1 + Math.max(0, Math.min(100, cents)) / 6 + 9 * Math.min(2, Math.abs(bend))
 export function drawBeam(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
   const b = combat.beam
   if (!b) return

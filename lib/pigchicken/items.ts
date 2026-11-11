@@ -144,7 +144,11 @@ export type ItemDef = {
   gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
   tremoloRange: number // semitones the tremolo can bend a note each way
-  vibrato: number // × the voice's own vibrato (flute, sax, trumpet, violin, hum, guzheng have one); 0 = none
+  // the natural vibrato of its notes (lib/pigchicken/synth.ts Vibrato): cents the pitch sways each way (0 = a straight
+  // note), sways per second, and seconds after the note starts before it comes in
+  vibratoDepth: number
+  vibratoRate: number
+  vibratoDelay: number
   volMin: number // 0..1: loudness of its notes with the aim close to her (lib/pigchicken/aim-volume.ts)
   volMax: number // 0..1: with the aim far; equal to volMin = the distance changes nothing
   meleeNotes: number // notes of the blow's strum, from the aim's lane note up the chord (1 = just that note)
@@ -198,7 +202,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, vibrato: 1, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
@@ -339,7 +343,7 @@ const FLUTE: ItemDef = {
   ...PISTOL, ...MUSIC_MELEE, id: 'flute', name: 'Flauta', family: 'Flautas', reticle: 'dot',
   rate: 13, mag: 60, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
   recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
-  instrument: true, voice: 'flute', pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35, volMin: 0.45,
+  instrument: true, voice: 'flute', vibratoDepth: 10, vibratoDelay: 0.12, pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35, volMin: 0.45,
   pivotAt: 'mouth', pivotX: -49, pivotY: 0, handOn: true, handX: 13, handY: 0, backOn: true, backX: -22, backY: 0, wingFlip: true,
   throwCharge: 0.3, rebateChain: chain(['octave', 'fixed', 1]),
 }
@@ -348,7 +352,7 @@ const SAX: ItemDef = {
   ...SMG, ...MUSIC_MELEE, id: 'sax', name: 'Sax', family: 'Palhetas', reticle: 'circle',
   rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
   recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 0, muzzleX: 32, muzzleY: 18, length: 50,
-  instrument: true, voice: 'sax', pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
+  instrument: true, voice: 'sax', vibratoDepth: 14, vibratoDelay: 0.1, pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
   pivotAt: 'mouth', pivotX: -27, pivotY: -52, handOn: true, handX: 0, handY: 12, backOn: true, backX: 2, backY: -15, wingFlip: true,
   rebateChain: chain(['transpose', 'degree', 2]),
 }
@@ -357,7 +361,7 @@ const TRUMPET: ItemDef = {
   ...RIFLE, ...MUSIC_MELEE, id: 'trumpet', name: 'Trompete', family: 'Metais', reticle: 'cross',
   fireMode: 'burst', burst: 3, rate: 9, mag: 24, reloadTime: 0.2, refillTime: 0.25, speed: 1300, damage: 10, size: 10, pierce: 1,
   recoilKick: 3, recoilPush: 790, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
-  instrument: true, voice: 'trumpet', pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4, volMin: 0.55,
+  instrument: true, voice: 'trumpet', vibratoDepth: 9, vibratoDelay: 0.2, pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4, volMin: 0.55,
   pivotAt: 'mouth', pivotX: -53, pivotY: -7, handOn: true, handX: -4, handY: -12, backOn: true, backX: -23, backY: 7, wingFlip: true,
   rebateChain: chain(['voices', 'power']),
 }
@@ -375,7 +379,7 @@ const VIOLIN: ItemDef = {
   ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 0, muzzleX: 78, muzzleY: 0, length: 78,
-  instrument: true, voice: 'violin', pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
+  instrument: true, voice: 'violin', vibratoDepth: 12, vibratoDelay: 0.25, pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
   handOn: true, handX: 45, handY: 0, backOn: true, backX: -23, backY: 0,
   rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
 }
@@ -552,7 +556,9 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'stun', label: 'Paralisa', min: 0, max: 3, step: 0.1, unit: 's', group: 'Música', hint: 'O inimigo fica parado depois da nota' },
   { key: 'strum', label: 'Rasgueado', min: 0, max: 0.1, step: 0.002, unit: 's', group: 'Música', hint: 'Intervalo entre as notas do acorde' },
   { key: 'tremolo', label: 'Tremolo', min: 0, max: 1, step: 0.05, unit: '×', group: 'Música', hint: 'Tremer a mira dentro da mesma faixa do leque entorta a nota; 0 = desligado' },
-  { key: 'vibrato', label: 'Vibrato natural', min: 0, max: 3, step: 0.05, unit: '×', group: 'Música', hint: 'A ondulação própria do timbre (flauta, sax, trompete, violino), mesmo com a mira parada; 0 = nota reta' },
+  { key: 'vibratoDepth', label: 'Vibrato natural: profundidade', min: 0, max: 100, step: 1, unit: 'cents', group: 'Música', hint: 'Quanto a afinação ondula para cada lado sozinha, mesmo com a mira parada (100 cents = 1 semitom); 0 = nota reta' },
+  { key: 'vibratoRate', label: 'Vibrato natural: velocidade', min: 1, max: 12, step: 0.1, unit: 'Hz', group: 'Música', hint: 'Ondulações por segundo' },
+  { key: 'vibratoDelay', label: 'Vibrato natural: atraso', min: 0, max: 1.5, step: 0.05, unit: 's', group: 'Música', hint: 'Tempo de nota reta antes de o vibrato começar a entrar' },
   { key: 'tremoloRange', label: 'Tremolo: limite', min: 0.05, max: 3, step: 0.05, unit: 'semitons', group: 'Música', hint: 'Até quanto a nota sobe ou desce para cada lado' },
   { key: 'meleeNotes', label: 'Notas do golpe', min: 1, max: 4, step: 1, group: 'Música', hint: 'O golpe toca a nota da faixa do leque para onde a mira aponta e sobe o acorde a partir dela' },
   { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },

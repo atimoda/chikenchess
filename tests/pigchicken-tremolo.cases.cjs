@@ -131,7 +131,9 @@ test('an instrument blow plays the note of the fan lane she aims at', () => {
 })
 
 test('natural vibrato: one per item, passed with every note; the beam waves with it and with the bend', () => {
-  assert.equal(DEFAULT_ITEMS.violin.vibrato, 1)
+  assert.deepEqual([DEFAULT_ITEMS.violin.vibratoDepth, DEFAULT_ITEMS.violin.vibratoRate, DEFAULT_ITEMS.violin.vibratoDelay], [12, 5.5, 0.25])
+  assert.equal(DEFAULT_ITEMS.guitar.vibratoDepth, 0)
+  for (const id of ['flute', 'sax', 'trumpet']) assert.ok(DEFAULT_ITEMS[id].vibratoDepth > 0, id)
   const { createCombat } = loadTs('lib/pigchicken/combat.ts')
   const body = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
   const c = createCombat(), vibs = []
@@ -141,12 +143,12 @@ test('natural vibrato: one per item, passed with every note; the beam waves with
     [], 1000, () => {}, { peckOrigin: { x: 0, y: 0 } })
   c.give('violin'); step({ slot: 1 }); vibs.length = 0
   step({ fire: true, firePressed: true }); step({ fire: true })
-  assert.deepEqual(vibs, [1])
+  assert.deepEqual(vibs, [{ depth: 12, rate: 5.5, delay: 0.25 }])
   assert.equal(c.beam.bend, 0)
   step({ fire: true }, -0.05)
   assert.ok(Math.abs(c.beam.bend) > 0, 'the beam knows the bend')
   const { beamWave } = loadTs('components/pigchicken/draw/effects.ts')
-  assert.equal(beamWave(1, 0), 3)
+  assert.equal(beamWave(12, 0), 3)
   assert.equal(beamWave(0, 0), 1)
-  assert.ok(beamWave(1, 0.5) > beamWave(1, 0.1))
+  assert.ok(beamWave(12, 0.5) > beamWave(12, 0.1))
 })
