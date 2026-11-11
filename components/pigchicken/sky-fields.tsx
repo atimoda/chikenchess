@@ -2,12 +2,13 @@
 
 // Configurações do Pátio → Céu e luz: the hour, the sky's gradient (by the hour or band by band) and its curvature,
 // sun, clouds, texture, haze, the contraluz and the light on the Pátio, and Randomize. Saved with the Pátio
-// (settings.sky). → Montanhas: MountainFields (settings.mountains).
+// (settings.sky). → Montanhas: MountainFields (settings.mountains). → Nuvens: CloudFields (settings.clouds).
 import { Plus, X } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { cn } from "@/lib/utils"
-import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_RADIAL_X, SKY_STOPS, SKY_SUN, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
-import { MOUNTAINS_DEFAULT, MOUNTAIN_PCT, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHAPES, type MountainParams } from "@/lib/pigchicken/mountains"
+import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_RADIAL_X, SKY_SCALE, SKY_STAR_COUNT, SKY_STAR_GLOW, SKY_STOPS, SKY_SUN, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
+import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_PCT, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHAPES, type MountainParams } from "@/lib/pigchicken/mountains"
+import { CLOUDS_DEFAULT, CLOUD_OPACITY, CLOUD_PCT, CLOUD_SCALE, CLOUD_SHAPES, CLOUD_WIND, type CloudParams } from "@/lib/pigchicken/clouds"
 
 const BTN = "h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]"
 
@@ -25,6 +26,10 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
     const at = Math.round(((stops[gap].at + stops[gap + 1].at) / 2) * 100) / 100
     set({ follow: false, stops: [...stops, { at, color: stopColor(stops, at) }].sort((a, b) => a.at - b.at) })
   }
+  const scaled = (label: string, key: "glowSize" | "starCount" | "starSize" | "starGlow", r: { min: number; max: number; step: number }, hint: string) => (
+    <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={s[key]} display={`${s[key]}%`}
+      changed={!!sky && s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
   const pct = (label: string, key: "glow" | "clouds" | "texture" | "haze" | "silhouette" | "light" | "radial" | "radialY", hint: string) => (
     <PatioRange label={label} min={SKY_PCT.min} max={SKY_PCT.max} step={SKY_PCT.step} value={s[key]} display={`${s[key]}%`}
       changed={!!sky && s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
@@ -72,12 +77,22 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         </>}
         <PatioRange label="Tamanho do sol" min={SKY_SUN.min} max={SKY_SUN.max} step={SKY_SUN.step} value={s.sunSize} display={`${s.sunSize}`}
           changed={!!sky && s.sunSize !== SKY_DEFAULT.sunSize} onReset={() => set({ sunSize: SKY_DEFAULT.sunSize })} onChange={sunSize => set({ sunSize })} />
-        {pct("Brilho do sol", "glow", "O halo do sol e a luz ao longo do horizonte embaixo dele.")}
-        {pct("Nuvens", "clouds", "Quantas nuvens; elas pegam a cor do sol e do céu.")}
+        <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
+          <input type="color" aria-label="Cor do sol" value={s.sunColor || look.sun.color} onChange={e => set({ sunColor: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
+          <button type="button" disabled={!s.sunColor} onClick={() => set({ sunColor: "" })} title="O sol volta a ter a cor da hora do dia" className={cn(BTN, "h-10 text-left disabled:opacity-40")}>{s.sunColor ? "Cor do sol: voltar à da hora" : "Cor do sol: a da hora"}</button>
+        </div>
+        {pct("Brilho do sol", "glow", "A força do halo do sol e da luz ao longo do horizonte embaixo dele.")}
+        {scaled("Alcance do brilho", "glowSize", SKY_SCALE, "Até onde o brilho radiante do sol se espalha.")}
         {pct("Textura", "texture", "Um grão suave com estrias horizontais por cima do céu.")}
         {pct("Névoa", "haze", "As montanhas, as árvores ao longe e os postes no fundo somem na cor do horizonte.")}
         {pct("Contraluz", "silhouette", "O cenário escurece até virar silhueta contra o céu. Bonecos, itens e tiros mantêm as cores.")}
         {pct("Luz no pátio", "light", "Quanto a hora do dia ilumina, escurece e esquenta o cenário do Pátio.")}
+      </div>
+      <div className="grid gap-[3px]">
+        <span className="pt-1 text-[10px] uppercase tracking-wider text-[#93a79a]">Estrelas</span>
+        {scaled("Quantidade", "starCount", SKY_STAR_COUNT, "Quantas estrelas. Elas aparecem conforme a hora e o escuro do céu.")}
+        {scaled("Tamanho", "starSize", SKY_SCALE, "O tamanho de cada estrela.")}
+        {scaled("Intensidade", "starGlow", SKY_STAR_GLOW, "O brilho das estrelas; acima de 100% elas já aparecem no crepúsculo.")}
       </div>
       <div className="grid">
         <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span>Mata ao longe</span>
@@ -93,6 +108,10 @@ const PREVIEW = 120, PREVIEW_W = 96
 export function MountainFields({ mountains, onChange }: { mountains: MountainParams | undefined; onChange: (m: MountainParams | undefined) => void }) {
   const m = mountains ?? MOUNTAINS_DEFAULT
   const set = (p: Partial<MountainParams>) => onChange({ ...m, ...p })
+  const pctRange = (label: string, key: "shade" | "snowEdge" | "snowShade", hint: string) => (
+    <PatioRange label={label} min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m[key]} display={`${m[key]}%`}
+      changed={m[key] !== MOUNTAINS_DEFAULT[key]} onReset={() => set({ [key]: MOUNTAINS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
   const range = (label: string, key: "height" | "rough", hint: string) => (
     <PatioRange label={label} min={MOUNTAIN_SCALE.min} max={MOUNTAIN_SCALE.max} step={MOUNTAIN_SCALE.step} value={m[key]} display={`${m[key]}%`}
       changed={m[key] !== MOUNTAINS_DEFAULT[key]} onReset={() => set({ [key]: MOUNTAINS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
@@ -108,16 +127,55 @@ export function MountainFields({ mountains, onChange }: { mountains: MountainPar
       {m.show && <>
         <PatioRange label="Cordilheiras" min={MOUNTAIN_RANGES.min} max={MOUNTAIN_RANGES.max} step={MOUNTAIN_RANGES.step} value={m.ranges} display={m.ranges}
           changed={m.ranges !== MOUNTAINS_DEFAULT.ranges} onReset={() => set({ ranges: MOUNTAINS_DEFAULT.ranges })} onChange={ranges => set({ ranges })} hint="Quantas fileiras de montanhas, da mais distante para a mais perto." />
-        {range("Altura", "height", "A altura dos picos.")}
+        <PatioRange label="Altura" min={MOUNTAIN_LIFT.min} max={MOUNTAIN_LIFT.max} step={MOUNTAIN_LIFT.step} value={m.lift} display={m.lift > 0 ? `+${m.lift}` : m.lift}
+          changed={m.lift !== MOUNTAINS_DEFAULT.lift} onReset={() => set({ lift: MOUNTAINS_DEFAULT.lift })} onChange={lift => set({ lift })} hint="Sobe (ou afunda) as montanhas na tela." />
+        {range("Inclinação", "height", "Quão íngremes e altos são os picos em relação ao pé.")}
         {range("Recorte", "rough", "Mais alto: picos mais estreitos e numerosos. Mais baixo: morros largos e suaves.")}
+        {pctRange("Relevo", "shade", "Escurece as encostas do lado oposto à luz, como faces de um desenho.")}
         <PatioRange label="Neve nos picos" min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m.snow} display={`${m.snow}%`}
           changed={m.snow !== MOUNTAINS_DEFAULT.snow} onReset={() => set({ snow: MOUNTAINS_DEFAULT.snow })} onChange={snow => set({ snow })} hint="Até onde a neve desce. Ela pega a luz do sol." />
+        {m.snow > 0 && <>
+          {pctRange("Pontas da neve", "snowEdge", "Línguas de neve descendo pelas encostas. 0: uma borda lisa.")}
+          {pctRange("Sombra da neve", "snowShade", "As faces da neve do lado oposto à luz ficam azuladas.")}
+        </>}
         <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
           <input type="color" aria-label="Cor das montanhas" value={m.tint} onChange={e => set({ tint: e.target.value, tintAmount: m.tintAmount || 50 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
           <PatioRange label="Cor" min={MOUNTAIN_PCT.min} max={MOUNTAIN_PCT.max} step={MOUNTAIN_PCT.step} value={m.tintAmount} display={`${m.tintAmount}%`}
             changed={m.tintAmount !== MOUNTAINS_DEFAULT.tintAmount} onReset={() => set({ tintAmount: MOUNTAINS_DEFAULT.tintAmount })} onChange={tintAmount => set({ tintAmount })} hint="Quanto a cor escolhida tinge as montanhas. 0: só a luz do céu." />
         </div>
       </>}
+    </div>
+  )
+}
+
+// Configurações do Pátio → Nuvens: how many, their size and height, softness, volume, wind and colour; their light
+// still follows the sky
+export function CloudFields({ clouds, skyClouds, onChange }: { clouds: CloudParams | undefined; skyClouds: number | undefined; onChange: (c: CloudParams | undefined) => void }) {
+  const c = clouds ?? { ...CLOUDS_DEFAULT, amount: skyClouds ?? CLOUDS_DEFAULT.amount }
+  const set = (p: Partial<CloudParams>) => onChange({ ...c, ...p })
+  const range = (label: string, key: "amount" | "size" | "height" | "spread" | "opacity" | "soft" | "volume" | "wind", r: { min: number; max: number; step: number }, hint: string) => (
+    <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={c[key]} display={`${c[key]}%`}
+      changed={c[key] !== CLOUDS_DEFAULT[key]} onReset={() => set({ [key]: CLOUDS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
+  return (
+    <div className="grid gap-[3px] px-4 pb-4">
+      <div className="flex items-center justify-end gap-2 pb-1">
+        <button type="button" className={BTN} onClick={() => set({ shape: (c.shape + 1 + Math.floor(Math.random() * (CLOUD_SHAPES - 1))) % CLOUD_SHAPES })} title="Desenha outras nuvens com os mesmos ajustes">Sortear forma</button>
+        {clouds && <button type="button" className={BTN} onClick={() => onChange(undefined)} title="Volta às nuvens de sempre">Padrão</button>}
+      </div>
+      {range("Quantidade", "amount", CLOUD_PCT, "Quantas nuvens. 0 tira todas.")}
+      {range("Tamanho", "size", CLOUD_SCALE, "O tamanho de cada nuvem.")}
+      {range("Altura no céu", "height", CLOUD_PCT, "Baixas, perto das montanhas, ou altas no céu.")}
+      {range("Espalhamento", "spread", CLOUD_PCT, "0: todas na mesma altura. Mais alto: espalhadas para cima e para baixo.")}
+      {range("Opacidade", "opacity", CLOUD_OPACITY, "Quão sólidas elas são.")}
+      {range("Suavidade", "soft", CLOUD_PCT, "O desfoque das bordas. 0: recortadas.")}
+      {range("Volume", "volume", CLOUD_PCT, "A sombra embaixo de cada nuvem.")}
+      {range("Vento", "wind", CLOUD_WIND, "A velocidade com que elas vão e voltam. 0: paradas.")}
+      <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
+        <input type="color" aria-label="Cor das nuvens" value={c.tint} onChange={e => set({ tint: e.target.value, tintAmount: c.tintAmount || 50 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
+        <PatioRange label="Cor" min={CLOUD_PCT.min} max={CLOUD_PCT.max} step={CLOUD_PCT.step} value={c.tintAmount} display={`${c.tintAmount}%`}
+          changed={c.tintAmount !== CLOUDS_DEFAULT.tintAmount} onReset={() => set({ tintAmount: CLOUDS_DEFAULT.tintAmount })} onChange={tintAmount => set({ tintAmount })} hint="Quanto a cor escolhida tinge as nuvens. 0: só a luz do céu." />
+      </div>
     </div>
   )
 }

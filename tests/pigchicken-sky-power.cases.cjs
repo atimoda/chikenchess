@@ -153,7 +153,36 @@ test('the sky can curve its bands round the sun', () => {
 test('mountains: normalized, and the sky\'s old on/off moves to them', () => {
   const M = loadTs('lib/pigchicken/mountains.ts')
   assert.deepEqual(M.normalizeMountains({ ranges: 9, height: 1, snow: 50, tint: '#ABCDEF', shape: 5.4 }),
-    { ...M.MOUNTAINS_DEFAULT, ranges: 3, height: 20, snow: 50, tint: '#abcdef', shape: 5 })
+    { ...M.MOUNTAINS_DEFAULT, ranges: 6, height: 20, snow: 50, tint: '#abcdef', shape: 5 })
+  assert.equal(M.normalizeMountains({ lift: 500, snowEdge: -3 }).lift, 100)
+  assert.equal(M.normalizeMountains({ lift: 500, snowEdge: -3 }).snowEdge, 0)
   assert.equal(PS.normalizePatioSettings({ sky: { ...S.SKY_DEFAULT, mountains: false } }).mountains.show, false)
   assert.equal(PS.normalizePatioSettings({ sky: S.SKY_DEFAULT }).mountains, undefined)
+})
+
+test('clouds: their own settings, or the sky\'s old amount', () => {
+  const C = loadTs('lib/pigchicken/clouds.ts')
+  assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).size, 300)
+  assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).wind, 0)
+  assert.equal(C.normalizeClouds({ tint: 'nope' }).tint, C.CLOUDS_DEFAULT.tint)
+  assert.equal(C.patioClouds(undefined, 30).amount, 30)
+  assert.equal(C.patioClouds(undefined, undefined).amount, 100)
+  assert.equal(PS.normalizePatioSettings({ clouds: { amount: 10 } }).clouds.amount, 10)
+})
+
+test('the sun\'s colour and glow, and the stars, can be set', () => {
+  const sky = S.normalizeSky({ ...S.SKY_DEFAULT, hour: 2, sunColor: '#FF0000', glowSize: 999, starCount: 200, starSize: 10, starGlow: 200 })
+  assert.equal(sky.sunColor, '#ff0000'); assert.equal(sky.glowSize, 300); assert.equal(sky.starSize, 30)
+  const look = S.skyLook(sky)
+  assert.equal(look.sun.color, '#ff0000'); assert.equal(look.sun.glowSize, 3); assert.equal(look.starCount, 2)
+  assert.ok(look.stars <= 1 && look.stars > S.skyLook({ ...sky, starGlow: 50 }).stars)
+  assert.equal(S.normalizeSky({ sunColor: 'red' }).sunColor, '')
+})
+
+test('the empty and the example Pátios have no Templo nor Vila', () => {
+  assert.equal(L.emptyLayout().settings.temple, false)
+  assert.equal(EX.sunsetPowerLayout().settings.temple, false)
+  assert.equal(PS.patioTemple(undefined), true)
+  assert.equal(PS.patioTemple(PS.normalizePatioSettings({ temple: false })), false)
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(L.emptyLayout()))).settings, { temple: false })
 })

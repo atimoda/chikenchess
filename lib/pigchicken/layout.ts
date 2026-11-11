@@ -218,9 +218,9 @@ export function entryPortalElement(): LayoutElement {
 export function entryPortalIn(shown: LayoutElement[]): LayoutElement {
   return shown.find(e => e.kind === 'entry') ?? entryPortalElement()
 }
-// a Pátio with nothing in it but the entry portal
+// a Pátio with nothing in it but the entry portal (no Templo do Gongo nor Vila at the end: settings.temple)
 export function emptyLayout(): PatioLayout {
-  return { v: LAYOUT_VERSION, elements: [entryPortalElement()] }
+  return { v: LAYOUT_VERSION, elements: [entryPortalElement()], settings: { temple: false } }
 }
 
 export function portalPartner(portal: LayoutElement, elements: LayoutElement[]) {

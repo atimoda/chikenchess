@@ -5,7 +5,9 @@
 // how dark the scenery turns against the light (contraluz) and how much the hour lights the Pátio's scenery.
 // radial (0 to 100) curves the bands into rings around a centre under the sun (0: straight bands); radialX
 // (-100 to 100) moves that centre sideways and radialY (0 to 100) sinks it below the horizon (flatter, wider rings).
-// The mountains have their own settings (lib/pigchicken/mountains.ts).
+// sunColor: the sun's colour ('' follows the hour); glowSize: how far its radiant glow reaches (30 to 300%).
+// starCount, starSize (0/30 to 300%) and starGlow (0 to 200%): how many stars, how big, how bright (the hour still
+// decides when they show). The mountains and the clouds have their own settings (mountains.ts, clouds.ts).
 // A Pátio without `sky` keeps the classic dusk the code always drew (classicLook).
 
 export type SkyStop = { at: number; color: string }
@@ -13,6 +15,7 @@ export type SkyParams = {
   hour: number; follow: boolean; stops: SkyStop[]
   sunSize: number; glow: number; clouds: number; texture: number; haze: number; silhouette: number; light: number
   forest: boolean; radial: number; radialX: number; radialY: number
+  sunColor: string; glowSize: number; starCount: number; starSize: number; starGlow: number
 }
 
 export const SKY_HOUR = { min: 0, max: 24, step: 0.1 } as const
@@ -20,6 +23,9 @@ export const SKY_STOPS = { min: 2, max: 8 } as const
 export const SKY_PCT = { min: 0, max: 100, step: 1 } as const
 export const SKY_SUN = { min: 10, max: 100, step: 1 } as const
 export const SKY_RADIAL_X = { min: -100, max: 100, step: 1 } as const
+export const SKY_SCALE = { min: 30, max: 300, step: 5 } as const
+export const SKY_STAR_COUNT = { min: 0, max: 300, step: 5 } as const
+export const SKY_STAR_GLOW = { min: 0, max: 200, step: 5 } as const
 
 // ---------- colours ----------
 const HEX = /^#[0-9a-f]{6}$/i
@@ -78,6 +84,7 @@ export const hourStops = (hour: number) => evenStops(keyAt(hour).c)
 export const SKY_DEFAULT: SkyParams = {
   hour: 18.2, follow: true, stops: hourStops(18.2), sunSize: 45, glow: 65, clouds: 45, texture: 25, haze: 50, silhouette: 70, light: 60,
   forest: true, radial: 0, radialX: 0, radialY: 0,
+  sunColor: '', glowSize: 100, starCount: 100, starSize: 100, starGlow: 100,
 }
 
 // ---------- cleaning ----------
@@ -102,6 +109,11 @@ export function normalizeSky(raw: unknown): SkyParams | undefined {
     texture: pct(r.texture, d.texture), haze: pct(r.haze, d.haze), silhouette: pct(r.silhouette, d.silhouette), light: pct(r.light, d.light),
     forest: r.forest !== false, radial: pct(r.radial, d.radial),
     radialX: Math.round(num(r.radialX, d.radialX, SKY_RADIAL_X.min, SKY_RADIAL_X.max)), radialY: pct(r.radialY, d.radialY),
+    sunColor: typeof r.sunColor === 'string' && HEX.test(r.sunColor) ? r.sunColor.toLowerCase() : '',
+    glowSize: Math.round(num(r.glowSize, d.glowSize, SKY_SCALE.min, SKY_SCALE.max)),
+    starCount: Math.round(num(r.starCount, d.starCount, SKY_STAR_COUNT.min, SKY_STAR_COUNT.max)),
+    starSize: Math.round(num(r.starSize, d.starSize, SKY_SCALE.min, SKY_SCALE.max)),
+    starGlow: Math.round(num(r.starGlow, d.starGlow, SKY_STAR_GLOW.min, SKY_STAR_GLOW.max)),
   }
 }
 
@@ -138,10 +150,10 @@ export function randomSky(rand: () => number = Math.random, keep?: Partial<SkyPa
 // ---------- what the backdrop draws ----------
 export type SkyLook = {
   stops: SkyStop[]; space: string // the gradient, and the colour far above it
-  sun: { y: number; r: number; color: string; glow: number; opacity: number }
+  sun: { y: number; r: number; color: string; glow: number; glowSize: number; opacity: number }
   moon: { y: number; opacity: number }
   horizonGlow: number // 0 to 1: the light along the horizon under the sun
-  stars: number
+  stars: number; starCount: number; starSize: number // how visible (0 to 1), how many and how big (1 = usual)
   clouds: { amount: number; lit: string; shade: string; opacity: number }
   // the landscape's far ranges and tree lines, back to front, and the haze at their feet
   ranges: [string, string, string]; trees: [string, string]; haze: string; hazeAmount: number
@@ -164,7 +176,7 @@ export function classicLook(): SkyLook {
   return {
     stops: [{ at: 0, color: '#0a0f20' }, { at: 0.27, color: '#121a33' }, { at: 0.54, color: '#222a48' }, { at: 0.75, color: '#3d3f5c' }, { at: 0.88, color: '#5e5468' }, { at: 1, color: '#7a6670' }],
     space: '#04060f',
-    sun: { y: 640, r: 54, color: '#f1d8bc', glow: 0.82, opacity: 1 }, moon: { y: 0, opacity: 0 }, horizonGlow: 0, stars: 0,
+    sun: { y: 640, r: 54, color: '#f1d8bc', glow: 0.82, glowSize: 1, opacity: 1 }, moon: { y: 0, opacity: 0 }, horizonGlow: 0, stars: 0, starCount: 1, starSize: 1,
     clouds: { amount: 1, lit: '#d9d3e2', shade: '#b79fa6', opacity: 1 },
     ranges: ['#4d4d68', '#3d3f58', '#30344a'], trees: ['#282d41', '#212637'], haze: '#6a5c6c', hazeAmount: 1,
     texture: 0, forest: true, radial: { amount: 0, x: 0, y: 0 }, scenery: 'none', silhouette: '#0b0a12', horizon: '#7a6670',
@@ -197,11 +209,12 @@ export function skyLook(p: SkyParams | undefined): SkyLook {
   const sunOn = clamp((e + 0.15) * 4, 0, 1)
   return {
     stops, space: mix(top, '#000000', 0.65),
-    sun: { y: SUN_HORIZON_Y - e * 640, r: p.sunSize * 1.4, color: k.sun, glow: p.glow / 100, opacity: sunOn },
+    sun: { y: SUN_HORIZON_Y - e * 640, r: p.sunSize * 1.4, color: p.sunColor || k.sun, glow: p.glow / 100, glowSize: p.glowSize / 100, opacity: sunOn },
     moon: { y: SUN_HORIZON_Y - sunElevation(p.hour - 12.5) * 560, opacity: clamp((-e - 0.05) * 3, 0, 1) * 0.9 },
     horizonGlow: (p.glow / 100) * clamp(1 - Math.abs(e) * 2.2, 0, 1),
-    stars: Math.max(k.stars, clamp(0.35 - luma(top) * 2, 0, 1)) * (p.follow ? 1 : clamp(1 - luma(top) * 4, 0, 1)),
-    clouds: { amount: p.clouds / 100, lit: mix(mix(k.sun, '#ffffff', 0.35), nearHorizon, 0.35), shade: mix(stopColor(stops, 0.35), silhouette, 0.25), opacity: 1.6 },
+    stars: clamp(Math.max(k.stars, clamp(0.35 - luma(top) * 2, 0, 1)) * (p.follow ? 1 : clamp(1 - luma(top) * 4, 0, 1)) * p.starGlow / 100, 0, 1),
+    starCount: p.starCount / 100, starSize: p.starSize / 100,
+    clouds: { amount: p.clouds / 100, lit: mix(mix(p.sunColor || k.sun, '#ffffff', 0.35), nearHorizon, 0.35), shade: mix(stopColor(stops, 0.35), silhouette, 0.25), opacity: 1.6 },
     ranges: [scen[0], scen[1], scen[2]], trees: [scen[3], scen[4]], haze: hazeTo, hazeAmount: haze * 1.2,
     texture: p.texture / 100, forest: p.forest, radial: { amount: p.radial / 100, x: p.radialX / 100 * 1.4, y: p.radialY / 100 * 1.2 }, scenery: filter, silhouette, horizon,
   }

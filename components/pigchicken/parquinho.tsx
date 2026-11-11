@@ -53,6 +53,7 @@ import { drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-d
 import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import type { MountainParams } from "@/lib/pigchicken/mountains"
+import { patioClouds, type CloudParams } from "@/lib/pigchicken/clouds"
 import { skyLook, type SkyLook, type SkyParams } from "@/lib/pigchicken/sky"
 import { createPerchWorld, setPerchSpans } from "@/lib/pigchicken/bird-perch"
 import { powerSpans } from "@/lib/pigchicken/power-lines"
@@ -97,8 +98,9 @@ function onlyThrow(actions: Record<ChickenAction, boolean>): Record<ChickenActio
 // worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
 // backdrop: how strongly the scenery far behind shows (sky, sun, mountains; the layers menu's Fundo, 0 hides it)
 // sky: the Pátio's sky and light (Configurações do Pátio → Céu e luz); without it, the classic dusk
-// mountains: the far ranges' shape (Configurações do Pátio → Montanhas)
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1, sky, mountains }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number; sky?: SkyParams; mountains?: MountainParams }) {
+// mountains: the far ranges' shape (Configurações do Pátio → Montanhas); clouds: theirs (→ Nuvens)
+// temple: false leaves out the Templo do Gongo and the Vila dos Telhados (their scenes stay, empty)
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1, sky, mountains, clouds, temple = true }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number; sky?: SkyParams; mountains?: MountainParams; clouds?: CloudParams; temple?: boolean }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
   const templeLeft = templeScene(screens) * SCENE_W
@@ -106,6 +108,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
   const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
   const occlusion = useMemo(() => createCollisionOcclusion(layoutCollisionMasks(shown)), [shown])
   const look = useSkyLook(sky)
+  const cloudSet = useMemo(() => patioClouds(clouds, sky?.clouds), [clouds, sky?.clouds])
   // the hour's light and the contraluz on the scenery (the characters, items and shots keep their own colours)
   const lit = look.scenery === "none" ? undefined : { filter: look.scenery }
   useLayoutEffect(() => {
@@ -119,7 +122,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
       <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
-      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} /></div>)}
+      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} clouds={cloudSet} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} clouds={cloudSet} /></div>)}
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)", ...lit }} />
       {debug && Array.from({ length: screens }, (_, s) => (
@@ -127,22 +130,22 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/25">Cena {s + 1} <span style={{ color: ZONES[s % ZONES.length].color, opacity: 0.6 }}>· {zoneLabel(ZONES[s % ZONES.length])}</span></span>
         </div>
       ))}
-      <div className="absolute inset-0" style={lit}>
+      {temple && <div className="absolute inset-0" style={lit}>
         <TempleBackdrop left={templeScene(screens) * SCENE_W} />
         <VillageBackdrop left={villageLeft} />
-      </div>
-      {debug && (
+      </div>}
+      {debug && temple && (
         <div className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: templeScene(screens) * SCENE_W }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 1} · Templo do Gongo</span>
         </div>
       )}
-      {debug && (
+      {debug && temple && (
         <div className="absolute inset-y-0 border-l border-dashed border-white/10" style={{ left: villageLeft }}>
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 2} · Vila dos Telhados</span>
         </div>
       )}
       {/* the temple's roofs: floors with their own curves (drawn only in debug) */}
-      {debug && (
+      {debug && temple && (
         <svg aria-hidden="true" className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }}>
           {TEMPLE_ROOF_LINES.map(l => <polyline key={l.id} points={lineAttr(l.pts)} fill="none" stroke="#ff3b3b" strokeWidth={3} strokeDasharray="8 5" />)}
         </svg>
@@ -153,12 +156,12 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       <div className="absolute inset-0" style={lit}><LayoutLayerView elements={shown} layer="back" editing={editing} power={false} /></div>
       <LayoutLayerView elements={shown} layer="back" editing={editing} power />
       <div data-chicken-platforms className="absolute inset-0">
-        {TEMPLE_PLATFORMS.map((p, i) => {
+        {temple && TEMPLE_PLATFORMS.map((p, i) => {
           const x = templeLeft + p.x, y = WORLD_GROUND_Y - p.bottom - p.h
           return <div key={`tp-${i}`} data-chicken-id={`tp-${i}`} data-chicken-depth={TEMPLE_PLATFORM_DEPTH}
             data-chicken-world-box={`${x},${y},${p.w},${p.h}`} className="absolute rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" style={{ left: x, top: y, width: p.w, height: p.h, background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" }} />
         })}
-        {TEMPLE_ROOF_LINES.map(l => (
+        {temple && TEMPLE_ROOF_LINES.map(l => (
           <div key={l.id} data-chicken-id={`tp-${l.id}`} data-chicken-world-box={`${templeScene(screens) * SCENE_W},0,${SCENE_W},${WORLD_GROUND_Y}`} data-chicken-line={lineAttr(l.pts)} className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }} />
         ))}
       </div>
@@ -219,7 +222,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneMusic = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneMusic?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -231,6 +234,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   sceneZonesRef.current = sceneZones
   const sceneMusicRef = useRef(sceneMusic)
   sceneMusicRef.current = sceneMusic
+  // the Templo do Gongo (Configurações do Pátio → Templo e Vila): off, its gong, stones, jukebox and racks leave
+  const templeRef = useRef(templeOn)
+  templeRef.current = templeOn
   // the layers menu's debug layers: Escalas (each player's aim fan with the note and degree of each lane, this
   // strong; 0 off) and Hit-boxes
   const scaleFanRef = useRef(scaleFan)
@@ -554,7 +560,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     setSoulEntries(loadSoulEntries())
     const unsubSouls = subscribeSoulEntries(next => { setSoulEntries(next); combat.refreshSouls() })
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
-    let placed = false, offerShown = "", templeFor = -1, wasPortalArrival = false
+    let placed = false, offerShown = "", templeFor = "", wasPortalArrival = false
     // the temple's things move with the world's width: the gong and its racks
     let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null, jukebox: Combat["targets"][number] | null = null
     const templeRacks: Combat["racks"] = []
@@ -575,13 +581,23 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       ;(["bat", "pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
       placed = true
     }
-    const placeTemple = (screens: number) => {
-      const L = templeScene(screens) * SCENE_W
+    const placeTemple = (screens: number, on: boolean) => {
+      // without the temple its things wait far outside the world, and its racks stop (their items go too)
+      const L = on ? templeScene(screens) * SCENE_W : -1e6
       if (gong) { gong.x = gong.home = L + GONG_X }
       if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
       if (jukebox) { jukebox.x = jukebox.home = L + DISC_X }
-      templeRacks.forEach((r, i) => { r.x = L + 60 + i * 90 })
-      templeFor = screens
+      templeRacks.forEach((r, i) => {
+        r.x = L + 60 + i * 90
+        const at = combat.racks.indexOf(r)
+        if (!on && at >= 0) {
+          combat.racks.splice(at, 1)
+          const item = combat.pickups.findIndex(p => p.id === r.pickupId)
+          if (item >= 0) combat.pickups.splice(item, 1)
+          r.pickupId = undefined; r.t = 0
+        } else if (on && at < 0) combat.racks.push(r)
+      })
+      templeFor = `${screens}:${on}`
     }
     // the platforms the shots hit, in world units (the same boxes the world draws)
     let worldBoxes: Box[] = []
@@ -627,7 +643,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const spawnX = spawnXRef.current
         if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getMotionState() }
       }
-      if (templeFor !== S.screens) placeTemple(S.screens)
+      if (templeFor !== `${S.screens}:${templeRef.current}`) placeTemple(S.screens, templeRef.current)
       if (syncedElements !== elementsRef.current || syncedScreens !== S.screens) {
         syncedElements = elementsRef.current; syncedScreens = S.screens
         const shown = elementsInWorld({ v: 1, elements: syncedElements }, S.screens)
@@ -1028,7 +1044,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- the temple's mini-game ----------
       const tL = templeScene(S.screens) * SCENE_W
-      const inTemple = body.x >= tL && body.x < tL + SCENE_W
+      const inTemple = templeRef.current && body.x >= tL && body.x < tL + SCENE_W
       const events = combat.music.events.splice(0)
       // the note stage first: while its song plays, the gong is dull and the reset stone stops the song
       const stageOn = stage.active

@@ -8,11 +8,11 @@ import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioHeight, patioInventoryLimit, patioSceneMusic, type PatioSettings } from "@/lib/pigchicken/patio-settings"
+import { PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioHeight, patioInventoryLimit, patioSceneMusic, patioTemple, type PatioSettings } from "@/lib/pigchicken/patio-settings"
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
-import { MountainFields, SkyFields } from "./sky-fields"
+import { CloudFields, MountainFields, SkyFields } from "./sky-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 
@@ -55,6 +55,13 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
               onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, sceneMusic: false } })
             }} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
+          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="O Templo do Gongo (gongo, jukebox e os suportes de armas da entrada) e a Vila dos Telhados no fim do mundo. Desligado, as duas cenas ficam vazias.">
+            <span>Templo e Vila</span>
+            <input type="checkbox" checked={patioTemple(layout.settings)} onChange={e => {
+              const { temple: _old, ...rest } = layout.settings ?? {}
+              onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, temple: false } })
+            }} className="h-5 w-5 accent-[var(--primary)]" />
+          </label>
           </div>
           {group("Céu e luz", <SkyFields sky={layout.settings?.sky} onChange={sky => {
             const { sky: _old, ...rest } = layout.settings ?? {}
@@ -64,6 +71,10 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             const { mountains: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: mountains ? { ...rest, mountains } : rest })
           }} />)}
+          {group("Nuvens", <CloudFields clouds={layout.settings?.clouds} skyClouds={layout.settings?.sky?.clouds} onChange={clouds => {
+            const { clouds: _old, ...rest } = layout.settings ?? {}
+            onChange({ ...layout, settings: clouds ? { ...rest, clouds } : rest })
+          }} />)}
         </>
       ) : (
         <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 px-4 text-[#dfe8df]">
@@ -72,6 +83,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>Limite do inventário</dt><dd className="font-bold">{itemsLabel}</dd>
           <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
           <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
+          <dt>Templo e Vila</dt><dd className="font-bold">{patioTemple(layout.settings) ? "Sim" : "Não"}</dd>
           <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
         </dl>
       )}
