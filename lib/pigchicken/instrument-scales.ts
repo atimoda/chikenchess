@@ -14,11 +14,14 @@
 //     spiral per note: from the outer edge (the lowest note) inward, going clockwise from straight up, one turn per
 //     octave, so the same degree lines up turn after turn. The aim (direction and reach) picks the nearest piece;
 //     `spiralDescending` (an item's checkbox) turns it around (the highest note outside).
+//   Campo harmônico: the zone's key as a wheel of 7 houses, one per degree (I ii iii IV V vi vii° in a major key),
+//     each with its triad. The wheel turns with the key: the I sits where the key's tonic is on the circle of fifths
+//     (C straight up, G 30° clockwise, D 60°…), so another zone asks for another angle. Only the direction counts.
 // Angles are screen radians (0 = right, π/2 = down, -π/2 = up).
-import { SCALES, scaleNotes, type Conductor, type PitchSet } from './music'
+import { SCALES, chordOn, scaleNotes, type Conductor, type PitchSet, type Zone } from './music'
 
-export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral'
-export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral']
+export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic'
+export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic']
 
 export const SECTORS = 12
 // reach below it: the inner ring ("a mira pela metade"); from it on: the outer ring ("a mira esticada inteira")
@@ -247,8 +250,79 @@ export class SpiralScale extends InstrumentScale {
   degreeOf(music: Conductor, m: number) { return music.degreeOf(m) }
 }
 
+// Campo harmônico: the wheel of the zone's key (see the top of the file)
+export const HOUSES = 7
+const HOUSE_SPAN = TAU / HOUSES
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
+export type FieldHouse = {
+  degree: number // 0 = I
+  root: number // pitch class of the chord's root
+  chord: number[] // its notes with the seventh (MIDI, as the conductor's chords)
+  label: string // the triad in letters (cifra): C, Dm, B°, C+
+  numeral: string // its degree: I, ii, vii°
+  quality: 'major' | 'minor' | 'other' // other: diminished or augmented
+  a0: number; a1: number // its edges (screen radians, clockwise)
+}
+// how far the wheel is turned for a key: its tonic's place on the circle of fifths (C up, then 30° a fifth)
+export const fieldTurn = (root: number) => pc(pc(root) * 7) * SECTOR_SPAN
+export function fieldHouses(zone: Zone): FieldHouse[] {
+  const turn = fieldTurn(zone.root)
+  return ROMAN.map((n, d) => {
+    const chord = chordOn(zone, d, true), third = pc(chord[1] - chord[0]), fifth = pc(chord[2] - chord[0])
+    const sign = fifth === 6 ? '°' : fifth === 8 ? '+' : ''
+    const root = pc(chord[0]), mid = -Math.PI / 2 + turn + d * HOUSE_SPAN
+    return {
+      degree: d, root, chord, a0: mid - HOUSE_SPAN / 2, a1: mid + HOUSE_SPAN / 2,
+      label: `${LETTERS[root]}${sign || (third === 3 ? 'm' : '')}`,
+      numeral: `${third === 3 ? n.toLowerCase() : n}${sign}`,
+      quality: sign ? 'other' : third === 3 ? 'minor' : 'major',
+    }
+  })
+}
+// the house an angle falls in, for a turn of the wheel
+export function houseAt(angle: number, turn: number) {
+  const a = angle + Math.PI / 2 - turn + HOUSE_SPAN / 2
+  return Math.floor((((a % TAU) + TAU) % TAU) / HOUSE_SPAN) % HOUSES
+}
+export class HarmonicFieldScale extends InstrumentScale {
+  readonly id = 'harmonic' as const
+  readonly label = 'Campo harmônico'
+  house(music: Conductor, angle: number) {
+    return fieldHouses(music.zone)[houseAt(angle, fieldTurn(music.zone.root))]
+  }
+  // "Da escala da zona": the key's own scale (its chord scale), the same 7 notes in every house
+  private notesOf(music: Conductor, h: FieldHouse, set: PitchSet, lo: number, hi: number) {
+    const z = music.zone
+    return set === 'chord' ? pcNotes(h.root, h.chord.map(m => m - h.chord[0]), lo, hi) : pcNotes(z.root, SCALES[z.chordScale].steps, lo, hi)
+  }
+  pool(music: Conductor, q: ToneQuery) {
+    const center = 60 + 12 * q.octave, span = Math.max(0.5, q.span)
+    return this.notesOf(music, this.house(music, q.angle), q.set, center - 6 * span + 1, center + 6 * span)
+  }
+  // the house's chord root in the instrument's register, as on the round charts
+  noteFor(music: Conductor, q: ToneQuery) {
+    const h = this.house(music, q.angle), center = 60 + 12 * q.octave
+    let m = center - 6 + pc(h.root - (center - 6))
+    if (m > center + 6) m -= 12
+    return m
+  }
+  walk(music: Conductor, from: number, n: number, set: PitchSet, angle: number) {
+    const pool = this.notesOf(music, this.house(music, angle), set, from - 24, from + 36)
+    let i = pool.findIndex(m => m >= from)
+    if (i < 0) i = pool.length - 1
+    return pool[Math.max(0, Math.min(pool.length - 1, i + n))] ?? from
+  }
+  // the colour: the note's place in the house's chord, else its degree in the key
+  degreeOf(music: Conductor, m: number, angle: number) {
+    const h = this.house(music, angle), c = h.chord.map(n => pc(n)).indexOf(pc(m))
+    if (c >= 0) return c * 2
+    const s = SCALES[music.zone.chordScale].steps.indexOf(pc(m - music.zone.root))
+    return s >= 0 ? s : 0
+  }
+}
+
 export const INSTRUMENT_SCALES: Record<InstrumentScaleId, InstrumentScale> = {
-  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(),
+  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(), harmonic: new HarmonicFieldScale(),
 }
 export const isInstrumentScaleId = (v: unknown): v is InstrumentScaleId => typeof v === 'string' && (INSTRUMENT_SCALE_IDS as string[]).includes(v)
 

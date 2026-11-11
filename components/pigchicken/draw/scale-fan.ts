@@ -6,7 +6,7 @@
 // lanes are the same on both sides; the labels go on the side she aims at.
 import type { Combat } from "@/lib/pigchicken/combat"
 import { DEGREE_COLORS, NOTE_NAMES, SCALES, type PitchSet } from "@/lib/pigchicken/music"
-import { CHART_HOLE, RING_SPLIT, SpiralScale, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
+import { CHART_HOLE, HarmonicFieldScale, RING_SPLIT, SpiralScale, fieldHouses, fieldTurn, houseAt, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
 
 
 const noteName = (m: number) => `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`
@@ -37,6 +37,10 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
   if (chart instanceof SpiralScale) {
     const d = combat.def(), lay = chart.layout(combat.music, { octave: d.octave, span: d.span, descending: d.spiralDescending })
     drawSpiral(ctx, lay, chart.pieceAt(lay, aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    return
+  }
+  if (chart instanceof HarmonicFieldScale) {
+    drawHarmonicWheel(ctx, combat.music, aim, cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
     return
   }
   if (chart && chart.regions().length) {
@@ -199,3 +203,46 @@ function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: numbe
   ctx.restore()
 }
 
+
+// The Campo harmônico: the zone's key as a wheel of 7 houses (I ii iii IV V vi vii°), each with its triad in letters
+// and, small above it, its degree. The wheel turns to the key (the I where the tonic is on the circle of fifths),
+// easing round when the zone changes. The house she aims at is lit; the bar's chord has a light outline.
+const HOUSE_COLORS = { major: "#5e9e3c", minor: "#9cc77f", other: "#b8a77a" }
+let wheelTurn: number | null = null
+function drawHarmonicWheel(ctx: CanvasRenderingContext2D, music: Combat["music"], aim: number, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+  const target = fieldTurn(music.zone.root)
+  if (wheelTurn === null) wheelTurn = target
+  // the shortest way round, a bit each frame
+  let diff = target - wheelTurn
+  diff = ((diff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI
+  wheelTurn = Math.abs(diff) < 0.002 ? target : wheelTurn + diff * 0.12
+  const turnNow = wheelTurn - target
+  const houses = fieldHouses(music.zone), now = houseAt(aim, target), bar = music.degree % houses.length
+  const rIn = rOut * CHART_HOLE, rc = (rIn + rOut) / 2
+  const font = Math.max(8, Math.min(14, rOut * 0.075))
+  ctx.save()
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  for (const h of houses) {
+    const on = h.degree === now, a0 = h.a0 + turnNow, a1 = h.a1 + turnNow, mid = (a0 + a1) / 2
+    const color = HOUSE_COLORS[h.quality]
+    ctx.beginPath()
+    ctx.arc(cx, cy, rOut, a0, a1)
+    ctx.arc(cx, cy, rIn, a1, a0, true)
+    ctx.closePath()
+    ctx.fillStyle = hexA(color, alpha * (on ? 0.6 : 0.2))
+    ctx.fill()
+    if (lines > 0) { ctx.lineWidth = 1; ctx.strokeStyle = hexA("#ffffff", alpha * 0.35 * lines); ctx.stroke() }
+    if (h.degree === bar) { ctx.lineWidth = 2; ctx.strokeStyle = hexA("#ffffff", alpha * 0.8); ctx.stroke() }
+    const px = cx + Math.cos(mid) * rc, py = cy + Math.sin(mid) * rc
+    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.fillStyle = "#ffffff"
+    ctx.font = `${on ? "bold " : ""}${Math.round(font)}px monospace`
+    ctx.fillText(h.label, px, py + font * 0.35)
+    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.font = `${Math.round(font * 0.7)}px monospace`
+    ctx.fillText(h.numeral, px, py - font * 0.55)
+    ctx.globalAlpha = 1
+  }
+  ctx.restore()
+}

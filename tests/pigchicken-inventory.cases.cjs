@@ -559,9 +559,11 @@ test('the wheel goes through an instrument’s scales first, each with its weapo
   assert.deepEqual(c.sounds.find(s => s.kind === 'scale'), { kind: 'scale', item: 'pistol' })
   step(c, { pick: 1 }); assert.equal(c.scale.id, 'tension')
   step(c, { pick: 1 }); assert.equal(c.scale.id, 'spiral')
+  step(c, { pick: 1 }); assert.equal(c.scale.id, 'harmonic')
   step(c, { pick: 1 }); assert.equal(c.held.item, 'pistol')
   // back: arriving at the flute from after it starts at its last scale
-  step(c, { pick: -1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'spiral')
+  step(c, { pick: -1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'harmonic')
+  step(c, { pick: -1 }); assert.equal(c.scale.id, 'spiral')
   step(c, { pick: -1 }); assert.equal(c.scale.id, 'tension')
   // a number key keeps the scale it was on
   step(c, { slot: 2 }); step(c, { slot: 1 }); assert.equal(c.scale.id, 'tension')

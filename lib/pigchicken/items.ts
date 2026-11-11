@@ -326,7 +326,7 @@ const PECK: ItemDef = {
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
 // melee is the same for all of them (Y); like the weapons they never break. Their notes come back on their own,
 // one every half second without playing
-const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5, scales: ['primary', 'fifths', 'tension', 'spiral'] as InstrumentScaleId[] }
+const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDamage: 10, recoilPush: 0, trailWidth: 20, trailWisps: 5, scales: ['primary', 'fifths', 'tension', 'spiral', 'harmonic'] as InstrumentScaleId[] }
 
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
@@ -593,6 +593,8 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   { const sc = cleanScales(s.scales); if (sc) out[id].scales = sc }
   // saved before the Espiral (v7): an instrument that had every scale on gets the new one too
   if (!(v >= 7) && out[id].instrument && ['primary', 'fifths', 'tension'].every(k => out[id].scales.includes(k as InstrumentScaleId)) && !out[id].scales.includes('spiral')) out[id].scales = cleanScales([...out[id].scales, 'spiral'])!
+  // saved before the Campo harmônico (v9): an instrument that had every other scale on gets it too
+  if (!(v >= 9) && out[id].instrument && (['primary', 'fifths', 'tension', 'spiral'] as InstrumentScaleId[]).every(k => out[id].scales.includes(k)) && !out[id].scales.includes('harmonic')) out[id].scales = cleanScales([...out[id].scales, 'harmonic'])!
   if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
   // saved before instruments aimed instantly (v8): an untouched old Giro da mira takes the new default (0); custom numbers stay
   if (!(v >= 8) && s.turnRate === V7_TURN_RATE[id]) out[id].turnRate = DEFAULT_ITEMS[id].turnRate
@@ -601,7 +603,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
 // Giro da mira the instruments had before v8 (now 0 = instant)
 const V7_TURN_RATE: Partial<Record<ItemId, number>> = { sax: 120, violin: 420, keys: 300 }
 
-const ITEMS_VERSION = 8
+const ITEMS_VERSION = 9
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',

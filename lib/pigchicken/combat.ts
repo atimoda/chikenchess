@@ -404,6 +404,13 @@ export function createCombat() {
     return true
   }
 
+  // a zone with "Dano só no tom" (music.fits): a note outside it glances off grey, with no harmony
+  function offKey(t: Target, m: number, x: number, y: number) {
+    if (t.dummy || t.kind === 'button' || music.fits(m)) return false
+    if (t.flash <= 0) { t.flash = 0.06; burst(x, y, 3, '#8d949c', 110, 2); sound('block', null) }
+    return true
+  }
+
   // what the bird it becomes will remember: the instrument and the note that landed last (the ones that fill its bar)
   function markSoul(t: Target, note: NoteInfo, by: ItemId | 'rebate' | null) {
     if (t.kind !== 'alien' && t.kind !== 'undead') return
@@ -417,6 +424,7 @@ export function createCombat() {
     if (t.deadT > 0 || t.state === 'converted' || amount <= 0) return
     if (t.kind === 'button') { hitTarget(t, 1, 0, x, y); return }
     if (t.kind === 'undead' && (t.data as UndeadState).bird) return
+    if (offKey(t, note.midi, x, y)) return
     if (t.mirror && reportHit && t.net !== undefined) {
       t.flash = 0.12; t.tint = note.color
       texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
@@ -1254,6 +1262,7 @@ export function createCombat() {
     beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null }
     h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
+    if (hit && offKey(hit, midi, x, y)) hit = null
     if (hit) {
       const note: NoteInfo = { midi, color, sym: '♩', wave: 0, phase: 0, voice: d.voice }
       // harmony flows while it plays; the target stays still; it answers every so often

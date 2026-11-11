@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { INSTRUMENT_SCALES, sectorAt, ringAt, cleanScales, scaleAt, regionNotes, romanOf, spiralAt, spiralRadius, SPIRAL_HOLE } = loadTs('lib/pigchicken/instrument-scales.ts')
+const { INSTRUMENT_SCALES, fieldHouses, fieldTurn, houseAt, sectorAt, ringAt, cleanScales, scaleAt, regionNotes, romanOf, spiralAt, spiralRadius, SPIRAL_HOLE } = loadTs('lib/pigchicken/instrument-scales.ts')
 const { scaleStep, arrivalScale } = loadTs('lib/pigchicken/inventory.ts')
 const { DEFAULT_ITEMS, INSTRUMENT_IDS, INSTRUMENT_WEAPON, ARPS, ARP_GLYPHS, nextArp, bowed, pizzicato } = loadTs('lib/pigchicken/items.ts')
 const { createConductor } = loadTs('lib/pigchicken/music.ts')
@@ -132,7 +132,7 @@ test('the arpeggiator: a glyph per option tracing its pattern; a click goes roun
 
 test('instruments start with every scale and a weapon for the reload sound; lists are cleaned', () => {
   for (const id of INSTRUMENT_IDS) {
-    assert.deepEqual(DEFAULT_ITEMS[id].scales, ['primary', 'fifths', 'tension', 'spiral'])
+    assert.deepEqual(DEFAULT_ITEMS[id].scales, ['primary', 'fifths', 'tension', 'spiral', 'harmonic'])
     assert.equal(DEFAULT_ITEMS[id].spiralDescending, false)
     assert.ok(INSTRUMENT_WEAPON[id] && !DEFAULT_ITEMS[INSTRUMENT_WEAPON[id]].instrument)
   }
@@ -150,7 +150,7 @@ test('items saved before the Espiral (v6) with every scale on get it; a trimmed 
   globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved), setItem() {} }, dispatchEvent() {} }
   try {
     const items = loadItems()
-    assert.deepEqual(items.flute.scales, ['primary', 'fifths', 'tension', 'spiral'])
+    assert.deepEqual(items.flute.scales, ['primary', 'fifths', 'tension', 'spiral', 'harmonic'])
     assert.deepEqual(items.sax.scales, ['primary', 'tension'])
     assert.equal(items.harp.spiralDescending, true)
   } finally { globalThis.window = previous }
@@ -178,4 +178,35 @@ test('the violin bows a held note with the arpeggiator off and plucks short note
   assert.ok(pz.played.notes.filter(n => n.voice === 'pizz').every(n => n.dur <= 0.15))
   // the bow's seconds go note by note: about as much as bowing the same time
   assert.ok(pz.c.held.ammo > 0 && pz.c.held.ammo < DEFAULT_ITEMS.violin.mag)
+})
+
+test('Campo harmônico: 7 houses of the key, the I where its tonic is on the circle of fifths', () => {
+  const s = INSTRUMENT_SCALES.harmonic, music = createConductor()
+  const zone = { id: 'c', name: 'C', root: 60, scale: 'major', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0], color: '#fff' }
+  const houses = fieldHouses(zone)
+  assert.deepEqual(houses.map(h => h.label), ['C', 'Dm', 'Em', 'F', 'G', 'Am', 'B°'])
+  assert.deepEqual(houses.map(h => h.numeral), ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'])
+  // C: the I straight up, then clockwise
+  assert.equal(houseAt(UP, fieldTurn(60)), 0)
+  assert.equal(houseAt(UP + (2 * Math.PI) / 7, fieldTurn(60)), 1)
+  // the default zone (Campo, C): aiming up plays C, the house's chord
+  assert.equal(pc(s.noteFor(music, { angle: UP, reach: 1, set: 'chord', octave: 0, span: 2 })), 0)
+  // A minor: the wheel turns 90° (A is three fifths from C) and the houses follow the minor key
+  const am = { ...zone, root: 57, chordScale: 'minor' }
+  assert.equal(fieldTurn(57), Math.PI / 2)
+  assert.deepEqual(fieldHouses(am).map(h => h.numeral), ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII'])
+  assert.equal(houseAt(RIGHT, fieldTurn(57)), 0)
+  assert.equal(houseAt(UP, fieldTurn(57)), houseAt(UP - Math.PI / 2, 0))
+})
+
+test('Dano só no tom: off by default; the key or the bar’s chord when the zone asks', () => {
+  const music = createConductor()
+  assert.equal(music.fits(61), true)
+  const base = { ...music.zone }
+  music.setZone({ ...base, id: 'k', inKey: 'key' }); music.step(60 / base.bpm * 4)
+  assert.equal(music.fits(62), true) // D in C major
+  assert.equal(music.fits(61), false) // C♯
+  music.setZone({ ...base, id: 'h', inKey: 'chord' }); music.step(60 / base.bpm * 4)
+  const chord = music.chord(true).map(pc)
+  for (let m = 60; m < 72; m++) assert.equal(music.fits(m), chord.includes(pc(m)))
 })
