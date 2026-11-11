@@ -15,9 +15,11 @@ import { createMouseOwner, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, 
 import { cameraBounds, cameraStep, cameraXRange, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
-import { createCombat, lookDoses, type Box, type Combat, type Effect } from "@/lib/pigchicken/combat"
+import { createCombat, lookDoses, type Box, type Catchable, type Combat, type Effect } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import { getNetState } from "@/lib/chicken/online-room"
+import { chickNumber } from "@/lib/chicken/net-chicks"
+import type { NetChickMirror } from "@/components/chicken/online-chickens"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { INVENTORY_MAX, inventorySlotFromCode, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
@@ -229,7 +231,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -524,6 +526,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
     const combat = createCombat()
+    // online, the other browsers' chicks the Passaguá could reach last frame, and where they were
+    let netChicksSeen = new Map<string, { x: number; y: number }>()
     // the wires the birds rest on (Postes and Torres), with the camera and the players each frame
     const perches = createPerchWorld()
     combat.setPerchWorld(perches)
@@ -1002,11 +1006,23 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         perches.camX = camX; perches.camY = camY - yr.lo; perches.time += dt
         perches.players = [{ x: body.x, y: body.y - 90 * st.scale }, ...[...(extras?.current?.values() ?? [])].map(e => { const s = e.getMotionState(); return { x: s.x + camX, y: s.y - camY - 90 * s.scale } })]
       }
-      // the chicks are caught by any player's Passaguá, like the birds (and count as souls)
-      combat.setCatchables([...(chicks?.current?.entries() ?? [])].map(([id, eng]) => {
+      // the chicks are caught by any player's Passaguá, like the birds (and count as souls); online, the other
+      // browsers' chicks too: those are asked of their browser, and one that is no longer there (caught over there,
+      // or its browser left) goes in a little cloud
+      const catchables: Catchable[] = [...(chicks?.current?.entries() ?? [])].map(([id, eng]) => {
         const cs = eng.getMotionState()
-        return { x: cs.x + camX, y: cs.y - camY - 100 * cs.scale, r: 100 * cs.scale, catch: () => { eng.destroy(); chicks?.current?.delete(id) } }
-      }))
+        return { x: cs.x + camX, y: cs.y - camY - 100 * cs.scale, r: 100 * cs.scale, id: chickNumber(eng), catch: () => { eng.destroy(); chicks?.current?.delete(id) } }
+      })
+      const netSeen = new Map<string, { x: number; y: number }>()
+      netChicks?.current?.forEach((m, key) => {
+        if (m.hidden) return
+        const cs = m.engine.getMotionState(), x = cs.x + camX, y = cs.y - camY - 100 * cs.scale
+        netSeen.set(key, { x, y })
+        catchables.push({ x, y, r: 100 * cs.scale, net: { pid: m.pid, id: m.id }, catch: m.hide })
+      })
+      netChicksSeen.forEach((p, key) => { if (!netSeen.has(key) && !netChicks?.current?.has(key)) combat.puff(p.x, p.y) })
+      netChicksSeen = netSeen
+      combat.setCatchables(catchables)
       // the air the souls flying free keep inside: the world's walls and the top of what the camera shows
       combat.setSoulAir({ l: walls.lo + camX, r: walls.hi + camX, top: Math.max(walls.top, zoomedView(viewW, st.height, zoom, viewTop).y) - camY })
       // presses on the soul counters: the soul comes out where the counter is on the screen (in world px)

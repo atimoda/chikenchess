@@ -1,12 +1,14 @@
 // The souls flying free in the online Pátio (lib/pigchicken/net-souls.ts and the combat's hooks): each browser's
 // souls mirrored on the others, a Passaguá over a mirror asking its browser for the soul, and the undead birds
-// asked of the lobby's owner.
+// asked of the lobby's owner. And the chicks of each browser on the others (lib/chicken/net-chicks.ts), asked of
+// their browser the same way.
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const S = loadTs('lib/pigchicken/souls.ts')
 const N = loadTs('lib/pigchicken/net-souls.ts')
 const W = loadTs('lib/pigchicken/net-world.ts')
+const K = loadTs('lib/chicken/net-chicks.ts')
 const { createCombat } = loadTs('lib/pigchicken/combat.ts')
 
 const me = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
@@ -50,6 +52,8 @@ test('what a soul is travels whole, and junk is not a soul', () => {
   for (const junk of [null, 'jelly', [], ['nope', 'alive', null, null, null, '#fff', null], ['jelly', 'asleep', null, null, null, '#fff', null], ['jelly', 'alive', null, null, null, 'url(javascript:1)', null], ['jelly', 'alive', null, null, null, 7, null], ['constructor', 'alive', null, null, null, '#fff', null]])
     assert.equal(N.soulFromWho(junk, 1), null, JSON.stringify(junk))
   assert.deepEqual(N.cleanTake({ k: 's', id: 30000007, junk: 1 }), { k: 's', id: 30000007 })
+  assert.deepEqual(N.cleanTake({ k: 'c', id: 30000001 }), { k: 'c', id: 30000001 })
+  assert.equal(N.takeOwner(30000007), 3)
   for (const junk of [null, { k: 'x', id: 1 }, { k: 's', id: 'a' }, { k: 's', id: -1 }, { k: 'f' }]) assert.equal(N.cleanTake(junk), null)
   assert.deepEqual(N.cleanGive({ k: 'f', id: 5, soul: [...who, 'more'] }), { k: 'f', id: 5, soul: who })
   assert.equal(N.cleanGive({ k: 's', id: 5, soul: ['nope'] }), null)
@@ -262,4 +266,97 @@ test("online, a note sung by a soul fills the owner's enemy without changing wha
   assert.equal(m.soul.shot, 'wind')
   follower.netChange(m, 'convert')
   assert.equal(follower.critters[0].soul.shot, 'wind', 'and the bird it becomes here remembers it')
+})
+
+test("a browser's chicks show on the others where they are, with the look they were hatched with, and leave when they do", () => {
+  // each chick of this browser has its number for as long as it lives, and its look beside it
+  const e1 = {}, e2 = {}
+  const n1 = K.chickNumber(e1), n2 = K.chickNumber(e2)
+  assert.notEqual(n1, n2)
+  assert.equal(K.chickNumber(e1), n1)
+  K.setChickStyle(e1, 5)
+  assert.deepEqual([K.chickStyleOf(e1), K.chickStyleOf(e2)], [5, 0])
+  const own = [
+    { n: n1, x: 500.4, y: 199.6, vx: 60.2, vy: -3.7, face: 1, state: 1, style: 5 },
+    { n: n2, x: 460, y: 200, vx: 0, vy: 0, face: -0.5, state: 0, style: 0 },
+  ]
+  const l = JSON.parse(JSON.stringify(K.exportChicks(own)))
+  assert.deepEqual(l, [[n1, 500, 200, 60, -4, 1, 1, 5], [n2, 460, 200, 0, 0, -1, 0, 0]], 'whole numbers travel')
+  assert.equal(K.exportChicks(Array.from({ length: 30 }, () => own[0])).length, K.NET_CHICKS_MAX)
+
+  const mirrors = new Map()
+  K.importChicks(mirrors, A, l, 1000)
+  K.importChicks(mirrors, B, [[1, -40, 0, 0, 0, 1, 0, 2]], 1000)
+  assert.deepEqual([...mirrors.keys()].sort(), [K.chickKey(A, n1), K.chickKey(A, n2), K.chickKey(B, 1)].sort())
+  const m = mirrors.get(K.chickKey(A, n1))
+  assert.deepEqual({ pid: m.pid, n: m.n, x: m.x, y: m.y, face: m.face, state: m.state, style: m.style, hidden: m.hidden }, { pid: A, n: n1, x: 500, y: 200, face: 1, state: 1, style: 5, hidden: 0 })
+  // between two messages it runs on by its speed, but not for long
+  assert.deepEqual(K.chickAt(m, 1100), { x: 506, y: 199.6 })
+  assert.deepEqual(K.chickAt(m, 9000), { x: 500 + 60 * K.CHICK_AHEAD, y: 200 - 4 * K.CHICK_AHEAD })
+  assert.deepEqual(K.chickAt(m, 900), { x: 500, y: 200 })
+  // the next message: it moved; it keeps its look and stays hidden for as long as it was asked to
+  m.hidden = 5000
+  K.importChicks(mirrors, A, [[n1, 520, 200, 60, 0, 1, 1, 9], [n2, 460, 200, 0, 0, -1, 0, 0]], 1100)
+  const m2 = mirrors.get(K.chickKey(A, n1))
+  assert.deepEqual({ x: m2.x, style: m2.style, hidden: m2.hidden, at: m2.at }, { x: 520, style: 5, hidden: 5000, at: 1100 })
+  // junk is not a chick; what is not a list changes nothing
+  K.importChicks(mirrors, B, 'x', 1200)
+  assert.equal(mirrors.has(K.chickKey(B, 1)), true)
+  K.importChicks(mirrors, B, [null, 'x', [0, 1, 1], [1.5, 1, 1], ['1', 1, 1], [2, 1e9, 0], [3, 0, NaN], [4, 10, 20, 'fast', 1e9, 0, 999, -1]], 1200)
+  assert.deepEqual([...mirrors.values()].filter(c => c.pid === B).map(c => [c.n, c.x, c.y, c.vx, c.vy, c.face, c.state, c.style]), [[4, 10, 20, 0, 5000, 1, 0, 0]])
+  // the ones a browser no longer sends leave, and only its own
+  K.importChicks(mirrors, A, [[n2, 460, 200, 0, 0, -1, 0, 0]], 1300)
+  assert.deepEqual([...mirrors.keys()].sort(), [K.chickKey(A, n2), K.chickKey(B, 4)].sort())
+  K.importChicks(mirrors, A, Array.from({ length: 30 }, (_, i) => [100 + i, i, 0, 0, 0, 1, 0, 0]), 1400)
+  assert.equal([...mirrors.values()].filter(c => c.pid === A).length, K.NET_CHICKS_MAX)
+  // a browser that left the lobby takes its chicks along
+  K.keepChicks(mirrors, new Set([B]))
+  assert.deepEqual([...mirrors.keys()], [K.chickKey(B, 4)])
+})
+
+test("a Passaguá over another browser's chick asks that browser for it; it leaves there once and counts as a soul here", () => {
+  const a = world('passagua'), b = world('passagua'), c = world('passagua')
+  // on A, its own chick (number 7 in the lobby); on B and C, the mirror of it
+  let alive = true, hiddenB = 0, hiddenC = 0
+  const id = W.netIdFor(A, 7)
+  const own = () => a.setCatchables(alive ? [{ x: 40, y: 0, r: 20, id: 7, catch: () => { alive = false } }] : [])
+  own()
+  b.setCatchables([{ x: 40, y: 0, r: 20, net: { pid: A, id }, catch: () => { hiddenB++ } }])
+  b.soulNews.length = 0
+  for (let i = 0; i < 40; i++) step(b, { melee: i === 0 })
+  assert.deepEqual(b.netTakes, [{ k: 'c', id, pid: A }], 'asked once, of the browser it follows')
+  assert.equal(hiddenB, 1, 'out of sight here meanwhile')
+  assert.ok(b.puffs.length > 0 || b.sounds.some(s => s.kind === 'puff'))
+  land(b)
+  assert.equal(b.capturedSouls, 0, 'not in the basket before the answer')
+  assert.equal(b.soulNews.length, 0)
+  c.setCatchables([{ x: 40, y: 0, r: 20, net: { pid: A, id }, catch: () => { hiddenC++ } }])
+  for (let i = 0; i < 40; i++) step(c, { melee: i === 0 })
+  assert.equal(hiddenC, 1)
+  // A lets it go to the first one that asked, and has nothing for the second
+  const take = N.cleanTake(b.netTakes.splice(0)[0])
+  assert.equal(a.giveNetTake({ k: 'c', id: W.netIdFor(B, 7) }, A), null, "another browser's id is not this one's chick")
+  const who = a.giveNetTake(take, A)
+  assert.deepEqual(who, ['chick', 'alive', null, null, null, S.CHICK_SOUL_COLOR, null])
+  assert.equal(alive, false, 'it left the browser it followed')
+  assert.equal(a.capturedSouls, 0, 'which did not catch it')
+  own()
+  assert.equal(a.giveNetTake(N.cleanTake(c.netTakes.splice(0)[0]), A), null, 'given once')
+  // the answer: it flies to B's counter and counts; it is new to B's library
+  const give = N.cleanGive({ ...take, soul: who })
+  assert.equal(b.applyNetGive(give), true)
+  land(b)
+  assert.equal(b.capturedSouls, 1)
+  assert.deepEqual({ species: b.basket[0].species, state: b.basket[0].state, bird: b.basket[0].bird }, { species: 'chick', state: 'alive', bird: null })
+  assert.equal(b.soulNews.length, 1)
+  assert.equal(b.applyNetGive(give), false, 'the same answer twice counts once')
+  land(c)
+  assert.equal(c.capturedSouls, 0, 'the one that asked late got nothing')
+  // its own browser still catches its own chick on the spot
+  alive = true; own()
+  for (let i = 0; i < 40; i++) step(a, { melee: i === 0 })
+  assert.equal(alive, false)
+  assert.equal(a.netTakes.length, 0)
+  land(a)
+  assert.equal(a.capturedSouls, 1)
 })

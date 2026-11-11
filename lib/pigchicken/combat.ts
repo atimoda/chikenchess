@@ -43,8 +43,10 @@ export type ZoneWallsFn = (px: number, py: number, x: number, y: number, count: 
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
-// a bird the Passaguá can catch apart from the enemies (a chick): its middle and radius in world px
-export type Catchable = { x: number; y: number; r: number; catch: () => void }
+// a bird the Passaguá can catch apart from the enemies (a chick): its middle and radius in world px. Online, id:
+// the number this browser's chick goes by in the lobby; net: another browser's chick (pid: whose, id: its id in
+// the lobby), which is asked of that browser (catch: it hides here meanwhile)
+export type Catchable = { x: number; y: number; r: number; catch: () => void; id?: number; net?: { pid: number; id: number } }
 
 // a converted enemy leaving the scene: aliens become birds, zombies become happy people
 // birds: their type, where they circle or perch, their next whistle and when they leave
@@ -1091,7 +1093,10 @@ export function createCombat() {
       // the chicks that follow her: caught like the birds, they count as souls too
       catchables = catchables.filter(c => {
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r)) return true
-        c.catch(); caught.push({ x: c.x, y: c.y, wild: true, soul: newSoul(nextId++, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null) })
+        c.catch()
+        // online, another browser's chick: it is asked of that browser
+        if (c.net) askFor({ k: 'c', id: c.net.id, pid: c.net.pid }, c.x, c.y)
+        else caught.push({ x: c.x, y: c.y, wild: true, soul: newSoul(nextId++, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null) })
         return false
       })
       if (caught.length) {
@@ -1506,6 +1511,8 @@ export function createCombat() {
   return {
     setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
     setCatchables(list: Catchable[]) { catchables = list },
+    /** a little cloud where something left (another browser's chick that is no longer there) */
+    puff(x: number, y: number) { cloud(x, y) },
     setPerchWorld(w: PerchWorld | null) { perchWorld = w },
     setSoulAir(air: SoulAir | null) { soulAir = air },
     // Local players: each one has their own items, aim, cooldowns and swing (a loadout); the world (targets,
@@ -1714,8 +1721,9 @@ export function createCombat() {
     setNetAsks(on: boolean) { netAsks = on },
     // an undead bird of the owner's this browser asked for: hidden until the answer has had time to come
     netFoeTaken(id: number) { return takenFoes.has(id) },
-    // another browser's Passaguá went over a soul this browser flies (pid: this browser's) or, on the lobby's owner,
-    // over one of its undead birds: it leaves here and what it is goes back (null: it is not here any more)
+    // another browser's Passaguá went over a soul this browser flies or a chick of its own (pid: this browser's) or,
+    // on the lobby's owner, over one of its undead birds: it leaves here and what it is goes back (null: it is not
+    // here any more)
     giveNetTake(take: NetTake, pid: number): NetSoulWho | null {
       if (take.k === 's') {
         const i = freed.findIndex(f => netIdFor(pid, f.soul.id) === take.id)
@@ -1723,6 +1731,13 @@ export function createCombat() {
         const [f] = freed.splice(i, 1)
         letGo(f); cloud(f.x, f.y); sound('puff', null)
         return soulWho(f.soul)
+      }
+      if (take.k === 'c') {
+        const i = catchables.findIndex(c => c.id !== undefined && netIdFor(pid, c.id) === take.id)
+        if (i < 0) return null
+        const [c] = catchables.splice(i, 1)
+        c.catch(); cloud(c.x, c.y); sound('puff', null)
+        return soulWho(newSoul(0, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null))
       }
       const i = targets.findIndex(t => t.net === take.id && !t.mirror && t.kind === 'undead' && t.deadT <= 0)
       const t = targets[i], u = t?.data as UndeadState | undefined

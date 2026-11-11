@@ -1,12 +1,14 @@
 // The online Pátio from the browser's side: one connection to the game server (server/, Colyseus) for this
 // browser's 1 to 4 chickens. It joins the oldest public lobby of a Pátio with a free seat (or a given room, from an
 // invite), keeps the room as the server describes it (players, owner, editors, public / private), the latest
-// position of every other chicken, and relays the chat. Nothing here touches Supabase.
+// position of every other chicken and of the chicks that follow them, and relays the chat. Nothing here touches
+// Supabase.
 import { Client, type Room } from '@colyseus/sdk'
 import { receiveChickenChat, setChickenChatTransport } from './chat'
 import { byteAngle, decodeNetSnapshot, encodeNetState, NET_MAX_BROWSERS, type NetChicken } from './net-protocol'
 import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world'
 import type { NetGive, NetSoul, NetTake } from '../pigchicken/net-souls'
+import { importChicks, keepChicks, type NetChick, type RemoteChick } from './net-chicks'
 
 /* global process */
 // ws(s)://host[:port] of the game server; in development it defaults to the one `cd server && npm start` runs
@@ -52,9 +54,11 @@ let seq = 0
 // what the server says it relays beyond its first messages (an older one says nothing: a message it does not know
 // would close the connection, so those are only sent to a server that asked for them)
 let caps: Record<string, unknown> = {}
-export const netCan = (cap: 'souls') => !!caps[cap]
+export const netCan = (cap: 'souls' | 'chicks') => !!caps[cap]
 const listeners = new Set<() => void>()
 const remotes = new Map<string, RemoteChicken>()
+// the other browsers' chicks (lib/chicken/net-chicks.ts), by pid and number
+const chicks = new Map<string, RemoteChick>()
 const set = (patch: Partial<NetState>) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()) }
 
 export const getNetState = () => state
@@ -69,6 +73,14 @@ export function remoteChicken(pid: number, slot: number, now = performance.now()
   const ahead = Math.min(0.15, (now - r.at) / 1000), phi = byteAngle(r.rot)
   if (phi !== null) return { ...r, x: r.x + Math.cos(phi) * r.vx * ahead, y: r.y + Math.sin(phi) * r.vx * ahead }
   return { ...r, x: r.x + r.vx * ahead, y: r.y + r.vy * ahead }
+}
+
+/** the other browsers' chicks, as last heard of (chickAt says where each one is now) */
+export const remoteChicks = (): ReadonlyMap<string, RemoteChick> => chicks
+/** a chick this browser asked its own for stays out of sight until the answer has had time */
+export function hideRemoteChick(key: string, seconds: number, now = performance.now()) {
+  const c = chicks.get(key)
+  if (c) c.hidden = now + seconds * 1000
 }
 
 export type JoinOptions = {
@@ -106,13 +118,14 @@ export async function joinPatioOnline(opts: JoinOptions): Promise<{ ok: true } |
 
 function attach(r: Room) {
   room = r
-  remotes.clear()
+  remotes.clear(); chicks.clear()
   caps = {}
   r.onMessage('hello', (m: { pid: number; room: NetRoomInfo; caps?: Record<string, unknown> }) => { caps = m.caps && typeof m.caps === 'object' ? m.caps : {}; set({ status: 'online', myPid: m.pid, info: m.room }) })
   r.onMessage('room', (info: NetRoomInfo) => {
     // chickens of browsers that left (or fewer chickens now) stop being drawn
     const alive = new Set(info.players.flatMap(p => Array.from({ length: p.chickens }, (_, s) => `${p.pid}:${s}`)))
     for (const k of [...remotes.keys()]) if (!alive.has(k)) remotes.delete(k)
+    keepChicks(chicks, new Set(info.players.map(p => p.pid)))
     set({ info })
   })
   r.onMessage('w', (bytes: Uint8Array) => {
@@ -134,13 +147,14 @@ function attach(r: Room) {
   r.onMessage('spawn', (m: { pid: number; spawn: unknown }) => toWorld({ type: 'spawn', pid: m?.pid, spawn: m?.spawn }))
   r.onMessage('shots', (m: { pid: number; list: unknown[] }) => { if (m?.pid !== state.myPid && Array.isArray(m?.list)) toWorld({ type: 'shots', pid: m.pid, list: m.list }) })
   r.onMessage('souls', (m: { pid: number; l: unknown[] }) => { if (m?.pid !== state.myPid && Array.isArray(m?.l)) toWorld({ type: 'souls', pid: m.pid, list: m.l }) })
+  r.onMessage('chicks', (m: { pid: number; l: unknown[] }) => { if (m?.pid !== state.myPid && state.info?.players.some(p => p.pid === m?.pid)) importChicks(chicks, m.pid, m.l, performance.now()) })
   r.onMessage('take', (m: { pid: number; take: unknown }) => toWorld({ type: 'take', pid: m?.pid, take: m?.take }))
   r.onMessage('give', (m: { pid: number; give: unknown }) => toWorld({ type: 'give', pid: m?.pid, give: m?.give }))
   r.onMessage('denied', (m: { reason: string }) => set({ notice: m.reason }))
   r.onMessage('kicked', (m: { reason: string }) => set({ notice: m.reason }))
   r.onLeave(() => {
     if (room !== r) return
-    room = null; caps = {}; remotes.clear(); setChickenChatTransport(null)
+    room = null; caps = {}; remotes.clear(); chicks.clear(); setChickenChatTransport(null)
     set({ status: 'off', info: null, myPid: null })
   })
   // this screen's messages go to the room too (the server sends them to everyone else)
@@ -150,7 +164,7 @@ function attach(r: Room) {
 export async function leavePatioOnline() {
   const r = room
   room = null; caps = {}
-  remotes.clear()
+  remotes.clear(); chicks.clear()
   setChickenChatTransport(null)
   if (r) { try { await r.leave() } catch { /* already gone */ } }
   if (state.status !== 'off') set({ status: 'off', info: null, myPid: null })
@@ -180,6 +194,8 @@ const soulful = () => (netCan('souls') ? live() : null)
 export const sendNetSouls = (l: NetSoul[]) => soulful()?.send('souls', { l })
 export const sendNetTake = (to: number, take: NetTake) => soulful()?.send('take', { to, take })
 export const sendNetGive = (to: number, give: NetGive) => soulful()?.send('give', { to, give })
+// the chicks that follow this browser's first chicken (an empty list: none left)
+export const sendNetChicks = (l: NetChick[]) => (netCan('chicks') ? live() : null)?.send('chicks', { l })
 
 const httpBase = () => GAME_SERVER_URL.replace(/^ws/, 'http')
 /** the public lobbies on the server, oldest first (empty when it cannot be reached) */

@@ -20,7 +20,7 @@ import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
-import { OnlineChickens, netColor, useNet } from "./online-chickens"
+import { OnlineChickens, netColor, useNet, type NetChickMirror } from "./online-chickens"
 import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
 import { elementsInWorld, entryPortalIn, normalizeLayout, type LayoutElement, type PatioLayout } from "@/lib/pigchicken/layout"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
@@ -162,6 +162,8 @@ export function ChickenPatio() {
   const extraEngines = useRef(new Map<string, ChickenEngine>())
   // the chicks that follow the first player's chicken (bots)
   const chickEngines = useRef(new Map<string, ChickenEngine>())
+  // online, the other browsers' chicks (OnlineChickens draws them, the Parquinho's Passaguá asks for them)
+  const netChicks = useRef(new Map<string, NetChickMirror>())
   const invOffset = useTouchLayout().offsets.inventory
   // a short notice under the header (lobby rules, online unavailable)
   const [toast, setToast] = useState<string | null>(null)
@@ -651,8 +653,8 @@ export function ChickenPatio() {
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
-      {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} temple={patioTemple(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} hitboxes={patioLayers.layers.hitboxes} />
+      {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} temple={patioTemple(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} hitboxes={patioLayers.layers.hitboxes} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}

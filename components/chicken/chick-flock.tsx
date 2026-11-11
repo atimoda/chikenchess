@@ -6,11 +6,13 @@
 // every Pátio. CHICK_START chicks in random realistic styles fall from the sky one after another right after her
 // (CHICK_DROP_DELAY, then CHICK_DROP_GAP apart); a new spawnKey (another Pátio) brings a new random flock, and null
 // waits (the Pátio still loading). In the Pátio, the Parquinho moves them with its camera and catches them with the
-// Passaguá (through `engines`, like the local players').
+// Passaguá (through `engines`, like the local players'). Online, each chick's look is kept beside its engine, so the
+// other browsers draw the same one (lib/chicken/net-chicks.ts).
 import { useEffect, useRef } from "react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { createFollowBrain, followStep, type FollowActions, type FollowBrain } from "@/lib/chicken/chick-follow"
-import { chickArt, randomChickStyle } from "@/lib/chicken/chick-art"
+import { CHICK_STYLES, chickArt, randomChickStyle } from "@/lib/chicken/chick-art"
+import { setChickStyle } from "@/lib/chicken/net-chicks"
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 
 export const CHICK_START = 4
@@ -36,7 +38,9 @@ export function ChickFlock({ lead, groundHeight, engines, count = CHICK_START, f
     for (let i = 0; i < count; i++) {
       timers.push(window.setTimeout(() => {
         const id = `chick-${tag}-${i}`
-        const eng = createChickenEngine(host, { groundHeight: groundRef.current, fixedScale, species: "chick", art: chickArt(randomChickStyle("realista")) })
+        const style = randomChickStyle("realista")
+        const eng = createChickenEngine(host, { groundHeight: groundRef.current, fixedScale, species: "chick", art: chickArt(style) })
+        setChickStyle(eng, CHICK_STYLES.indexOf(style))
         eng.setGame({ gameMode: true })
         eng.setDevices([])
         const entry = { brain: createFollowBrain(), actions: {} as FollowActions }

@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,7 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
-  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give']) room.onMessage(type, m => seen[type].push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -188,5 +188,34 @@ test('souls flying free: each browser sends its own to everyone else; one asked 
   assert.equal(a.seen.souls.length, 1); assert.equal(c.seen.souls.length, 1)
   assert.equal(a.seen.take.length + c.seen.take.length + b.seen.take.length, 1)
   assert.equal(a.seen.give.length + b.seen.give.length, 0)
+  for (const x of [a, b, c]) await x.room.leave()
+})
+
+test('chicks: each browser sends its own to everyone else, and one is asked for like a soul', async () => {
+  const patioId = '0f000000-0000-4000-8000-000000000006'
+  const a = await browser({ patioId, name: 'Dona' })
+  const b = await browser({ patioId, name: 'Bia' })
+  const c = await browser({ patioId, name: 'Caio' })
+  assert.equal(a.seen.hello.caps.chicks, 1, 'the server says it relays them')
+  const pb = b.seen.hello.pid, pc = c.seen.hello.pid
+  const l = [[1, 500, 200, 60, 0, 1, 1, 3], [2, 460, 200, 0, 0, -1, 0, 0]]
+  b.room.send('chicks', { l })
+  assert.deepEqual(await until(() => a.seen.chicks[0]), { pid: pb, l })
+  await until(() => c.seen.chicks[0])
+  // Caio's Passaguá went over the first one: only Bia hears, and only Caio gets it
+  const take = { k: 'c', id: pb * 10_000_000 + 1 }
+  c.room.send('take', { to: pb, take })
+  assert.deepEqual(await until(() => b.seen.take[0]), { pid: pc, take })
+  const give = { ...take, soul: ['chick', 'alive', null, null, null, '#ffd23f', null] }
+  b.room.send('give', { to: pc, give })
+  assert.deepEqual(await until(() => c.seen.give[0]), { pid: pb, give })
+  // none left: an empty list goes through; too many, not a list: dropped
+  b.room.send('chicks', { l: [] })
+  assert.deepEqual(await until(() => a.seen.chicks[1]), { pid: pb, l: [] })
+  b.room.send('chicks', { l: Array.from({ length: 17 }, () => l[0]) })
+  b.room.send('chicks', { l: 'x' })
+  await wait(150)
+  assert.equal(b.seen.chicks.length, 0, 'its own chicks do not come back')
+  assert.equal(a.seen.chicks.length, 2); assert.equal(c.seen.chicks.length, 2)
   for (const x of [a, b, c]) await x.room.leave()
 })

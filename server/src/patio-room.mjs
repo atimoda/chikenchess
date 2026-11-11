@@ -10,9 +10,11 @@ const LAYOUT_MAX = 400_000 // the database's own limit for a Pátio's layout
 const FOES_MAX = 400, FOES_BYTES = 120_000, HITS_MAX = 64, SHOTS_MAX = 32, WORLD_BYTES = 16_000
 // the souls flying free (the browser's lib/pigchicken/net-souls.ts): each browser's own, and the ones asked for and given
 const SOULS_MAX = 64, TAKE_BYTES = 200, GIVE_BYTES = 400
+// the chicks that follow each browser's first chicken (the browser's lib/chicken/net-chicks.ts)
+const CHICKS_MAX = 16, CHICKS_BYTES = 1200
 // what this server relays beyond the first version's messages: a browser only sends those to a server that says so
 // (a message without a handler closes the connection)
-const CAPS = { souls: 1 }
+const CAPS = { souls: 1, chicks: 1 }
 const jsonSize = v => { try { return JSON.stringify(v).length } catch { return Infinity } }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
@@ -35,7 +37,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "spawn"    { spawn }  not the owner: a horde / training enemy asked of the owner; relayed to the owner only
 //   "shots"    { list }   the projectiles it fired; relayed to everyone else
 //   "souls"    { l }      the souls its players let out (~10/s); relayed to everyone else
-//   "take"     { to, take }  its Passaguá went over a soul the browser `to` flies (or an undead bird of the owner's); relayed to `to` only
+//   "chicks"   { l }      the chicks that follow its first chicken (~10/s while they move); relayed to everyone else
+//   "take"     { to, take }  its Passaguá went over a soul the browser `to` flies, a chick of its own, or an undead bird of the owner's; relayed to `to` only
 //   "give"     { to, give }  the soul it lets go to the browser `to`, which asked for it; relayed to `to` only
 // Messages to the browser:
 //   "hello"    { pid, room, caps }  right after joining (caps: the newer messages this server relays)
@@ -51,6 +54,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "spawn"    { pid, spawn } (to the owner) what another browser asked to spawn
 //   "shots"    { pid, list }  another browser's projectiles
 //   "souls"    { pid, l }     another browser's souls flying free
+//   "chicks"   { pid, l }     another browser's chicks
 //   "take"     { pid, take }  another browser asks for a soul this one flies
 //   "give"     { pid, give }  the soul another browser gave this one
 export class PatioRoom extends Room {
@@ -86,6 +90,7 @@ export class PatioRoom extends Room {
     this.onMessage('spawn', (client, msg) => this.onSpawn(client, msg))
     this.onMessage('shots', (client, msg) => this.onShots(client, msg))
     this.onMessage('souls', (client, msg) => this.onSouls(client, msg))
+    this.onMessage('chicks', (client, msg) => this.onChicks(client, msg))
     this.onMessage('take', (client, msg) => this.onDirect(client, msg, 'take', TAKE_BYTES))
     this.onMessage('give', (client, msg) => this.onDirect(client, msg, 'give', GIVE_BYTES))
     this.setSimulationInterval(() => this.broadcastSnapshot(), TICK_MS)
@@ -114,7 +119,7 @@ export class PatioRoom extends Room {
       state: new Map(), // slot -> latest chicken state
       sendOk: bucket(30, 40), chatOk: bucket(2, 4), profileOk: bucket(4, 8), layoutOk: bucket(4, 8),
       foesOk: bucket(15, 20), hitsOk: bucket(30, 60), spawnOk: bucket(2, 4), shotsOk: bucket(30, 40),
-      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16),
+      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16), chicksOk: bucket(15, 20),
     }
     this.players.set(client.sessionId, p)
     this.settleOwner()
@@ -278,7 +283,14 @@ export class PatioRoom extends Room {
     this.broadcast('souls', { pid: p.pid, l: msg.l }, { except: client })
   }
 
-  // a soul asked of one browser ("take") and its answer ("give"): only to the browser it names
+  // the chicks that follow a browser's first chicken: to everyone else, as they are
+  onChicks(client, msg) {
+    const p = this.players.get(client.sessionId)
+    if (!p || !p.chicksOk() || !Array.isArray(msg?.l) || msg.l.length > CHICKS_MAX || jsonSize(msg.l) > CHICKS_BYTES) return
+    this.broadcast('chicks', { pid: p.pid, l: msg.l }, { except: client })
+  }
+
+  // a soul or a chick asked of one browser ("take") and its answer ("give"): only to the browser it names
   onDirect(client, msg, type, max) {
     const p = this.players.get(client.sessionId), to = this.byPid(Number(msg?.to))
     const body = msg?.[type]

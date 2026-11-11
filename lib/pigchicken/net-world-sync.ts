@@ -7,7 +7,7 @@ import { getNetState, netCan, onNetWorld, remoteChicken, sendNetFoes, sendNetGiv
 import type { Combat } from './combat'
 import { DEFAULT_ITEMS } from './items'
 import { cleanHit, cleanShot, cleanSpawn, exportFoes, importFoes, newFoeCache, type NetFormation, type NetHit, type NetShot, type NetSpawn } from './net-world'
-import { cleanGive, cleanTake, exportSouls } from './net-souls'
+import { cleanGive, cleanTake, exportSouls, takeOwner } from './net-souls'
 
 const FOES_MS = 100 // the owner's enemies: 10 times a second
 const FULL_MS = 2000 // and everything about them (also right after someone joins)
@@ -69,13 +69,15 @@ export function createNetWorldSync(combat: Combat) {
         }
         else if (m.type === 'souls') { if (others.some(p => p.pid === m.pid)) combat.importNetSouls(m.pid, m.list) }
         else if (m.type === 'take') {
-          // a soul this browser flies, or (the owner) one of its undead birds: it goes to whoever asked first
+          // a soul this browser flies, one of its chicks, or (the owner) one of its undead birds: it goes to whoever
+          // asked first
           const c = cleanTake(m.take)
-          const who = c && (c.k === 's' || role === 'owner') && others.some(p => p.pid === m.pid) ? combat.giveNetTake(c, s.myPid!) : null
+          const who = c && (c.k !== 'f' || role === 'owner') && others.some(p => p.pid === m.pid) ? combat.giveNetTake(c, s.myPid!) : null
           if (c && who) sendNetGive(m.pid, { ...c, soul: who })
         }
-        // only from the browser that had it: the one in the soul's id, or the lobby's owner for its undead birds
-        else if (m.type === 'give') { const c = cleanGive(m.give); if (c && m.pid === (c.k === 's' ? Math.floor(c.id / 10_000_000) : s.info!.ownerPid)) combat.applyNetGive(c) }
+        // only from the browser that had it: the one in the soul's or the chick's id, or the lobby's owner for its
+        // undead birds
+        else if (m.type === 'give') { const c = cleanGive(m.give); if (c && m.pid === (c.k === 'f' ? s.info!.ownerPid : takeOwner(c.id))) combat.applyNetGive(c) }
         else if (m.type === 'hits') { if (role === 'owner') for (const h of m.list.slice(0, 64)) { const c = cleanHit(h); if (c) combat.applyNetHit(c) } }
         else if (m.type === 'spawn') { if (role === 'owner') { const c = cleanSpawn(m.spawn); if (c) spawns.push(c) } }
         else if (m.type === 'shots') {

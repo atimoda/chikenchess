@@ -3,13 +3,20 @@
 // The online Pátio on screen: sends this browser's chickens to the game server 20 times a second (in world units,
 // so every screen agrees whatever its camera) and draws the other browsers' chickens, each with its look and a
 // name tag in its browser's color (with the chicken's number when that browser has more than one). Where each one
-// aims (the item in her hand and her eyes) and the surface she clings to travel as one byte each.
+// aims (the item in her hand and her eyes) and the surface she clings to travel as one byte each. The chicks that
+// follow this browser's first chicken go up too (10 times a second while they move), and the other browsers' chicks
+// are drawn here with the look they were hatched with; `netChicks` lists them for the Parquinho, whose Passaguá asks
+// their browser for them (lib/chicken/net-chicks.ts).
 import { useEffect, useRef, useSyncExternalStore } from "react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import type { ChickenLook } from "@/lib/chicken/look-art"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import { angleByte, byteAngle, stateByte, stateName } from "@/lib/chicken/net-protocol"
-import { getNetState, remoteChicken, sendOwnChickens, subscribeNet, type NetPlayer } from "@/lib/chicken/online-room"
+import { getNetState, hideRemoteChick, netCan, remoteChicken, remoteChicks, sendNetChicks, sendOwnChickens, subscribeNet, type NetPlayer } from "@/lib/chicken/online-room"
+import { CHICK_STYLES, chickArt } from "@/lib/chicken/chick-art"
+import { chickAt, chickNumber, chickStyleOf, exportChicks } from "@/lib/chicken/net-chicks"
+import { netIdFor } from "@/lib/pigchicken/net-world"
+import { TAKE_WAIT } from "@/lib/pigchicken/net-souls"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
@@ -22,6 +29,8 @@ const itemByte = (key: string | null) => (key ? ITEM_KEYS.indexOf(key) + 1 : 0)
 const itemKey = (byte: number) => (byte > 0 ? ITEM_KEYS[byte - 1] ?? null : null)
 
 const SEND_MS = 50
+// the chicks: this often while they move, and this often anyway (whoever just joined learns of them)
+const CHICKS_MS = 100, CHICKS_KEEP_MS = 1000
 // the name tag sits this far above her feet (rig units, like the chat bubble)
 const TAG_UP = 236
 
@@ -30,12 +39,15 @@ export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getN
 
 // aim: the angle she is drawn pointing at, eased toward the latest one (the packets come 20 times a second)
 type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; item: number; aim: number | null; at: number }
+// another browser's chick drawn here (id: its id in the lobby; hidden: asked of its browser, out of sight meanwhile)
+export type NetChickMirror = { engine: ChickenEngine; wrap: HTMLDivElement; pid: number; id: number; hidden: boolean; hide: () => void }
 // the shortest turn from a to b
 const turnTo = (a: number, b: number) => ((b - a) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI
 
 // own: this browser's chickens in order (Player 1 first); onSpeakers: the first chicken of each other browser,
-// for the chat bubbles (by chat player id)
-export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => ChickenEngine[]; groundHeight: number; onSpeakers: (engines: Record<string, ChickenEngine>) => void }) {
+// for the chat bubbles (by chat player id); chicks: this browser's chicks; netChicks: where the other browsers'
+// chicks are kept (by pid and number)
+export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChicks }: { own: () => ChickenEngine[]; groundHeight: number; onSpeakers: (engines: Record<string, ChickenEngine>) => void; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>> }) {
   const net = useNet()
   const hostRef = useRef<HTMLDivElement>(null)
   const remotes = useRef(new Map<string, Remote>())
@@ -43,6 +55,10 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
   ownRef.current = own
   const speakersRef = useRef(onSpeakers)
   speakersRef.current = onSpeakers
+  const ownMirrors = useRef(new Map<string, NetChickMirror>())
+  const mirrors = netChicks ?? ownMirrors
+  const groundRef = useRef(groundHeight)
+  groundRef.current = groundHeight
   const online = net.status === "online"
 
   // ---------- this browser's chickens, up ----------
@@ -61,6 +77,25 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
     }, SEND_MS)
     return () => window.clearInterval(timer)
   }, [online])
+
+  // ---------- this browser's chicks, up ----------
+  useEffect(() => {
+    if (!online || !chicks) return
+    let told = "", toldAt = 0
+    const timer = window.setInterval(() => {
+      if (!netCan("chicks")) return
+      const list = exportChicks([...chicks.current.values()].map(eng => {
+        const s = eng.getMotionState()
+        return { n: chickNumber(eng), x: s.x + liveCamera.x, y: s.y - liveCamera.y, vx: s.vx, vy: s.vy, face: s.face, state: stateByte(s.networkAnimation ?? s.state), style: chickStyleOf(eng) }
+      }))
+      // standing still: now and then is enough; none left: one empty list, then quiet
+      const key = JSON.stringify(list), now = performance.now()
+      if (key === told && (!list.length || now - toldAt < CHICKS_KEEP_MS)) return
+      told = key; toldAt = now
+      sendNetChicks(list)
+    }, CHICKS_MS)
+    return () => window.clearInterval(timer)
+  }, [online, chicks])
 
   // ---------- the others' chickens, down ----------
   const others: NetPlayer[] = online && net.info ? net.info.players.filter(p => p.pid !== net.myPid) : []
@@ -114,11 +149,34 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
     speakersRef.current(speakers)
   }, [key, groundHeight])
 
-  // the name tags follow their chickens
+  // the name tags follow their chickens, and the others' chicks come and go with what their browsers say
   useEffect(() => {
     let raf = 0
     const frame = () => {
       raf = requestGameFrame(frame)
+      const host = hostRef.current, store = remoteChicks(), map = mirrors.current, now = performance.now()
+      map.forEach((m, key) => { if (!store.has(key)) { m.engine.destroy(); m.wrap.remove(); map.delete(key) } })
+      if (host) store.forEach((c, key) => {
+        let m = map.get(key)
+        if (!m) {
+          const wrap = document.createElement("div")
+          host.appendChild(wrap)
+          const engine = createChickenEngine(wrap, { groundHeight: groundRef.current, fixedScale: true, species: "chick", art: chickArt(CHICK_STYLES[c.style] ?? CHICK_STYLES[0]) })
+          engine.setGame({ gameMode: true })
+          engine.setRemote(() => {
+            const at = remoteChicks().get(key)
+            if (!at) return null
+            const p = chickAt(at, performance.now())
+            return { x: p.x - liveCamera.x, y: p.y + liveCamera.y, vx: at.vx, vy: at.vy, face: at.face, state: stateName(at.state) }
+          })
+          const entry: NetChickMirror = { engine, wrap, pid: c.pid, id: netIdFor(c.pid, c.n), hidden: false, hide: () => { entry.hidden = true; wrap.style.visibility = "hidden"; hideRemoteChick(key, TAKE_WAIT) } }
+          m = entry
+          map.set(key, m)
+        }
+        const hidden = c.hidden > now
+        if (hidden !== m.hidden) { m.hidden = hidden; m.wrap.style.visibility = hidden ? "hidden" : "visible" }
+        m.engine.setCameraZoom(liveCamera.zoom)
+      })
       remotes.current.forEach(r => {
         if (!r.seen) return
         r.engine.setCameraZoom(liveCamera.zoom)
@@ -132,13 +190,16 @@ export function OnlineChickens({ own, groundHeight, onSpeakers }: { own: () => C
     }
     frame()
     return () => cancelGameFrame(raf)
-  }, [])
+  }, [mirrors])
 
   // all of them go when the page closes or online stops
   useEffect(() => {
-    const map = remotes.current
-    return () => { map.forEach(r => { r.engine.destroy(); r.wrap.remove(); r.tag.remove() }); map.clear(); speakersRef.current({}) }
-  }, [])
+    const map = remotes.current, small = mirrors.current
+    return () => {
+      map.forEach(r => { r.engine.destroy(); r.wrap.remove(); r.tag.remove() }); map.clear(); speakersRef.current({})
+      small.forEach(m => { m.engine.destroy(); m.wrap.remove() }); small.clear()
+    }
+  }, [mirrors])
 
   return <div ref={hostRef} className="pointer-events-none fixed inset-0 z-[199]" />
 }

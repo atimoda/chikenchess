@@ -155,9 +155,10 @@ A alma solta age pelo dono, e às vezes contra ele (`lib/pigchicken/soul-acts.ts
 - **Sumiço:** quando a alma deixa de ser enviada (Callback, capturada, o navegador saiu do lobby), a cópia some numa nuvem. Sair do online apaga as cópias; as almas soltas deste navegador continuam, locais.
 - **Pássaro morto-vivo:** é um inimigo do dono do lobby. Num navegador que não é o dono, o Passaguá sobre ele some com a cópia e faz o mesmo pedido ao dono do lobby, que tira o pássaro do mundo e responde com a alma morta (espécie, instrumento, nota e a arma que o matou, que só ele conhece). Antes, a cópia capturada voltava em até 2 s e dava outra alma.
 - **Pássaro vivo:** continua de cada tela: cada navegador vê nascer o seu quando o alien vira pássaro e pode capturar o seu. Ele lembra a última nota que aquele navegador tocou no alien; sem nota dali, instrumento e nota ficam em branco. A nota cantada por uma alma enche a harmonia no dono do lobby sem mudar o que o alien lembra.
+- **Pintinho de outro navegador:** os bandos de todos aparecem em todos ([pintinhos](../chicken/chicks.md#no-pátio-online-11112026-v280)). O Passaguá sobre o pintinho de outro navegador esconde a cópia e faz o mesmo pedido ao navegador dono (`take` do tipo `c`), que tira o pintinho do seu bando e responde com a alma Pintinho.
 - **Servidor:** só repassa, conferindo tamanho, quantidade e ritmo (`souls` para os outros; `take` e `give` só para o navegador indicado). Ele avisa em `hello.caps.souls` que conhece essas mensagens; com um servidor antigo o navegador não as envia (uma mensagem desconhecida derruba a conexão) e as almas ficam locais.
-- **Não enviado:** o cesto e o contador dos outros, o voo até o contador e os pintinhos.
+- **Não enviado:** o cesto e o contador dos outros e o voo até o contador.
 
 ## Ainda não implementado
 
-Tecla e botão de controle para soltar e chamar, pouso das almas soltas nos fios e fuga de outros players, e os pintinhos dos outros navegadores no Pátio online. O plano está fora do código, no documento “Almas capturadas: plano”.
+Tecla e botão de controle para soltar e chamar, e pouso das almas soltas nos fios e fuga de outros players. O plano está fora do código, no documento “Almas capturadas: plano”.

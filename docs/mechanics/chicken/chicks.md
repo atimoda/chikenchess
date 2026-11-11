@@ -18,7 +18,16 @@ Implementado em 10/11/2026 (v2.7.0). Código: `lib/chicken/species.ts` (espécie
 
 - O bando nasce junto com a galinha do jogador (a mãe), pelo `ChickenLayer`: 4 pintinhos (`CHICK_START`), cada um com um estilo realista sorteado (nunca colorido), caem do céu um depois do outro logo depois dela (0,7 s e depois a cada 0,26 s), alternando os lados.
 - **Globo** (primeira tela, “Pátio lobby”): seguem a galinha pela tela do globo. Ao entrar no portal, o bando fica para trás com a página.
-- **Pátio:** ao entrar em qualquer Pátio (e ao trocar de Pátio pelo portal), nasce um bando novo de 4 sorteados com ela. Seguem a câmera, o chão, as paredes, o teto e o zoom do Pátio como as galinhas dos players locais, e as explosões os empurram. No Pátio online eles existem só na tela de quem joga (não são enviados aos outros); os players locais extras não têm bando. Ignoram teclado, gamepad e toque; podem ser pegos e soltos com o mouse como a galinha. Não olham para o cursor.
+- **Pátio:** ao entrar em qualquer Pátio (e ao trocar de Pátio pelo portal), nasce um bando novo de 4 sorteados com ela. Seguem a câmera, o chão, as paredes, o teto e o zoom do Pátio como as galinhas dos players locais, e as explosões os empurram. No Pátio online cada navegador vê também os bandos dos outros (seção “No Pátio online”); os players locais extras não têm bando. Ignoram teclado, gamepad e toque; podem ser pegos e soltos com o mouse como a galinha. Não olham para o cursor.
+
+## No Pátio online (11/11/2026, v2.8.0)
+
+Código: `lib/chicken/net-chicks.ts` (dados e regras), `components/chicken/online-chickens.tsx` (envio e desenho), `lib/chicken/online-room.ts` (cópias recebidas), repasse em `server/src/patio-room.mjs`. Testes: `tests/pigchicken-net-souls.cases.cjs` e `server/test/room.test.mjs`.
+
+- **Quem decide:** cada navegador simula o bando que segue a sua primeira galinha e manda todos os pintinhos (`chicks`: número, posição, velocidade, lado, animação e estilo; até 16) 10 vezes por segundo enquanto algo muda, e 1 vez por segundo com tudo parado. Sem nenhum pintinho, manda uma lista vazia e fica em silêncio.
+- **Nos outros navegadores:** cada pintinho aparece com o mesmo estilo com que nasceu e a animação do dono, deslizando até a posição recebida (entre duas mensagens segue pela velocidade por até 0,25 s). As cópias não seguem ninguém, não são empurradas por explosões e não podem ser pegas com o mouse. Somem quando o dono deixa de enviá-las ou sai do lobby, com uma nuvem.
+- **Captura:** o Passaguá sobre o pintinho de outro navegador mostra a nuvem na hora, esconde a cópia e pede o pintinho ao navegador dono, do mesmo jeito que uma alma solta ([almas](../patio/souls.md#no-pátio-online-1111-v280)). Lá o pintinho some numa nuvem, e só então a alma Pintinho voa até o contador de quem pediu. Com dois pedidos pelo mesmo pintinho, o primeiro leva; sem resposta em 1,5 s a cópia volta a aparecer. O dono continua capturando os seus na hora.
+- **Servidor:** só repassa `chicks` aos outros, conferindo quantidade, tamanho e ritmo, e avisa em `hello.caps.chicks` que conhece a mensagem; com um servidor antigo o navegador não a envia e cada um vê só o seu bando.
 
 ## IA de seguir
 

@@ -8,7 +8,8 @@
 //   answers with what it is ("give"), and only then does it count in the basket of whoever asked. A soul asked for
 //   twice is given once: the second one finds nothing;
 // - the undead birds are the lobby owner's enemies: a browser that is not the owner asks the owner for them the
-//   same way.
+//   same way;
+// - so are the chicks that follow another browser's chicken (lib/chicken/net-chicks.ts): asked of that browser.
 import { BIRDS, type BirdId } from './birds'
 import { netIdFor } from './net-world'
 import { newSoul, type Soul, type SoulNote, type SoulOrigin, type SoulShot, type SoulSpecies, type SoulWeapon } from './souls'
@@ -17,9 +18,10 @@ import { newSoul, type Soul, type SoulNote, type SoulOrigin, type SoulShot, type
 export type NetSoulWho = [string, string, string | null, string | null, string | null, string, string | null]
 // a soul flying free: [id, x, y, face, who?] (who: only until the others have it, and with everything now and then)
 export type NetSoul = [number, number, number, number, NetSoulWho?]
-// s: a soul flying free (id: its id in the lobby); f: an undead bird of the lobby owner's (id: the enemy's)
-export type NetTake = { k: 's' | 'f'; id: number }
-export type NetGive = { k: 's' | 'f'; id: number; soul: NetSoulWho }
+// s: a soul flying free (id: its id in the lobby); f: an undead bird of the lobby owner's (id: the enemy's);
+// c: a chick of another browser's (id: its number there behind that browser's pid, like a soul's)
+export type NetTake = { k: 's' | 'f' | 'c'; id: number }
+export type NetGive = NetTake & { soul: NetSoulWho }
 
 export const NET_SOULS_MAX = 64 // souls of one browser in a message
 export const TAKE_WAIT = 1.5 // s a soul asked for stays hidden waiting for the answer
@@ -33,6 +35,8 @@ const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinit
 const r1 = (v: number) => Math.round(v * 10) / 10
 const LIMIT = 200_000
 const PID = 10_000_000 // netIdFor: the browser's pid in front of its own id
+/** the browser a soul or a chick is asked of, from its id (an undead bird's is the lobby's owner, not in its id) */
+export const takeOwner = (id: number) => Math.floor(id / PID)
 
 export const soulWho = (s: Soul): NetSoulWho => [s.species, s.state, s.shot, s.note, s.weapon, s.color, s.bird]
 
@@ -106,7 +110,7 @@ export function glideSoulMirror(m: SoulMirror, dt: number) {
 // ---------- incoming messages, checked (they come from other browsers through the server) ----------
 export function cleanTake(t: unknown): NetTake | null {
   const o = t as NetTake | null
-  return o && typeof o === 'object' && (o.k === 's' || o.k === 'f') && num(o.id) && o.id >= 0 ? { k: o.k, id: o.id } : null
+  return o && typeof o === 'object' && (o.k === 's' || o.k === 'f' || o.k === 'c') && num(o.id) && o.id >= 0 ? { k: o.k, id: o.id } : null
 }
 export function cleanGive(g: unknown): NetGive | null {
   const o = g as NetGive | null, take = cleanTake(o)
