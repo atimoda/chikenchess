@@ -2,6 +2,7 @@ import { isAdminUser } from './access'
 import { getOnlineClient } from '../online/client'
 import { chickenControlsDefaultsFile, type ChickenControls } from '../chicken/controls'
 import { itemsDefaultsFile, type ItemDef, type ItemId } from '../pigchicken/items'
+import { soulsFile, type SoulEntry } from '../pigchicken/soul-library'
 
 // "Salvar no game": admins write a game defaults file of the repository through the local Admin service
 // (npm run admin:dev), which checks the session and validates the content; publishing is commit + deploy.
@@ -39,3 +40,5 @@ async function saveAdminFile(id: string, value: unknown) {
 export const saveDefaultChickenControls = (controls: ChickenControls) => saveAdminFile('chicken-controls', chickenControlsDefaultsFile(controls))
 /** Writes these items to data/pigchicken/default-items.json. */
 export const saveDefaultItems = (items: Record<ItemId, ItemDef>) => saveAdminFile('pigchicken-items', itemsDefaultsFile(items))
+/** Writes this catalogue of souls (what differs from the code's) to data/pigchicken/default-souls.json. */
+export const saveDefaultSouls = (entries: readonly SoulEntry[]) => saveAdminFile('pigchicken-souls', soulsFile(entries))

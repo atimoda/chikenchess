@@ -55,7 +55,7 @@ A alma solta voa junto do dono (`soulFollowStep`, uma vez por quadro, para as al
 - **Sem amontoar:** dois lugares a menos de 64 px um do outro se afastam aos poucos (até 140 px de desvio para cada alma), e cada alma guarda o desvio.
 - **Dono saiu do jogo:** as almas soltas dele sobem e vão embora em 5 s.
 
-Ficha de parâmetros (`SoulFollowParams`; limites em `SOUL_FOLLOW_RANGES`). Ainda não há painel para editar: os valores ficam no código.
+Ficha de parâmetros (`SoulFollowParams`; limites em `SOUL_FOLLOW_RANGES`). Os números de cada alma se editam no editor de fichas da Biblioteca de almas, só para admin ([soul-library.md](soul-library.md)); os das classes ficam no código.
 
 | Parâmetro | Faixa | O que faz |
 | --- | --- | --- |
@@ -97,4 +97,4 @@ Classes (`SOUL_CLASSES`). A alma voa na classe da sua entrada da biblioteca: a d
 
 ## Ainda não implementado
 
-Tecla e botão de controle para soltar e chamar, painel para editar a ficha, pouso das almas soltas nos fios e fuga de outros players, roubo no Pátio online e as ajudas (e atrapalhos) de cada classe. O plano está fora do código, no documento “Almas capturadas: plano”.
+Tecla e botão de controle para soltar e chamar, pouso das almas soltas nos fios e fuga de outros players, roubo no Pátio online e as ajudas (e atrapalhos) de cada classe. O plano está fora do código, no documento “Almas capturadas: plano”.

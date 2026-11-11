@@ -339,3 +339,22 @@ test('only a soul caught from the wild is news for the library; let out, it flie
   c.basket.push({ ...keys, id: 5001, weapon: 'arrow' }); c.releaseSoul({ x: 40, y: 0 })
   assert.equal(c.freedSouls[c.freedSouls.length - 1].params.pattern, 'eight')
 })
+
+test('an admin changes a sheet: the souls already flying free take its numbers', () => {
+  const L = loadTs('lib/pigchicken/soul-library.ts')
+  const c = world('passagua')
+  c.basket.push({ id: 5000, species: 'shell', state: 'dead', shot: 'keys', note: 'tonic', weapon: 'bullet', rarity: 'uncommon', color: '#ffffff', bird: 'pardal' })
+  c.releaseSoul({ x: 40, y: 0 })
+  const f = c.freedSouls[c.freedSouls.length - 1]
+  assert.equal(f.params.pattern, 'orbit')
+  try {
+    L.setSoulEntries(L.changeEntry(L.SOUL_ENTRIES, 'shell.dead.keys', e => ({ ...e, cls: 'lazy', follow: { speed: 90 } })))
+    assert.equal(f.params.pattern, 'orbit', 'not before it is told')
+    c.refreshSouls()
+    assert.equal(f.params.pattern, 'still'); assert.equal(f.params.speed, 90); assert.equal(f.params.leash, 1100)
+    for (let i = 0; i < 30; i++) step(c)
+    assert.ok(Number.isFinite(f.x) && Number.isFinite(f.y), 'and goes on flying')
+  } finally { L.setSoulEntries(L.SOUL_ENTRIES) }
+  c.refreshSouls()
+  assert.equal(f.params.pattern, 'orbit')
+})

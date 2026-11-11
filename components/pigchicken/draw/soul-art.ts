@@ -1,7 +1,7 @@
 // The drawing of a soul: a pixel-art bird in two flaps, with a shape for each family of instrument (a long tail,
 // a crest, a belly of piano keys, a chubby one, an owl) and the chick's, in the colours of its look. The library's
 // cards and the souls in the world (flying to a counter, flying free) are all drawn here.
-import { entryOf, soulPalette, SOUL_SHAPES, type SoulLook, type SoulShape } from "@/lib/pigchicken/soul-library"
+import { entryLookFor, entryOf, soulCatalogVersion, SOUL_SHAPES, type SoulLook, type SoulShape } from "@/lib/pigchicken/soul-library"
 import type { Soul } from "@/lib/pigchicken/souls"
 import { pixelSprite, stampPixels } from "./pixel-sprite"
 
@@ -152,13 +152,14 @@ export function drawSoulArt(ctx: Ctx, x: number, y: number, face: number, t: num
 
 // How a soul in the world looks: the shape of its entry in the library; a rare one in its own colours, a living one
 // in the colour of the alien it was, a dead one grey with its eye in the colour of the note that brought it back.
-const looks = new WeakMap<Soul, SoulLook>()
+// Worked out once for each soul, and again when the catalogue changes (an admin editing the sheets).
+const looks = new WeakMap<Soul, { v: number; look: SoulLook }>()
 export function soulLook(s: Soul): SoulLook {
-  let look = looks.get(s)
-  if (!look) {
-    const e = entryOf(s)
-    look = e.recipe ? e.look : e.state === "dead" ? { ...e.look, eye: s.color } : { ...e.look, ...soulPalette(s.color) }
-    looks.set(s, look)
+  const v = soulCatalogVersion()
+  let at = looks.get(s)
+  if (!at || at.v !== v) {
+    at = { v, look: entryLookFor(entryOf(s), s.color) }
+    looks.set(s, at)
   }
-  return look
+  return at.look
 }

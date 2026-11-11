@@ -1305,6 +1305,8 @@ export function createCombat() {
     get abductions() { return abductions as readonly Abduction[] },
     // the souls caught from the wild, to be taken (spliced) by whoever keeps the library; (x, y): where, in world px
     soulNews,
+    // the library's sheets changed: the souls flying free take the numbers their entries have now
+    refreshSouls() { for (const f of freed) f.params = entryFollowParams(entryOf(f.soul)) },
     // the souls out of the baskets, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
     get freedSouls() { return freed as readonly FreeSoul[] },
     get looseSouls() { let n = 0; for (const f of freed) if (f.owner === active) n++; return n },

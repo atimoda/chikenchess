@@ -63,7 +63,7 @@ import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { drawAbductions, drawFreedSouls } from "@/components/pigchicken/draw/souls"
-import { SOUL_RARITIES, collectSoul } from "@/lib/pigchicken/soul-library"
+import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeSoulEntries } from "@/lib/pigchicken/soul-library"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { stageWidth } from "@/lib/stage-size"
 
@@ -550,6 +550,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const drone = createDrone()
     let zoneShown: Zone | null = null, zoneBanner = 0
     const unsubItems = subscribeItems(next => combat.setItems(next))
+    // the souls' catalogue in use: the game's, or the draft an admin edits in the library (the souls flying follow it)
+    setSoulEntries(loadSoulEntries())
+    const unsubSouls = subscribeSoulEntries(next => { setSoulEntries(next); combat.refreshSouls() })
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
     let placed = false, offerShown = "", templeFor = -1, wasPortalArrival = false
     // the temple's things move with the world's width: the gong and its racks
@@ -1310,6 +1313,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       net.dispose()
       unsub()
       unsubItems()
+      unsubSouls()
       unsubCatalog()
       unsubLibrary()
       unsubPlay()

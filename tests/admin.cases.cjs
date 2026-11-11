@@ -133,3 +133,19 @@ test('item defaults: the file validates, feeds DEFAULT_ITEMS and round-trips wha
   assert.throws(() => validateAdminValue(entry, { ...file, pistol: { ...file.pistol, nope: 1 } }))
   assert.throws(() => validateAdminValue(entry, { ...file, laser: {} }))
 })
+
+test('soul sheets: the file validates, feeds the catalogue and round-trips what the library editor writes', () => {
+  const souls = loadTs('lib/pigchicken/soul-library.ts')
+  const entry = ADMIN_ENTRIES.find(item => item.id === 'pigchicken-souls')
+  assert.equal(entry.path, 'data/pigchicken/default-souls.json')
+  const file = JSON.parse(fs.readFileSync(path.join(__dirname, '..', entry.path), 'utf8'))
+  validateAdminValue(entry, file)
+  assert.deepEqual(souls.soulsFile(souls.SOUL_ENTRIES), file)
+  assert.deepEqual(souls.soulsFile(souls.soulEntriesOver(file)), file)
+  const edited = souls.addRare(souls.changeEntry(souls.SOUL_ENTRIES, 'chick', e => ({ ...e, name: 'Piu', follow: { dist: 100 } }))).entries
+  validateAdminValue(entry, souls.soulsFile(edited))
+  assert.throws(() => validateAdminValue(entry, { sheets: { chick: { look: { pixel: 99 } } } }))
+  assert.throws(() => validateAdminValue(entry, { sheets: { 'not.a.soul': { name: 'x' } } }))
+  assert.throws(() => validateAdminValue(entry, { extra: 1 }))
+  assert.throws(() => validateAdminValue(entry, []))
+})
