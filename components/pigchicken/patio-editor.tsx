@@ -265,8 +265,10 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }
 
   // ---------- the overlay in world units, following the camera ----------
+  // The overlay only exists while editing is on, and the panel mounts before the switch turns on: follow the
+  // camera each time it appears, or its handles sit where the camera was at x = 0 (objects of another screen).
   const worldRef = useRef<HTMLDivElement>(null)
-  useEffect(() => (worldRef.current ? followCamera(worldRef.current) : undefined), [])
+  useEffect(() => (active && worldRef.current ? followCamera(worldRef.current) : undefined), [active])
   const width = worldScenes(screens) * SCENE_W
 
   return (

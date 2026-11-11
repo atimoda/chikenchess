@@ -32,6 +32,7 @@ const RECENT = [
         'A Bicada também pega itens novos do chão, pelo corpo ao soltar e pela área do bico ao acertar, sem tirar a galinha de mãos vazias. A camada Hit-boxes passa a mostrar os itens no chão, o alcance dos pés para pegar e o cone da Bicada.',
         'Segurar o bind Edição (Alt ou Cmd) por 1,5 s mostra ou esconde o painel do Modo editor sem mudar o switch de edição; um toque rápido continua ligando e desligando a edição.',
         'Esc fecha o último painel aberto, inclusive o Modo editor fixo na lateral; com um elemento selecionado no editor, o primeiro Esc só tira a seleção.',
+        'No Modo editor, as áreas de seleção ficam sempre em cima dos objetos da tela atual: ao abrir o painel ou religar a edição com a câmera longe do começo, elas não mostram mais objetos de outra tela. Com zoom, o fundo do parallax e as camadas do editor também ficam no lugar ao abrir ou arrastar o painel fixo.',
         'Para contas admin, o botão Salvar no game no painel Controles (ao lado de Restaurar padrão) e no fim do painel Itens grava, no Admin local, os controles ou os números de todos os itens como o padrão do jogo; depois do deploy, vale para quem nunca mexeu neles (e para Restaurar padrão nos Controles).',
         'Com o painel Itens aberto, equipar um item com o boneco principal troca o item mostrado no painel para ele.',
         'Enquanto Chocar fixo, segurar Agachar mostra a pose agachada; soltar Agachar restaura a pose chocando sem liberar a trava.',

@@ -540,7 +540,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       return { flipX: hit.flipX, color: (died ?? hit.box.zone).color, died: !!died }
     })
     const header = document.querySelector("main header")
-    let drawnCamX = NaN, drawnCamY = NaN, drawnZoom = NaN
+    let drawnCamX = NaN, drawnCamY = NaN, drawnZoom = NaN, drawnW = NaN, drawnH = NaN
     let viewTop = header?.getBoundingClientRect().bottom ?? 0
     const measureHeader = () => { viewTop = header?.getBoundingClientRect().bottom ?? 0 }
     const headerObserver = new ResizeObserver(measureHeader)
@@ -674,12 +674,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (Math.abs(os.groundY - (G + camY)) > 0.01) o.setGroundHeight(os.height - G - camY)
         o.setBounds(walls)
       })
-      if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY || zoom !== drawnZoom)) {
+      // the zoom pivots on the stage's centre, so a new stage size (the editor's dock) also redraws it
+      if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY || zoom !== drawnZoom || stageWidth() !== drawnW || window.innerHeight !== drawnH)) {
         const world = worldRef.current
         world.style.transform = `translate3d(${(stageWidth() / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`
         world.style.transformOrigin = "0 0"
         setPlatformWorldOffset(world, -camX, camY)
-        drawnCamX = camX; drawnCamY = camY; drawnZoom = zoom
+        drawnCamX = camX; drawnCamY = camY; drawnZoom = zoom; drawnW = stageWidth(); drawnH = window.innerHeight
       }
       if (fgRef?.current) {
         fgRef.current.style.transform = `translate3d(${(stageWidth() / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`

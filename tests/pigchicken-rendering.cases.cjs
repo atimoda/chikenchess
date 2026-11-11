@@ -160,6 +160,26 @@ test('local chickens share native measurements per frame; world boxes follow cam
   } finally { global.document = old }
 })
 
+test('editor overlays follow the camera again when the stage changes size with the camera still', () => {
+  const { followCamera, moveLiveCamera } = loadTs('lib/pigchicken/live-camera.ts')
+  const old = global.window, listeners = new Map()
+  global.window = { innerWidth: 1000, innerHeight: 800, addEventListener: (k, f) => listeners.set(k, f), removeEventListener: k => listeners.delete(k) }
+  const el = { style: {} }
+  let stop
+  try {
+    moveLiveCamera(300, 50, 2)
+    stop = followCamera(el)
+    assert.equal(el.style.transform, 'translate3d(-1100px,-300px,0) scale(2)')
+    global.window.innerWidth = 700 // the editor's dock takes 300px
+    listeners.get('resize')()
+    assert.equal(el.style.transform, 'translate3d(-950px,-300px,0) scale(2)')
+  } finally {
+    stop?.(); moveLiveCamera(0, 0, 1)
+    assert.equal(listeners.size, 0)
+    global.window = old
+  }
+})
+
 test('scenery visibility uses camera/parallax bounds, wakes on return/resize, and unregisters cleanly', () => {
   const { watchCameraRegion, moveLiveCamera, followParallax } = loadTs('lib/pigchicken/live-camera.ts')
   const old = global.window, listeners = new Map()
@@ -178,7 +198,11 @@ test('scenery visibility uses camera/parallax bounds, wakes on return/resize, an
     stopCloud = watchCameraRegion(cloud, { x: 500, y: 100, w: 300, h: 100 }, .9)
     assert.equal(cloud.attrs['data-patio-visible'], 'true')
     stopLayer = followParallax(layer, .9)
-    assert.equal(layer.style.transform, 'translate(6300px, 0px)')
+    assert.equal(layer.style.transform, 'translate3d(6300px,0px,0)')
+    // inside the zoomed world a parallax layer only gives back depth × the camera's travel, never a second zoom
+    moveLiveCamera(7000, 100, 2)
+    assert.equal(layer.style.transform, 'translate3d(6300px,-90px,0)')
+    moveLiveCamera(7000, 0, 1)
     moveLiveCamera(6800, 0)
     assert.equal(tree.attrs['data-patio-visible'], 'true') // 192px prefetch margin
     global.window.innerWidth = 400

@@ -8,12 +8,15 @@ export const liveCamera = { x: 0, y: 0, zoom: 1 }
 const followers = new Set<HTMLElement>()
 const parallaxLayers = new Map<SVGElement, number>()
 const regions = new Set<{ el: HTMLElement | SVGElement; bounds: ViewRect; depth: number }>()
-const cameraTransform = (depth = 1) => {
+const cameraTransform = () => {
   const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
-  if (z === 1) return `translate(${-liveCamera.x * depth}px, ${liveCamera.y * depth}px)`
-  return `translate3d(${cx * (1 - z) - liveCamera.x * depth * z}px,${cy * (1 - z) + liveCamera.y * z}px,0) scale(${z})`
+  if (z === 1) return `translate(${-liveCamera.x}px, ${liveCamera.y}px)`
+  return `translate3d(${cx * (1 - z) - liveCamera.x * z}px,${cy * (1 - z) + liveCamera.y * z}px,0) scale(${z})`
 }
 const place = (el: HTMLElement) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform() }
+// A parallax layer lives inside the world element, which already carries the zoom and the camera: it only gives
+// back depth × the camera's travel (x and y alike), never a second zoom.
+const parallaxTransform = (depth: number) => `translate3d(${liveCamera.x * depth}px,${-liveCamera.y * depth}px,0)`
 
 function updateRegions() {
   const screenView = zoomedView(stageWidth(), window.innerHeight, liveCamera.zoom)
@@ -24,25 +27,35 @@ function updateRegions() {
   })
 }
 
+// The zoom pivots on the stage's centre: when the stage changes size (window resize, the editor's dock opening or
+// being dragged) with the camera standing still, the followers are placed again (or they drift from the world) and
+// the visible regions are measured again. One listener while anything is registered.
+const onResize = () => { followers.forEach(place); updateRegions() }
+const listening = () => followers.size + regions.size > 0
+function register(add: () => void) {
+  const was = listening(); add()
+  if (!was && listening()) window.addEventListener('resize', onResize)
+}
+function unregister(remove: () => void) {
+  remove()
+  if (!listening()) window.removeEventListener('resize', onResize)
+}
+
 // Numeric world bounds: no getBoundingClientRect in the camera's visibility pass.
 export function watchCameraRegion(el: HTMLElement | SVGElement, bounds: ViewRect, depth = 0) {
   const region = { el, bounds, depth }
-  if (!regions.size) window.addEventListener('resize', updateRegions)
-  regions.add(region); updateRegions()
-  return () => {
-    regions.delete(region)
-    if (!regions.size) window.removeEventListener('resize', updateRegions)
-  }
+  register(() => regions.add(region)); updateRegions()
+  return () => unregister(() => regions.delete(region))
 }
 
 export function followCamera(el: HTMLElement) {
-  followers.add(el); place(el)
-  return () => { followers.delete(el) }
+  register(() => followers.add(el)); place(el)
+  return () => unregister(() => followers.delete(el))
 }
 
 export function followParallax(el: SVGElement, depth: number) {
   parallaxLayers.set(el, depth)
-  el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform(-depth)
+  el.style.transformOrigin = '0 0'; el.style.transform = parallaxTransform(depth)
   return () => { parallaxLayers.delete(el) }
 }
 
@@ -50,7 +63,7 @@ export function moveLiveCamera(x: number, y: number, zoom = liveCamera.zoom) {
   if (x === liveCamera.x && y === liveCamera.y && zoom === liveCamera.zoom) return
   liveCamera.x = x; liveCamera.y = y; liveCamera.zoom = zoom
   followers.forEach(place)
-  parallaxLayers.forEach((depth, el) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform(-depth) })
+  parallaxLayers.forEach((depth, el) => { el.style.transformOrigin = '0 0'; el.style.transform = parallaxTransform(depth) })
   updateRegions()
 }
 
