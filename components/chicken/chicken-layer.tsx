@@ -202,7 +202,7 @@ const KNOB = 48
 type PadAction = "run" | "down" | "jump"
 const PAD_ACTIONS: readonly PadAction[] = ["run", "down", "jump"]
 // one finger on the buttons: the ones it landed on stay held until it lifts; dragged, it also holds the ones it is
-// over. A finger that landed on Correr drives the movement stick instead (drag = push the stick)
+// over. A finger that landed on Correr also drives the movement stick (drag = push the stick)
 type PadTouch = { origin: Set<PadAction>; over: Set<PadAction>; stick: boolean; sx: number; sy: number }
 
 function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boolean) => void; bottom: number }) {
@@ -277,7 +277,7 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
   const padMove = (e: ReactPointerEvent) => {
     const t = touches.current.get(e.pointerId)
     if (!t) return
-    if (t.stick) { if (stickBy.current === e.pointerId) drive(e.clientX - t.sx, e.clientY - t.sy); return }
+    if (t.stick && stickBy.current === e.pointerId) drive(e.clientX - t.sx, e.clientY - t.sy)
     const over = hits(e.clientX, e.clientY)
     t.origin.forEach(a => over.delete(a))
     if (over.size !== t.over.size || [...over].some(a => !t.over.has(a))) { t.over = over; sync() }
