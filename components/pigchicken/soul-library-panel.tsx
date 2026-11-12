@@ -314,7 +314,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
             {editing && GROUPS.filter(g => g !== "Receita" || v.recipe).map(g => (
               <details key={g} open={!!open[g]} onToggle={e => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(s => ({ ...s, [g]: o })) }} className="border-t border-white/10">
                 <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a] hover:text-white">{g}</summary>
-                <div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-4 pb-4">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-field px-4 pb-4">
                   {g === "Ficha" && (
                     <>
                       <label className={row}><span>Raridade</span>
@@ -361,7 +361,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                           {(Object.keys(SOUL_PATTERNS) as SoulPattern[]).map(p => <option key={p} value={p}>{SOUL_PATTERNS[p]}</option>)}
                         </select>
                       </label>
-                      <div className="grid gap-[3px]">
+                      <div className="grid gap-field">
                         {FOLLOW_NUMBERS.map(m => {
                           const n = flight[m.key], r = SOUL_FOLLOW_RANGES[m.key]
                           return <PatioRange key={m.key} label={m.label} min={r.min} max={r.max} step={r.step} value={n} display={`${Math.round(n * 100) / 100}${m.unit ? ` ${m.unit}` : ""}`}
@@ -377,26 +377,26 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                           {(Object.keys(SOUL_HELPS) as SoulHelp[]).map(h => <option key={h} value={h}>{SOUL_HELPS[h]}</option>)}
                         </select>
                       </label>
-                      <div className="grid gap-[3px]">{(["every", "range", "power"] as const).map(actRange)}</div>
+                      <div className="grid gap-field">{(["every", "range", "power"] as const).map(actRange)}</div>
                       <label className={row} title="O da própria alma: a morta, pelo que a matou (explosão empurra, bala faz quicar, flecha desvia a mira, impacto bica); a viva de nota fora da escala desafina"><span>Atrapalho</span>
                         <select value={acts.hinder} onChange={e => setAct("hinder", e.target.value as SoulHinder)} className={field}>
                           {(Object.keys(SOUL_HINDERS) as SoulHinder[]).map(h => <option key={h} value={h}>{SOUL_HINDERS[h]}</option>)}
                         </select>
                       </label>
-                      <div className="grid gap-[3px]">{(["chance", "force"] as const).map(actRange)}</div>
+                      <div className="grid gap-field">{(["chance", "force"] as const).map(actRange)}</div>
                     </>
                   )}
                   {g === "Receita" && v.recipe && (
                     <>
-                      <div className="grid gap-1.5"><span>Espécie</span><div className="flex flex-wrap gap-1.5">{SOUL_SPECIES_ORDER.filter(s => s !== "chick").map(s => pill(s, SOUL_SPECIES[s].name, !!v.recipe?.species?.includes(s), () => setRecipe({ species: toggle(v.recipe?.species, s) })))}</div></div>
+                      <div className="grid gap-1.5"><span>Espécie</span><div className="flex flex-wrap gap-field">{SOUL_SPECIES_ORDER.filter(s => s !== "chick").map(s => pill(s, SOUL_SPECIES[s].name, !!v.recipe?.species?.includes(s), () => setRecipe({ species: toggle(v.recipe?.species, s) })))}</div></div>
                       <label className={row}><span>Estado</span>
                         <select value={v.recipe.state ?? ""} disabled={!!v.recipe.weapon} onChange={e => setRecipe({ state: (e.target.value || undefined) as SoulRecipe["state"] })} className={field}>
                           <option value="">Qualquer</option><option value="alive">{SOUL_STATES.alive}</option><option value="dead">{SOUL_STATES.dead}</option>
                         </select>
                       </label>
-                      <div className="grid gap-1.5"><span>Instrumento</span><div className="flex flex-wrap gap-1.5">{SOUL_SHOT_ORDER.map(s => pill(s, SOUL_SHOTS[s].name, !!v.recipe?.shot?.includes(s), () => setRecipe({ shot: toggle(v.recipe?.shot, s) })))}</div></div>
-                      <div className="grid gap-1.5"><span>Nota</span><div className="flex flex-wrap gap-1.5">{SOUL_NOTE_ORDER.map(n => pill(n, SOUL_NOTES[n], !!v.recipe?.note?.includes(n), () => setRecipe({ note: toggle(v.recipe?.note, n) })))}</div></div>
-                      <div className="grid gap-1.5"><span>Arma (só mortas)</span><div className="flex flex-wrap gap-1.5">{SOUL_WEAPON_ORDER.map(w => pill(w, SOUL_WEAPONS[w], !!v.recipe?.weapon?.includes(w), () => setRecipe({ weapon: toggle(v.recipe?.weapon, w) })))}</div></div>
+                      <div className="grid gap-1.5"><span>Instrumento</span><div className="flex flex-wrap gap-field">{SOUL_SHOT_ORDER.map(s => pill(s, SOUL_SHOTS[s].name, !!v.recipe?.shot?.includes(s), () => setRecipe({ shot: toggle(v.recipe?.shot, s) })))}</div></div>
+                      <div className="grid gap-1.5"><span>Nota</span><div className="flex flex-wrap gap-field">{SOUL_NOTE_ORDER.map(n => pill(n, SOUL_NOTES[n], !!v.recipe?.note?.includes(n), () => setRecipe({ note: toggle(v.recipe?.note, n) })))}</div></div>
+                      <div className="grid gap-1.5"><span>Arma (só mortas)</span><div className="flex flex-wrap gap-field">{SOUL_WEAPON_ORDER.map(w => pill(w, SOUL_WEAPONS[w], !!v.recipe?.weapon?.includes(w), () => setRecipe({ weapon: toggle(v.recipe?.weapon, w) })))}</div></div>
                       <p className={traits.notes.length ? "text-[10px] text-[#93a79a]" : "text-[10px] text-amber-300"}>{traits.notes.length ? "Sem nada marcado num eixo, vale qualquer. A primeira rara da lista que serve leva a alma." : "Nenhuma alma cumpre esta receita, ou outra rara antes dela leva todas."}</p>
                     </>
                   )}

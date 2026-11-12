@@ -78,7 +78,7 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
         <h2 className="min-w-0 flex-1 truncate text-sm text-white">Gerar de MIDI</h2>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
-      <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto p-4">
+      <div className="grid min-h-0 flex-1 content-start gap-field overflow-y-auto p-4">
         <label className="grid gap-1.5">
           <span className="text-[#93a79a]">Arquivo .mid</span>
           <input type="file" accept=".mid,.midi,audio/midi,audio/x-midi" onChange={e => { const f = e.target.files?.[0]; if (f) void load(f) }}
@@ -90,7 +90,7 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
           <>
             <label className="grid gap-1">Nome<input value={name} maxLength={60} onChange={e => setName(e.target.value)} className={field} /></label>
             {/* the tracks */}
-            <div className="grid gap-1">
+            <div className="grid gap-field">
               <span className="text-[#93a79a]">Faixas</span>
               {file.tracks.map(t => {
                 const g = tracks.find(x => x.index === t.index)
@@ -114,11 +114,11 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
               })}
             </div>
             {/* the choices */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-field">
               <span className="w-20 text-[#93a79a]">Dificuldade</span>
               {DIFFICULTIES.map(d => <button key={d.value} type="button" aria-pressed={difficulty === d.value} onClick={() => setDifficulty(d.value)} className={cn("h-7 rounded-full border px-3", difficulty === d.value ? "border-primary text-white" : "border-white/15")}>{d.label}</button>)}
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="flex flex-wrap items-center gap-field">
               <label className="flex items-center gap-1.5">Tom
                 <select value={root ?? ""} onChange={e => setRoot(e.target.value === "" ? null : Number(e.target.value))} className={field}>
                   <option value="">Do arquivo{key ? ` (${keyName(key.root)} ${key.minor ? "menor" : "maior"})` : ""}</option>

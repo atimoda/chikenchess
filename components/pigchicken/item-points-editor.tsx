@@ -42,14 +42,14 @@ export function ItemPointsEditor({ id, item, base, onChange }: { id: ItemId; ite
   }
   if (!art) return null
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-field">
       <label className="flex items-center justify-between gap-3" title="A parte do corpo onde o eixo do item fica preso">
         <span>Eixo preso em</span>
         <select value={item.pivotAt} onChange={e => { const v = e.target.value as PivotPart; onChange(d => { d.pivotAt = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
           {PIVOT_PARTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </label>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <div className="flex flex-wrap gap-x-4 gap-y-[2px]">
         {(["hand", "back"] as const).map(k => {
           const flag = ON[k]!
           return (

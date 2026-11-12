@@ -699,7 +699,7 @@ export function ChickenPatio() {
             <button type="button" aria-label="Padrão" title="Padrão: volta tudo para o padrão do jogo" onClick={() => { const next = { ...DEFAULT_PARQUINHO, debug: pq.debug }; setPq(next); saveParquinho(next) }} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
             <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
           <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
             <select aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
               {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -783,7 +783,7 @@ export function ChickenPatio() {
 function Group({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: (open: boolean) => void; children: React.ReactNode }) {
   return (
     <PatioDisclosure title={title} open={open} onToggle={onToggle}>
-      <div className="grid gap-[3px] px-4 pb-4">{children}</div>
+      <div className="grid gap-field px-4 pb-4">{children}</div>
     </PatioDisclosure>
   )
 }

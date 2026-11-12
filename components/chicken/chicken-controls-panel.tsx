@@ -127,7 +127,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   const mouseColumn = COLUMNS[COLUMNS.length - 1].column + 2
   const grid = (
     <div className="overflow-x-auto">
-      <div className="grid w-max min-w-full items-center gap-x-1.5 gap-y-1.5 text-xs" style={{ gridTemplateColumns: cols }}>
+      <div className="grid w-max min-w-full items-center gap-field text-xs" style={{ gridTemplateColumns: cols }}>
         <span />
         {CHICKEN_INPUT_TYPES.map(t => (
           <span key={t.id} style={{ gridColumn: `${COLUMNS.find(c => c.type.id === t.id)!.column} / span ${t.slots}` }} className="flex flex-col items-center gap-1 border-b border-primary/40 pb-1 text-center font-mono text-[10px] uppercase tracking-wider text-primary">
@@ -190,18 +190,18 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
         <section className="grid gap-2">
           {grid}
         </section>
-        <section className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Inventário</h3>
-          <div className="grid gap-[3px]">
+        <section className="grid gap-field">
+          <h3 className="mb-1.5 font-mono text-xs uppercase tracking-wider text-primary">Inventário</h3>
+          <div className="grid gap-field">
           <PatioRange label="Repetir troca após segurar" min={0.2} max={5} step={0.1} value={controls.inventory.repeatDelay}
             display={`${controls.inventory.repeatDelay.toFixed(1)} s`} onChange={v => update(c => { c.inventory.repeatDelay = v })} />
           <PatioRange label="Intervalo entre trocas" min={0.1} max={2} step={0.1} value={controls.inventory.repeatInterval}
             display={`${controls.inventory.repeatInterval.toFixed(1)} s`} onChange={v => update(c => { c.inventory.repeatInterval = v })} />
           </div>
         </section>
-        <section className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Analógicos</h3>
-          <div className="grid gap-[3px]">
+        <section className="grid gap-field">
+          <h3 className="mb-1.5 font-mono text-xs uppercase tracking-wider text-primary">Analógicos</h3>
+          <div className="grid gap-field">
           {([["deadzoneL", "Zona morta do esquerdo"], ["deadzoneR", "Zona morta do direito"]] as const).map(([k, label]) => (
             <PatioRange key={k} label={label} min={0} max={90} value={Math.round(controls.analog[k] * 100)}
               display={`${Math.round(controls.analog[k] * 100)}%`} onChange={v => update(c => { c.analog[k] = v / 100 })} />
@@ -211,16 +211,16 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             <input type="checkbox" checked={controls.analog.magnetDeg > 0} onChange={e => { const v = e.target.checked; update(c => { c.analog.magnetDeg = v ? c.analog.magnetRestoreDeg : 0; c.analog.magnet = v }) }} className="accent-[var(--primary)]" />
             Ímã dos 8 ângulos na movimentação
           </label>
-          <div className="grid gap-[3px]">
+          <div className="grid gap-field">
           <PatioRange label="Força do ímã dos 8 ângulos na movimentação" min={0} max={22.5} step={0.5} value={controls.analog.magnetDeg}
             display={`${controls.analog.magnetDeg}°`} onChange={v => update(c => { c.analog.magnetDeg = v; c.analog.magnet = v > 0; if (v > 0) c.analog.magnetRestoreDeg = v })} />
           <PatioRange label="Força do ímã dos 8 ângulos na mira" min={0} max={22.5} step={0.5} value={controls.analog.aimMagnetDeg}
             display={`${controls.analog.aimMagnetDeg}°`} onChange={v => update(c => { c.analog.aimMagnetDeg = v })} />
           </div>
         </section>
-        <section className="grid gap-2">
-          <h3 className="font-mono text-xs uppercase tracking-wider text-primary">Touch Controls</h3>
-          <div className="flex flex-wrap gap-1.5">
+        <section className="grid gap-field">
+          <h3 className="mb-1.5 font-mono text-xs uppercase tracking-wider text-primary">Touch Controls</h3>
+          <div className="flex flex-wrap gap-field">
             {TOUCH_MODES.map(m => (
               <button key={m.value} type="button" onClick={() => update(c => { c.touch = m.value })} className={cn("h-7 rounded border px-3 text-xs transition-colors", controls.touch === m.value ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 hover:border-primary/60")}>{m.label}</button>
             ))}

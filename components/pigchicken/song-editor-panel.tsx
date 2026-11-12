@@ -361,7 +361,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
           </form>
         )}
         {/* the song's settings and the tools */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/10 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-field border-b border-white/10 px-3 py-2">
           <label className="flex items-center gap-1.5">bpm<input type="number" min={40} max={200} value={z.bpm} onChange={e => setZone({ bpm: Math.max(40, Math.min(200, Number(e.target.value) || z.bpm)) }, "bpm")} className={cn(field, "w-16")} /></label>
           <select aria-label="Tom" title="Tom" value={((z.root % 12) + 12) % 12} onChange={e => { const pc = Number(e.target.value); const root = ROOTS.find(r => r % 12 === pc) ?? 60; commit(retune(draft, root, z.scale)) }} className={field}>
               {ROOTS.map(r => <option key={r} value={r % 12}>{keyName(r)}</option>)}
@@ -454,7 +454,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
             {note && <div className="rounded-md border border-white/15 bg-white/5 px-2 py-1.5 text-[11px] text-white">{note}</div>}
             {one && <AlienInspector a={one} catalog={catalog} onChange={(fn, key) => commit(updateAlien(draft, sel.aliens, fn), sel, key)} onDelete={() => commit(removeItems(draft, sel), NOTHING)} />}
             {sel.aliens.length > 1 && (
-              <div className="grid gap-2">
+              <div className="grid gap-field">
                 <h3 className="text-sm text-white">{sel.aliens.length} aliens</h3>
                 <VariantSelect value="" catalog={catalog} onChange={id => { const k = kindOf(id); commit(updateAlien(draft, sel.aliens, a => ({ ...a, species: k.species, variant: k.variant })), sel) }} placeholder="Trocar a variação de todos" />
                 <button type="button" onClick={() => commit(removeItems(draft, sel), NOTHING)} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />Excluir</button>
@@ -462,7 +462,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
             )}
             {line && <LineInspector l={line} catalog={catalog} grid={grid} onChange={(patch, key) => commit(updateLine(draft, sel.lines[0], patch), sel, key)} onDelete={() => commit(removeItems(draft, sel), NOTHING)} />}
             {pause && (
-              <div className="grid gap-2">
+              <div className="grid gap-field">
                 <h3 className="text-sm text-white">Pausa</h3>
                 <p className="text-[11px] text-[#93a79a]">Nenhum alien nela: o jogo segura a próxima onda até ela acabar. Mudar o tamanho empurra ou puxa o que vem depois.</p>
                 <label className="flex items-center justify-between gap-2">Compassos<input type="number" min={1} max={16} value={pause.bars} onChange={e => commit(setPauseBars(draft, sel.pauses[0], Number(e.target.value) || 1), sel, "pause-bars")} className={cn(field, "w-16")} /></label>
@@ -476,7 +476,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
               </div>
             )}
             {isEmpty(sel) && (
-              <div className="grid gap-2">
+              <div className="grid gap-field">
                 <label className="grid gap-1">Abertura (o banner do começo)
                   <textarea value={draft.intro} maxLength={400} rows={3} onChange={e => setSong({ intro: e.target.value }, "intro-text")} className="rounded-md border border-white/15 bg-[#0b110e] p-2 text-xs text-white" />
                 </label>
@@ -545,7 +545,7 @@ function AlienInspector({ a, catalog, onChange, onDelete }: { a: SongAlien; cata
   const lead = a.at === undefined ? LEAD_BEATS : first - a.at
   const moveLabel = MOVE_MODES.find(m => m.value === v.move)?.label ?? v.move
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-field">
       <h3 className="text-sm" style={{ color: a.color ?? v.color }}>{v.name}</h3>
       <p className="text-[11px] text-[#93a79a]">{a.notes.length} notas, do compasso {Math.floor(first / 4) + 1} ao {Math.floor(last / 4) + 1}. Ctrl+clique põe nota, botão direito tira, arrastar uma nota a move.</p>
       <label className="grid gap-1">Variação<VariantSelect value={v.id} catalog={catalog} onChange={id => { const nv = variantFor(catalog, id, "jelly"); onChange(x => ({ ...x, species: nv.species, variant: nv.id })) }} /></label>
@@ -555,7 +555,7 @@ function AlienInspector({ a, catalog, onChange, onDelete }: { a: SongAlien; cata
           {MOVE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </label>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-field">
         <label className="grid gap-1">Ângulo
           <input type="number" min={0} max={359} placeholder="pela nota" value={a.angle ?? ""} onChange={e => { const t = e.target.value; onChange(x => { const y = { ...x }; if (t === "") delete y.angle; else y.angle = ((Math.round(Number(t)) % 360) + 360) % 360; return y }, "angle") }} className={cn(field, "w-full min-w-0")} />
         </label>
@@ -574,7 +574,7 @@ function AlienInspector({ a, catalog, onChange, onDelete }: { a: SongAlien; cata
 
 function LineInspector({ l, catalog, grid, onChange, onDelete }: { l: SongLine; catalog: Catalog; grid: number; onChange: (patch: Partial<SongLine>, key?: string) => void; onDelete: () => void }) {
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-field">
       <h3 className="text-sm text-white">Fala</h3>
       <label className="grid gap-1">Quem fala
         <select value={l.who} onChange={e => onChange({ who: e.target.value })} className={field}>
@@ -585,11 +585,11 @@ function LineInspector({ l, catalog, grid, onChange, onDelete }: { l: SongLine; 
       <label className="grid gap-1">Texto
         <textarea autoFocus={!l.text} value={l.text} maxLength={200} rows={3} onChange={e => onChange({ text: e.target.value }, "line-text")} className="rounded-md border border-white/15 bg-[#0b110e] p-2 text-xs text-white" />
       </label>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-field">
         <label className="grid gap-1">Tempo<input type="number" step={grid} value={l.beat} onChange={e => onChange({ beat: Number(e.target.value) || 0 }, "line-beat")} className={cn(field, "w-full min-w-0")} /></label>
         <label className="grid gap-1">Na tela (s)<input type="number" min={0.5} max={20} step={0.5} value={l.secs} onChange={e => onChange({ secs: Math.max(0.5, Math.min(20, Number(e.target.value) || 3)) }, "line-secs")} className={cn(field, "w-full min-w-0")} /></label>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-field">
         {LINE_PLACES.map(p => <button key={p.value} type="button" aria-pressed={l.place === p.value} onClick={() => onChange({ place: p.value })} className={cn("h-7 rounded-full border px-3", l.place === p.value ? "border-primary text-white" : "border-white/15")}>{p.label}</button>)}
       </div>
       <label className="flex items-center gap-2"><input type="checkbox" checked={l.blip} onChange={e => onChange({ blip: e.target.checked })} />Blip de voz a cada letra</label>
