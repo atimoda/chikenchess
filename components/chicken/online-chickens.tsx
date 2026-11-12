@@ -20,7 +20,8 @@ import { TAKE_WAIT } from "@/lib/pigchicken/net-souls"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
-import { DEFAULT_ITEMS, itemRig, type ItemId } from "@/lib/pigchicken/items"
+import { DEFAULT_ITEMS, isStaff, itemRig, type ItemId } from "@/lib/pigchicken/items"
+import { aimElevation, staffPose } from "@/lib/pigchicken/staff-pose"
 import { stageWidth } from "@/lib/stage-size"
 
 // the item in hand travels as one byte: its place in this list (0: empty hands)
@@ -131,7 +132,10 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
           const key = itemKey(c.item), svg = key ? ITEM_SVG[key as keyof typeof ITEM_SVG] : undefined
           if (c.item !== entry.item || key) {
             entry.item = c.item
-            engine.setHeld(key && svg ? { svg, itemKey: key, angle, kick: 0, rig: key in DEFAULT_ITEMS ? itemRig(DEFAULT_ITEMS[key as ItemId]) : null } : null)
+            const def = key && key in DEFAULT_ITEMS ? DEFAULT_ITEMS[key as ItemId] : null
+            // a staff is carried in its own pose on her body (the game's default one), as on the browser that plays her
+            const staff = def && isStaff(def) ? staffPose(def, 0, aimElevation(angle, c.face)) : null
+            engine.setHeld(key && svg ? { svg, itemKey: key, angle, kick: 0, atHand: !!staff, rig: def ? itemRig(def) : null, staff } : null)
           }
           engine.setGame({ lookAngle: entry.aim })
           return { x: c.x - liveCamera.x, y: c.y + liveCamera.y, vx: c.vx, vy: c.vy, face: c.face, state: stateName(c.state), cling: byteAngle(c.rot) }

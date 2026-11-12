@@ -103,8 +103,13 @@ export const LOOK_ART = (() => {
       '<g transform="translate(-4 -2)"><path d="M-34 -124 C -10 -130, 22 -128, 34 -118 C 40 -100, 32 -80, 12 -72 C -10 -66, -36 -74, -44 -92 C -48 -108, -46 -120, -34 -124 Z" fill="' + wing.back + '"></path></g>' +
       (art.tail[look.tail].svg ?? '') + (art.torso[look.torso].svg ?? '') + (art.neck[look.neck].svg ?? '') + headSvg(look) + (wing.svg ?? '');
   }
+  // the same chicken in two layers, for a drawing that poses the near wing itself: everything but that wing, and the wing
+  function layers(look: ChickenLook) {
+    const wing = art.wing[look.wing].svg ?? '', whole = compose(look);
+    return { body: wing ? whole.slice(0, whole.length - wing.length) : whole, wing };
+  }
   // where each part sits in rest pose, for cropped thumbnails
   const VIEW: Record<ChickenSlot, string> = { comb: '14 -238 70 70', face: '22 -214 50 50', beak: '40 -210 44 44', wattle: '34 -200 44 58', neck: '-10 -196 76 104', wing: '-56 -136 102 80', tail: '-120 -180 120 120', torso: '-76 -160 140 110', legs: '-50 -100 80 106' };
   const TAIL_VIEW: Record<string, string> = { onagadori: '-350 -180 360 190' };
-  return { art, SLOTS, BREEDS, breedLook, compose, headSvg, VIEW, TAIL_VIEW, WING };
+  return { art, SLOTS, BREEDS, breedLook, compose, layers, headSvg, VIEW, TAIL_VIEW, WING };
 })()
