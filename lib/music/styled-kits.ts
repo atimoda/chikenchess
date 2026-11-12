@@ -21,6 +21,20 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'new-orleans-1953': 'new-orleans-2026-11-11-ballads-v2',
   'memphis-1967': 'memphis-1967-2026-11-11-ballads-v2',
   'london-1977': 'london-1977-2026-11-11-ballads-v2',
+  // Blues, Jazz & Rock rewrite: official kits authored by scripts/blues-jazz-rock/<id>.cjs.
+  'chicago-1958': 'chicago-1958-2026-11-12-bjr-v1',
+  'new-york-1930': 'new-york-1930-2026-11-12-bjr-v1',
+  'paris-1945': 'paris-1945-2026-11-12-bjr-v1',
+  'oakland-1959': 'oakland-1959-2026-11-12-bjr-v1',
+  'new-york-1962': 'new-york-1962-2026-11-12-bjr-v1',
+  'new-york-1961': 'new-york-1961-2026-11-12-bjr-v1',
+  'london-1970': 'london-1970-2026-11-12-bjr-v1',
+  'cambridge-1973': 'cambridge-1973-2026-11-12-bjr-v1',
+  'jacksonville-1974': 'jacksonville-1974-2026-11-12-bjr-v1',
+  'san-diego-1999': 'san-diego-1999-2026-11-12-bjr-v1',
+  'san-francisco-1993': 'san-francisco-1993-2026-11-12-bjr-v1',
+  'berkeley-2004': 'berkeley-2004-2026-11-12-bjr-v1',
+  'columbus-2013': 'columbus-2013-2026-11-12-bjr-v1',
   'leipzig-1723': 'leipzig-2026-11-07-orchestra-v5',
   'vienna-1825': 'vienna-2026-11-07-orchestra-v5',
   vienna: 'vienna-2026-11-07-orchestra-v5',
@@ -54,7 +68,7 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'rio-1995': 'rio-1995-2026-10-26-brazilian-v2',
 }
 
-const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', psytrance: 'chicken-psytrance-v1', machines: 'chicken-machines-v1', electronic: 'chicken-electronic-v1', brasil: 'chicken-brasil-v1', bateria: 'chicken-bateria-v1' } as const
+const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', amps: 'chicken-amps-v1', voices: 'chicken-voices-v1', psytrance: 'chicken-psytrance-v1', machines: 'chicken-machines-v1', electronic: 'chicken-electronic-v1', brasil: 'chicken-brasil-v1', bateria: 'chicken-bateria-v1' } as const
 import { parseProfileToken } from './profile-tokens'
 const WHITE_SLOTS = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 'e1', 'e2', 'f1', 'f2', 'g1', 'g2', 'h1', 'h2'] as const
 

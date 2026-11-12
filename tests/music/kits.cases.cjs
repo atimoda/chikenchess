@@ -35,11 +35,15 @@ test('sample registry points to small valid local WAV files with explicit tuning
       // 46 drum-machine hits and 18 voices/stabs/effects for the Electronic World kits.
       'chicken-machines-v1': 400_000, 'chicken-electronic-v1': 350_000,
       // 24 synthesized Brazilian strings, accordion, voices and percussion.
-      'chicken-brasil-v1': 260_000 }
+      'chicken-brasil-v1': 260_000,
+      // 67 amplified guitar, harmonica and bass renders for the Blues, Jazz & Rock kits.
+      'chicken-amps-v1': 1_800_000,
+      // 34 synthesized vocal-group sounds (multisampled formant voices) for the doo-wop kit.
+      'chicken-voices-v1': 700_000 }
     const bankLimit = budgets[bank.id] ?? 200_000
     assert.ok(bankBytes < bankLimit, `${bank.id}: bank stays within its audio budget`)
   }
-  assert.equal(SAMPLE_BANKS.length, 18)
+  assert.equal(SAMPLE_BANKS.length, 20)
   assert.ok(total < 15_000_000, 'recorded banks keep the lazy-loaded catalog below 15 MB')
   assert.equal(fs.readdirSync(path.resolve(fixtureDirectory, '../public/samples'), { recursive: true }).filter(file => String(file).endsWith('.wav')).length, 0, 'no WAV left in the catalog')
 })
@@ -93,15 +97,16 @@ test('Salvador 1992 assigns brass to knights and rooks over complementary surdos
 test('new timbre banks reach the intended city styles', () => {
   const { cities } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  const recent = new Set(['chicken-strings-v1', 'chicken-keys-v1', 'chicken-synths-v1', 'chicken-drums-v1', 'chicken-samba-reggae-v2', 'chicken-classical-v1', 'chicken-band-v1', 'chicken-guitars-v1', 'chicken-percussion-v1', 'chicken-psytrance-v1', 'chicken-machines-v1', 'chicken-electronic-v1'])
+  const recent = new Set(['chicken-strings-v1', 'chicken-keys-v1', 'chicken-synths-v1', 'chicken-drums-v1', 'chicken-samba-reggae-v2', 'chicken-classical-v1', 'chicken-band-v1', 'chicken-guitars-v1', 'chicken-percussion-v1', 'chicken-psytrance-v1', 'chicken-machines-v1', 'chicken-electronic-v1', 'chicken-amps-v1', 'chicken-voices-v1'])
   for (const city of cities) {
     const sources = Object.values(defaultCityKit(city.id).instruments).map(instrument => instrument.source)
     assert.ok(sources.some(source => source?.kind === 'sample' && recent.has(source.bank)), `${city.id}: new timbre`)
   }
   const banksFor = city => new Set(Object.values(defaultCityKit(city).instruments).flatMap(instrument => instrument.source?.kind === 'sample' ? [instrument.source.bank] : []))
-  assert.ok(banksFor('san-diego-1999').has('chicken-guitars-v1'))
-  assert.ok(banksFor('london-1970').has('chicken-keys-v1'))
-  assert.ok(banksFor('berkeley-2004').has('chicken-percussion-v1'))
+  assert.ok(banksFor('san-diego-1999').has('chicken-amps-v1'))
+  assert.ok(banksFor('london-1970').has('chicken-classical-v1'))
+  assert.ok(banksFor('berkeley-2004').has('chicken-amps-v1'))
+  assert.ok(banksFor('new-york-1961').has('chicken-voices-v1'))
   assert.ok(banksFor('tokyo').has('chicken-synths-v1'))
   const leadPalette = city => Object.values(defaultCityKit(city).instruments).filter(i => i.behavior === 'phrase').map(i => `${i.source.bank}/${i.source.asset}`)
   assert.notDeepEqual(leadPalette('san-diego-1999'), leadPalette('paris-1945'), 'rock and jazz retain different recorded melodic palettes')
@@ -292,8 +297,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 68)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 49)
+  assert.equal(cities.length, 67)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 48)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -323,7 +328,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,14,10,4,12])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,13,10,4,12])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
@@ -346,16 +351,14 @@ test('recent city stories name only the style and give a city-free poetic openin
   }
 })
 
-test('the new songs place their defining phrases inside each notated bar', () => {
+test('the jazz waltz walks its double bass on the three beats of each bar', () => {
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  const onsets = (cityId, voiceName) => {
-    const kit = defaultCityKit(cityId)
-    const instrument = Object.values(kit.instruments).find(i => i.name === voiceName)
-    assert.ok(instrument, `${cityId}: ${voiceName}`)
-    assert.equal(instrument.pianoRolls[0].bars, 1)
-    return [...new Set(instrument.pianoRolls[0].notes.map(note => Math.round(note.start * 12) / 12))]
-  }
-  assert.deepEqual(onsets('new-york-1962', 'Acordes rítmicos'), [1 / 6, 2 / 3])
+  const kit = defaultCityKit('new-york-1962')
+  assert.equal(kit.meter, '3/4')
+  const bass = Object.values(kit.instruments).find(i => i.name === 'Double bass')
+  assert.ok(bass, 'new-york-1962: Double bass')
+  const inBar = [...new Set(bass.pianoRolls[2].notes.map(note => Math.round((note.start % 1) * 12) / 12))].sort((a, b) => a - b)
+  assert.deepEqual(inBar, [0, 1 / 3, 2 / 3])
 })
 
 test('every city voice produces bounded, in-scale Strudel events in every section', async () => {
@@ -452,7 +455,7 @@ test('curated collection has finite, bounded events across all banks and full fo
   const kit=defaultCityKit(city.id),snapshot=creative.creativeSnapshot(kit,true)
   for(const voice of voiceSpecs({...snapshot,pieces:snapshot.pieces.map(p=>({...p,active:true}))},null)){
    for(let section=0;section<voice.pianoRolls.length;section++){
-    const events=compileVoice(api,{...voice,performance:undefined,sectionPattern:String(section)}).queryArc(0,8)
+    const events=compileVoice(api,{...voice,performance:undefined,sectionPattern:String(section)}).queryArc(0,Math.max(8,voice.pianoRolls[section].bars))
     if(voice.pianoRolls[section].notes.length)assert.ok(events.length>0,`${city.id}/${voice.key}/${section} has music`)
     else assert.equal(events.length,0,`${city.id}/${voice.key}/${section}: authored empty MIDI stays silent`)
     for(const h of events){assert.ok(Number.isFinite(h.value.gain));if(!voice.unpitched)assert.ok(Number.isFinite(Number(h.value.note)))}

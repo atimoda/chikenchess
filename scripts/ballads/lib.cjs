@@ -13,14 +13,30 @@ const METERS = {
   '4/4': { beat: 1 / 4, eighth: 1 / 8, sixteenth: 1 / 16, beats: 4, ternary: false, res: 16 },
   '6/8': { beat: 1 / 2, eighth: 1 / 6, sixteenth: 1 / 12, beats: 2, ternary: true, res: 12 },
   '12/8': { beat: 1 / 4, eighth: 1 / 12, sixteenth: 1 / 24, beats: 4, ternary: true, res: 24 },
+  // Simple meters with swung eighths or triplets snap to 48 ticks per beat (song.grid = beats * 48).
+  '3/4': { beat: 1 / 3, eighth: 1 / 6, sixteenth: 1 / 12, beats: 3, ternary: false, res: 12 },
+  '5/4': { beat: 1 / 5, eighth: 1 / 10, sixteenth: 1 / 20, beats: 5, ternary: false, res: 20 },
+  '7/4': { beat: 1 / 7, eighth: 1 / 14, sixteenth: 1 / 28, beats: 7, ternary: false, res: 28 },
 }
-const SCALES = { 'Maior': [0, 2, 4, 5, 7, 9, 11], 'Dórica': [0, 2, 3, 5, 7, 9, 10], 'Mixolídia': [0, 2, 4, 5, 7, 9, 10], 'Menor natural': [0, 2, 3, 5, 7, 8, 10] }
+const SCALES = { 'Maior': [0, 2, 4, 5, 7, 9, 11], 'Dórica': [0, 2, 3, 5, 7, 9, 10], 'Mixolídia': [0, 2, 4, 5, 7, 9, 10], 'Menor natural': [0, 2, 3, 5, 7, 8, 10], 'Harmônica menor': [0, 2, 3, 5, 7, 8, 11], 'Chromatic': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
 
-function composer(meter, scale) {
+/**
+ * `swing` (0.5 straight … 0.67 triplet feel) moves every off-beat eighth of a simple meter later and
+ * stretches the sixteenths with it, for melodies and drum grids alike; the song then needs a grid of
+ * 48 ticks per beat (build({ grid })).
+ */
+function composer(meter, scale, { swing = .5 } = {}) {
   const M = METERS[meter], steps = SCALES[scale]
   if (!M || !steps) throw new Error(`meter/scale ${meter} ${scale}`)
-  const semitone = degree => 12 * Math.floor(degree / 7) + steps[((degree % 7) + 7) % 7]
+  const size = steps.length, semitone = degree => 12 * Math.floor(degree / size) + steps[((degree % size) + size) % size]
   const near = (a, b) => Math.abs(a - b) < 1e-6
+  /** Bar time → swung bar time (identity when straight). */
+  function warp(at, straight = false) {
+    if (straight || swing === .5 || M.ternary) return at
+    const beatIndex = Math.floor(at / M.beat + 1e-9), inBeat = at - beatIndex * M.beat, half = M.beat / 2
+    const moved = inBeat <= half ? inBeat / half * swing * M.beat : swing * M.beat + (inBeat - half) / half * (1 - swing) * M.beat
+    return beatIndex * M.beat + moved
+  }
 
   /** Velocity by position: downbeat, beats, the rest. */
   function weight(at, { strong = 1, beat = .82, off = .66 } = {}) {
@@ -36,7 +52,7 @@ function composer(meter, scale) {
    * ~ vibrato · ! accent · ' soft · ? chance .7 (?? .45) · ^n slide n semitones into the note ·
    * > delay · * ring (release + reverb) · # drive · xN ratchet · s staccato · pN pan N/10 · cN cutoff.
    */
-  function mel(text, { unit = M.eighth, gate = .92, accent = {}, start = 0 } = {}) {
+  function mel(text, { unit = M.eighth, gate = .92, accent = {}, start = 0, straight = false } = {}) {
     const notes = []
     text.split('|').forEach((barText, bar) => {
       let cursor = 0
@@ -46,9 +62,9 @@ function composer(meter, scale) {
         const length = Number(match[2]) * unit
         if (cursor > 1 - 1e-9) throw new Error(`bar ${bar + 1} overflows at ${token}: ${text.slice(0, 60)}`)
         if (match[1] !== 'r') {
-          const at = start + bar + cursor
-          const extra = { velocity: weight(at, accent) }
-          let duration = length * gate, mods = match[3]
+          const at = start + bar + warp(cursor, straight)
+          const extra = { velocity: weight(start + bar + cursor, accent) }
+          let duration = (warp(Math.min(1, cursor + length), straight) - warp(cursor, straight)) * gate, mods = match[3]
           while (mods) {
             let m
             if ((m = /^\^(-?\d+)/.exec(mods))) { extra.slide = Number(m[1]); extra.slideSeconds = .08 }
@@ -65,7 +81,7 @@ function composer(meter, scale) {
               if (c === '>') extra.delay = .32
               if (c === '*') Object.assign(extra, { release: .8, reverb: .42 })
               if (c === '#') extra.drive = 1.3
-              if (c === 's') duration = length * .5
+              if (c === 's') duration = duration / gate * .5
             } else throw new Error(`mark ${mods} in ${token}`)
             mods = mods.slice(m[0].length)
           }
@@ -79,13 +95,13 @@ function composer(meter, scale) {
   /** Repeats bar text n times. */
   const rep = (text, n) => Array.from({ length: n }, () => text).join(' | ')
   /** Drum grid: one character per unit; bars separated by "|". X x o g (ghost) ? (chance) r R (ratchets) . rest. */
-  function hits(text, { unit = M.eighth, length = unit * .5, degree = 0, start = 0, extra = {} } = {}) {
+  function hits(text, { unit = M.eighth, length = unit * .5, degree = 0, start = 0, extra = {}, straight = false } = {}) {
     const notes = [], V = { X: 1, x: .82, o: .62, g: .36, '?': .6, r: .78, R: .82, h: .5 }
     text.split('|').forEach((barText, bar) => {
       [...barText.replace(/\s+/g, '')].forEach((c, i) => {
         if (c === '.' || c === '-') return
         if (!(c in V)) throw new Error(`hit ${c}`)
-        const n = { start: start + bar + i * unit, duration: length, degree, velocity: V[c], ...extra }
+        const n = { start: start + bar + warp(i * unit, straight), duration: length, degree, velocity: V[c], ...extra }
         if (c === '?') n.chance = .5
         if (c === 'r') n.ratchet = 2
         if (c === 'R') n.ratchet = 3
@@ -121,13 +137,19 @@ function composer(meter, scale) {
   const up = (notes, degrees) => notes.map(n => ({ ...n, degree: n.degree + degrees }))
   const vel = (notes, factor) => notes.map(n => ({ ...n, velocity: Math.round(Math.min(1, Math.max(.15, n.velocity * factor)) * 100) / 100 }))
   const set = (notes, extra) => notes.map(n => ({ ...n, ...extra }))
+  /** Deterministic human touch: velocity spread (±amount) and optional timing push in bars (+ is late). */
+  function human(notes, amount = .06, late = 0, seed = 1) {
+    let x = seed * 9301 + 49297
+    const next = () => { x = (x * 9301 + 49297) % 233280; return x / 233280 - .5 }
+    return notes.map(n => ({ ...n, start: Math.max(0, n.start + late), velocity: Math.round(Math.min(1, Math.max(.12, n.velocity * (1 + 2 * amount * next()))) * 100) / 100 }))
+  }
   const roll = (bars, ...groups) => ({ bars, notes: groups.flat().filter(n => n.start < bars - 1e-9).map(n => ({ ...n, duration: Math.min(n.duration, bars - n.start) })) })
-  return { M, meter, semitone, mel, rep, hits, relative, strum, portamento, shift, up, vel, set, roll, weight }
+  return { M, meter, semitone, mel, rep, hits, relative, strum, portamento, shift, up, vel, set, roll, weight, warp, human }
 }
 
 /** Snaps every note to the grid, keeps it inside its roll and drops what falls outside. */
-function snap(rollValue, ternary) {
-  const startGrid = ternary ? 192 : 128, lengthGrid = ternary ? 192 : 64, minimum = ternary ? 3 / 192 : 1 / 64
+function snap(rollValue, ternary, grid) {
+  const startGrid = grid ?? (ternary ? 192 : 128), lengthGrid = grid ?? (ternary ? 192 : 64), minimum = grid ? 3 / grid : ternary ? 3 / 192 : 1 / 64
   rollValue.notes = rollValue.notes.map(n => {
     const start = Math.min(rollValue.bars - minimum, Math.round(n.start * startGrid) / startGrid)
     const duration = Math.min(rollValue.bars - start, Math.max(minimum, Math.round(n.duration * lengthGrid) / lengthGrid))
@@ -175,7 +197,7 @@ async function build(song) {
       const given = part.rolls[bank], bars = bankBars[bank]
       const r = !given ? { bars, notes: [] } : Array.isArray(given) ? { bars, notes: given.filter(n => n.start < bars - 1e-9).map(n => ({ ...n, duration: Math.min(n.duration, bars - n.start) })) } : given
       if (r.bars !== bankBars[bank]) throw new Error(`${part.name} bank ${bank}: ${r.bars} bars, expected ${bankBars[bank]}`)
-      return snap(structuredClone(r), ternary)
+      return snap(structuredClone(r), ternary, song.grid)
     })
     form.forEach((section, index) => {
       if (part.sections[index] && !part.rolls[section.bank]) throw new Error(`${part.name}: section ${index} plays an empty bank ${section.bank}`)
@@ -194,11 +216,11 @@ async function build(song) {
       ...(part.lpfRange ? { lpfRange: part.lpfRange } : {}), ...(part.reverbRange ? { reverbRange: part.reverbRange } : {}), ...(part.driveRange ? { driveRange: part.driveRange } : {}),
       arrangement: { restart: true, active: part.sections.map(Boolean), variations: form.map(s => s.bank), transpose: form.map(s => s.transpose ?? 0),
         ...(part.fills ? { fills: form.map((_, index) => part.fills[index] ?? null) } : {}) },
-      effects: part.effects ?? {}, ...(part.design ? { design: part.design } : {}),
+      effects: part.effects ?? {}, ...(part.design ? { design: part.design } : {}), ...(part.mapping ? { mapping: part.mapping } : {}),
     })),
   }
   // Sources for the profile schema use the short bank names.
-  const SHORT = { 'chicken-classical-v1': 'classical', 'chicken-band-v1': 'band', 'chicken-percussion-v1': 'percussion', 'chicken-guitars-v1': 'guitars', 'chicken-keys-v1': 'keys', 'chicken-drums-v1': 'drums', 'chicken-machines-v1': 'machines', 'chicken-brasil-v1': 'brasil', 'chicken-electronic-v1': 'electronic', 'chicken-strings-v1': 'strings', 'chicken-jazz-v1': 'jazz', 'chicken-synths-v1': 'synths', 'chicken-world-v1': 'world' }
+  const SHORT = { 'chicken-classical-v1': 'classical', 'chicken-band-v1': 'band', 'chicken-percussion-v1': 'percussion', 'chicken-guitars-v1': 'guitars', 'chicken-amps-v1': 'amps', 'chicken-voices-v1': 'voices', 'chicken-keys-v1': 'keys', 'chicken-drums-v1': 'drums', 'chicken-machines-v1': 'machines', 'chicken-brasil-v1': 'brasil', 'chicken-electronic-v1': 'electronic', 'chicken-strings-v1': 'strings', 'chicken-jazz-v1': 'jazz', 'chicken-synths-v1': 'synths', 'chicken-world-v1': 'world' }
   for (const part of profile.parts) part.source = { ...part.source, bank: SHORT[part.source.bank] ?? part.source.bank }
   styleProfileSchema.parse(profile)
   if (song.writeProfile !== false) fs.writeFileSync(path.join(root, 'data/music/profiles', `${id}.json`), `${JSON.stringify(profile, null, 2)}\n`)

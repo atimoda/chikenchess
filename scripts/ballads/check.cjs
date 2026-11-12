@@ -13,7 +13,7 @@ async function main() {
   const api = await strudel()
   for (const id of IDS) {
     const kit = defaultCityKit(id)
-    const total = kit.arrangement.sections.reduce((n, s) => n + s.beats, 0) / ({ '6/8': 2, '12/8': 4 }[kit.meter] ?? 4)
+    const total = kit.arrangement.sections.reduce((n, s) => n + s.beats, 0) / ({ '6/8': 2, '12/8': 4, '3/4': 3, '5/4': 5, '7/4': 7 }[kit.meter] ?? 4)
     const pcs = new Set(SCALE_INTERVALS[kit.scale].map(i => (i + (NOTE[kit.root] ?? 0)) % 12))
     console.log(`\n${id} · ${kit.name} · ${kit.meter} ${kit.bpm} BPM · ${kit.root} ${kit.scale} · ${total} bars`)
     let slowest = 0, sum = 0, all = 0, compileMs = 0

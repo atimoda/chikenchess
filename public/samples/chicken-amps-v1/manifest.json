@@ -1,0 +1,734 @@
+{
+  "license": "CC0-1.0",
+  "repositories": [
+    [
+      "sfzinstruments/karoryfer.black-and-green-guitars",
+      "b3b3249d37dc977a1a297bd2dc053e6d9b6b805c"
+    ],
+    [
+      "sfzinstruments/karoryfer.big-little-bass",
+      "4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc"
+    ]
+  ],
+  "sources": {
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e3_f_rr1.wav": "fc1e4da6de242d7197f8efac253cc3b0c49328a7075646f10c0a7a74dabcea7c",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_a3_f_rr1.wav": "7809d4f668c48d223b10c78333cd08fa8b9f895990bc77cf2c905d1b2041d7c9",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_d4_f_rr1.wav": "503af246ddd9450fa06ad06060a6d42c18492b312d3a0d392d15ed0e3a0f1ead",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g4_f_rr1.wav": "1d337f5715561d201eda56d86a7d41929ee1e6d9fcc57c6b81e81c40c4daff7a",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c5_f_rr1.wav": "8dc7d7401c20d621b65c4e50622d96690e33e30f71e27c4abeb1dfce9fd5e3a2",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_f5_f_rr1.wav": "6e401be30a2ff560eb6ee55fe4d4311f4baffe94e57528ca32cf8d2618babc72",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_a5_f_rr1.wav": "26bcdb36a65e4b1912eb6c68b2b925ca7883e5ab8614b13a7dbb16eed0836de4",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_d6_f_rr1.wav": "4fae9f7a58631693178fe63a3a9c1d6f5a42ce3fce02555d71f9e54dbbe9ca76",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_e3_mf_rr1.wav": "822b7dd97e6595bddf5e968b1052d807ad0137a01ccd3dd1a60bd987810d3125",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_a3_mf_rr1.wav": "b13e6cb9b7e990758225a0e15936b38ba01d86eb7fabd410a68c510e9d8bc30b",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_d4_mf_rr1.wav": "47c34c657a85cba0fd8e8c7f3b5e2ded762870a062e5f87b85c97cb732556888",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_g4_mf_rr1.wav": "922ffabb48b463ac56780f9d14c8f9b0ee132e5f906e8d6c69832d2b944a13d1",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_c5_mf_rr1.wav": "5e56976caf93d92cfdb827fee46b35f8479632dca9a64db7a615a5c025ad71d5",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_f5_mf_rr1.wav": "1d61da938c8057b34412373bab33c5c371c79d49539175ec49ca91e25423e25f",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_a5_mf_rr1.wav": "76ad3f59309cc50130fc13906fe0dd2e9575ff787a6acdbab6b04f50167952dd",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_d6_mf_rr1.wav": "4071d8613db4c27bcb7ef3e70fa717d144be1bdf4f4e11eb86146249d636c5fb",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_b3_mf_rr1.wav": "7c27c916b85f145b0bf4fce72b7c0f1f7ada9870899c58036ae15b9da3417e29",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_e4_mf_rr1.wav": "d06d8548f6123bb1c85f4eea7a45f027b0a6aa032ae21b3b185f82cd31cd7c65",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_g3_mf_rr1.wav": "4e1520afe116c55a9bc7008056b2526072c60ce58d04e7b75e21810c8eb86c12",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_c4_mf_rr1.wav": "095fc01bcb6adb8f8c7b3b006f7b2739c4f1d5c2f294cc9adb697999a3887c2c",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_b4_mf_rr1.wav": "a2f21a41e5530531c5b9ae1aaa90ac0ed7e5795fdffe06ce7776c7b81ffcc36f",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_e5_mf_rr1.wav": "372036c52fd3911fcf8deebbb36d04b937cb2ad532b5a24a6c7b46e8d1e5188f",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_d5_mf_rr1.wav": "2d49d8fecfcb3a0feca7a313b323390733d8a9b4045d51df9e97222b416defc1",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/black/ord/twang_g5_mf_rr1.wav": "9622d7e6ed203cff5fbaa1c3a639fb62d0dbab2b5c8130ea0f12c4b893bedefe",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_b3_f_rr1.wav": "f64d9bc4a701d6877f7cff2b79202f13d14dafc85c1196f1e7471610cd12edbf",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e4_f_rr1.wav": "a6ce7bcae9306a040a7d55b636f9f7cd977fc50ccf7525fa758680ed753b1880",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g3_f_rr1.wav": "b47c4558bfafe59cd66575f4623bd8967351c4846c67d0e0cc26e480ce21ee61",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c4_f_rr1.wav": "363be52aa9c7cb806ba66c3372d5a60e8abcbeca3d0495b4cddd42f350812656",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_b4_f_rr1.wav": "06016783dd2dbeb38b5b5d4c832bc442770d48a349211372f99befad7e5a639a",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e5_f_rr1.wav": "0b72556525eca921f3c8789e95046a0f8c078638d4686007f65e82f83c273cf0",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_d5_f_rr1.wav": "5951ee0e80a9753ec1e517e2fc751346624b57ce0137e612b06d084c034cd034",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g5_f_rr1.wav": "48f192cae2dfa586850129fb1b046a7630b4fb341d320050b2a1e3a43467b2f5",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_a4_f_rr1.wav": "d2c1709b28bdaa96c354de1691e579d7de148bb53e36db96a265eb34df108583",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c5_f_rr2.wav": "f41f2bf390042d5b1347b5863a3c7636232f243726d48d4b2e2da9a4e6aa461f",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_f5_f_rr2.wav": "38ef9a164639bcefe473707ae5cd8e589d8ac928b7e77ce1d7d8dbbf9c2e2425",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_a5_f_rr2.wav": "7ba0922eea7460871e251aee8d356698560672cd0e0901fd3f596609f5eae56f",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_e3_mf_rr1.wav": "a839c8a67e29ab9c3c5ac9da52af4ee62f0ce721262c28772720223b8e7eb249",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_a3_mf_rr1.wav": "04b72e8c2514291cf49b749292892a16ac9f2ded0a3d8c4ad3565de03d7d4484",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_d4_mf_rr1.wav": "6f9037e5af6789314ee39073fab283ab65fbb747dbde32be3fe91af62fc8a2c4",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_g4_mf_rr1.wav": "5281bb39ee797565282c4f71d670448c07ca0c430a76b7c6380c0ce524b44f11",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_c5_mf_rr1.wav": "8bc3ab1361d13b1bf6e361dcfb7c493f6b96b9f065721e45275959a1e12f8658",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_f5_mf_rr1.wav": "ab7ef2d3c1d25a72ffcbe3d499ac68dda6731c17f90f45f9b40f0fbe78bb6ba6",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.black-and-green-guitars/b3b3249d37dc977a1a297bd2dc053e6d9b6b805c/Samples/green/ord/twang_a5_mf_rr1.wav": "0a9d29520e0d61cafa1f103f46d11e18a0af81e91a9c30c0b91e0a3f493f09d6",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_c2_f_rr1.wav": "62d57842aa4406a2f3c99a64c6e515d50740bb3f268d240ff575fc98992510b6",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_e2_f_rr1.wav": "9374dbfc20c0257ce02347129ecf093db7a3a79915b4a3aee4f72a11f973c049",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_g2_f_rr1.wav": "8aab4280e1957ba2a97adc107cc30fcd1d4b5a8e43b53b05227f49ceb41c9d9b",
+    "https://raw.githubusercontent.com/sfzinstruments/karoryfer.big-little-bass/4e92bdf54dcd2d6cfad968cc90542d5461c9b9fc/Samples/big_little_pluck_c3_f_rr1.wav": "c56da8845c26d44fc810571cae8b65f1152e5e2bf66c74d18d449920d669c44a"
+  },
+  "recordings": [
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "e2",
+      "file": "tweed-0-e2.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "23f9781e3c6d39d265d8903260eaa3476f0289ea9b65cd83599e3d452b2c59ce",
+      "sha256M4a": "160c463f0bbdb86d83b11ab346689ec67891fc16980a35804da8d8e7ea7c21f6"
+    },
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "a2",
+      "file": "tweed-0-a2.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "81a436cee483a3bea40a4274b2c9472aa9b5180c90744148542cdeacb98dc665",
+      "sha256M4a": "4fa8777a86bdc9cea0318fd57ca796b23015cf6051b4c4f72b0e35aab7896195"
+    },
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "d3",
+      "file": "tweed-0-d3.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "41446b9b7664eeb3a43fefbdff5d43283e82711d5e934f12a7635e7b2bf174ee",
+      "sha256M4a": "81a57ceb42dfe2f337fdd91b73df78e3440fceab892d03ae1ba72479b4db7aae"
+    },
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "g3",
+      "file": "tweed-0-g3.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "fc205a144ee6b383ecaebb6e503416d2cfb1b89f2ad3001925306bae4e04bb66",
+      "sha256M4a": "93b3eb1d8a66a44c3eda8d41746c50b62c0d3d5c8951e49e856fe0dd6749cb22"
+    },
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "c4",
+      "file": "tweed-0-c4.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "62633f752578519637b5c25ac943f6f2d7b5f188454ce9f215105e63614e3f20",
+      "sha256M4a": "26dcd2f24557c825563a120acf15cec70957fbb32b88aca6628821ebd23b43ad"
+    },
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "f4",
+      "file": "tweed-0-f4.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "14d504e8d6c23d3dd9e92845580aaebdff0ad28ea4b839647ed55305930635bb",
+      "sha256M4a": "1b3814d3da5028e30603bd0afaebec491e300f8356e6cfdaa664320f4a28d740"
+    },
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "a4",
+      "file": "tweed-0-a4.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "c52585dc72486241b053c3f428922d5ea0c57e4ab765eb45c176560507b370b1",
+      "sha256M4a": "a82a48e36f487517579b0627141f6a54fee4dfd8716818dfa645ce81ffd53209"
+    },
+    {
+      "asset": "tweed",
+      "variant": 0,
+      "note": "d5",
+      "file": "tweed-0-d5.ogg",
+      "seconds": 2.0,
+      "rms": 0.2,
+      "sha256": "9527bbac94a905cd910e8e1c542c809e7744150b3e2940ba72e31b802e726ff1",
+      "sha256M4a": "fb275a9608bc73244c8f856abb5de387eb4cf39ddb40cd814a0ddf0ba1d90e0d"
+    },
+    {
+      "asset": "crunch",
+      "variant": 0,
+      "note": "e2",
+      "file": "crunch-0-e2.ogg",
+      "seconds": 2.2,
+      "rms": 0.2,
+      "sha256": "f5cfbc1aa02c768af3e26d9a997ef50eb784fa1ba87b227084686898ddf79a0b",
+      "sha256M4a": "1ab63be6a2adc509322b64ae8e5aa608980e889c74f14ecba9ab67b332f10e30"
+    },
+    {
+      "asset": "crunch",
+      "variant": 0,
+      "note": "a2",
+      "file": "crunch-0-a2.ogg",
+      "seconds": 2.2,
+      "rms": 0.2,
+      "sha256": "0fd34e52277fb31edde4baaa4b4baec1f4047b42f99f94ddbfb1be6dd8c05166",
+      "sha256M4a": "b82dd4d699155e18aa98e2c27ccef3b037b177625bfd6628bd148f937ff05034"
+    },
+    {
+      "asset": "crunch",
+      "variant": 0,
+      "note": "d3",
+      "file": "crunch-0-d3.ogg",
+      "seconds": 2.2,
+      "rms": 0.2,
+      "sha256": "6434e869f3636ad881fe42d75a044da4ceb11e8a6f92959e1709ef70cc5f709d",
+      "sha256M4a": "a90fb23dce5cc51dfc3fca8ebd8ff04431e24b02b2bfb61ce346a3ce4d393f14"
+    },
+    {
+      "asset": "crunch",
+      "variant": 0,
+      "note": "g3",
+      "file": "crunch-0-g3.ogg",
+      "seconds": 2.2,
+      "rms": 0.2,
+      "sha256": "b0f984acf0b717c2b3c671d1fdcb6adeba439b71e70fde9314905d304849b5d5",
+      "sha256M4a": "31cbf7619c7c1e4b8f7d4d8f8a35b8b147547e921f9709202e349f2b7f318140"
+    },
+    {
+      "asset": "crunch",
+      "variant": 0,
+      "note": "c4",
+      "file": "crunch-0-c4.ogg",
+      "seconds": 2.2,
+      "rms": 0.2,
+      "sha256": "210138b598ad40f4a7c55100849513bdba2c68aad9320139a9760cc65e0d8c19",
+      "sha256M4a": "0382ba8d1817e1c3aa2a754453a524becd3cd660978a4ee95136e01702859f06"
+    },
+    {
+      "asset": "crunch",
+      "variant": 0,
+      "note": "f4",
+      "file": "crunch-0-f4.ogg",
+      "seconds": 2.2,
+      "rms": 0.2,
+      "sha256": "b93963157f538d4cbebb4190bbbffdd9db462a92f2d6d2653fae5705d2fdac12",
+      "sha256M4a": "117f5e07663157f8fee33a67fcbb56e6555acc93954114a7f01d78e39b58f304"
+    },
+    {
+      "asset": "crunch",
+      "variant": 0,
+      "note": "a4",
+      "file": "crunch-0-a4.ogg",
+      "seconds": 2.2,
+      "rms": 0.2,
+      "sha256": "ffb5e20bbe66ccbee87e5bf462c94307da6c53a276c1d95b3ced34db06ea7ace",
+      "sha256M4a": "ed0b1a7e2bd2264c32772c161b102a9e46bb38e74b6a51356aad2701f350a9a7"
+    },
+    {
+      "asset": "lead",
+      "variant": 0,
+      "note": "a2",
+      "file": "lead-0-a2.ogg",
+      "seconds": 3.2,
+      "rms": 0.2,
+      "sha256": "8b4e6ed73e8dd33a22f7343274abcb5ca19e572a34731d823e3e5c87faadeace",
+      "sha256M4a": "1aea71872b8361ff7b960579d7900728fdc2861aada99bb1b1f7fc6072cbe870"
+    },
+    {
+      "asset": "lead",
+      "variant": 0,
+      "note": "d3",
+      "file": "lead-0-d3.ogg",
+      "seconds": 2.66,
+      "rms": 0.2,
+      "sha256": "a7ef61e00b008642c79473c12a0f2a4750f6650c2177a3ab209f52e5e74f5d75",
+      "sha256M4a": "e5f517865a725bc892a1908305415188bf900e960efd449bd6288d36b627ea34"
+    },
+    {
+      "asset": "lead",
+      "variant": 0,
+      "note": "g3",
+      "file": "lead-0-g3.ogg",
+      "seconds": 3.2,
+      "rms": 0.2,
+      "sha256": "863a15224c25d8d2b86041e12833a3af900f1dd105ff78cf5ff234a7d172cff9",
+      "sha256M4a": "0d65abe6fbd8d676d04f6c146bdbc923122def91d0abfdd3c9ddd478bbd192f9"
+    },
+    {
+      "asset": "lead",
+      "variant": 0,
+      "note": "c4",
+      "file": "lead-0-c4.ogg",
+      "seconds": 3.2,
+      "rms": 0.2,
+      "sha256": "69605856ba1a14603296e2b84059092c2ec56aa5e04434f253afcfb525c59950",
+      "sha256M4a": "2736039b3871ec795e33ebb7d3c2eee4d550afc7c88642640fc939571ef878f1"
+    },
+    {
+      "asset": "lead",
+      "variant": 0,
+      "note": "f4",
+      "file": "lead-0-f4.ogg",
+      "seconds": 2.31,
+      "rms": 0.2,
+      "sha256": "d3a5ad3191b945f2ce165a9b8ba1c8795cefc407b5056c8ae5446e8b1d671608",
+      "sha256M4a": "df307ae10e04c3cfae3dc178f77a88b317c88cf427fd09d4658137ac9126f577"
+    },
+    {
+      "asset": "lead",
+      "variant": 0,
+      "note": "a4",
+      "file": "lead-0-a4.ogg",
+      "seconds": 2.59,
+      "rms": 0.2,
+      "sha256": "e4ba58c422a8d0930a504d38f317c54d9e406457e33379cc9fb87fb300102cbd",
+      "sha256M4a": "3976027f15c29124c870b9d3afaf82e85007101cabeca1f4686621c66c1f8231"
+    },
+    {
+      "asset": "lead",
+      "variant": 0,
+      "note": "d5",
+      "file": "lead-0-d5.ogg",
+      "seconds": 2.45,
+      "rms": 0.2,
+      "sha256": "f97f29dea87e42ca909390b34535d62d87d0a64d2c3554e119fb11eafcc4b4a5",
+      "sha256M4a": "01a3e3bf9e728b82cb8664a6494ca78d54bf4f945514efb3f823418ac50ef837"
+    },
+    {
+      "asset": "power",
+      "variant": 0,
+      "note": "e2",
+      "file": "power-0-e2.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "7c2a21fcd8cb28d1c361442ba3287a8fbb7a524adf2f7ad85f05ba2404f74ba5",
+      "sha256M4a": "10529dd7693e02a57870b57616e1d72890ea39b7dd467b8d64bb845f549111bf"
+    },
+    {
+      "asset": "power",
+      "variant": 0,
+      "note": "g2",
+      "file": "power-0-g2.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "eeb1d32f70df11223e7ed70ec2b8e4bb7031c96ccc0b10576bfb453535fd5b26",
+      "sha256M4a": "a0afb695e68f3db981a0bf814d895171626e3c9ffa1be077c1248fe5d2a1d9a4"
+    },
+    {
+      "asset": "power",
+      "variant": 0,
+      "note": "c3",
+      "file": "power-0-c3.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "55278509708949cc7c7948894b87abc631004285fd754d491bc3e689cc0837e4",
+      "sha256M4a": "d2bb55bf8a694a6eee66dd66e00fe6da7b7bd79ca195e36f13bf79e75d09e919"
+    },
+    {
+      "asset": "power",
+      "variant": 0,
+      "note": "e3",
+      "file": "power-0-e3.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "35a36340d2e29ab824711b046ac29dd0039bc0f54c74ef4ffda5246971908cd8",
+      "sha256M4a": "9fb1e7da2b7d1742eff17a165b6b2a89aa733a5f02d68b7910f21eb5a09d6bfd"
+    },
+    {
+      "asset": "power",
+      "variant": 0,
+      "note": "g3",
+      "file": "power-0-g3.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "5be3a50d76c910a24b18abacd93c9634af7fc4f78c1f5d463902f285f82e9173",
+      "sha256M4a": "eecc95da5410c079fef4896f02f70890160b806edd34f156a8360b7fc63bc7c4"
+    },
+    {
+      "asset": "power",
+      "variant": 1,
+      "note": "e2",
+      "file": "power-1-e2.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "30f14869e126a5fa33351b28a2b2ab665b609e1dd183441f1e22ce934fb5ce7c",
+      "sha256M4a": "a6b76f03d8192915251bc61d8a4d36f6accfe93d7e724299798d42d96d31756a"
+    },
+    {
+      "asset": "power",
+      "variant": 1,
+      "note": "g2",
+      "file": "power-1-g2.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "81df5e682dba105ff0e2153618b3720f064150d30c532ef3c059b0f4e6204658",
+      "sha256M4a": "237005f618c38dde3f47979ffef2e4d71e46b955252b7eb67022ba6578a8bb6b"
+    },
+    {
+      "asset": "power",
+      "variant": 1,
+      "note": "c3",
+      "file": "power-1-c3.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "ca423e1fc05d35fc7fbf4d897b0e36bb620e37d118bfe40bc38469cd6f0eeab4",
+      "sha256M4a": "eedca22dda6f4495b14dae723cbfbecd384043fe6452c695e431929fb6b59f22"
+    },
+    {
+      "asset": "power",
+      "variant": 1,
+      "note": "e3",
+      "file": "power-1-e3.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "4b8ec02185764c3c144654755507f0588a1184c7f05b8045d8432d72bfcb62b2",
+      "sha256M4a": "cc80e6f9dfccfef8b46f23ee6e0bf265cfdc2df3f20335ae8fe718deec373ca4"
+    },
+    {
+      "asset": "power",
+      "variant": 1,
+      "note": "g3",
+      "file": "power-1-g3.ogg",
+      "seconds": 2.6,
+      "rms": 0.2,
+      "sha256": "9ac4b9b3eac636ae29914b316d6f734e87bf4617e0dce325d43afc5f682128a2",
+      "sha256M4a": "2611562eab9a584dc96f1f10f1dfc83955d74188f2500e9ce4de20593b9dbc19"
+    },
+    {
+      "asset": "chug",
+      "variant": 0,
+      "note": "e2",
+      "file": "chug-0-e2.ogg",
+      "seconds": 0.42,
+      "rms": 0.2,
+      "sha256": "627081595ad720dcccc63624964f9f1de86f23b026f898b54502bd71805fd71c",
+      "sha256M4a": "a6d10c1d7a33fdb4e9ed5b702bb3a96b5a4925b0b271d3a44aee4f13e66e9b9d"
+    },
+    {
+      "asset": "chug",
+      "variant": 0,
+      "note": "g2",
+      "file": "chug-0-g2.ogg",
+      "seconds": 0.42,
+      "rms": 0.2,
+      "sha256": "1d5381c3ead7eef4bb814538c5bdbd72cb624c9b099098e3c44c6787f6406da3",
+      "sha256M4a": "b5b597c7d04d2401629984be7fa230fc8d7253284db37975e44b82f46c4a1ae3"
+    },
+    {
+      "asset": "chug",
+      "variant": 0,
+      "note": "c3",
+      "file": "chug-0-c3.ogg",
+      "seconds": 0.42,
+      "rms": 0.2,
+      "sha256": "be448ca279eba235c5496aa9a0acaf25e721996685961aa276bc0b57a377e806",
+      "sha256M4a": "969a3c42ccdfc0e00d12a7c7a567c50dbffc99c75583be19413d72ed4549eb7e"
+    },
+    {
+      "asset": "chug",
+      "variant": 0,
+      "note": "e3",
+      "file": "chug-0-e3.ogg",
+      "seconds": 0.42,
+      "rms": 0.2,
+      "sha256": "ea349f360dacb5b7b3205343a931041453bfb8a59f55eebf8eb95e0e70d4ffb2",
+      "sha256M4a": "af7481e4c5ea16488bb1746c72771d2d45c208ec99f42bcd64a6f5950c12ee65"
+    },
+    {
+      "asset": "chug",
+      "variant": 0,
+      "note": "g3",
+      "file": "chug-0-g3.ogg",
+      "seconds": 0.42,
+      "rms": 0.2,
+      "sha256": "fe7a4fc85440cebb75c1e2a5df71c7d9b5d1f8f4c7cb5f1a73ea5a7fc829825a",
+      "sha256M4a": "e922765efc4a7eae212edb7c024042e69d93f68183c23405db765889300abd06"
+    },
+    {
+      "asset": "fuzz",
+      "variant": 0,
+      "note": "a2",
+      "file": "fuzz-0-a2.ogg",
+      "seconds": 2.8,
+      "rms": 0.2,
+      "sha256": "92debc0b7eb861613779b52208bf0685befdf0d745476787b4a34b9aefb5faaf",
+      "sha256M4a": "dd3bc8beb7c62cc04975b95627e71f53bafd892cc57824449d4b5730fb8a8fdf"
+    },
+    {
+      "asset": "fuzz",
+      "variant": 0,
+      "note": "d3",
+      "file": "fuzz-0-d3.ogg",
+      "seconds": 2.8,
+      "rms": 0.2,
+      "sha256": "e74b1a28977e3d93f5dd3e2cf43b8b6a193169e0b4c6803b37f43e64fde35c0a",
+      "sha256M4a": "1aed737c3bb9387fe35d8fdd7b65f25da5f51c002586307d0bded24d9fab6daa"
+    },
+    {
+      "asset": "fuzz",
+      "variant": 0,
+      "note": "g3",
+      "file": "fuzz-0-g3.ogg",
+      "seconds": 2.8,
+      "rms": 0.2,
+      "sha256": "608688cdabe800cf0349ac73fe9a4c03ce4b564e5f8fb136cde8d56089950560",
+      "sha256M4a": "3bf44117ae5e610a8d59e80878ec1edd6c7fc916711ce1d07c00b16e2e5eb6e7"
+    },
+    {
+      "asset": "fuzz",
+      "variant": 0,
+      "note": "c4",
+      "file": "fuzz-0-c4.ogg",
+      "seconds": 2.8,
+      "rms": 0.2,
+      "sha256": "02f1821231f8860ab6840e798aa3f19f4d3fa6eee00e06f0d4432fd982665c44",
+      "sha256M4a": "b92e4ef5c24c2906277c168df1d90b4b83b9417023bf696251d15d58a64f4ffb"
+    },
+    {
+      "asset": "fuzz",
+      "variant": 0,
+      "note": "f4",
+      "file": "fuzz-0-f4.ogg",
+      "seconds": 2.8,
+      "rms": 0.2,
+      "sha256": "d6fe361cdfce7794d7ef5d119f459bd26c6f130a3254ba205166958cfe9eaeaa",
+      "sha256M4a": "cae9e39caf9910d623c2e6ae9862ff22f8a653a98ceffe4dcbf836ef5b30700e"
+    },
+    {
+      "asset": "fuzz",
+      "variant": 0,
+      "note": "a4",
+      "file": "fuzz-0-a4.ogg",
+      "seconds": 2.8,
+      "rms": 0.2,
+      "sha256": "77bd4c164774a8b6e3ca27c6d9dfc5352d808aa756c517960fa52072906f84fc",
+      "sha256M4a": "6809d7061f55c960a3e4113bdb5550401ae364dfade2f8d2191def3626321cf9"
+    },
+    {
+      "asset": "fuzz",
+      "variant": 0,
+      "note": "d5",
+      "file": "fuzz-0-d5.ogg",
+      "seconds": 2.8,
+      "rms": 0.2,
+      "sha256": "160fc0e9368dc6200c72d5fce3be7c992161fbb83cc5c04bf96577345fb1fb58",
+      "sha256M4a": "5ae63b6b65922019a893ffe0d2332acb7fdc72f378b21bfa3102152be4e52121"
+    },
+    {
+      "asset": "jangle",
+      "variant": 0,
+      "note": "e2",
+      "file": "jangle-0-e2.ogg",
+      "seconds": 2.4,
+      "rms": 0.137,
+      "sha256": "e2e4bb9d08564a8316c4b061f9c57dc2ccb2daf8568a6ffbe5578af26aa62c42",
+      "sha256M4a": "0d149481ef052994b9a50618abe44ad3b3efa176080a2d88366eefdf0c1a9790"
+    },
+    {
+      "asset": "jangle",
+      "variant": 0,
+      "note": "a2",
+      "file": "jangle-0-a2.ogg",
+      "seconds": 2.4,
+      "rms": 0.082,
+      "sha256": "1fbc5aed6cc9bb3f5c53fde20c74fdf32bde1f0c989ca262458cf26359810a7c",
+      "sha256M4a": "d2d9d6b276ea040f6a312e9758889cede42d180859e307b2829cff4f3a128b8a"
+    },
+    {
+      "asset": "jangle",
+      "variant": 0,
+      "note": "d3",
+      "file": "jangle-0-d3.ogg",
+      "seconds": 2.4,
+      "rms": 0.126,
+      "sha256": "a2f9719cb45cdd4cd26695bc33ae225386fc551bbb76a1519805b4619a9c7bbf",
+      "sha256M4a": "f98e8aaf249914f554d1697c7cba6dcd3e4d3cf806c146f8f6fc7fd87a23b75d"
+    },
+    {
+      "asset": "jangle",
+      "variant": 0,
+      "note": "g3",
+      "file": "jangle-0-g3.ogg",
+      "seconds": 2.4,
+      "rms": 0.12,
+      "sha256": "1141a8c88fa98ef9cd030e7b73ed57a2e0964e74be3020171ec433233c929905",
+      "sha256M4a": "eb18e883afe5843b5870ff73cb10d6af06c55432efd2664e20ee734fdefc5d13"
+    },
+    {
+      "asset": "jangle",
+      "variant": 0,
+      "note": "c4",
+      "file": "jangle-0-c4.ogg",
+      "seconds": 2.4,
+      "rms": 0.119,
+      "sha256": "3701e2020b6da003b94b06ff74f2ad525da1603a5ab977f77b19137f7cf48174",
+      "sha256M4a": "7c9e8b5551a882390b49a3d9363f7541fdc7e258628852295e3434e114c0e7ab"
+    },
+    {
+      "asset": "jangle",
+      "variant": 0,
+      "note": "f4",
+      "file": "jangle-0-f4.ogg",
+      "seconds": 2.4,
+      "rms": 0.14,
+      "sha256": "f9b8f667606c1d10111dd6a2c5e5cae14e5a4046344e4456b2a6ce71a0e9c7ae",
+      "sha256M4a": "52343acdc5298ac7f82f0fa78816402aa9862811eef41863394ccf27c9e3be2d"
+    },
+    {
+      "asset": "jangle",
+      "variant": 0,
+      "note": "a4",
+      "file": "jangle-0-a4.ogg",
+      "seconds": 2.4,
+      "rms": 0.097,
+      "sha256": "b0b57844f0cd1854f0d1ffdd4b010b2e9c4603e3527758dfeb04570bf10f7978",
+      "sha256M4a": "17eef84798f3161b26d156e74c43e4cb5c9ce7b9bfc7ea68ecad4204359e2fa1"
+    },
+    {
+      "asset": "chorus",
+      "variant": 0,
+      "note": "e2",
+      "file": "chorus-0-e2.ogg",
+      "seconds": 2.6,
+      "rms": 0.14,
+      "sha256": "03153066c62d54fa6cb135ae9c28212c977c1fea5708595ceb6656a53b5e56a3",
+      "sha256M4a": "70db0210fbde0443270927419dea3f06607e7647c2919f4ab5bba710116c30ae"
+    },
+    {
+      "asset": "chorus",
+      "variant": 0,
+      "note": "a2",
+      "file": "chorus-0-a2.ogg",
+      "seconds": 2.6,
+      "rms": 0.14,
+      "sha256": "12e3bf35aa458e4ec07ed6dc0b2c903a8d1db5865b49b485fb494f0464f358a8",
+      "sha256M4a": "bc9f9717f35b865ac96f3c859b2480d031aa4a216f8abdcd9ab85e8e0d894a78"
+    },
+    {
+      "asset": "chorus",
+      "variant": 0,
+      "note": "d3",
+      "file": "chorus-0-d3.ogg",
+      "seconds": 2.6,
+      "rms": 0.135,
+      "sha256": "c93ff02e62bfe026855d97e159323a58c616a3561c2151ead106f15ea5195e6d",
+      "sha256M4a": "c238d3d55ca7e18869b8bbd1b31d878942eeccd7dad445c3c7191b40912ef711"
+    },
+    {
+      "asset": "chorus",
+      "variant": 0,
+      "note": "g3",
+      "file": "chorus-0-g3.ogg",
+      "seconds": 2.6,
+      "rms": 0.134,
+      "sha256": "bb8f9c32fcb30e105d8983138598222b566451ec75cfcba00e6060da67f2bcb0",
+      "sha256M4a": "d1af4c2149fa86093c48bc0bb7122a846d9896afdb79977232454a7cfe3bfeba"
+    },
+    {
+      "asset": "chorus",
+      "variant": 0,
+      "note": "c4",
+      "file": "chorus-0-c4.ogg",
+      "seconds": 2.6,
+      "rms": 0.14,
+      "sha256": "82e56aa8066c25f6f2fd1b3715e41900d2ce108cab7a4a1d19073c715370dacc",
+      "sha256M4a": "e17d44ce98b6643cf4df27b71491e09122d639374732a660c698e09e23250ac5"
+    },
+    {
+      "asset": "chorus",
+      "variant": 0,
+      "note": "f4",
+      "file": "chorus-0-f4.ogg",
+      "seconds": 2.6,
+      "rms": 0.13,
+      "sha256": "f5a93716df45991bd2965e479d84e6e0a3e123c5d68027b9953973e2fd7355a5",
+      "sha256M4a": "6ca80e8c7318bba0d332a06bfaa968d67d554599d2274a7d65f3604ba4f6e089"
+    },
+    {
+      "asset": "chorus",
+      "variant": 0,
+      "note": "a4",
+      "file": "chorus-0-a4.ogg",
+      "seconds": 2.6,
+      "rms": 0.14,
+      "sha256": "37f18b8c53ac60690201fd240e90af0cd5ad520350487a28b38adce5888158cd",
+      "sha256M4a": "3e5cc4fafe99a00973b70731dcc0af04527d1ee9dbb092aec8f7b7dfff084caf"
+    },
+    {
+      "asset": "harp",
+      "variant": 0,
+      "note": "c4",
+      "file": "harp-0-c4.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "1db142fcfd5d11bb9ec9317433c4679568d2940644fc63e48d0d69482588a76e",
+      "sha256M4a": "ee9d93f31a61ba1a7d3613a5ed6c7fc9f8be42aa5b90fddeb0411f9d562046a4"
+    },
+    {
+      "asset": "harp",
+      "variant": 0,
+      "note": "f4",
+      "file": "harp-0-f4.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "5c85da260f33938b05101370c566051db703bd4f27ade94f909a21fca8ab40f9",
+      "sha256M4a": "783bea6d8fc6604093a88e7fd2686c2c603336ad6909e1a878eef368b3f1c25a"
+    },
+    {
+      "asset": "harp",
+      "variant": 0,
+      "note": "a4",
+      "file": "harp-0-a4.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "cabfbddaa648faee32a9c7ebd6f195f9bf6c980179cf041c817058c1553fbfe2",
+      "sha256M4a": "f79a43b0302e4479fac83d814b01954f2b89ae496d815209d261f165e1e3eff6"
+    },
+    {
+      "asset": "harp",
+      "variant": 0,
+      "note": "d5",
+      "file": "harp-0-d5.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "bc25ce3fc7a70ee358356adb7daede9f05fad60778762a540152c0dac0979ff0",
+      "sha256M4a": "cba67d87dd2e5e5d1f28b03598eb4376c7381599e687fc52c1399ec78f24e818"
+    },
+    {
+      "asset": "harp",
+      "variant": 0,
+      "note": "g5",
+      "file": "harp-0-g5.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "3ab8f9abd825f37ab9cef8fb83da0ac17ad82ed4dfbab334ade2656a6b008650",
+      "sha256M4a": "0db72fa2b786b0051d9c24ea63df3bf7db130bc3e551942d28d4f906ab5324cb"
+    },
+    {
+      "asset": "rock-bass",
+      "variant": 0,
+      "note": "c1",
+      "file": "rock-bass-0-c1.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "28f04aa2aa8bc249e4f26f997cc08031e224335403393df5302dfaca90324cbb",
+      "sha256M4a": "4740619ae5dd0ef4f4f4946d43fe4655b1f6142c19446c500ac7e6d8ab52e6dd"
+    },
+    {
+      "asset": "rock-bass",
+      "variant": 0,
+      "note": "e1",
+      "file": "rock-bass-0-e1.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "beecf94a0ed01e76e0d6c5a203f7daab1cb8c3ecc97128754130987beeae3c10",
+      "sha256M4a": "13073f52b07e894e935de40abf513696146a49292f9c9dcc7bb9d48a7d240ffb"
+    },
+    {
+      "asset": "rock-bass",
+      "variant": 0,
+      "note": "g1",
+      "file": "rock-bass-0-g1.ogg",
+      "seconds": 1.8,
+      "rms": 0.2,
+      "sha256": "33d70163f75e9778e81478b9a5ebd435af9586cb59dfcd2e1763740df6e57995",
+      "sha256M4a": "f7fc9d13159024d4d6e7fed8db8c2f52239b9020f591eb83bd31ab8c782f3728"
+    },
+    {
+      "asset": "rock-bass",
+      "variant": 0,
+      "note": "c2",
+      "file": "rock-bass-0-c2.ogg",
+      "seconds": 1.8,
+      "rms": 0.197,
+      "sha256": "f43170da9b84df1ddf6ade8669168828a4432b18ebec92a1b121026d9ccb5eaf",
+      "sha256M4a": "98da8ddac3957ab7aecb03f2cb5d3ec1b8b292ecb204bebe635f54f1c738281f"
+    }
+  ]
+}

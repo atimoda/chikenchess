@@ -34,7 +34,9 @@ Quatro bancos originais acrescentam 31 one-shots de cordas/guitarras/baixos, tec
 
 Próximo passo: escuta A/B dos timbres com formações de 4, 8 e 16 peças, em fones e alto-falantes de celular, medindo picos, mascaramento e ataques simultâneos. Os testes de arquivo e eventos não atestam realismo acústico, identidade percebida ou balanço. Só depois dessa escuta escolher quais instrumentos pedem multisamples, variação de articulação por velocidade ou substituição por gravações licenciadas.
 
-## Harmonic songbook — entregue e próximo passo
+## Harmonic songbook (hoje Blues, Jazz & Rock) — histórico
+
+Os kits atuais da campanha foram recompostos em 12/11/2026; ver `docs/mechanics/kit-blues-jazz-rock.md`. O texto abaixo descreve a rodada original.
 
 Dez novas fases cobrem I–V–IV, I–V–vi–IV, vi–IV–I–V, I–vi–IV–V, vi–IV–ii–V, ii7–V7–Imaj7, I–IV–vi–V, iii7–VI7–ii7–V7, IV–I–V e I–IV–V. Cada fase associa uma cidade/época, motivo original, kit de 16 partes e referência de estilo. Os dois planos de jazz executam tétrades reais; os demais continuam com tríades. A segunda entrada vi–IV–I–V da lista de origem foi interpretada como vi–IV–ii–V pelo exemplo Am–F–Dm–G e por ampliar o repertório.
 

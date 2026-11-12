@@ -39,7 +39,6 @@ import profile35 from '../../../data/music/profiles/kingston-1973.json'
 import profile36 from '../../../data/music/profiles/leipzig-1723.json'
 import profile37 from '../../../data/music/profiles/vienna-1825.json'
 import profile38 from '../../../data/music/profiles/oakland-1959.json'
-import profile39 from '../../../data/music/profiles/canterbury-1972.json'
 import profile40 from '../../../data/music/profiles/cambridge-1973.json'
 import profile41 from '../../../data/music/profiles/istanbul-1970.json'
 import profile42 from '../../../data/music/profiles/kalamata-1930.json'
@@ -108,7 +107,6 @@ export const STYLE_PROFILES = {
   'leipzig-1723': profile36,
   'vienna-1825': profile37,
   'oakland-1959': profile38,
-  'canterbury-1972': profile39,
   'cambridge-1973': profile40,
   'istanbul-1970': profile41,
   'kalamata-1930': profile42,

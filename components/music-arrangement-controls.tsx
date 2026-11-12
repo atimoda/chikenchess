@@ -148,8 +148,8 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
   const commitDegrees = () => {
     if (!editing || harmony !== 'kit') return
     const tokens = degrees.trim() ? degrees.trim().split(/[\s,]+/) : []
-    if (tokens.length > 8 || tokens.some(token => !/^[+-]?\d+$/.test(token) || Math.abs(Number(token)) > 14)) {
-      setError('Harmony: up to eight whole degrees from −14 to 14, separated by spaces or commas.')
+    if (tokens.length > 16 || tokens.some(token => !/^[+-]?\d+$/.test(token) || Math.abs(Number(token)) > 14)) {
+      setError('Harmony: up to sixteen whole degrees from −14 to 14, separated by spaces or commas.')
       return
     }
     setError('')
@@ -331,7 +331,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
       <label className={controls.field}><span>Beats</span>
         <CompactNumberInput ariaLabel="Global section length" min={.25} max={64} step={.25} value={editing.beats} onChange={setBeats} />
       </label>
-      <label className={controls.field + ' ' + controls.harmonyField} title={harmony === 'kit' ? 'Up to eight whole degrees from −14 to 14. 0 is the root; each local bar moves one degree.' : 'Select Kit Harmony to edit the degrees. The saved values are kept.'}><span>Harmony</span>
+      <label className={controls.field + ' ' + controls.harmonyField} title={harmony === 'kit' ? 'Up to sixteen whole degrees from −14 to 14. 0 is the root; each local bar moves one degree.' : 'Select Kit Harmony to edit the degrees. The saved values are kept.'}><span>Harmony</span>
         <input aria-label="Section harmonic degrees" disabled={harmony !== 'kit'} value={degrees} placeholder="e.g. 0 3 4 0"
           onChange={event => { setDegrees(event.target.value); setError('') }} onBlur={commitDegrees}
           onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); commitDegrees() } }} />

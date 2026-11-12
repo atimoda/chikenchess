@@ -31,7 +31,8 @@ const sectionSchema = z.object({
   id: z.string().min(1).max(80).regex(/^[a-zA-Z0-9_-]+$/),
   label: z.preprocess(normalizeSectionLabel, z.enum(SECTION_TYPES)),
   beats: z.number().finite().min(.25).max(64),
-  harmony: z.array(z.number().int().min(-14).max(14)).min(1).max(8).optional(),
+  // Up to 16 roots, one per bar: a 12-bar blues or a 16-bar form fits in one section.
+  harmony: z.array(z.number().int().min(-14).max(14)).min(1).max(16).optional(),
 })
 export const arrangementSchema = z.object({ sections: z.array(sectionSchema).min(1).max(24) }).superRefine((plan, ctx) => {
   if (new Set(plan.sections.map(s => s.id)).size !== plan.sections.length) ctx.addIssue({code:'custom', message:'Section ids must be unique.'})

@@ -192,16 +192,16 @@ test('waltz and ballad stages place accents in 3/4, 6/8 and 12/8 rather than a f
  const {defaultCityKit}=loadTs('lib/music/city-kits.ts')
  const {renderMusicCode}=loadTs('lib/music/code-export.ts')
  const checks=[
-  ['new-york-1962','3/4',3,'Acordes rítmicos',[1/6,2/3]],
+  ['new-york-1962','3/4',3,'Double bass',[0,1/3,2/3],2],
   ['santiago-del-estero-1960','6/8',2,'Baixo principal',[0,1/2]],
   ['harare-1981','12/8',4,'Triplet Snare Backbeat',[3/12,9/12]],
  ]
- for(const [id,meter,pulses,name,onsets] of checks){
+ for(const [id,meter,pulses,name,onsets,bank=0] of checks){
   const kit=defaultCityKit(id),snapshot=creative.creativeSnapshot(kit,true)
   assert.equal(kit.meter,meter)
   const instrument=Object.values(kit.instruments).find(item=>item.name===name)
   assert.ok(instrument,`${id} instrument`)
-  const roll=instrument.pianoRolls[0]
+  const roll=instrument.pianoRolls[bank]
   for(const onset of onsets)assert.ok(roll.notes.some(note=>Math.abs(note.start-onset)<1e-8),`${id} onset ${onset}`)
   assert.match(renderMusicCode(snapshot,null),new RegExp(`setcps\\(${kit.bpm} / 60 / ${pulses}\\)`))
  }
