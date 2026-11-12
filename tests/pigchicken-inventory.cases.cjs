@@ -568,3 +568,20 @@ test('the wheel goes through an instrument’s scales first, each with its weapo
   // a number key keeps the scale it was on
   step(c, { slot: 2 }); step(c, { slot: 1 }); assert.equal(c.scale.id, 'tension')
 })
+
+test('a Pegar press that comes only from Correr takes new items but never equips one she already carries', () => {
+  const c = createCombat()
+  c.give('flute'); c.give('pistol')
+  assert.equal(c.held.item, 'pistol')
+  c.pickups.push({ id: 951, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { grab: true, grabHeld: true, grabRun: true })
+  assert.equal(c.held.item, 'pistol')
+  step(c, {})
+  step(c, { grab: true, grabHeld: true })
+  assert.equal(c.held.item, 'flute')
+  // Pegar keeps working with Correr's key
+  c.pickups.length = 0
+  c.pickups.push({ id: 952, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { grab: true, grabHeld: true, grabRun: true })
+  assert.ok(names(c).includes('rifle'))
+})

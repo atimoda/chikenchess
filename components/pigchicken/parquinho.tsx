@@ -963,7 +963,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             reloadPending = false; reloadFired = false
           }
           return pressed
-        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab,
+        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabRun: engine.grabIsRun(),
         groupPick: wh.open ? null : groupPress(act, prev), move,
       }
       slotPick = 0; slotTap.current = 0
@@ -1081,7 +1081,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           deselect: xa.deselectItem && !xp.deselectItem,
           cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
-          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab,
+          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabRun: eng.grabIsRun(),
           groupPick: groupPress(xa, xp),
         }
         extraPrev.set(id, xa)
