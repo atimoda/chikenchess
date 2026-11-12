@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.9.0',
     date: '12/11/2026',
-    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha World com 13 estilos novos, Africa Cult recomposta com percussões mais naturais e campanha Brazilian revista, com dez kits recompostos por seção e duas fases novas, Chula e Chamamé; Pátios em Destaque e Item solto no editor',
+    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha World com 13 estilos novos, Africa Cult recomposta com percussões mais naturais e campanha Brazilian revista, com dez kits recompostos por seção e duas fases novas, Chula e Chamamé; Pátios em Destaque e Item solto no editor; golpe forte carregado para Taco e Passaguá',
     groups: [
       { title: 'World', items: [
         'A campanha passa de 4 para 17 fases. Oito estilos novos: Jerez 1970 · Flamenco (bulerías em doze tempos, com palmas, taconeo, nudillos, violões e cante), Havana 1950 · Son cubano (clave, bongó, tres no montuno, trompete e coro), Barranquilla 1960 · Cumbia (tambora, llamador, maracas, gaitas e acordeão), Guča 1975 · Čoček (banda de metais dos Bálcãs em nove), Cairo 1960 · Baladi (tabla, riq, oud, qanun, cordas, acordeão e nay), Amritsar 1980 · Bhangra (dhol, tumbi e gritos em resposta), Ubud 1935 · Gamelan (metalofones entrelaçados, gongos e escala de cinco notas) e Lima 1975 · Festejo (cajón, quijada, cajita e violões em 12/8).',
@@ -57,6 +57,10 @@ const RECENT = [
         'Salvar Pátio: o aviso do estado do Pátio, quem vira padrinho e o auto-save agora ficam juntos no fim do painel.',
         'Correr por cima de um item que você já tem não troca mais o item da mão: a tecla de Correr (Shift no padrão) continua pegando itens novos, mas só a tecla própria de pegar (E/P) ou o botão do toque fazem o Equipar.',
         'Painéis do PigChicKen mais compactos: sliders, seletores, caixas de marcar, botões de opção e as teclas de Controles ficam a 2 px um do outro em todos os painéis (Volume, Camadas, Configurações do Pátio, Câmera de Mira, Controles, Ajustes, Itens, Catálogo de aliens, Biblioteca de almas, editores de árvore, casa, elementos, zonas, músicas e Gerar de MIDI).',
+        'Armas de bastão (Taco e Passaguá) ganharam o golpe forte: segure Atirar para carregar e solte para bater. Enquanto carrega, a asa leva o bastão para trás e ele fica balançando; quanto mais tempo segurando, mais longe o golpe chega e maiores ficam o bastão e o rastro, até os limites de cada item. O golpe de sempre continua no botão de Golpe, agora como golpe rápido.',
+        'Itens → Golpe forte (Taco e Passaguá): dano, alcance, arco, intervalo, duração, empurrão, rastro e movimento próprios, mais o tempo de carga e os limites de alcance e de tamanho com a carga cheia.',
+        'Taco e Passaguá agora ficam apoiados no ombro, e Itens → Pontos virou um editor visual para eles: arraste o ponto do bastão que a mão da asa segura, a posição da mão no corpo e a bolinha da ponta (inclinação), parado e carregando o golpe forte.',
+        'Passaguá: com Dano do golpe e Empurrão configurados, o golpe agora fere e empurra aliens, zumbis e bonecos (antes não fazia nada neles). Aves e almas capturáveis continuam sendo capturadas sem levar o golpe. A redinha ficou na mesma direção do cabo, presa na ponta.',
       ] },
     ],
   },
