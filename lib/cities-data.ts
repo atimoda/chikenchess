@@ -610,6 +610,8 @@ const rhythmCityPhotos: Record<string, string> = {
   'recife-1935': 'https://commons.wikimedia.org/wiki/Special:FilePath/Frevo_no_Carnaval_do_Recife.jpg?width=1600',
   'recife-1950': 'https://commons.wikimedia.org/wiki/Special:FilePath/Statue_of_Luiz_Gonzaga_in_Recife_-_Brazil.jpg?width=1600',
   'piracicaba-1940': 'https://www.miranteppp.com.br/wp-content/uploads/2024/04/Rio-Piracicaba-e-um-atrativo-turistico-cartao-postal-e-motivo-de-orgulho-para-a-cidade-scaled.jpg',
+  'santo-amaro-1960': 'https://commons.wikimedia.org/wiki/Special:FilePath/Samba_de_Roda_do_Rec%C3%B4ncavo_-_Bahia_-_3909_021.jpg?width=1600',
+  'campo-grande-1975': 'https://commons.wikimedia.org/wiki/Special:FilePath/Vista_de_Campo_Grande_%28Mato_Grosso_do_Sul%29.JPG?width=1600',
   'memphis-1967': 'https://images.unsplash.com/photo-1543372742-e7d0b9947a2b?auto=format&fit=crop&w=1600&q=85',
   'kingston-1973': 'https://commons.wikimedia.org/wiki/Special:FilePath/Kingston,_Jamaica.JPG?width=1600',
   'leipzig-1723': 'https://images.unsplash.com/photo-1554207529-d031f1588081?auto=format&fit=crop&w=1600&q=85',
