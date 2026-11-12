@@ -11,6 +11,7 @@ import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OUTLINE_PX, type MountainParams } from "@/lib/pigchicken/mountains"
 import { ridge, rng, shadeFaces, snowRegion } from "@/lib/pigchicken/mountain-draw"
+import { cloudReach, cumulusClouds, softClouds, type CloudShape } from "@/lib/pigchicken/cloud-draw"
 import { CLOUDS_DEFAULT, type CloudParams } from "@/lib/pigchicken/clouds"
 import type { SnowfallParams } from "@/lib/pigchicken/snowfall"
 import { Snowfall } from "./snowfall"
@@ -48,26 +49,6 @@ function trees(w: number, seed: number, base: number, size: number, gap: number)
     }
   }
   return { crowns, trunks }
-}
-
-// clouds: each one a few soft lobes of its own size and shape, faint and see-through
-// size, height (0 low to 1 high) and spread (0 one height to 1 scattered) come from Configurações → Nuvens
-function clouds(w: number, seed: number, size = 1, height = 0.5, spread = 0.5) {
-  const r = rng(seed)
-  const mid = 290 + (0.5 - height) * 500, band = 720 * spread
-  const out: { x: number; y: number; lobes: { dx: number; dy: number; rx: number; ry: number }[]; o: number; drift: number }[] = []
-  for (let x = r() * 500; x < w; x += (380 + r() * 700) * Math.max(0.6, size)) {
-    const n = 3 + Math.floor(r() * 4), span = (120 + r() * 260) * size, thick = (16 + r() * 26) * size
-    const lobes = Array.from({ length: n }, (_, i) => {
-      const t = n === 1 ? 0.5 : i / (n - 1)
-      const mid = 1 - Math.abs(t - 0.5) * 1.4
-      return { dx: (t - 0.5) * span + (r() - 0.5) * 30, dy: -mid * thick * (0.4 + r() * 0.6), rx: span * (0.18 + r() * 0.16), ry: thick * (0.5 + mid * 0.6) }
-    })
-    // a flat base under the lobes
-    lobes.push({ dx: 0, dy: thick * 0.15, rx: span * 0.62, ry: thick * 0.35 })
-    out.push({ x, y: mid + (r() - 0.5) * band, lobes, o: 0.12 + r() * 0.22, drift: 60 + r() * 90 })
-  }
-  return out
 }
 
 // the sky's texture: a soft grain with long horizontal streaks, made once per strength, streaks and grain (0.5 is
@@ -132,17 +113,44 @@ function Layer({ p, w, children }: { p: number; w: number; children: React.React
   )
 }
 
-function Cloud({ c, lit, shade, wind = 1 }: { c: ReturnType<typeof clouds>[number]; lit: string; shade: string; wind?: number }) {
-  const ref = useRef<SVGGElement>(null)
-  useEffect(() => {
-    const l = Math.min(...c.lobes.map(l => l.dx - l.rx)) - c.drift - 16
-    const r = Math.max(...c.lobes.map(l => l.dx + l.rx)) + c.drift + 16
-    return ref.current ? watchCameraRegion(ref.current, { x: -PAD_L + c.x + l, y: c.y - 100, w: r - l, h: 200 }, 0.9) : undefined
-  }, [c])
-  // wind: the drift's speed (0 holds the cloud still)
-  return <g ref={ref} className={wind > 0 ? "px-cloud" : undefined} style={{ ["--d" as string]: `${(c.drift / Math.max(wind, 0.05)).toFixed(1)}s`, ["--a" as string]: `${c.drift}px` }} opacity={c.o} filter="url(#px-soft)">
-    {c.lobes.map((l, k) => <ellipse key={k} cx={c.x + l.dx} cy={c.y + l.dy} rx={l.rx} ry={l.ry} fill={k === c.lobes.length - 1 ? shade : lit} />)}
-  </g>
+// One cloud: an svg of its own, as big as the cloud and its blur. The blur is painted once into it and the wind
+// only moves the whole svg (a transform the compositor runs by itself), so a drifting cloud never repaints.
+// sun: where the light comes from, in the layer's own units: every puff is lit on that side and shaded on the other.
+// blur: the soft edge, in units. fray: how far a noise pushes the outline around (Desfiado), in units, and grain:
+// that noise's size. wind: the drift's speed (0 holds the cloud still)
+function Cloud({ c, id, lit, shade, wind = 1, sun, blur, fray = 0, grain = 1 }: { c: CloudShape; id: string; lit: string; shade: string; wind?: number; sun: [number, number]; blur: number; fray?: number; grain?: number }) {
+  const ref = useRef<SVGSVGElement>(null)
+  const reach = cloudReach(c), pad = Math.ceil(blur * 3 + fray * 0.5) + 2
+  const x = c.x + reach.l - pad, y = c.y - c.top - pad, w = reach.r - reach.l + pad * 2, h = c.top + c.bottom + pad * 2
+  useEffect(() => ref.current ? watchCameraRegion(ref.current, { x: -PAD_L + x - c.drift, y, w: w + c.drift * 2, h }, 0.9) : undefined, [x, y, w, h, c.drift])
+  const dx = sun[0] - c.x, dy = sun[1] - c.y, far = Math.hypot(dx, dy) || 1, lx = dx / far, ly = dy / far
+  return <svg ref={ref} className={wind > 0 ? "px-cloud absolute" : "absolute"} viewBox={`${x} ${y} ${w} ${h}`}
+    style={{ left: x, top: y, width: w, height: h, opacity: c.o, willChange: wind > 0 ? "transform" : undefined, ["--d" as string]: `${(c.drift / Math.max(wind, 0.05)).toFixed(1)}s`, ["--a" as string]: `${c.drift}px` }}>
+    <defs>
+      {(blur > 0 || fray > 0) && <filter id={`${id}-b`} filterUnits="userSpaceOnUse" x={x} y={y} width={w} height={h} colorInterpolationFilters="sRGB">
+        {fray > 0 && <>
+          <feTurbulence type="fractalNoise" baseFrequency={(0.011 / grain).toFixed(5)} numOctaves={3} seed={c.puffs.length + 3} result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale={fray} xChannelSelector="R" yChannelSelector="G" />
+        </>}
+        {blur > 0 && <feGaussianBlur stdDeviation={blur} />}
+      </filter>}
+      {/* a puff: its lit face toward the sun, the shade round its far rim */}
+      {c.puffs.length > 0 && <radialGradient id={`${id}-p`} cx={0.5 + lx * 0.12} cy={0.5 + ly * 0.12} r={0.68} fx={0.5 + lx * 0.34} fy={0.5 + ly * 0.34}>
+        <stop offset="0" stopColor={lit} /><stop offset="0.45" stopColor={mix(lit, shade, 0.38)} /><stop offset="0.9" stopColor={shade} />
+      </radialGradient>}
+    </defs>
+    <g filter={blur > 0 || fray > 0 ? `url(#${id}-b)` : undefined}>
+      {c.lobes.map((l, k) => <ellipse key={k} cx={c.x + l.dx} cy={c.y + l.dy} rx={l.rx} ry={l.ry} fill={l.shade ? shade : lit} />)}
+      {c.puffs.map((p, k) => <circle key={k} cx={c.x + p.dx} cy={c.y + p.dy} r={p.r} fill={`url(#${id}-p)`} />)}
+    </g>
+  </svg>
+}
+
+// the clouds' layer: a plain box at depth 0.9 that holds one svg per cloud
+function CloudLayer({ w, opacity, children }: { w: number; opacity: number; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => ref.current ? followParallax(ref.current, 0.9) : undefined, [])
+  return <div ref={ref} aria-hidden="true" className="absolute" style={{ left: -PAD_L, top: 0, width: w, height: 0, opacity }}>{children}</div>
 }
 
 // the ranges, in the order Cordilheiras adds them (the usual three first, then one behind and two in between):
@@ -173,8 +181,10 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
     treeFar: trees(wTreesFar, 31, G - 40, 64, 46), treeNear: trees(wTrees, 47, G - 6, 120, 210),
   }), [wTreesFar, wTrees])
   const starPath = useMemo(() => stars(wSun, 5, look.starCount, look.starSize), [wSun, look.starCount, look.starSize])
-  const { size: cSize, height: cHeight, spread: cSpread, shape: cShape } = cloudSet
-  const cloudList = useMemo(() => clouds(wCloud, 11 + cShape * 131, cSize / 100, cHeight / 100, cSpread / 100), [wCloud, cSize, cHeight, cSpread, cShape])
+  const { size: cSize, height: cHeight, spread: cSpread, shape: cShape, kind: cKind, puffs: cPuffs, detail: cDetail } = cloudSet
+  const cloudList = useMemo(() => cKind === "cumulus"
+    ? cumulusClouds(wCloud, 11 + cShape * 131, cSize / 100, cHeight / 100, cSpread / 100, cPuffs / 100, cDetail / 100)
+    : softClouds(wCloud, 11 + cShape * 131, cSize / 100, cHeight / 100, cSpread / 100), [wCloud, cSize, cHeight, cSpread, cShape, cKind, cPuffs, cDetail])
   const { show, ranges: rangeCount, height, lift, rough, snow, snowEdge, shape, peak, shadeStyle, snowPeaks, snowStyle, snowSide } = mountains
   const ranges = useMemo(() => !show ? [] : RANGES.slice(0, rangeCount).map((r, i) => {
     const w = layerW(worldW, r.p), amp = r.amp * height / 100, seed = r.seed + shape * 101, up = lift * MOUNTAIN_LIFT.unit
@@ -186,12 +196,13 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   const rangeFill = (p: number) => mountains.tintAmount > 0 ? mix(rangeColor(look, p), mountains.tint, mountains.tintAmount / 100 * 0.8) : rangeColor(look, p)
   // the clouds' light, with the Nuvens tint and volume (how much the shaded underside shows)
   const cloudLit = cloudSet.tintAmount > 0 ? mix(look.clouds.lit, cloudSet.tint, cloudSet.tintAmount / 100) : look.clouds.lit
-  const cloudShade = mix(cloudLit, cloudSet.tintAmount > 0 ? mix(look.clouds.shade, cloudSet.tint, cloudSet.tintAmount / 200) : look.clouds.shade, cloudSet.volume / 100)
+  const skyShade = cloudSet.tintAmount > 0 ? mix(look.clouds.shade, cloudSet.tint, cloudSet.tintAmount / 200) : look.clouds.shade
+  const cloudShade = mix(cloudLit, cloudSet.shadeTintAmount > 0 ? mix(skyShade, cloudSet.shadeTint, cloudSet.shadeTintAmount / 100) : skyShade, cloudSet.volume / 100)
   const cloudAlpha = look.clouds.opacity * cloudSet.opacity / 100
   const texture = useSkyTexture(look.texture, look.textureLook.streak, look.textureLook.grain)
   const { treeFar, treeNear } = shapes
   const amount = cloudSet.amount / 100
-  const shownClouds = amount >= 1 ? cloudList : cloudList.filter((_, i) => ((i * 0.618) % 1) < amount)
+  const shownClouds = cloudList.map((c, i) => ({ c, i })).filter(({ i }) => amount >= 1 || ((i * 0.618) % 1) < amount)
   // the haze at the foot of each range (aerial perspective): the horizon's colour fading up
   const haze = (w: number, id: string, top: number, o: number) => (
     <>
@@ -206,13 +217,14 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
       <rect x={0} y={G + 39} width={w} height={BOTTOM - G - 39} fill={look.haze} opacity={Math.min(1, o * look.hazeAmount)} />
     </>
   )
-  const sunX = PAD_L + 1350
+  // the moon keeps its place; the sun may be moved sideways (Posição do sol)
+  const moonX = PAD_L + 1350 + 900, sunX = PAD_L + 1350 + look.sun.x
   const skyTop = -4200
   return (
     <div aria-hidden="true" className="absolute inset-0">
       {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top and, in its last colour, down to the layers' foot */}
       {look.radial.amount > 0
-        ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={BOTTOM - skyTop} cx={sunX - PAD_L} />
+        ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={BOTTOM - skyTop} cx={1350} />
         : <div className="absolute" style={{
           left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: BOTTOM - skyTop,
           background: skyGradient(look, skyTop, -200, G - 60),
@@ -225,8 +237,19 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
       <Layer p={0.97} w={wSun}>
         <defs>
           <radialGradient id="px-sun">
-            <stop offset="0" stopColor={look.sun.color} stopOpacity={0.55 * look.sun.glow + 0.05} />
-            <stop offset="0.35" stopColor={look.sun.color} stopOpacity={0.22 * look.sun.glow} />
+            <stop offset="0" stopColor={look.sun.glowColor} stopOpacity={Math.min(1, 0.55 * look.sun.glow + 0.05)} />
+            <stop offset="0.35" stopColor={look.sun.glowColor} stopOpacity={Math.min(1, 0.22 * look.sun.glow)} />
+            <stop offset="1" stopColor={look.sun.glowColor} stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="px-moon">
+            <stop offset="0" stopColor={look.sun.color} stopOpacity={Math.min(1, 0.55 * look.sun.glow + 0.05)} />
+            <stop offset="0.35" stopColor={look.sun.color} stopOpacity={Math.min(1, 0.22 * look.sun.glow)} />
+            <stop offset="1" stopColor={look.sun.color} stopOpacity="0" />
+          </radialGradient>
+          {/* Suavidade do sol: the disc stays whole up to its edge, then melts away */}
+          <radialGradient id="px-disc">
+            <stop offset="0" stopColor={look.sun.color} />
+            <stop offset={Math.max(0, 1 - look.sun.soft) / (1 + look.sun.soft * 1.4)} stopColor={look.sun.color} />
             <stop offset="1" stopColor={look.sun.color} stopOpacity="0" />
           </radialGradient>
           <radialGradient id="px-horizon" cx="0.5" cy="0.5" r="0.5">
@@ -238,26 +261,27 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         {look.stars > 0 && starPath && <path d={starPath} fill="#f4f1ff" opacity={look.stars * 0.85} />}
         {look.horizonGlow > 0 && <ellipse cx={sunX} cy={860} rx={1700 * look.sun.glowSize} ry={420 * Math.sqrt(look.sun.glowSize)} fill="url(#px-horizon)" opacity={look.horizonGlow} />}
         {look.moon.opacity > 0 && <>
-          <circle cx={sunX + 900} cy={look.moon.y} r={150} fill="url(#px-sun)" opacity={look.moon.opacity * 0.6} />
-          <circle cx={sunX + 900} cy={look.moon.y} r={30} fill="#eef0ff" opacity={look.moon.opacity} />
-          <circle cx={sunX + 912} cy={look.moon.y - 6} r={26} fill={look.stops[0].color} opacity={look.moon.opacity * 0.85} />
+          <circle cx={moonX} cy={look.moon.y} r={150} fill="url(#px-moon)" opacity={look.moon.opacity * 0.6} />
+          <circle cx={moonX} cy={look.moon.y} r={30} fill="#eef0ff" opacity={look.moon.opacity} />
+          <circle cx={moonX + 12} cy={look.moon.y - 6} r={26} fill={look.stops[0].color} opacity={look.moon.opacity * 0.85} />
         </>}
         {look.sun.opacity > 0 && <>
           <circle cx={sunX} cy={look.sun.y} r={look.sun.r * 7.8 * look.sun.glowSize} fill="url(#px-sun)" opacity={look.sun.opacity} />
-          <circle cx={sunX} cy={look.sun.y} r={look.sun.r} fill={look.sun.color} opacity={0.9 * look.sun.opacity} />
+          {look.sun.soft > 0
+            ? <circle cx={sunX} cy={look.sun.y} r={look.sun.r * (1 + look.sun.soft * 1.4)} fill="url(#px-disc)" opacity={0.9 * look.sun.opacity} />
+            : <circle cx={sunX} cy={look.sun.y} r={look.sun.r} fill={look.sun.color} opacity={0.9 * look.sun.opacity} />}
         </>}
       </Layer>
-      {shownClouds.length > 0 && <Layer p={0.9} w={wCloud}>
-        <defs><filter id="px-soft" x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation={cloudSet.soft * 0.1 * Math.max(0.6, cSize / 100)} /></filter></defs>
+      {shownClouds.length > 0 && <CloudLayer w={wCloud} opacity={Math.min(1, cloudAlpha)}>
         <style>{`
           .px-cloud { animation: px-drift var(--d) ease-in-out infinite alternate; }
           @keyframes px-drift { from { transform: translateX(calc(var(--a) * -1)); } to { transform: translateX(var(--a)); } }
           @media (prefers-reduced-motion: reduce) { .px-cloud { animation: none; } }
         `}</style>
-        <g opacity={Math.min(1, cloudAlpha)}>
-          {shownClouds.map((c, i) => <Cloud key={i} c={cloudAlpha > 1 ? { ...c, o: Math.min(0.95, c.o * cloudAlpha) } : c} lit={cloudLit} shade={cloudShade} wind={cloudSet.wind / 100} />)}
-        </g>
-      </Layer>}
+        {shownClouds.map(({ c, i }) => <Cloud key={i} id={`px-c${i}`} c={cloudAlpha > 1 ? { ...c, o: Math.min(0.95, c.o * cloudAlpha) } : c} lit={cloudLit} shade={cloudShade} wind={cloudSet.wind / 100}
+          sun={[sunX, look.sun.y]} blur={cloudSet.soft * 0.1 * Math.max(0.6, cSize / 100)}
+          fray={cKind === "cumulus" ? cDetail * 0.9 * Math.pow(cSize / 100, 0.8) : 0} grain={Math.sqrt(Math.max(0.3, cSize / 100))} />)}
+      </CloudLayer>}
       {ranges.map(r => {
         const fill = rangeFill(r.p)
         // the snow takes the sun's light, or the colour chosen for it

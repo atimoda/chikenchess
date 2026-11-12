@@ -6,10 +6,10 @@
 import { Plus, X } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { cn } from "@/lib/utils"
-import { SKY_DEFAULT, SKY_HOUR, SKY_PCT, SKY_RADIAL_X, SKY_SCALE, SKY_STAR_COUNT, SKY_BLENDS, SKY_STAR_GLOW, SKY_STOPS, SKY_SUN, SKY_TEX_SCALE, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
+import { SKY_DEFAULT, SKY_GLOW, SKY_HOUR, SKY_PCT, SKY_RADIAL_SIZE, SKY_RADIAL_X, SKY_SCALE, SKY_STAR_COUNT, SKY_BLENDS, SKY_STAR_GLOW, SKY_STOPS, SKY_SUN, SKY_TEX_SCALE, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OPACITY, MOUNTAIN_PCT, MOUNTAIN_PEAKS, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHADES, MOUNTAIN_SHAPES, MOUNTAIN_SNOWS, type MountainParams } from "@/lib/pigchicken/mountains"
 import { SNOWFALL_DEFAULT, SNOWFALL_OPACITY, SNOWFALL_PCT, SNOWFALL_SIZE, SNOWFALL_SPEED, SNOWFALL_WIND, type SnowfallParams } from "@/lib/pigchicken/snowfall"
-import { CLOUDS_DEFAULT, CLOUD_OPACITY, CLOUD_PCT, CLOUD_SCALE, CLOUD_SHAPES, CLOUD_WIND, type CloudParams } from "@/lib/pigchicken/clouds"
+import { CLOUDS_DEFAULT, CLOUD_KINDS, CLOUD_OPACITY, CLOUD_PCT, CLOUD_SCALE, CLOUD_SHAPES, CLOUD_WIND, type CloudParams } from "@/lib/pigchicken/clouds"
 
 const BTN = "h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]"
 
@@ -43,12 +43,18 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
     <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={s[key]} display={`${s[key]}%`}
       changed={!!sky && s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
-  const pct = (label: string, key: "glow" | "clouds" | "texture" | "haze" | "silhouette" | "light" | "radial" | "radialY", hint: string) => (
+  const pct = (label: string, key: "clouds" | "texture" | "haze" | "silhouette" | "light" | "radial" | "radialY" | "sunSoft", hint: string) => (
     <PatioRange label={label} min={SKY_PCT.min} max={SKY_PCT.max} step={SKY_PCT.step} value={s[key]} display={`${s[key]}%`}
       changed={!!sky && s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
   // the preview: the same gradient over a box PREVIEW px tall, the sun in its middle
-  const gradient = skyRadial(look, 0, 0, PREVIEW, PREVIEW_W / 2) ?? skyGradient(look, 0, 0, PREVIEW)
+  // (the sky spans 1070 world units from its top band to the horizon, the sun's y counted from 200 above the top)
+  const unit = PREVIEW / 1070, sunTop = Math.max(4, Math.min(92, ((look.sun.y + 200) / 1070) * 100))
+  const gradient = skyRadial(look, 0, 0, PREVIEW, PREVIEW_W / 2, (look.sun.y + 200) * unit, unit) ?? skyGradient(look, 0, 0, PREVIEW)
+  const moved = (label: string, key: "sunX" | "sunLift", hint: string) => (
+    <PatioRange label={label} min={SKY_RADIAL_X.min} max={SKY_RADIAL_X.max} step={SKY_RADIAL_X.step} value={s[key]} display={s[key] === 0 ? (key === "sunX" ? "no lugar" : "pela hora") : `${s[key] > 0 ? "+" : ""}${s[key]}`}
+      changed={s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
   return (
     <div className="grid gap-2 px-4 pb-4">
       <div className="flex items-center justify-end gap-2">
@@ -57,7 +63,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
       </div>
       <div className="grid grid-cols-[96px_1fr] gap-2">
         <div aria-hidden="true" className="relative overflow-hidden rounded-md border border-white/10" style={{ background: gradient, width: PREVIEW_W, height: PREVIEW }}>
-          {look.sun.opacity > 0 && <span className="absolute left-1/2 size-3 -translate-x-1/2 rounded-full" style={{ top: `${Math.max(4, Math.min(92, (look.sun.y / 900) * 100))}%`, background: look.sun.color, boxShadow: `0 0 10px ${look.sun.color}` }} />}
+          {look.sun.opacity > 0 && <span className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: `calc(50% + ${(look.sun.x * unit).toFixed(1)}px)`, top: `${sunTop}%`, background: look.sun.color, boxShadow: `0 0 ${Math.round(10 + look.sun.soft * 8)}px ${look.sun.glowColor}`, filter: look.sun.soft > 0 ? `blur(${(look.sun.soft * 2.5).toFixed(1)}px)` : undefined }} />}
         </div>
         <div className="grid gap-[3px]">
           <PatioRange label="Hora do dia" min={SKY_HOUR.min} max={SKY_HOUR.max} step={SKY_HOUR.step} value={s.hour} display={hourLabel(s.hour)}
@@ -86,7 +92,13 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         {s.radial > 0 && <>
           <PatioRange label="Centro" min={SKY_RADIAL_X.min} max={SKY_RADIAL_X.max} step={SKY_RADIAL_X.step} value={s.radialX} display={s.radialX === 0 ? "sob o sol" : `${s.radialX > 0 ? "+" : ""}${s.radialX}`}
             changed={s.radialX !== SKY_DEFAULT.radialX} onReset={() => set({ radialX: SKY_DEFAULT.radialX })} onChange={radialX => set({ radialX })} hint="Move o centro dos anéis para os lados, a partir de baixo do sol." />
-          {pct("Centro abaixo do horizonte", "radialY", "Afunda o centro dos anéis: mais fundo, curvas mais abertas.")}
+          {pct(s.radialSun ? "Centro abaixo do sol" : "Centro abaixo do horizonte", "radialY", "Afunda o centro dos anéis: mais fundo, curvas mais abertas.")}
+          <label className="flex h-9 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Os anéis ficam em volta do próprio sol, onde ele estiver: a cor do Horizonte no sol e a do Topo no anel de fora.">
+            <span>Anéis em volta do sol</span>
+            <input type="checkbox" checked={s.radialSun} onChange={e => set({ radialSun: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
+          </label>
+          <PatioRange label="Tamanho dos anéis" min={SKY_RADIAL_SIZE.min} max={SKY_RADIAL_SIZE.max} step={SKY_RADIAL_SIZE.step} value={s.radialSize} display={`${s.radialSize}%`}
+            changed={s.radialSize !== SKY_DEFAULT.radialSize} onReset={() => set({ radialSize: SKY_DEFAULT.radialSize })} onChange={radialSize => set({ radialSize })} hint="Anéis maiores espalham as cores para mais longe do centro." />
         </>}
         <PatioRange label="Tamanho do sol" min={SKY_SUN.min} max={SKY_SUN.max} step={SKY_SUN.step} value={s.sunSize} display={`${s.sunSize}`}
           changed={!!sky && s.sunSize !== SKY_DEFAULT.sunSize} onReset={() => set({ sunSize: SKY_DEFAULT.sunSize })} onChange={sunSize => set({ sunSize })} />
@@ -94,8 +106,16 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
           <input type="color" aria-label="Cor do sol" value={s.sunColor || look.sun.color} onChange={e => set({ sunColor: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
           <button type="button" disabled={!s.sunColor} onClick={() => set({ sunColor: "" })} title="O sol volta a ter a cor da hora do dia" className={cn(BTN, "h-10 text-left disabled:opacity-40")}>{s.sunColor ? "Cor do sol: voltar à da hora" : "Cor do sol: a da hora"}</button>
         </div>
-        {pct("Brilho do sol", "glow", "A força do halo do sol e da luz ao longo do horizonte embaixo dele.")}
+        {pct("Suavidade do sol", "sunSoft", "A borda do sol: de um disco recortado a uma mancha que se desfaz no brilho.")}
+        {moved("Posição do sol", "sunX", "Move o sol para a esquerda ou para a direita.")}
+        {moved("Altura do sol", "sunLift", "Sobe ou desce o sol a partir de onde a hora o põe, sem mudar a luz da hora.")}
+        <PatioRange label="Brilho do sol" min={SKY_GLOW.min} max={SKY_GLOW.max} step={SKY_GLOW.step} value={s.glow} display={`${s.glow}%`}
+          changed={!!sky && s.glow !== SKY_DEFAULT.glow} onReset={() => set({ glow: SKY_DEFAULT.glow })} onChange={glow => set({ glow })} hint="A força do halo do sol e da luz ao longo do horizonte embaixo dele. Acima de 100%, o halo toma o céu em volta." />
         {scaled("Alcance do brilho", "glowSize", SKY_SCALE, "Até onde o brilho radiante do sol se espalha.")}
+        <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
+          <input type="color" aria-label="Cor do brilho" value={s.glowColor || look.sun.glowColor} onChange={e => set({ glowColor: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
+          <button type="button" disabled={!s.glowColor} onClick={() => set({ glowColor: "" })} title="O brilho volta a ter a cor do sol" className={cn(BTN, "h-10 text-left disabled:opacity-40")}>{s.glowColor ? "Cor do brilho: voltar à do sol" : "Cor do brilho: a do sol"}</button>
+        </div>
         {pct("Textura", "texture", "Um grão suave com estrias horizontais por cima do céu.")}
         {s.texture > 0 && <>
           <PatioRange label="Tamanho da textura" min={SKY_TEX_SCALE.min} max={SKY_TEX_SCALE.max} step={SKY_TEX_SCALE.step} value={s.texScale} display={`${s.texScale}%`}
@@ -217,7 +237,7 @@ export function MountainFields({ mountains, onChange }: { mountains: MountainPar
 export function CloudFields({ clouds, skyClouds, onChange }: { clouds: CloudParams | undefined; skyClouds: number | undefined; onChange: (c: CloudParams | undefined) => void }) {
   const c = clouds ?? { ...CLOUDS_DEFAULT, amount: skyClouds ?? CLOUDS_DEFAULT.amount }
   const set = (p: Partial<CloudParams>) => onChange({ ...c, ...p })
-  const range = (label: string, key: "amount" | "size" | "height" | "spread" | "opacity" | "soft" | "volume" | "wind", r: { min: number; max: number; step: number }, hint: string) => (
+  const range = (label: string, key: "amount" | "size" | "height" | "spread" | "opacity" | "soft" | "volume" | "wind" | "puffs" | "detail", r: { min: number; max: number; step: number }, hint: string) => (
     <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={c[key]} display={`${c[key]}%`}
       changed={c[key] !== CLOUDS_DEFAULT[key]} onReset={() => set({ [key]: CLOUDS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
@@ -227,13 +247,23 @@ export function CloudFields({ clouds, skyClouds, onChange }: { clouds: CloudPara
         <button type="button" className={BTN} onClick={() => set({ shape: (c.shape + 1 + Math.floor(Math.random() * (CLOUD_SHAPES - 1))) % CLOUD_SHAPES })} title="Desenha outras nuvens com os mesmos ajustes">Sortear forma</button>
         {clouds && <button type="button" className={BTN} onClick={() => onChange(undefined)} title="Volta às nuvens de sempre">Padrão</button>}
       </div>
+      <Choice label="Tipo de nuvem" options={CLOUD_KINDS} value={c.kind} onChange={kind => set({ kind })} title="Suaves: faixas baixas e transparentes. Cumulus: montes altos de gomos, claros do lado do sol e sombreados do outro." />
       {range("Quantidade", "amount", CLOUD_PCT, "Quantas nuvens. 0 tira todas.")}
       {range("Tamanho", "size", CLOUD_SCALE, "O tamanho de cada nuvem.")}
       {range("Altura no céu", "height", CLOUD_PCT, "Baixas, perto das montanhas, ou altas no céu.")}
       {range("Espalhamento", "spread", CLOUD_PCT, "0: todas na mesma altura. Mais alto: espalhadas para cima e para baixo.")}
       {range("Opacidade", "opacity", CLOUD_OPACITY, "Quão sólidas elas são.")}
       {range("Suavidade", "soft", CLOUD_PCT, "O desfoque das bordas. 0: recortadas.")}
-      {range("Volume", "volume", CLOUD_PCT, "A sombra embaixo de cada nuvem.")}
+      {range("Volume", "volume", CLOUD_PCT, "A sombra embaixo de cada nuvem e, nas Cumulus, entre os gomos.")}
+      {c.kind === "cumulus" && <>
+        {range("Gomos", "puffs", CLOUD_PCT, "Quantos montes cada nuvem tem.")}
+        {range("Desfiado", "detail", CLOUD_PCT, "Gomos pequenos pelas bordas, que desmancham o contorno.")}
+      </>}
+      <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
+        <input type="color" aria-label="Cor da sombra das nuvens" value={c.shadeTint} onChange={e => set({ shadeTint: e.target.value, shadeTintAmount: c.shadeTintAmount || 60 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
+        <PatioRange label="Cor da sombra" min={CLOUD_PCT.min} max={CLOUD_PCT.max} step={CLOUD_PCT.step} value={c.shadeTintAmount} display={`${c.shadeTintAmount}%`}
+          changed={c.shadeTintAmount !== CLOUDS_DEFAULT.shadeTintAmount} onReset={() => set({ shadeTintAmount: CLOUDS_DEFAULT.shadeTintAmount })} onChange={shadeTintAmount => set({ shadeTintAmount })} hint="Quanto a cor escolhida tinge o lado sombreado. 0: a sombra do céu." />
+      </div>
       {range("Vento", "wind", CLOUD_WIND, "A velocidade com que elas vão e voltam. 0: paradas.")}
       <div className="grid grid-cols-[32px_1fr] items-center gap-1.5">
         <input type="color" aria-label="Cor das nuvens" value={c.tint} onChange={e => set({ tint: e.target.value, tintAmount: c.tintAmount || 50 })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />

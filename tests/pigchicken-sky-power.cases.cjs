@@ -162,7 +162,7 @@ test('mountains: normalized, and the sky\'s old on/off moves to them', () => {
 
 test('clouds: their own settings, or the sky\'s old amount', () => {
   const C = loadTs('lib/pigchicken/clouds.ts')
-  assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).size, 300)
+  assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).size, 600)
   assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).wind, 0)
   assert.equal(C.normalizeClouds({ tint: 'nope' }).tint, C.CLOUDS_DEFAULT.tint)
   assert.equal(C.patioClouds(undefined, 30).amount, 30)
@@ -270,4 +270,54 @@ test('mountains and snowfall: the new settings are cleaned and kept with the Pá
   assert.deepEqual([f.amount, f.wind, f.size], [100, -100, SF.SNOWFALL_SIZE.min])
   assert.equal(PS.normalizePatioSettings({ snowfall: { amount: 30 } }).snowfall.amount, 30)
   assert.equal(SF.flakeCount(100, 1600, 900), 450)
+})
+
+const CD = loadTs('lib/pigchicken/cloud-draw.ts')
+const CL = loadTs('lib/pigchicken/clouds.ts')
+
+test('sun: softness, glow colour and position are cleaned and reach the look; old skies stay as they were', () => {
+  const old = S.normalizeSky({ hour: 18.2 })
+  assert.deepEqual([old.sunSoft, old.glowColor, old.sunX, old.sunLift, old.radialSun, old.radialSize], [0, '', 0, 0, false, 100])
+  const base = S.skyLook(old)
+  assert.equal(base.sun.x, 0); assert.equal(base.sun.soft, 0); assert.equal(base.sun.glowColor, base.sun.color)
+  const sky = S.normalizeSky({ hour: 18.2, sunSoft: 150, glowColor: '#FF80D0', sunX: -400, sunLift: 50, glow: 500, radialSun: true, radialSize: 5 })
+  assert.deepEqual([sky.sunSoft, sky.glowColor, sky.sunX, sky.sunLift, sky.glow, sky.radialSun, sky.radialSize], [100, '#ff80d0', -100, 50, S.SKY_GLOW.max, true, S.SKY_RADIAL_SIZE.min])
+  const look = S.skyLook(sky)
+  assert.equal(look.sun.x, -100 * S.SKY_SUN_MOVE.x)
+  assert.equal(look.sun.y, base.sun.y - 50 * S.SKY_SUN_MOVE.y)
+  assert.equal(look.sun.glowColor, '#ff80d0')
+  assert.ok(look.horizonGlow <= 1)
+})
+
+test('sky rings round the sun: centred on it, the horizon colour inside and the top colour outside', () => {
+  const sky = { ...S.SKY_DEFAULT, follow: false, stops: [{ at: 0, color: '#112233' }, { at: 1, color: '#ffeedd' }], radial: 96, radialSun: true, sunX: 10 }
+  const look = S.skyLook(sky)
+  const css = S.skyRadial(look, -4200, -200, 870, 1350)
+  const m = /radial-gradient\((\d+)px (\d+)px at (\d+)px (\d+)px, #ffeedd 0\.00%, #112233 100\.00%/.exec(css)
+  assert.ok(m, css)
+  assert.equal(Number(m[3]), 1350 + 10 * S.SKY_SUN_MOVE.x)
+  assert.equal(Number(m[4]), Math.round(look.sun.y + 4200))
+  assert.equal(Number(m[2]), Math.round(1070 * 0.75))
+  // the size scales the rings; without the sun as the centre the rings are the ones of before
+  const big = /radial-gradient\(\d+px (\d+)px/.exec(S.skyRadial(S.skyLook({ ...sky, radialSize: 200 }), -4200, -200, 870, 1350))
+  assert.equal(Number(big[1]), Math.round(1070 * 0.75 * 2))
+  const under = S.skyRadial(S.skyLook({ ...sky, radialSun: false, sunX: 0 }), -4200, -200, 870, 1350)
+  assert.ok(under.startsWith(`radial-gradient(${Math.round(1070 * (14 + (0.7 - 14) * Math.pow(0.96, 0.6)))}px 1070px at 1350px ${870 + 4200}px, #ffeedd 0.00%, #112233 100.00%`), under)
+})
+
+test('clouds: cumulus heaps of puffs, more of them with Gomos and Desfiado; old clouds stay soft', () => {
+  const old = CL.normalizeClouds({ amount: 40 })
+  assert.deepEqual([old.kind, old.puffs, old.detail, old.shadeTintAmount], ['soft', 50, 40, 0])
+  assert.equal(CL.normalizeClouds({ kind: 'fog', size: 900 }).kind, 'soft')
+  assert.equal(CL.normalizeClouds({ size: 900 }).size, CL.CLOUD_SCALE.max)
+  const soft = CD.softClouds(6000, 11, 1, 0.5, 0.5)
+  assert.ok(soft.length > 3 && soft.every(c => c.puffs.length === 0 && c.lobes[c.lobes.length - 1].shade))
+  const few = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 0, 0), many = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 1, 1)
+  assert.ok(few.length > 3 && few.every(c => c.puffs.length === 5))
+  assert.ok(many.every(c => c.puffs.length >= 14 * 4))
+  for (const c of many) {
+    const reach = CD.cloudReach(c)
+    assert.ok(reach.l < 0 && reach.r > 0 && c.top > 0 && c.bottom > 0)
+    assert.ok(c.puffs.every(p => p.r - p.dy <= c.top), 'every puff is inside the cloud\'s box')
+  }
 })

@@ -6,7 +6,7 @@ import { stageWidth } from "../stage-size"
 
 export const liveCamera = { x: 0, y: 0, zoom: 1 }
 const followers = new Set<HTMLElement>()
-const parallaxLayers = new Map<SVGElement, number>()
+const parallaxLayers = new Map<HTMLElement | SVGElement, number>()
 const regions = new Set<{ el: HTMLElement | SVGElement; bounds: ViewRect; depth: number }>()
 const cameraTransform = () => {
   const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
@@ -53,7 +53,7 @@ export function followCamera(el: HTMLElement) {
   return () => unregister(() => followers.delete(el))
 }
 
-export function followParallax(el: SVGElement, depth: number) {
+export function followParallax(el: HTMLElement | SVGElement, depth: number) {
   parallaxLayers.set(el, depth)
   el.style.transformOrigin = '0 0'; el.style.transform = parallaxTransform(depth)
   return () => { parallaxLayers.delete(el) }
