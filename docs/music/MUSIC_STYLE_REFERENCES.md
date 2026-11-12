@@ -101,7 +101,7 @@ Os kits anteriores das 12 cidades ficam em `public/presets/legacy/<cidade>.json`
 
 ## Brazilian refeito · 25/10
 
-As 10 fases da campanha são escritas em `scripts/brazilian/<fase>.py`; as melodias, linhas e levadas são originais, escritas na linguagem de cada estilo.
+As 12 fases da campanha são escritas em `scripts/brazilian/<fase>.cjs` (nove kits por seção) ou `<fase>.py` (Frevo, Maracatu e Samba-reggae); as melodias, linhas e levadas são originais, escritas na linguagem de cada estilo.
 
 | Fase | Linguagem | Referência |
 | --- | --- | --- |

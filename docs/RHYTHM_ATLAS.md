@@ -13,6 +13,8 @@
 | Salvador · 1992 | Samba-reggae | 4/4 · BPM = semínima | 104 | Brazilian |
 | Recife · 1975 | Maracatu de baque virado | 4/4 · BPM = semínima | 108 | Brazilian |
 | Rio de Janeiro · 1995 | Funk carioca | 4/4 · BPM = semínima | 128 | Brazilian |
+| Santo Amaro · 1960 | Samba de roda · chula | 2/4 · BPM = semínima | 100 | Brazilian |
+| Campo Grande · 1975 | Chamamé | 6/8 · BPM = semínima pontuada | 84 | Brazilian |
 | New York City · 1962 | Jazz waltz | 3/4 · BPM = semínima | 138 | Harmonic songbook |
 | London · 1977 | Arena rock in six | 6/8 · BPM = semínima pontuada | 66 | World ballads |
 | Memphis · 1967 | Southern soul | 12/8 · BPM = semínima pontuada | 64 | World ballads |

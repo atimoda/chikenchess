@@ -1,0 +1,36 @@
+# Kits Brazilian — formato por seção (12/11/2026)
+
+Nove kits da campanha Brazilian são kits oficiais no formato por seção (o mesmo do Tango e das World ballads): cada um é escrito por `scripts/brazilian/<fase>.cjs` sobre a biblioteca `scripts/brazilian/lib.cjs`, que grava o kit em `data/music/kits/<fase>.json` (via `scripts/admin/official-kits.mjs`) e o perfil de texto em `data/music/profiles/<fase>.json`. A revisão de cada fase em `CITY_STYLE_REVISIONS` (`lib/music/styled-kits.ts`) termina em `2026-11-12-brazilian-vN`; kits salvos com revisão anterior são trocados pelo novo ao abrir a fase ou o Criativo. Frevo (Recife 1935), Maracatu (Recife 1975) e Samba-reggae (Salvador 1992) continuam no formato anterior (`<fase>.py`).
+
+## O que vale para os nove
+
+- **Forma**: 9 ou 10 seções com bancos globais 0–6 (uma reprise reusa o banco da primeira vez) e o banco 7 para viradas, que tocam como último compasso da seção indicada. Toda forma tem pelo menos uma seção **suave** (Interlude) e uma **tensa** (Break ou Bridge), além de Intro, Verse, Chorus, Solo e Outro conforme o estilo.
+- **Kit Harmony**: cada seção traz a raiz do acorde por compasso (no máximo 8 entradas, que se repetem em seções mais longas); as notas são escritas em graus absolutos e convertidas para graus relativos ao acorde. Seções curtas ou de acompanhamento usam rolls de 4 ou 8 compassos que se repetem dentro da seção.
+- **Mão humana** (`feel`): cada semicolcheia pode ser deslocada em ticks de 1/128 de compasso (1/192 no 6/8). Samba, samba-enredo e chula usam a ginga (2ª semicolcheia atrasada, 4ª adiantada); sertanejo, baião e chamamé usam um deslocamento menor (no chamamé, o arrastre do terceiro tempo). Há ainda variação aleatória semeada de tempo e de dinâmica (o mesmo kit a cada build), e a nota nunca sai do compasso.
+- **Dinâmica de mão**: grades de percussão com X x m o h g (do acento ao fantasma) e `?`/`,` para golpes que só às vezes tocam; golpes fracos soam mais escuros e acentos mais claros (`tone`, corte de filtro por nota).
+- **Linhas melódicas** (`phrase`): cada frase de 2 ou 4 compassos cresce até a nota mais alta e volta; notas fora do tempo um pouco mais leves; saltos largos ganham portamento curto; notas longas, vibrato. Segundas vozes são a mesma linha uma terça abaixo, mais suave.
+- **Parâmetros por seção**: ganho, reverb, filtro e drive mudam só na própria seção (por exemplo, violão mais baixo e reverb maior nos Interludes; drive e ganho maiores nos Breaks).
+- **Reações próprias** (14 regras, `reactions` em `lib.cjs`): abertura −3 dB; meio-jogo +2 BPM; final no pico; xeque ativa a peça e leva ao breque do estilo; captura dá +5 dB na percussão; perder a dama leva ao lamento (Interlude) com reverb e filtro; primeiro roque ao refrão; lances quietos à seção suave; tensão fecha o filtro do lead; seca de capturas abre o reverb; promoção e força mínima levam ao pico; virada de avaliação à seção tensa; mate ao Outro. Estados longos não fixam variação.
+- **Volumes** medidos por `node scripts/brazilian/stems.cjs <fase> [--from N --to N] [--only a1,mix] [--mp3 saída.mp3]` (render offline do Strudel no Chromium headless: dB ativo, pico, % de tempo audível, energia abaixo de 150 Hz, notas/s) e ajustados com `node scripts/brazilian/regain.cjs <fase> a1=.6 …`. `node scripts/ballads/check.cjs <fase>` mede compilação, registro e densidade. Medição não substitui escuta em aparelho.
+
+## Por fase
+
+| Fase | Compasso, BPM, tom | Forma | Contraste |
+| --- | --- | --- | --- |
+| Rio 1910 · Choro | 2/4, 112, Ré harmônica menor | Intro · A · B · A · Interlude · Bridge (parte C, +5) · Solo (bandolim) · A · Outro | Interlude de baixaria do 7 cordas; parte C em outra tonalidade |
+| Rio 1930 · Samba | 2/4, 104, Dó maior | Intro · Verse · Chorus · Interlude (roda) · Verse · Break (partido-alto em Lá menor) · Solo (cavaquinho) · Chorus · Outro | Roda suave com violão, pandeiro e flauta grave; partido-alto com palmas e coro em resposta |
+| Piracicaba 1940 · Sertanejo raiz | 2/4, 100, Sol maior | Intro (ponteio) · Verse (moda) · Chorus · Interlude (moda de viola) · Verse · Break (catira em Mi menor) · Solo (viola) · Chorus · Outro | Viola sozinha sobre o bordão cebolão; catira com sapateado, escova e palmas na frente |
+| Recife 1950 · Baião | 2/4, 108, Sol mixolídio | Intro (aboio) · Verse · Chorus · Interlude (toada) · Verse · Break (arrasta-pé em Ré menor) · Solo (pífano) · Chorus · Outro | Aboio sobre acordes longos da sanfona; fole bombeando e zabumba rolando |
+| Santo Amaro 1960 · Chula (nova) | 2/4, 100, Ré maior | Intro (viola chamando) · Verse (chula) · Chorus (relativo) · Interlude (samba lento) · Verse · Break (samba corrido em Si menor) · Solo (viola machete, miudinho) · Chorus · Outro | Viola, voz e pandeiro baixos; chamada e resposta com palmas e atabaque |
+| Rio 1960 · Bossa nova | 4/4, 116, Fá maior | Intro · Verse · Chorus · Interlude (madrugada) · Solo (sax) · Bridge (ponte) · Verse · Chorus · Outro | Chimbal suave com semicolcheias fantasmas que vêm e vão, um tick atrás, nunca dois compassos iguais |
+| Campo Grande 1975 · Chamamé (nova) | 6/8, 84 (BPM = semínima pontuada), Lá maior | Intro · Verse · Chorus (voz e sapucay) · Interlude (chamamé triste em Fá# menor, violino) · Verse · Break (chamamé maceta) · Solo (acordeona) · Chorus · Outro | Violino e violão ponteado; fole bombeando com tacos de sapateio e caixa leve |
+| Rio 1984 · Samba-enredo | 2/4, 140, Sol maior | Intro · Verse · Chorus · Break (paradinha) · Interlude (bossa) · Verse · Bridge (surdos dobrando) · Chorus · Outro | Surdo de primeira no banco novo `surdo-marcacao` (grave pesado), caixas com dinâmica de mão e camadas mais finas no refrão |
+| Rio 1995 · Funk carioca | 4/4, 128, Fá menor natural | Intro (DJ filtrado) · Verse · Pre-Chorus (riser) · Drop · Break (montagem) · Interlude · Verse · Pre-Chorus · Drop · Outro | Batidão (bumbo 909 pesado) só nos Drops, sub 808 com drive; Interlude com a melodia do funk |
+
+**Instrumentos das fases novas (os dois times tocam os mesmos):**
+- Santo Amaro 1960: a1 Violão · bordão, a2 Atabaque, b1 Viola machete · ponteio, b2 Pandeiro (gravado), c1 Violão · batida, c2 Prato e faca, d1 Cantador, d2 Palmas (3-3-2), e1 Segundo cantador, e2 Palmas · contratempo, f1 Viola machete · rasgado, f2 Ganzá, g1 Coro da roda · relativo, g2 Pandeiro · grave, h1 Timbau · resposta, h2 Palmas · virada.
+- Campo Grande 1975: a1 Contrabaixo (pizzicato gravado), a2 Bombo (bumbo sinfônico), b1 Acordeona, b2 Golpe no violão, c1 Violão · rasgueo, c2 Chocalho, d1 Acordeona · terças, d2 Palmas, e1 Violão · ponteio, e2 Tacos · sapateio, f1 Violino, f2 Pandeireta, g1 Voz, g2 Caixa leve, h1 Sapucay (grito que sobe e cai por slides), h2 Bombo · virada.
+
+**Timbres**: sempre que há gravação, ela é usada (violão de nylon, contrabaixo, violino, flauta doce como pífano, pandeiro, timbau, agogô e surdos gravados, percussão acústica). Continuam sintéticos a sanfona e a acordeona, a viola caipira/machete, o cavaquinho, o coro "laiá" (vozes), triângulo, zabumba, bacalhau e palmas do banco `chicken-brasil-v1`.
+
+**Surdo de marcação pesado**: `surdo-marcacao` e `surdo-marcacao-mao` (banco `chicken-bateria-v1`) somam ao bumbo sinfônico gravado uma camada grave (~60 Hz) e uma oitava, com saturação leve (`STRONG` em `scripts/prepare-bateria-recordings.py`).
