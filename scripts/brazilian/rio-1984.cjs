@@ -114,7 +114,7 @@ const repique = {
 // ---------- d1 Repique de chamada (queen): the calls, the answers, the solo in the bossa ----------
 const chamada = {
   0: hand(91, hits('X.X.X.X. | XmXm X... | X.X.X.X. | XmXm X.X. | ' + rep(R, 3) + ' | ....XXXX')),
-  1: hand(92, hits(rep(R, 15) + ' | XmXm X.X.')),
+  1: hand(92, hits(rep(R, 7) + ' | ....XmX. | ' + rep(R, 7) + ' | XmXm X.X.')),
   2: hand(93, hits('X...X.X. | ..X.X... | X.X.X.X. | X...XmXm | X.mX .mX. | m.mX .mX. | X.mX .XXX | X.......')),
   3: hand(94, hits(rep(R, 6) + ' | X.X.X.X. | XmXm XXXX | ' + rep(R, 7) + ' | XmXm X.X.')),
   4: hand(95, hits('X.mX .mX. | XmXX .XmX | .XmX .mX. | XmXm X.X. | m.mX .mX. | X.XX .X.X | XmXm XmXm | X....... | ' + rep(R, 7) + ' | ....XmXm')),
@@ -141,8 +141,8 @@ const desenho = {
 }
 const virada = {
   0: hand(121, hits(rep(R, 7) + ' | ....gmXX')),
-  1: hand(122, hits(rep(R, 15) + ' | ......mX')), 3: hand(123, hits(rep(R, 15) + ' | ......mX')),
-  4: hand(124, hits(rep(R, 15) + ' | ....mmXX')), 5: hand(125, hits(rep(R, 7) + ' | XmXm XXXX')),
+  1: C.roll(8, hand(122, hits(rep(R, 7) + ' | ......mX'))), 3: C.roll(8, hand(123, hits(rep(R, 7) + ' | ......mX'))),
+  4: C.roll(8, hand(124, hits(rep(R, 7) + ' | ....mmXX'))), 5: hand(125, hits(rep(R, 7) + ' | XmXm XXXX')),
   [FILL]: hand(126, hits('XmXm XXXX')),
 }
 // ---------- c1 / f1 Cuícas: they talk in the samba and sing in the bossa ----------
@@ -163,7 +163,7 @@ const agogo = {
 const apito = {
   0: hits('X...X... | X.X.X... | ' + rep(R, 6)),
   1: hits('X....... | ' + rep(R, 15)), 2: hits('X...X... | ' + rep(R, 7)), 3: hits('X....... | ' + rep(R, 15)),
-  4: hits('X...X.X. | ' + rep(R, 15)), 5: hits('X....... | ' + rep(R, 5) + ' | X...X... | X.X.X...'), 6: hits(rep(R, 5) + ' | X...X... | X.X.X... | ........'),
+  4: hits('X...X.X. | ' + rep(R, 15)), 5: hits('X....... | ' + rep(R, 5) + ' | X...X... | X.X.X...'), 6: [...hits(rep(R, 5) + ' | X...X... | X.X.X... | ........'), { start: 7, duration: .5, degree: 0, velocity: .9, release: .4 }],
 }
 
 const RHYTHM = { mapping: { fileDegrees: 0, rankDegrees: 0 }, design: { role: 'drums' } }
