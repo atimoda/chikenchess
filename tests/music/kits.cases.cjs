@@ -328,7 +328,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,13,12,4,12])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,12,12,13,4])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })

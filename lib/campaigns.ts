@@ -5,10 +5,10 @@ export const CAMPAIGNS = campaigns as unknown as readonly [
   { readonly id: 'electronic-history'; readonly name: string },
   { readonly id: 'world-ballads'; readonly name: string },
   { readonly id: 'classical'; readonly name: string },
-  { readonly id: 'harmonic-songbook'; readonly name: string },
   { readonly id: 'brazilian'; readonly name: string },
-  { readonly id: 'world-rhythms'; readonly name: string },
   { readonly id: 'african-rhythms'; readonly name: string },
+  { readonly id: 'harmonic-songbook'; readonly name: string },
+  { readonly id: 'world-rhythms'; readonly name: string },
 ]
 
 export type CampaignId = typeof CAMPAIGNS[number]['id']
