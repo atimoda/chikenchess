@@ -11,7 +11,7 @@
 | Tabuleiro, layout, cabeçalho, Debug e widgets flutuantes | [Tabuleiro e layout](docs/mechanics/widgets/board-and-layout.md) |
 | Análise, Stockfish, Best/Worst e bots | [Análise e bots](docs/mechanics/widgets/analysis-and-bots.md) |
 | Barra de chance, abertura e apresentação da partida | [Cabeçalho e abertura](docs/mechanics/match-header-and-intro.md) |
-| Kits, migração, laboratório | [Criativo e persistência](docs/mechanics/creative.md), [Escopo](docs/mechanics/scope-and-data.md), [Revisões de kits](docs/mechanics/kit-revisions.md), [Kit Tango](docs/mechanics/kit-tango.md), [Kits World ballads](docs/mechanics/kit-ballads.md) e [Kits Blues, Jazz & Rock](docs/mechanics/kit-blues-jazz-rock.md) |
+| Kits, migração, laboratório | [Criativo e persistência](docs/mechanics/creative.md), [Escopo](docs/mechanics/scope-and-data.md), [Revisões de kits](docs/mechanics/kit-revisions.md), [Kit Tango](docs/mechanics/kit-tango.md), [Kits World ballads](docs/mechanics/kit-ballads.md) , [Kits Blues, Jazz & Rock](docs/mechanics/kit-blues-jazz-rock.md) e [Kits Brazilian](docs/mechanics/kit-brazilian.md) |
 | Schema 7, migração do arranjo e LPF L/S/N | [MIDI-only e persistência](docs/mechanics/midi-persistence.md) |
 | Forma global, atribuições por peça e harmonia por compasso | [Arranjo global](docs/mechanics/arrangement.md) |
 | Regras, transições e BPM | [Estados e Eventos](docs/mechanics/states-and-events.md) e [editor de regras](docs/mechanics/states-and-events-editor.md) |
@@ -62,6 +62,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Kit Tango — Buenos Aires 1913](docs/mechanics/kit-tango.md) | 6 KB |
 | [Kits World ballads — Manchester, Dublin, New Orleans, Memphis e London](docs/mechanics/kit-ballads.md) | 7 KB |
 | [Kits Blues, Jazz & Rock](docs/mechanics/kit-blues-jazz-rock.md) | 6 KB |
+| [Kits Brazilian — formato por seção, Chula e Chamamé](docs/mechanics/kit-brazilian.md) | 7 KB |
 | [Manutenção, ideias e histórico](docs/mechanics/maintenance.md) | 7 KB |
 | [Mapa, globo e popups das cidades](docs/mechanics/map.md) | 27 KB |
 | [Cabeçalho, barra de chance e abertura da partida](docs/mechanics/match-header-and-intro.md) | 5 KB |

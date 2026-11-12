@@ -312,7 +312,7 @@ test('sample maps encode sharp filenames while preserving real local file paths'
   assert.deepEqual(Object.keys(Object.values(bass.map)[0]), ['c1', 'e1', 'g1', 'c2'])
 })
 
-test('all 67 city presets retain their authored bank order and contrasting harmonic paths', () => {
+test('all 69 city presets retain their authored bank order and contrasting harmonic paths', () => {
   const { cities } = loadTs('lib/cities-data.ts'), { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   for (const city of cities) {
     const kit = defaultCityKit(city.id)
@@ -361,6 +361,15 @@ test('all 67 city presets retain their authored bank order and contrasting harmo
         assert.ok(Object.values(instrument.arrangement.sections).every(step => step.fill === undefined || step.fill === 7))
       }
       continue // Form, sound and grid are covered in kits.cases.cjs.
+    }
+    if (city.campaigns.includes('brazilian') && kit.harmony === 'kit') {
+      // Brazilian rewrite: global banks per section (reprises share them), fills use bank 7.
+      assert.ok(kit.arrangement.sections.length >= 9)
+      for (const instrument of Object.values(kit.instruments)) {
+        assert.equal(instrument.pianoRolls.length, 8, instrument.name)
+        assert.ok(Object.values(instrument.arrangement.sections).every(step => step.fill === undefined || step.fill === 7))
+      }
+      continue // Form and sound are covered in kits.cases.cjs.
     }
     if (city.id === 'goa') {
       assert.equal(kit.arrangement.sections.length, 9)

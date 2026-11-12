@@ -297,8 +297,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 67)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 48)
+  assert.equal(cities.length, 69)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 50)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -328,7 +328,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,13,10,4,12])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,13,12,4,12])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
@@ -623,21 +623,24 @@ test('four revised electronic forms expose harmony without double-transposing ba
 
 test('Brazilian profiles validate, author their reactions and use the Brazilian bank', () => {
   const { styleProfileSchema } = loadTs('lib/admin/validation.ts')
+  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.ts')
   const { STYLE_PROFILES, CITY_STYLE_REVISIONS } = loadTs('lib/music/styled-kits.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   const { cities } = loadTs('lib/cities-data.ts')
   const brazilian = cities.filter(city => city.campaigns.includes('brazilian')).map(city => city.id)
-  assert.equal(brazilian.length, 10)
+  assert.equal(brazilian.length, 12)
   assert.ok(brazilian.includes('rio-1984'), 'the Mangueira rehearsal is a stage')
+  for (const id of ['santo-amaro-1960', 'campo-grande-1975']) assert.ok(brazilian.includes(id), `${id}: new stage`)
   const banks = new Set()
   for (const id of brazilian) {
     const profile = styleProfileSchema.parse(STYLE_PROFILES[id])
-    assert.match(CITY_STYLE_REVISIONS[id], new RegExp(`^${id}-2026-10-2[56]-brazilian-v\\d$`))
+    assert.match(CITY_STYLE_REVISIONS[id], new RegExp(`^${id}-2026-(10-2[56]|11-12)-brazilian-v\\d$`))
     assert.equal(profile.parts.length, 16)
     assert.ok(profile.reactions.rules.length >= 10, `${id}: kit reactions`)
     assert.ok(profile.reactions.rules.every(rule => profile.reactions.overrides.includes(rule.trigger)), `${id}: rules own their triggers`)
     const kit = defaultCityKit(id)
-    assert.equal(kit.name, profile.name)
+    // Official kits carry the short style name; profile kits take the profile's.
+    if (!Object.hasOwn(OFFICIAL_CITY_KITS, id)) assert.equal(kit.name, profile.name)
     for (const instrument of Object.values(kit.instruments)) if (instrument.source?.kind === 'sample') banks.add(instrument.source.bank)
   }
   assert.ok(banks.has('chicken-brasil-v1'))
@@ -649,6 +652,15 @@ test('Brazilian profiles validate, author their reactions and use the Brazilian 
   assert.equal(mangueira.instruments['w:d1'].source.asset, 'repinique')
   assert.ok(Object.values(mangueira.instruments).every(instrument => instrument.source?.asset !== 'coro-laia'))
   assert.match(cities.find(city => city.id === 'rio-1984').image, /Mangueira/)
+  assert.equal(mangueira.instruments['w:a1'].source.asset, 'surdo-marcacao', 'the heavy marcação carries the samba-enredo')
+  // Section-based rewrite: Kit Harmony, eight banks, and every song has a soft Interlude and a tense Break or Bridge.
+  for (const id of ['rio-1910', 'rio-1930', 'piracicaba-1940', 'recife-1950', 'santo-amaro-1960', 'rio-1960', 'campo-grande-1975', 'rio-1984', 'rio-1995']) {
+    const kit = defaultCityKit(id), labels = kit.arrangement.sections.map(section => section.label)
+    assert.equal(kit.harmony, 'kit', id)
+    assert.ok(labels.length >= 9 && labels.includes('Interlude') && (labels.includes('Break') || labels.includes('Bridge')), `${id}: ${labels}`)
+    assert.ok(Object.values(kit.instruments).every(instrument => instrument.pianoRolls.length === 8), id)
+  }
+  assert.equal(defaultCityKit('campo-grande-1975').meter, '6/8')
 })
 
 test('authored kits never pin a variation for a whole game phase', () => {

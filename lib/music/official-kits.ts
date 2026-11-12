@@ -3,54 +3,72 @@
 import kit0 from '../../data/music/kits/berkeley-2004.json'
 import kit1 from '../../data/music/kits/buenos-aires-1940.json'
 import kit2 from '../../data/music/kits/cambridge-1973.json'
-import kit3 from '../../data/music/kits/chicago-1958.json'
-import kit4 from '../../data/music/kits/columbus-2013.json'
-import kit5 from '../../data/music/kits/copenhagen-1869.json'
-import kit6 from '../../data/music/kits/dublin-1990.json'
-import kit7 from '../../data/music/kits/goa.json'
-import kit8 from '../../data/music/kits/jacksonville-1974.json'
-import kit9 from '../../data/music/kits/leipzig-1723.json'
-import kit10 from '../../data/music/kits/london-1970.json'
-import kit11 from '../../data/music/kits/london-1977.json'
-import kit12 from '../../data/music/kits/manchester-1999.json'
-import kit13 from '../../data/music/kits/memphis-1967.json'
-import kit14 from '../../data/music/kits/new-orleans-1953.json'
-import kit15 from '../../data/music/kits/new-york-1930.json'
-import kit16 from '../../data/music/kits/new-york-1961.json'
-import kit17 from '../../data/music/kits/new-york-1962.json'
-import kit18 from '../../data/music/kits/oakland-1959.json'
-import kit19 from '../../data/music/kits/paris-1913.json'
-import kit20 from '../../data/music/kits/paris-1945.json'
-import kit21 from '../../data/music/kits/san-diego-1999.json'
-import kit22 from '../../data/music/kits/san-francisco-1993.json'
-import kit23 from '../../data/music/kits/venice-1725.json'
-import kit24 from '../../data/music/kits/vienna-1825.json'
-import kit25 from '../../data/music/kits/vienna.json'
+import kit3 from '../../data/music/kits/campo-grande-1975.json'
+import kit4 from '../../data/music/kits/chicago-1958.json'
+import kit5 from '../../data/music/kits/columbus-2013.json'
+import kit6 from '../../data/music/kits/copenhagen-1869.json'
+import kit7 from '../../data/music/kits/dublin-1990.json'
+import kit8 from '../../data/music/kits/goa.json'
+import kit9 from '../../data/music/kits/jacksonville-1974.json'
+import kit10 from '../../data/music/kits/leipzig-1723.json'
+import kit11 from '../../data/music/kits/london-1970.json'
+import kit12 from '../../data/music/kits/london-1977.json'
+import kit13 from '../../data/music/kits/manchester-1999.json'
+import kit14 from '../../data/music/kits/memphis-1967.json'
+import kit15 from '../../data/music/kits/new-orleans-1953.json'
+import kit16 from '../../data/music/kits/new-york-1930.json'
+import kit17 from '../../data/music/kits/new-york-1961.json'
+import kit18 from '../../data/music/kits/new-york-1962.json'
+import kit19 from '../../data/music/kits/oakland-1959.json'
+import kit20 from '../../data/music/kits/paris-1913.json'
+import kit21 from '../../data/music/kits/paris-1945.json'
+import kit22 from '../../data/music/kits/piracicaba-1940.json'
+import kit23 from '../../data/music/kits/recife-1950.json'
+import kit24 from '../../data/music/kits/rio-1910.json'
+import kit25 from '../../data/music/kits/rio-1930.json'
+import kit26 from '../../data/music/kits/rio-1960.json'
+import kit27 from '../../data/music/kits/rio-1984.json'
+import kit28 from '../../data/music/kits/rio-1995.json'
+import kit29 from '../../data/music/kits/san-diego-1999.json'
+import kit30 from '../../data/music/kits/san-francisco-1993.json'
+import kit31 from '../../data/music/kits/santo-amaro-1960.json'
+import kit32 from '../../data/music/kits/venice-1725.json'
+import kit33 from '../../data/music/kits/vienna-1825.json'
+import kit34 from '../../data/music/kits/vienna.json'
 export const OFFICIAL_CITY_KITS: Record<string, unknown> = {
   'berkeley-2004': kit0,
   'buenos-aires-1940': kit1,
   'cambridge-1973': kit2,
-  'chicago-1958': kit3,
-  'columbus-2013': kit4,
-  'copenhagen-1869': kit5,
-  'dublin-1990': kit6,
-  'goa': kit7,
-  'jacksonville-1974': kit8,
-  'leipzig-1723': kit9,
-  'london-1970': kit10,
-  'london-1977': kit11,
-  'manchester-1999': kit12,
-  'memphis-1967': kit13,
-  'new-orleans-1953': kit14,
-  'new-york-1930': kit15,
-  'new-york-1961': kit16,
-  'new-york-1962': kit17,
-  'oakland-1959': kit18,
-  'paris-1913': kit19,
-  'paris-1945': kit20,
-  'san-diego-1999': kit21,
-  'san-francisco-1993': kit22,
-  'venice-1725': kit23,
-  'vienna-1825': kit24,
-  'vienna': kit25,
+  'campo-grande-1975': kit3,
+  'chicago-1958': kit4,
+  'columbus-2013': kit5,
+  'copenhagen-1869': kit6,
+  'dublin-1990': kit7,
+  'goa': kit8,
+  'jacksonville-1974': kit9,
+  'leipzig-1723': kit10,
+  'london-1970': kit11,
+  'london-1977': kit12,
+  'manchester-1999': kit13,
+  'memphis-1967': kit14,
+  'new-orleans-1953': kit15,
+  'new-york-1930': kit16,
+  'new-york-1961': kit17,
+  'new-york-1962': kit18,
+  'oakland-1959': kit19,
+  'paris-1913': kit20,
+  'paris-1945': kit21,
+  'piracicaba-1940': kit22,
+  'recife-1950': kit23,
+  'rio-1910': kit24,
+  'rio-1930': kit25,
+  'rio-1960': kit26,
+  'rio-1984': kit27,
+  'rio-1995': kit28,
+  'san-diego-1999': kit29,
+  'san-francisco-1993': kit30,
+  'santo-amaro-1960': kit31,
+  'venice-1725': kit32,
+  'vienna-1825': kit33,
+  'vienna': kit34,
 }

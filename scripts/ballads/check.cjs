@@ -1,10 +1,11 @@
 // Structural check of the World ballads kits: compile time per piece, registers, scale and density.
-// It does not judge how the music sounds. Run: node scripts/ballads/check.cjs [city ...]
+// It does not judge how the music sounds. Run: node scripts/ballads/check.cjs [city ...] (also the Brazilian kits).
 const { loadTs, strudel } = require('../../tests/helpers/music.cjs')
 const { voiceSpecs, compileVoice } = loadTs('lib/music/runtime.ts')
 const creative = loadTs('lib/music/creative.ts')
 const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
 const { SCALE_INTERVALS } = loadTs('lib/music/scales.ts')
+const { beatsPerBar } = loadTs('lib/music/meter.ts')
 const NOTE = { C: 0, 'C#': 1, D: 2, Eb: 3, E: 4, F: 5, 'F#': 6, G: 7, Ab: 8, A: 9, Bb: 10, B: 11 }
 const name = midi => ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'][((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1)
 const IDS = process.argv.slice(2).length ? process.argv.slice(2) : ['manchester-1999', 'dublin-1990', 'new-orleans-1953', 'memphis-1967', 'london-1977']
@@ -13,7 +14,7 @@ async function main() {
   const api = await strudel()
   for (const id of IDS) {
     const kit = defaultCityKit(id)
-    const total = kit.arrangement.sections.reduce((n, s) => n + s.beats, 0) / ({ '6/8': 2, '12/8': 4, '3/4': 3, '5/4': 5, '7/4': 7 }[kit.meter] ?? 4)
+    const total = kit.arrangement.sections.reduce((n, s) => n + s.beats, 0) / beatsPerBar(kit.meter)
     const pcs = new Set(SCALE_INTERVALS[kit.scale].map(i => (i + (NOTE[kit.root] ?? 0)) % 12))
     console.log(`\n${id} · ${kit.name} · ${kit.meter} ${kit.bpm} BPM · ${kit.root} ${kit.scale} · ${total} bars`)
     let slowest = 0, sum = 0, all = 0, compileMs = 0

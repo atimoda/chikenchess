@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.9.0',
     date: '12/11/2026',
-    title: 'Campanha Blues, Jazz & Rock recriada: 13 músicas novas com swing, guitarras de amplificador e grupo vocal',
+    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha Brazilian revista, com sete kits recompostos por seção e duas fases novas, Chula e Chamamé',
     groups: [
       { title: 'Campanha', items: [
         'A campanha Harmonic songbook agora se chama Blues, Jazz & Rock. A fase Canterbury 1972 (Progressive pastoral) saiu, e os estilos aparecem só com o nome do gênero, sem "/": Electric blues, Swing, Gypsy jazz, Cool jazz, Jazz waltz, Doo-wop, Piano pop, Progressive rock, Southern rock, Pop punk, Folk rock, Alternative rock e Indie pop.',
@@ -21,6 +21,16 @@ const RECENT = [
       ] },
       { title: 'Criativo', items: [
         'O campo Harmony de uma seção aceita até 16 graus (antes 8), para caber um blues de 12 compassos ou uma forma de 16 numa seção só.',
+      ] },
+      { title: 'Brazilian', items: [
+        'Duas fases novas: Santo Amaro 1960 · Chula (samba de roda do Recôncavo, com viola machete, cantadores em terças, relativo da roda, pandeiro, palmas e prato e faca) e Campo Grande 1975 · Chamamé (6/8 com acordeonas em terças, violões no arrastre, contrabaixo, violino no chamamé triste e o grito do sapucay). A campanha passa a ter 12 fases.',
+        'Choro, Samba, Sertanejo raiz, Baião, Bossa nova, Samba-enredo e Funk carioca foram recompostos: cada música tem 9 ou 10 seções, com uma parte mais suave (roda, moda de viola, toada, madrugada) e outra mais tensa (partido-alto, catira, arrasta-pé, ponte, surdos dobrando), e as reações da partida levam a elas.',
+        'Ritmos mais humanos em todos esses kits: as semicolcheias têm a ginga de cada estilo, os golpes variam de força como numa mão de verdade, alguns só às vezes tocam, e as melodias crescem e respiram por frase.',
+        'Samba-enredo: o surdo ficou grave, forte e marcante, as caixas deixaram de soar como metralhadora (dinâmica de mão e menos camadas ao mesmo tempo) e o refrão ficou mais aberto.',
+        'Bossa nova: chimbal suave, um pouco atrás do tempo, com semicolcheias que aparecem e somem e nunca dois compassos iguais.',
+        'Choro: clarinete no lugar do flautim, pandeiro e ganzá com timbres gravados e linhas melódicas mais suaves e cantadas.',
+        'Funk carioca: batidão grave e forte nos drops, sub 808 com saturação, Rhodes nos stabs e mais dinâmica entre intro, pré-refrão, drop e montagem.',
+        'Sertanejo raiz e Baião: violão, contrabaixo, pandeiro, ganzá, pífano (flauta doce) e agogô com timbres gravados; a dupla caipira canta em terças na região de tenor.',
       ] },
     ],
   },

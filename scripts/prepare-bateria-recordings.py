@@ -11,9 +11,15 @@ the surdo de primeira's ~60 Hz and cut to its ring, or damped by "the hand" for 
 abafado; a stick on a small frame drum, raised an octave and dried out, is the tamborim
 (a tamborim is a small frame drum played with a stick); tambourine jingles shaken in rows
 are the chocalho de platinelas; a guiro is the reco-reco and a ball whistle the apito.
+
+The surdo de marcação (heavy) layers the same bass drum with itself an octave up and
+saturates the sum: the fundamental stays near 60 Hz and the added harmonics (120–1000 Hz)
+keep the stroke loud and present on small speakers, where a bare 57 Hz ring disappears.
+Pass asset names to prepare only those: python3 scripts/prepare-bateria-recordings.py surdo-marcacao
 """
 import pathlib
 import subprocess
+import sys
 import urllib.parse
 import urllib.request
 
@@ -42,6 +48,12 @@ ASSETS = {
     "reco-reco": ("Idiophones/Struck Idiophones/Guiro/Guiro_Fast_rr1_Mid.wav", 2, .3, None, 1200, 11000, .85),
     "apito": ("Aerophones/Edge-blown Aerophones/Ball Whistle/Main_BallWhistle_Short-001.wav", 0, .45, None, 800, 11000, .8),
     "apito-longo": ("Aerophones/Edge-blown Aerophones/Ball Whistle/Main_BallWhistle_Long-001.wav", 0, 1.2, None, 800, 11000, .8),
+}
+
+# asset: (source, semitones, seconds kept, decay of the low layer, gain and decay of the octave layer, drive, peak)
+STRONG = {
+    "surdo-marcacao": (BD + "bassdrum_hit_ff.wav", 6, .95, .42, .6, .12, 2.6, .94),
+    "surdo-marcacao-mao": (BD + "bassdrum_hit_ff.wav", 6, .32, .09, .7, .07, 2.6, .9),
 }
 
 
@@ -79,7 +91,37 @@ def prepare(name, source, semitones, seconds, decay, highpass, lowpass, peak):
     print(f"{name}: {source} {semitones:+d} st, {len(x) / RATE:.2f} s")
 
 
+def cut(x, seconds):
+    onset = int(np.argmax(np.abs(x) > np.abs(x).max() * .05))
+    x = x[max(0, onset - int(RATE * .002)):][:int(seconds * RATE)]
+    return x / np.abs(x).max()
+
+
+def prepare_strong(name, source, semitones, seconds, decay, octave_gain, octave_decay, drive, peak):
+    with urllib.request.urlopen(VCSL + urllib.parse.quote(source, safe="/"), timeout=60) as response:
+        data = response.read()
+    low = cut(filtered(decode(data, semitones), 30, 4000), seconds)
+    octave = cut(filtered(decode(data, semitones + 12), 60, 5000), seconds)
+    size = min(len(low), len(octave))
+    t = np.arange(size) / RATE
+    x = low[:size] * np.exp(-t / decay) + octave_gain * octave[:size] * np.exp(-t / octave_decay)
+    x = np.tanh(x / np.abs(x).max() * drive) / np.tanh(drive)
+    x = filtered(x, 28, 6000)
+    fade = min(len(x) // 6, int(RATE * .04))
+    x[-fade:] *= np.linspace(1, 0, fade)
+    x = x / np.abs(x).max() * peak
+    pcm = (np.clip(x, -1, 1) * 32767).astype("<i2").tobytes()
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "s16le", "-ar", str(RATE), "-ac", "1", "-i", "pipe:0",
+                    str(DEST / f"{name}-0.wav")], input=pcm, check=True)
+    print(f"{name}: {source} {semitones:+d} st with its octave, drive {drive}, {len(x) / RATE:.2f} s")
+
+
 if __name__ == "__main__":
     DEST.mkdir(parents=True, exist_ok=True)
+    chosen = set(sys.argv[1:])
     for name, spec in ASSETS.items():
-        prepare(name, *spec)
+        if not chosen or name in chosen:
+            prepare(name, *spec)
+    for name, spec in STRONG.items():
+        if not chosen or name in chosen:
+            prepare_strong(name, *spec)

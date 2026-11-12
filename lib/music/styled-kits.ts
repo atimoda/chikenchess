@@ -55,17 +55,19 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   bristol: 'bristol-2026-11-06-electronic-v3',
   croydon: 'croydon-2026-10-25-electronic-v2',
   durban: 'durban-2026-10-25-electronic-v2',
-  // Brazilian rewrite: profiles authored by scripts/brazilian/<city>.py.
-  'rio-1910': 'rio-1910-2026-10-25-brazilian-v1',
-  'rio-1930': 'rio-1930-2026-10-25-brazilian-v1',
+  // Brazilian kits: authored by scripts/brazilian/<city>.cjs (older ones still by <city>.py).
+  'rio-1910': 'rio-1910-2026-11-12-brazilian-v2',
+  'rio-1930': 'rio-1930-2026-11-12-brazilian-v2',
   'recife-1935': 'recife-1935-2026-10-25-brazilian-v1',
-  'piracicaba-1940': 'piracicaba-1940-2026-10-25-brazilian-v1',
-  'recife-1950': 'recife-1950-2026-10-25-brazilian-v1',
-  'rio-1960': 'rio-1960-2026-10-25-brazilian-v1',
+  'piracicaba-1940': 'piracicaba-1940-2026-11-12-brazilian-v2',
+  'recife-1950': 'recife-1950-2026-11-12-brazilian-v2',
+  'rio-1960': 'rio-1960-2026-11-12-brazilian-v2',
   'recife-1975': 'recife-1975-2026-10-25-brazilian-v1',
-  'rio-1984': 'rio-1984-2026-10-26-brazilian-v2',
+  'rio-1984': 'rio-1984-2026-11-12-brazilian-v3',
   'salvador-1992': 'salvador-1992-2026-10-25-brazilian-v1',
-  'rio-1995': 'rio-1995-2026-10-26-brazilian-v2',
+  'rio-1995': 'rio-1995-2026-11-12-brazilian-v3',
+  'santo-amaro-1960': 'santo-amaro-1960-2026-11-12-brazilian-v1',
+  'campo-grande-1975': 'campo-grande-1975-2026-11-12-brazilian-v1',
 }
 
 const SAMPLE_BANKS = { electro: 'chicken-electro-v1', jazz: 'chicken-jazz-v1', world: 'chicken-world-v1', strings: 'chicken-strings-v1', keys: 'chicken-keys-v1', synths: 'chicken-synths-v1', drums: 'chicken-drums-v1', sambaReggae: 'chicken-samba-reggae-v2', classical: 'chicken-classical-v1', band: 'chicken-band-v1', percussion: 'chicken-percussion-v1', guitars: 'chicken-guitars-v1', amps: 'chicken-amps-v1', voices: 'chicken-voices-v1', psytrance: 'chicken-psytrance-v1', machines: 'chicken-machines-v1', electronic: 'chicken-electronic-v1', brasil: 'chicken-brasil-v1', bateria: 'chicken-bateria-v1' } as const
