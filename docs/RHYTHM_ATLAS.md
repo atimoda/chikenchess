@@ -1,19 +1,19 @@
 # Atlas rítmico — v0.6.0
 
-19 composições originais, adicionadas às 27 fases anteriores. Datas são ambientação; nenhum kit reproduz uma melodia das canções citadas como referência pelo usuário. Cada kit tem 16 papéis por equipe, quatro variações, uma base grave e motivos escritos para sua subdivisão e seções com densidades distintas.
+51 composições originais nas campanhas Brazilian, Africa Cult, World, World ballads, Classical e Blues, Jazz & Rock. Os kits das três primeiras são escritos por seção (`docs/mechanics/kit-brazilian.md` e `docs/mechanics/kit-world-africa.md`); a descrição de papéis e variações abaixo vale para os demais. Datas são ambientação; nenhum kit reproduz uma melodia das canções citadas como referência pelo usuário. Cada kit tem 16 papéis por equipe, quatro variações, uma base grave e motivos escritos para sua subdivisão e seções com densidades distintas.
 
 | Cidade / época | Estilo | Relógio | BPM | Campanha |
 | --- | --- | --- | ---: | --- |
 | Rio de Janeiro · 1930 | Samba | 2/4 · BPM = semínima | 104 | Brazilian |
 | Rio de Janeiro · 1910 | Choro | 2/4 · BPM = semínima | 112 | Brazilian |
 | Recife · 1935 | Frevo | 2/4 · BPM = semínima | 152 | Brazilian |
-| Recife · 1950 | Baião / pé de serra | 2/4 · BPM = semínima | 108 | Brazilian |
-| Piracicaba · 1940 | Sertanejo de raiz / cateretê | 2/4 · BPM = semínima | 100 | Brazilian |
+| Recife · 1950 | Baião | 2/4 · BPM = semínima | 108 | Brazilian |
+| Piracicaba · 1940 | Sertanejo raiz | 2/4 · BPM = semínima | 100 | Brazilian |
 | Rio de Janeiro · 1960 | Bossa nova | 4/4 · BPM = semínima | 116 | Brazilian |
 | Salvador · 1992 | Samba-reggae | 4/4 · BPM = semínima | 104 | Brazilian |
-| Recife · 1975 | Maracatu de baque virado | 4/4 · BPM = semínima | 108 | Brazilian |
+| Recife · 1975 | Maracatu | 4/4 · BPM = semínima | 108 | Brazilian |
 | Rio de Janeiro · 1995 | Funk carioca | 4/4 · BPM = semínima | 128 | Brazilian |
-| Santo Amaro · 1960 | Samba de roda · chula | 2/4 · BPM = semínima | 100 | Brazilian |
+| Santo Amaro · 1960 | Chula | 2/4 · BPM = semínima | 100 | Brazilian |
 | Campo Grande · 1975 | Chamamé | 6/8 · BPM = semínima pontuada | 84 | Brazilian |
 | New York City · 1962 | Jazz waltz | 3/4 · BPM = semínima | 138 | Blues, Jazz & Rock |
 | London · 1977 | Arena rock in six | 6/8 · BPM = semínima pontuada | 66 | World ballads |
@@ -23,21 +23,34 @@
 | Vienna · 1825 | Orchestral alla breve | 2/2 · BPM = mínima | 88 | Classical music |
 | Oakland · 1959 | Cool jazz | 5/4 · BPM = semínima · 3+2 | 160 | Blues, Jazz & Rock |
 | Cambridge · 1973 | Progressive rock | 7/4 · BPM = semínima · 4+3 | 118 | Blues, Jazz & Rock |
-| Istanbul · 1970 | Turkish dance study | 5/8 · BPM = colcheia · 3+2 | 210 | World rhythms |
-| Kalamata · 1930 | Kalamatianos study | 7/8 · BPM = colcheia · 3+2+2 | 210 | World rhythms |
-| Santiago del Estero · 1960 | Chacarera study | 6/8 · BPM = semínima pontuada | 102 | World rhythms |
+| Istanbul · 1970 | Anatolian rock | 5/8 · BPM = colcheia · 3+2 | 210 | World rhythms |
+| Kalamata · 1930 | Kalamatianos | 7/8 · BPM = colcheia · 3+2+2 | 210 | World rhythms |
+| Santiago del Estero · 1960 | Chacarera | 6/8 · BPM = semínima pontuada | 102 | World rhythms |
+| Jerez de la Frontera · 1970 | Flamenco | 12/8 · BPM = semínima pontuada | 80 | World rhythms |
+| Havana · 1950 | Son cubano | 4/4 · BPM = semínima | 96 | World rhythms |
+| Barranquilla · 1960 | Cumbia | 4/4 · BPM = semínima | 92 | World rhythms |
+| Guča · 1975 | Čoček | 9/8 · BPM = semínima pontuada · 2+2+2+3 | 132 | World rhythms |
+| Cairo · 1960 | Baladi | 4/4 · BPM = semínima | 100 | World rhythms |
+| Amritsar · 1980 | Bhangra | 4/4 · BPM = semínima | 96 | World rhythms |
+| Ubud · 1935 | Gamelan | 4/4 · BPM = semínima | 120 | World rhythms |
+| Lima · 1975 | Festejo | 12/8 · BPM = semínima pontuada | 108 | World rhythms |
+| Yirrkala · 1960 | Manikay | 4/4 · BPM = semínima | 108 | World rhythms |
+| Papeete · 1960 | Ōte'a | 4/4 · BPM = semínima | 132 | World rhythms |
+| Honolulu · 1935 | Hula | 4/4 · BPM = semínima | 88 | World rhythms |
+| Rotorua · 1920 | Haka | 4/4 · BPM = semínima | 100 | World rhythms |
+| Port Moresby · 1970 | String band | 4/4 · BPM = semínima | 116 | World rhythms |
 | Luanda · 1982 | Kizomba | 4/4 · BPM = semínima | 94 | African Rhythms |
 | Luanda · 1965 | Semba | 4/4 · BPM = semínima | 108 | African Rhythms |
 | Lagos · 1975 | Afrobeat | 4/4 · BPM = semínima | 115 | African Rhythms |
-| Essaouira · 1980 | Gnawa trance study | 12/8 · BPM = semínima pontuada | 118 | African Rhythms |
+| Essaouira · 1980 | Gnawa | 12/8 · BPM = semínima pontuada | 118 | African Rhythms |
 | Maputo · 1978 | Marrabenta | 4/4 · BPM = semínima | 124 | African Rhythms |
 | Dakar · 1985 | Mbalax | 4/4 · BPM = semínima | 112 | African Rhythms |
 | Luanda · 1996 | Kuduro | 4/4 · BPM = semínima | 138 | African Rhythms |
 | Harare · 1981 | Chimurenga | 12/8 · BPM = semínima pontuada | 118 | African Rhythms |
-| Kinshasa · 1978 | Soukous sebene | 4/4 · BPM = semínima | 126 | African Rhythms |
-| Lagos · 1982 | Jùjú study | 4/4 · BPM = semínima | 110 | African Rhythms |
+| Kinshasa · 1978 | Soukous | 4/4 · BPM = semínima | 126 | African Rhythms |
+| Lagos · 1982 | Jùjú | 4/4 · BPM = semínima | 110 | African Rhythms |
 | Gaza · 1987 | Majika | 4/4 · BPM = semínima | 126 | African Rhythms |
-| Kisumu · 1980 | Benga study | 4/4 · BPM = semínima | 130 | African Rhythms |
+| Kisumu · 1980 | Benga | 4/4 · BPM = semínima | 130 | African Rhythms |
 
 ## Decisões musicais
 
@@ -49,7 +62,7 @@ A campanha African Rhythms reúne 12 estudos de ritmos populares africanos funda
 
 Salvador 1992 acrescenta 16 papéis por equipe: os cavalos tocam trompetes e as torres, trombones. Surdos fundo e meio alternam a base; a viradeira, repenique, caixa, tarol e timbau ocupam respostas e fechos distintos. Agogôs, chocalho e pandeiro guiam ou preenchem as subdivisões. A seção A estabelece os graves e a guia; B abre as respostas e os metais; C retira parte da massa; D traz viradas mais densas. A composição toma a energia coletiva de “Nossa Gente (Avisa Lá)” como direção, com notas e células novas.
 
-Recife 1975 representa o Maracatu de baque virado a 108 BPM em 4/4: as alfaias distribuem-se entre marcador (surdo fundo marcando o chão), meador (surdo meio nas síncopas) e viradeira (redobles e cortes ágeis). A clave metálica de gonguê conduz o tempo, acompanhada de tarol em semicolcheias constantes, caixa de guerra com acentos sincopados, agbê/xequerê e pandeiro. Os sopros trazem a solenidade do cortejo: sax tenor conduz as toadas do mestre, enquanto trompetes e trombone executam fanfarras e chamadas cerimoniais sobre um contrabaixo acústico em D Mixolídio.
+Recife 1975 representa o Maracatu a 108 BPM em 4/4: as alfaias distribuem-se entre marcador (surdo fundo marcando o chão), meador (surdo meio nas síncopas) e viradeira (redobles e cortes ágeis). A clave metálica de gonguê conduz o tempo, acompanhada de tarol em semicolcheias constantes, caixa de guerra com acentos sincopados, agbê/xequerê e pandeiro. Os sopros trazem a solenidade do cortejo: sax tenor conduz as toadas do mestre, enquanto trompetes e trombone executam fanfarras e chamadas cerimoniais sobre um contrabaixo acústico em D Mixolídio.
 
 Rio de Janeiro 1995 recria a era clássica do Funk Carioca dos bailes de galpão e paredões de som a 128 BPM em 4/4: o batidão sincopado estilo Volt Mix / Miami Bass combina o kick seco de 808, sub-bass retumbante, caixas e claps cortantes, semicolcheias de chimbau fechado, aberturas no contratempo, cowbell de 808 e viradas de tom. Sobre a máquina rítmica, o baixo synth ácido desenha riffs dançantes, enquanto stabs de metais, piano elétrico, choir e um pad nostálgico de Funk Melody em F Menor Natural constroem a atmosfera comunitária dos bailes de favela.
 

@@ -71,7 +71,7 @@ test('Classical campaigns use recorded multisamples, articulations and dedicated
   assert.equal(sampleRegistration({ kind: 'sample', bank: 'chicken-classical-v1', asset: 'violin-pizzicato', variant: 3, pitched: true }).files.length, 4)
 })
 
-test('Salvador 1992 assigns brass to knights and rooks over complementary surdos', () => {
+test('Salvador 1992 sets trumpet, trombone and coro over the bloco\'s complementary surdos', () => {
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   const { cities } = loadTs('lib/cities-data.ts')
   const kit = defaultCityKit('salvador-1992')
@@ -79,19 +79,27 @@ test('Salvador 1992 assigns brass to knights and rooks over complementary surdos
   assert.equal(kit.meter, '4/4')
   assert.deepEqual(city.campaigns, ['brazilian'])
   assert.match(city.image, /^https:\/\//)
-  for (const id of ['w:b1', 'w:g1']) assert.equal(kit.instruments[id].source.asset, 'trompete')
-  for (const id of ['w:a1', 'w:h1']) assert.equal(kit.instruments[id].source.asset, 'trombone')
-  // The bloco's percussion and brass come from the samba-reggae bank; the coro, guitar and bass come from the Brazilian voices and band banks.
-  for (const [id, instrument] of Object.entries(kit.instruments)) if (!['w:d1', 'w:e1', 'w:f1'].includes(id) && id.startsWith('w:')) assert.equal(instrument.source.bank, 'chicken-samba-reggae-v2', id)
-  assert.equal(kit.instruments['w:d1'].source.bank, 'chicken-brasil-v1')
+  assert.equal(kit.instruments['w:b1'].source.asset, 'trompete')
+  assert.equal(kit.instruments['w:f1'].source.asset, 'trombone')
+  // The bloco's drums and brass come from the samba-reggae bank; the coro from the Brazilian voices and the bass and guitars from the guitar bank.
+  for (const [id, asset] of [['w:a2', 'surdo-fundo'], ['w:b2', 'surdo-meio'], ['w:d2', 'surdo-viradeira'], ['w:e1', 'repinique'], ['w:e2', 'timbau']]) {
+    assert.equal(kit.instruments[id].source.bank, 'chicken-samba-reggae-v2', id)
+    assert.equal(kit.instruments[id].source.asset, asset)
+  }
+  for (const id of ['w:d1', 'w:h1']) assert.equal(kit.instruments[id].source.bank, 'chicken-brasil-v1')
+  for (const id of ['w:a1', 'w:c1', 'w:g1']) assert.equal(kit.instruments[id].source.bank, 'chicken-guitars-v1')
   const { sampleRegistration } = loadTs('lib/music/sample-banks.ts')
   assert.equal(sampleRegistration(kit.instruments['w:b1'].source).files.length, 3, 'trumpet uses three recorded notes')
-  assert.equal(sampleRegistration(kit.instruments['w:a1'].source).files.length, 3, 'trombone uses three recorded notes')
-  const onsets = id => kit.instruments[id].pianoRolls[0].notes.map(note => note.start)
-  assert.deepEqual(onsets('w:a2'), [0, .5], 'fundo anchors the first and third beats')
-  assert.deepEqual(onsets('w:b2'), [.25, .75], 'meio fills the second and fourth beats')
-  assert.equal(kit.instruments['w:b1'].arrangement.sections[kit.arrangement.sections[0].id].variation, null)
-  assert.notEqual(kit.instruments['w:b1'].arrangement.sections[kit.arrangement.sections[1].id].variation, null)
+  assert.equal(sampleRegistration(kit.instruments['w:f1'].source).files.length, 3, 'trombone uses three recorded notes')
+  // Verse bank, first bar: the fundo on the first and third beats, the meio answering on the second and fourth.
+  const beats = id => kit.instruments[id].pianoRolls[1].notes.filter(note => note.start < 1).map(note => Math.round(note.start * 4))
+  assert.deepEqual(beats('w:a2'), [0, 2], 'fundo anchors the first and third beats')
+  assert.deepEqual(beats('w:b2'), [1, 3], 'meio fills the second and fourth beats')
+  const sections = kit.arrangement.sections
+  assert.equal(kit.instruments['w:b1'].arrangement.sections[sections[0].id].variation, null, 'the trumpet waits out the intro')
+  assert.notEqual(kit.instruments['w:b1'].arrangement.sections[sections[1].id].variation, null)
+  assert.equal(kit.instruments['w:d1'].arrangement.sections[sections[1].id].variation, null, 'the coro keeps the refrain for the chorus')
+  assert.notEqual(kit.instruments['w:d1'].arrangement.sections[sections[2].id].variation, null)
 })
 
 test('new timbre banks reach the intended city styles', () => {
@@ -161,7 +169,7 @@ test('Düsseldorf and New Orleans leave their featured voices room in later sect
 
 test('Goa 1994 ships an official psytrance kit with its own palette, articulations and reactions', () => {
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.ts')
+  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.js')
   const { cities } = loadTs('lib/cities-data.ts')
   const goa = cities.find(city => city.id === 'goa')
   assert.deepEqual(goa.campaigns, ['electronic-history'])
@@ -250,7 +258,7 @@ test('every city has a reproducible, distinct kit with roles independent of ches
   const { defaultCityKit, EDITABLE_CITY_KITS } = loadTs('lib/music/city-kits.ts')
   const { createRandomCityKit } = loadTs('lib/music/random-kit.ts')
   const { REACTION_PRESET_REVISION } = loadTs('lib/music/reactions.ts')
-  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.ts')
+  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.js')
   const { STYLE_PROFILES } = loadTs('lib/music/styled-kits.ts')
   assert.deepEqual(EDITABLE_CITY_KITS.map(c => c.id), cities.map(c => c.id))
   const fingerprints = new Set(), kingBehaviors = new Set()
@@ -297,8 +305,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 69)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 50)
+  assert.equal(cities.length, 82)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 63)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -328,7 +336,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,13,12,4,12])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,12,12,13,17])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })
@@ -455,7 +463,8 @@ test('curated collection has finite, bounded events across all banks and full fo
   const kit=defaultCityKit(city.id),snapshot=creative.creativeSnapshot(kit,true)
   for(const voice of voiceSpecs({...snapshot,pieces:snapshot.pieces.map(p=>({...p,active:true}))},null)){
    for(let section=0;section<voice.pianoRolls.length;section++){
-    const events=compileVoice(api,{...voice,performance:undefined,sectionPattern:String(section)}).queryArc(0,Math.max(8,voice.pianoRolls[section].bars))
+    // A part may enter late in a long section: listen to the whole roll, not only its first eight bars.
+    const events=compileVoice(api,{...voice,performance:undefined,sectionPattern:String(section)}).queryArc(0,Math.max(8,voice.pianoRolls[section].bars??8))
     if(voice.pianoRolls[section].notes.length)assert.ok(events.length>0,`${city.id}/${voice.key}/${section} has music`)
     else assert.equal(events.length,0,`${city.id}/${voice.key}/${section}: authored empty MIDI stays silent`)
     for(const h of events){assert.ok(Number.isFinite(h.value.gain));if(!voice.unpitched)assert.ok(Number.isFinite(Number(h.value.note)))}
@@ -623,7 +632,7 @@ test('four revised electronic forms expose harmony without double-transposing ba
 
 test('Brazilian profiles validate, author their reactions and use the Brazilian bank', () => {
   const { styleProfileSchema } = loadTs('lib/admin/validation.ts')
-  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.ts')
+  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.js')
   const { STYLE_PROFILES, CITY_STYLE_REVISIONS } = loadTs('lib/music/styled-kits.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   const { cities } = loadTs('lib/cities-data.ts')
@@ -884,7 +893,7 @@ test('Tango 1913 uses Kit Harmony, section and note sound, fills and its own rea
 })
 
 test('World ballads: five rewritten kits with Kit Harmony, contrasting sections, section and note sound, fills and reactions', async () => {
-  const api=await strudel(),{defaultCityKit}=loadTs('lib/music/city-kits.ts'),{cities}=loadTs('lib/cities-data.ts'),{OFFICIAL_CITY_KITS}=loadTs('lib/music/official-kits.ts')
+  const api=await strudel(),{defaultCityKit}=loadTs('lib/music/city-kits.ts'),{cities}=loadTs('lib/cities-data.ts'),{OFFICIAL_CITY_KITS}=loadTs('lib/music/official-kits.js')
   const expected={
     'manchester-1999':['Nu-jazz breaks','4/4',94,'G','Dórica'], 'dublin-1990':['Irish jig session','6/8',100,'D','Maior'],
     'new-orleans-1953':['Rhythm & blues','12/8',72,'C','Maior'], 'memphis-1967':['Southern soul','12/8',64,'F','Maior'],

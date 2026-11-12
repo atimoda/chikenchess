@@ -12,19 +12,19 @@
     "name": "Classical"
   },
   {
-    "id": "harmonic-songbook",
-    "name": "Blues, Jazz & Rock"
-  },
-  {
     "id": "brazilian",
     "name": "Brazilian"
   },
   {
-    "id": "world-rhythms",
-    "name": "World"
-  },
-  {
     "id": "african-rhythms",
     "name": "Africa Cult"
+  },
+  {
+    "id": "harmonic-songbook",
+    "name": "Blues, Jazz & Rock"
+  },
+  {
+    "id": "world-rhythms",
+    "name": "World"
   }
 ]

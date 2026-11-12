@@ -37,6 +37,19 @@ Imagens são servidas pelas URLs indicadas em `lib/cities-data.ts`. Parâmetros 
 | Lagos, 1982 · Jùjú | Celebração de jùjú com talking drums e oriki em Lagos | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Juju_music_gathering_Lagos.jpg) |
 | Gaza, 1987 · Majika | Grupo comunitário executando xigubu e timbila na província de Gaza | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Timbila_chopi_Mozambique.jpg) |
 | Kisumu, 1980 · Benga | Celebração com nyatiti e dança tradicional do povo Luo às margens do Lago Vitória | Wikimedia Commons; CC BY-SA | [Commons](https://commons.wikimedia.org/wiki/File:Luo_traditional_dance_Kenya.jpg) |
+| Jerez de la Frontera, 1970 · Flamenco | Praça do Arenal, no centro de Jerez | Wikimedia Commons · Draceane; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Arenal,_Jerez_de_la_Frontera,_2023_(01).jpg) |
+| Havana, 1950 · Son cubano | Havana Velha à noite | Wikimedia Commons · Gabriel Rodríguez; CC BY-SA 2.0 | [Commons](https://commons.wikimedia.org/wiki/File:Habana_Vieja_de_noche.jpg) |
+| Barranquilla, 1960 · Cumbia | Vista da cidade de Barranquilla | Wikimedia Commons · Mariobot; CC BY-SA 3.0 | [Commons](https://commons.wikimedia.org/wiki/File:Barranquilla.jpg) |
+| Guča, 1975 · Čoček | Desfile das bandas no festival de trompete de Guča | Wikimedia Commons · Gumenjak; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Trumpet_Festival_in_Guca_Serbia_Defile.jpg) |
+| Cairo, 1960 · Baladi | Vista do Cairo | Wikimedia Commons · Plodan; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:CAIRO3.jpg) |
+| Amritsar, 1980 · Bhangra | Estátua de dançarinos de bhangra em Amritsar | Wikimedia Commons · Amritpal Singh Mann; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Statue_of_Bhangra_in_Amritsar_26_September_2018.jpg) |
+| Ubud, 1935 · Gamelan | Oferendas em uma rua de Ubud, Bali | Wikimedia Commons · Jakub Hałun; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Offerings_on_the_street_of_Ubud,_Bali,_20220823_0836_0242.jpg) |
+| Lima, 1975 · Festejo | Distrito financeiro de Lima | Wikimedia Commons · LLs; CC BY-SA 3.0 | [Commons](https://commons.wikimedia.org/wiki/File:Distrito_financiero_de_Lima_(19864).jpg) |
+| Yirrkala, 1960 · Manikay | Costa leste da Península de Gove, perto de Yirrkala, em imagem de satélite (não há fotografia livre adequada da comunidade) | Wikimedia Commons · SentinelHub; CC BY 2.0 | [Commons](https://commons.wikimedia.org/wiki/File:Eastern_Gove_Peninsula_coast,_Australia_(52032971835).png) |
+| Papeete, 1960 · Ōte'a | Enseada de Papeete, Taiti | Wikimedia Commons · Jérémie Silvestro; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Rade_de_Papeete.jpg) |
+| Honolulu, 1935 · Hula | Vista do mirante de Diamond Head | Wikimedia Commons · Farragutful; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:2022_Views_from_Diamond_Head_07.jpg) |
+| Rotorua, 1920 · Haka | Orla do lago Rotorua | Wikimedia Commons · Kiwiz1338; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Lake_Rotorua_lake_front.jpg) |
+| Port Moresby, 1970 · String band | Porto de Port Moresby | Wikimedia Commons · Masalai; CC BY-SA 3.0 | [Commons](https://commons.wikimedia.org/wiki/File:Port_Moresby_Harbour_with_floating_and_sunk_ships.jpg) |
 
 As demais imagens são fotografias próprias por kit servidas por Unsplash ou pelos provedores indicados no próprio endereço. Consulte cada URL no catálogo de dados para conferir a origem e os termos aplicáveis.
 

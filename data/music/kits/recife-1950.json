@@ -352,7 +352,7 @@
   },
   "reactionPresetRevision": "reactions-2026-10-23-global-v2",
   "harmony": "kit",
-  "catalogRevision": "recife-1950-2026-11-12-brazilian-v2",
+  "catalogRevision": "recife-1950-2026-11-12-brazilian-v3",
   "version": 7,
   "name": "Baião",
   "cityId": "recife-1950",
@@ -6337,6 +6337,42 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.56
+            },
+            {
+              "start": 1.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 1.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 2.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
             }
           ]
         },
@@ -6354,6 +6390,42 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 1.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 1.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
             }
           ]
         },
@@ -6362,6 +6434,26 @@
           "notes": [
             {
               "start": 0.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.25,
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
@@ -6379,6 +6471,42 @@
             },
             {
               "start": 0.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 1.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 3.7421875,
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.6
@@ -6401,6 +6529,48 @@
               "degree": 0,
               "cutoff": 0.1,
               "velocity": 0.96
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 1.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
             }
           ]
         },
@@ -7456,6 +7626,18 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.6
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
             }
           ]
         },
@@ -7481,6 +7663,26 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 0.96
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
             }
           ]
         },
@@ -7563,7 +7765,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.36,
+      "gain": 0.33,
       "attack": 0.001,
       "release": 0.15,
       "lpf": 3200,
@@ -8135,7 +8337,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.34,
+      "gain": 0.3,
       "attack": 0.001,
       "release": 0.05,
       "lpf": 8500,
@@ -8196,6 +8398,49 @@
               "degree": 0,
               "cutoff": -0.2,
               "velocity": 0.4
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
             }
           ]
         },
@@ -8249,6 +8494,54 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.8
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
             }
           ]
         },
@@ -8297,6 +8590,52 @@
             },
             {
               "start": 1.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3.8671875,
               "duration": 0.0625,
               "degree": 0,
               "cutoff": -0.2,
@@ -8372,6 +8711,72 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
             }
           ]
         },
@@ -8848,6 +9253,81 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
             }
           ]
         },
@@ -8929,6 +9409,82 @@
               "chance": 0.6,
               "cutoff": -0.2,
               "velocity": 0.32
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
             }
           ]
         },
@@ -9016,6 +9572,89 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 2.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.72
+            },
+            {
+              "start": 3.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 3.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
             }
           ]
         },
@@ -9118,6 +9757,108 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.44
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.72
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
             }
           ]
         },
@@ -9294,7 +10035,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.3,
+      "gain": 0.27,
       "attack": 0.001,
       "release": 0.05,
       "lpf": 9000,
@@ -9364,6 +10105,160 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.44
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 1.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 1.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 1.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 1.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 1.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 2.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
             }
           ]
         },
@@ -9433,6 +10328,182 @@
               "chance": 0.6,
               "cutoff": -0.2,
               "velocity": 0.28
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 1.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 1.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 1.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 1.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
+            },
+            {
+              "start": 1.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 1.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.36
             }
           ]
         },
@@ -9486,6 +10557,162 @@
             },
             {
               "start": 0.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 1.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 1.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 1.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 1.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.8671875,
               "duration": 0.0625,
               "degree": 0,
               "cutoff": -0.2,
@@ -9716,7 +10943,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.42,
+      "gain": 0.37,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 9000,
@@ -9800,6 +11027,71 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.68
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
             }
           ]
         },
@@ -9835,6 +11127,87 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
             }
           ]
         },
@@ -9944,6 +11317,110 @@
               "degree": 0,
               "cutoff": 0.1,
               "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 2.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 0.96
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 3.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 0.96
             }
           ]
         },
@@ -10050,6 +11527,26 @@
               "chance": 0.6,
               "cutoff": -0.2,
               "velocity": 0.28
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
             }
           ]
         },
@@ -10105,6 +11602,48 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.84
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
             }
           ]
         },
@@ -10280,6 +11819,50 @@
               "degree": 0,
               "cutoff": -0.2,
               "velocity": 0.44
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
             }
           ]
         },
@@ -10303,6 +11886,44 @@
               "degree": 0,
               "cutoff": -0.2,
               "velocity": 0.4
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
             }
           ]
         },
@@ -10350,6 +11971,48 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
             }
           ]
         },
@@ -10565,7 +12228,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.36,
+      "gain": 0.33,
       "attack": 0.001,
       "release": 0.15,
       "lpf": 3200,
@@ -11137,7 +12800,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.34,
+      "gain": 0.3,
       "attack": 0.001,
       "release": 0.05,
       "lpf": 8500,
@@ -11198,6 +12861,49 @@
               "degree": 0,
               "cutoff": -0.2,
               "velocity": 0.4
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
             }
           ]
         },
@@ -11251,6 +12957,54 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.8
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
             }
           ]
         },
@@ -11299,6 +13053,52 @@
             },
             {
               "start": 1.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3.8671875,
               "duration": 0.0625,
               "degree": 0,
               "cutoff": -0.2,
@@ -11374,6 +13174,72 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
             }
           ]
         },
@@ -11850,6 +13716,81 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
             }
           ]
         },
@@ -11931,6 +13872,82 @@
               "chance": 0.6,
               "cutoff": -0.2,
               "velocity": 0.32
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
             }
           ]
         },
@@ -12018,6 +14035,89 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 2.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.72
+            },
+            {
+              "start": 3.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 3.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
             }
           ]
         },
@@ -12120,6 +14220,108 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.44
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.72
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
             }
           ]
         },
@@ -12296,7 +14498,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.3,
+      "gain": 0.27,
       "attack": 0.001,
       "release": 0.05,
       "lpf": 9000,
@@ -12366,6 +14568,160 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.44
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 1.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 1.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 1.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 1.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 1.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 2.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
             }
           ]
         },
@@ -12435,6 +14791,182 @@
               "chance": 0.6,
               "cutoff": -0.2,
               "velocity": 0.28
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 1.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 1.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 1.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 1.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
+            },
+            {
+              "start": 1.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 1.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.36
             }
           ]
         },
@@ -12488,6 +15020,162 @@
             },
             {
               "start": 0.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 1.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 1.359375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 1.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 1.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.140625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.8671875,
               "duration": 0.0625,
               "degree": 0,
               "cutoff": -0.2,
@@ -12718,7 +15406,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.42,
+      "gain": 0.37,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 9000,
@@ -12802,6 +15490,71 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.68
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 2.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 2.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.859375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
             }
           ]
         },
@@ -12837,6 +15590,87 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 1.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
             }
           ]
         },
@@ -12946,6 +15780,110 @@
               "degree": 0,
               "cutoff": 0.1,
               "velocity": 1
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 2.125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 2.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.28
+            },
+            {
+              "start": 2.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 0.96
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.36
+            },
+            {
+              "start": 3.1328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.32
+            },
+            {
+              "start": 3.625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.68
+            },
+            {
+              "start": 3.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 0.96
             }
           ]
         },
@@ -13052,6 +15990,26 @@
               "chance": 0.6,
               "cutoff": -0.2,
               "velocity": 0.28
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.8671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "chance": 0.6,
+              "cutoff": -0.2,
+              "velocity": 0.24
             }
           ]
         },
@@ -13107,6 +16065,48 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.84
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.5078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.4921875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.6328125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
             }
           ]
         },
@@ -13282,6 +16282,50 @@
               "degree": 0,
               "cutoff": -0.2,
               "velocity": 0.44
+            },
+            {
+              "start": 2,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.375,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 3.875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
             }
           ]
         },
@@ -13305,6 +16349,44 @@
               "degree": 0,
               "cutoff": -0.2,
               "velocity": 0.4
+            },
+            {
+              "start": 1,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
             }
           ]
         },
@@ -13352,6 +16434,48 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 2.0078125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 2.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 3,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.3671875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.640625,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
             }
           ]
         },
@@ -19116,6 +22240,42 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.56
+            },
+            {
+              "start": 1.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 1.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 2.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
             }
           ]
         },
@@ -19133,6 +22293,42 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 1.2421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 1.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
+            },
+            {
+              "start": 2.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.76
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.8
             }
           ]
         },
@@ -19141,6 +22337,26 @@
           "notes": [
             {
               "start": 0.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.48
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.44
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": -0.2,
+              "velocity": 0.4
+            },
+            {
+              "start": 3.25,
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.48
@@ -19158,6 +22374,42 @@
             },
             {
               "start": 0.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 1.7578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 2.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.52
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.64
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.6
+            },
+            {
+              "start": 3.7421875,
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.6
@@ -19180,6 +22432,48 @@
               "degree": 0,
               "cutoff": 0.1,
               "velocity": 0.96
+            },
+            {
+              "start": 1.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 1.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 2.2578125,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 2.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.25,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
             }
           ]
         },
@@ -20235,6 +23529,18 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.6
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
+            },
+            {
+              "start": 3.7421875,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.56
             }
           ]
         },
@@ -20260,6 +23566,26 @@
               "duration": 0.0625,
               "degree": 0,
               "velocity": 0.76
+            },
+            {
+              "start": 2.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 0.96
+            },
+            {
+              "start": 3.5,
+              "duration": 0.0625,
+              "degree": 0,
+              "cutoff": 0.1,
+              "velocity": 1
+            },
+            {
+              "start": 3.75,
+              "duration": 0.0625,
+              "degree": 0,
+              "velocity": 0.84
             }
           ]
         },

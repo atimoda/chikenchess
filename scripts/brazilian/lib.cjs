@@ -14,10 +14,17 @@ const METERS = {
   '2/4': { beat: 1 / 2, eighth: 1 / 4, sixteenth: 1 / 8, beats: 2, ternary: false, res: 8 },
   '4/4': { beat: 1 / 4, eighth: 1 / 8, sixteenth: 1 / 16, beats: 4, ternary: false, res: 16 },
   '6/8': { beat: 1 / 2, eighth: 1 / 6, sixteenth: 1 / 12, beats: 2, ternary: true, res: 12 },
+  '12/8': { beat: 1 / 4, eighth: 1 / 12, sixteenth: 1 / 24, beats: 4, ternary: true, res: 24 },
+  // Aksak bars count eighths: 5/8 (3+2) on a 1/160 grid, 7/8 (3+2+2) on 1/224.
+  '5/8': { beat: 1 / 5, eighth: 1 / 5, sixteenth: 1 / 10, beats: 5, ternary: false, res: 10, grid: 160 },
+  '7/8': { beat: 1 / 7, eighth: 1 / 7, sixteenth: 1 / 14, beats: 7, ternary: false, res: 14, grid: 224 },
+  // 9/8 as the Balkan aksak (2+2+2+3): the engine counts three beats a bar, the writing counts nine eighths.
+  '9/8': { beat: 1 / 9, eighth: 1 / 9, sixteenth: 1 / 18, beats: 3, ternary: false, res: 18, grid: 144 },
 }
 const SCALES = {
   'Maior': [0, 2, 4, 5, 7, 9, 11], 'Dórica': [0, 2, 3, 5, 7, 9, 10], 'Mixolídia': [0, 2, 4, 5, 7, 9, 10],
   'Menor natural': [0, 2, 3, 5, 7, 8, 10], 'Harmônica menor': [0, 2, 3, 5, 7, 8, 11],
+  'Phrygian': [0, 1, 3, 5, 7, 8, 10], 'Phrygian dominant': [0, 1, 4, 5, 7, 8, 10],
 }
 // Hand dynamics of a drum grid: accent, stroke, medium, soft, softer, ghost; "?" and "," only sometimes play.
 const HIT = { X: 1, x: .8, m: .68, o: .58, h: .46, g: .32, '?': .58, ',': .3, r: .74, R: .8 }
@@ -30,7 +37,7 @@ function random(seed) {
 function composer(meter, scale) {
   const M = METERS[meter], steps = SCALES[scale]
   if (!M || !steps) throw new Error(`meter/scale ${meter} ${scale}`)
-  const tick = M.ternary ? 1 / 192 : 1 / 128
+  const tick = M.grid ? 1 / M.grid : M.ternary ? 1 / 192 : 1 / 128
   const semitone = degree => 12 * Math.floor(degree / 7) + steps[((degree % 7) + 7) % 7]
   const near = (a, b) => Math.abs(a - b) < 1e-6
 
@@ -48,7 +55,7 @@ function composer(meter, scale) {
    * ~ vibrato · ! accent · ' soft · ? chance .7 (?? .45) · ^n slide n semitones into the note ·
    * > delay · * ring (release + reverb) · # drive · xN ratchet · s staccato · t tenuto (full length) · pN pan N/10 · cN cutoff.
    */
-  function mel(text, { unit = M.ternary ? M.eighth : M.sixteenth, gate = .92, accent = {}, start = 0 } = {}) {
+  function mel(text, { unit = M.ternary || M.grid ? M.eighth : M.sixteenth, gate = .92, accent = {}, start = 0 } = {}) {
     const notes = []
     text.split('|').forEach((barText, bar) => {
       let cursor = 0
@@ -92,9 +99,11 @@ function composer(meter, scale) {
   }
   /** Repeats bar text n times. */
   const rep = (text, n) => Array.from({ length: n }, () => text).join(' | ')
+  /** Repeats a grid of fewer bars until it fills `bars` (a one-bar figure in a four-bar loop plays in all four). */
+  const tile = (text, bars) => { const n = text.split('|').length; return n >= bars || bars % n ? text : rep(text, bars / n) }
   /** Drum grid: one character per unit (default: the sixteenth; the eighth in 6/8); bars separated by "|".
    * X x m o h g (loud to ghost) · ? and , (hits that only sometimes play) · r R (ratchets) · . rest. */
-  function hits(text, { unit = M.ternary ? M.eighth : M.sixteenth, length = unit * .5, degree = 0, start = 0, extra = {} } = {}) {
+  function hits(text, { unit = M.ternary || M.grid ? M.eighth : M.sixteenth, length = unit * .5, degree = 0, start = 0, extra = {} } = {}) {
     const notes = []
     text.split('|').forEach((barText, bar) => {
       const cells = [...barText.replace(/\s+/g, '')]
@@ -183,6 +192,22 @@ function composer(meter, scale) {
   }
   /** Soft strokes sound darker and accents brighter: a filter offset from the dynamics, in three steps. */
   const tone = (notes, depth = .2) => notes.map(n => n.cutoff !== undefined ? n : n.velocity < .45 ? { ...n, cutoff: -depth } : n.velocity > .9 ? { ...n, cutoff: depth / 2 } : n)
+  /**
+   * No two strokes of a hand sound alike: besides the darker ghosts and brighter accents of `tone`, each
+   * stroke draws its own colour (a filter offset of up to `spread`) and, with `ring`, its own decay.
+   * Offsets move in steps of .05 so that the strokes still group into few lanes when compiled.
+   */
+  function timbre(notes, seed, { depth = .2, spread = .1, ring = 0 } = {}) {
+    const draw = random(seed * 7919 + 13)
+    return notes.map(n => {
+      if (n.cutoff !== undefined) return n
+      const base = n.velocity < .45 ? -depth : n.velocity > .9 ? depth / 2 : n.velocity < .62 ? -depth / 2 : 0
+      const cutoff = Math.max(-.45, Math.min(.3, Math.round((base + (draw() * 2 - 1) * spread) * 20) / 20))
+      const out = cutoff ? { ...n, cutoff } : { ...n }
+      if (ring && n.release === undefined && draw() < .34) out.release = ring
+      return out
+    })
+  }
   /** Crescendo or diminuendo over the roll: velocity scales from `from` to `to` between the first and last bar. */
   const swell = (notes, bars, from, to) => notes.map(n => ({ ...n, velocity: Math.min(1, Math.max(.12, n.velocity * (from + (to - from) * Math.min(1, n.start / Math.max(1e-9, bars - 1))))) }))
   /** Keeps the notes of some bars (0-based) and drops the rest. */
@@ -238,13 +263,13 @@ function composer(meter, scale) {
     return notes
   }
   const roll = (bars, ...groups) => ({ bars, notes: groups.flat().filter(n => n.start < bars - 1e-9).map(n => ({ ...n, duration: Math.min(n.duration, bars - n.start) })) })
-  return { M, meter, tick, semitone, mel, rep, hits, comp, line, phrase, named, relative, strum, portamento, feel, tone, swell, only, without, shift, up, vel, set, roll, weight }
+  return { M, meter, tick, semitone, mel, rep, tile, hits, comp, line, phrase, named, relative, strum, portamento, feel, tone, timbre, swell, only, without, shift, up, vel, set, roll, weight }
 }
 
 /** Snaps every note to the grid, keeps it inside its roll and rounds the dynamics to steps of .04
  * (each distinct velocity compiles as its own lane). */
-function snap(rollValue, ternary) {
-  const startGrid = ternary ? 192 : 128, lengthGrid = ternary ? 192 : 64, minimum = ternary ? 3 / 192 : 1 / 64
+function snap(rollValue, ternary, grid) {
+  const startGrid = grid ?? (ternary ? 192 : 128), lengthGrid = grid ? grid / 2 : ternary ? 192 : 64, minimum = grid ? 2 / (grid / 2) : ternary ? 3 / 192 : 1 / 64
   rollValue.notes = rollValue.notes.map(n => {
     const start = Math.min(rollValue.bars - minimum, Math.max(0, Math.round(n.start * startGrid) / startGrid))
     const duration = Math.min(rollValue.bars - start, Math.max(minimum, Math.round(n.duration * lengthGrid) / lengthGrid))
@@ -296,7 +321,7 @@ async function build(song) {
       const given = part.rolls[bank], bars = bankBars[bank]
       const r = !given ? { bars, notes: [] } : Array.isArray(given) ? { bars, notes: given.filter(n => n.start < bars - 1e-9).map(n => ({ ...n, duration: Math.min(n.duration, bars - n.start) })) } : given
       if (bars % r.bars > 1e-9) throw new Error(`${part.name} bank ${bank}: ${r.bars} bars does not divide ${bars}`)
-      try { return snap(structuredClone(r), ternary) } catch (error) { throw new Error(`${part.name} bank ${bank}: ${error.message}`) }
+      try { return snap(structuredClone(r), ternary, meter.grid) } catch (error) { throw new Error(`${part.name} bank ${bank}: ${error.message}`) }
     })
     form.forEach((section, index) => {
       if (part.sections[index] && !part.rolls[section.bank]) throw new Error(`${part.name}: section ${index} plays an empty bank ${section.bank}`)
@@ -376,8 +401,195 @@ function reactions(prefix, banks, { drumsOnly = false, lift = 0 } = {}) {
   return { overrides: rules.map(r => r.trigger), rules }
 }
 
+/**
+ * The helpers every stage script repeats, bound to one form. `sections`: [label, bars, bank] rows; `names`: chord
+ * names per bank (at most 8, they loop); `root`: scale degree of each chord name; `feel`: the style's hand.
+ * `drum` loops a grid of up to four bars, `beat` writes a whole section, `sing`/`under` shape a tune (and its
+ * second voice), `comp` strums named chords, `bars` writes one `mel` bar per chord, `finish` wires the fill
+ * part (the one whose only material is the fill bank), drops absent sections and sets per-section sound.
+ */
+function studio(meterName, scale, { names, root: chordRoot, sections, feel: base = {}, fill = 7, colour = {} }) {
+  const C = composer(meterName, scale)
+  const H = bank => names[bank].map(name => chordRoot[name])
+  const FORM = sections.map(([label, bars, bank]) => ({ label, bars, bank, harmony: H(bank) }))
+  const barsOf = bank => FORM.find(s => s.bank === bank).bars
+  const loopBars = bank => Math.min(4, barsOf(bank))
+  // Chord loops last eight bars, or the whole section when eight does not divide it (twelve-bar sections).
+  const loopNames = bank => Array.from({ length: barsOf(bank) % Math.min(8, barsOf(bank)) ? barsOf(bank) : Math.min(8, barsOf(bank)) }, (_, i) => names[bank][i % names[bank].length])
+  const hand = (seed, notes, extra = {}) => C.timbre(C.feel(notes, { ...base, seed, ...extra }), seed, colour)
+  // A groove of up to four bars loops; a longer pattern is written out and keeps its own length.
+  const drum = (bank, seed, text, extra) => { const bars = Math.max(loopBars(bank), text.split('|').length); return C.roll(bars, hand(seed, C.hits(C.tile(text, bars)), extra)) }
+  const beat = (seed, text, extra) => hand(seed, C.hits(text), extra)
+  const sing = (rows, bank, seed, options = {}) => C.relative(C.phrase(C.line(rows, options.line), seed, options), H(bank))
+  const under = (rows, bank, seed, options = {}, degrees = -2) => C.relative(C.vel(C.up(C.phrase(C.line(rows, options.line), seed, options), degrees), .84), H(bank))
+  /** A tune in `mel` tokens ("degree:length", bars split by "|"), in absolute degrees; `harmony` its second voice. */
+  const tune = (text, bank, seed, options = {}) => C.relative(C.phrase(C.mel(text, { gate: .94, ...options.mel }), seed, options), H(bank))
+  const harmony = (text, bank, seed, options = {}, degrees = -2) => C.relative(C.vel(C.up(C.phrase(C.mel(text, { gate: .94, ...options.mel }), seed, options), degrees), .84), H(bank))
+  const comp = (table, bank, rhythm, seed, options) => C.roll(loopNames(bank).length, C.relative(C.strum(hand(seed, C.named(loopNames(bank), rhythm, table, options)), C.tick), H(bank)))
+  const bars = (bank, seed, write, options = {}) => C.roll(loopNames(bank).length, C.relative(C.feel(C.mel(loopNames(bank).map(write).join(' | '), options), { ...base, jitter: 0, vel: .04, seed, ...options.feel }), H(bank)))
+  /** A picking figure for `bars`: letters a–h in the patterns stand for the notes of each bar's chord in `table`
+   * (absolute degrees, voiced by hand); the patterns take turns bar by bar. */
+  const figure = (table, ...patterns) => (name, bar) => patterns[bar % patterns.length].replace(/(^|\s|,)([a-h])(?=[:,])/g, (_, lead, letter) => {
+    const degree = table[name][letter.charCodeAt(0) - 97]
+    if (degree === undefined) throw new Error(`chord ${name} has no note ${letter}`)
+    return lead + degree
+  })
+  /** An ostinato written chord-relative (degree 0 is each bar's root): Kit Harmony carries it through the changes. */
+  const riff = (length, seed, text, options = {}) => C.roll(length, hand(seed, C.mel(C.tile(text, length), options), options.feel))
+  /** Drops what sounds before bar `from` (an instrument that enters later in the introduction). */
+  const from = (bar, value) => Array.isArray(value) ? value.filter(n => n.start >= bar - 1e-9) : { ...value, notes: value.notes.filter(n => n.start >= bar - 1e-9) }
+  /** Unrolls a looping roll into a plain note list of `length` bars. */
+  const unroll = (value, length) => Array.from({ length: Math.ceil(length / value.bars) }, (_, i) => value.notes.map(n => ({ ...n, start: n.start + i * value.bars }))).flat().filter(n => n.start < length - 1e-9)
+  const finish = (parts, { fills = {}, params = {} } = {}) => {
+    for (const part of parts) {
+      part.sections = part.sections.map((present, i) => present && part.rolls[FORM[i].bank] ? true : null)
+      if (part.rolls[fill]) {
+        // The part that owns the fill bank plays it as the last bar of the chosen sections, even where it is otherwise silent.
+        const chosen = part.fills ?? fills[part.slot] ?? fills
+        part.fills = Object.fromEntries(Object.entries(chosen).filter(([, bank]) => typeof bank === 'number'))
+        for (const index of Object.keys(part.fills).map(Number)) {
+          part.rolls[FORM[index].bank] ??= { bars: 1, notes: [] }
+          part.sections[index] = true
+        }
+      }
+      part.params = params[part.slot]
+    }
+    return parts
+  }
+  return { C, H, FORM, FILL: fill, on: presence(FORM), ALL: FORM.map((_, i) => i), barsOf, loopNames, hand, drum, beat, sing, under, tune, harmony, comp, bars, figure, riff, from, unroll, finish }
+}
+
 /** Shorthand for a part and for the presence list of the sections it plays. */
 const P = (slot, name, role, behavior, source, rolls, sections, opts = {}) => ({ slot, name, role, behavior, source, rolls, sections, ...opts })
 const presence = form => (...indices) => form.map((_, i) => indices.includes(i) || null)
 
-module.exports = { composer, build, reactions, SAMPLE, DRUM, METERS, P, presence, random }
+// ---------- calibrated voices ----------
+// One recorded source with the envelope and filter that suit it and the gain measured against the mix
+// targets (lead about -33 dB, bass -33.5, harmony -37.5, kit drums -34 to -46). A script picks a voice and
+// overrides what the arrangement needs: V.conga({ gain: .3, pan: .2 }). `pan`, `reverb`, `delay`, `drive`
+// go to the effects; `role`, `vibrato`, `vibratoDepth` to the design; `panWidth` to the mapping.
+const voice = (source, base) => (over = {}) => {
+  const { pan, reverb, delay, drive, role, vibrato, vibratoDepth, panWidth, ...rest } = over
+  const effects = { ...base.effects }, design = { ...base.design }, mapping = { fileDegrees: 0, rankDegrees: 0, ...base.mapping }
+  for (const [key, value] of Object.entries({ pan, reverb, delay, drive })) if (value !== undefined) effects[key] = value
+  for (const [key, value] of Object.entries({ role, vibrato, vibratoDepth })) if (value !== undefined) design[key] = value
+  if (panWidth !== undefined) mapping.panWidth = panWidth
+  return { source, opts: { ...base, ...rest, effects, mapping, ...(Object.keys(design).length ? { design } : {}) } }
+}
+const hit = (bank, asset, gain, decay, lpf, hpf, extra = {}) => voice(DRUM(bank, asset, extra.variant || 0), {
+  octave: 2, gain, attack: .001, decay, sustain: 0, release: Math.max(.04, decay * .6), clip: extra.clip ?? .8, lpf, hpf,
+  effects: { reverb: extra.reverb ?? .08, pan: 0 }, design: { role: 'drums' },
+})
+const tone = (bank, asset, octave, gain, envelope, lpf, hpf, extra = {}) => voice(SAMPLE(bank, asset, extra.variant || 0), {
+  octave, gain, attack: envelope[0], decay: envelope[1], sustain: envelope[2], release: envelope[3], clip: 1, lpf, hpf,
+  effects: { reverb: extra.reverb ?? .12, pan: 0 }, design: extra.design || {},
+})
+const V = {
+  // acoustic kit and hand percussion
+  kick: hit('percussion', 'kick', .36, .3, 4200, 30, { clip: 1, reverb: .05 }),
+  snare: hit('percussion', 'snare', .5, .16, 7000, 160, { reverb: .1 }),
+  ghost: hit('percussion', 'ghost-snare', .5, .1, 5500, 180, { clip: .6 }),
+  hat: hit('percussion', 'hat', .9, .12, 9000, 2200, { clip: .7, reverb: .04 }),
+  openHat: hit('percussion', 'open-hat', .5, .3, 9000, 1800, { reverb: .06 }),
+  ride: hit('percussion', 'ride', .5, .4, 8500, 900, { reverb: .08 }),
+  cymbal: hit('percussion', 'cymbal-tip', .5, .3, 9000, 1200, { reverb: .08 }),
+  crash: hit('percussion', 'crash', .3, .9, 9000, 500, { reverb: .14 }),
+  tom: hit('percussion', 'tom', .3, .25, 4500, 70, { clip: .9, reverb: .1 }),
+  conga: hit('percussion', 'conga', .36, .2, 5000, 110),
+  slap: hit('percussion', 'muted-conga', .4, .12, 5500, 160, { clip: .7 }),
+  bongo: hit('percussion', 'bongo', .44, .14, 6000, 200),
+  shaker: hit('percussion', 'shaker', .28, .09, 7500, 1800, { clip: .5, reverb: .05 }),
+  tambourine: hit('percussion', 'tambourine', .9, .16, 9000, 1500, { clip: .7, reverb: .06 }),
+  rim: hit('drums', 'wood-rim', .16, .08, 6500, 500, { clip: .6, reverb: .1 }),
+  clap: hit('drums', 'room-clap', .34, .14, 6500, 400, { clip: .7, reverb: .14 }),
+  brush: hit('drums', 'brush', .3, .14, 7000, 300, { clip: .7, reverb: .1 }),
+  bassDrum: hit('classical', 'concert-bass-drum', .3, .5, 1800, 30, { clip: 1, reverb: .1 }),
+  frame: hit('world', 'tambourine', .4, .2, 7000, 300, { reverb: .1 }),
+  bellLow: hit('sambaReggae', 'agogo-grave', .2, .16, 6500, 400, { clip: .7, reverb: .1 }),
+  bellHigh: hit('sambaReggae', 'agogo-agudo', .18, .14, 7000, 600, { clip: .7, reverb: .1 }),
+  guiro: hit('brasil', 'reco-reco', .36, .1, 6500, 900, { clip: .6, reverb: .06 }),
+  ganza: hit('brasil', 'ganza', .3, .09, 7500, 1500, { clip: .5, reverb: .05 }),
+  palmas: hit('brasil', 'palmas', .3, .14, 6500, 400, { clip: .7, reverb: .14 }),
+  triangle: hit('brasil', 'triangulo-aberto', .2, .3, 9000, 2000, { clip: .6, reverb: .1 }),
+  // drum machines and synthesizers (levels from the Funk carioca kit)
+  linnKick: hit('machines', 'linn-kick', .28, .3, 5000, 30, { clip: .9, reverb: .04 }),
+  linnSnare: hit('machines', 'linn-snare', .24, .2, 9000, 150, { reverb: .12 }),
+  linnClap: hit('machines', 'linn-clap', .2, .2, 9000, 300, { reverb: .14 }),
+  linnCabasa: hit('machines', 'linn-cabasa', .2, .08, 10000, 2000, { clip: .6, reverb: .05 }),
+  linnTambourine: hit('machines', 'linn-tambourine', .2, .12, 10000, 1500, { clip: .7, reverb: .06 }),
+  linnConga: hit('machines', 'linn-conga', .2, .2, 6000, 120, { reverb: .1 }),
+  rim808: hit('machines', '808-rim', .2, .08, 8000, 400, { clip: .6, reverb: .1 }),
+  cowbell808: hit('machines', '808-cowbell', .09, .2, 8000, 500, { clip: .6, reverb: .08 }),
+  clave808: hit('machines', '808-clave', .12, .08, 8000, 600, { clip: .6, reverb: .1 }),
+  kick808: hit('machines', '808-kick-long', .29, .8, 6000, 25, { clip: .9, reverb: .03 }),
+  kick909: hit('machines', '909-kick-hard', .24, .4, 5000, 35, { clip: .8, reverb: .03 }),
+  snare909: hit('machines', '909-snare', .24, .2, 10000, 150, { reverb: .1 }),
+  snare909Tight: hit('machines', '909-snare-tight', .22, .12, 10000, 200, { reverb: .08 }),
+  clap909: hit('machines', '909-clap', .22, .2, 9000, 300, { reverb: .12 }),
+  hat909: hit('machines', '909-hat', .26, .06, 13000, 4000, { clip: .5, reverb: .03 }),
+  openHat909: hit('machines', '909-open-hat', .2, .25, 12000, 3000, { clip: .8, reverb: .05 }),
+  ride909: hit('machines', '909-ride', .16, .3, 12000, 2500, { reverb: .06 }),
+  crash909: hit('machines', '909-crash', .14, 1, 11000, 800, { clip: 1, reverb: .14 }),
+  tom909: hit('machines', '909-tom', .16, .3, 5000, 60, { reverb: .08 }),
+  metal: hit('electronic', 'metal-hit', .16, .2, 9000, 400, { reverb: .12 }),
+  hey: hit('electronic', 'hey', .18, .3, 9000, 200, { clip: .9, reverb: .1 }),
+  whistle: hit('electronic', 'whistle', .1, .3, 9000, 800, { clip: .9, reverb: .14 }),
+  pad: tone('synths', 'analog-pad', 3, .035, [.6, .6, .85, .9], 3200, 150, { reverb: .2, design: { role: 'pad' } }),
+  choir: tone('synths', 'choir', 3, .05, [.3, .5, .85, .7], 4000, 150, { reverb: .22, design: { role: 'pad' } }),
+  rhodes: tone('keys', 'rhodes', 3, .1, [.003, .4, .3, .25], 4200, 180, { reverb: .14 }),
+  fmBell: tone('synths', 'fm-bell', 4, .11, [.002, .4, .2, .25], 7000, 300, { reverb: .16 }),
+  subBass: tone('synths', 'sub', 2, .2, [.004, .3, .6, .12], 900, 30, { reverb: .02, design: { role: 'bass' } }),
+  acid: tone('synths', 'acid', 2, .1, [.003, .2, .4, .08], 2400, 40, { reverb: .04, design: { role: 'bass' } }),
+  pluck: tone('synths', 'digital-pluck', 4, .1, [.002, .25, .1, .15], 7000, 300, { reverb: .14 }),
+  wavetable: tone('synths', 'wavetable', 4, .08, [.004, .3, .5, .15], 6000, 250, { reverb: .14, design: { role: 'lead' } }),
+  raveStab: tone('electronic', 'rave-stab', 3, .14, [.002, .25, .1, .12], 7000, 250, { reverb: .12 }),
+  hoover: tone('electronic', 'hoover', 3, .1, [.01, .4, .6, .2], 6000, 200, { reverb: .12, design: { role: 'lead' } }),
+  chant: tone('electronic', 'oh-chant', 4, .3, [.01, .3, .6, .15], 6000, 150, { reverb: .12, design: { role: 'lead' } }),
+  // a hand drum that speaks: pitched, written with slides
+  talking: tone('world', 'conga', 3, .4, [.002, .22, .1, .12], 3800, 90, { design: { role: 'lead' } }),
+  // strings and winds
+  bass: tone('guitars', 'bass', 2, .46, [.005, .4, .4, .14], 1700, 35, { reverb: .05, design: { role: 'bass' } }),
+  guitar: tone('guitars', 'clean', 3, .46, [.003, .3, .2, .1], 5200, 200, { reverb: .1 }),
+  leadGuitar: tone('guitars', 'clean', 4, .9, [.003, .4, .3, .16], 6500, 260, { reverb: .16, design: { role: 'lead' } }),
+  muted: tone('guitars', 'muted', 3, .5, [.003, .2, .15, .08], 4200, 200, { reverb: .1 }),
+  nylon: tone('guitars', 'nylon', 3, .3, [.003, .5, .2, .2], 5000, 110, { reverb: .14 }),
+  steel: tone('strings', 'steel', 3, .3, [.003, .5, .2, .2], 6000, 120, { reverb: .14 }),
+  sax: tone('band', 'tenor-sax', 3, .32, [.012, .3, .66, .12], 6000, 120, { variant: 1, reverb: .16, design: { role: 'lead', vibrato: 5, vibratoDepth: .06 } }),
+  trumpet: tone('sambaReggae', 'trompete', 4, .54, [.006, .3, .6, .1], 7000, 200, { reverb: .16, design: { role: 'lead' } }),
+  trombone: tone('sambaReggae', 'trombone', 3, .44, [.006, .3, .5, .1], 4500, 80, { reverb: .16 }),
+  organ: tone('keys', 'organ', 4, .22, [.01, .3, .7, .12], 4200, 200, { reverb: .14 }),
+  piano: tone('band', 'piano', 3, .3, [.003, .8, .3, .3], 6000, 80, { variant: 1, reverb: .12 }),
+  marimba: tone('band', 'marimba', 4, .6, [.002, .5, .1, .3], 7000, 150, { variant: 1, reverb: .14 }),
+  accordion: tone('keys', 'accordion', 4, .2, [.02, .3, .8, .12], 5000, 160, { reverb: .12 }),
+  violin: tone('classical', 'violin-sustain', 4, .5, [.03, .3, .8, .16], 6500, 200, { reverb: .16, design: { role: 'lead', vibrato: 5.5, vibratoDepth: .08 } }),
+  violinForte: tone('classical', 'violin-sustain', 4, .6, [.03, .3, .8, .16], 6500, 200, { variant: 1, reverb: .16, design: { role: 'lead', vibrato: 5.5, vibratoDepth: .08 } }),
+  cello: tone('classical', 'cello-sustain', 2, .5, [.04, .3, .8, .2], 3500, 60, { reverb: .16 }),
+  flute: tone('classical', 'flute-sustain', 4, .5, [.03, .3, .8, .14], 7000, 300, { reverb: .18, design: { role: 'lead', vibrato: 5, vibratoDepth: .05 } }),
+  clarinet: tone('classical', 'orchestra-clarinet', 4, .7, [.02, .3, .8, .12], 6000, 200, { reverb: .16, design: { role: 'lead', vibrato: 5, vibratoDepth: .05 } }),
+  oboe: tone('classical', 'orchestra-oboe', 4, .6, [.02, .3, .8, .12], 6000, 250, { reverb: .16, design: { role: 'lead', vibrato: 5, vibratoDepth: .05 } }),
+  harpsichord: tone('classical', 'harpsichord', 4, .3, [.002, .5, .1, .25], 8000, 200, { reverb: .16 }),
+  viola: tone('classical', 'viola-sustain', 3, .4, [.05, .3, .85, .25], 4500, 120, { reverb: .18, design: { role: 'pad' } }),
+  pizzicato: tone('classical', 'violin-pizzicato', 4, .3, [.002, .3, .05, .15], 7000, 200, { reverb: .14 }),
+  recorder: tone('classical', 'alto-recorder-sustain', 4, .4, [.02, .3, .8, .12], 7000, 300, { reverb: .18, design: { role: 'lead' } }),
+  horn: tone('classical', 'horn-sustain', 3, .4, [.03, .3, .8, .16], 3500, 100, { reverb: .18 }),
+  timpani: hit('classical', 'timpani-low', .3, .6, 2400, 40, { clip: 1, reverb: .14 }),
+  worldFlute: tone('world', 'flute', 4, .3, [.03, .3, .8, .14], 7000, 300, { reverb: .2, design: { role: 'lead', vibrato: 5, vibratoDepth: .05 } }),
+  worldGuitar: tone('world', 'guitar', 3, .3, [.003, .5, .2, .2], 5000, 110, { reverb: .14 }),
+  voice: tone('brasil', 'coro-laia', 3, .42, [.03, .3, .8, .18], 5200, 140, { reverb: .16, design: { role: 'lead', vibrato: 5, vibratoDepth: .05 } }),
+  // Further regional voices (the gains are starting points; each kit is measured afterwards).
+  zabumba: hit('brasil', 'zabumba', .33, .35, 3200, 32, { clip: .9, reverb: .06 }),
+  gongue: hit('brasil', 'gongue', .2, .25, 7500, 400, { clip: .7, reverb: .1 }),
+  pandeiro: hit('brasil', 'pandeiro-grave', .34, .25, 3200, 60, { reverb: .08 }),
+  surdo: hit('sambaReggae', 'surdo-fundo', .3, .5, 2600, 30, { clip: 1, reverb: .08 }),
+  repique: hit('sambaReggae', 'repinique', .24, .14, 7500, 200, { clip: .7, reverb: .09 }),
+  tamTam: hit('classical', 'concert-tam-tam', .3, 2, 5000, 40, { clip: 1, reverb: .22 }),
+  cavaquinho: tone('brasil', 'cavaquinho', 3, .2, [.002, .25, .1, .1], 5500, 300, { reverb: .1 }),
+  bandolim: tone('brasil', 'bandolim', 4, .7, [.003, .5, .2, .25], 5200, 200, { reverb: .16 }),
+  celesta: tone('keys', 'celesta', 4, .3, [.002, .6, .1, .4], 8000, 300, { reverb: .18 }),
+  slide: tone('strings', 'slide-electric', 4, .4, [.02, .5, .7, .3], 5000, 200, { reverb: .2, design: { role: 'lead', vibrato: 5, vibratoDepth: .08 } }),
+  bassoon: tone('classical', 'orchestra-bassoon', 2, .5, [.04, .3, .85, .2], 1800, 40, { reverb: .12 }),
+}
+// A part from a calibrated voice: Q('a2', 'Kick', 'rhythm', 'pulse', V.kick({ gain: .36 }), rolls, on(...)).
+const Q = (slot, name, role, behavior, sound, rolls, sections, extra = {}) => P(slot, name, role, behavior, sound.source, rolls, sections, { ...sound.opts, ...extra })
+
+module.exports = { composer, studio, build, reactions, SAMPLE, DRUM, METERS, P, Q, V, voice, presence, random }

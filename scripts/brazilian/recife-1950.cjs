@@ -38,7 +38,7 @@ const barsOf = bank => FORM.find(s => s.bank === bank).bars
 // Forró feel: the second sixteenth a hair late, the fourth a hair early, and hands with their own dynamics.
 const XOTE = { push: [0, 1, 0, -1], jitter: 1, vel: .06 }
 const hand = (seed, notes, extra = {}) => tone(feel(notes, { ...XOTE, seed, ...extra }))
-const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(text)))
+const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(C.tile(text, Math.min(4, barsOf(bank))))))
 
 // ---------- the sanfona's tune (eight sixteenths a bar, '.' holds) ----------
 const TEMA_A = ['4 . 4 . 2 4 . 6', '. 4 . 2 0 . . .', '3 . 3 . 5 3 . 2', '. 0 . 2 4 . . .',
@@ -133,11 +133,11 @@ const PARTS = [
   P('a1', 'Sanfona · baixos', 'bass', 'phrase', SAMPLE('brasil', 'sanfona'), left, on(...ALL),
     { ...KEYS, octave: 3, gain: .6, attack: .01, decay: .25, sustain: .45, release: .08, clip: 1, lpf: 1500, hpf: 40, effects: { reverb: .1, pan: -.05 }, design: { role: 'bass' } }),
   P('a2', 'Zabumba · maceta', 'rhythm', 'pulse', DRUM('brasil', 'zabumba'), maceta, on(...ALL),
-    { ...DRUMS, octave: 2, gain: .36, attack: .001, decay: .35, sustain: 0, release: .15, clip: .9, lpf: 3200, hpf: 32, effects: { reverb: .06, pan: 0 } }),
+    { ...DRUMS, octave: 2, gain: .33, attack: .001, decay: .35, sustain: 0, release: .15, clip: .9, lpf: 3200, hpf: 32, effects: { reverb: .06, pan: 0 } }),
   P('b1', 'Aboio', 'melody', 'sustain', SAMPLE('brasil', 'coro-laia'), aboio, on(0, 3),
     { ...KEYS, octave: 3, gain: .36, attack: .09, decay: .5, sustain: .8, release: .45, clip: 1, lpf: 4800, hpf: 160, effects: { reverb: .4, pan: .15 }, design: { role: 'lead', vibrato: 4.2, vibratoDepth: .16 } }),
   P('b2', 'Zabumba · bacalhau', 'rhythm', 'pulse', DRUM('brasil', 'bacalhau'), bacalhau, on(1, 2, 4, 5, 6, 7, 8),
-    { ...DRUMS, octave: 2, gain: .34, attack: .001, decay: .08, sustain: 0, release: .05, clip: .6, lpf: 8500, hpf: 300, effects: { reverb: .05, pan: .1 } }),
+    { ...DRUMS, octave: 2, gain: .3, attack: .001, decay: .08, sustain: 0, release: .05, clip: .6, lpf: 8500, hpf: 300, effects: { reverb: .05, pan: .1 } }),
   P('c1', 'Pífano', 'response', 'phrase', SAMPLE('classical', 'alto-recorder-sustain'), pifano, on(1, 2, 3, 4, 5, 6, 7),
     { ...KEYS, octave: 4, gain: .4, attack: .015, decay: .3, sustain: .75, release: .1, clip: 1, lpf: 9000, hpf: 450, effects: { reverb: .2, pan: .35 }, design: { role: 'lead', vibrato: 5.5, vibratoDepth: .06 } }),
   P('c2', 'Triângulo · fechado', 'rhythm', 'pulse', DRUM('brasil', 'triangulo-fechado'), fechado, on(...ALL),
@@ -145,11 +145,11 @@ const PARTS = [
   P('d1', 'Sanfona · melodia', 'melody', 'phrase', SAMPLE('brasil', 'sanfona'), melodia, on(1, 2, 4, 5, 7, 8),
     { ...KEYS, octave: 4, gain: .4, attack: .018, decay: .3, sustain: .72, release: .09, clip: 1, lpf: 5200, hpf: 200, effects: { reverb: .15, pan: 0 }, design: { role: 'lead', vibrato: 5.6, vibratoDepth: .05 } }),
   P('d2', 'Ganzá', 'rhythm', 'pulse', DRUM('percussion', 'shaker'), ganza, on(2, 4, 5, 7, 8),
-    { ...DRUMS, octave: 2, gain: .3, attack: .001, decay: .07, sustain: 0, release: .05, clip: .5, lpf: 9000, hpf: 3000, effects: { reverb: .04, pan: .3 } }),
+    { ...DRUMS, octave: 2, gain: .27, attack: .001, decay: .07, sustain: 0, release: .05, clip: .5, lpf: 9000, hpf: 3000, effects: { reverb: .04, pan: .3 } }),
   P('e1', 'Sanfona · acordes', 'harmony', 'phrase', SAMPLE('keys', 'accordion'), right, on(1, 2, 3, 4, 5, 7, 8),
     { ...KEYS, octave: 4, gain: .16, attack: .01, decay: .2, sustain: .4, release: .07, clip: .9, lpf: 4200, hpf: 160, effects: { reverb: .12, pan: -.2 } }),
   P('e2', 'Pandeiro', 'rhythm', 'pulse', DRUM('sambaReggae', 'pandeiro'), pandeiro, on(2, 4, 5, 7),
-    { ...DRUMS, octave: 2, gain: .42, attack: .001, decay: .12, sustain: 0, release: .06, clip: .6, lpf: 9000, hpf: 400, effects: { reverb: .06, pan: .2 } }),
+    { ...DRUMS, octave: 2, gain: .37, attack: .001, decay: .12, sustain: 0, release: .06, clip: .6, lpf: 9000, hpf: 400, effects: { reverb: .06, pan: .2 } }),
   P('f1', 'Triângulo · aberto', 'rhythm', 'pulse', DRUM('brasil', 'triangulo-aberto'), aberto, on(1, 2, 3, 4, 5, 7, 8),
     { ...DRUMS, octave: 2, gain: .13, attack: .001, decay: .3, sustain: 0, release: .2, clip: .4, lpf: 12000, hpf: 2500, effects: { reverb: .1, pan: -.35 } }),
   P('f2', 'Palmas', 'rhythm', 'pulse', DRUM('brasil', 'palmas'), palmas, on(2, 5, 7, 8),

@@ -37,7 +37,7 @@ const ALL = FORM.map((_, i) => i)
 const barsOf = bank => FORM.find(s => s.bank === bank).bars
 const RODA = { push: [0, 2, 0, -1], jitter: 1, vel: .06 }
 const hand = (seed, notes, extra = {}) => tone(feel(notes, { ...RODA, seed, ...extra }))
-const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(text)))
+const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(C.tile(text, Math.min(4, barsOf(bank))))))
 
 // ---------- the cantadores (eight sixteenths a bar, '.' holds) ----------
 const CHULA = ['. . 4 . 4 . 5 4', '2 . . . 0 . 2 .', '4 . 3 . 1 . 3 .', '4 . . . . . . .',
