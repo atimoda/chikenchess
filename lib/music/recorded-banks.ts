@@ -45,5 +45,6 @@ export const RECORDED_BANKS: SampleBank[] = [{
     ['surdo-terceira', 'Surdo de terceira'], ['caixa', 'Caixa de guerra'], ['caixa-leve', 'Caixa de guerra (leve)'],
     ['tamborim', 'Tamborim'], ['tamborim-abafado', 'Tamborim abafado'], ['chocalho', 'Chocalho de platinelas'],
     ['chocalho-acento', 'Chocalho (acento)'], ['reco-reco', 'Reco-reco'], ['apito', 'Apito do mestre'], ['apito-longo', 'Apito longo'],
+    ['surdo-marcacao', 'Surdo de marcação (pesado)'], ['surdo-marcacao-mao', 'Surdo de marcação abafado (pesado)'],
   ].map(([id, name]) => ({ id, name, variants: [{ name: 'Gravação', file: `/samples/chicken-bateria-v1/${id}-0.ogg` }] })),
 }]

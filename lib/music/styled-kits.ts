@@ -49,7 +49,7 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'recife-1950': 'recife-1950-2026-10-25-brazilian-v1',
   'rio-1960': 'rio-1960-2026-10-25-brazilian-v1',
   'recife-1975': 'recife-1975-2026-10-25-brazilian-v1',
-  'rio-1984': 'rio-1984-2026-10-26-brazilian-v2',
+  'rio-1984': 'rio-1984-2026-11-12-brazilian-v3',
   'salvador-1992': 'salvador-1992-2026-10-25-brazilian-v1',
   'rio-1995': 'rio-1995-2026-10-26-brazilian-v2',
 }
