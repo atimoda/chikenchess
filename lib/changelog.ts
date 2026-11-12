@@ -56,6 +56,7 @@ const RECENT = [
         'Apagar um Suporte de item no Modo editor deixa o Item solto no lugar: ele não reaparece depois de pego, pode ser selecionado e apagado, e fica salvo no Pátio. Assim dá para fazer um Pátio com um único item.',
         'Salvar Pátio: o aviso do estado do Pátio, quem vira padrinho e o auto-save agora ficam juntos no fim do painel.',
         'Correr por cima de um item que você já tem não troca mais o item da mão: a tecla de Correr (Shift no padrão) continua pegando itens novos, mas só a tecla própria de pegar (E/P) ou o botão do toque fazem o Equipar.',
+        'Painéis do PigChicKen mais compactos: sliders, seletores, caixas de marcar, botões de opção e as teclas de Controles ficam a 2 px um do outro em todos os painéis (Volume, Camadas, Configurações do Pátio, Câmera de Mira, Controles, Ajustes, Itens, Catálogo de aliens, Biblioteca de almas, editores de árvore, casa, elementos, zonas, músicas e Gerar de MIDI).',
       ] },
     ],
   },

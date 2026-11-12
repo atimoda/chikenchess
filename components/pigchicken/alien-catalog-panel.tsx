@@ -225,7 +225,7 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
             {VARIANT_GROUPS.map(g => (
               <details key={g} open={!!open[g]} onToggle={e => { const o = (e.currentTarget as HTMLDetailsElement).open; setOpen(s => ({ ...s, [g]: o })) }} className="border-b border-white/10">
                 <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g}</summary>
-                <div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-4 pb-4">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-field px-4 pb-4">
                   {g === "Corpo" && (
                     <>
                       <label className="flex items-center justify-between gap-3"><span>Espécie (desenho)</span>
@@ -316,7 +316,7 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                       </select>
                     </label>
                   )}
-                  <div className="grid gap-[3px]">
+                  <div className="grid gap-field">
                   {VARIANT_NUMBERS.filter(m => m.group === g && (g !== "Sons" || !m.path.startsWith("death.musical") || v.death.musical.kind === "notes")).map(m => {
                     const n = getPath(v, m.path) as number
                     const was = getPath(base ?? BUILTIN_BY_ID[v.species], m.path) as number

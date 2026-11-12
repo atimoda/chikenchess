@@ -74,7 +74,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
         {ITEM_PARAM_GROUPS.filter(g => !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld)).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g}</summary>
-            <div className="grid gap-3 px-4 pb-4">
+            <div className="grid gap-field px-4 pb-4">
               {g === "Disparo" && (
                 <>
                   <label className="flex items-center justify-between gap-3">
@@ -122,7 +122,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                       <option value="scale">Da escala da zona</option>
                     </select>
                   </label>
-                  <div className="grid gap-1.5" title="A rodinha / troca rápida passa pelas escalas ligadas antes do próximo item">
+                  <div className="grid gap-field" title="A rodinha / troca rápida passa pelas escalas ligadas antes do próximo item">
                     <span>Escalas</span>
                     {INSTRUMENT_SCALE_IDS.map(id => (
                       <label key={id} className="flex items-center justify-between gap-3 pl-3">
@@ -186,7 +186,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Combo" && (
                 <div className="grid gap-1.5">
                   <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam">Ordem dos golpes</span>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-field">
                     {it.combo.map((k, i) => (
                       <select key={i} aria-label={`Golpe ${i + 1} do combo`} value={k} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = v as SwingKind }) }} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-1.5">
                         {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{i + 1}. {o.label}</option>)}
@@ -217,7 +217,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <input type="color" aria-label="Cor do rastro" value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? "Nos instrumentos o rastro pega a cor da nota do acorde" : "Duplo clique volta a cor do código"} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
                 </label>
               )}
-              <div className="grid gap-[3px]">
+              <div className="grid gap-field">
               {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(m.key === "hangNotes2" && it.hangRows < 2)).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label

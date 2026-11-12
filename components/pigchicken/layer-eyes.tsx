@@ -54,8 +54,8 @@ export function LayerEyes({ layers, set, base, onSave }: ReturnType<typeof usePa
           <h2 className="flex-1 text-sm text-white">Camadas</h2>
           <button type="button" aria-label="Fechar camadas" onClick={() => setOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
         </div>
-        <div data-chicken-ignore className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto px-4 py-3">
-          <div className="grid gap-[3px]">
+        <div data-chicken-ignore className="grid min-h-0 flex-1 content-start gap-field overflow-y-auto px-4 py-3">
+          <div className="grid gap-field">
           {SLIDERS.map(l => (
             <PatioRange key={l.key} label={l.label} min={0} max={100} value={layers[l.key]} display={`${layers[l.key]}%`}
               changed={layers[l.key] !== DEFAULT[l.key]} onReset={() => set({ [l.key]: DEFAULT[l.key] })} onChange={v => set({ [l.key]: v })} />
@@ -67,7 +67,7 @@ export function LayerEyes({ layers, set, base, onSave }: ReturnType<typeof usePa
           <PatioRange label="Escalas (Linhas)" min={0} max={100} value={layers.scaleLines} display={`${layers.scaleLines}%`}
             changed={layers.scaleLines !== DEFAULT.scaleLines} onReset={() => set({ scaleLines: DEFAULT.scaleLines })} onChange={v => set({ scaleLines: v })} />
           </div>
-          <label className="flex items-center justify-between gap-3 pt-1">
+          <label className="flex items-center justify-between gap-3">
             <span className={cn(layers.hitboxes !== DEFAULT.hitboxes && "text-amber-300")}>Hit-boxes</span>
             <input type="checkbox" checked={layers.hitboxes} onChange={e => set({ hitboxes: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
           </label>

@@ -16,7 +16,7 @@ const BTN = "h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]"
 // a row of options, one chosen
 function Choice<T extends string>({ label, options, value, onChange, title }: { label: string; options: { id: T; label: string }[]; value: T; onChange: (v: T) => void; title?: string }) {
   return (
-    <div role="radiogroup" aria-label={label} title={title} className="grid gap-1 py-0.5" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+    <div role="radiogroup" aria-label={label} title={title} className="grid gap-field" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
       {options.map(o => (
         <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
           className={cn("h-8 truncate rounded-md border px-1", value === o.id ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-white/40")}>{o.label}</button>
@@ -56,7 +56,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
       changed={s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
   return (
-    <div className="grid gap-2 px-4 pb-4">
+    <div className="grid gap-field px-4 pb-4">
       <div className="flex items-center justify-end gap-2">
         <button type="button" className={BTN} onClick={() => onChange(randomSky(Math.random, sky ? { light: s.light } : undefined))} title="Sorteia hora, faixas de cor, sol, nuvens, textura, névoa e contraluz">Randomize</button>
         {sky && <button type="button" className={BTN} onClick={() => onChange(undefined)} title="Volta ao entardecer clássico do Pátio">Clássico</button>}
@@ -65,7 +65,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         <div aria-hidden="true" className="relative overflow-hidden rounded-md border border-white/10" style={{ background: gradient, width: PREVIEW_W, height: PREVIEW }}>
           {look.sun.opacity > 0 && <span className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: `calc(50% + ${(look.sun.x * unit).toFixed(1)}px)`, top: `${sunTop}%`, background: look.sun.color, boxShadow: `0 0 ${Math.round(10 + look.sun.soft * 8)}px ${look.sun.glowColor}`, filter: look.sun.soft > 0 ? `blur(${(look.sun.soft * 2.5).toFixed(1)}px)` : undefined }} />}
         </div>
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
           <PatioRange label="Hora do dia" min={SKY_HOUR.min} max={SKY_HOUR.max} step={SKY_HOUR.step} value={s.hour} display={hourLabel(s.hour)}
             changed={!!sky && s.hour !== SKY_DEFAULT.hour} onReset={() => set({ hour: SKY_DEFAULT.hour })} onChange={hour => set({ hour, ...(s.follow ? { stops: hourStops(hour) } : {}) })}
             hint="Posição do sol e da lua e a luz sobre o Pátio. Com Cores pela hora, também as cores do céu." />
@@ -75,7 +75,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
           </label>
         </div>
       </div>
-      {!s.follow && <div className="grid gap-1" aria-label="Faixas do degradê">
+      {!s.follow && <div className="grid gap-field" aria-label="Faixas do degradê">
         {stops.map((st, i) => (
           <div key={i} className="grid grid-cols-[32px_1fr_28px] items-center gap-1.5">
             <input type="color" aria-label={`Cor ${i + 1}`} value={st.color} onChange={e => setStop(i, { color: e.target.value })} className="h-8 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0" />
@@ -87,7 +87,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         ))}
         <button type="button" disabled={stops.length >= SKY_STOPS.max} onClick={addStop} className={cn(BTN, "inline-flex items-center justify-center gap-1 disabled:opacity-30")}><Plus className="h-3.5 w-3.5" />Cor</button>
       </div>}
-      <div className="grid gap-[3px]">
+      <div className="grid gap-field">
         {pct("Curvatura", "radial", "Curva as faixas do céu em anéis em volta do sol. 0: faixas retas.")}
         {s.radial > 0 && <>
           <PatioRange label="Centro" min={SKY_RADIAL_X.min} max={SKY_RADIAL_X.max} step={SKY_RADIAL_X.step} value={s.radialX} display={s.radialX === 0 ? "sob o sol" : `${s.radialX > 0 ? "+" : ""}${s.radialX}`}
@@ -124,7 +124,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
             changed={s.texStreak !== SKY_DEFAULT.texStreak} onReset={() => set({ texStreak: SKY_DEFAULT.texStreak })} onChange={texStreak => set({ texStreak })} hint="As faixas longas e horizontais, como pinceladas." />
           <PatioRange label="Grão" min={0} max={100} value={s.texGrain} display={`${s.texGrain}%`}
             changed={s.texGrain !== SKY_DEFAULT.texGrain} onReset={() => set({ texGrain: SKY_DEFAULT.texGrain })} onChange={texGrain => set({ texGrain })} hint="O pontilhado fino, como papel." />
-          <div role="radiogroup" aria-label="Mistura da textura" className="grid grid-cols-4 gap-1" title="Como a textura se mistura às cores do céu">
+          <div role="radiogroup" aria-label="Mistura da textura" className="grid grid-cols-4 gap-field" title="Como a textura se mistura às cores do céu">
             {SKY_BLENDS.map(b => (
               <button key={b.id} type="button" role="radio" aria-checked={s.texBlend === b.id} onClick={() => set({ texBlend: b.id })}
                 className={cn("h-8 rounded-md border", s.texBlend === b.id ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-white/40")}>{b.label}</button>
@@ -156,8 +156,8 @@ export function StarFields({ sky, onChange }: { sky: SkyParams | undefined; onCh
       changed={s[key] !== SKY_DEFAULT[key]} onReset={() => set({ [key]: SKY_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
   return (
-    <div className="grid gap-[3px] px-4 pb-4">
-      {changed && <div className="flex justify-end pb-1">
+    <div className="grid gap-field px-4 pb-4">
+      {changed && <div className="flex justify-end">
         <button type="button" className={BTN} onClick={() => set({ starCount: SKY_DEFAULT.starCount, starSize: SKY_DEFAULT.starSize, starGlow: SKY_DEFAULT.starGlow })}>Padrão</button>
       </div>}
       {range("Quantidade", "starCount", SKY_STAR_COUNT, "Quantas estrelas. Elas aparecem conforme a hora e o escuro do céu.")}
@@ -180,8 +180,8 @@ export function MountainFields({ mountains, onChange }: { mountains: MountainPar
       changed={m[key] !== MOUNTAINS_DEFAULT[key]} onReset={() => set({ [key]: MOUNTAINS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
   return (
-    <div className="grid gap-[3px] px-4 pb-4">
-      <div className="flex items-center gap-2 pb-1">
+    <div className="grid gap-field px-4 pb-4">
+      <div className="flex items-center gap-2">
         <label className="flex h-9 flex-1 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span>Mostrar</span>
           <input type="checkbox" checked={m.show} onChange={e => set({ show: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" /></label>
         <button type="button" className={BTN} disabled={!m.show} onClick={() => set({ shape: (m.shape + 1 + Math.floor(Math.random() * (MOUNTAIN_SHAPES - 1))) % MOUNTAIN_SHAPES })} title="Desenha outras montanhas com a mesma altura e recorte">Sortear forma</button>
@@ -242,8 +242,8 @@ export function CloudFields({ clouds, skyClouds, onChange }: { clouds: CloudPara
       changed={c[key] !== CLOUDS_DEFAULT[key]} onReset={() => set({ [key]: CLOUDS_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
   return (
-    <div className="grid gap-[3px] px-4 pb-4">
-      <div className="flex items-center justify-end gap-2 pb-1">
+    <div className="grid gap-field px-4 pb-4">
+      <div className="flex items-center justify-end gap-2">
         <button type="button" className={BTN} onClick={() => set({ shape: (c.shape + 1 + Math.floor(Math.random() * (CLOUD_SHAPES - 1))) % CLOUD_SHAPES })} title="Desenha outras nuvens com os mesmos ajustes">Sortear forma</button>
         {clouds && <button type="button" className={BTN} onClick={() => onChange(undefined)} title="Volta às nuvens de sempre">Padrão</button>}
       </div>
@@ -283,7 +283,7 @@ export function SnowfallFields({ snowfall, onChange }: { snowfall: SnowfallParam
       changed={f[key] !== SNOWFALL_DEFAULT[key]} onReset={() => set({ [key]: SNOWFALL_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
   )
   return (
-    <div className="grid gap-[3px] px-4 pb-4">
+    <div className="grid gap-field px-4 pb-4">
       {range("Quantidade", "amount", SNOWFALL_PCT, "Quantos flocos caem. 0: nenhum.")}
       {f.amount > 0 && <>
         {range("Tamanho", "size", SNOWFALL_SIZE, "O tamanho dos flocos.")}

@@ -46,8 +46,8 @@ export function VolumeButton({ className }: { className?: string }) {
           </div>
           <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto px-4 py-3">
           <VolumeRange label="Master volume" value={mix.master} onChange={v => setMix({ master: v })} strong />
-          <div className="grid gap-3 border-t border-white/10 pt-3">
-            <div className="grid gap-[3px]">
+          <div className="grid gap-field border-t border-white/10 pt-3">
+            <div className="grid gap-field">
               {MIX_LAYERS.map(l => <VolumeRange key={l.key} label={l.label} hint={l.hint} value={mix[l.key]} onChange={v => setMix({ [l.key]: v })} />)}
             </div>
             <label className="flex items-center gap-2" title="Liga e desliga os cacarejos da galinha">
