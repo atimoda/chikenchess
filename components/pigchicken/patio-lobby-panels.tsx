@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Copy, Crown, FolderOpen, Home, Loader2, Plus, Save, Star, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
-import type { PatioRecord } from "@/lib/pigchicken/patio-store"
+import type { NewPatioKind, PatioRecord } from "@/lib/pigchicken/patio-store"
 import { localPatios } from "@/lib/pigchicken/patio-store"
 import {
   deletePatioLobby, duplicatePatioLobby, favoritePatioLobby, listPatioLobbies, patioErrorMessage, patioOnlineAvailable, setDefaultPatioLobby, unsavedDaysLeft,
@@ -216,7 +216,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   isAdmin: boolean
   isAccount: boolean
   onOpen: (id: string | null) => void
-  onNew: (empty?: boolean | 'sunset') => void
+  onNew: (empty?: NewPatioKind) => void
   onLogin: () => void
   onDeleted: (id: string) => void | Promise<void>
   // the star on the open Pátio's row goes through its own state, so the Salvar panel shows it too
@@ -292,6 +292,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
         <button type="button" onClick={() => onNew(true)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio vazio</button>
       </div>
       <button type="button" onClick={() => onNew("sunset")} title="Um Pátio de exemplo: céu de pôr do sol em contraluz, torres de transmissão em várias profundidades, postes com fios onde os pássaros pousam" className={cn(btn, "h-9 shrink-0 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio de exemplo: pôr do sol com torres</button>
+      <button type="button" onClick={() => onNew("valley")} title="Um Pátio de exemplo: seis biomas com vilas no chão, três camadas de ilhas flutuantes até Asgard, postes e torres ligando tudo, escadas, trampolins e portais" className={cn(btn, "h-9 shrink-0 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio de exemplo: vales e ilhas no céu</button>
 
       <Row
         title={def?.name ?? "Pátio padrão"} sub={def?.creatorName ? `de ${def.creatorName}` : undefined} current={currentId === null}

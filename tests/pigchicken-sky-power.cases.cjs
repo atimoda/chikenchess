@@ -8,6 +8,7 @@ const S = loadTs('lib/pigchicken/sky.ts')
 const B = loadTs('lib/pigchicken/bird-perch.ts')
 const PS = loadTs('lib/pigchicken/patio-settings.ts')
 const EX = loadTs('lib/pigchicken/example-patios.ts')
+const VALE = loadTs('lib/pigchicken/example-valley.ts')
 
 const pole = (x, extra = {}, power = {}) => L.normalizeElement({ ...L.createElement('pole', x, 500), ...extra, params: { power: { ...P.defaultPower('pole'), ...power } } })
 
@@ -107,6 +108,31 @@ test('the example Pátio survives saving and has wires, a sky and the Passaguá'
   assert.equal(layout.elements.filter(e => e.kind === 'entry').length, 1)
   assert.ok(layout.settings.sky)
   if (process.env.DUMP_EXAMPLE) require('fs').writeFileSync(process.env.DUMP_EXAMPLE, JSON.stringify(layout))
+})
+
+test('the valley example survives saving, fills its six scenes and wires every pole and tower by links', () => {
+  const layout = VALE.valleyLayout()
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(layout))), layout)
+  assert.deepEqual(VALE.valleyLayout(), layout)
+  assert.ok(layout.elements.length < L.LAYOUT_MAX_ELEMENTS)
+  assert.equal(layout.settings.screens, 4)
+  assert.equal(layout.settings.temple, false)
+  const els = L.elementsInWorld(layout, 4)
+  assert.equal(els.length, layout.elements.length)
+  assert.equal(els.filter(e => e.kind === 'entry').length, 1)
+  // something of the ground in every scene, the two after the Parquinho included
+  for (let s = 0; s < 6; s++) assert.ok(els.some(e => e.kind === 'house' && !e.depth && Math.floor((e.x + e.w / 2) / world.SCENE_W) === s), `scene ${s}`)
+  // every pole and tower is wired by hand and reaches another one
+  const power = els.filter(e => L.isPowerElement(e.kind))
+  assert.ok(power.every(e => Array.isArray(e.params.power.links)))
+  assert.ok(power.every(e => P.linkedTo(els, e.id).size > 0))
+  assert.ok(P.powerSpans(els).length > 150)
+  // every portal has its partner and every rack item exists
+  els.filter(e => e.kind === 'portal').forEach(p => assert.ok(L.portalPartner(p, els)))
+  const items = new Set(els.filter(e => e.kind === 'rack').map(e => e.params.item))
+  assert.ok(items.size >= 20)
+  // nothing above the ceiling
+  assert.ok(els.every(e => e.depth || e.y >= PS.patioWorldTop(layout.settings)))
 })
 
 test('changing one pole\'s model or wire floor changes its whole line', () => {
