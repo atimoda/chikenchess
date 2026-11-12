@@ -3039,7 +3039,7 @@
       "behavior": "phrase",
       "sound": "sine",
       "octave": 4,
-      "gain": 0.42,
+      "gain": 0.7,
       "attack": 0.003,
       "release": 0.25,
       "lpf": 5200,
@@ -4548,7 +4548,7 @@
             "variation": 4,
             "transpose": 0,
             "params": {
-              "gain": 0.5,
+              "gain": 0.8,
               "reverbRange": {
                 "first": 0.16,
                 "second": 0.2
@@ -11846,7 +11846,7 @@
       "behavior": "phrase",
       "sound": "sine",
       "octave": 3,
-      "gain": 0.24,
+      "gain": 0.34,
       "attack": 0.03,
       "release": 0.25,
       "lpf": 3400,
@@ -12330,7 +12330,7 @@
       "behavior": "phrase",
       "sound": "sine",
       "octave": 4,
-      "gain": 0.3,
+      "gain": 0.75,
       "attack": 0.03,
       "release": 0.2,
       "lpf": 5000,
@@ -13711,7 +13711,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.3,
+      "gain": 0.37,
       "attack": 0.001,
       "release": 0.1,
       "lpf": 3200,
@@ -14174,7 +14174,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.17,
+      "gain": 0.3,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 7000,
@@ -14437,7 +14437,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.5,
+      "gain": 1,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 9000,
@@ -15486,14 +15486,14 @@
             "variation": 3,
             "transpose": 0,
             "params": {
-              "gain": 0.34
+              "gain": 0.7
             }
           },
           "section-f": {
             "variation": 5,
             "transpose": 5,
             "params": {
-              "gain": 0.58
+              "gain": 1
             }
           },
           "section-g": {
@@ -19839,7 +19839,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.2,
+      "gain": 0.36,
       "attack": 0.001,
       "release": 0.04,
       "lpf": 9000,
@@ -20535,7 +20535,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.14,
+      "gain": 0.31,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 8000,
@@ -23099,7 +23099,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.45,
+      "gain": 1,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 9000,
@@ -23257,7 +23257,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.3,
+      "gain": 0.37,
       "attack": 0.001,
       "release": 0.1,
       "lpf": 3200,
@@ -23720,7 +23720,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.17,
+      "gain": 0.3,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 7000,
@@ -23983,7 +23983,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.5,
+      "gain": 1,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 9000,
@@ -25032,14 +25032,14 @@
             "variation": 3,
             "transpose": 0,
             "params": {
-              "gain": 0.34
+              "gain": 0.7
             }
           },
           "section-f": {
             "variation": 5,
             "transpose": 5,
             "params": {
-              "gain": 0.58
+              "gain": 1
             }
           },
           "section-g": {
@@ -29385,7 +29385,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.2,
+      "gain": 0.36,
       "attack": 0.001,
       "release": 0.04,
       "lpf": 9000,
@@ -30081,7 +30081,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.14,
+      "gain": 0.31,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 8000,
@@ -32645,7 +32645,7 @@
       "behavior": "pulse",
       "sound": "sine",
       "octave": 2,
-      "gain": 0.45,
+      "gain": 1,
       "attack": 0.001,
       "release": 0.06,
       "lpf": 9000,
@@ -35054,7 +35054,7 @@
       "behavior": "phrase",
       "sound": "sine",
       "octave": 4,
-      "gain": 0.42,
+      "gain": 0.7,
       "attack": 0.003,
       "release": 0.25,
       "lpf": 5200,
@@ -36563,7 +36563,7 @@
             "variation": 4,
             "transpose": 0,
             "params": {
-              "gain": 0.5,
+              "gain": 0.8,
               "reverbRange": {
                 "first": 0.16,
                 "second": 0.2
@@ -43861,7 +43861,7 @@
       "behavior": "phrase",
       "sound": "sine",
       "octave": 3,
-      "gain": 0.24,
+      "gain": 0.34,
       "attack": 0.03,
       "release": 0.25,
       "lpf": 3400,
@@ -44345,7 +44345,7 @@
       "behavior": "phrase",
       "sound": "sine",
       "octave": 4,
-      "gain": 0.3,
+      "gain": 0.75,
       "attack": 0.03,
       "release": 0.2,
       "lpf": 5000,

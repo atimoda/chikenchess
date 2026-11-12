@@ -586,7 +586,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.3,
+      "gain": 0.37,
       "attack": 0.001,
       "decay": 0.25,
       "sustain": 0,
@@ -674,7 +674,7 @@
         1
       ],
       "octave": 4,
-      "gain": 0.42,
+      "gain": 0.7,
       "attack": 0.003,
       "decay": 0.5,
       "sustain": 0.2,
@@ -759,7 +759,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.17,
+      "gain": 0.3,
       "attack": 0.001,
       "decay": 0.12,
       "sustain": 0,
@@ -932,7 +932,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.5,
+      "gain": 1,
       "attack": 0.001,
       "decay": 0.1,
       "sustain": 0,
@@ -1285,7 +1285,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.2,
+      "gain": 0.36,
       "attack": 0.001,
       "decay": 0.06,
       "sustain": 0,
@@ -1458,7 +1458,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.14,
+      "gain": 0.31,
       "attack": 0.001,
       "decay": 0.1,
       "sustain": 0,
@@ -1546,7 +1546,7 @@
         1
       ],
       "octave": 3,
-      "gain": 0.24,
+      "gain": 0.34,
       "attack": 0.03,
       "decay": 0.4,
       "sustain": 0.7,
@@ -1721,7 +1721,7 @@
         1
       ],
       "octave": 4,
-      "gain": 0.3,
+      "gain": 0.75,
       "attack": 0.03,
       "decay": 0.3,
       "sustain": 0.8,
@@ -1811,7 +1811,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.45,
+      "gain": 1,
       "attack": 0.001,
       "decay": 0.1,
       "sustain": 0,
