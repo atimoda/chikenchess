@@ -42,7 +42,7 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   croydon: 'croydon-2026-10-25-electronic-v2',
   durban: 'durban-2026-10-25-electronic-v2',
   // Brazilian rewrite: profiles authored by scripts/brazilian/<city>.py.
-  'rio-1910': 'rio-1910-2026-10-25-brazilian-v1',
+  'rio-1910': 'rio-1910-2026-11-12-brazilian-v2',
   'rio-1930': 'rio-1930-2026-10-25-brazilian-v1',
   'recife-1935': 'recife-1935-2026-10-25-brazilian-v1',
   'piracicaba-1940': 'piracicaba-1940-2026-10-25-brazilian-v1',
