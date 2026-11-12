@@ -8,6 +8,7 @@ const S = loadTs('lib/pigchicken/sky.ts')
 const B = loadTs('lib/pigchicken/bird-perch.ts')
 const PS = loadTs('lib/pigchicken/patio-settings.ts')
 const EX = loadTs('lib/pigchicken/example-patios.ts')
+const VALE = loadTs('lib/pigchicken/example-valley.ts')
 
 const pole = (x, extra = {}, power = {}) => L.normalizeElement({ ...L.createElement('pole', x, 500), ...extra, params: { power: { ...P.defaultPower('pole'), ...power } } })
 
@@ -109,6 +110,31 @@ test('the example Pátio survives saving and has wires, a sky and the Passaguá'
   if (process.env.DUMP_EXAMPLE) require('fs').writeFileSync(process.env.DUMP_EXAMPLE, JSON.stringify(layout))
 })
 
+test('the valley example survives saving, fills its six scenes and wires every pole and tower by links', () => {
+  const layout = VALE.valleyLayout()
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(layout))), layout)
+  assert.deepEqual(VALE.valleyLayout(), layout)
+  assert.ok(layout.elements.length < L.LAYOUT_MAX_ELEMENTS)
+  assert.equal(layout.settings.screens, 4)
+  assert.equal(layout.settings.temple, false)
+  const els = L.elementsInWorld(layout, 4)
+  assert.equal(els.length, layout.elements.length)
+  assert.equal(els.filter(e => e.kind === 'entry').length, 1)
+  // something of the ground in every scene, the two after the Parquinho included
+  for (let s = 0; s < 6; s++) assert.ok(els.some(e => e.kind === 'house' && !e.depth && Math.floor((e.x + e.w / 2) / world.SCENE_W) === s), `scene ${s}`)
+  // every pole and tower is wired by hand and reaches another one
+  const power = els.filter(e => L.isPowerElement(e.kind))
+  assert.ok(power.every(e => Array.isArray(e.params.power.links)))
+  assert.ok(power.every(e => P.linkedTo(els, e.id).size > 0))
+  assert.ok(P.powerSpans(els).length > 150)
+  // every portal has its partner and every rack item exists
+  els.filter(e => e.kind === 'portal').forEach(p => assert.ok(L.portalPartner(p, els)))
+  const items = new Set(els.filter(e => e.kind === 'rack').map(e => e.params.item))
+  assert.ok(items.size >= 20)
+  // nothing above the ceiling
+  assert.ok(els.every(e => e.depth || e.y >= PS.patioWorldTop(layout.settings)))
+})
+
 test('changing one pole\'s model or wire floor changes its whole line', () => {
   const a = pole(200), b = pole(700), c = pole(1200), other = pole(900, {}, { line: 2 })
   const els = [a, b, c, other]
@@ -162,7 +188,7 @@ test('mountains: normalized, and the sky\'s old on/off moves to them', () => {
 
 test('clouds: their own settings, or the sky\'s old amount', () => {
   const C = loadTs('lib/pigchicken/clouds.ts')
-  assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).size, 300)
+  assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).size, 600)
   assert.equal(C.normalizeClouds({ size: 900, wind: -1, tint: 'nope' }).wind, 0)
   assert.equal(C.normalizeClouds({ tint: 'nope' }).tint, C.CLOUDS_DEFAULT.tint)
   assert.equal(C.patioClouds(undefined, 30).amount, 30)
@@ -270,4 +296,54 @@ test('mountains and snowfall: the new settings are cleaned and kept with the Pá
   assert.deepEqual([f.amount, f.wind, f.size], [100, -100, SF.SNOWFALL_SIZE.min])
   assert.equal(PS.normalizePatioSettings({ snowfall: { amount: 30 } }).snowfall.amount, 30)
   assert.equal(SF.flakeCount(100, 1600, 900), 450)
+})
+
+const CD = loadTs('lib/pigchicken/cloud-draw.ts')
+const CL = loadTs('lib/pigchicken/clouds.ts')
+
+test('sun: softness, glow colour and position are cleaned and reach the look; old skies stay as they were', () => {
+  const old = S.normalizeSky({ hour: 18.2 })
+  assert.deepEqual([old.sunSoft, old.glowColor, old.sunX, old.sunLift, old.radialSun, old.radialSize], [0, '', 0, 0, false, 100])
+  const base = S.skyLook(old)
+  assert.equal(base.sun.x, 0); assert.equal(base.sun.soft, 0); assert.equal(base.sun.glowColor, base.sun.color)
+  const sky = S.normalizeSky({ hour: 18.2, sunSoft: 150, glowColor: '#FF80D0', sunX: -400, sunLift: 50, glow: 500, radialSun: true, radialSize: 5 })
+  assert.deepEqual([sky.sunSoft, sky.glowColor, sky.sunX, sky.sunLift, sky.glow, sky.radialSun, sky.radialSize], [100, '#ff80d0', -100, 50, S.SKY_GLOW.max, true, S.SKY_RADIAL_SIZE.min])
+  const look = S.skyLook(sky)
+  assert.equal(look.sun.x, -100 * S.SKY_SUN_MOVE.x)
+  assert.equal(look.sun.y, base.sun.y - 50 * S.SKY_SUN_MOVE.y)
+  assert.equal(look.sun.glowColor, '#ff80d0')
+  assert.ok(look.horizonGlow <= 1)
+})
+
+test('sky rings round the sun: centred on it, the horizon colour inside and the top colour outside', () => {
+  const sky = { ...S.SKY_DEFAULT, follow: false, stops: [{ at: 0, color: '#112233' }, { at: 1, color: '#ffeedd' }], radial: 96, radialSun: true, sunX: 10 }
+  const look = S.skyLook(sky)
+  const css = S.skyRadial(look, -4200, -200, 870, 1350)
+  const m = /radial-gradient\((\d+)px (\d+)px at (\d+)px (\d+)px, #ffeedd 0\.00%, #112233 100\.00%/.exec(css)
+  assert.ok(m, css)
+  assert.equal(Number(m[3]), 1350 + 10 * S.SKY_SUN_MOVE.x)
+  assert.equal(Number(m[4]), Math.round(look.sun.y + 4200))
+  assert.equal(Number(m[2]), Math.round(1070 * 0.75))
+  // the size scales the rings; without the sun as the centre the rings are the ones of before
+  const big = /radial-gradient\(\d+px (\d+)px/.exec(S.skyRadial(S.skyLook({ ...sky, radialSize: 200 }), -4200, -200, 870, 1350))
+  assert.equal(Number(big[1]), Math.round(1070 * 0.75 * 2))
+  const under = S.skyRadial(S.skyLook({ ...sky, radialSun: false, sunX: 0 }), -4200, -200, 870, 1350)
+  assert.ok(under.startsWith(`radial-gradient(${Math.round(1070 * (14 + (0.7 - 14) * Math.pow(0.96, 0.6)))}px 1070px at 1350px ${870 + 4200}px, #ffeedd 0.00%, #112233 100.00%`), under)
+})
+
+test('clouds: cumulus heaps of puffs, more of them with Gomos and Desfiado; old clouds stay soft', () => {
+  const old = CL.normalizeClouds({ amount: 40 })
+  assert.deepEqual([old.kind, old.puffs, old.detail, old.shadeTintAmount], ['soft', 50, 40, 0])
+  assert.equal(CL.normalizeClouds({ kind: 'fog', size: 900 }).kind, 'soft')
+  assert.equal(CL.normalizeClouds({ size: 900 }).size, CL.CLOUD_SCALE.max)
+  const soft = CD.softClouds(6000, 11, 1, 0.5, 0.5)
+  assert.ok(soft.length > 3 && soft.every(c => c.puffs.length === 0 && c.lobes[c.lobes.length - 1].shade))
+  const few = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 0, 0), many = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 1, 1)
+  assert.ok(few.length > 3 && few.every(c => c.puffs.length === 5))
+  assert.ok(many.every(c => c.puffs.length >= 14 * 4))
+  for (const c of many) {
+    const reach = CD.cloudReach(c)
+    assert.ok(reach.l < 0 && reach.r > 0 && c.top > 0 && c.bottom > 0)
+    assert.ok(c.puffs.every(p => p.r - p.dy <= c.top), 'every puff is inside the cloud\'s box')
+  }
 })

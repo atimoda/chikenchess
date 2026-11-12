@@ -59,7 +59,7 @@ import { patioGround, patioInventoryLimit, patioSceneMusic, patioScreens, patioT
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultCamera } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
-import { deviceId, forgetPatio, lobbyFromUrl, onPatioOpenRequest, openPatioLobby } from "@/lib/pigchicken/patio-store"
+import { deviceId, forgetPatio, lobbyFromUrl, onPatioOpenRequest, openPatioLobby, type NewPatioKind } from "@/lib/pigchicken/patio-store"
 import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
 import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
@@ -399,7 +399,7 @@ export function ChickenPatio() {
   switchRef.current = switchLobby
   useEffect(() => onPatioOpenRequest(id => switchRef.current(id)), [])
   // a new Pátio of mine (a copy of the default one, or an empty one): I am its creator and may edit it
-  const startNewPatio = (empty: boolean | 'sunset' = false) => {
+  const startNewPatio = (empty: NewPatioKind = false) => {
     setEditorOn(false)
     setEditActive(false)
     setEditHint(false)
