@@ -198,16 +198,28 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
 export const STICK = 112, CONTROLS_BOTTOM = 64
 const KNOB = 48
 
+// the round buttons on the right; they may overlap (placed so in the layout editor), so one finger can hold two
+type PadAction = "run" | "down" | "jump"
+const PAD_ACTIONS: readonly PadAction[] = ["run", "down", "jump"]
+// one finger on the buttons: the ones it landed on stay held until it lifts; dragged, it also holds the ones it is
+// over. A finger that landed on Correr drives the movement stick instead (drag = push the stick)
+type PadTouch = { origin: Set<PadAction>; over: Set<PadAction>; stick: boolean; sx: number; sy: number }
+
 function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boolean) => void; bottom: number }) {
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const stickRef = useRef<HTMLDivElement>(null)
   const active = useRef<Partial<Record<ChickenAction, boolean>>>({})
   const pointerId = useRef<number | null>(null)
+  // who moves the stick now: its own finger, or the finger dragging from Correr (its pointer id)
+  const stickBy = useRef<"stick" | number | null>(null)
   const movementMagnet = useRef(loadChickenControls().analog.magnetDeg)
   useEffect(() => subscribeChickenControls(c => { movementMagnet.current = c.analog.magnetDeg }), [])
+  const buttons = useRef<Partial<Record<PadAction, HTMLButtonElement | null>>>({})
+  const touches = useRef(new Map<number, PadTouch>())
+  const held = useRef(new Set<PadAction>())
+  const [shown, setShown] = useState<ReadonlySet<PadAction>>(() => new Set())
 
   const { editing } = useTouchLayout()
-  useEffect(() => { if (editing) { set("run", false); set("down", false); set("jump", false) } }, [editing])
 
   const apply = (next: Partial<Record<ChickenAction, boolean>>) => {
     (["left", "right", "up", "crouch"] as const).forEach(a => {
@@ -216,9 +228,8 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
     })
     active.current = next
   }
-  const move = (e: ReactPointerEvent) => {
-    const r = stickRef.current!.getBoundingClientRect()
-    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2)
+  // the stick pushed by (dx, dy) px from its centre
+  const drive = (dx: number, dy: number) => {
     const max = (STICK - KNOB) / 2 + 8, len = Math.hypot(dx, dy)
     if (len > max) { dx *= max / len; dy *= max / len }
     setKnob({ x: dx, y: dy })
@@ -229,10 +240,79 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
     const l = Math.hypot(nx, ny)
     setTouchMoveStick(l > 0 ? { x: nx / l, y: ny / l, len: Math.min(1, l) } : null)
   }
-  const release = () => { pointerId.current = null; setKnob({ x: 0, y: 0 }); apply({}); setTouchMoveStick(null) }
+  const move = (e: ReactPointerEvent) => {
+    const r = stickRef.current!.getBoundingClientRect()
+    drive(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2))
+  }
+  const centre = () => { stickBy.current = null; setKnob({ x: 0, y: 0 }); apply({}); setTouchMoveStick(null) }
+  const release = () => { pointerId.current = null; if (stickBy.current === "stick") centre() }
 
-  useEffect(() => { if (editing) release() }, [editing])
-  useEffect(() => () => { apply({}); setTouchMoveStick(null) }, [])
+  // the buttons under a point (round: inside the circle each one draws)
+  const hits = (x: number, y: number) => {
+    const out = new Set<PadAction>()
+    for (const a of PAD_ACTIONS) {
+      const r = buttons.current[a]?.getBoundingClientRect()
+      if (r && Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2)) <= r.width / 2) out.add(a)
+    }
+    return out
+  }
+  // hold exactly the buttons some finger asks for
+  const sync = () => {
+    const want = new Set<PadAction>()
+    touches.current.forEach(t => { t.origin.forEach(a => want.add(a)); t.over.forEach(a => want.add(a)) })
+    for (const a of PAD_ACTIONS) if (want.has(a) !== held.current.has(a)) set(a, want.has(a))
+    held.current = want
+    setShown(want)
+  }
+  const padDown = (action: PadAction) => (e: ReactPointerEvent) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const origin = hits(e.clientX, e.clientY)
+    if (!origin.size) origin.add(action)
+    const stick = origin.has("run") && stickBy.current !== "stick"
+    if (stick) stickBy.current = e.pointerId
+    touches.current.set(e.pointerId, { origin, over: new Set(), stick, sx: e.clientX, sy: e.clientY })
+    sync()
+  }
+  const padMove = (e: ReactPointerEvent) => {
+    const t = touches.current.get(e.pointerId)
+    if (!t) return
+    if (t.stick) { if (stickBy.current === e.pointerId) drive(e.clientX - t.sx, e.clientY - t.sy); return }
+    const over = hits(e.clientX, e.clientY)
+    t.origin.forEach(a => over.delete(a))
+    if (over.size !== t.over.size || [...over].some(a => !t.over.has(a))) { t.over = over; sync() }
+  }
+  const padUp = (e: ReactPointerEvent) => {
+    if (!touches.current.delete(e.pointerId)) return
+    if (stickBy.current === e.pointerId) centre()
+    sync()
+  }
+  const padReset = () => {
+    touches.current.clear()
+    if (typeof stickBy.current === "number") centre()
+    sync()
+  }
+
+  useEffect(() => { if (editing) { padReset(); set("run", false); set("down", false); set("jump", false); pointerId.current = null; centre() } }, [editing])
+  useEffect(() => () => { apply({}); setTouchMoveStick(null); PAD_ACTIONS.forEach(a => set(a, false)) }, [])
+
+  const pad = (action: PadAction, label: string, size: number, icon: ReactNode) => (
+    <Movable id={action} className="relative">
+      <TouchButton
+        label={label}
+        size={size}
+        down={shown.has(action)}
+        buttonRef={el => { buttons.current[action] = el }}
+        onPointerDown={padDown(action)}
+        onPointerMove={padMove}
+        onPointerUp={padUp}
+        onPointerCancel={padUp}
+        onLostPointerCapture={padUp}
+      >
+        {icon}
+      </TouchButton>
+    </Movable>
+  )
 
   return (
     <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
@@ -242,7 +322,7 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
         aria-label="Analógico"
         className="pointer-events-auto absolute inset-0 rounded-full border-2 border-white/30 bg-white/10 backdrop-blur-[2px]"
         style={{ touchAction: "none" }}
-        onPointerDown={e => { pointerId.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
+        onPointerDown={e => { pointerId.current = e.pointerId; stickBy.current = "stick"; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
         onPointerMove={e => { if (pointerId.current === e.pointerId) move(e) }}
         onPointerUp={release}
         onPointerCancel={release}
@@ -256,30 +336,29 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
       </Movable>
       {/* buttons in one row, centred on the stick's vertical centre */}
       <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
-        <Movable id="run" className="relative"><TouchButton label="Correr" action="run" set={set} size={54}><Footprints className="h-6 w-6" /></TouchButton></Movable>
-        <Movable id="down" className="relative"><TouchButton label="Chocar" action="down" set={set} size={54}><Egg className="h-6 w-6" /></TouchButton></Movable>
-        <Movable id="jump" className="relative"><TouchButton label="Pular" action="jump" set={set} size={68}><ChevronsUp className="h-8 w-8" /></TouchButton></Movable>
+        {pad("run", "Correr", 54, <Footprints className="h-6 w-6" />)}
+        {pad("down", "Chocar", 54, <Egg className="h-6 w-6" />)}
+        {pad("jump", "Pular", 68, <ChevronsUp className="h-8 w-8" />)}
       </div>
     </div>
   )
 }
 
-function TouchButton({ label, action, set, size, style, children }: { label: string; action: ChickenAction; set: (action: ChickenAction, on: boolean) => void; size: number; style?: React.CSSProperties; children: ReactNode }) {
-  const [down, setDown] = useState(false)
-  const setRef = useRef(set)
-  setRef.current = set
-  useEffect(() => () => setRef.current(action, false), [action])
-  const press = (on: boolean) => { setDown(on); set(action, on) }
+type PadHandler = (e: ReactPointerEvent<HTMLButtonElement>) => void
+function TouchButton({ label, size, down, buttonRef, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onLostPointerCapture, children }: { label: string; size: number; down: boolean; buttonRef: (el: HTMLButtonElement | null) => void; onPointerDown: PadHandler; onPointerMove: PadHandler; onPointerUp: PadHandler; onPointerCancel: PadHandler; onLostPointerCapture: PadHandler; children: ReactNode }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       aria-label={label}
+      aria-pressed={down}
       className={`pointer-events-auto relative flex shrink-0 items-center justify-center rounded-full border-2 text-white/80 backdrop-blur-[2px] transition-colors ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/12"}`}
-      style={{ width: size, height: size, touchAction: "none", ...style }}
-      onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); press(true) }}
-      onPointerUp={() => press(false)}
-      onPointerCancel={() => press(false)}
-      onLostPointerCapture={() => { if (down) press(false) }}
+      style={{ width: size, height: size, touchAction: "none" }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onLostPointerCapture={onLostPointerCapture}
       onContextMenu={e => e.preventDefault()}
     >
       {children}

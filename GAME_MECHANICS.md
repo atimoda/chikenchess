@@ -18,7 +18,8 @@
 | Piano roll, seções e slides | [Editor](docs/mechanics/editor.md) e [Arranjo global](docs/mechanics/arrangement.md) |
 | Globo, cidades e popups | [Mapa](docs/mechanics/map.md) |
 | Galinha: movimento, paredes, teto e limites escaláveis, pulo, portais do globo | [Movimento da galinha](docs/mechanics/chicken/movement.md) |
-| Galinha: controles, teclado, gamepad, toque e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
+| Galinha: controles, teclado, gamepad e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
+| Galinha: controles de toque no celular (posição dos botões, deslizar entre botões, Correr com analógico, Throw ao soltar, avatar no canto) | [Controles de toque](docs/mechanics/chicken/touch.md) |
 | Pintinhos: espécie de ave menor, estilos de cor, bots que seguem a galinha, captura como almas e Pátio online | [Pintinhos](docs/mechanics/chicken/chicks.md) |
 | Pátio: mundo, limites e botão Sol, parallax, portais, Vila, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
 | Pátio: espaço abaixo do chão, Salvar no game (Configurações do Pátio, Camadas, Câmera de Mira, Volume, Ajustes) e ícones do cabeçalho dos painéis | [Padrões do jogo](docs/mechanics/patio/game-defaults.md) |
@@ -55,7 +56,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Ações, efeitos e movimento](docs/mechanics/actions-and-movement.md) | 11 KB |
 | [Admin e catálogos locais](docs/mechanics/admin.md) | 4 KB |
 | [Arranjo global e atribuições por peça](docs/mechanics/arrangement.md) | 18 KB |
-| [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 24 KB |
+| [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 26 KB |
+| [Galinha: controles de toque](docs/mechanics/chicken/touch.md) | 7 KB |
 | [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 28 KB |
 | [Pintinhos: espécie, estilos, IA de seguir, captura e online](docs/mechanics/chicken/chicks.md) | 6 KB |
 | [Criativo e persistência](docs/mechanics/creative.md) | 14 KB |
