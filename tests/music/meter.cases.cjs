@@ -55,7 +55,7 @@ test('each new stage has its notated subdivision, complete sections and local ar
  const {STYLE_PROFILES}=loadTs('lib/music/kit-profiles/catalog.ts')
  const {arrangementPosition}=loadTs('lib/music/arrangement.ts')
  const {cities}=loadTs('lib/cities-data.ts')
- assert.equal(RHYTHM_STAGES.length,37)
+ assert.equal(RHYTHM_STAGES.length,36)
  for(const stage of RHYTHM_STAGES) {
   const city=cities.find(c=>c.id===stage.id),kit=defaultCityKit(stage.id),profile=STYLE_PROFILES[stage.id]
   assert.deepEqual(city.campaigns,[stage.campaign])
@@ -64,7 +64,7 @@ test('each new stage has its notated subdivision, complete sections and local ar
   assert.ok(city.image.startsWith('https://') || fs.existsSync(`public${city.image}`))
   assert.equal(profile.parts.length,16)
   for(const part of profile.parts) {
-   assert.equal(part.patterns.length,['leipzig-1723','vienna-1825','venice-1725','copenhagen-1869','paris-1913','london-1977','memphis-1967'].includes(stage.id) ? 8 : 6)
+   assert.equal(part.patterns.length,['leipzig-1723','vienna-1825','venice-1725','copenhagen-1869','paris-1913','london-1977','memphis-1967'].includes(stage.id) || stage.campaign==='harmonic-songbook' ? 8 : 6)
    assert.ok(part.patterns.every((pattern,bank)=>!part.arrangement?.variations?.some((variation,index)=>variation===bank && part.arrangement.active?.[index]!==false) || pattern.split(/\s+/).some(cell=>cell!=='.')),`${stage.id}: audible active banks for ${part.name}`)
   }
   const firstBars=kit.arrangement.sections[0].beats/meter.beatsPerBar(stage.meter)

@@ -312,7 +312,7 @@ test('sample maps encode sharp filenames while preserving real local file paths'
   assert.deepEqual(Object.keys(Object.values(bass.map)[0]), ['c1', 'e1', 'g1', 'c2'])
 })
 
-test('all 68 city presets retain their authored bank order and contrasting harmonic paths', () => {
+test('all 67 city presets retain their authored bank order and contrasting harmonic paths', () => {
   const { cities } = loadTs('lib/cities-data.ts'), { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   for (const city of cities) {
     const kit = defaultCityKit(city.id)
@@ -349,6 +349,15 @@ test('all 68 city presets retain their authored bank order and contrasting harmo
       assert.ok(kit.arrangement.sections.length >= 10)
       for (const instrument of Object.values(kit.instruments)) {
         assert.equal(instrument.pianoRolls.length, 8, instrument.name)
+        assert.ok(Object.values(instrument.arrangement.sections).every(step => step.fill === undefined || step.fill === 7))
+      }
+      continue // Form, sound and grid are covered in kits.cases.cjs.
+    }
+    if (city.campaigns.includes('harmonic-songbook')) {
+      // Blues, Jazz & Rock rewrite: up to eight global banks per section (reprises share them), rests stay silent, fills use bank 7.
+      assert.equal(kit.harmony, 'kit')
+      for (const instrument of Object.values(kit.instruments)) {
+        assert.ok(instrument.pianoRolls.length >= 1 && instrument.pianoRolls.length <= 8, `${city.id}/${instrument.name}`)
         assert.ok(Object.values(instrument.arrangement.sections).every(step => step.fill === undefined || step.fill === 7))
       }
       continue // Form, sound and grid are covered in kits.cases.cjs.

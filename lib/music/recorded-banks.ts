@@ -38,6 +38,32 @@ export const RECORDED_BANKS: SampleBank[] = [{
     multisample('chicken-guitars-v1', 'nylon', 'Violão clássico de nylon', ['e2', 'g2', 'c3', 'e3', 'g3', 'c4'], ['Gravação']),
   ],
 }, {
+  // Amplifiers rendered offline (chords intermodulate before the amp, as on a real guitar).
+  id: 'chicken-amps-v1', name: 'Chicken Amps · guitarras amplificadas',
+  credit: 'Karoryfer Black and Green Guitars e Big Little Bass · gravações diretas CC0, passadas por modelos de amplificador e caixa; gaita sintetizada; scripts/prepare-amp-recordings.py', license: 'CC0-1.0',
+  assets: [
+    multisample('chicken-amps-v1', 'tweed', 'Guitarra em valvulado tweed (blues, no limite da saturação)', ['e2', 'a2', 'd3', 'g3', 'c4', 'f4', 'a4', 'd5'], ['Tweed']),
+    multisample('chicken-amps-v1', 'crunch', 'Guitarra crunch (stack britânico)', ['e2', 'a2', 'd3', 'g3', 'c4', 'f4', 'a4'], ['Crunch']),
+    multisample('chicken-amps-v1', 'lead', 'Guitarra solo com overdrive e sustain', ['a2', 'd3', 'g3', 'c4', 'f4', 'a4', 'd5'], ['Lead']),
+    multisample('chicken-amps-v1', 'power', 'Power chords (fundamental, quinta e oitava)', ['e2', 'g2', 'c3', 'e3', 'g3'], ['High gain', 'Fuzz']),
+    multisample('chicken-amps-v1', 'chug', 'Power chords abafados com a palma (palm mute)', ['e2', 'g2', 'c3', 'e3', 'g3'], ['High gain']),
+    multisample('chicken-amps-v1', 'fuzz', 'Guitarra solo com fuzz', ['a2', 'd3', 'g3', 'c4', 'f4', 'a4', 'd5'], ['Fuzz']),
+    multisample('chicken-amps-v1', 'jangle', 'Guitarra de 12 cordas com compressor (jangle)', ['e2', 'a2', 'd3', 'g3', 'c4', 'f4', 'a4'], ['12 cordas']),
+    multisample('chicken-amps-v1', 'chorus', 'Guitarra limpa com chorus', ['e2', 'a2', 'd3', 'g3', 'c4', 'f4', 'a4'], ['Chorus']),
+    multisample('chicken-amps-v1', 'harp', 'Gaita de blues amplificada', ['c4', 'f4', 'a4', 'd5', 'g5'], ['Amplificada']),
+    multisample('chicken-amps-v1', 'rock-bass', 'Baixo de rock com valvulado', ['c1', 'e1', 'g1', 'c2'], ['Grind']),
+  ],
+}, {
+  id: 'chicken-voices-v1', name: 'Chicken Voices · grupo vocal',
+  credit: 'ChickenChess · vozes sintetizadas por modelo fonte-filtro (pulso glótico e formantes), amostradas a cada poucos semitons; scripts/generate-vocal-group.py', license: 'CC0-1.0',
+  assets: [
+    multisample('chicken-voices-v1', 'ooh', 'Grupo vocal em "ooh"', ['a2', 'd3', 'g3', 'c4', 'f4', 'a4'], ['Ooh']),
+    multisample('chicken-voices-v1', 'aah', 'Grupo vocal em "aah"', ['a2', 'd3', 'g3', 'c4', 'f4', 'a4'], ['Aah']),
+    multisample('chicken-voices-v1', 'doo-wah', 'Sílabas curtas do grupo vocal', ['a2', 'd3', 'g3', 'c4', 'f4', 'a4'], ['Doo', 'Wah']),
+    multisample('chicken-voices-v1', 'bass-bom', 'Baixo vocal em "bom"', ['e1', 'a1', 'd2', 'g2', 'c3'], ['Bom']),
+    multisample('chicken-voices-v1', 'falsetto', 'Falsete em "oo"', ['c4', 'f4', 'a4', 'd5', 'g5'], ['Oo']),
+  ],
+}, {
   id: 'chicken-bateria-v1', name: 'Chicken Bateria · escola de samba',
   credit: 'Versilian Community Sample Library · gravações CC0 afinadas e moldadas como surdos, caixa, tamborim, chocalho, reco-reco e apito; scripts/prepare-bateria-recordings.py', license: 'CC0-1.0',
   assets: [

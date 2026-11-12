@@ -41,7 +41,6 @@ const studies: Record<string, Study> = {
   'leipzig-1723': { palette:'baroque', leadName:'Violino pastoral', melodies:['0 2 4 2 3 5 4 2 1','2 4 6 4 5 7 6 4 2','4 3 2 1 2 3 2 1 0','2 1 0 -1 0 2 1 -1 0'], bass:'0 . . 4 . . 0 . .', low:'0 . . . . . . . .', back:'. . . 0 . . 0 . .', top:'0 . . . . . . . .', comp:'0 2 4 0 2 4 0 2 4', harmony:'circle' },
   'vienna-1825': { palette:'orchestra', leadName:'Cordas alla breve', melodies:['0 1 2 3 4 2 1 0','4 5 6 7 6 4 2 1','2 . 4 . 6 5 4 2','4 3 2 1 0 2 -1 0'], bass:'0 . . . 4 . . .', low:'0 . . . 0 . . .', back:'. . . . 0 . . .', top:'0 . . . . . . .', comp:'0 . 2 . 4 . 2 .', harmony:'cadence' },
   'oakland-1959': { palette:'jazz', leadName:'Palheta em cinco', melodies:['0 . 2 3 . 4 . 2 . 1','2 . 4 6 . 5 4 . 2 .','4 . . 2 . 1 . . 0 .','2 1 . 0 . 4 3 2 1 0'], bass:'0 . 4 . 2 . 0 . 4 .', low:'0 . . . . . 0 . . .', back:'. . 0 . . . . . 0 .', top:'0 . 0 0 0 . 0 . 0 0', comp:'0 . . 0 . . 0 . 0 .', harmony:'jazz-251' },
-  'canterbury-1972': { palette:'rock', leadName:'Órgão em nove', melodies:['0 2 4 6 4 2 1 3 2','2 4 5 7 5 4 3 2 1','4 . 2 1 . 0 2 . 4','4 3 2 1 0 2 4 1 0'], bass:'0 . 4 0 . 2 4 . 2', low:'0 . . 0 . . 0 . .', back:'. . . 0 . . . . 0', top:'0 0 0 0 0 0 0 0 0', comp:'0 . 2 4 . 2 0 . 4', harmony:'rock-6415' },
   'cambridge-1973': { palette:'rock', leadName:'Guitarra em sete', melodies:['0 . 2 . 4 3 2 . 1 . 0 2 1 .','2 . 4 . 6 5 4 . 3 . 2 4 2 .','4 . . . 2 . . . 0 . 1 2 4 .','4 3 2 1 0 . 2 . 4 2 1 0 -1 0'], bass:'0 . 0 4 2 . 0 . 4 . 2 1 0 .', low:'0 . . . 0 . . . 0 . . . 0 .', back:'. . 0 . . . 0 . . . 0 . . 0', top:'0 . 0 . 0 . 0 . 0 . 0 . 0 .', comp:'. . 0 . . . 0 . . . 0 . 0 .', harmony:'descent' },
   'istanbul-1970': { palette:'turkish', leadName:'Cordas de dança em cinco', melodies:['0 1 3 2 1','2 4 3 5 4','4 . 2 1 0','2 1 0 -1 0'], bass:'0 . . 4 .', low:'0 . . 0 .', back:'. . 0 . 0', top:'0 0 0 0 0', comp:'0 . . 0 .', harmony:'descent', sectionBars:[4,6,4,8] },
   'kalamata-1930': { palette:'greek', leadName:'Cordas de roda em sete', melodies:['0 1 2 4 3 2 1','2 3 4 6 5 4 2','4 . 2 1 . 0 1','2 1 0 2 1 -1 0'], bass:'0 . . 4 . 2 .', low:'0 . . 0 . 0 .', back:'. . 0 . 0 . 0', top:'0 0 0 0 0 0 0', comp:'0 . . 0 . 0 .', harmony:'cadence' },
@@ -68,7 +67,7 @@ function profileFor(stage: RhythmStage): StyleProfile {
   const n = study.melodies[0].split(' ').length
   const held = ['0',...Array(n-1).fill('.')].join(' ')
   const ending = [...Array(n-2).fill('.'),'0','0'].join(' ')
-  const comp = ['soul','baroque','orchestra'].includes(study.palette) || stage.id === 'canterbury-1972' ? study.comp : chordHits(study.comp)
+  const comp = ['soul','baroque','orchestra'].includes(study.palette) ? study.comp : chordHits(study.comp)
   const lead = study.melodies
   const reply = lead.map(pattern => pattern.split(' ').map((cell,index) => index < Math.floor(n/2) ? '.' : cell).join(' '))
   const baroque = study.palette === 'baroque'
@@ -89,7 +88,7 @@ function profileFor(stage: RhythmStage): StyleProfile {
       : `Estudo original de ${stage.genre}; ${stage.year} é ambientação. Timbres sintéticos locais, sem transcrição de gravações.`,
     url: 'https://viva.pressbooks.pub/openmusictheory/part/rhythm-and-meter/',
     parts: [
-      voice('melody', study.leadName, stage.id === 'canterbury-1972' ? keys('organ') : sound.lead, lead, {
+      voice('melody', study.leadName, sound.lead, lead, {
         bars: 1, gain: classicalKit ? .115 : .15, octave: 4, arrangement: all, gate: .8,
         lpf: baroque ? 8200 : orchestra ? 7600 : 7000, hpf: classicalKit ? 180 : 100,
         effects: classicalKit ? { pan: -.08, reverb: .16 } : undefined,
