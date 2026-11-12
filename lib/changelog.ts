@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.9.0',
     date: '12/11/2026',
-    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha Brazilian revista, com sete kits recompostos por seção e duas fases novas, Chula e Chamamé',
+    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha Brazilian revista, com sete kits recompostos por seção e duas fases novas, Chula e Chamamé; Pátios em Destaque e Item solto no editor',
     groups: [
       { title: 'Campanha', items: [
         'A campanha Harmonic songbook agora se chama Blues, Jazz & Rock. A fase Canterbury 1972 (Progressive pastoral) saiu, e os estilos aparecem só com o nome do gênero, sem "/": Electric blues, Swing, Gypsy jazz, Cool jazz, Jazz waltz, Doo-wop, Piano pop, Progressive rock, Southern rock, Pop punk, Folk rock, Alternative rock e Indie pop.',
@@ -31,6 +31,14 @@ const RECENT = [
         'Choro: clarinete no lugar do flautim, pandeiro e ganzá com timbres gravados e linhas melódicas mais suaves e cantadas.',
         'Funk carioca: batidão grave e forte nos drops, sub 808 com saturação, Rhodes nos stabs e mais dinâmica entre intro, pré-refrão, drop e montagem.',
         'Sertanejo raiz e Baião: violão, contrabaixo, pandeiro, ganzá, pífano (flauta doce) e agogô com timbres gravados; a dupla caipira canta em terças na região de tenor.',
+      ] },
+      { title: 'Pátio', items: [
+        'Playgrounds ficou mais largo e com só dois botões no topo: Novo Pátio padrão e Novo Pátio vazio. Abaixo, três blocos que abrem e fecham: Destaques, Favoritos e Salvos.',
+        'Destaques: o admin destaca Pátios pelo botão de medalha, e eles aparecem para todo mundo no primeiro bloco, junto do Pátio padrão.',
+        'Os Pátios de exemplo Pôr do sol com torres e Vales e ilhas no céu deixaram de ser botões e viraram Pátios normais do admin, em Destaques.',
+        'Pátio vazio (e qualquer Pátio aberto depois de outro) não traz mais itens soltos do Pátio anterior.',
+        'Apagar um Suporte de item no Modo editor deixa o Item solto no lugar: ele não reaparece depois de pego, pode ser selecionado e apagado, e fica salvo no Pátio. Assim dá para fazer um Pátio com um único item.',
+        'Salvar Pátio: o aviso do estado do Pátio, quem vira padrinho e o auto-save agora ficam juntos no fim do painel.',
       ] },
     ],
   },

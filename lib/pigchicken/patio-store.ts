@@ -4,8 +4,6 @@
 // edited, so nothing is lost while offline; the database copy (lib/pigchicken/patio-online.ts) is saved over it on
 // "Salvar" and every minute, and `revision` / `dirty` say how this copy relates to the saved one.
 import { defaultLayout, emptyLayout, normalizeLayout, type PatioLayout } from './layout'
-import { sunsetPowerLayout } from './example-patios'
-import { valleyLayout } from './example-valley'
 
 export type PatioRecord = {
   id: string | null // null: the default Pátio
@@ -76,13 +74,12 @@ export function loadPatio(id: string | null): PatioRecord {
   return read(id) ?? { ...loadDefaultPatio(), id, creatorId: null, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
 }
 
-// a new Pátio of mine: a copy of the default (kept only once it is edited), an empty one (only the entry portal) or
-// one of the examples: "Pôr do sol com torres" (lib/pigchicken/example-patios.ts) or "Vales e ilhas no céu"
-// (lib/pigchicken/example-valley.ts)
-export type NewPatioKind = boolean | 'sunset' | 'valley'
+// a new Pátio of mine: a copy of the default (kept only once it is edited) or an empty one (only the entry portal).
+// The example Pátios are normal lobbies of the admin's, featured (lib/pigchicken/example-seed.ts).
+export type NewPatioKind = boolean
 export function newPatio(creatorId: string, empty: NewPatioKind = false): PatioRecord {
   const id = uuid()
-  return { id, layout: empty === 'sunset' ? sunsetPowerLayout() : empty === 'valley' ? valleyLayout() : empty ? emptyLayout() : structuredClone(loadDefaultPatio().layout), creatorId, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
+  return { id, layout: empty ? emptyLayout() : structuredClone(loadDefaultPatio().layout), creatorId, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
 }
 export const newPatioId = uuid
 

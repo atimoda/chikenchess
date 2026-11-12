@@ -25,6 +25,8 @@ export type PatioLobbyInfo = {
   godparentId: string | null
   savedBy: string | null
   isDefault: boolean
+  // an admin's Destaque: listed first (Destaques) for everyone
+  featured: boolean
   editors: string[]
   createdAt: string | null
   updatedAt: string | null
@@ -48,7 +50,7 @@ function info(r: Row): PatioLobbyInfo {
   return {
     id: String(r.id), name: str(r.name), revision: num(r.revision),
     creatorId: str(r.creator_id), creatorName: str(r.creator_name), godparentId: str(r.godparent_id), savedBy: str(r.saved_by),
-    isDefault: r.is_default === true, editors: Array.isArray(r.editors) ? r.editors.filter((x): x is string => typeof x === 'string') : [],
+    isDefault: r.is_default === true, featured: r.featured === true, editors: Array.isArray(r.editors) ? r.editors.filter((x): x is string => typeof x === 'string') : [],
     createdAt: str(r.created_at), updatedAt: str(r.updated_at), lastEditedAt: str(r.last_edited_at), lastPlayedAt: str(r.last_played_at),
     favorite: r.favorite === true, canEdit: r.can_edit === true, favorites: num(r.favorites), plays: num(r.plays), mine: r.mine === true,
   }
@@ -114,7 +116,12 @@ export const renamePatioLobby = async (id: string, name: string) => info(await o
 export const favoritePatioLobby = (id: string, on: boolean) => onlineRpc<boolean>('patio_lobby_favorite', { p_id: id, p_on: on })
 export const playedPatioLobby = (id: string) => onlineRpc<null>('patio_lobby_played', { p_id: id })
 export const listPatioLobbies = async (all: boolean) => ((await onlineRpc<Row[] | null>('patio_lobby_list', { p_all: all })) ?? []).map(info)
+// the featured Pátios (Destaques), for anyone; a server without them answers an empty list
+export async function listFeaturedPatios() {
+  try { return ((await onlineRpc<Row[] | null>('patio_lobby_featured', {})) ?? []).map(info) } catch (e) { if (isPatioServerMissing(e)) return []; throw e }
+}
 export const deletePatioLobby = (id: string) => onlineRpc<null>('patio_lobby_delete', { p_id: id })
+export const setPatioLobbyFeatured = async (id: string, on: boolean) => info(await onlineRpc<Row>('patio_lobby_set_featured', { p_id: id, p_on: on }))
 export const setDefaultPatioLobby = (id: string) => onlineRpc<null>('patio_lobby_set_default', { p_id: id })
 // the lobby panel's "Edit mode" column (the creator or an admin): who besides the creator may edit
 export const setPatioLobbyEditors = async (id: string, editors: string[]) => info(await onlineRpc<Row>('patio_lobby_set_editors', { p_lobby_id: id, p_editors: editors }))

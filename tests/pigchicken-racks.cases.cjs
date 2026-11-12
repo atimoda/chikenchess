@@ -105,3 +105,34 @@ test('touch Run collects an offered rack item only when enabled and releases its
     if(!enabled){step(c,.016,{grab:true,grabHeld:true});assert.equal(c.held.item,'pistol')}
   }
 })
+
+test('a deleted rack leaves its item on its own: it stays, never comes back, and can be deleted (the undo brings the rack back)',()=>{
+  const c=createCombat(),sync=createLayoutSync(c)
+  const rack=L.createElement('rack',300,900,{item:'pistol',respawnDelay:0})
+  sync.sync([rack],1);step(c,.05)
+  assert.equal(c.pickups.length,1);const id=c.pickups[0].id
+  // the editor's delete: a loose item with the same id and item, where the rack stood
+  const loose=L.looseFromRack(rack)
+  assert.equal(loose.kind,'loose');assert.equal(loose.id,rack.id);assert.equal(loose.params.item,'pistol')
+  assert.equal(loose.x+loose.w/2,rack.x+rack.w/2);assert.equal(loose.y+loose.h,rack.y+rack.h)
+  sync.sync([loose],1);step(c,.05)
+  assert.equal(c.racks.length,0);assert.equal(c.pickups.length,1);assert.equal(c.pickups[0].id,id)
+  // taken: nothing comes back
+  c.pickups.length=0;step(c,3);assert.equal(c.pickups.length,0)
+  // undo: the rack again, which refills
+  sync.sync([rack],1);step(c,.05);assert.equal(c.racks.length,1);assert.equal(c.pickups.length,1)
+  // a loose item saved in a layout puts its item once; deleting it takes the item away
+  const c2=createCombat(),s2=createLayoutSync(c2),one=L.createElement('loose',500,900,{item:'flute'})
+  s2.sync([one],1);step(c2,.05);assert.equal(c2.pickups.length,1);assert.equal(c2.pickups[0].owned.item,'flute')
+  s2.sync([],1);assert.equal(c2.pickups.length,0)
+})
+
+test('opening another Pátio clears the last one: its racks, dummies and every item lying in the world',()=>{
+  const c=createCombat(),sync=createLayoutSync(c)
+  sync.sync([L.createElement('rack',300,900,{item:'pistol',respawnDelay:0}),L.createElement('dummy',600,900)],1);step(c,.05)
+  c.pickups.push({...c.pickups[0],id:999,x:800})
+  assert.equal(c.pickups.length,2)
+  sync.reset()
+  assert.equal(c.pickups.length,0);assert.equal(c.racks.length,0);assert.equal(c.targets.filter(t=>t.kind==='dummy').length,0)
+  sync.sync(L.emptyLayout().elements,1);step(c,3);assert.equal(c.pickups.length,0)
+})

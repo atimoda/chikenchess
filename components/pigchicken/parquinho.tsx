@@ -232,10 +232,13 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false, patioKey = null }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean; patioKey?: string | null }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
+  // the Pátio open (its id): another one clears the last one's things and items lying in the world
+  const patioKeyRef = useRef(patioKey)
+  patioKeyRef.current = patioKey
   // where she starts (by the entry portal): read on the first frame, so a moved portal never restarts the loop
   const spawnXRef = useRef(spawnX)
   spawnXRef.current = spawnX
@@ -591,7 +594,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const G = WORLD_GROUND_Y
     // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
     const layoutSync = createLayoutSync(combat)
-    let syncedElements: LayoutElement[] | null = null, syncedScreens = -1
+    let syncedElements: LayoutElement[] | null = null, syncedScreens = -1, syncedPatio: string | null | undefined = undefined
     const place = () => {
       // the temple: the gong (strike it to start) and a few weapons and instruments by the entrance
       combat.addButton(0, G - 40, "gong", 130, 150)
@@ -672,6 +675,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getMotionState() }
       }
       if (templeFor !== `${S.screens}:${templeRef.current}`) placeTemple(S.screens, templeRef.current)
+      if (syncedPatio !== patioKeyRef.current) {
+        if (syncedPatio !== undefined) layoutSync.reset()
+        syncedPatio = patioKeyRef.current; syncedElements = null
+      }
       if (syncedElements !== elementsRef.current || syncedScreens !== S.screens) {
         syncedElements = elementsRef.current; syncedScreens = S.screens
         const shown = elementsInWorld({ v: 1, elements: syncedElements }, S.screens)

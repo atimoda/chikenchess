@@ -50,7 +50,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -58,7 +58,7 @@ export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: 'Solta
 
 export type ElementParams = {
   message?: string; maxHp?: number // dummy
-  item?: ItemId; respawnDelay?: number // rack, seconds after pickup
+  item?: ItemId; respawnDelay?: number // rack (and loose: its item), seconds after pickup
   action?: HordeButton // button
   seed?: number; flip?: boolean // trees
   house?: HouseParams
@@ -116,6 +116,8 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   blossom: { label: 'Ameixeira florida', group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
   dummy: { label: 'Alvo de treino', group: 'Alvos', w: 46, h: 112, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 40 },
   rack: { label: 'Suporte de item', group: 'Itens', w: 76, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 76, minH: 62 },
+  // an item on its own (left where its rack was deleted): it is there once each time the Pátio opens, never comes back
+  loose: { label: 'Item solto', group: 'Itens', w: 64, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 64, minH: 62 },
   button: { label: 'Botão da horda', group: 'Botões', w: 40, h: 40, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 20 },
   tree: { label: 'Árvore', group: 'Árvores', ...TREE_SIZE, layer: 'scene', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 100, minH: 100 },
   house: { label: 'Casa', group: 'Casas', ...HOUSE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 100 },
@@ -133,7 +135,7 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
 }
 // the Gongo and the Jukebox keep their art's size
-const fixedSize = (kind: ElementKind) => kind === 'portal' || kind === 'entry' || kind === 'gong' || kind === 'jukebox'
+const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'gong' || kind === 'jukebox'
 // Postes and Torres: their wires join the next one of the same model and line (lib/pigchicken/power-lines.ts)
 export const isPowerElement = (kind: ElementKind): kind is 'pole' | 'tower' => kind === 'pole' || kind === 'tower'
 // what may stand in a parallax depth of its own: the scenery (not the game's things, the music or the entry)
@@ -171,7 +173,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'house') return { house: housePreset('cliff', newHouseSeed()) }
   if (kind === 'tree') return { tree: treePreset('pine', newTreeSeed()) }
   if (kind === 'dummy') return { message: DUMMY_DEFAULTS.message, maxHp: DUMMY_DEFAULTS.maxHp }
-  if (kind === 'rack') return { item: WEAPON_IDS[0] }
+  if (kind === 'rack' || kind === 'loose') return { item: WEAPON_IDS[0] }
   if (kind === 'button') return { action: 'aliens' }
   if (kind === 'portal') return { portalLabel: 'Entrar no portal?', portalInstruction: 'hover' }
   if (kind === 'pine' || kind === 'blossom') return { seed: Math.floor(Math.random() * 2 ** 31), flip: Math.random() < 0.5 }
@@ -232,6 +234,12 @@ export function entryPortalIn(shown: LayoutElement[]): LayoutElement {
 export function emptyLayout(): PatioLayout {
   const settings = structuredClone(DEFAULT_PATIO_SETTINGS)
   return { v: LAYOUT_VERSION, elements: [entryPortalElement()], ...(Object.keys(settings).length ? { settings } : {}) }
+}
+
+// deleting a rack leaves its item where it stood, on its own (same id, so the game keeps the item already there)
+export function looseFromRack(rack: LayoutElement): LayoutElement {
+  const d = ELEMENT_DEFS.loose
+  return normalizeElement({ ...rack, kind: 'loose', x: rack.x + rack.w / 2 - d.w / 2, y: rack.y + rack.h - d.h, w: d.w, h: d.h, params: { item: rack.params.item } })!
 }
 
 export function portalPartner(portal: LayoutElement, elements: LayoutElement[]) {
@@ -363,6 +371,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   if (kind === 'dummy') {
     params.message = String(p.message ?? '').trim().slice(0, 280)
     params.maxHp = Math.round(clamp(num(p.maxHp, DUMMY_DEFAULTS.maxHp), DUMMY_HP_RANGE.min, DUMMY_HP_RANGE.max))
+  } else if (kind === 'loose') {
+    params.item = RACK_ITEM_IDS.includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
   } else if (kind === 'rack') {
     params.item = RACK_ITEM_IDS.includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
     params.respawnDelay = rackRespawnDelay(params.item, typeof p.respawnDelay === 'number' ? p.respawnDelay : undefined)

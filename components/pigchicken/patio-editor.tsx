@@ -14,7 +14,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
 import {
   ELEMENT_DEFS, HARD_KINDS, HORDE_BUTTONS, canHaveDepth, isMusicElement, isPowerElement, isSurfaceElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
-  newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
+  looseFromRack, newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
@@ -152,6 +152,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     if (!el || el.kind === 'entry') return
     const partner = portalPartner(el, layoutRef.current.elements)
     if (partner?.locked) return
+    // a rack leaves its item where it stood, on its own (no longer coming back); deleting that item takes it away
+    if (el.kind === 'rack') { commit({ ...layoutRef.current, elements: layoutRef.current.elements.map(e => (e.id === id ? looseFromRack(e) : e)) }); select(null); return }
     commit({ ...layoutRef.current, elements: dropLinks(layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id), id) }); select(null)
   }, [commit, select])
   const append = useCallback((elements: LayoutElement[], worldPosition = true) => {
@@ -666,6 +668,17 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
         </div>
         <p className="text-[#93a79a]">Pouse por cima para quicar. Segure Agachar ou Chocar para atravessar.</p>
       </>}
+      {el.kind === "loose" && (
+        <label className="grid gap-1">
+          <span>Item</span>
+          <select aria-label="Item solto" value={el.params.item} onChange={e => set({ item: e.target.value as ItemId })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+            <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+          </select>
+        </label>
+      )}
       {el.kind === "rack" && <>
         <label className="grid gap-1">
           <span>Item do suporte</span>

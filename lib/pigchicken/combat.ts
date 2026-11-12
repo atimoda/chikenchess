@@ -1777,6 +1777,8 @@ export function createCombat() {
     },
     clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
+    // an item on its own in the world (a Pátio's "Item solto"): it falls to the floor there and never comes back
+    addPickup(x: number, item: ItemId, y: number) { const id = nextId++; pickups.push({ id, owned: fresh(item), x, y, vy: 0, resting: false, noPick: 0 }); return id },
     addRack(x: number, item: ItemId, y?: number, respawnDelay?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay) }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {

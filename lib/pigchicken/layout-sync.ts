@@ -1,5 +1,7 @@
-// Keeps the game's own things (training dummies, item racks, horde buttons, Gongos and Jukeboxes) in step with the Pátio's layout:
-// adds the new ones, moves and resizes the ones that changed, removes the deleted ones. A dummy keeps its life
+// Keeps the game's own things (training dummies, item racks, loose items, horde buttons, Gongos and Jukeboxes) in step with
+// the Pátio's layout: adds the new ones, moves and resizes the ones that changed, removes the deleted ones. A loose item
+// (Item solto) puts its item in the world once; taken, it does not come back until the Pátio opens again (reset). A
+// rack deleted in the editor becomes a loose item with the same id, which keeps the item already there (and back). A dummy keeps its life
 // and stage while it is moved; a new total life keeps the share it had. Things past a narrow world's last scene
 // wait out of the world (they would land in the temple) and come back when the world is made wider.
 import type { Combat, Target } from './combat'
@@ -22,15 +24,41 @@ export function createLayoutSync(combat: Combat) {
   const targets = new Map<string, Target>()
   const racks = new Map<string, Rack>()
   const lastParams = new Map<string, string>()
+  // each loose item's pickup in the world (undefined once taken) and where it was put
+  const looses = new Map<string, { pickupId?: number; x: number; y: number; item: string }>()
+  const activePickup = (id: number | undefined) => (id === undefined ? undefined : combat.pickups.find(p => p.id === id))
+  const dropPickup = (id: number | undefined) => { const p = activePickup(id); if (p) combat.pickups.splice(combat.pickups.indexOf(p), 1) }
 
   function sync(elements: LayoutElement[], screens: number) {
     const end = screens * SCENE_W
     const seen = new Set<string>()
     for (const el of elements) {
-      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox') continue
+      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox') continue
       seen.add(el.id)
       const cx = elementWorldX(el, screens) + el.w / 2, bottom = el.y + el.h
       const inside = !!el.region || cx < end
+      if (el.kind === 'loose') {
+        const item = el.params.item!
+        const x = inside ? cx : AWAY, y = bottom - el.h / 2
+        let l = looses.get(el.id)
+        // the rack it was: its item stays (a rack with the same id and item)
+        const was = racks.get(el.id)
+        if (!l && was) {
+          const kept = was.item === item ? activePickup(was.pickupId) : undefined
+          combat.racks.splice(combat.racks.indexOf(was), 1); racks.delete(el.id)
+          if (kept) { l = { pickupId: kept.id, x, y, item }; looses.set(el.id, l) }
+        }
+        if (!l || l.item !== item) {
+          if (l) dropPickup(l.pickupId)
+          l = { pickupId: combat.addPickup(x, item, y), x, y, item }
+          looses.set(el.id, l)
+        } else if (l.x !== x || l.y !== y) {
+          const p = activePickup(l.pickupId)
+          if (p) { p.x = x; p.y = y; p.vy = 0; p.resting = false }
+          l.x = x; l.y = y
+        }
+        continue
+      }
       if (el.kind === 'rack') {
         let r = racks.get(el.id)
         const item = el.params.item!
@@ -39,6 +67,13 @@ export function createLayoutSync(combat: Combat) {
           combat.addRack(cx, item, bottom, el.params.respawnDelay)
           r = combat.racks[combat.racks.length - 1]
           racks.set(el.id, r)
+          // the loose item it was (undone delete): it holds that item again
+          const was = looses.get(el.id)
+          if (was) {
+            const kept = was.item === item ? activePickup(was.pickupId) : undefined
+            if (kept) { r.pickupId = kept.id; r.spawnX = cx; r.spawnY = bottom } else dropPickup(was.pickupId)
+            looses.delete(el.id)
+          }
         }
         r.x = inside ? cx : AWAY; r.y = bottom
         r.respawnDelay = rackRespawnDelay(item, el.params.respawnDelay)
@@ -73,7 +108,17 @@ export function createLayoutSync(combat: Combat) {
     }
     for (const [id, t] of targets) if (!seen.has(id)) { const i = combat.targets.indexOf(t); if (i >= 0) combat.targets.splice(i, 1); targets.delete(id); lastParams.delete(id) }
     for (const [id, r] of racks) if (!seen.has(id)) { const i = combat.racks.indexOf(r); if (i >= 0) combat.racks.splice(i, 1); racks.delete(id) }
+    for (const [id, l] of looses) if (!seen.has(id)) { dropPickup(l.pickupId); looses.delete(id) }
   }
 
-  return { sync, owns: (o: object) => [...targets.values()].includes(o as Target) || [...racks.values()].includes(o as Rack) }
+  // another Pátio opened: everything of the last one leaves (its dummies, racks, buttons and every item lying in the
+  // world, its racks' and the ones dropped there), so the next sync builds the new one from its layout alone
+  function reset() {
+    for (const t of targets.values()) { const i = combat.targets.indexOf(t); if (i >= 0) combat.targets.splice(i, 1) }
+    for (const r of racks.values()) { const i = combat.racks.indexOf(r); if (i >= 0) combat.racks.splice(i, 1) }
+    targets.clear(); racks.clear(); looses.clear(); lastParams.clear()
+    combat.pickups.length = 0
+  }
+
+  return { sync, reset, owns: (o: object) => [...targets.values()].includes(o as Target) || [...racks.values()].includes(o as Rack) }
 }

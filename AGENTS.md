@@ -8,6 +8,10 @@
 - Mantenha ideias futuras separadas do comportamento atual. A agenda mais ampla fica em `docs/music/MUSIC_ENGINE_PLAN.md`.
 - Ao validar alterações musicais, execute os testes pertinentes de `npm run test:music` e a checagem TypeScript. Não confunda teste de padrões com aprovação da qualidade musical ou desempenho em aparelho físico.
 
+# Pátios de exemplo
+
+- Todo Pátio de exemplo (hoje: Pátio padrão, Pôr do sol com torres, Vales e ilhas no céu) é criado no banco como um Pátio normal, com criador, padrinho e quem salvou = conta admin “jéjé” (profile code `7B23E26B10944F18`) e com o atributo Destaque, para aparecer em Destaques e ser atualizado pelo admin no Modo editor. Não vira botão do painel Playgrounds. Para um novo: layout em `lib/pigchicken/`, uma entrada em `lib/pigchicken/example-seed.ts` e `node scripts/example-patios-migration.cjs <AAAAMMDDNNNN>` para gerar a migração (detalhes em `docs/mechanics/patio/lobbies.md`).
+
 # Versão e changelog
 
 - Agrupe todas as alterações feitas no mesmo dia em uma única entrada do topo de `lib/changelog.ts` e sob um único número de versão; nunca crie mais de uma versão ou entrada por data. Mudanças adicionais no mesmo dia são acrescentadas à entrada diária e não incrementam novamente a versão. Cada nova data recebe um número inédito. O nível da versão considera o conjunto das mudanças daquele dia: ajuste simples, correção pequena ou refinamento visual incrementa o sub-subnível; funcionalidade nova simples incrementa o subnível e zera o sub-subnível; funcionalidade grande incrementa o nível principal e zera os seguintes. Se o alcance acumulado do dia mudar, recalcule o número dessa mesma versão diária. Em geral, prefira o sub-subnível quando for suficiente; não eleve ajustes simples a funcionalidade.

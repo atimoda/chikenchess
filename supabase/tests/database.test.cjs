@@ -953,3 +953,28 @@ test('pigchicken souls: a collection per account that only grows, whatever the o
   await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
   await assert.rejects(db.query("select public.pigchicken_souls_merge('{}'::jsonb)"),/permission denied/)
 })
+test('patio: an admin features a Pátio for everyone; the example Pátios become the admin account\'s, featured',async()=>{
+  const [owner,other]=[ids[3],ids[4]]
+  const id='b5000000-0000-4000-8000-000000000005'
+  await rpc(owner,'patio_lobby_save',[id,{elements:[]},0])
+  assert.equal((await rpc(other,'patio_lobby_list',[false])).some(l=>l.id===id),false)
+  await assert.rejects(rpc(owner,'patio_lobby_set_featured',[id,true]),/ADMIN_REQUIRED/)
+  try {
+    await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({app_metadata:{access_level:'admin'}})])
+    const row=await rpc(other,'patio_lobby_set_featured',[id,true])
+    assert.equal(row.featured,true); assert.equal(row.name,'Pátio em destaque')
+  } finally { await db.query("select set_config('request.jwt.claims','',false)") }
+  const listed=(await rpc(other,'patio_lobby_list',[false])).find(l=>l.id===id)
+  assert.equal(listed.featured,true)
+  await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
+  assert.ok((await db.query('select public.patio_lobby_featured() as result')).rows[0].result.some(l=>l.id===id&&l.featured))
+  // the examples: given to the account with the admin's profile code (an existing one by name keeps its layout)
+  await admin("update public.online_profiles set code='7B23E26B10944F18' where id=$1",[owner])
+  await admin("insert into online_private.patio_lobbies (id,name,layout,creator_id) values ('b6000000-0000-4000-8000-000000000006','Vales e ilhas no céu','{\"elements\":[1]}'::jsonb,$1)",[other])
+  await db.exec('reset role'); await db.exec(fs.readFileSync(path.join(__dirname,'../migrations/202611120002_example_patios.sql'),'utf8'))
+  const ex=(await admin("select id,name,creator_id,godparent_id,saved_by,featured,layout from online_private.patio_lobbies where name in ('Pôr do sol com torres','Vales e ilhas no céu') order by name")).rows
+  assert.equal(ex.length,2)
+  for(const r of ex){ assert.equal(r.creator_id,owner); assert.equal(r.godparent_id,owner); assert.equal(r.saved_by,owner); assert.equal(r.featured,true) }
+  assert.deepEqual(ex.find(r=>r.name==='Vales e ilhas no céu').layout,{elements:[1]})
+  assert.ok(ex.find(r=>r.name==='Pôr do sol com torres').layout.elements.length>10)
+})

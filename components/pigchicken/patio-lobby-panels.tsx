@@ -4,16 +4,18 @@
 //   Salvar: the name (the first one makes it a saved lobby, kept for good, and its giver the godparent; after that
 //   only the creator or the godparent rename it), favourite, "Salvar agora" (it also saves itself every minute),
 //   a conflict with someone else's save, and the people: creator, godparent, who edited and who played.
-//   Abrir: a new Pátio (a copy of the default), the default one, my lobbies (or, for the admin, everyone's) with
-//   a star to favourite, delete, duplicate and "set as default".
+//   Playgrounds (Abrir): a new Pátio (a copy of the default, or an empty one), then three folding blocks: Destaques
+//   (the default and the Pátios an admin featured), Favoritos and Salvos (mine, or for the admin everyone's), with a
+//   star to favourite, delete, duplicate, "set as default" and the admin's Destaque.
 import { useEffect, useMemo, useState } from "react"
-import { Copy, Crown, FolderOpen, Home, Loader2, Plus, Save, Star, Trash2, X } from "lucide-react"
+import { Award, Copy, Crown, FolderOpen, Home, Loader2, Plus, Save, Star, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
+import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { cn } from "@/lib/utils"
 import type { NewPatioKind, PatioRecord } from "@/lib/pigchicken/patio-store"
 import { localPatios } from "@/lib/pigchicken/patio-store"
 import {
-  deletePatioLobby, duplicatePatioLobby, favoritePatioLobby, listPatioLobbies, patioErrorMessage, patioOnlineAvailable, setDefaultPatioLobby, unsavedDaysLeft,
+  deletePatioLobby, duplicatePatioLobby, favoritePatioLobby, listFeaturedPatios, listPatioLobbies, patioErrorMessage, patioOnlineAvailable, setDefaultPatioLobby, setPatioLobbyFeatured, unsavedDaysLeft,
   UNSAVED_DAYS, type PatioLobby, type PatioLobbyInfo, type PatioPerson,
 } from "@/lib/pigchicken/patio-online"
 import type { PatioSaveState } from "./use-patio-lobby"
@@ -116,12 +118,6 @@ export function PatioSavePanel({ patio, remote, save, canEdit, canRename, rename
     <FloatingPanel id="patio-save" aria-label="Salvar Pátio" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(360, vw - 24) - 12), y: 64, w: Math.min(360, vw - 24), h: Math.min(520, vh - 80) })} className={panelCls}>
       <PanelHead title="Salvar Pátio" icon={<Save className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
 
-      <p className={cn("rounded-md border px-2 py-1.5 text-[11px] leading-relaxed", named || isDefault ? "border-primary/30 text-[#b9e3c6]" : "border-[#ffd166]/40 text-[#ffd166]")}>
-        {isDefault ? "Pátio padrão: todo Pátio novo começa como uma cópia dele."
-          : named ? "Lobby salvo: fica guardado para sempre, até quem o salvou (ou o admin) apagar."
-            : `Lobby não salvo: é apagado depois de ${UNSAVED_DAYS} dias sem edições nem partidas${remote ? ` (faltam ${daysLeft})` : ""}. Dê um nome para guardá-lo.`}
-      </p>
-
       <label className="flex flex-col gap-1">
         <span className="text-[11px] text-[#93a79a]">Nome</span>
         <div className="flex gap-2">
@@ -137,7 +133,6 @@ export function PatioSavePanel({ patio, remote, save, canEdit, canRename, rename
           <button type="button" disabled={!canRename || !clean || clean === patio.name || busy} onClick={() => void submit()} className={btn}>{named ? "Renomear" : "Dar nome"}</button>
         </div>
         {!canRename && <span className="text-[10px] leading-snug text-[#93a79a]">{renameHint}{!isAccount && <> <button type="button" onClick={onLogin} className="underline hover:text-white">Entrar</button></>}</span>}
-        {canRename && !named && !isDefault && <span className="text-[10px] leading-snug text-[#93a79a]">Quem dá o primeiro nome vira o padrinho do Pátio.</span>}
       </label>
 
       <div className="flex items-center gap-2">
@@ -148,9 +143,7 @@ export function PatioSavePanel({ patio, remote, save, canEdit, canRename, rename
           <Star className={cn("h-3.5 w-3.5", remote?.favorite && "fill-[#ffd166] text-[#ffd166]")} /> {remote?.favorite ? "Favorito" : "Favoritar"}
         </button>
       </div>
-      <p className="text-[10px] text-[#93a79a]">
-        {!canEdit ? "Você não pode editar este Pátio." : patio.dirty ? "Há mudanças não salvas no servidor. Salva sozinho a cada minuto." : "Salva sozinho a cada minuto enquanto você edita."}
-      </p>
+      {!save.text && canEdit && patio.dirty && <p className="text-[11px] text-[#ffd166]">Há mudanças ainda não salvas no servidor.</p>}
       {save.text && save.kind !== "conflict" && <p role="status" className={cn("text-[11px]", save.kind === "error" ? "text-[#ff8a7a]" : save.kind === "local" ? "text-[#ffd166]" : "text-[#b9e3c6]")}>{save.text}</p>}
       {save.kind === "conflict" && (
         <div role="alert" className="flex flex-col gap-2 rounded-md border border-[#ff8a7a]/60 p-2 text-[11px]">
@@ -167,8 +160,18 @@ export function PatioSavePanel({ patio, remote, save, canEdit, canRename, rename
         <PeopleRow label="Padrinho" people={people.filter(p => p.roles.includes("Padrinho"))} onOpen={onPerson} />
         <PeopleRow label="Editaram" people={people.filter(p => p.roles.includes("Editou"))} onOpen={onPerson} />
         <PeopleRow label="Jogaram" people={people.filter(p => p.roles.includes("Jogou"))} onOpen={onPerson} />
-        {!remote && <p className="text-[10px] text-[#5f6f65]">{patioOnlineAvailable() ? "Aparecem quando o Pátio estiver salvo no servidor." : "Sem servidor agora."}</p>}
+        {!remote && !patioOnlineAvailable() && <p className="text-[10px] text-[#5f6f65]">Sem servidor agora.</p>}
         {remote && <p className="text-[10px] text-[#5f6f65]">“Jogaram” conta só quem entrou com conta.</p>}
+      </div>
+
+      <div className={cn("flex flex-col gap-1 rounded-md border px-2 py-1.5 text-[11px] leading-relaxed", named || isDefault ? "border-primary/30 text-[#b9e3c6]" : "border-[#ffd166]/40 text-[#ffd166]")}>
+        <p>
+          {isDefault ? "Pátio padrão: todo Pátio novo começa como uma cópia dele."
+            : named ? "Lobby salvo: fica guardado para sempre, até quem o salvou (ou o admin) apagar."
+              : `Lobby não salvo: é apagado depois de ${UNSAVED_DAYS} dias sem edições nem partidas${remote ? ` (faltam ${daysLeft})` : ""}. Dê um nome para guardá-lo.`}
+        </p>
+        {canRename && !named && !isDefault && <p>Quem dá o primeiro nome vira o padrinho do Pátio.</p>}
+        <p>{canEdit ? "Auto-save a cada minuto ativado." : "Você não pode editar este Pátio."}</p>
       </div>
     </FloatingPanel>
   )
@@ -231,8 +234,14 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   const [favAll, setFavAll] = useState(false)
   const [savedSort, setSavedSort] = useState<Sort>("recent")
   const [favSort, setFavSort] = useState<Sort>("played")
+  const [featSort, setFeatSort] = useState<Sort>("recent")
+  // the folding blocks: Destaques open, the others closed until opened
+  const [open, setOpen] = useState<Record<string, boolean>>({ feat: true, fav: false, saved: false })
+  const fold = (k: string) => (v: boolean) => setOpen(o => ({ ...o, [k]: v }))
   const [filter, setFilter] = useState<Filter>("all")
   const [rows, setRows] = useState<PatioLobbyInfo[] | null>(null)
+  // without an account the server lists only the featured ones (Destaques)
+  const [guestFeatured, setGuestFeatured] = useState<PatioLobbyInfo[]>([])
   const [error, setError] = useState("")
   const [busy, setBusy] = useState<string | null>(null)
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
@@ -240,6 +249,12 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   const [tick, setTick] = useState(0)
   const local = useMemo(() => { void tick; return localPatios() }, [tick])
   const all = savedAll || favAll
+  useEffect(() => {
+    if (server || !patioOnlineAvailable()) { setGuestFeatured([]); return }
+    let alive = true
+    listFeaturedPatios().then(r => { if (alive) setGuestFeatured(r) }).catch(() => {})
+    return () => { alive = false }
+  }, [server, tick])
   useEffect(() => {
     if (!server) { setRows(null); return }
     let alive = true
@@ -254,6 +269,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   const saved = sortRows(others.filter(r => (r.mine || (savedAll && (!!r.name || isAdmin))) && (filter === "all" || (filter === "saved" ? !!r.name : !r.name))), savedSort, live)
   const favorites = sortRows(others.filter(r => r.favorite || (favAll && r.favorites > 0)), favSort, live)
   const def = rows?.find(r => r.isDefault)
+  const featured = sortRows(server ? others.filter(r => r.featured) : guestFeatured.filter(r => !r.isDefault), featSort, live)
   const act = async (id: string, fn: () => Promise<unknown>) => {
     setBusy(id)
     setError("")
@@ -276,6 +292,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
       onOpen={() => onOpen(r.id)}
       busy={busy === r.id}
     >
+      {isAdmin && <IconBtn label={r.featured ? "Tirar do Destaque" : "Destacar"} pressed={r.featured} onClick={() => void act(r.id, () => setPatioLobbyFeatured(r.id, !r.featured))}><Award className={cn("h-3.5 w-3.5", r.featured && "text-[#ffd166]")} /></IconBtn>}
       {isAdmin && <IconBtn label="Definir como padrão" onClick={() => void act(r.id, () => setDefaultPatioLobby(r.id))}><Crown className="h-3.5 w-3.5" /></IconBtn>}
       {canDelete(r) && (confirmDel === `${list}-${r.id}`
         ? <button type="button" onClick={() => { setConfirmDel(null); void act(r.id, async () => { await deletePatioLobby(r.id); await onDeleted(r.id) }) }} className={cn(btn, "h-7 border-[#ff8a7a] text-[#ff8a7a]")}>Apagar?</button>
@@ -285,21 +302,12 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   )
 
   return (
-    <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(420, vw - 24) - 12), y: 64, w: Math.min(420, vw - 24), h: Math.min(640, vh - 80) })} className={panelCls}>
+    <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(580, vw - 24) - 12), y: 64, w: Math.min(580, vw - 24), h: Math.min(720, vh - 80) })} className={panelCls}>
       <PanelHead title="Playgrounds" icon={<FolderOpen className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
       <div className="flex shrink-0 gap-2">
         <button type="button" onClick={() => onNew(false)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
         <button type="button" onClick={() => onNew(true)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio vazio</button>
       </div>
-      <button type="button" onClick={() => onNew("sunset")} title="Um Pátio de exemplo: céu de pôr do sol em contraluz, torres de transmissão em várias profundidades, postes com fios onde os pássaros pousam" className={cn(btn, "h-9 shrink-0 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio de exemplo: pôr do sol com torres</button>
-      <button type="button" onClick={() => onNew("valley")} title="Um Pátio de exemplo: seis biomas com vilas no chão, três camadas de ilhas flutuantes até Asgard, postes e torres ligando tudo, escadas, trampolins e portais" className={cn(btn, "h-9 shrink-0 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio de exemplo: vales e ilhas no céu</button>
-
-      <Row
-        title={def?.name ?? "Pátio padrão"} sub={def?.creatorName ? `de ${def.creatorName}` : undefined} current={currentId === null}
-        icon={<Home className="h-4 w-4 text-[#b9e3c6]" />} onOpen={() => onOpen(null)} busy={!!def && busy === def.id} playing={playing(def?.id) + playing("default")}
-      >
-        {isAdmin && def && <DupButton id={def.id} list="default" name={def.name} dup={dup} setDup={setDup} onDuplicate={duplicate} />}
-      </Row>
 
       {!server && (
         <p className="text-[11px] leading-relaxed text-[#ffd166]">
@@ -308,32 +316,44 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
       )}
       {error && <p role="alert" className="text-[11px] text-[#ff8a7a]">{error}</p>}
 
-      {server && (
-        <ListBox
-          title="Salvos" emptyText={savedAll ? "Nenhum Pátio salvo ainda." : "Você ainda não criou, salvou nem editou um Pátio."}
-          all={savedAll} onAll={setSavedAll} allHint={isAdmin ? "Todos os lobbies de todos, salvos e não salvos" : "Todos os Pátios salvos"}
-          sort={savedSort} onSort={setSavedSort} loading={rows === null}
-          extra={isAdmin && (
-            <select aria-label="Filtro" value={filter} onChange={e => setFilter(e.target.value as Filter)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
-              <option value="all">Salvos e não salvos</option>
-              <option value="saved">Só salvos</option>
-              <option value="unsaved">Só não salvos</option>
-            </select>
-          )}
-        >
-          {saved.map(r => lobbyRow(r, "saved"))}
+      <div className="-mx-4 flex shrink-0 flex-col">
+        <ListBox title="Destaques" open={open.feat} onToggle={fold("feat")} emptyText="Nenhum Pátio em destaque ainda." sort={featSort} onSort={setFeatSort} loading={server && rows === null}>
+          <Row
+            key="default" title={def?.name ?? "Pátio padrão"} sub={def?.creatorName ? `de ${def.creatorName}` : undefined} current={currentId === null}
+            icon={<Home className="h-4 w-4 text-[#b9e3c6]" />} onOpen={() => onOpen(null)} busy={!!def && busy === def.id} playing={playing(def?.id) + playing("default")}
+          >
+            {isAdmin && def && <DupButton id={def.id} list="default" name={def.name} dup={dup} setDup={setDup} onDuplicate={duplicate} />}
+          </Row>
+          {featured.map(r => lobbyRow(r, "feat"))}
         </ListBox>
-      )}
 
-      {server && (
-        <ListBox
-          title="Favoritos" emptyText={favAll ? "Ninguém favoritou um Pátio ainda." : "Favorite um Pátio pela estrela."}
-          all={favAll} onAll={setFavAll} allHint="Todos os Pátios que alguém favoritou"
-          sort={favSort} onSort={setFavSort} loading={rows === null}
-        >
-          {favorites.map(r => lobbyRow(r, "fav"))}
-        </ListBox>
-      )}
+        {server && (
+          <ListBox
+            title="Favoritos" open={open.fav} onToggle={fold("fav")} emptyText={favAll ? "Ninguém favoritou um Pátio ainda." : "Favorite um Pátio pela estrela."}
+            all={favAll} onAll={setFavAll} allHint="Todos os Pátios que alguém favoritou"
+            sort={favSort} onSort={setFavSort} loading={rows === null}
+          >
+            {favorites.map(r => lobbyRow(r, "fav"))}
+          </ListBox>
+        )}
+
+        {server && (
+          <ListBox
+            title="Salvos" open={open.saved} onToggle={fold("saved")} emptyText={savedAll ? "Nenhum Pátio salvo ainda." : "Você ainda não criou, salvou nem editou um Pátio."}
+            all={savedAll} onAll={setSavedAll} allHint={isAdmin ? "Todos os lobbies de todos, salvos e não salvos" : "Todos os Pátios salvos"}
+            sort={savedSort} onSort={setSavedSort} loading={rows === null}
+            extra={isAdmin && (
+              <select aria-label="Filtro" value={filter} onChange={e => setFilter(e.target.value as Filter)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
+                <option value="all">Salvos e não salvos</option>
+                <option value="saved">Só salvos</option>
+                <option value="unsaved">Só não salvos</option>
+              </select>
+            )}
+          >
+            {saved.map(r => lobbyRow(r, "saved"))}
+          </ListBox>
+        )}
+      </div>
 
       {!!localOnly.length && (
         <div className="flex shrink-0 flex-col gap-1.5">
@@ -347,30 +367,31 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
           ))}
         </div>
       )}
-      {def && isAdmin && <p className="text-[10px] text-[#5f6f65]">O padrão aparece no topo; para trocar, use a coroa em outro lobby.</p>}
       {!isAccount && server && <p className="text-[10px] text-[#5f6f65]">Com uma conta, seus Pátios ficam com você em qualquer aparelho.</p>}
     </FloatingPanel>
   )
 }
 
-// one list of the "Abrir" panel in its own box: "Ver todos" and the order on top
-function ListBox({ title, emptyText, all, onAll, allHint, sort, onSort, loading, extra, children }: {
-  title: string; emptyText: string; all: boolean; onAll: (v: boolean) => void; allHint: string; sort: Sort; onSort: (s: Sort) => void
-  loading: boolean; extra?: React.ReactNode; children: React.ReactNode[]
+// one folding block of the Playgrounds panel (the yellow title of the other panels): "Ver todos" and the order on top
+function ListBox({ title, open, onToggle, emptyText, all, onAll, allHint, sort, onSort, loading, extra, children }: {
+  title: string; open: boolean; onToggle: (open: boolean) => void; emptyText: string; all?: boolean; onAll?: (v: boolean) => void; allHint?: string
+  sort: Sort; onSort: (s: Sort) => void; loading: boolean; extra?: React.ReactNode; children: React.ReactNode
 }) {
+  const rows = (Array.isArray(children) ? children.flat() : [children]).filter(Boolean)
   return (
-    <section aria-label={title} className="flex shrink-0 flex-col gap-1.5 rounded-lg border border-white/10 p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="mr-auto text-[12px] font-bold text-white">{title}</h3>
-        <label className="flex items-center gap-1.5 text-[11px]" title={allHint}><input type="checkbox" checked={all} onChange={e => onAll(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" /> Ver todos</label>
-        <select aria-label={`Ordem de ${title}`} value={sort} onChange={e => onSort(e.target.value as Sort)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
-          {SORTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        {extra}
-      </div>
-      {loading ? <p className="flex items-center gap-2 text-[11px] text-[#93a79a]"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando…</p>
-        : children.length ? children : <p className="text-[11px] text-[#5f6f65]">{emptyText}</p>}
-    </section>
+    <PatioDisclosure title={title} open={open} onToggle={onToggle}>
+      <section aria-label={title} className="flex flex-col gap-1.5 px-4 pb-4">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {onAll && <label className="mr-auto flex items-center gap-1.5 text-[11px]" title={allHint}><input type="checkbox" checked={!!all} onChange={e => onAll(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" /> Ver todos</label>}
+          <select aria-label={`Ordem de ${title}`} value={sort} onChange={e => onSort(e.target.value as Sort)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
+            {SORTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {extra}
+        </div>
+        {loading ? <p className="flex items-center gap-2 text-[11px] text-[#93a79a]"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando…</p>
+          : rows.length ? rows : <p className="text-[11px] text-[#5f6f65]">{emptyText}</p>}
+      </section>
+    </PatioDisclosure>
   )
 }
 
@@ -392,8 +413,8 @@ function DupButton({ id, list, name, dup, setDup, onDuplicate }: { id: string; l
   )
 }
 
-function IconBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" aria-label={label} title={label} onClick={onClick} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary">{children}</button>
+function IconBtn({ label, onClick, pressed, children }: { label: string; onClick: () => void; pressed?: boolean; children: React.ReactNode }) {
+  return <button type="button" aria-label={label} title={label} aria-pressed={pressed} onClick={onClick} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary">{children}</button>
 }
 
 // onFavorite: the star toggles the favourite (rows from the server only)
