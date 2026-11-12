@@ -8,7 +8,7 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
-import { Bird, Bug, Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
+import { Bird, Bug, Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -40,6 +40,7 @@ import { clearSceneryWind } from "@/lib/pigchicken/scenery-wind"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
+import { ScalesPanel } from "@/components/pigchicken/scales-panel"
 import { AlienCatalogPanel } from "@/components/pigchicken/alien-catalog-panel"
 import { SoulLibraryPanel } from "@/components/pigchicken/soul-library-panel"
 import { JukeboxPanel } from "@/components/pigchicken/jukebox-panel"
@@ -136,6 +137,7 @@ export function ChickenPatio() {
   // the Sun button: the current Pátio's settings (its limits)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
+  const [scalesOpen, setScalesOpen] = useState(false)
   const [aliensOpen, setAliensOpen] = useState(false)
   const [soulsOpen, setSoulsOpen] = useState(false)
   // the jukebox in the temple opens the songs' panel when she strikes it
@@ -606,16 +608,19 @@ export function ChickenPatio() {
         <button type="button" aria-label="Configurações do Pátio" aria-pressed={settingsOpen} title="Configurações do Pátio" onClick={() => setSettingsOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", settingsOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Sun className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Catálogo de aliens" aria-pressed={aliensOpen} title="Catálogo de aliens" onClick={() => { setAliensOpen(v => !v); setItemsOpen(false); setPqOpen(false); setSoulsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", aliensOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Escalas" aria-pressed={scalesOpen} title="Escalas dos instrumentos" onClick={() => { setScalesOpen(v => !v); setItemsOpen(false); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", scalesOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <Music className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label="Catálogo de aliens" aria-pressed={aliensOpen} title="Catálogo de aliens" onClick={() => { setAliensOpen(v => !v); setItemsOpen(false); setPqOpen(false); setSoulsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", aliensOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Ghost className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Biblioteca de almas" aria-pressed={soulsOpen} title="Biblioteca de almas" onClick={() => { setSoulsOpen(v => !v); setItemsOpen(false); setAliensOpen(false); setPqOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", soulsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Biblioteca de almas" aria-pressed={soulsOpen} title="Biblioteca de almas" onClick={() => { setSoulsOpen(v => !v); setItemsOpen(false); setAliensOpen(false); setPqOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", soulsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Bird className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false); setAliensOpen(false); setSoulsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false); setAliensOpen(false); setSoulsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
         <button type="button" aria-label="Controles" title="Controles" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
@@ -658,7 +663,7 @@ export function ChickenPatio() {
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} temple={patioTemple(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} temple={patioTemple(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
@@ -687,6 +692,7 @@ export function ChickenPatio() {
       {settingsOpen && patio && <PatioSettingsPanel layout={patio.layout} screens={screens} canEdit={access.canEdit} onChange={changeLayout} onClose={() => setSettingsOpen(false)} />}
       {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
+      {scalesOpen && <ScalesPanel onClose={() => setScalesOpen(false)} />}
       {aliensOpen && <AlienCatalogPanel onClose={() => setAliensOpen(false)} />}
       {soulsOpen && <SoulLibraryPanel onClose={() => setSoulsOpen(false)} />}
       {jukeboxOpen && <JukeboxPanel onClose={() => setJukeboxOpen(false)} />}

@@ -6,7 +6,7 @@
 // lanes are the same on both sides; the labels go on the side she aims at.
 import type { Combat } from "@/lib/pigchicken/combat"
 import { DEGREE_COLORS, NOTE_NAMES, SCALES, type PitchSet } from "@/lib/pigchicken/music"
-import { CHART_HOLE, HangScale, HarmonicFieldScale, RING_SPLIT, SpiralScale, fieldHouses, fieldTurn, houseAt, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type HangLayout, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
+import { HangScale, HarmonicFieldScale, INSTRUMENT_SCALES, SpiralScale, fieldHouses, fieldTurn, houseAt, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type HangLayout, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
 import { hangOf } from "@/lib/pigchicken/items"
 
 
@@ -25,11 +25,12 @@ function aimSource(combat: Combat): { set: PitchSet; octave: number; span: numbe
 export const SCALE_FAN_R = 390
 
 // the current player's fan (combat.use(id) first), centred at (cx, cy) in screen units; alpha: the layer's
-// strength; size: its radius in SCALE_FAN_R; fade: "Escalas (Degradê)" from 0 to 1. Each lane fades out toward the
+// strength (with the scale's standby already in it); alphaOn: the same for the cell the aim is on (the standby's
+// "Visibilidade da célula mirada"); size: its radius in SCALE_FAN_R; fade: "Escalas (Degradê)" from 0 to 1. Each lane fades out toward the
 // circle (0 at its edge) as (1 - t)^(fade * 2) up to 1/2 and then up to (1 - t)^4: 0 is solid, 1/2 linear, 1 a long
 // soft tail. lines: "Escalas (Linhas)", how strongly the lanes' dividing lines show (0 to 1). The labels sit
 // in the middle of each lane on the side she aims at.
-export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3, fade = 0.5, lines = 1) {
+export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: number, cy: number, aim: number, scale = 1, alpha = 1, size = 0.3, fade = 0.5, lines = 1, alphaOn = alpha) {
   const src = aimSource(combat)
   if (!src) return
   // an instrument on a chart scale (Ciclo de quintas, Tensão e resolução): the round chart instead of the leque;
@@ -37,20 +38,20 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
   const chart = combat.def().instrument ? combat.scale : null
   if (chart instanceof SpiralScale) {
     const d = combat.def(), lay = chart.layout(combat.music, { octave: d.octave, span: d.span, descending: d.spiralDescending })
-    drawSpiral(ctx, lay, chart.pieceAt(lay, aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    drawSpiral(ctx, lay, chart.pieceAt(lay, aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines, alphaOn)
     return
   }
   if (chart instanceof HangScale) {
     const d = combat.def(), lay = chart.layout(combat.music, { octave: d.octave, hang: hangOf(d) })
-    drawHang(ctx, lay, chart.touch(lay, aim, combat.aimReach), aim, combat.aimReach, cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    drawHang(ctx, lay, chart.touch(lay, aim, combat.aimReach), aim, combat.aimReach, cx, cy, SCALE_FAN_R * size * scale, alpha, lines, alphaOn)
     return
   }
   if (chart instanceof HarmonicFieldScale) {
-    drawHarmonicWheel(ctx, combat.music, aim, cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    drawHarmonicWheel(ctx, combat.music, aim, cx, cy, SCALE_FAN_R * size * scale, alpha, lines, alphaOn)
     return
   }
   if (chart && chart.regions().length) {
-    drawScaleChart(ctx, chart, combat.music, chart.regionAt(aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines)
+    drawScaleChart(ctx, chart, combat.music, chart.regionAt(aim, combat.aimReach), cx, cy, SCALE_FAN_R * size * scale, alpha, lines, alphaOn)
     return
   }
   const music = combat.music, zone = music.zone
@@ -89,7 +90,7 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
       ctx.arc(cx, cy, rOut, Math.min(a0, a1), Math.max(a0, a1))
       ctx.arc(cx, cy, rIn, Math.max(a0, a1), Math.min(a0, a1), true)
       ctx.closePath()
-      ctx.fillStyle = fill(color, alpha * (i === now ? 0.4 : 0.14))
+      ctx.fillStyle = fill(color, i === now ? alphaOn * 0.4 : alpha * 0.14)
       ctx.fill()
       if (lines > 0) {
         ctx.strokeStyle = fill(color, alpha * 0.6 * lines)
@@ -101,7 +102,7 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
     }
     // the label in the middle of the lane, on the side she aims at
     const mid = angle((lo + hi) / 2, right), r = (rIn + rOut) / 2
-    ctx.globalAlpha = alpha * (i === now ? 1 : 0.8)
+    ctx.globalAlpha = i === now ? alphaOn : alpha * 0.8
     ctx.font = `${i === now ? "bold " : ""}${Math.round(font)}px monospace`
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
@@ -118,13 +119,13 @@ function hexA(hex: string, a: number) {
   return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${Math.max(0, Math.min(1, a))})`
 }
 
-// The round chart of a chart scale: 12 sectors (the first centred straight up), the inner ring up to RING_SPLIT of
-// the radius and the outer one to the edge, each region with its chord. Tensão e resolução draws its outer
+// The round chart of a chart scale: 12 sectors (the first centred straight up), the inner ring up to the scale's ring split
+// (shape.ringSplit) of the radius and the outer one to the edge, each region with its chord. Tensão e resolução draws its outer
 // ring as a circle of balls; the region she aims at (direction and reach) is lit. Each region shows its chord in
 // letters (cifra) and, small above it, its degree in the zone's key (Roman numerals).
-function drawScaleChart(ctx: CanvasRenderingContext2D, chart: InstrumentScale, music: Combat["music"], now: ScaleRegion | null, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+function drawScaleChart(ctx: CanvasRenderingContext2D, chart: InstrumentScale, music: Combat["music"], now: ScaleRegion | null, cx: number, cy: number, rOut: number, alpha: number, lines: number, alphaOn = alpha) {
   const regions = chart.regions()
-  const rHole = rOut * CHART_HOLE, rMid = rOut * RING_SPLIT
+  const rHole = rOut * chart.shape.hole, rMid = rOut * chart.shape.ringSplit
   const font = Math.max(8, Math.min(14, rOut * 0.075))
   ctx.save()
   ctx.lineWidth = 1
@@ -139,7 +140,7 @@ function drawScaleChart(ctx: CanvasRenderingContext2D, chart: InstrumentScale, m
       const br = Math.min((outer - inner) * 0.42, rc * Math.sin((a1 - a0) / 2) * 0.85)
       ctx.beginPath()
       ctx.arc(cx + Math.cos(mid) * rc, cy + Math.sin(mid) * rc, br, 0, Math.PI * 2)
-      ctx.fillStyle = hexA(r.color, alpha * (on ? 0.85 : 0.4))
+      ctx.fillStyle = hexA(r.color, on ? alphaOn * 0.85 : alpha * 0.4)
       ctx.fill()
       if (lines > 0) { ctx.strokeStyle = hexA("#f3e6c4", alpha * 0.6 * lines); ctx.stroke() }
     } else {
@@ -147,16 +148,16 @@ function drawScaleChart(ctx: CanvasRenderingContext2D, chart: InstrumentScale, m
       ctx.arc(cx, cy, outer, a0, a1)
       ctx.arc(cx, cy, inner, a1, a0, true)
       ctx.closePath()
-      ctx.fillStyle = hexA(r.color, alpha * (on ? 0.6 : 0.2))
+      ctx.fillStyle = hexA(r.color, on ? alphaOn * 0.6 : alpha * 0.2)
       ctx.fill()
       if (lines > 0) { ctx.strokeStyle = hexA("#ffffff", alpha * 0.35 * lines); ctx.stroke() }
     }
     const fs = Math.round(r.ring === 1 ? font : font * 0.85), px = cx + Math.cos(mid) * rc, py = cy + Math.sin(mid) * rc
-    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.globalAlpha = on ? alphaOn : alpha * 0.75
     ctx.fillStyle = "#ffffff"
     ctx.font = `${on ? "bold " : ""}${fs}px monospace`
     ctx.fillText(r.label, px, py + fs * 0.35)
-    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.globalAlpha = on ? alphaOn * 0.9 : alpha * 0.55
     ctx.font = `${Math.round(fs * 0.7)}px monospace`
     ctx.fillText(chart.degreeLabel(r, music), px, py - fs * 0.55)
     ctx.globalAlpha = 1
@@ -167,7 +168,7 @@ function drawScaleChart(ctx: CanvasRenderingContext2D, chart: InstrumentScale, m
 // The Espiral: a dashed spiral line from the outer edge (straight up) inward, clockwise, cut into one piece per note
 // of the zone's scale, each a band coloured by its degree with the note in letters and, small above it, its degree
 // number; the piece she aims at is lit.
-function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: number, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: number, cx: number, cy: number, rOut: number, alpha: number, lines: number, alphaOn = alpha) {
   const n = lay.pieces.length
   if (!n) return
   const half = spiralGap(lay.turns) * 0.46 * rOut // half a band: the distance between turns, a hair less
@@ -184,7 +185,7 @@ function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: numbe
     for (let k = 0; k <= steps; k++) { const q = at(p.u0 + ((p.u1 - p.u0) * k) / steps, half); if (k) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y) }
     for (let k = steps; k >= 0; k--) { const q = at(p.u0 + ((p.u1 - p.u0) * k) / steps, -half); ctx.lineTo(q.x, q.y) }
     ctx.closePath()
-    ctx.fillStyle = hexA(color, alpha * (on ? 0.6 : 0.18))
+    ctx.fillStyle = hexA(color, on ? alphaOn * 0.6 : alpha * 0.18)
     ctx.fill()
     if (lines > 0) { ctx.strokeStyle = hexA("#ffffff", alpha * 0.25 * lines); ctx.lineWidth = 1; ctx.stroke() }
   })
@@ -197,11 +198,11 @@ function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: numbe
   }
   lay.pieces.forEach((p, i) => {
     const on = i === now, q = at((p.u0 + p.u1) / 2)
-    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.globalAlpha = on ? alphaOn : alpha * 0.75
     ctx.fillStyle = "#ffffff"
     ctx.font = `${on ? "bold " : ""}${Math.round(font)}px monospace`
     ctx.fillText(p.letter, q.x, q.y + font * 0.35)
-    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.globalAlpha = on ? alphaOn * 0.9 : alpha * 0.55
     ctx.font = `${Math.round(font * 0.7)}px monospace`
     ctx.fillText(String(p.degree), q.x, q.y - font * 0.55)
   })
@@ -215,7 +216,7 @@ function drawSpiral(ctx: CanvasRenderingContext2D, lay: SpiralLayout, now: numbe
 // easing round when the zone changes. The house she aims at is lit; the bar's chord has a light outline.
 const HOUSE_COLORS = { major: "#5e9e3c", minor: "#9cc77f", other: "#b8a77a" }
 let wheelTurn: number | null = null
-function drawHarmonicWheel(ctx: CanvasRenderingContext2D, music: Combat["music"], aim: number, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+function drawHarmonicWheel(ctx: CanvasRenderingContext2D, music: Combat["music"], aim: number, cx: number, cy: number, rOut: number, alpha: number, lines: number, alphaOn = alpha) {
   const target = fieldTurn(music.zone.root)
   if (wheelTurn === null) wheelTurn = target
   // the shortest way round, a bit each frame
@@ -224,7 +225,7 @@ function drawHarmonicWheel(ctx: CanvasRenderingContext2D, music: Combat["music"]
   wheelTurn = Math.abs(diff) < 0.002 ? target : wheelTurn + diff * 0.12
   const turnNow = wheelTurn - target
   const houses = fieldHouses(music.zone), now = houseAt(aim, target), bar = music.degree % houses.length
-  const rIn = rOut * CHART_HOLE, rc = (rIn + rOut) / 2
+  const rIn = rOut * INSTRUMENT_SCALES.harmonic.shape.hole, rc = (rIn + rOut) / 2
   const font = Math.max(8, Math.min(14, rOut * 0.075))
   ctx.save()
   ctx.textAlign = "center"
@@ -236,16 +237,16 @@ function drawHarmonicWheel(ctx: CanvasRenderingContext2D, music: Combat["music"]
     ctx.arc(cx, cy, rOut, a0, a1)
     ctx.arc(cx, cy, rIn, a1, a0, true)
     ctx.closePath()
-    ctx.fillStyle = hexA(color, alpha * (on ? 0.6 : 0.2))
+    ctx.fillStyle = hexA(color, on ? alphaOn * 0.6 : alpha * 0.2)
     ctx.fill()
     if (lines > 0) { ctx.lineWidth = 1; ctx.strokeStyle = hexA("#ffffff", alpha * 0.35 * lines); ctx.stroke() }
     if (h.degree === bar) { ctx.lineWidth = 2; ctx.strokeStyle = hexA("#ffffff", alpha * 0.8); ctx.stroke() }
     const px = cx + Math.cos(mid) * rc, py = cy + Math.sin(mid) * rc
-    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.globalAlpha = on ? alphaOn : alpha * 0.75
     ctx.fillStyle = "#ffffff"
     ctx.font = `${on ? "bold " : ""}${Math.round(font)}px monospace`
     ctx.fillText(h.label, px, py + font * 0.35)
-    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.globalAlpha = on ? alphaOn * 0.9 : alpha * 0.55
     ctx.font = `${Math.round(font * 0.7)}px monospace`
     ctx.fillText(h.numeral, px, py - font * 0.55)
     ctx.globalAlpha = 1
@@ -256,7 +257,7 @@ function drawHarmonicWheel(ctx: CanvasRenderingContext2D, music: Combat["music"]
 // The Hangdrum: the hang seen from above, a steel disc with the big ding in the middle and its rows of round notes,
 // each one coloured by its degree with the note in letters and, small above it, its degree number. The note she
 // aims at is lit; between the notes (a slap) a small ring marks where the hand lands.
-function drawHang(ctx: CanvasRenderingContext2D, lay: HangLayout, now: { index: number; slap: boolean }, aim: number, reach: number, cx: number, cy: number, rOut: number, alpha: number, lines: number) {
+function drawHang(ctx: CanvasRenderingContext2D, lay: HangLayout, now: { index: number; slap: boolean }, aim: number, reach: number, cx: number, cy: number, rOut: number, alpha: number, lines: number, alphaOn = alpha) {
   ctx.save()
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
@@ -270,15 +271,15 @@ function drawHang(ctx: CanvasRenderingContext2D, lay: HangLayout, now: { index: 
     const x = cx + f.x * rOut, y = cy + f.y * rOut, r = f.r * rOut
     ctx.beginPath()
     ctx.arc(x, y, r, 0, Math.PI * 2)
-    ctx.fillStyle = hexA(color, alpha * (on ? 0.65 : 0.22))
+    ctx.fillStyle = hexA(color, on ? alphaOn * 0.65 : alpha * 0.22)
     ctx.fill()
-    if (lines > 0) { ctx.lineWidth = 1; ctx.strokeStyle = hexA("#ffffff", alpha * (i === now.index && now.slap ? 0.8 : 0.35) * lines); ctx.stroke() }
+    if (lines > 0) { ctx.lineWidth = 1; ctx.strokeStyle = hexA("#ffffff", (i === now.index && now.slap ? alphaOn * 0.8 : alpha * 0.35) * lines); ctx.stroke() }
     const font = Math.max(8, Math.min(i ? 14 : 18, r * 0.62))
-    ctx.globalAlpha = alpha * (on ? 1 : 0.75)
+    ctx.globalAlpha = on ? alphaOn : alpha * 0.75
     ctx.fillStyle = "#ffffff"
     ctx.font = `${on ? "bold " : ""}${Math.round(font)}px monospace`
     ctx.fillText(f.letter, x, y + font * 0.35)
-    ctx.globalAlpha = alpha * (on ? 0.9 : 0.55)
+    ctx.globalAlpha = on ? alphaOn * 0.9 : alpha * 0.55
     ctx.font = `${Math.round(font * 0.7)}px monospace`
     ctx.fillText(String(f.degree), x, y - font * 0.55)
     ctx.globalAlpha = 1
@@ -287,7 +288,7 @@ function drawHang(ctx: CanvasRenderingContext2D, lay: HangLayout, now: { index: 
     const rr = (reach > lay.edge ? lay.ring : reach) * rOut
     ctx.beginPath()
     ctx.arc(cx + Math.cos(aim) * rr, cy + Math.sin(aim) * rr, Math.max(3, rOut * 0.035), 0, Math.PI * 2)
-    ctx.lineWidth = 1.5; ctx.strokeStyle = hexA("#ffffff", alpha * 0.9); ctx.stroke()
+    ctx.lineWidth = 1.5; ctx.strokeStyle = hexA("#ffffff", alphaOn * 0.9); ctx.stroke()
   }
   ctx.restore()
 }

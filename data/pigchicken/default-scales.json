@@ -1,0 +1,43 @@
+{
+  "primary": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33
+  },
+  "fifths": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33,
+    "ringSplit": 0.6,
+    "hole": 0.2
+  },
+  "tension": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33,
+    "ringSplit": 0.6,
+    "hole": 0.2
+  },
+  "spiral": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33
+  },
+  "harmonic": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33,
+    "hole": 0.2
+  },
+  "hang": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33
+  }
+}
