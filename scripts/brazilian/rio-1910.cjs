@@ -149,7 +149,7 @@ const hand = (seed, notes, extra = {}) => feel(notes, { push: [0, 1, 0, -1], jit
 // Accompaniment loops the section's eight-bar harmony (a 16-bar section plays it twice).
 const comp = (bank, rhythm, table, seed, options) => C.roll(Math.min(8, bars(bank)), relative(C.strum(hand(seed, chords(bank, rhythm, table, options)), 1 / 128), H(bank)))
 /** Percussion loops four bars (or the whole section when shorter). */
-const drum = (bank, seed, text) => C.roll(Math.min(4, bars(bank)), hand(seed, hits(text)))
+const drum = (bank, seed, text) => C.roll(Math.min(4, bars(bank)), hand(seed, hits(C.tile(text, Math.min(4, bars(bank))))))
 
 /** Root and fifth, the baixaria every fourth bar (the phrase end). */
 function walk(bank, seed, runs = [3]) {

@@ -37,7 +37,7 @@ const barsOf = bank => FORM.find(s => s.bank === bank).bars
 // Caipira feel: straight, the offbeat sixteenth a hair late, hands and boots never even.
 const ROCA = { push: [0, 1, 0, -1], jitter: 1, vel: .06 }
 const hand = (seed, notes, extra = {}) => tone(feel(notes, { ...ROCA, seed, ...extra }))
-const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(text)))
+const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(C.tile(text, Math.min(4, barsOf(bank))))))
 
 // ---------- the dupla (eight sixteenths a bar, '.' holds) ----------
 const MODA = ['. . 4 . 4 . 4 .', '5 . 4 . 2 . 4 .', '3 . 3 . 3 . 4 3', '1 . . . . . . .',

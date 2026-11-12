@@ -68,6 +68,19 @@ import profile65 from '../../../data/music/profiles/copenhagen-1869.json'
 import profile66 from '../../../data/music/profiles/paris-1913.json'
 import profile67 from '../../../data/music/profiles/santo-amaro-1960.json'
 import profile68 from '../../../data/music/profiles/campo-grande-1975.json'
+import profile69 from '../../../data/music/profiles/jerez-1970.json'
+import profile70 from '../../../data/music/profiles/havana-1950.json'
+import profile71 from '../../../data/music/profiles/barranquilla-1960.json'
+import profile72 from '../../../data/music/profiles/guca-1975.json'
+import profile73 from '../../../data/music/profiles/cairo-1960.json'
+import profile74 from '../../../data/music/profiles/amritsar-1980.json'
+import profile75 from '../../../data/music/profiles/ubud-1935.json'
+import profile76 from '../../../data/music/profiles/lima-1975.json'
+import profile77 from '../../../data/music/profiles/yirrkala-1960.json'
+import profile78 from '../../../data/music/profiles/papeete-1960.json'
+import profile79 from '../../../data/music/profiles/honolulu-1935.json'
+import profile80 from '../../../data/music/profiles/rotorua-1920.json'
+import profile81 from '../../../data/music/profiles/port-moresby-1970.json'
 
 export const STYLE_PROFILES = {
   'dusseldorf': profile0,
@@ -138,5 +151,18 @@ export const STYLE_PROFILES = {
   'paris-1913': profile66,
   'santo-amaro-1960': profile67,
   'campo-grande-1975': profile68,
+  'jerez-1970': profile69,
+  'havana-1950': profile70,
+  'barranquilla-1960': profile71,
+  'guca-1975': profile72,
+  'cairo-1960': profile73,
+  'amritsar-1980': profile74,
+  'ubud-1935': profile75,
+  'lima-1975': profile76,
+  'yirrkala-1960': profile77,
+  'papeete-1960': profile78,
+  'honolulu-1935': profile79,
+  'rotorua-1920': profile80,
+  'port-moresby-1970': profile81,
 } as unknown as Record<string, StyleProfile>
 

@@ -37,7 +37,7 @@ const barsOf = bank => FORM.find(s => s.bank === bank).bars
 const SAMBA = { push: [0, 2, 0, -2], jitter: 1, vel: .05 }
 const hand = (seed, notes, extra = {}) => tone(feel(notes, { ...SAMBA, seed, ...extra }))
 /** Percussion loops four bars (or the whole section when shorter). */
-const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(text)))
+const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(C.tile(text, Math.min(4, barsOf(bank))))))
 
 // ---------- melodies (eight sixteenths a bar, '.' holds) ----------
 const MEL_A = ['. 4 . 4 5 . 4 .', '2 . 0 . . 2 4 .', '. 3 . 3 5 . 3 .', '1 . -1 . . 1 3 .',

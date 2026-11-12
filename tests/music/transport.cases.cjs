@@ -193,16 +193,17 @@ test('waltz and ballad stages place accents in 3/4, 6/8 and 12/8 rather than a f
  const {renderMusicCode}=loadTs('lib/music/code-export.ts')
  const checks=[
   ['new-york-1962','3/4',3,'Double bass',[0,1/3,2/3],2],
-  ['santiago-del-estero-1960','6/8',2,'Baixo principal',[0,1/2]],
-  ['harare-1981','12/8',4,'Triplet Snare Backbeat',[3/12,9/12]],
+  // Hand-played kits: the verse bank, with the human timing of the stroke.
+  ['santiago-del-estero-1960','6/8',2,'Bombo legüero',[1/3,2/3],1],
+  ['harare-1981','12/8',4,'Kick',[0,3/12,6/12,9/12],1],
  ]
  for(const [id,meter,pulses,name,onsets,bank=0] of checks){
   const kit=defaultCityKit(id),snapshot=creative.creativeSnapshot(kit,true)
   assert.equal(kit.meter,meter)
   const instrument=Object.values(kit.instruments).find(item=>item.name===name)
   assert.ok(instrument,`${id} instrument`)
-  const roll=instrument.pianoRolls[bank]
-  for(const onset of onsets)assert.ok(roll.notes.some(note=>Math.abs(note.start-onset)<1e-8),`${id} onset ${onset}`)
+  const roll=instrument.pianoRolls[bank],tolerance=['santiago-del-estero-1960','harare-1981'].includes(id)?.02:1e-8
+  for(const onset of onsets)assert.ok(roll.notes.some(note=>Math.abs(note.start-onset)<tolerance),`${id} onset ${onset}`)
   assert.match(renderMusicCode(snapshot,null),new RegExp(`setcps\\(${kit.bpm} / 60 / ${pulses}\\)`))
  }
 })

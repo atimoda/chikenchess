@@ -39,7 +39,7 @@ const barsOf = bank => FORM.find(s => s.bank === bank).bars
 const ARRASTRE = { push: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, -1, 0], jitter: 1, vel: .06 }
 const hand = (seed, notes, extra = {}) => tone(feel(notes, { ...ARRASTRE, seed, ...extra }))
 /** Percussion on six eighths a bar, looping four bars (or the section when shorter). */
-const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(text)))
+const drum = (bank, seed, text) => C.roll(Math.min(4, barsOf(bank)), hand(seed, hits(C.tile(text, Math.min(4, barsOf(bank))))))
 
 // ---------- the accordions (six eighths a bar, '.' holds) ----------
 const SIX = { steps: 6 }

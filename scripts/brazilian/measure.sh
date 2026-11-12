@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Measures stems for several stages, three at a time: scripts/brazilian/measure.sh <out-dir> <stage> [stage ...]
-# Each stage writes <out-dir>/<stage>.json (for balance.py) and <out-dir>/<stage>.txt.
+# Each stage writes <out-dir>/<stage>.json and <out-dir>/<stage>.txt.
 set -u
 out=$1; shift
 mkdir -p "$out"

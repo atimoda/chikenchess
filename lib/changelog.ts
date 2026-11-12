@@ -7,13 +7,27 @@ const RECENT = [
   {
     version: '2.9.0',
     date: '12/11/2026',
-    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha Brazilian revista, com sete kits recompostos por seção e duas fases novas, Chula e Chamamé; Pátios em Destaque e Item solto no editor',
+    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha World com 13 estilos novos, Africa Cult recomposta com percussões mais naturais e campanha Brazilian revista, com dez kits recompostos por seção e duas fases novas, Chula e Chamamé; Pátios em Destaque e Item solto no editor',
     groups: [
+      { title: 'World', items: [
+        'A campanha passa de 4 para 17 fases. Oito estilos novos: Jerez 1970 · Flamenco (bulerías em doze tempos, com palmas, taconeo, nudillos, violões e cante), Havana 1950 · Son cubano (clave, bongó, tres no montuno, trompete e coro), Barranquilla 1960 · Cumbia (tambora, llamador, maracas, gaitas e acordeão), Guča 1975 · Čoček (banda de metais dos Bálcãs em nove), Cairo 1960 · Baladi (tabla, riq, oud, qanun, cordas, acordeão e nay), Amritsar 1980 · Bhangra (dhol, tumbi e gritos em resposta), Ubud 1935 · Gamelan (metalofones entrelaçados, gongos e escala de cinco notas) e Lima 1975 · Festejo (cajón, quijada, cajita e violões em 12/8).',
+        'Cinco estilos da Oceania: Yirrkala 1960 · Manikay (clapsticks, yidaki e a linha descendente do cantor), Papeete 1960 · Ōte\'a (tō\'ere, pahu e fa\'atete), Honolulu 1935 · Hula (steel guitar, ukulele, contrabaixo e ipu), Rotorua 1920 · Haka (chamada do líder, resposta do grupo, pés e percussão corporal) e Port Moresby 1970 · String band (violões, ukuleles, baixo de bambu e vozes em harmonia). Manikay e Haka são estudos originais da forma, sem cantos nem textos tradicionais.',
+        'Reggae, Anatolian rock, Kalamatianos e Chacarera foram recompostos por seção, com introdução, versos, refrão, solo, quebra e final próprios e reações da partida que levam a cada parte.',
+        'Cada cidade nova tem foto, texto de abertura e descrição no mapa.',
+      ] },
+      { title: 'Africa Cult', items: [
+        'As 12 músicas foram recompostas por seção. As percussões soam mais naturais: cada golpe varia de força, de cor e de afinação como numa mão de verdade, os timbres estridentes saíram ou ficaram mais baixos e os tambores de cada estilo têm sons diferentes entre si.',
+        'As introduções agora soam como introduções: começam com parte da banda, sem voz, metais nem refrão (guembri e qraqeb no Gnawa, mbira e hosho no Chimurenga, nyatiti e orutu no Benga), e os outros instrumentos entram nas seções seguintes.',
+        'Cada música ficou mais fiel ao estilo: o sebene de guitarras no Soukous, as rajadas de sabar no Mbalax, os krakebs em galope no Gnawa, a mbira cíclica com hosho no Chimurenga, a timbila no Majika, as guitarras gêmeas do Benga, o saxofone tenor na Marrabenta e os tambores ngoma no Semba no lugar dos metais.',
+      ] },
       { title: 'Campanha', items: [
         'A campanha Harmonic songbook agora se chama Blues, Jazz & Rock. A fase Canterbury 1972 (Progressive pastoral) saiu, e os estilos aparecem só com o nome do gênero, sem "/": Electric blues, Swing, Gypsy jazz, Cool jazz, Jazz waltz, Doo-wop, Piano pop, Progressive rock, Southern rock, Pop punk, Folk rock, Alternative rock e Indie pop.',
         'As 13 músicas foram compostas de novo, cada uma com forma completa (introdução, temas, solos, quebras e final), harmonia por compasso e Estados e Eventos próprios: o blues de 12 compassos em Chicago, AABA de big band em New York 1930, la pompe cigana em Paris, jazz em cinco em Oakland, valsa de jazz em três em New York 1962, doo-wop com modulação no último refrão, piano pop orquestrado em London, rock progressivo em sete em Cambridge, guitarras gêmeas em Jacksonville, pop punk em San Diego, folk rock com 12 cordas e bandolim em San Francisco, rock alternativo com tremolo e parede de fuzz em Berkeley e indie pop com ukulele e drop de sintetizador em Columbus.',
         'Jazz e blues ganharam swing de verdade: as colcheias puxam para a tercina, com a intensidade de cada estilo. Oakland passa a 160 BPM, Paris a 184, New York 1930 a 152, New York 1961 a 128 e San Diego a 164.',
         'Ao abrir uma dessas fases, uma cópia salva da versão anterior do kit é trocada pela nova.',
+        'Ordem das campanhas no mapa: Brazilian e Africa Cult aparecem acima de Blues, Jazz & Rock, e World vem depois.',
+        'Cada estilo aparece com um nome só, sem "/" nem complementos: Baião, Sertanejo raiz, Maracatu, Samba-enredo, Chula, Anatolian rock, Kalamatianos, Chacarera, Gnawa, Soukous, Jùjú e Benga.',
+        'Ao abrir uma fase de Brazilian, Africa Cult ou World, uma cópia salva da versão anterior do kit é trocada pela nova.',
       ] },
       { title: 'Timbres', items: [
         'Novas guitarras elétricas, gravadas de verdade e passadas por amplificadores: tweed no blues e no slide, crunch e lead no southern rock, power chords e palm mute no pop punk, fuzz no rock progressivo e alternativo, 12 cordas no folk rock e limpa com chorus e tremolo. Também entram um baixo de rock valvulado e uma gaita de blues amplificada.',
@@ -31,6 +45,8 @@ const RECENT = [
         'Choro: clarinete no lugar do flautim, pandeiro e ganzá com timbres gravados e linhas melódicas mais suaves e cantadas.',
         'Funk carioca: batidão grave e forte nos drops, sub 808 com saturação, Rhodes nos stabs e mais dinâmica entre intro, pré-refrão, drop e montagem.',
         'Sertanejo raiz e Baião: violão, contrabaixo, pandeiro, ganzá, pífano (flauta doce) e agogô com timbres gravados; a dupla caipira canta em terças na região de tenor.',
+        'Frevo, Maracatu e Samba-reggae também foram recompostos por seção: o frevo com a orquestra de metais e palhetas em pergunta e resposta, o maracatu com alfaias, gonguê, caixa, agbê e a loa do mestre respondida pelo coro da nação, e o samba-reggae com os surdos complementares do bloco, repique, trompete, trombone e coro.',
+        'Samba, Sertanejo raiz, Baião, Chula e Chamamé: as figuras de percussão escritas em um compasso agora soam em todos os compassos; antes, algumas só tocavam no primeiro de cada quatro.',
       ] },
       { title: 'Pátio', items: [
         'Playgrounds ficou mais largo e com só dois botões no topo: Novo Pátio padrão e Novo Pátio vazio. Abaixo, três blocos que abrem e fecham: Destaques, Favoritos e Salvos.',
