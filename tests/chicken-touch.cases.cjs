@@ -399,6 +399,24 @@ test('secondary keyboard defaults use right-hand punctuation and migrate once, p
   } finally { globalThis.window = previous }
 })
 
+test('Del and Backspace leave the secondary keyboard, once, also on saved controls', () => {
+  const d = controls.defaultChickenControls()
+  const all2 = controls.CHICKEN_ACTIONS.flatMap(a => d.keys2[a.key])
+  assert.ok(!all2.includes('Key:Delete') && !all2.includes('Key:Backspace'))
+  const previous = globalThis.window
+  try {
+    let saved = { ...controls.defaultChickenControls(), keys2Punctuation: true, grabKeys2: true }
+    Object.assign(saved.keys2, { nextItem: ['Key:Delete', null], reload: ['Key:Backspace', null] })
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    const c = controls.loadChickenControls()
+    assert.deepEqual(c.keys2.nextItem, [null, null])
+    assert.deepEqual(c.keys2.reload, [null, null])
+    // after the migration the player may bind them again
+    saved = { ...saved, keys2NoDelBksp: true }
+    assert.deepEqual(controls.loadChickenControls().keys2.nextItem, ['Key:Delete', null])
+  } finally { globalThis.window = previous }
+})
+
 test('Deselect item defaults to B (F until 09/11) and migrates only when free, preserving custom and unbound controls', () => {
   assert.deepEqual(controls.defaultChickenControls().keys.deselectItem, ['Key:KeyB', null, null])
   const previous = globalThis.window

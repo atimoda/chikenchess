@@ -32,7 +32,7 @@
     "fire": ["Key:Insert","Key:BracketRight"],
     "melee": ["Key:Home","Key:BracketLeft"],
     "throw": ["Key:End","Key:Backslash"],
-    "nextItem": ["Key:Delete",null],
+    "nextItem": [null,null],
     "prevItem": ["Key:Quote",null],
     "nextInstrument": [null,null],
     "nextWeapon": [null,null],
@@ -40,7 +40,7 @@
     "deselectItem": [null,null],
     "itemWheel": [null,null],
     "grab": ["Key:KeyP","Key:ShiftRight"],
-    "reload": ["Key:Backspace",null],
+    "reload": [null,null],
     "editMode": [null,null]
   },
   "pad": {

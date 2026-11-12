@@ -58,6 +58,9 @@ const RECENT = [
         'Novo instrumento, o Hangdrum, no fim da prateleira dos instrumentos do Pátio padrão. Ele toca na escala Hangdrum: a nota central grande e grave (a tônica da zona) e uma fileira de 8 notas em volta, subindo a escala da zona em zigue-zague como num hang de verdade. Mirar numa nota toca a nota limpa; mirar no espaço entre elas dá uma batida percussiva, com o grave do corpo e a nota mais perto soando de leve.',
         'Itens → Hangdrum: Tipo de som escolhe o timbre (Hang clássico, Handpan nitretado ou Handpan inox, este com o som mais longo), e Fileiras e Notas por fileira montam até 2 fileiras de 5 a 9 notas. A escala Hangdrum também pode ser ligada nos outros instrumentos, e a camada Escalas desenha o hang com as notas.',
         'Galinha em cima de uma caixa flutuante: Chocar + Pulo, ou andar para o lado + Chocar + Pulo, agora a fazem inverter de lado, ficando pendurada embaixo da caixa (e, pendurada, voltar para cima). Baixo + Chocar + Pulo desce da plataforma e Cima + Chocar + Pulo continua impulsionando para o alto.',
+        'Modo editor: Del apaga o elemento selecionado na hora, sem confirmação (Ctrl+Z desfaz). Ctrl+D não duplica mais, para não copiar sem querer; Duplicar fica no botão da barra.',
+        'O painel Editar de cada elemento ganhou uma lixeira Excluir ao lado do fechar. É o jeito fácil de apagar uma Zona sonora aberta pela tag do nome.',
+        'Teclado secundário: Del e Backspace saem de Próximo item e Recarregar, também nos controles já salvos.',
       ] },
       { title: 'Mapa', items: [
         'Na lista de campanhas do globo, as cidades da África, das campanhas World e as últimas do Brazilian voltam a aparecer: no fim da lista algumas linhas ficavam invisíveis depois da animação de entrada.',

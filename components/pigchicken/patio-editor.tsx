@@ -207,7 +207,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     ? { ...treePreset(sel.kind === "pine" ? "pine" : "plum", sel.params.seed ?? 1), flip: !!sel.params.flip, climbTrunk: sel.solid }
     : undefined
 
-  // keyboard: Esc clears the selection, Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) undo and redo, Ctrl+D duplicates
+  // keyboard: Esc clears the selection, Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) undo and redo, Del deletes the selection
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
@@ -221,15 +221,16 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       if (e.code === "Escape" && selectedRef.current) { e.preventDefault(); select(null); return }
       if (mod && e.code === "KeyZ") { e.preventDefault(); if (e.shiftKey) forward(); else back(); return }
       if (mod && e.code === "KeyY") { e.preventDefault(); forward(); return }
-      if (mod && e.code === "KeyD") {
+      // Del deletes the selected element right away (Ctrl+Z brings it back); a focused outline point takes Del first
+      if (e.code === "Delete" && !mod && !e.altKey && !e.defaultPrevented && selectedRef.current) {
         e.preventDefault()
-        const el = elementsInWorld(layoutRef.current, screens).find(x => x.id === selectedRef.current)
-        if (el && !el.locked) duplicate(el)
+        const el = layoutRef.current.elements.find(x => x.id === selectedRef.current)
+        if (el && !el.locked) remove(el.id)
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [back, forward, duplicate, select, placement.cancel, draft, screens])
+  }, [back, forward, remove, select, placement.cancel, draft])
 
   // with something selected, the first click on empty space only clears the selection (it does not shoot)
   useEffect(() => {
@@ -354,7 +355,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         : selectedTree
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
-          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} />)}
+          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} />)}
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
@@ -467,12 +468,12 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
           {el.kind === "entry" ? (
             <span className="whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-white/60">Pode mover; não apaga</span>
           ) : <>
-          <button type="button" className={TOOL} title="Duplicar (Ctrl+D)" aria-label="Duplicar" onClick={onDuplicate}><Copy className="h-4 w-4" /></button>
+          <button type="button" className={TOOL} title="Duplicar" aria-label="Duplicar" onClick={onDuplicate}><Copy className="h-4 w-4" /></button>
           <div className="relative">
             <button
               type="button"
               className={cn(TOOL, "hover:border-red-400 hover:text-red-300", panel === "delete" && "border-red-400 text-red-300")}
-              title={deleteBlocked ? "Destranque o outro portal para apagar o par" : "Apagar (clique duplo apaga sem confirmar)"}
+              title={deleteBlocked ? "Destranque o outro portal para apagar o par" : "Apagar (Del ou clique duplo apagam sem confirmar)"}
               disabled={deleteBlocked}
               aria-label="Apagar"
               onClick={() => setPanel(panel === "delete" ? "" : "delete")}
@@ -597,7 +598,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
 }
 
 // the Edit panel for elements that do not have their own customizer
-function EditPanel({ el, onChange, onClose, onSpawnEnemy, linking, onLinking }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void }) {
+function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onLinking }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onDelete?: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void }) {
   const set = (p: ElementParams, step?: string) => onChange({ ...el, params: { ...el.params, ...p } }, step)
   const [msg, setMsg] = useState(el.params.message ?? "")
   const editSession = useId()
@@ -608,6 +609,7 @@ function EditPanel({ el, onChange, onClose, onSpawnEnemy, linking, onLinking }: 
     <FloatingPanel id="patio-edit" overDock aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Editar · {ELEMENT_DEFS[el.kind].label}</h2>
+        {onDelete && el.kind !== "entry" && !el.locked && <button type="button" aria-label="Excluir" title="Excluir (Del)" onClick={onDelete} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-red-400 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       {el.kind === "dummy" && (

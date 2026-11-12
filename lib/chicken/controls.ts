@@ -37,7 +37,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'melee', label: 'Golpe de perto', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', 'Key:BracketLeft'], pad: ['Pad:b3', null, null], group: 'items' },
   { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:End', 'Key:Backslash'], pad: ['Pad:b11', null, null], group: 'items' },
   // every item in the bar's order (the mouse wheel does the same); the three below go through one group each
-  { key: 'nextItem', label: 'Próximo item', keys: [null, null, null], keys2: ['Key:Delete', null], pad: [null, null, null], group: 'items' },
+  { key: 'nextItem', label: 'Próximo item', keys: [null, null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Quote', null], pad: [null, null, null], group: 'items' },
   { key: 'nextInstrument', label: 'Próximo instrumento', keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b4', null, null], group: 'items' },
   { key: 'nextWeapon', label: 'Próxima arma', keys: ['Key:KeyQ', null, null], keys2: [null, null], pad: ['Pad:b5', null, null], group: 'items' },
@@ -47,7 +47,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'itemWheel', label: 'Roda do inventário', keys: ['Key:KeyT', null, null], keys2: [null, null], pad: ['Pad:b10', null, null], group: 'items' },
   // X runs and also grabs while standing on an item; the Shifts do the same on the keyboards. R3 throws, Y hits, LT broods.
   { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', 'Key:ShiftLeft', null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
-  { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: ['Key:Backspace', null], pad: ['Pad:b9', null, null], group: 'items' },
+  { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: [null, null], pad: ['Pad:b9', null, null], group: 'items' },
   { key: 'editMode', label: 'Edição (Modo editor)', keys: ['Key:AltLeft', 'Key:MetaLeft', null], keys2: [null, null], pad: [null, null, null], group: 'patio' },
 ]
 
@@ -225,6 +225,9 @@ export function loadChickenControls(): ChickenControls {
         second('crouch', 'Key:PageDown', 'Key:ArrowDown')
       }
     }
+    // 11/11: Del and Backspace leave the secondary keyboard (Del deletes in the Pátio editor): taken off Próximo item
+    // and Recarregar once, wherever the player had them on the secondary keyboard
+    if (!saved?.keys2NoDelBksp) CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = base.keys2[a.key].map(t => t === 'Key:Delete' || t === 'Key:Backspace' ? null : t) })
     // Cmd esq. is no longer a brood key (03/11): controls that still have it on brood lose it (once)
     if (!saved?.noCmdBrood) KEYBOARD_INPUT_TYPES.forEach(k => { base[k].down = base[k].down.map(t => t === 'Key:MetaLeft' ? null : t) })
     // Migrate the old default trio once, leaving customized bindings intact.
@@ -360,7 +363,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
