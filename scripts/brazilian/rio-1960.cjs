@@ -109,9 +109,9 @@ const bass = {
 // barks never; laid back by a tick and uneven in dynamics: never twice the same bar.
 const HAT = 'o,h.h,h. o,h.h.h, | o.h,h,h. o,h.h,h,'
 const hihat = {
-  1: tone(easy(71, hits(rep(HAT, 8)), { late: 1, vel: .07 }), .25), 2: tone(easy(72, hits(rep(HAT, 4)), { late: 1, vel: .07 }), .25),
-  4: tone(easy(73, hits(rep('o.h,h.h, o,h.h.h, | o.h,h.h. o.h,h,h,', 8)), { late: 1, vel: .07 }), .25),
-  5: tone(easy(74, hits(rep('m,h,m,h, m,h,m,h,', 8)), { vel: .06 }), .25),
+  1: tone(easy(71, hits(rep(HAT, 8)), { late: 1, vel: .07 }), .2), 2: tone(easy(72, hits(rep(HAT, 4)), { late: 1, vel: .07 }), .2),
+  4: tone(easy(73, hits(rep('o.h,h.h, o,h.h.h, | o.h,h.h. o.h,h,h,', 8)), { late: 1, vel: .07 }), .2),
+  5: tone(easy(74, hits(rep('m,h,m,h, m,h,m,h,', 8)), { vel: .06 }), .2),
 }
 // c2 Brushes: the swish on every eighth, accents on two and four.
 const brushes = {
@@ -182,7 +182,7 @@ const PARTS = [
   P('e1', 'Violão · batida', 'harmony', 'phrase', SAMPLE('guitars', 'nylon'), violao, on(...ALL),
     { octave: 3, gain: .4, attack: .003, decay: .6, sustain: .3, release: .3, clip: 1, lpf: 4200, hpf: 70, effects: { reverb: .14, pan: -.2 }, mapping: { fileDegrees: 0, rankDegrees: 0 } }),
   P('e2', 'Chimbal', 'rhythm', 'pulse', DRUM('percussion', 'hat', 1), hihat, on(1, 2, 4, 5, 6, 7),
-    { octave: 2, gain: 1, attack: .002, decay: .05, sustain: 0, release: .04, clip: .5, lpf: 9500, hpf: 1200, effects: { reverb: .08, pan: .3 }, design: { role: 'drums' }, mapping: { fileDegrees: 0, rankDegrees: 0 } }),
+    { octave: 2, gain: 1, attack: .002, decay: .07, sustain: 0, release: .05, clip: .5, lpf: 9500, hpf: 1200, effects: { reverb: .08, pan: .3 }, design: { role: 'drums' }, mapping: { fileDegrees: 0, rankDegrees: 0 } }),
   P('f1', 'Sax tenor', 'melody', 'phrase', SAMPLE('band', 'tenor-sax'), sax, on(3, 4),
     { octave: 3, gain: .24, attack: .04, decay: .3, sustain: .8, release: .3, clip: 1, lpf: 3600, hpf: 110, effects: { reverb: .24, pan: -.1 }, design: { role: 'lead', vibrato: 4.4, vibratoDepth: .12 }, mapping: { fileDegrees: 0, rankDegrees: 0 } }),
   P('f2', 'Prato de condução', 'rhythm', 'pulse', DRUM('percussion', 'ride'), ride, on(4, 5),

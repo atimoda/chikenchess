@@ -480,7 +480,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.42,
+      "gain": 0.3,
       "attack": 0.003,
       "decay": 0.7,
       "sustain": 0.5,
@@ -572,7 +572,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.38,
+      "gain": 0.29,
       "attack": 0.001,
       "decay": 0.8,
       "sustain": 0,
@@ -1866,7 +1866,7 @@
         1
       ],
       "octave": 2,
-      "gain": 0.26,
+      "gain": 0.22,
       "attack": 0.001,
       "decay": 0.4,
       "sustain": 0,

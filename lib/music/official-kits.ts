@@ -10,14 +10,15 @@ import kit6 from '../../data/music/kits/manchester-1999.json'
 import kit7 from '../../data/music/kits/memphis-1967.json'
 import kit8 from '../../data/music/kits/new-orleans-1953.json'
 import kit9 from '../../data/music/kits/paris-1913.json'
-import kit10 from '../../data/music/kits/rio-1910.json'
-import kit11 from '../../data/music/kits/rio-1930.json'
-import kit12 from '../../data/music/kits/rio-1960.json'
-import kit13 from '../../data/music/kits/rio-1984.json'
-import kit14 from '../../data/music/kits/rio-1995.json'
-import kit15 from '../../data/music/kits/venice-1725.json'
-import kit16 from '../../data/music/kits/vienna-1825.json'
-import kit17 from '../../data/music/kits/vienna.json'
+import kit10 from '../../data/music/kits/piracicaba-1940.json'
+import kit11 from '../../data/music/kits/rio-1910.json'
+import kit12 from '../../data/music/kits/rio-1930.json'
+import kit13 from '../../data/music/kits/rio-1960.json'
+import kit14 from '../../data/music/kits/rio-1984.json'
+import kit15 from '../../data/music/kits/rio-1995.json'
+import kit16 from '../../data/music/kits/venice-1725.json'
+import kit17 from '../../data/music/kits/vienna-1825.json'
+import kit18 from '../../data/music/kits/vienna.json'
 export const OFFICIAL_CITY_KITS: Record<string, unknown> = {
   'buenos-aires-1940': kit0,
   'copenhagen-1869': kit1,
@@ -29,12 +30,13 @@ export const OFFICIAL_CITY_KITS: Record<string, unknown> = {
   'memphis-1967': kit7,
   'new-orleans-1953': kit8,
   'paris-1913': kit9,
-  'rio-1910': kit10,
-  'rio-1930': kit11,
-  'rio-1960': kit12,
-  'rio-1984': kit13,
-  'rio-1995': kit14,
-  'venice-1725': kit15,
-  'vienna-1825': kit16,
-  'vienna': kit17,
+  'piracicaba-1940': kit10,
+  'rio-1910': kit11,
+  'rio-1930': kit12,
+  'rio-1960': kit13,
+  'rio-1984': kit14,
+  'rio-1995': kit15,
+  'venice-1725': kit16,
+  'vienna-1825': kit17,
+  'vienna': kit18,
 }

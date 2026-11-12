@@ -154,9 +154,9 @@ const DRUMS = { design: { role: 'drums' }, mapping: { fileDegrees: 0, rankDegree
 const FX = { design: { role: 'fx' }, mapping: { fileDegrees: 0, rankDegrees: 0 } }
 const PARTS = [
   P('a1', 'Baixo 808', 'bass', 'phrase', { kind: 'synth', sound: 'sine' }, bass, on(...ALL),
-    { octave: 2, gain: .42, attack: .003, decay: .7, sustain: .5, release: .2, clip: .95, lpf: 260, hpf: 25, effects: { reverb: 0, pan: 0 }, design: { role: 'bass' }, mapping: { fileDegrees: 0, rankDegrees: 0, panWidth: 0 } }),
+    { octave: 2, gain: .3, attack: .003, decay: .7, sustain: .5, release: .2, clip: .95, lpf: 260, hpf: 25, effects: { reverb: 0, pan: 0 }, design: { role: 'bass' }, mapping: { fileDegrees: 0, rankDegrees: 0, panWidth: 0 } }),
   P('a2', 'Bumbo 808', 'rhythm', 'pulse', DRUM('machines', '808-kick-long'), kick, on(...ALL),
-    { ...DRUMS, octave: 2, gain: .38, attack: .001, decay: .8, sustain: 0, release: .4, clip: .9, lpf: 6000, hpf: 25, effects: { reverb: 0, pan: 0 }, mapping: { fileDegrees: 0, rankDegrees: 0, panWidth: 0 } }),
+    { ...DRUMS, octave: 2, gain: .29, attack: .001, decay: .8, sustain: 0, release: .4, clip: .9, lpf: 6000, hpf: 25, effects: { reverb: 0, pan: 0 }, mapping: { fileDegrees: 0, rankDegrees: 0, panWidth: 0 } }),
   P('b1', 'Orchestra hit', 'response', 'pulse', DRUM('electronic', 'orch-hit'), orch, on(0, 3, 4, 8, 9),
     { ...FX, octave: 2, gain: .34, attack: .001, decay: .5, sustain: 0, release: .3, clip: .9, lpf: 8000, hpf: 150, effects: { reverb: .25, pan: -.2 } }),
   P('b2', 'Caixa 808', 'rhythm', 'pulse', DRUM('machines', '808-snare'), snare, on(1, 2, 3, 4, 5, 6, 7, 8, 9),
@@ -184,7 +184,7 @@ const PARTS = [
   P('h1', 'Scratch do DJ', 'texture', 'pulse', DRUM('electronic', 'scratch'), scratch, on(0, 1, 4, 6),
     { ...FX, octave: 2, gain: .16, attack: .001, decay: .2, sustain: 0, release: .08, clip: .9, lpf: 8000, hpf: 300, effects: { reverb: .1, pan: -.35 } }),
   P('h2', 'Batidão', 'rhythm', 'pulse', DRUM('machines', '909-kick-hard'), batidao, on(3, 4, 8, 9),
-    { ...DRUMS, octave: 2, gain: .26, attack: .001, decay: .4, sustain: 0, release: .2, clip: .8, lpf: 5000, hpf: 35, effects: { reverb: 0, pan: 0 }, mapping: { fileDegrees: 0, rankDegrees: 0, panWidth: 0 } }),
+    { ...DRUMS, octave: 2, gain: .22, attack: .001, decay: .4, sustain: 0, release: .2, clip: .8, lpf: 5000, hpf: 35, effects: { reverb: 0, pan: 0 }, mapping: { fileDegrees: 0, rankDegrees: 0, panWidth: 0 } }),
 ]
 for (const part of PARTS) part.sections = part.sections.map((present, i) => present && part.rolls[FORM[i].bank] ? true : null)
 
