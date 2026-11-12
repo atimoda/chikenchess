@@ -55,6 +55,7 @@ const RECENT = [
         'Pátio vazio (e qualquer Pátio aberto depois de outro) não traz mais itens soltos do Pátio anterior.',
         'Apagar um Suporte de item no Modo editor deixa o Item solto no lugar: ele não reaparece depois de pego, pode ser selecionado e apagado, e fica salvo no Pátio. Assim dá para fazer um Pátio com um único item.',
         'Salvar Pátio: o aviso do estado do Pátio, quem vira padrinho e o auto-save agora ficam juntos no fim do painel.',
+        'Correr por cima de um item que você já tem não troca mais o item da mão: a tecla de Correr (Shift no padrão) continua pegando itens novos, mas só a tecla própria de pegar (E/P) ou o botão do toque fazem o Equipar.',
       ] },
     ],
   },

@@ -65,6 +65,9 @@ export type ChickenEngine = {
   isWalkingToPortal: (id: string) => boolean
   cancelPortalWalk: (id: string) => void
   isShiftHeld: () => boolean
+  // the Pegar of the last getActions came only from inputs Correr also has (a shared key or pad button, or the on-screen
+  // Correr with "Correr também pega itens"): it still takes items, but does not equip one she already carries
+  grabIsRun: () => boolean
   // Freeze gameplay and shrink/fade the drawn rig into a screen-space portal centre.
   // Repeated calls update the target without restarting; null cancels the transition.
   setPortalEntry: (entry: { x: number; y: number; durationMs: number } | null) => void
@@ -327,7 +330,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
   const shifts = new Set<string>()
   const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>()
-  let pad: Partial<Record<ChickenAction, boolean>> = {}
+  let pad: Partial<Record<ChickenAction, boolean>> = {}, padOwnGrab = false, grabRunOnly = false
   // the devices she listens to (null: all of them) and, from them, the keys of each action
   let devices: InputDeviceId[] | null = null
   let keyBinds = {} as Record<ChickenAction, string[]>, usedKeys = new Set<string>()
@@ -365,13 +368,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('pointermove', onPointerMove)
   let cameraResetR3 = false
   function pollPad() {
-    if (bot) { pad = {}; botNow = bot(); return }
+    if (bot) { pad = {}; padOwnGrab = false; botNow = bot(); return }
     const on = padTokensFor(devices, controls.analog.deadzoneL, controls.analog.magnetDeg)
     if (!on.has('Pad:b11')) cameraResetR3 = false
     else if (game.gameMode && on.has('Pad:b8')) cameraResetR3 = true
     if (cameraResetR3) on.delete('Pad:b11') // Consume the reset until R3 is released, without jumping.
     pad = {}
     CHICKEN_ACTIONS.forEach(a => { pad[a.key] = controls.pad[a.key].some(t => t && on.has(t)) })
+    padOwnGrab = controls.pad.grab.some(t => t && on.has(t) && !controls.pad.run.includes(t))
   }
   let useSampleAt = -Infinity, useSample = false
 
@@ -1895,6 +1899,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.root.style.pointerEvents = source ? 'none' : 'visiblePainted'
       if (source) { devices = []; S.cl = null; goal = null }
     },
+    grabIsRun: () => grabRunOnly,
     isShiftHeld: () => shifts.size > 0 && (!devices || devices.includes('kb1') || devices.includes('kb2')),
     setPortalEntry(entry) {
       if (!entry) {
@@ -1972,6 +1977,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
       CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t))) })
+      // Pegar with none of its own sources: only keys/buttons shared with Correr, or the on-screen Correr
+      grabRunOnly = out.grab && !bot && !padOwnGrab && !(virtOk() && virt.grab)
+        && !keyBinds.grab.some(t => !keyBinds.run.includes(t) && (held.has(t) || gameTaps.has(t)))
       gameTaps.clear()
       return out
     },

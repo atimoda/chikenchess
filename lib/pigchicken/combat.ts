@@ -152,6 +152,7 @@ export type FrameInput = {
   cancelFire?: boolean // UI, focus loss or a grabbed/portal chicken cancels preparation
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
   grabHeld?: boolean // Pegar held down: every item she passes over is taken as if grab were pressed on it
+  grabRun?: boolean // that press came only from Correr's keys/buttons: it takes (Pegar) but never equips (Equipar)
 }
 
 export const SLOTS = INVENTORY_MAX
@@ -2124,8 +2125,9 @@ export function createCombat() {
           heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
         }
       }
-      else if (input.grab && hoverOwned) {
-        // the same item is in her inventory: grab equips it (the one on the floor stays)
+      else if (input.grab && hoverOwned && !input.grabRun) {
+        // the same item is in her inventory: grab equips it (the one on the floor stays);
+        // not when the press is Correr's own key, so running over her items never swaps the one in her hand
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
