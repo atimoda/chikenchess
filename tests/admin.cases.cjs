@@ -98,7 +98,7 @@ test('Save DB normalizes an official city kit and writes it with a regenerated i
   assert.equal(saved.path, 'data/music/kits/berlin.json')
   assert.deepEqual(JSON.parse(await fsp.readFile(path.join(temp, saved.path), 'utf8')), kit)
   await saveOfficialKit(temp, 'acapulco-1960', kit)
-  const index = await fsp.readFile(path.join(temp, 'lib/music/official-kits.ts'), 'utf8')
+  const index = await fsp.readFile(path.join(temp, 'lib/music/official-kits.js'), 'utf8')
   assert.match(index, /import kit0 from '..\/..\/data\/music\/kits\/acapulco-1960.json'/)
   assert.match(index, /'berlin': kit1,/)
   await assert.rejects(saveOfficialKit(temp, '../escape', kit), /invalid city/)

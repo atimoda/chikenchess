@@ -161,7 +161,7 @@ test('Düsseldorf and New Orleans leave their featured voices room in later sect
 
 test('Goa 1994 ships an official psytrance kit with its own palette, articulations and reactions', () => {
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.ts')
+  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.js')
   const { cities } = loadTs('lib/cities-data.ts')
   const goa = cities.find(city => city.id === 'goa')
   assert.deepEqual(goa.campaigns, ['electronic-history'])
@@ -250,7 +250,7 @@ test('every city has a reproducible, distinct kit with roles independent of ches
   const { defaultCityKit, EDITABLE_CITY_KITS } = loadTs('lib/music/city-kits.ts')
   const { createRandomCityKit } = loadTs('lib/music/random-kit.ts')
   const { REACTION_PRESET_REVISION } = loadTs('lib/music/reactions.ts')
-  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.ts')
+  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.js')
   const { STYLE_PROFILES } = loadTs('lib/music/styled-kits.ts')
   assert.deepEqual(EDITABLE_CITY_KITS.map(c => c.id), cities.map(c => c.id))
   const fingerprints = new Set(), kingBehaviors = new Set()
@@ -623,7 +623,7 @@ test('four revised electronic forms expose harmony without double-transposing ba
 
 test('Brazilian profiles validate, author their reactions and use the Brazilian bank', () => {
   const { styleProfileSchema } = loadTs('lib/admin/validation.ts')
-  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.ts')
+  const { OFFICIAL_CITY_KITS } = loadTs('lib/music/official-kits.js')
   const { STYLE_PROFILES, CITY_STYLE_REVISIONS } = loadTs('lib/music/styled-kits.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   const { cities } = loadTs('lib/cities-data.ts')
@@ -884,7 +884,7 @@ test('Tango 1913 uses Kit Harmony, section and note sound, fills and its own rea
 })
 
 test('World ballads: five rewritten kits with Kit Harmony, contrasting sections, section and note sound, fills and reactions', async () => {
-  const api=await strudel(),{defaultCityKit}=loadTs('lib/music/city-kits.ts'),{cities}=loadTs('lib/cities-data.ts'),{OFFICIAL_CITY_KITS}=loadTs('lib/music/official-kits.ts')
+  const api=await strudel(),{defaultCityKit}=loadTs('lib/music/city-kits.ts'),{cities}=loadTs('lib/cities-data.ts'),{OFFICIAL_CITY_KITS}=loadTs('lib/music/official-kits.js')
   const expected={
     'manchester-1999':['Nu-jazz breaks','4/4',94,'G','Dórica'], 'dublin-1990':['Irish jig session','6/8',100,'D','Maior'],
     'new-orleans-1953':['Rhythm & blues','12/8',72,'C','Maior'], 'memphis-1967':['Southern soul','12/8',64,'F','Maior'],
