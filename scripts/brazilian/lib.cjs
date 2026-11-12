@@ -192,8 +192,53 @@ function composer(meter, scale) {
   const up = (notes, degrees) => notes.map(n => ({ ...n, degree: n.degree + degrees }))
   const vel = (notes, factor) => notes.map(n => ({ ...n, velocity: Math.round(Math.min(1, Math.max(.12, n.velocity * factor)) * 100) / 100 }))
   const set = (notes, extra) => notes.map(n => ({ ...n, ...extra }))
+  /**
+   * Token bars as the older Brazilian scripts wrote them ("7 6 . 4", one token per step, `steps` a bar):
+   * a note lasts until the next token that is not "."; notes of `vibratoFrom` steps or more take vibrato.
+   */
+  function line(rows, { steps = M.res, vibratoFrom = 3, gate = .96 } = {}) {
+    const text = rows.map(row => {
+      const tokens = row.trim().split(/\s+/)
+      if (tokens.length !== steps) throw new Error(`bar of ${tokens.length} steps: ${row}`)
+      const out = []
+      for (const token of tokens) {
+        if (token === '.') { if (!out.length) out.push({ degree: 'r', length: 1 }); else out[out.length - 1].length++; continue }
+        out.push({ degree: token, length: 1 })
+      }
+      return out.map(n => `${n.degree}:${n.length}${n.degree !== 'r' && n.length >= vibratoFrom ? '~' : ''}`).join(' ')
+    }).join(' | ')
+    return mel(text, { unit: 1 / steps, gate })
+  }
+  /** A sung phrase: each `window`-bar phrase swells to its highest note and falls back, notes off the beat are
+   * lighter, wide leaps glide, and the time is a little loose. */
+  function phrase(notes, seed, { low = .5, high = .86, window = 4, jitter = 1, glide = 5 } = {}) {
+    const groups = new Map()
+    for (const n of notes) { const key = Math.floor(n.start / window + 1e-9); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(n) }
+    const shaped = []
+    for (const group of groups.values()) {
+      const top = Math.max(...group.map(n => n.degree)), bottom = Math.min(...group.map(n => n.degree))
+      for (const n of group) {
+        const height = top === bottom ? .5 : (n.degree - bottom) / (top - bottom)
+        const onBeat = Math.abs(n.start / M.beat - Math.round(n.start / M.beat)) < 1e-6
+        shaped.push({ ...n, velocity: (low + (high - low) * (.35 + .65 * height)) * (onBeat ? 1 : .9) })
+      }
+    }
+    return feel(glide ? portamento(shaped, glide, .06, 2) : shaped, { jitter, vel: .04, seed })
+  }
+  /** Chords named per bar from a table of absolute degrees, on a rhythm of `steps` cells a bar (rows cycle);
+   * with `ahead`, the last cells of a bar already play the next bar's chord. */
+  function named(names, rhythm, table, { steps = M.res, length = .8 / steps, ahead = 0 } = {}) {
+    const rows = rhythm.split('|').map(row => [...row.replace(/\s+/g, '')]), notes = []
+    names.forEach((name, bar) => rows[bar % rows.length].forEach((c, i) => {
+      if (c === '.' || c === '-') return
+      if (!(c in HIT)) throw new Error(`hit ${c}`)
+      const chord = table[ahead && i >= steps - ahead ? names[(bar + 1) % names.length] : name]
+      for (const degree of chord) notes.push({ start: bar + i / steps, duration: length, degree, velocity: HIT[c], ...(c === ',' || c === '?' ? { chance: c === ',' ? .6 : .5 } : {}) })
+    }))
+    return notes
+  }
   const roll = (bars, ...groups) => ({ bars, notes: groups.flat().filter(n => n.start < bars - 1e-9).map(n => ({ ...n, duration: Math.min(n.duration, bars - n.start) })) })
-  return { M, meter, tick, semitone, mel, rep, hits, comp, relative, strum, portamento, feel, tone, swell, only, without, shift, up, vel, set, roll, weight }
+  return { M, meter, tick, semitone, mel, rep, hits, comp, line, phrase, named, relative, strum, portamento, feel, tone, swell, only, without, shift, up, vel, set, roll, weight }
 }
 
 /** Snaps every note to the grid, keeps it inside its roll and rounds the dynamics to steps of .04
