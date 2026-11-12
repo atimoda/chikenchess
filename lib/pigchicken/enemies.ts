@@ -49,6 +49,8 @@ export type EnemyEnv = {
   playerX: number; playerY: number; groundY: number; viewL: number; viewR: number
   nearest?: (x: number, y: number) => { x: number; y: number }
   onBite: (t: Target, at?: { x: number; y: number }) => void
+  // the zombies' wandering draws from here (tests pass a fixed sequence); Math.random by default
+  rand?: () => number
 }
 
 let nextId = 1_000_000
@@ -98,6 +100,24 @@ export function spawnZombieAt(targets: Target[], x: number, groundY: number) {
 }
 
 export const ZOMBIE_TIMES = { attack: 0.7, bite: 0.45, hurt: 0.35, dead: 1.2, fade: 0.6 }
+
+// A zombie that cannot reach her (she is up on a platform, or below one) prowls around her instead of piling up
+// under her: after `lost` seconds out of reach, each one keeps its own spot `near`..`far` from her (to either side,
+// often crossing under her), walks there at its own slower pace, stands a moment looking at her and picks another.
+// `reachY`: how far above or below her a zombie still bites (the same reach as before).
+export const ZOMBIE_ROAM = { reachY: 120, lost: 0.5, near: 60, far: 260, cross: 0.65, waitMin: 0.35, waitMax: 1.8, paceMin: 0.4, paceMax: 0.75, rush: 420 }
+// owner-side only (not part of the zombie's shared data): where it is heading around her, how long it still waits
+type Roam = { lostT: number; off: number; wait: number; pace: number }
+const roams = new WeakMap<Target, Roam>()
+function roamSpot(prev: number, rand: () => number) {
+  const side = prev === 0 ? (rand() < 0.5 ? -1 : 1) : rand() < ZOMBIE_ROAM.cross ? -Math.sign(prev) : Math.sign(prev)
+  return side * (ZOMBIE_ROAM.near + rand() * (ZOMBIE_ROAM.far - ZOMBIE_ROAM.near))
+}
+/** the spot around her a roaming zombie is heading to (offset from her x), or null while it is chasing her */
+export function zombieRoamSpot(t: Target): number | null {
+  const r = roams.get(t)
+  return r && r.lostT >= ZOMBIE_ROAM.lost ? r.off : null
+}
 export const ALIEN_DEATH = 0.35
 
 // moves every enemy; returns false for the ones to remove
@@ -131,9 +151,41 @@ export function stepEnemy(t: Target, dt: number, env: EnemyEnv): boolean {
     if (t.animT > ZOMBIE_TIMES.attack) { t.state = 'walk'; t.animT = 0 }
     return true
   }
+  const rand = env.rand ?? Math.random
+  if (Math.abs(her.y - t.y) >= ZOMBIE_ROAM.reachY) {
+    let r = roams.get(t)
+    if (!r) { r = { lostT: 0, off: 0, wait: 0, pace: ZOMBIE_ROAM.paceMin + rand() * (ZOMBIE_ROAM.paceMax - ZOMBIE_ROAM.paceMin) }; roams.set(t, r) }
+    r.lostT += dt
+    // a jump does not make it give up: it keeps walking at her for a moment
+    if (r.lostT >= ZOMBIE_ROAM.lost) return roam(t, d, r, dx, dt, rand)
+  } else roams.delete(t)
+  if (t.state === 'idle') { t.state = 'walk'; t.animT = 0 }
   t.face = Math.sign(dx) || t.face
-  if (Math.abs(dx) < 62 && Math.abs(her.y - t.y) < 120) { t.state = 'attack'; t.animT = 0; d.bit = false; return true }
+  if (Math.abs(dx) < 62 && Math.abs(her.y - t.y) < ZOMBIE_ROAM.reachY) { t.state = 'attack'; t.animT = 0; d.bit = false; return true }
   t.x += t.face * d.speed * dt
+  return true
+}
+
+function roam(t: Target, d: EnemyData & { kind: 'zombie' }, r: Roam, dx: number, dt: number, rand: () => number) {
+  // the first spot is on the side it came from
+  if (r.off === 0) r.off = (-Math.sign(dx) || 1) * (ZOMBIE_ROAM.near + rand() * (ZOMBIE_ROAM.far - ZOMBIE_ROAM.near))
+  if (r.wait > 0) {
+    // standing, looking at her
+    if (t.state !== 'idle') { t.state = 'idle'; t.animT = 0 }
+    t.face = Math.sign(dx) || t.face
+    r.wait -= dt
+    if (r.wait <= 0) r.off = roamSpot(r.off, rand)
+    return true
+  }
+  const gx = dx + r.off
+  if (Math.abs(gx) < 4) { r.wait = ZOMBIE_ROAM.waitMin + rand() * (ZOMBIE_ROAM.waitMax - ZOMBIE_ROAM.waitMin); return true }
+  if (t.state !== 'walk') { t.state = 'walk'; t.animT = 0 }
+  t.face = Math.sign(gx)
+  // she went far: it hurries back at its full speed
+  const pace = Math.abs(gx) > ZOMBIE_ROAM.rush ? 1 : r.pace
+  t.x += t.face * Math.min(Math.abs(gx), d.speed * pace * dt)
+  // the steps slow down with it
+  t.animT -= dt * (1 - pace)
   return true
 }
 

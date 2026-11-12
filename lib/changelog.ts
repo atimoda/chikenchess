@@ -56,6 +56,7 @@ const RECENT = [
         'Apagar um Suporte de item no Modo editor deixa o Item solto no lugar: ele não reaparece depois de pego, pode ser selecionado e apagado, e fica salvo no Pátio. Assim dá para fazer um Pátio com um único item.',
         'Salvar Pátio: o aviso do estado do Pátio, quem vira padrinho e o auto-save agora ficam juntos no fim do painel.',
         'Correr por cima de um item que você já tem não troca mais o item da mão: a tecla de Correr (Shift no padrão) continua pegando itens novos, mas só a tecla própria de pegar (E/P) ou o botão do toque fazem o Equipar.',
+        'Zumbis não se amontoam mais embaixo da galinha quando ela está numa plataforma: cada um ronda por perto, anda até um ponto ao lado dela, para olhando para ela e muda de lado, e volta a atacar quando ela desce.',
       ] },
     ],
   },

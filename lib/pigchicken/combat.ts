@@ -464,7 +464,7 @@ export function createCombat() {
     markSoul(t, note, by)
     t.harmony = (t.harmony ?? 0) + amount; t.flash = 0.12; t.tint = note.color; t.vx += pushX * 0.3
     t.stun = Math.max(t.stun ?? 0, stun)
-    if (t.kind === 'zombie' && t.state === 'walk' && stun > 0) { t.state = 'hurt'; t.animT = 0 }
+    if (t.kind === 'zombie' && (t.state === 'walk' || t.state === 'idle') && stun > 0) { t.state = 'hurt'; t.animT = 0 }
     texts.push({ x, y: y - 10, text: note.sym, life: 0.8, color: note.color, size: 18 })
     burst(x, y, 4, note.color, 120, 3)
     // question and answer: an eighth later the enemy sings a chord note above (aliens chirp, zombies hum)
