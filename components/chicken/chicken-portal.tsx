@@ -15,7 +15,7 @@ import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { CHICKEN_GROUND_H } from "./chicken-layer"
-import { isLiteDevice } from "@/lib/performance"
+import { graphicsQuality } from "@/lib/quality"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
@@ -310,8 +310,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     const size = d + PAD * 2
     const cx = size / 2, cy = size / 2, r = d / 2
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    // Phones start lite; any device whose full ring averages under ~36 fps switches to it.
-    let lite = isLiteDevice()
+    // Below Alta the ring starts lite; any device whose full ring averages under ~36 fps switches to it.
+    let lite = graphicsQuality() !== "high"
     let dpr = 1, halo: ReturnType<typeof makeHalo> = null
     const setup = () => {
       dpr = lite ? 1 : Math.min(2, window.devicePixelRatio || 1)

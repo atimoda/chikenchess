@@ -7,7 +7,9 @@ import { MusicTransport } from './transport'
 import { beatsPerBar } from './meter'
 import { ReactionQueue } from './reaction-queue'
 import { applyReactions } from './reactions'
-import { isConstrainedDevice, isLiteDevice } from '../performance'
+import { soundQuality, subscribeQuality } from '../quality'
+import { reportSchedulerLate, watchAudioOutput } from '../quality-monitor'
+import { soundProfile } from './sound-profile'
 import { DEFAULT_ARRANGEMENT, arrangementPosition, sectionStartCycle, sectionEndCycle } from './arrangement'
 import { variationPosition } from './performance'
 import { TeamMixer, createTeamMixes } from './team-mixer'
@@ -27,9 +29,11 @@ export class MusicRuntime {
   private scheduledLoops: unknown[] | undefined
   private targetBpm = 120
   private sourceState?: MusicSnapshot
-  // Phones: lite sound design (see voiceSpecs) and rule glides that land at once instead of every bar.
-  private readonly lite = isLiteDevice()
-  private reactionQueue = new ReactionQueue(this.lite)
+  // "Qualidade e efeitos sonoros" (sound-profile.ts): buses, reverb, lite sound design (see voiceSpecs),
+  // rule glides that land at once instead of every bar, polyphony and scheduler look-ahead.
+  private profile = soundProfile(soundQuality())
+  private get lite() { return this.profile.lite }
+  private reactionQueue = new ReactionQueue(this.profile.lite)
   private rampBars = 0
   private state?: MusicSnapshot
   private preview: Preview | null = null
@@ -48,7 +52,7 @@ export class MusicRuntime {
   private teamMixer?: TeamMixer
   private manualReverbs = new ManualReverbCache()
   private sharedReverb?: SharedLoopReverb
-  private readonly sharedReverbOrbits = new WeakSet<object>()
+  private sharedReverbOrbits = new WeakSet<object>()
   private preparedManualOrbits = new WeakSet<object>()
   private connectedOrbits = new Set<number>()
   // Sidechain targets: Superdough ducks the bus output gain, so their volume sits on a node after it.
@@ -66,6 +70,7 @@ export class MusicRuntime {
   private manualHit?: { voice: VoiceSpec; value: any; start: number; end: number }
   private releaseTimer?: ReturnType<typeof setTimeout>
   private unsubscribePulsePreference = subscribeSimultaneousPulses(() => this.clearVisuals())
+  private unsubscribeQuality = subscribeQuality(() => this.applyQuality())
 
   constructor(private pulse: (events: readonly MusicPulse[]) => void, private error: (error: unknown) => void, readonly monitor: MusicMonitor = createMusicMonitor(), private onResolved?: (state: MusicSnapshot) => void) {}
 
@@ -127,21 +132,22 @@ export class MusicRuntime {
     const s = await loadLibrary()
     if (this.disposed) return
     this.api = s
-    const constrained = isConstrainedDevice()
-    this.visualInterval = 1 / (constrained ? 8 : 15)
-    this.effectBuses = constrained ? 2 : 4
+    const profile = this.profile
+    this.visualInterval = 1 / profile.visualRate
+    this.effectBuses = profile.effectBuses
     // Dry manual notes can start immediately. Distortion and supersaw need worklets;
     // unlock/output await it instead of creating an undefined processor.
-    const workletsReady: Promise<void> = s.initAudio({ maxPolyphony: constrained ? 32 : 64 })
+    const workletsReady: Promise<void> = s.initAudio({ maxPolyphony: profile.polyphony })
     this.workletsReady = workletsReady
     void workletsReady.catch(this.error)
     if (this.disposed) return
     const context: AudioContext = s.getAudioContext()
+    watchAudioOutput(context)
     this.analyser = context.createAnalyser()
     this.analyser.fftSize = 256
     this.teamMixer = new TeamMixer(context, this.analyser)
-    // Phones: one convolver for every loop bus (see shared-reverb.ts).
-    if (constrained) this.sharedReverb = new SharedLoopReverb(context, [this.teamMixer.sides.w.bass, this.teamMixer.sides.b.bass])
+    // Média: one convolver for every loop bus (see shared-reverb.ts).
+    if (profile.sharedReverb) this.sharedReverb = new SharedLoopReverb(context, [this.teamMixer.sides.w.bass, this.teamMixer.sides.b.bass])
     this.scheduler = new MusicTransport({
       onBoundary: (cycle: number) => {
         const transition = this.reactionQueue.advance(cycle)
@@ -152,10 +158,11 @@ export class MusicRuntime {
       // dropped or crackles. Fewer, larger queries also cut Strudel's per-query
       // cost. Manual notes keep their independent 30 ms response and the
       // monitor follows this latency.
-      latency: constrained ? .3 : .1,
-      interval: constrained ? 100 : 50,
+      latency: profile.latency,
+      interval: profile.interval,
       getTime: () => context.currentTime,
       onError: this.error,
+      onLate: reportSchedulerLate,
       onTrigger: (hap: any, deadline: number, duration: number, cps: number, time: number) => {
         this.triggerLoop(hap, deadline, duration, cps, time)
       },
@@ -165,13 +172,45 @@ export class MusicRuntime {
       this.scheduler.seek(this.pendingSeek)
       this.pendingSeek = undefined
     }
-    this.monitorTimer = setInterval(() => { if (this.scheduler?.started && this.monitor.hasSubscribers()) this.publishFrame() }, constrained ? 150 : 100)
+    this.startMonitor()
+    // The level may have changed while the library was loading.
+    this.applyQuality()
+  }
+
+  private startMonitor() {
+    if (this.monitorTimer) clearInterval(this.monitorTimer)
+    this.monitorTimer = setInterval(() => { if (this.scheduler?.started && this.monitor.hasSubscribers()) this.publishFrame() }, this.profile.monitorInterval)
+  }
+
+  /** A new sound level applies while playing. Buses and reverb routing are rebuilt, which cuts the
+   * tails sounding at that moment once; notes, phase, tempo and the transport carry on. */
+  private applyQuality() {
+    const next = soundProfile(soundQuality()), previous = this.profile
+    if (next === previous || this.disposed) return
+    this.profile = next
+    this.reactionQueue.instant = next.lite
+    if (!this.api || !this.scheduler) return
+    this.visualInterval = 1 / next.visualRate
+    this.api.setMaxPolyphony?.(next.polyphony)
+    this.scheduler.setTiming?.(next.latency, next.interval)
+    if (this.monitorTimer) this.startMonitor()
+    if (previous.effectBuses !== next.effectBuses || previous.sharedReverb !== next.sharedReverb) {
+      for (const orbit of new Set([...this.voices.values()].filter(voice => !voice.manual).map(voice => voice.orbit))) this.removeOrbit(orbit)
+      this.effectBuses = next.effectBuses
+      this.sharedReverb?.dispose()
+      this.sharedReverb = next.sharedReverb && this.teamMixer
+        ? new SharedLoopReverb(this.api.getAudioContext(), [this.teamMixer.sides.w.bass, this.teamMixer.sides.b.bass]) : undefined
+      this.sharedReverbOrbits = new WeakSet()
+    }
+    this.refresh()
   }
 
   private triggerLoop(hap: any, deadline: number, duration: number, cps: number, time: number) {
     const voice = this.voices.get(hap.value.ccVoice)
     if (!voice || voice.manual || (this.preview?.mode === 'manual' && !this.releaseTimer && this.preview.id === voice.piece.id)) return
-    void this.output(hap, deadline, duration, cps, time).catch(this.error)
+    // Baixa: loops go out dry, so no reverb send or convolver is built for them.
+    const out = this.profile.reverb || !(Number(hap.value.room) > 0) ? hap : hap.withValue((value: any) => ({ ...value, room: 0 }))
+    void this.output(out, deadline, duration, cps, time).catch(this.error)
     this.scheduleVisual(voice, time, duration)
   }
 
@@ -618,6 +657,7 @@ export class MusicRuntime {
   dispose() {
     this.disposed = true
     this.unsubscribePulsePreference()
+    this.unsubscribeQuality()
     if (this.releaseTimer) clearTimeout(this.releaseTimer)
     this.releaseTimer = undefined
     this.unlockAudition = null

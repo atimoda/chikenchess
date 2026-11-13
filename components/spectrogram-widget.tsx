@@ -2,8 +2,8 @@
 
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import type React from "react"
-import { useRef, forwardRef, useEffect, useState } from "react"
-import { isConstrainedDevice } from "@/lib/performance"
+import { useRef, forwardRef, useEffect } from "react"
+import { useReducedGraphics } from "@/hooks/use-reduced-graphics"
 import { cn } from "@/lib/utils"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
@@ -49,9 +49,9 @@ export function SpectrogramCanvas({
   const animationRef = useRef<number>(0)
   const lastFrameRef = useRef(0)
   const dataArrayRef = useRef<Uint8Array<ArrayBuffer>>(new Uint8Array(128))
-  // Phones share the main thread with the audio scheduler; 15 fps keeps the
-  // bars readable while leaving more of each second to music and gestures.
-  const [frameInterval] = useState(() => 1000 / (isConstrainedDevice() ? 15 : 24))
+  // Below Alta the bars draw at 15 fps: still readable, and more of each second
+  // is left to music and gestures on the shared main thread.
+  const frameInterval = 1000 / (useReducedGraphics() ? 15 : 24)
 
   useEffect(() => {
     if (!isOn) {

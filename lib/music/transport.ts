@@ -31,7 +31,8 @@ export class TempoMap {
 export class MusicTransport {
   started=false
   lastEnd=0
-  readonly latency:number
+  latency:number
+  private interval:number
   private tempoMap=new TempoMap()
   // Audio may already be scheduled after a jump, while the listener still hears
   // the preceding section. Retain its clock until the exact landing deadline.
@@ -44,7 +45,7 @@ export class MusicTransport {
   private beatsPerBar=4
   private boundary=-1
   private stoppedCycle=0
-  constructor(private options:{ getTime:()=>number;latency:number;interval?:number;onBoundary:(cycle:number)=>void;onTrigger:(hap:any,deadline:number,duration:number,cps:number,time:number)=>void;onError:(error:unknown)=>void }) {this.latency=options.latency}
+  constructor(private options:{ getTime:()=>number;latency:number;interval?:number;onBoundary:(cycle:number)=>void;onTrigger:(hap:any,deadline:number,duration:number,cps:number,time:number)=>void;onError:(error:unknown)=>void;onLate?:(seconds:number)=>void }) {this.latency=options.latency;this.interval=options.interval??50}
   get tempo() {const now=this.options.getTime();return this.preceding.find(entry=>now<entry.until)?.map??this.tempoMap}
   get cycle() {return this.started?this.tempo.cycleAt(this.options.getTime()):this.stoppedCycle}
   get schedulingCycle() {return this.started?this.tempoMap.cycleAt(this.options.getTime()):this.stoppedCycle}
@@ -56,7 +57,14 @@ export class MusicTransport {
   setMeter(beatsPerBar:number) {if(this.beatsPerBar===beatsPerBar)return;this.stop();this.beatsPerBar=beatsPerBar;this.tempoMap.setBeatsPerBar(beatsPerBar,this.target,this.options.getTime())}
   setCps(cps:number,bars=0) {const factor=60*this.beatsPerBar,bpm=Math.max(30,Math.min(240,cps*factor));if(bpm===this.target)return;this.target=bpm;if(this.started)this.tempoMap.change(this.lastEnd,bpm,bars);else this.tempoMap.reset(bpm,this.options.getTime())}
   async setPattern(pattern:any) {this.pattern=pattern}
-  async start() {if(this.started)return;this.started=true;this.lastEnd=this.stoppedCycle;this.boundary=-1;this.tempoMap.reset(this.target,this.options.getTime()+.03,this.stoppedCycle);this.tick();this.timer=setInterval(()=>this.tick(),this.options.interval??50)}
+  async start() {if(this.started)return;this.started=true;this.lastEnd=this.stoppedCycle;this.boundary=-1;this.tempoMap.reset(this.target,this.options.getTime()+.03,this.stoppedCycle);this.tick();this.timer=setInterval(()=>this.tick(),this.interval)}
+  /** Look-ahead and tick period can change while playing (sound quality); attacks already queued stay. */
+  setTiming(latency:number,interval:number) {
+    this.latency=latency
+    if(interval===this.interval)return
+    this.interval=interval
+    if(this.timer){clearInterval(this.timer);this.timer=setInterval(()=>this.tick(),interval)}
+  }
   stop() {this.started=false;if(this.timer)clearInterval(this.timer);this.timer=undefined;this.lastEnd=0;this.stoppedCycle=0;this.queuedSeek=undefined;this.landing=undefined;this.preceding=[]}
   /** Replace the next destination, without cutting or rescheduling current audio. */
   queueSeek(at:number,target:number,commit:()=>void) {
@@ -81,6 +89,10 @@ export class MusicTransport {
     try {
       const now=this.options.getTime(), horizon=now+this.latency
       this.preceding=this.preceding.filter(entry=>now<entry.until)
+      // The last tick queued everything up to its horizon. Time already past it means this tick came
+      // later than the look-ahead and the attacks in between start late or are skipped.
+      const behind=now-this.tempoMap.timeAt(this.lastEnd)
+      if(behind>0)this.options.onLate?.(behind)
       // On a suspended/throttled tab, skip stale attacks instead of bursting a backlog.
       if(this.tempoMap.timeAt(this.lastEnd)<now-.1)this.lastEnd=Math.min(Math.ceil(this.tempoMap.cycleAt(now)),this.queuedSeek?.at??Infinity)
       for(let work=0;work<128&&this.tempoMap.timeAt(this.lastEnd)<horizon;work++){

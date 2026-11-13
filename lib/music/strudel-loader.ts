@@ -2,14 +2,16 @@
 import { sampleRegistration, sampleUrl, type SampleSource } from './sample-banks'
 import type { Strudel } from './runtime-types'
 import { isConstrainedDevice } from '../performance'
+import { soundQuality } from '../quality'
 
 let library: Promise<Strudel> | undefined
 export function loadLibrary() {
   return library ??= import('@strudel/web').then(s => {
     // Phones render audio in small blocks with 'interactive' latency; under load
     // a late block is heard as a crackle. 'playback' asks for a larger output
-    // buffer before Strudel lazily creates its own context.
-    if (isConstrainedDevice() && typeof AudioContext !== 'undefined') {
+    // buffer before Strudel lazily creates its own context. The context is made
+    // once, so this follows the device and the sound level of that moment.
+    if ((isConstrainedDevice() || soundQuality() !== 'high') && typeof AudioContext !== 'undefined') {
       try { s.setAudioContext(new AudioContext({ latencyHint: 'playback' })) } catch { /* Strudel creates its default context. */ }
     }
     s.miniAllStrings()

@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { SiteAnalytics } from "@/components/site-analytics"
 import { GoogleAnalytics } from "@/components/google-analytics"
 import { AudioFocus } from "@/components/audio-focus"
+import { QualityMonitor } from "@/components/quality-monitor"
 import { VersionUpdateNotice } from "@/components/version-update-notice"
 import { GOOGLE_ANALYTICS_ID, SITE_URL } from "@/lib/site-info"
 import { Toaster } from "sonner"
@@ -78,6 +79,7 @@ window.gtag('config', '${GOOGLE_ANALYTICS_ID}', { send_page_view: false });`}
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         <AudioFocus />
+        <QualityMonitor />
         <VersionUpdateNotice />
         {process.env.NODE_ENV === 'production' ? <GoogleAnalytics /> : null}
         {process.env.VERCEL === '1' ? <SiteAnalytics /> : null}
