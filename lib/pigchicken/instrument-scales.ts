@@ -44,7 +44,7 @@ export function sectorAt(angle: number) {
 }
 // the sector's edges (radians, a0 < a1, clockwise)
 export const sectorEdges = (k: number) => ({ a0: -Math.PI / 2 + (k - 0.5) * SECTOR_SPAN, a1: -Math.PI / 2 + (k + 0.5) * SECTOR_SPAN })
-export const ringAt = (reach: number) => (reach >= RING_SPLIT ? 1 : 0)
+export const ringAt = (reach: number, split = RING_SPLIT) => (reach >= split ? 1 : 0)
 
 // one region of a chart: a sector of a ring with its fixed chord
 export type ScaleRegion = {
@@ -75,9 +75,14 @@ export function romanOf(root: number, key: number, minor: boolean, suffix: strin
   return (minor ? n.toLowerCase() : n) + (suffix === 'm' ? '' : suffix)
 }
 
+// what the Escalas editor changes in a scale's shape (lib/pigchicken/scale-params.ts): where the round charts' inner ring
+// ends (it decides the ring the aim plays) and the empty middle of the charts and of the Campo harmônico (drawing only)
+export type ScaleShape = { ringSplit: number; hole: number }
+
 export abstract class InstrumentScale {
   abstract readonly id: InstrumentScaleId
   abstract readonly label: string
+  shape: ScaleShape = { ringSplit: RING_SPLIT, hole: CHART_HOLE }
   // the chart's regions (empty for the primary scale, which keeps the leque)
   regions(): ScaleRegion[] { return [] }
   regionAt(_angle: number, _reach: number): ScaleRegion | null { return null }
@@ -119,7 +124,7 @@ export abstract class ChartScale extends InstrumentScale {
   protected abstract build(): ScaleRegion[]
   regions() { return (this.cache ??= this.build()) }
   regionAt(angle: number, reach: number) {
-    const k = sectorAt(angle), ring = ringAt(reach)
+    const k = sectorAt(angle), ring = ringAt(reach, this.shape.ringSplit)
     return this.regions().find(r => r.sector === k && r.ring === ring) ?? this.regions()[0]
   }
   private notesOf(r: ScaleRegion, set: PitchSet, lo: number, hi: number) {

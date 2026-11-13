@@ -9,6 +9,7 @@
     "scaleSize": 0.3,
     "scaleFade": 50,
     "scaleLines": 100,
+    "scaleKeep": false,
     "hitboxes": false
   },
   "camera": {

@@ -134,6 +134,18 @@ test('item defaults: the file validates, feeds DEFAULT_ITEMS and round-trips wha
   assert.throws(() => validateAdminValue(entry, { ...file, laser: {} }))
 })
 
+test('scale defaults: the file validates, feeds DEFAULT_SCALES and round-trips what the Escalas panel writes', () => {
+  const scales = loadTs('lib/pigchicken/scale-params.ts')
+  const entry = ADMIN_ENTRIES.find(item => item.id === 'pigchicken-scales')
+  assert.equal(entry.path, 'data/pigchicken/default-scales.json')
+  const file = JSON.parse(fs.readFileSync(path.join(__dirname, '..', entry.path), 'utf8'))
+  validateAdminValue(entry, file)
+  assert.deepEqual(scales.scalesDefaultsFile(scales.DEFAULT_SCALES), file)
+  const edited = structuredClone(scales.DEFAULT_SCALES); edited.spiral.fadeTime = 3; edited.tension.ringSplit = 0.45
+  validateAdminValue(entry, scales.scalesDefaultsFile(edited))
+  assert.throws(() => validateAdminValue(entry, { ...file, primary: { ...file.primary, standbyAfter: 9 } }))
+})
+
 test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and Câmera de Mira, and round-trips what the panels write', () => {
   const PS = loadTs('lib/pigchicken/patio-settings.ts')
   const layers = loadTs('lib/pigchicken/patio-layers.ts')

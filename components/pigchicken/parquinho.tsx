@@ -41,6 +41,7 @@ import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layo
 import { groundZones, placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { drawScaleFan, SCALE_FAN_R } from "@/components/pigchicken/draw/scale-fan"
+import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
@@ -232,7 +233,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false, patioKey = null }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean; patioKey?: string | null }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, patioKey = null }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; patioKey?: string | null }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -262,6 +263,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   scaleFadeRef.current = scaleFanFade
   const scaleLinesRef = useRef(scaleFanLines)
   scaleLinesRef.current = scaleFanLines
+  // Camadas → "Prevenir fadeout das escalas": the scales never go into standby
+  const scaleKeepRef = useRef(scaleKeep)
+  scaleKeepRef.current = scaleKeep
   const hitboxesRef = useRef(hitboxes)
   hitboxesRef.current = hitboxes
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -512,6 +516,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const extraPrev = new Map<string, Partial<Record<ChickenAction, boolean>>>()
     const extraQuickSwitch = new Map<string, QuickSwitchRepeat>()
     const extraAim = new Map<string, { muzzle: { x: number; y: number }; angle: number; reach: number }>()
+    // the Escalas layer's standby, per player: whether they played this frame and how far their scale has faded
+    const scalePlaying = new Map<string, boolean>()
+    const scaleStandby = new Map<string, StandbyState>()
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
     // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
@@ -1057,6 +1064,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the Itens panel follows the item the main player holds
       announceHeldItem(combat.held?.item ?? null)
+      announceHeldScale(combat.held && combat.def().instrument ? combat.scale.id : null)
+      scalePlaying.set("p1", input.fire || input.melee)
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
       pickupMarks.clear()
       markHover(combat, grabLabel(controls, devs))
@@ -1094,6 +1103,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         combat.setAimReach((rs ?? ls)?.mag ?? 1)
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
+        scalePlaying.set(id, xin.fire || xin.melee)
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
@@ -1347,15 +1357,24 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         }))
       }
       // the scale layer hides while a chicken is being dragged by the mouse/touch
+      // each player's scale goes into standby a while after they stop playing it (the Escalas editor's numbers)
       if (scaleFanRef.current > 0) {
+        const fan = (id: string, x: number, y: number, angle: number) => {
+          const sc = combat.scale, held = combat.held
+          let sb = scaleStandby.get(id)
+          if (!sb) scaleStandby.set(id, sb = newStandby())
+          const v = standbyStep(sb, scaleParams()[sc.id], dt, !!scalePlaying.get(id), `${held?.item ?? ""}:${sc.id}`, scaleKeepRef.current)
+          const a = scaleFanRef.current
+          drawScaleFan(ctx, combat, x, y, angle, st.scale, a * v.all, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current, a * v.aimed)
+        }
         const o = engine.getState().shoulder
-        if (!st.held) drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current)
+        if (!st.held) fan("p1", o.x, o.y, ang)
         extraList.forEach(([id, eng]) => {
           const at = extraAim.get(id)
           if (!at || eng.getMotionState().held) return
           combat.use(id)
           const xo = eng.getState().shoulder
-          drawScaleFan(ctx, combat, xo.x, xo.y, at.angle, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current)
+          fan(id, xo.x, xo.y, at.angle)
         })
         combat.use("p1")
       }

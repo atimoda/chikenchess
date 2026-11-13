@@ -1,7 +1,7 @@
 import { cities } from '../cities-data'
 import { STYLE_PROFILES } from '../music/kit-profiles/catalog'
 
-export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'egg-rewards' | 'names' | 'music-profile' | 'music-preset' | 'music-reactions' | 'chicken-controls' | 'pigchicken-items' | 'pigchicken-souls' | 'pigchicken-patio'
+export type AdminEntryKind = 'strings' | 'string-groups' | 'text-map' | 'campaigns' | 'ranks' | 'bots' | 'egg-rewards' | 'names' | 'music-profile' | 'music-preset' | 'music-reactions' | 'chicken-controls' | 'pigchicken-items' | 'pigchicken-scales' | 'pigchicken-souls' | 'pigchicken-patio'
 export interface AdminEntry {
   id: string
   title: string
@@ -28,6 +28,8 @@ export const ADMIN_ENTRIES: AdminEntry[] = [
     description: 'Binds e opções do painel Controles para quem nunca mexeu neles e para Restaurar padrão. O painel Controles grava aqui com Salvar no game.' },
   { id: 'pigchicken-items', title: 'Itens padrão (armas e instrumentos)', group: 'Pátio', kind: 'pigchicken-items', path: 'data/pigchicken/default-items.json',
     description: 'Números e opções de cada item do painel Itens (armas, instrumentos, esportivos, consumíveis, asa e bicada) para quem nunca mexeu neles. O painel Itens grava aqui com Salvar no game.' },
+  { id: 'pigchicken-scales', title: 'Escalas dos instrumentos', group: 'Pátio', kind: 'pigchicken-scales', path: 'data/pigchicken/default-scales.json',
+    description: 'Números de cada escala do painel Escalas (standby e fade out da camada Escalas, forma dos gráficos) para quem nunca mexeu neles. O painel Escalas grava aqui com Salvar no game.' },
   { id: 'pigchicken-souls', title: 'Almas (fichas da biblioteca)', group: 'Pátio', kind: 'pigchicken-souls', path: 'data/pigchicken/default-souls.json',
     description: 'O que muda nas fichas das almas em relação ao código (nome, raridade, voo, aparência) e a lista das raras com as receitas. O editor da Biblioteca de almas grava aqui com Salvar no game.' },
   { id: 'pigchicken-patio', title: 'Pátio padrão (configurações, camadas, câmera e volume)', group: 'Pátio', kind: 'pigchicken-patio', path: 'data/pigchicken/default-patio.json',
