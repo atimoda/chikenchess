@@ -22,6 +22,10 @@ import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
+import { moveToDepth } from "@/lib/pigchicken/backdrop-layers"
+import { MOUNTAINS_DEFAULT } from "@/lib/pigchicken/mountains"
+import { patioClouds } from "@/lib/pigchicken/clouds"
+import { BackdropPin, type BackdropScene } from "./backdrop-pin"
 import { ELEMENT_DEPTH, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, dropLinks, linkedTo, spreadPower, toggleLink, type PowerParams } from "@/lib/pigchicken/power-lines"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES } from "@/lib/pigchicken/music"
@@ -310,6 +314,12 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   const worldRef = useRef<HTMLDivElement>(null)
   useEffect(() => (active && worldRef.current ? followCamera(worldRef.current) : undefined), [active])
   const width = worldScenes(screens) * SCENE_W
+  // what the scenery far behind shows, for pinning a Poste or Torre to one of its layers (Camadas do fundo)
+  const settings = layout.settings
+  const backdropScene = useMemo<BackdropScene>(() => ({
+    worldW: width, mountains: settings?.mountains ?? MOUNTAINS_DEFAULT,
+    clouds: patioClouds(settings?.clouds, settings?.sky?.clouds).amount > 0, forest: settings?.sky?.forest !== false,
+  }), [width, settings?.mountains, settings?.clouds, settings?.sky?.clouds, settings?.sky?.forest])
   const wired = useMemo(() => linking && selected ? linkedTo(layout.elements, selected) : new Set<string>(), [linking, selected, layout.elements])
 
   return (
@@ -331,11 +341,11 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
             const link = linking && sel && el.id !== sel.id && el.kind === sel.kind ? (wired.has(el.id) ? "on" : "can") : undefined
             const box = <HitBox key={el.id} el={el} selected={el.id === selected} link={link} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
             // in a parallax depth its handle slides with it
-            return el.depth ? <DepthLayer key={el.id} depth={el.depth}>{box}</DepthLayer> : box
+            return el.depth ? <DepthLayer key={el.id} depth={el.depth} pinned={!!el.backdrop}>{box}</DepthLayer> : box
           })}
           {sel && !sel.locked && isSurfaceElement(sel.kind) && <SurfacePoints el={sel} onChange={update} />}
           {sel && (
-            <DepthLayer depth={sel.depth ?? 0} className="pointer-events-none absolute left-0 top-0 z-[2]"><Toolbar
+            <DepthLayer depth={sel.depth ?? 0} pinned={!!sel.backdrop} className="pointer-events-none absolute left-0 top-0 z-[2]"><Toolbar
               el={sel}
               panel={panel}
               setPanel={setPanel}
@@ -357,7 +367,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         : selectedTree
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
-          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} />)}
+          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} backdropScene={backdropScene} />)}
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
@@ -511,10 +521,10 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
 // element where it is on the screen now (its stored x and y are a layer's, at the camera's 0)
 function DepthField({ el, onChange }: { el: LayoutElement; onChange: (el: LayoutElement) => void }) {
   const d = el.depth ?? 0
+  // a plain depth (pinned to a backdrop layer, it lets go of it)
   const setDepth = (next: number) => {
-    const a = depthOffset(d), b = depthOffset(next)
-    const { depth: _old, ...rest } = el
-    onChange({ ...rest, x: el.x + a.x - b.x, y: el.y + a.y - b.y, ...(next > 0 ? { depth: next, solid: false, shots: false, notes: false } : {}) })
+    const moved = moveToDepth(el, { depth: next }, depthOffset)
+    onChange(next > 0 ? { ...moved, solid: false, shots: false, notes: false } : moved)
   }
   return <PatioRange label="Profundidade" min={ELEMENT_DEPTH.min * 100} max={ELEMENT_DEPTH.max * 100} step={ELEMENT_DEPTH.step * 100} value={Math.round(d * 100)}
     display={d ? `${Math.round(d * 100)}%` : "No chão"} changed={d > 0} onChange={v => setDepth(v / 100)} onReset={() => setDepth(0)}
@@ -522,7 +532,7 @@ function DepthField({ el, onChange }: { el: LayoutElement; onChange: (el: Layout
 }
 
 // a Poste's or Torre's model, line and wires
-function PowerFields({ el, power, onChange, linking = false, onLinking }: { el: LayoutElement; power: PowerParams; onChange: (el: LayoutElement, step?: string) => void; linking?: boolean; onLinking?: (on: boolean) => void }) {
+function PowerFields({ el, power, onChange, linking = false, onLinking, backdropScene }: { el: LayoutElement; power: PowerParams; onChange: (el: LayoutElement, step?: string) => void; linking?: boolean; onLinking?: (on: boolean) => void; backdropScene?: BackdropScene }) {
   const kind = el.kind as "pole" | "tower"
   const set = (p: Partial<PowerParams>, step?: string) => onChange({ ...el, params: { ...el.params, power: { ...power, ...p } } }, step)
   const models = kind === "pole" ? POLE_MODELS : TOWER_MODELS
@@ -548,6 +558,7 @@ function PowerFields({ el, power, onChange, linking = false, onLinking }: { el: 
         changed={power.wire !== POWER_WIRE.default} onReset={() => set({ wire: POWER_WIRE.default })} onChange={wire => set({ wire }, `wire:${el.id}`)} />
       <DepthField el={el} onChange={next => onChange(next)} />
     </div>
+    {backdropScene && <BackdropPin el={el} scene={backdropScene} onChange={next => onChange(next)} />}
     <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="A galinha pode pousar e andar nos fios, como numa plataforma de mão única. Só vale para os fios no plano do chão (sem Profundidade). Muda a linha inteira.">
       <span>Fios como plataforma</span>
       <input type="checkbox" checked={power.floor} onChange={e => set({ floor: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
@@ -600,7 +611,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
 }
 
 // the Edit panel for elements that do not have their own customizer
-function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onLinking }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onDelete?: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void }) {
+function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onLinking, backdropScene }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onDelete?: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void; backdropScene?: BackdropScene }) {
   const set = (p: ElementParams, step?: string) => onChange({ ...el, params: { ...el.params, ...p } }, step)
   const [msg, setMsg] = useState(el.params.message ?? "")
   const editSession = useId()
@@ -694,7 +705,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
           <input aria-label="Tempo de reposição do item" type="number" min={0} max={RACK_DELAY_MAX} step={0.1} value={el.params.respawnDelay ?? rackRespawnDelay(el.params.item ?? 'pistol')} onChange={e => { if (e.target.value !== '') set({ respawnDelay: Number(e.target.value) }, `rack-delay:${el.id}`) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
         </label>
       </>}
-      {isPowerElement(el.kind) && el.params.power && <PowerFields el={el} power={el.params.power} onChange={onChange} linking={linking} onLinking={onLinking} />}
+      {isPowerElement(el.kind) && el.params.power && <PowerFields el={el} power={el.params.power} onChange={onChange} linking={linking} onLinking={onLinking} backdropScene={backdropScene} />}
       {isSurfaceElement(el.kind) && el.params.surface && <SurfaceFields el={el} surface={el.params.surface} onChange={surface => set({ surface })} />}
       {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
