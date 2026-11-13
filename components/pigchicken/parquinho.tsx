@@ -284,6 +284,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const liftedRef = useRef(lifted)
   liftedRef.current = lifted
   const touchAim = useRef<Stick | null>(null)
+  // the on-screen Throw button's aim: dragged out of it, the drag's angle; a tap, her movement or where she faces
+  const throwAim = useRef<Stick | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
   // a slot the player clicked or tapped on the inventory bar (1-based, 0 none): equips it on the next frame
@@ -322,6 +324,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     return subscribeChickenControls(setControls)
   }, [])
   const showTouch = useTouchControls(controls?.touch ?? "auto")
+  const showTouchRef = useRef(showTouch)
+  showTouchRef.current = showTouch
   const { editing } = useTouchLayout()
 
   useEffect(() => {
@@ -894,7 +898,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // while the wheel is open the mouse and the right stick choose items, not the aim
       aim = resolveAim({
         rightStick: wh.open ? null : rightStickForAim ?? (held && !held.touch ? held.stick : null), mouse: autoAt ?? (owner.owns && !wh.open && !panActive ? aimMouse : null),
-        touch: wh.open ? null : touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
+        touch: wh.open ? null : throwAim.current ?? touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
         face: st.face, aimMagnetDeg: an.aimMagnetDeg,
       })
       const d = combat.def()
@@ -1392,12 +1396,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       arpBoxes.length = 0
       arpBoxes.push(...drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
       soulBoxes.length = 0
-      combat.use("p1"); soulBoxes.push({ id: "p1", ...drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", offsets.inventory, soulHover === "p1") })
-      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); soulBoxes.push({ id, ...drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", offsets.inventory, soulHover === id) }) })
+      // with the on-screen controls (phones) the avatars and soul counters stay in the top right corner, wherever
+      // the inventory row was moved to
+      const soulsAt = showTouchRef.current ? undefined : offsets.inventory
+      combat.use("p1"); soulBoxes.push({ id: "p1", ...drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", soulsAt, soulHover === "p1") })
+      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); soulBoxes.push({ id, ...drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", soulsAt, soulHover === id) }) })
       // the counter under the pointer stopped being a button (its last soul left): the reticle comes back
       if (soulHover && !soulBoxes.some(b => b.id === soulHover && b.on)) { hoverSoul(null); mouseOverUi = false }
       // the souls just caught, flying to the counter of whoever caught them
-      if (combat.abductions.length) drawAbductions(ctx, combat, new Map<string, number>([["p1", 0], ...extraList.map(([id], i): [string, number] => [id, i + 1])]), offsets.inventory, { x: camX, y: camY, zoom })
+      if (combat.abductions.length) drawAbductions(ctx, combat, new Map<string, number>([["p1", 0], ...extraList.map(([id], i): [string, number] => [id, i + 1])]), soulsAt, { x: camX, y: camY, zoom })
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []
@@ -1563,7 +1570,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           onContextMenu={e => e.preventDefault()}
         />
       )}
-      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
+      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} throwAimRef={throwAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
     </>
   )
 }
@@ -1571,7 +1578,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 // ---------- on-screen right stick (twin-stick): pushing aims, pushing to the edge fires ----------
 const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 
-function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; bottom: number; grabOffer: "" | "take" | "equip" }) {
+function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; throwAimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; bottom: number; grabOffer: "" | "take" | "equip" }) {
   const { editing } = useTouchLayout()
   useEffect(() => {
     if (editing) ["melee", "throw", "itemWheel", "grab", "fire"].forEach(a => engine.setVirtual(a as ChickenAction, false))
@@ -1624,7 +1631,7 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
         {(grabOffer || editing) && <Movable id="grab" className="absolute" style={{ right: 184, top: (STICK - 48) / 2 }}>{button((grabOffer || "take") === "take" ? "Pegar" : "Equipar", "grab", (grabOffer || "take") === "take" ? "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white" : "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white")}</Movable>}
         <div className="relative flex flex-col gap-2">
           <Movable id="melee" className="relative">{button("Punch", "melee")}</Movable>
-          <Movable id="throw" className="relative">{button("Throw", "throw")}</Movable>
+          <Movable id="throw" className="relative"><TouchThrowButton engine={engine} aimRef={throwAimRef} /></Movable>
           <Movable id="itemWheel" className="relative">{button("Roda", "itemWheel")}</Movable>
         </div>
         <Movable id="aim" className="relative">
@@ -1645,6 +1652,71 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
         </Movable>
       </div>
     </div>
+  )
+}
+
+// ---------- on-screen Throw: it acts when the finger lifts ----------
+// Lifted inside the button: a tap, thrown at once (no charge) where her movement stick points, or where she faces.
+// Dragged out of the button: the charge starts, the aim follows the drag's angle (from the button's middle) and the
+// throw leaves when the finger lifts, wherever it is.
+const afterFrames = (n: number, fn: () => void) => { if (n <= 0) fn(); else requestGameFrame(() => afterFrames(n - 1, fn)) }
+
+function TouchThrowButton({ engine, aimRef }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null> }) {
+  const { editing } = useTouchLayout()
+  const press = useRef<{ pid: number; cx: number; cy: number; r: number; out: boolean } | null>(null)
+  const turn = useRef(0)
+  const [down, setDown] = useState(false)
+  // the aim is let go a few frames after the throw, so the frame that throws still reads it
+  const clearAim = (frames: number) => { const t = ++turn.current; afterFrames(frames, () => { if (turn.current === t) aimRef.current = null }) }
+  const cancel = () => {
+    if (press.current?.out) engine.setVirtual("throw", false)
+    press.current = null; setDown(false); turn.current++; aimRef.current = null
+  }
+  useEffect(() => { if (editing) cancel() }, [editing])
+  useEffect(() => () => { aimRef.current = null }, [aimRef])
+  const move = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    const dx = e.clientX - p.cx, dy = e.clientY - p.cy, len = Math.hypot(dx, dy)
+    if (!p.out && len > p.r) { p.out = true; turn.current++; engine.setVirtual("throw", true) }
+    // back over the button, the last angle stays
+    if (p.out && len > p.r * 0.5) aimRef.current = { x: dx / len, y: dy / len, mag: 1 }
+  }
+  const lift = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    press.current = null; setDown(false)
+    if (p.out) { engine.setVirtual("throw", false); clearAim(2); return }
+    if (e.type !== "pointerup") return
+    const deadzone = loadChickenControls().analog.deadzoneL
+    const stick = readTouchMoveStick(deadzone)
+    aimRef.current = stick ? { x: stick.x, y: stick.y, mag: 1 } : { x: engine.getMotionState().face || 1, y: 0, mag: 1 }
+    const t = ++turn.current
+    // held for two frames: the combat needs one with the button down before the one that lets go
+    engine.setVirtual("throw", true)
+    afterFrames(2, () => { if (turn.current !== t) return; engine.setVirtual("throw", false); clearAim(2) })
+  }
+  return (
+    <button
+      type="button"
+      aria-label="Throw"
+      aria-pressed={down}
+      className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase text-white/80 ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/10"}`}
+      style={{ touchAction: "none" }}
+      onPointerDown={e => {
+        e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId)
+        const r = e.currentTarget.getBoundingClientRect()
+        press.current = { pid: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2, out: false }
+        setDown(true)
+      }}
+      onPointerMove={move}
+      onPointerUp={lift}
+      onPointerCancel={lift}
+      onLostPointerCapture={lift}
+      onContextMenu={e => e.preventDefault()}
+    >
+      Throw
+    </button>
   )
 }
 

@@ -165,7 +165,9 @@ export function ChickenPatio() {
   const chickEngines = useRef(new Map<string, ChickenEngine>())
   // online, the other browsers' chicks (OnlineChickens draws them, the Parquinho's Passaguá asks for them)
   const netChicks = useRef(new Map<string, NetChickMirror>())
-  const invOffset = useTouchLayout().offsets.inventory
+  // with the on-screen controls (phones) the avatars stay in the top right corner, apart from the inventory row
+  const touchInvOffset = useTouchLayout().offsets.inventory
+  const invOffset = showTouch ? undefined : touchInvOffset
   // a short notice under the header (lobby rules, online unavailable)
   const [toast, setToast] = useState<string | null>(null)
   useEffect(() => {
