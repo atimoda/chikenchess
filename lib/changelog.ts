@@ -7,12 +7,16 @@ const RECENT = [
   {
     version: '2.10.0',
     date: '13/11/2026',
-    title: 'Pátio Training room, Quadro de lousa e fantasma que mostra os movimentos; Martelo de Thor e Cajado de Odin com choque em cadeia, raio-x e especial',
+    title: 'Pátio Training room, Quadro de lousa e fantasma de treino; portais para outro Pátio e gerador de Pátio novo; Martelo de Thor e Cajado de Odin com choque em cadeia, raio-x e especial',
     groups: [
       { title: 'Pátio', items: [
         'Novo Pátio de exemplo em Destaques, Training room: 15 estações em sequência, do andar e correr ao pulo chocando no ar, cada uma com as plataformas, caixas, paredes, buraco ou trampolim que o movimento pede. No fim, um portal leva de volta ao começo.',
         'Novo elemento Quadro de lousa (grupo Treino do Modo editor): uma lousa verde com o texto que você escrever em giz branco. Em Editar, escolha o texto e, se quiser, um movimento para o fantasma.',
         'Com um movimento escolhido, ao chegar perto da lousa aparece uma galinha fantasma, branca e meio transparente, repetindo a sequência de botões do movimento; ela some quando você se afasta. Escolher o movimento já escreve os botões na lousa.',
+        'No Modo editor, a paleta de Portais ganha “Portal para outro Pátio”: um portal sozinho que leva ao Pátio escolhido no painel Editar (o Pátio padrão, os seus, os favoritos, os em destaque ou os deste navegador). Um portal de um Par de portais também pode trocar o Destino para “Outro Pátio”.',
+        'Ao entrar num desses portais, todos os players locais são sugados por ele e saem do portal de entrada do outro Pátio.',
+        'Se o Pátio do destino não existe mais, a galinha volta pelo mesmo portal e aparece “Este pátio não existe mais...”. O portal continua lá, e o painel Editar dele avisa quem edita para escolher outro destino.',
+        'Gerador de Pátio novo: “Pátio novo” no Destino do portal cria um Pátio e já liga o portal a ele, sem sair de onde está; no Playgrounds, “Novo Pátio do zero” substitui “Novo Pátio vazio”. Há duas opções: Empty (só o portal de entrada) e Basic biome (chão com morros, árvores, moitas, pedras e árvores ao fundo, sorteados num bioma de campo, pinheiral, neve ou deserto), com o slider Densidade, de Desmatado a Floresta.',
       ] },
       { title: 'Martelo de Thor e Cajado de Odin', items: [
         'Dois itens novos de magia, no grupo Utilitário do inventário. No Modo editor, os suportes ficam na paleta Magia; também podem entrar como Item solto.',

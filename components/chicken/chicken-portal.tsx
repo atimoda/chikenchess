@@ -380,8 +380,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       transitionRef.current = { at: enteredAt, engine: actor, timer: setTimeout(() => {
         const teleport = runtimeRef.current.onEnter
         if (!teleport) { router.push(href); return }
-        actor?.setPortalEntry(null)
-        if (actor) teleport(actor)
+        // true: the handler took her (to the pair's portal, or hidden until another Pátio opens); false: she comes back
+        if (actor && !teleport(actor)) actor.setPortalEntry(null)
         enteredAt = 0; enteringEngine = null; transitionRef.current = null
         setEntering(false); setTouching(false); setShowInstruction(false)
       }, ENTER_MS) }
