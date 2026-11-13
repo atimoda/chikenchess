@@ -44,31 +44,31 @@ export function HousePanel({ house, dimensions = houseDraftSize(house), onChange
         : <div className="relative h-[clamp(64px,20dvh,144px)] overflow-hidden rounded-md border border-white/10 bg-[#222936]">{preview}</div>}
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3" data-house-parameters>
-      <div className="mb-3 grid gap-2">
+      <div className="mb-3 grid gap-field">
         <PatioSelect label="Estilo" options={HOUSE_STYLE_LABELS} value={house.style} onChange={style => onChange(housePreset(style, house.seed))} />
         <button type="button" className={`${BUTTON} justify-self-end`} onClick={() => onChange(randomHouse(house.style).house)}
           title="Sorteia outra casa deste estilo"><Dice5 size={15} /> Sortear</button>
       </div>
-      <fieldset className="mb-4 grid min-w-0 gap-2 border-t border-white/10 pt-2">
+      <fieldset className="mb-4 grid min-w-0 gap-field border-t border-white/10 pt-2">
         <legend className="pr-2 text-[#ffdba1]">Telhado e revestimento</legend>
         <PatioSelect label="Formato" name="Formato do telhado" options={HOUSE_ROOFS} value={house.roof} onChange={roof => set({ roof })} />
         <PatioSelect label="Acabamento" options={ROOF_TEXTURES} value={house.roofTexture} onChange={roofTexture => set({ roofTexture })} />
         <PatioSelect label="Textura" options={WALL_TEXTURES} value={house.texture} onChange={texture => set({ texture })} />
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
         <PatioRange label="Desgaste" min={0} max={100} value={house.wear} display={`${house.wear}%`} onChange={wear => set({ wear }, 'wear')} onEnd={end} />
         <PatioRange label={house.roof === 'parapet' ? 'Profundidade do terraço' : house.roof === 'flat' ? 'Espaço acima da fachada' : 'Altura do telhado'} min={8} max={40} value={house.pitch}
           display={`${house.pitch}%`} onChange={pitch => set({ pitch }, 'pitch')} onEnd={end} />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-field">
           {COLORS.map(([key, label]) => <label key={key} className="flex min-w-0 items-center gap-2">
             <input type="color" value={house[key]} onChange={e => set({ [key]: e.target.value }, key)} onBlur={end}
               className="h-7 w-8 shrink-0 cursor-pointer rounded bg-transparent" /><span>{key === 'trim' && house.style === 'paper' ? 'Apoios e molduras' : label}</span>
           </label>)}
         </div>
       </fieldset>
-      <fieldset className="grid min-w-0 gap-2 border-t border-white/10 pt-2">
+      <fieldset className="grid min-w-0 gap-field border-t border-white/10 pt-2">
         <legend className="pr-2 text-[#ffdba1]">Fachada</legend>
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
         <PatioRange label="Andares" min={1} max={4} value={house.floors} onChange={floors => set({ floors }, 'floors')} onEnd={end} />
         <PatioRange label="Janelas por andar" min={0} max={4} value={house.windows} onChange={windows => set({ windows }, 'windows')} onEnd={end} />
         </div>
@@ -76,7 +76,7 @@ export function HousePanel({ house, dimensions = houseDraftSize(house), onChange
         <PatioSelect label="Luz" name="Luz das janelas" options={HOUSE_GLAZING} value={house.glass} onChange={glass => set({ glass })} />
         <PatioRange label="Tamanho das janelas" min={65} max={130} value={house.windowSize} display={`${house.windowSize}%`}
           onChange={windowSize => set({ windowSize }, 'windowSize')} onEnd={end} />
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-field">
           <label className="flex items-center gap-2"><input type="checkbox" checked={house.panes} onChange={e => set({ panes: e.target.checked })} /> Vidro quadriculado</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={house.shutters} onChange={e => set({ shutters: e.target.checked })} /> Venezianas</label>
         </div>

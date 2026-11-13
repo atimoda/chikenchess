@@ -91,11 +91,15 @@ export type ChickenEngine = {
   // `rig`: how it sits on her (rig units on the item's drawing): the point (x, y) sits on her shoulder or mouth (`at`)
   // and the item turns around it; `hand` / `back`: the points the wing's and the back wing's tips hold, the wing turning
   // and stretching to keep touching them (the bow, while it plays, takes the wing's hand)
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null } | null) => void
+  // `staff`: a staff carried in its own pose (lib/pigchicken/staff-pose.ts), in her body's frame: the wing's hand at
+  // (x, y) from her shoulder holding the drawing's point (gripX, gripY), the staff turned to `angle` (degrees, 0 = to
+  // her front, -90 = up). A swing leaves from this pose and comes back to it
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; staff?: HeldStaff | null } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
-  // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in.
+  // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in. `size`: how much bigger
+  // the item is drawn at the height of the blow (×, a charged strong blow)
   setPeck: (peck: PeckPose | null) => void
-  setSwing: (swing: { angle: number; reach: number; t: number } | null) => void
+  setSwing: (swing: { angle: number; reach: number; t: number; size?: number } | null) => void
   // a point on the held item's drawing (rig units, x forward from the grip, y down) on the screen when the
   // item points at `angle` (screen radians); her shoulder for (0, 0)
   heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
@@ -119,6 +123,7 @@ export type ChickenEngine = {
 }
 
 // flip: the wings that hold it are mirrored across their own length (shoulder to tip), for poses that turn them upside down
+export type HeldStaff = { x: number; y: number; angle: number; gripX: number; gripY: number; flip?: boolean }
 export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: { x: number; y: number } | null; back?: { x: number; y: number } | null; flip?: boolean }
 
 // ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
@@ -149,8 +154,15 @@ const PIV: Record<string, [number, number]> = {
 // the wing's tip (its far back corner) seen from its pivot at the shoulder, in rig units: the swing aims it
 export const CHICKEN_HAND = { x: -44, y: -92 } as const
 export const CHICKEN_MOUTH = { x: 70, y: -188 } as const
+// her shoulder (the wing's pivot) in rig units: what a held item's place on her body is measured from
+export const CHICKEN_SHOULDER = { x: PIV.wing[0], y: PIV.wing[1] } as const
 const HAND_DX = CHICKEN_HAND.x - PIV.wing[0], HAND_DY = CHICKEN_HAND.y - PIV.wing[1]
 const WING_TIP_DEG = Math.atan2(HAND_DY, HAND_DX) * 180 / Math.PI, WING_TIP_LEN = Math.hypot(HAND_DX, HAND_DY)
+/** The near wing's SVG transform (rig units) that turns and stretches it from the shoulder until its tip is at (x, y) from the shoulder. */
+export function wingReachTransform(x: number, y: number, flip = false) {
+  const [px, py] = PIV.wing
+  return `translate(${px} ${py}) rotate(${Math.atan2(y, x) * 180 / Math.PI}) scale(${Math.hypot(x, y) / WING_TIP_LEN} ${flip ? -1 : 1}) rotate(${-WING_TIP_DEG}) translate(${-px} ${-py})`
+}
 const rot = (k: string, a: number) => `rotate(${a.toFixed(2)} ${PIV[k][0]} ${PIV[k][1]})`
 const legMarkup = (k: 'Front' | 'Back', x: number) => `
   <g data-part="leg${k}Wrap"><g data-part="leg${k}">
@@ -416,7 +428,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = ''
   const throwTransition = createThrowTransition()
   let peckNow: PeckPose | null = null
-  let swingNow: { angle: number; reach: number; t: number } | null = null
+  let swingNow: { angle: number; reach: number; t: number; size?: number } | null = null
   // screen angle (degrees) -> her rig: undo the root's turn, the mirror when facing left, and the body's lean
   const rigAngle = (screenDeg: number) => {
     let a = screenDeg - vis.a
@@ -1681,15 +1693,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const [px, py] = PIV.wing
       node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(Math.max(1, Math.hypot(x, y)) / WING_TIP_LEN).toFixed(3)} ${rig?.flip ? -1 : 1}) rotate(${(-WING_TIP_DEG).toFixed(2)}) translate(${-px} ${-py})`)
     }
+    // a staff carried in its own pose: the hand at its place on her body, whatever the aim
+    const staff = heldItem && !consumable && !heldItem.throwing ? heldItem.staff ?? null : null
     const restAngle = (pose.wing + (heldItem?.atHand ? handAimAngle(heldA) : 0)) / DEG
     const restHandX = HAND_DX * Math.cos(restAngle) - HAND_DY * Math.sin(restAngle)
     const restHandY = HAND_DX * Math.sin(restAngle) + HAND_DY * Math.cos(restAngle)
     let handX = restHandX, handY = restHandY
-    const wingToHand = () => {
-      const b = Math.atan2(handY, handX) * DEG
-      const [px, py] = PIV.wing
-      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b}) scale(${Math.hypot(handX, handY) / WING_TIP_LEN} 1) rotate(${-WING_TIP_DEG}) translate(${-px} ${-py})`)
-    }
+    const wingToHand = (flip = false) => { el.wing.setAttribute('transform', wingReachTransform(handX, handY, flip)) }
+    // the swing of a staff: the angle (degrees) the staff itself points at, turning from its carried pose to the blow
+    let staffSwingA = 0
     if (consumable) {
       const pull = heldItem?.pull ?? 0
       handX -= Math.cos(heldA / DEG) * pull; handY -= Math.sin(heldA / DEG) * pull
@@ -1716,14 +1728,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${stretch.toFixed(3)} 1) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
     } else if (swingNow) {
       const e = smooth(clamp(swingNow.t, 0, 1))
-      const rest = WING_TIP_DEG + pose.wing
+      // the blow leaves from where the wing was: at rest, or holding the staff in its pose
+      const rest = staff ? Math.atan2(staff.y, staff.x) * DEG : WING_TIP_DEG + pose.wing
+      const restLen = staff ? Math.max(1, Math.hypot(staff.x, staff.y)) : WING_TIP_LEN
       const target = rigAngle(swingNow.angle * DEG)
       const b = rest + ((((target - rest) % 360) + 540) % 360 - 180) * e
       const full = Math.max(WING_TIP_LEN, swingNow.reach / Math.max(0.01, R.scale * pose.puff))
-      wingLen = WING_TIP_LEN + (full - WING_TIP_LEN) * e
+      wingLen = restLen + (full - restLen) * e
       tipRig = b
+      if (staff) staffSwingA = staff.angle + ((((target - staff.angle) % 360) + 540) % 360 - 180) * e
       const [px, py] = PIV.wing
       el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / WING_TIP_LEN).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+    } else if (staff) {
+      handX = staff.x; handY = staff.y
+      wingToHand(!!staff.flip)
     } else if (heldItem?.atHand) {
       // Move the grip and anatomical hand together through the charge pullback.
       handX -= Math.cos(heldA / DEG) * heldItem.kick
@@ -1747,6 +1765,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.held.style.opacity = consumable?.progress !== undefined ? String(1 - clamp((consumable.progress - 0.75) / 0.25, 0, 1)) : '1'
       el.held.setAttribute('transform', consumable
         ? `translate(${handX} ${handY}) rotate(${consumableAngle})`
+        // a staff: its grip point on the hand (carried) or on the wing's tip (swinging, bigger at the height of a charged blow)
+        : staff ? (swingNow
+          ? `rotate(${tipRig.toFixed(1)}) translate(${wingLen.toFixed(1)} 0) rotate(${(staffSwingA - tipRig).toFixed(1)}) scale(${(1 + ((swingNow.size ?? 1) - 1) * smooth(clamp(swingNow.t, 0, 1))).toFixed(3)}) translate(${(-staff.gripX).toFixed(2)} ${(-staff.gripY).toFixed(2)})`
+          : `translate(${handX.toFixed(2)} ${handY.toFixed(2)}) rotate(${staff.angle.toFixed(1)}) translate(${(-staff.gripX).toFixed(2)} ${(-staff.gripY).toFixed(2)})`)
         : rig ? `translate(${anchorX.toFixed(2)} ${anchorY.toFixed(2)}) rotate(${a.toFixed(1)}) translate(${(-heldItem.kick - pivX).toFixed(2)} ${(-pivY).toFixed(2)})`
         : `${heldItem.atHand && !swingNow ? `translate(${handX} ${handY}) ` : ''}rotate(${a.toFixed(1)})${at} translate(${(-(heldItem.atHand && !swingNow ? 0 : heldItem.kick)).toFixed(1)} 0)` )
       if (throwTransition.active() && heldItem.throwing && !swingNow && consumable?.progress === undefined) {

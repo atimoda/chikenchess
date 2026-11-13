@@ -154,13 +154,13 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
           </form>
         )}
         {picked && !picked.builtin && (
-          <div className="grid gap-2 border-t border-white/10 px-4 py-3">
-            <div className="flex flex-wrap items-center gap-1.5">
+          <div className="grid gap-field border-t border-white/10 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-field">
               <span className="w-16 text-[#93a79a]">Capa</span>
               {COVER_STYLES.map(o => <button key={o.value} type="button" aria-pressed={picked.cover.style === o.value} onClick={() => setCover(s => { s.cover.style = o.value })} className={cn("h-7 rounded-full border px-3", picked.cover.style === o.value ? "border-primary text-white" : "border-white/15")}>{o.label}</button>)}
               <input type="color" aria-label="Fundo da capa" value={picked.cover.bg} onChange={e => { const v = e.target.value; setCover(s => { s.cover.bg = v }) }} className="h-7 w-10 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-field">
               <span className="w-16 text-[#93a79a]">Cores</span>
               {COVER_PALETTES.map(o => <button key={o.value} type="button" aria-pressed={picked.cover.palette === o.value} onClick={() => setCover(s => { s.cover.palette = o.value })} className={cn("h-7 rounded-full border px-3", picked.cover.palette === o.value ? "border-primary text-white" : "border-white/15")}>{o.label}</button>)}
             </div>

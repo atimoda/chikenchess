@@ -19,7 +19,7 @@ const STYLES = Object.fromEntries(Object.entries(TREE_STYLES).map(([key, p]) => 
 function TreeGroup({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true)
   return <PatioDisclosure title={title} open={open} onToggle={setOpen}>
-    <div className="grid gap-2 px-4 pb-4">{children}</div>
+    <div className="grid gap-field px-4 pb-4">{children}</div>
   </PatioDisclosure>
 }
 
@@ -69,13 +69,13 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
         : <div className="relative h-[clamp(64px,20dvh,144px)] overflow-hidden rounded-md border border-white/10 bg-[#222936]">{art}</div>}
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-      <div className="grid gap-2 px-4 pb-2">
+      <div className="grid gap-field px-4 pb-2">
         {legacy && <p className="text-[10px] leading-relaxed text-[#a6b5a9]">A primeira alteração aplica a versão paramétrica à árvore original.</p>}
         <PatioSelect label="Estilo" options={STYLES} value={tree.style} onChange={value => style(treePreset(value, tree.seed))} />
         <button type="button" className={`${BUTTON} justify-self-end`} onClick={() => style(randomTree(tree.style).tree)}><Dice5 size={15} /> Sortear</button>
       </div>
       <TreeGroup title="Tronco">
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
         {range("trunkHeight", "Altura do tronco", "%")}
         {range("trunkWidth", "Espessura da base", "%")}
         {range("taper", "Espessura da ponta", "%")}
@@ -86,12 +86,12 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
         {toggle("flip", "Espelhar")}
       </TreeGroup>
       <TreeGroup title="Galhos e folhas">
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
         {range("branches", "Quantidade de galhos")}
         {range("angle", "Inclinação dos galhos", "%")}
         </div>
         <PatioSelect label="Copa" options={TREE_CROWNS} value={tree.crown} onChange={crown => set({ crown })} />
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
         {range("spread", "Abertura da copa", "%")}
         {range("density", "Grupos de folhas")}
         {range("leafSize", "Tamanho dos grupos", "%")}
@@ -99,10 +99,10 @@ export function TreePanel({ tree, onChange, onClose, previewDrag, dragging, dime
         </div>
         <PatioSelect label="Floração" options={TREE_BLOOMS} value={tree.bloom} onChange={bloom => set({ bloom })} />
         {tree.bloom === "custom" && color("flowerColor", "Cor das flores")}
-        <div className="grid grid-cols-2 gap-2">{color("leafColor", "Folhas")}{color("accentColor", "Destaques")}</div>
+        <div className="grid grid-cols-2 gap-field">{color("leafColor", "Folhas")}{color("accentColor", "Destaques")}</div>
       </TreeGroup>
       <TreeGroup title="Movimento e efeitos">
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
         {range("trunkSway", "Balanço do tronco", "°", tree.climbTrunk || tree.walkBranches || tree.walkCrown
           ? "O tronco fica firme com apoios ligados." : "Balanço manual em tempo calmo. Rajadas podem somar movimento.")}
         {range("wind", "Balanço da copa", "°", tree.walkCrown || (tree.crown === "fronds" && tree.walkBranches)

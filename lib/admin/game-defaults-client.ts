@@ -3,6 +3,8 @@ import { getOnlineClient } from '../online/client'
 import { chickenControlsDefaultsFile, type ChickenControls } from '../chicken/controls'
 import { itemsDefaultsFile, type ItemDef, type ItemId } from '../pigchicken/items'
 import { soulsFile, type SoulEntry } from '../pigchicken/soul-library'
+import { scalesDefaultsFile, type ScaleParams } from '../pigchicken/scale-params'
+import type { InstrumentScaleId } from '../pigchicken/instrument-scales'
 import { patioSettingsDefaultsFile, type PatioSettings } from '../pigchicken/patio-settings'
 import type { PatioLayers } from '../pigchicken/patio-layers'
 import { parquinhoDefaultsFile, type ParquinhoSettings } from '../pigchicken/settings'
@@ -45,6 +47,8 @@ async function saveAdminFile(id: string, value: unknown) {
 export const saveDefaultChickenControls = (controls: ChickenControls) => saveAdminFile('chicken-controls', chickenControlsDefaultsFile(controls))
 /** Writes these items to data/pigchicken/default-items.json. */
 export const saveDefaultItems = (items: Record<ItemId, ItemDef>) => saveAdminFile('pigchicken-items', itemsDefaultsFile(items))
+/** Writes these scale numbers (the Escalas panel) to data/pigchicken/default-scales.json. */
+export const saveDefaultScales = (scales: Record<InstrumentScaleId, ScaleParams>) => saveAdminFile('pigchicken-scales', scalesDefaultsFile(scales))
 /** Writes this catalogue of souls (what differs from the code's) to data/pigchicken/default-souls.json. */
 export const saveDefaultSouls = (entries: readonly SoulEntry[]) => saveAdminFile('pigchicken-souls', soulsFile(entries))
 

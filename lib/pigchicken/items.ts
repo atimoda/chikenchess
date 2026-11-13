@@ -185,7 +185,38 @@ export type ItemDef = {
   backX: number
   backY: number
   wingFlip: boolean // the wings that hold it are flipped vertically (mirrored along their length), for poses that turn them upside down
+  // a staff (an item only for hitting: taco, passaguá): how she carries it. The wing's hand grips the point `grip` of
+  // its drawing; that point sits at (staffX, staffY) from her shoulder (rig units, x to her front, y down) with the
+  // staff turned to `staffAngle` (degrees, 0 = pointing to her front, -90 = up). `wind*`: the same three at the full
+  // charge of the strong blow (lib/pigchicken/staff-pose.ts)
+  gripX: number
+  gripY: number
+  staffX: number
+  staffY: number
+  staffAngle: number
+  windX: number
+  windY: number
+  windAngle: number
+  // the strong blow (Atirar with a staff): held to charge, it comes out when the button is let go. Its own numbers,
+  // like the quick blow's (Golpe); the longer the charge (up to `heavyCharge` s), the further it reaches (up to
+  // `heavyReachMax` × its reach) and the bigger the staff and its air get (up to `heavySizeMax` ×)
+  heavyDamage: number
+  heavyRange: number // px
+  heavyArc: number // degrees
+  heavyCooldown: number // s
+  heavyTime: number // s the whole move takes
+  heavyPush: number // knockback px/s
+  heavyKind: SwingKind
+  heavyCharge: number
+  heavyReachMax: number
+  heavySizeMax: number
+  heavyTrailWidth: number
+  heavyTrailTime: number
+  heavyTrailWisps: number
+  heavyTrailOpacity: number
 }
+/** A staff: an item only for hitting, carried in its own pose and with a strong blow on Atirar. */
+export const isStaff = (d: ItemDef) => d.meleeOnly
 // the body parts a held item can turn around
 export type PivotPart = 'shoulder' | 'mouth'
 // the rig the chicken's engine draws it with: the pivot on a body part and the wings' touch points (null: as always,
@@ -206,6 +237,9 @@ const NO_MUSIC = {
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
+  gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
+  heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as SwingKind,
+  heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
 }
 
 // a rebate chain from [kind, mode, n?] steps (always happening)
@@ -314,15 +348,18 @@ const BAT: ItemDef = {
   ...WING, id: 'bat', name: 'Taco', family: 'Taco', reticle: 'dot', meleeOnly: true, mag: 8, reloadTime: 1.2, autoReload: true, refillTime: 0.5, refillAmount: 1,
   muzzleX: 0, muzzleY: 0, length: 74, meleeDamage: 22, meleeRange: 70, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200,
   meleeTime: 0.16, meleePush: 420, durability: 0, throwDamage: 22, trailWidth: 30, trailWisps: 5,
+  gripX: 5, heavyDamage: 40, heavyRange: 75, heavyArc: 170, heavyTime: 0.42, heavyPush: 700, heavyTrailWidth: 40,
   rebateChain: chain(['dynamics', 'accent']), rebateSnap: 25, rebateSnapForce: 0.5, rebateSpeed: 1.6, rebateTok: true,
 }
 
-// Passaguá: a light bird net. It sweeps the same way as a melee item, but only captures living and undead birds.
+// Passaguá: a light bird net. It sweeps like any staff and catches living and undead birds and souls; with damage
+// set, the same blow hurts and pushes whatever it did not catch.
 const PASSAGUA: ItemDef = {
   ...WING, id: 'passagua', name: 'Passaguá', family: 'Esportivos', reticle: 'dot', meleeOnly: true, mag: 0,
-  muzzleX: 0, muzzleY: 0, length: 64, meleeDamage: 0, meleeRange: 66, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 190,
+  muzzleX: 0, muzzleY: 0, length: 72, meleeDamage: 0, meleeRange: 66, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 190,
   meleeTime: 0.22, meleePush: 0, durability: 0, throwDamage: 0, throwMin: 0, throwSpeed: 0,
   trailWidth: 16, trailColor: '#cceef0', trailTime: 0.3, trailWisps: 2, trailOpacity: 0.26,
+  gripX: 6, heavyDamage: 0, heavyRange: 70, heavyArc: 170, heavyTime: 0.45, heavyPush: 0, heavyTrailWidth: 20, heavyTrailTime: 0.35, heavyTrailWisps: 2, heavyTrailOpacity: 0.3,
   rebateChain: [], rebateSnap: 0, rebateSnapForce: 0, rebateSpeed: 1, rebateTok: false,
 }
 
@@ -525,6 +562,14 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'handY', label: 'Mão da asa Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'backX', label: 'Mão da asa de trás X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'backY', label: 'Mão da asa de trás Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'gripX', label: 'Mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a mão da asa segura' },
+  { key: 'gripY', label: 'Mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'staffX', label: 'Posição no corpo X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Onde a mão fica, a partir do ombro; positivo é para a frente dela' },
+  { key: 'staffY', label: 'Posição no corpo Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Negativo sobe' },
+  { key: 'staffAngle', label: 'Inclinação', min: -360, max: 360, step: 1, unit: '°', group: 'Pontos', hint: '0 = apontando para a frente dela; −90 = para cima' },
+  { key: 'windX', label: 'Carregando: posição X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Onde a mão chega com o golpe forte todo carregado' },
+  { key: 'windY', label: 'Carregando: posição Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'windAngle', label: 'Carregando: inclinação', min: -360, max: 360, step: 1, unit: '°', group: 'Pontos', hint: 'Para onde a ponta vai com o golpe forte todo carregado; o bastão gira da Inclinação até aqui' },
   { key: 'meleeDamage', label: 'Dano do golpe', min: 0, max: 100, step: 1, group: 'Golpe' },
   { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
   { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe', hint: 'Do golpe para baixo; o giro acerta em volta toda' },
@@ -534,6 +579,19 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'comboWindow', label: 'Janela do combo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Combo', hint: 'Até quanto tempo depois do fim de um golpe o próximo continua a sequência; depois disso ela recomeça' },
   { key: 'meleeArcUp', label: 'Arco para cima', min: 20, max: 360, step: 10, unit: '°', group: 'Combo', hint: 'Área de acerto do golpe para cima' },
   { key: 'meleeArcFlat', label: 'Arco horizontal', min: 20, max: 360, step: 10, unit: '°', group: 'Combo', hint: 'Área de acerto do golpe horizontal (o desenho cobre pelo menos 200°)' },
+  { key: 'heavyDamage', label: 'Dano do golpe', min: 0, max: 200, step: 1, group: 'Golpe forte' },
+  { key: 'heavyRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe forte', hint: 'Sem carga; a carga estica até o Alcance máximo' },
+  { key: 'heavyArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe forte' },
+  { key: 'heavyCooldown', label: 'Intervalo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Golpe forte', hint: 'Depois de um golpe forte, quanto esperar até o próximo golpe' },
+  { key: 'heavyTime', label: 'Duração do giro', min: 0.05, max: 1.5, step: 0.01, unit: 's', group: 'Golpe forte', hint: 'Do soltar do botão até a asa voltar; menos = mais rápido' },
+  { key: 'heavyPush', label: 'Empurrão', min: 0, max: 2000, step: 10, unit: 'px/s', group: 'Golpe forte' },
+  { key: 'heavyCharge', label: 'Tempo de carga', min: 0.1, max: 4, step: 0.05, unit: 's', group: 'Golpe forte', hint: 'Quanto segurar Atirar até a carga máxima' },
+  { key: 'heavyReachMax', label: 'Alcance máximo carregado', min: 1, max: 4, step: 0.05, unit: '×', group: 'Golpe forte', hint: 'Até onde o golpe chega com a carga cheia, em vezes o alcance sem carga; 1 = a carga não muda o alcance' },
+  { key: 'heavySizeMax', label: 'Tamanho máximo carregado', min: 1, max: 4, step: 0.05, unit: '×', group: 'Golpe forte', hint: 'Tamanho do bastão e do rastro no golpe com a carga cheia; 1 = a carga não muda o tamanho' },
+  { key: 'heavyTrailWidth', label: 'Rastro: espessura', min: 2, max: 80, step: 1, unit: 'px', group: 'Golpe forte' },
+  { key: 'heavyTrailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe forte' },
+  { key: 'heavyTrailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe forte' },
+  { key: 'heavyTrailOpacity', label: 'Rastro: opacidade', min: 0, max: 1, step: 0.05, unit: '×', group: 'Golpe forte', hint: '0 = sem rastro' },
   { key: 'trailWidth', label: 'Rastro: espessura', min: 2, max: 60, step: 1, unit: 'px', group: 'Golpe', hint: 'Na ponta do golpe; afina até a cauda' },
   { key: 'trailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Quanto o ar leva pra se desfazer' },
   { key: 'trailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe', hint: 'Fiapos de ar que se soltam do rastro' },
@@ -617,6 +675,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
   if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
   if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
+  if (isSwingKind(s.heavyKind)) out[id].heavyKind = s.heavyKind
   if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
   if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
   { const sc = cleanScales(s.scales); if (sc) out[id].scales = sc }
@@ -636,7 +695,7 @@ const ITEMS_VERSION = 9
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)

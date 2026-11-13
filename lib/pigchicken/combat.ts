@@ -13,7 +13,7 @@ import { entryActParams, entryFollowParams, entryOf } from './soul-library'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
-import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
@@ -179,6 +179,8 @@ export function createCombat() {
   // the Pátio's inventory limit (the same for every local player)
   let limit = INVENTORY_MAX
   let cooldown = 0, burstLeft = 0, reloadT = 0, bloom = 0, meleeCool = 0, kick = 0, throwT = 0, chargeT = 0, prevFire = false
+  // the strong blow of a staff (Atirar held): the item being charged (null: not armed) and how long it has charged (s)
+  let heavyItem: Owned | null = null, heavyT = 0
   // The item that received the last held-fire frame. A newly equipped weapon sees a fresh trigger press.
   let fireHeldItem: Owned | null = null
   // the item whose firing a Golpe interrupted while Atirar was held: it shoots again when the blow ends
@@ -576,7 +578,7 @@ export function createCombat() {
   type Loadout = {
     peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
-    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number
+    throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: Soul[]
     trem: TremoloState; tremBend: number; aimReach: number
@@ -609,11 +611,11 @@ export function createCombat() {
   // the walls of the world and the top of the sky the camera shows (the Parquinho keeps it up to date)
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
-    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap,
+    peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
     beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach,
   })
   const blank = (): Loadout => ({
-    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity,
+    peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
     beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: [], trem: newTremolo(), tremBend: 0, aimReach: 1,
   })
   function useLoadout(id: string) {
@@ -621,7 +623,7 @@ export function createCombat() {
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach } = l)
     active = id
   }
 
@@ -1011,9 +1013,11 @@ export function createCombat() {
   const blowsLeft = (h: Owned | null, d: ItemDef) => !h || !d.meleeOnly || d.mag <= 0 || (reloadT <= 0 && h.ammo > 0)
   // an empty taco: the dry click, and it reloads on its own when set to
   function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
-  function melee(wing: boolean, scale: number) {
+  // heavy: the strong blow, with the share of the charge it was let go with (0..1)
+  function melee(wing: boolean, scale: number, heavy: number | null = null) {
     const d = wing ? items.wing : def()
-    meleeCool = d.meleeCooldown
+    const strong = heavy !== null
+    meleeCool = strong ? d.heavyCooldown : d.meleeCooldown
     const own = wing ? null : held()
     if (own && d.meleeOnly && d.mag > 0) {
       own.ammo = Math.max(0, own.ammo - 1); if (own.refill) own.refill = 0
@@ -1029,21 +1033,28 @@ export function createCombat() {
       for (let i = 0; i < n; i++) out.note(d.voice, (i ? t.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d), undefined, vibOf(d))
       color = t.color(base)
     }
+    // the strong blow: its own numbers, and the charge stretches its reach and makes the staff and its air bigger
+    const far = strong ? 1 + (Math.max(1, d.heavyReachMax) - 1) * heavy : 1, size = strong ? 1 + (Math.max(1, d.heavySizeMax) - 1) * heavy : 1
+    const range = (strong ? d.heavyRange : d.meleeRange) * far
     // an item in the wing rides on its tip: the blow reaches its length further
-    const reach = d.meleeRange + (wing ? 0 : d.length * scale)
-    // blows in a row alternate: down, up, horizontal, a full spin. Down comes clockwise facing right
+    const reach = range + (wing ? 0 : d.length * scale * size)
+    // blows in a row alternate: down, up, horizontal, a full spin. Down comes clockwise facing right. The strong
+    // blow is always the same move and starts the combo over
     const order = d.combo.length ? d.combo : SWING_COMBO
-    swingCombo = nextCombo(swingCombo, swingGap, d.comboWindow, order.length)
-    const kind = order[swingCombo % order.length]
-    const arc = kind === 'spin' ? Math.PI * 2 : (kind === 'up' ? d.meleeArcUp : kind === 'flat' ? d.meleeArcFlat : d.meleeArc) * DEG
+    swingCombo = strong ? -1 : nextCombo(swingCombo, swingGap, d.comboWindow, order.length)
+    const kind = strong ? d.heavyKind : order[swingCombo % order.length]
+    const arc = kind === 'spin' ? Math.PI * 2 : (strong ? d.heavyArc : kind === 'up' ? d.meleeArcUp : kind === 'flat' ? d.meleeArcFlat : d.meleeArc) * DEG
     const face = Math.cos(aimAngle) >= 0 ? 1 : -1
-    const time = Math.max(0.02, d.meleeTime), trailTime = Math.max(0.05, d.trailTime)
+    const time = Math.max(0.02, strong ? d.heavyTime : d.meleeTime), trailTime = Math.max(0.05, strong ? d.heavyTrailTime : d.trailTime)
     swing = {
-      angle: aimAngle, arc, range: d.meleeRange, reach, t: 0, time, wing,
-      dir: kind === 'up' ? -face : face, kind, combo: swingCombo, hitAt: swingHitAt(time), hit: false, hits: 0,
+      angle: aimAngle, arc, range, reach, t: 0, time, wing,
+      dir: kind === 'up' ? -face : face, kind, combo: Math.max(0, swingCombo), hitAt: swingHitAt(time), hit: false, hits: 0,
       life: swingLife(time, trailTime), impacts: [], seed: Math.random(),
-      trail: { width: d.trailWidth, color, time: trailTime, wisps: Math.round(d.trailWisps), opacity: d.trailOpacity },
-      item: wing ? null : held() ?? null, damage: d.meleeDamage, push: d.meleePush, durability: d.durability > 0, name: d.name,
+      trail: strong
+        ? { width: d.heavyTrailWidth * size, color, time: trailTime, wisps: Math.round(d.heavyTrailWisps), opacity: d.heavyTrailOpacity }
+        : { width: d.trailWidth, color, time: trailTime, wisps: Math.round(d.trailWisps), opacity: d.trailOpacity },
+      item: wing ? null : held() ?? null, damage: strong ? d.heavyDamage : d.meleeDamage, push: strong ? d.heavyPush : d.meleePush, durability: d.durability > 0, name: d.name,
+      ...(strong ? { heavy: true, charge: heavy, size } : {}),
     }
     swingGap = 0
   }
@@ -1064,6 +1075,7 @@ export function createCombat() {
   function strike(sw: Swing, origin: { x: number; y: number }) {
     sw.hit = true
     collectInSwing(sw, origin)
+    // the passaguá catches birds and souls first: what it catches is gone before the blow could hurt or push it
     if ((sw.item as Owned | null)?.item === 'passagua') {
       const caught: { x: number; y: number; soul: Soul; wild: boolean }[] = []
       // Undead birds stay Targets while circling; the other undead phases are not capturable.
@@ -1115,10 +1127,10 @@ export function createCombat() {
         })
         sound('puff', null)
       }
-      return
+      // whatever it did not catch (aliens, zombies, dummies, undead on the ground) takes its damage and push below
     }
     targets.forEach(t => {
-      if (t.deadT > 0) return
+      if (t.deadT > 0 || sw.damage <= 0) return
       const cx = t.x, cy = t.y - t.h / 2
       const dx = cx - origin.x, dy = cy - origin.y, dist = Math.hypot(dx, dy) - t.w / 2
       if (dist > sw.reach) return
@@ -1609,6 +1621,9 @@ export function createCombat() {
     get hoverOwned() { return hoverOwned },
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
     get hoverSwaps() { return !room() && !inv.some(o => o.item === hover?.owned.item) },
+    // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
+    get heavyCharging() { return !!heavyItem && heavyItem === held() },
+    get heavyCharge() { return heavyItem && heavyItem === held() ? Math.min(1, heavyT / Math.max(0.05, def().heavyCharge)) : 0 },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     // what a soul's mischief does to this player right now (lib/pigchicken/soul-acts.ts): how far it turns their aim
@@ -1796,10 +1811,12 @@ export function createCombat() {
     step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
       let peckStarted = false
+      // what calls a strong blow's charge off without hitting: the interface, empty hands, a soul's peck
+      const heavyCancel = !!input.cancelFire || !!input.deselect || locks.has(active)
       // rearranging the bar never changes what she holds (nor what is being done with it)
       if (input.move) moveSlot(input.move.from, input.move.to, input.move.after)
       if (input.deselect) {
-        stopBeam(); peck = null; peckPrep = 0; swing = null; consumption = null
+        stopBeam(); peck = null; peckPrep = 0; swing = null; consumption = null; heavyItem = null; heavyT = 0
         cur = inv.length; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0
         throwT = 0; throwItem = null; throwVoid = input.throwHeld
         input = { ...input, ...NO_SWITCH, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
@@ -1874,6 +1891,9 @@ export function createCombat() {
       // starts again as if the button had just been pressed.
       const hNow = held()
       if (input.melee && meleeCool <= 0 && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
+      // a strong blow being charged is called off by Golpe (the quick blow comes out instead), by another item in
+      // the wing and by a Throw
+      if (heavyItem && (heavyCancel || input.melee || heavyItem !== hNow || input.throwHeld)) { heavyItem = null; heavyT = 0 }
       if (hNow && !dNow.consumable && !dNow.meleeOnly && dNow.mag !== 0 && swing && swing.t < swing.time) {
         fireResume = input.fire ? hNow : null
         input = { ...input, fire: false, firePressed: false }
@@ -1973,9 +1993,20 @@ export function createCombat() {
         }
       } else if (h && d.consumable) {
         if (input.firePressed && cooldown <= 0) consume(h, d, origin)
+      } else if (isStaff(items[h.item])) {
+        // a staff (the taco, the passaguá): Atirar is its strong blow. A press arms it, holding charges it (once the
+        // interval of the last blow is over) and letting go hits, with whatever charge it has
+        // (the item in the wing now: `d` is still the one she held when the frame started)
+        const sd = items[h.item]
+        if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
+        else if (heavyItem === h && input.fire) { if (meleeCool <= 0) heavyT += dt }
+        else if (heavyItem === h) {
+          if (meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else melee(false, body.scale, Math.min(1, heavyT / Math.max(0.05, sd.heavyCharge))) }
+          heavyItem = null; heavyT = 0
+        }
       } else if (d.meleeOnly || d.mag === 0) {
-        // an item only for hitting (the taco): Atirar swings it too
-        if (input.firePressed && meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, d)) dryBlow(h, d); else melee(false, body.scale) }
+        // an item with no shots: Atirar swings it too
+        if (input.firePressed && meleeCool <= 0 && canSwing(false)) melee(false, body.scale)
       } else if (canFire) {
         const spreadDeg = this.spread(body)
         const ctx = { boxes, groundY }

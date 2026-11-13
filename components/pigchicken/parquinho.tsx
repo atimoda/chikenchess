@@ -41,6 +41,7 @@ import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layo
 import { groundZones, placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { drawScaleFan, SCALE_FAN_R } from "@/components/pigchicken/draw/scale-fan"
+import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
@@ -232,7 +233,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, hitboxes = false, patioKey = null }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; hitboxes?: boolean; patioKey?: string | null }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, patioKey = null }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; patioKey?: string | null }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -262,6 +263,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   scaleFadeRef.current = scaleFanFade
   const scaleLinesRef = useRef(scaleFanLines)
   scaleLinesRef.current = scaleFanLines
+  // Camadas → "Prevenir fadeout das escalas": the scales never go into standby
+  const scaleKeepRef = useRef(scaleKeep)
+  scaleKeepRef.current = scaleKeep
   const hitboxesRef = useRef(hitboxes)
   hitboxesRef.current = hitboxes
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -284,6 +288,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const liftedRef = useRef(lifted)
   liftedRef.current = lifted
   const touchAim = useRef<Stick | null>(null)
+  // the on-screen Throw button's aim: dragged out of it, the drag's angle; a tap, her movement or where she faces
+  const throwAim = useRef<Stick | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
   // a slot the player clicked or tapped on the inventory bar (1-based, 0 none): equips it on the next frame
@@ -322,6 +328,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     return subscribeChickenControls(setControls)
   }, [])
   const showTouch = useTouchControls(controls?.touch ?? "auto")
+  const showTouchRef = useRef(showTouch)
+  showTouchRef.current = showTouch
   const { editing } = useTouchLayout()
 
   useEffect(() => {
@@ -508,6 +516,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const extraPrev = new Map<string, Partial<Record<ChickenAction, boolean>>>()
     const extraQuickSwitch = new Map<string, QuickSwitchRepeat>()
     const extraAim = new Map<string, { muzzle: { x: number; y: number }; angle: number; reach: number }>()
+    // the Escalas layer's standby, per player: whether they played this frame and how far their scale has faded
+    const scalePlaying = new Map<string, boolean>()
+    const scaleStandby = new Map<string, StandbyState>()
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
     // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
@@ -894,7 +905,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // while the wheel is open the mouse and the right stick choose items, not the aim
       aim = resolveAim({
         rightStick: wh.open ? null : rightStickForAim ?? (held && !held.touch ? held.stick : null), mouse: autoAt ?? (owner.owns && !wh.open && !panActive ? aimMouse : null),
-        touch: wh.open ? null : touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
+        touch: wh.open ? null : throwAim.current ?? touchAim.current ?? (held?.touch ? held.stick : null), leftStick, keys, origin,
         face: st.face, aimMagnetDeg: an.aimMagnetDeg,
       })
       const d = combat.def()
@@ -1053,6 +1064,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the Itens panel follows the item the main player holds
       announceHeldItem(combat.held?.item ?? null)
+      announceHeldScale(combat.held && combat.def().instrument ? combat.scale.id : null)
+      scalePlaying.set("p1", input.fire || input.melee)
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
       pickupMarks.clear()
       markHover(combat, grabLabel(controls, devs))
@@ -1090,6 +1103,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         combat.setAimReach((rs ?? ls)?.mag ?? 1)
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
+        scalePlaying.set(id, xin.fire || xin.melee)
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.inventory[combat.current] && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
@@ -1343,15 +1357,24 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         }))
       }
       // the scale layer hides while a chicken is being dragged by the mouse/touch
+      // each player's scale goes into standby a while after they stop playing it (the Escalas editor's numbers)
       if (scaleFanRef.current > 0) {
+        const fan = (id: string, x: number, y: number, angle: number) => {
+          const sc = combat.scale, held = combat.held
+          let sb = scaleStandby.get(id)
+          if (!sb) scaleStandby.set(id, sb = newStandby())
+          const v = standbyStep(sb, scaleParams()[sc.id], dt, !!scalePlaying.get(id), `${held?.item ?? ""}:${sc.id}`, scaleKeepRef.current)
+          const a = scaleFanRef.current
+          drawScaleFan(ctx, combat, x, y, angle, st.scale, a * v.all, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current, a * v.aimed)
+        }
         const o = engine.getState().shoulder
-        if (!st.held) drawScaleFan(ctx, combat, o.x, o.y, ang, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current)
+        if (!st.held) fan("p1", o.x, o.y, ang)
         extraList.forEach(([id, eng]) => {
           const at = extraAim.get(id)
           if (!at || eng.getMotionState().held) return
           combat.use(id)
           const xo = eng.getState().shoulder
-          drawScaleFan(ctx, combat, xo.x, xo.y, at.angle, st.scale, scaleFanRef.current, scaleSizeRef.current, scaleFadeRef.current, scaleLinesRef.current)
+          fan(id, xo.x, xo.y, at.angle)
         })
         combat.use("p1")
       }
@@ -1392,12 +1415,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       arpBoxes.length = 0
       arpBoxes.push(...drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
       soulBoxes.length = 0
-      combat.use("p1"); soulBoxes.push({ id: "p1", ...drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", offsets.inventory, soulHover === "p1") })
-      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); soulBoxes.push({ id, ...drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", offsets.inventory, soulHover === id) }) })
+      // with the on-screen controls (phones) the avatars and soul counters stay in the top right corner, wherever
+      // the inventory row was moved to
+      const soulsAt = showTouchRef.current ? undefined : offsets.inventory
+      combat.use("p1"); soulBoxes.push({ id: "p1", ...drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", soulsAt, soulHover === "p1") })
+      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); soulBoxes.push({ id, ...drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", soulsAt, soulHover === id) }) })
       // the counter under the pointer stopped being a button (its last soul left): the reticle comes back
       if (soulHover && !soulBoxes.some(b => b.id === soulHover && b.on)) { hoverSoul(null); mouseOverUi = false }
       // the souls just caught, flying to the counter of whoever caught them
-      if (combat.abductions.length) drawAbductions(ctx, combat, new Map<string, number>([["p1", 0], ...extraList.map(([id], i): [string, number] => [id, i + 1])]), offsets.inventory, { x: camX, y: camY, zoom })
+      if (combat.abductions.length) drawAbductions(ctx, combat, new Map<string, number>([["p1", 0], ...extraList.map(([id], i): [string, number] => [id, i + 1])]), soulsAt, { x: camX, y: camY, zoom })
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []
@@ -1563,7 +1589,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           onContextMenu={e => e.preventDefault()}
         />
       )}
-      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
+      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} throwAimRef={throwAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} />}
     </>
   )
 }
@@ -1571,7 +1597,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 // ---------- on-screen right stick (twin-stick): pushing aims, pushing to the edge fires ----------
 const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 
-function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; bottom: number; grabOffer: "" | "take" | "equip" }) {
+function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, bottom, grabOffer }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; throwAimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; bottom: number; grabOffer: "" | "take" | "equip" }) {
   const { editing } = useTouchLayout()
   useEffect(() => {
     if (editing) ["melee", "throw", "itemWheel", "grab", "fire"].forEach(a => engine.setVirtual(a as ChickenAction, false))
@@ -1624,7 +1650,7 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
         {(grabOffer || editing) && <Movable id="grab" className="absolute" style={{ right: 184, top: (STICK - 48) / 2 }}>{button((grabOffer || "take") === "take" ? "Pegar" : "Equipar", "grab", (grabOffer || "take") === "take" ? "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white" : "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white")}</Movable>}
         <div className="relative flex flex-col gap-2">
           <Movable id="melee" className="relative">{button("Punch", "melee")}</Movable>
-          <Movable id="throw" className="relative">{button("Throw", "throw")}</Movable>
+          <Movable id="throw" className="relative"><TouchThrowButton engine={engine} aimRef={throwAimRef} /></Movable>
           <Movable id="itemWheel" className="relative">{button("Roda", "itemWheel")}</Movable>
         </div>
         <Movable id="aim" className="relative">
@@ -1645,6 +1671,71 @@ function TouchAimStick({ engine, aimRef, tapRef, bottom, grabOffer }: { engine: 
         </Movable>
       </div>
     </div>
+  )
+}
+
+// ---------- on-screen Throw: it acts when the finger lifts ----------
+// Lifted inside the button: a tap, thrown at once (no charge) where her movement stick points, or where she faces.
+// Dragged out of the button: the charge starts, the aim follows the drag's angle (from the button's middle) and the
+// throw leaves when the finger lifts, wherever it is.
+const afterFrames = (n: number, fn: () => void) => { if (n <= 0) fn(); else requestGameFrame(() => afterFrames(n - 1, fn)) }
+
+function TouchThrowButton({ engine, aimRef }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null> }) {
+  const { editing } = useTouchLayout()
+  const press = useRef<{ pid: number; cx: number; cy: number; r: number; out: boolean } | null>(null)
+  const turn = useRef(0)
+  const [down, setDown] = useState(false)
+  // the aim is let go a few frames after the throw, so the frame that throws still reads it
+  const clearAim = (frames: number) => { const t = ++turn.current; afterFrames(frames, () => { if (turn.current === t) aimRef.current = null }) }
+  const cancel = () => {
+    if (press.current?.out) engine.setVirtual("throw", false)
+    press.current = null; setDown(false); turn.current++; aimRef.current = null
+  }
+  useEffect(() => { if (editing) cancel() }, [editing])
+  useEffect(() => () => { aimRef.current = null }, [aimRef])
+  const move = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    const dx = e.clientX - p.cx, dy = e.clientY - p.cy, len = Math.hypot(dx, dy)
+    if (!p.out && len > p.r) { p.out = true; turn.current++; engine.setVirtual("throw", true) }
+    // back over the button, the last angle stays
+    if (p.out && len > p.r * 0.5) aimRef.current = { x: dx / len, y: dy / len, mag: 1 }
+  }
+  const lift = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    press.current = null; setDown(false)
+    if (p.out) { engine.setVirtual("throw", false); clearAim(2); return }
+    if (e.type !== "pointerup") return
+    const deadzone = loadChickenControls().analog.deadzoneL
+    const stick = readTouchMoveStick(deadzone)
+    aimRef.current = stick ? { x: stick.x, y: stick.y, mag: 1 } : { x: engine.getMotionState().face || 1, y: 0, mag: 1 }
+    const t = ++turn.current
+    // held for two frames: the combat needs one with the button down before the one that lets go
+    engine.setVirtual("throw", true)
+    afterFrames(2, () => { if (turn.current !== t) return; engine.setVirtual("throw", false); clearAim(2) })
+  }
+  return (
+    <button
+      type="button"
+      aria-label="Throw"
+      aria-pressed={down}
+      className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase text-white/80 ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/10"}`}
+      style={{ touchAction: "none" }}
+      onPointerDown={e => {
+        e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId)
+        const r = e.currentTarget.getBoundingClientRect()
+        press.current = { pid: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2, out: false }
+        setDown(true)
+      }}
+      onPointerMove={move}
+      onPointerUp={lift}
+      onPointerCancel={lift}
+      onLostPointerCapture={lift}
+      onContextMenu={e => e.preventDefault()}
+    >
+      Throw
+    </button>
   )
 }
 

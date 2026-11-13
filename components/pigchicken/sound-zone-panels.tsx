@@ -48,7 +48,7 @@ const OCTAVES = Array.from({ length: BASS_OCT.max - BASS_OCT.min + 1 }, (_, i) =
 // the zone's own beat: one row per drum, sixteen steps; a click goes rest → normal → accent → rest
 function DrumGridEditor({ grid, color, onChange }: { grid: DrumGrid; color: string; onChange: (g: DrumGrid) => void }) {
   return (
-    <div className="grid gap-[3px]" aria-label="Grade da batida">
+    <div className="grid gap-field" aria-label="Grade da batida">
       {DRUM_ROWS.map(r => {
         const row = drumRow(grid, r.id)
         return (
@@ -83,7 +83,7 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
   const typing = ownProg || preset < 0
   return (
     <>
-      <div className="grid grid-cols-[1fr_auto] gap-2">
+      <div className="grid grid-cols-[1fr_auto] gap-field">
         <Field label="Nome"><input aria-label="Nome da zona" maxLength={40} value={zone.name} onChange={e => set({ name: e.target.value }, "zone-name")} className={field} /></Field>
         <Field label="Cor"><input aria-label="Cor da zona" type="color" value={zone.color} onChange={e => set({ color: e.target.value }, "zone-color")} className="h-9 w-12 rounded-md border border-white/15 bg-transparent" /></Field>
       </div>
@@ -102,7 +102,7 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
       </Field>
 
       <h3 className={SECTION}>Harmonia</h3>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-field">
         <Field label="Tom"><KeySelect value={zone.root} onChange={root => set({ root })} /></Field>
         <Field label="Escala">
           <select aria-label="Escala" value={zone.scale} onChange={e => { const scale = e.target.value as ScaleId; set({ scale, chordScale: fitChords(scale, zone.chordScale) }) }} className={field}>
@@ -135,7 +135,7 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
 
       <h3 className={SECTION}>Ritmo</h3>
       <PatioRange label="Andamento" min={ZONE_BPM.min} max={ZONE_BPM.max} value={zone.bpm} display={`${zone.bpm} bpm`} onChange={bpm => set({ bpm }, "zone-bpm")} />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-field">
         <Field label="Batida">
           <select aria-label="Batida" value={amb.drums ? "own" : amb.beat} onChange={e => { if (isBeat(e.target.value)) { const { drums: _own, ...rest } = amb; set({ ambience: { ...rest, beat: e.target.value } }) } }} className={field}>
             {amb.drums && <option value="own">Própria</option>}
@@ -156,7 +156,7 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
       </details>
 
       <h3 className={SECTION}>Baixo</h3>
-      <div className="grid grid-cols-[1fr_auto] gap-2">
+      <div className="grid grid-cols-[1fr_auto] gap-field">
         <Field label="Som">
           <select aria-label="Baixo" value={amb.bass} onChange={e => { if (isBass(e.target.value)) setAmb({ bass: e.target.value }) }} className={field}>
             <option value="none">Silêncio</option>
@@ -175,7 +175,7 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
 
       <details className="mt-1 border-t border-white/10 pt-3">
         <summary className="cursor-pointer select-none text-[10px] uppercase tracking-[0.12em] text-[#93a79a] hover:text-white">Notas e regras</summary>
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 pt-3">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field pt-3">
           <Field label="Dano nos inimigos" hint="Notas fora da regra resvalam sem harmonizar">
             <select aria-label="Dano nos inimigos" value={zone.inKey ?? ""} onChange={e => set({ inKey: (e.target.value || undefined) as InKeyRule | undefined })} className={field}>
               {(Object.keys(IN_KEY_LABELS) as (InKeyRule | "")[]).map(k => <option key={k} value={k}>{IN_KEY_LABELS[k]}</option>)}
@@ -189,7 +189,7 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
           </label>
           <div className="grid gap-1" title="Os aliens convertidos aqui viram estes pássaros (nenhum marcado: os da cena)">
             <span>Pássaros da zona</span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-field">
               {BIRD_IDS.map(id => {
                 const on = zone.birds.includes(id)
                 return <button key={id} type="button" aria-pressed={on} onClick={() => set({ birds: on ? zone.birds.filter(b => b !== id) : [...zone.birds, id] })}
@@ -236,7 +236,7 @@ export function LanesFields({ lanes, w, h, onChange }: { lanes: LanesParams; w: 
       <div className="grid shrink-0 place-items-center rounded-md border border-white/10 bg-[#0b110e] p-2" aria-label="Prévia das faixas">
         <div className="relative" style={{ width: w * k, height: h * k }}><LanesArt lanes={lanes} w={w} h={h} editing labels /></div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-field">
         <Field label="Disposição">
           <select aria-label="Disposição das faixas" value={lanes.layout} onChange={e => set({ layout: e.target.value as LanesParams["layout"] })} className={field}>
             <option value="fan">Leque</option>
@@ -260,7 +260,7 @@ export function LanesFields({ lanes, w, h, onChange }: { lanes: LanesParams; w: 
         </select>
       </Field>
       {c.kind === "scale" ? (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-field">
           <Field label="Tom"><KeySelect value={c.root} onChange={root => set({ content: { ...c, root, low: root + 12 * Math.round((c.low - c.root) / 12) } })} /></Field>
           <Field label="Escala">
             <select aria-label="Escala das faixas" value={c.scale} onChange={e => set({ content: { ...c, scale: e.target.value as ScaleId } })} className={field}>
@@ -282,7 +282,7 @@ export function LanesFields({ lanes, w, h, onChange }: { lanes: LanesParams; w: 
           }} className={field} />
         </Field>
       )}
-      {lanes.layout === "fan" && <div className="grid gap-[3px]">
+      {lanes.layout === "fan" && <div className="grid gap-field">
         <PatioRange label="Abertura" min={10} max={360} step={5} value={lanes.open} display={`${lanes.open}°`} onChange={open => set({ open }, "lanes-open")} />
         <PatioRange label="Começa em" min={0} max={355} step={5} value={lanes.start} display={`${lanes.start}°`} hint="0° = direita, 90° = baixo, 180° = esquerda, 270° = cima" onChange={start => set({ start }, "lanes-start")} />
         <PatioRange label="Altura do centro" min={0} max={Math.round(h)} step={5} value={Math.min(lanes.centerY, Math.round(h))} display={`${Math.min(lanes.centerY, Math.round(h))} px`} hint="Acima da borda de baixo; no meio da caixa dá para abrir um círculo inteiro" onChange={centerY => set({ centerY }, "lanes-center")} />
@@ -301,7 +301,7 @@ export function LanesFields({ lanes, w, h, onChange }: { lanes: LanesParams; w: 
 export function SurfaceRebateFields({ rebate, onChange }: { rebate: SurfaceRebate | undefined; onChange: (r: SurfaceRebate | undefined) => void }) {
   const r = rebate ?? defaultSurfaceRebate()
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field">
       <label className="flex items-center justify-between gap-3" title="As notas quicam nele e tocam de novo">
         <span>Rebate notas</span>
         <input type="checkbox" checked={!!rebate} onChange={e => onChange(e.target.checked ? r : undefined)} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />

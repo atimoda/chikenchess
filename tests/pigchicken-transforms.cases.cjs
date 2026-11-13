@@ -172,10 +172,12 @@ test("a rebate plays what the item's chain makes of the note: the flute an octav
   assert.deepEqual(rebate(t.c, 'trumpet', { midi: 60 }).ev.notes.map(o => o.midi), [60, 67])
 })
 
-test('the Taco: only for hitting (Atirar swings it too), a wooden tok and a faster rebate', () => {
+test('the Taco: only for hitting (Atirar is its strong blow, let go to hit), a wooden tok and a faster rebate', () => {
   const b = holding('bat')
   step(b.c, { fire: true, firePressed: true })
-  assert.ok(b.c.swing && !b.c.swing.wing, 'Atirar swings the bat')
+  assert.equal(b.c.swing, null, 'Atirar held only charges')
+  step(b.c, {})
+  assert.ok(b.c.swing && !b.c.swing.wing && b.c.swing.heavy, 'letting go swings the bat')
   wait(b.c, 0.5)
   const { n } = rebate(b.c, 'bat')
   assert.ok(b.drums.some(d => d.kind === 'wood'), 'tok')
