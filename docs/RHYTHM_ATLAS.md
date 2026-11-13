@@ -1,6 +1,6 @@
 # Atlas rítmico — v0.6.0
 
-51 composições originais nas campanhas Brazilian, Africa Cult, World, World ballads, Classical e Blues, Jazz & Rock. Os kits das três primeiras são escritos por seção (`docs/mechanics/kit-brazilian.md` e `docs/mechanics/kit-world-africa.md`); a descrição de papéis e variações abaixo vale para os demais. Datas são ambientação; nenhum kit reproduz uma melodia das canções citadas como referência pelo usuário. Cada kit tem 16 papéis por equipe, quatro variações, uma base grave e motivos escritos para sua subdivisão e seções com densidades distintas.
+52 composições originais nas campanhas Brazilian, Africa Cult, World, World ballads, Classical e Blues, Jazz & Rock. Os kits das três primeiras são escritos por seção (`docs/mechanics/kit-brazilian.md` e `docs/mechanics/kit-world-africa.md`); a descrição de papéis e variações abaixo vale para os demais. Datas são ambientação; nenhum kit reproduz uma melodia das canções citadas como referência pelo usuário. Cada kit tem 16 papéis por equipe, quatro variações, uma base grave e motivos escritos para sua subdivisão e seções com densidades distintas.
 
 | Cidade / época | Estilo | Relógio | BPM | Campanha |
 | --- | --- | --- | ---: | --- |
@@ -21,6 +21,7 @@
 | Kingston · 1973 | Roots reggae | 4/4 · BPM = semínima | 76 | World rhythms |
 | Leipzig · 1723 | Baroque pastoral | 9/8 · BPM = semínima pontuada | 76 | Classical music |
 | Vienna · 1825 | Orchestral alla breve | 2/2 · BPM = mínima | 88 | Classical music |
+| Marseille · 1997 | Orchestral rap | 4/4 · BPM = semínima | 90 | Classical music |
 | Oakland · 1959 | Cool jazz | 5/4 · BPM = semínima · 3+2 | 160 | Blues, Jazz & Rock |
 | Cambridge · 1973 | Progressive rock | 7/4 · BPM = semínima · 4+3 | 118 | Blues, Jazz & Rock |
 | Istanbul · 1970 | Anatolian rock | 5/8 · BPM = colcheia · 3+2 | 210 | World rhythms |
