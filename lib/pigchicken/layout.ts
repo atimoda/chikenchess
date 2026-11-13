@@ -18,6 +18,7 @@ import { normalizeTrampoline, type TrampolineParams } from './trampoline'
 import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge } from './village'
 import { VILLAGE_GROUND_ID, defaultSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
 import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from './power-lines'
+import { BACKDROP_DEPTH, isBackdropLayer, type BackdropLayerId } from './backdrop-layers'
 import { GONG_BOX, JUKEBOX_BOX, defaultGong, normalizeGong, type GongParams } from './gong'
 import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
@@ -97,6 +98,10 @@ export type LayoutElement = {
   // parallax depth (0 with the ground, up to 0.95 almost still on the screen): scenery only, never collides; x is
   // where it stands with the camera at 0 (on screen it sits at x - camX × (1 - depth)), see live-camera's followDepth
   depth?: number
+  // pinned to a fixed point of a layer of the scenery far behind (a Poste or Torre on a mountain range, say): its
+  // depth is that layer's, and it slides like the layer on every screen (x/y are the layer's point with the camera
+  // at 0), see lib/pigchicken/backdrop-layers.ts
+  backdrop?: BackdropLayerId
   params: ElementParams
 }
 // settings: the Pátio's limits (width in scenes, height up to the ceiling), from the Sun button's panel
@@ -435,7 +440,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   }
   const music = isMusicElement(kind)
   // in a depth of its own it is only scenery: no collisions of any kind
-  const depth = canHaveDepth(kind) ? normalizeDepth(e.depth) : 0
+  const backdrop = canHaveDepth(kind) && isBackdropLayer(e.backdrop) ? e.backdrop : undefined
+  const depth = backdrop ? BACKDROP_DEPTH[backdrop] : canHaveDepth(kind) ? normalizeDepth(e.depth) : 0
   const flat = d.entity || music || depth > 0
   const rebate = flat ? undefined : normalizeSurfaceRebate(e.rebate)
   const region = depth === 0 && (e.region === 'temple' || e.region === 'village') ? e.region : undefined
@@ -453,6 +459,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     ...(!d.entity && !music && typeof e.occludesColliders === 'boolean' ? { occludesColliders: e.occludesColliders } : {}),
     // kept when on, and always on grounds and walls (where it starts on)
     ...(depth > 0 ? { depth } : {}),
+    ...(backdrop ? { backdrop } : {}),
     ...(HARD_KINDS.includes(kind) && (isSurfaceElement(kind) || e.hard === true) ? { hard: typeof e.hard === 'boolean' ? e.hard : isSurfaceElement(kind) } : {}),
     hidden: kind === 'zone' ? true : d.entity ? false : !!e.hidden,
     opacity: r1(clamp(num(e.opacity, 1), 0.1, 1) * 100) / 100,

@@ -6,7 +6,7 @@
 // only when their poles stand in different depths; otherwise their layer just slides with the camera.
 import { memo, useEffect, useMemo, useRef } from "react"
 import { POWER_MODELS, fixedDepth, powerSpans, spanFloor, spanPath, type PowerParams, type Span } from "@/lib/pigchicken/power-lines"
-import { followDepth, onCameraMove } from "@/lib/pigchicken/live-camera"
+import { cameraRestY, followDepth, onCameraMove } from "@/lib/pigchicken/live-camera"
 import type { LayoutElement } from "@/lib/pigchicken/layout"
 
 // the silhouette colour at a depth (CSS variables set by the backdrop from the Pátio's sky)
@@ -97,14 +97,14 @@ export const PowerArt = memo(function PowerArt({ kind, power, w, depth = 0 }: { 
 function WireGroup({ spans }: { spans: Span[] }) {
   const ref = useRef<SVGGElement>(null)
   const fixed = fixedDepth(spans)
-  const depth = spans[0]?.a.d ?? 0
+  const depth = spans[0]?.a.d ?? 0, pinned = !!spans[0]?.a.pin
   useEffect(() => {
     const g = ref.current
     if (!g) return
-    if (fixed) return depth ? followDepth(g, depth) : undefined
+    if (fixed) return depth ? followDepth(g, depth, pinned) : undefined
     const paths = Array.from(g.querySelectorAll("path"))
-    return onCameraMove((x, y) => { spans.forEach((s, i) => paths[i]?.setAttribute("d", spanPath(s, x, y))) })
-  }, [spans, fixed, depth])
+    return onCameraMove((x, y) => { const rest = cameraRestY(); spans.forEach((s, i) => paths[i]?.setAttribute("d", spanPath(s, x, y, rest))) })
+  }, [spans, fixed, depth, pinned])
   return <g ref={ref}>
     {spans.map(s => <path key={s.id} d={spanPath(s, 0, 0)} fill="none" stroke={depthColor(s.depth)} strokeWidth={s.wire * (1 - s.depth * 0.6)} strokeLinecap="round" />)}
   </g>
@@ -115,7 +115,7 @@ export const PowerLines = memo(function PowerLines({ elements, layer }: { elemen
   const groups = useMemo(() => {
     const by = new Map<string, Span[]>()
     const layers = new Map(elements.map(e => [e.id, e.layer]))
-    powerSpans(elements).filter(s => layers.get(s.id.slice(0, s.id.indexOf(">"))) === layer).forEach(s => { const k = `${s.group}:${s.a.d === s.b.d ? s.a.d : "mix"}`; const l = by.get(k); if (l) l.push(s); else by.set(k, [s]) })
+    powerSpans(elements).filter(s => layers.get(s.id.slice(0, s.id.indexOf(">"))) === layer).forEach(s => { const k = `${s.group}:${s.a.d === s.b.d && !s.a.pin === !s.b.pin ? `${s.a.d}${s.a.pin ? "p" : ""}` : "mix"}`; const l = by.get(k); if (l) l.push(s); else by.set(k, [s]) })
     return [...by.entries()]
   }, [elements, layer])
   if (!groups.length) return null
@@ -135,5 +135,5 @@ export const PowerFloors = memo(function PowerFloors({ elements }: { elements: L
     return [{ id: s.id, box: `${x.toFixed(1)},${y.toFixed(1)},${(Math.max(...xs) - x).toFixed(1)},${(Math.max(...ys) - y).toFixed(1)}`,
       line: pts.map(p => `${(p.x - x).toFixed(1)},${(p.y - y).toFixed(1)}`).join(" ") }]
   }), [elements])
-  return <>{floors.map(f => <div key={f.id} data-chicken-id={`wire-${f.id}`} data-chicken-world-box={f.box} data-chicken-line={f.line} data-chicken-nearby className="absolute" />)}</>
+  return <>{floors.map(f => <div key={f.id} data-chicken-id={`wire-${f.id}`} data-chicken-world-box={f.box} data-chicken-line={f.line} data-chicken-wire data-chicken-nearby className="absolute" />)}</>
 })

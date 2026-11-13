@@ -64,11 +64,14 @@ export function followParallax(el: HTMLElement | SVGElement, depth: number) {
 // (1 - d) as fast as the ground. Zoom is the parent's.
 // Vertically they slide from the camera's resting height (the floor near the screen's bottom), so a far thing
 // placed on the horizon stays there on any screen size and only rises when the camera climbs.
-const depthFollowers = new Map<HTMLElement | SVGElement, number>()
+// Pinned to a layer of the scenery far behind (LayoutElement.backdrop), it slides vertically from the camera at 0
+// like that layer, so it keeps its point of the layer on every screen.
+const depthFollowers = new Map<HTMLElement | SVGElement, { depth: number; pinned: boolean }>()
 let restY = 0
-const placeDepth = (depth: number, el: HTMLElement | SVGElement) => {
-  el.style.transform = depth ? `translate3d(${(liveCamera.x * depth).toFixed(2)}px,${(-(liveCamera.y - restY) * depth).toFixed(2)}px,0)` : ''
+const placeDepth = ({ depth, pinned }: { depth: number; pinned: boolean }, el: HTMLElement | SVGElement) => {
+  el.style.transform = depth ? `translate3d(${(liveCamera.x * depth).toFixed(2)}px,${(-(liveCamera.y - (pinned ? 0 : restY)) * depth).toFixed(2)}px,0)` : ''
 }
+export const cameraRestY = () => restY
 // the camera's y at rest (ParquinhoPlay sets it when the screen or the Pátio's height changes)
 export function setCameraRestY(y: number) {
   if (y === restY) return
@@ -76,12 +79,13 @@ export function setCameraRestY(y: number) {
   depthFollowers.forEach(placeDepth)
   cameraListeners.forEach(fn => fn(liveCamera.x, liveCamera.y - restY))
 }
-export function followDepth(el: HTMLElement | SVGElement, depth: number) {
-  depthFollowers.set(el, depth); placeDepth(depth, el)
+export function followDepth(el: HTMLElement | SVGElement, depth: number, pinned = false) {
+  const f = { depth, pinned }
+  depthFollowers.set(el, f); placeDepth(f, el)
   return () => { depthFollowers.delete(el) }
 }
 // a world x of something at `depth` under the current camera, and back (for placing and dragging it)
-export const depthOffset = (depth: number) => ({ x: liveCamera.x * depth, y: -(liveCamera.y - restY) * depth })
+export const depthOffset = (depth: number, pinned = false) => ({ x: liveCamera.x * depth, y: -(liveCamera.y - (pinned ? 0 : restY)) * depth })
 
 // called with the camera after each move, its y from the resting height (the wires between poles of different
 // depths are redrawn with it)

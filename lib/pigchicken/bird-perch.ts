@@ -28,9 +28,10 @@ export const CHICKEN_RUN = 510
 
 // the wires and the camera this frame, the players' middles in world px, and the birds on the wires
 // time: s, advanced by the owner each frame (a bird not stepped for a second no longer holds its spot)
-export type PerchWorld = { spans: Span[]; byId: Map<string, Span>; camX: number; camY: number; players: { x: number; y: number }[]; birds: Set<PerchState>; time: number }
+// camY: the camera's y from its resting height restY (wires pinned to a backdrop layer slide from the camera at 0)
+export type PerchWorld = { spans: Span[]; byId: Map<string, Span>; camX: number; camY: number; restY: number; players: { x: number; y: number }[]; birds: Set<PerchState>; time: number }
 export function createPerchWorld(): PerchWorld {
-  return { spans: [], byId: new Map(), camX: 0, camY: 0, players: [], birds: new Set(), time: 0 }
+  return { spans: [], byId: new Map(), camX: 0, camY: 0, restY: 0, players: [], birds: new Set(), time: 0 }
 }
 export function setPerchSpans(w: PerchWorld, spans: Span[]) {
   w.spans = spans; w.byId = new Map(spans.map(s => [s.id, s]))
@@ -70,12 +71,12 @@ function free(w: PerchWorld, self: PerchState | null, span: Span, t: number, len
 export function perchSeek(w: PerchWorld, x: number, y: number, p: BirdPerchParams, rand: () => number = Math.random, avoid?: { x: number; y: number }, self: PerchState | null = null): { span: string; t: number } | null {
   const found: { span: string; t: number; d: number }[] = []
   for (const s of w.spans) {
-    const { len } = spanCurve(s, w.camX, w.camY)
+    const { len } = spanCurve(s, w.camX, w.camY, w.restY)
     if (len < p.spacing * 2) continue
     const slots = Math.min(60, Math.floor(len / p.spacing))
     for (let k = 1; k < slots; k++) {
       const t = k / slots
-      const at = spanPoint(s, t, w.camX, w.camY)
+      const at = spanPoint(s, t, w.camX, w.camY, w.restY)
       const d = Math.hypot(at.x - x, at.y - y)
       if (d > p.range) continue
       if (avoid && Math.hypot(at.x - avoid.x, at.y - avoid.y) < p.alert * 1.6) continue
@@ -113,7 +114,7 @@ export function perchStep(w: PerchWorld, st: PerchState, pos: { x: number; y: nu
   const span = w.byId.get(st.span)
   st.left -= dt; st.seen = w.time
   if (!span || st.left <= 0) { perchEnd(w, st); return 'done' }
-  const at = spanPoint(span, st.t, w.camX, w.camY)
+  const at = spanPoint(span, st.t, w.camX, w.camY, w.restY)
   const tx = at.x, ty = at.y - PERCH_LIFT
   if (st.phase === 'fly') {
     const dx = tx - pos.x, dy = ty - pos.y, d = Math.hypot(dx, dy), step = st.speed * dt
@@ -142,8 +143,8 @@ export function perchStep(w: PerchWorld, st: PerchState, pos: { x: number; y: nu
     }
   }
   // else it sidesteps along the wire, away from the player (and from the bird next to it)
-  const { len } = spanCurve(span, w.camX, w.camY)
-  const ahead = spanPoint(span, Math.min(1, st.t + 0.01), w.camX, w.camY)
+  const { len } = spanCurve(span, w.camX, w.camY, w.restY)
+  const ahead = spanPoint(span, Math.min(1, st.t + 0.01), w.camX, w.camY, w.restY)
   const away = Math.sign((ahead.x - tx) * (tx - who.x)) || 1
   const speed = p.fleeSpeed * run * (0.12 + 0.3 * p.flee) * (1 - d / p.alert)
   const next = Math.max(0.04, Math.min(0.96, st.t + (away * speed * dt) / Math.max(1, len)))

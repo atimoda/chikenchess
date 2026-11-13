@@ -131,7 +131,9 @@ export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: {
 
 // ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
 // hardN: the outside of an "Objeto duro" edge (its walls stop her, its floors catch her feet)
-type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams; ceil?: boolean; hardN?: number[] }
+// side: a piece of a thin line with two sides (a power wire, `data-chicken-wire`): `top` the floor she walks on,
+// otherwise the ceiling under it she hangs from; `base` names the line, so she can switch to its other side
+type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams; ceil?: boolean; hardN?: number[]; side?: { base: string; top: boolean } }
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
@@ -813,14 +815,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const out: Seg[] = []
     const hardShapes: typeof HARD_SHAPES = []
     let source: Element | undefined, mask: PlatformOcclusion | undefined
-    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams, ceil = false, top = false, hardN?: number[]) => {
+    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams, ceil = false, top = false, hardN?: number[], side?: Seg['side']) => {
       const len = Math.hypot(bx - ax, by - ay); if (len < 4) return
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
       const wall = climbable || ceil || (!floor && Math.min(a, 180 - a) > 45)
       const topEdge = top || id.endsWith(':top')
       const visible = mask && source && mask.clip(source, id, mask.depth, ax - mask.x, ay - mask.y, bx - mask.x, by - mask.y)
       if (!visible) {
-        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce, ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}) })
+        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce, ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}), ...(side ? { side } : {}) })
         return
       }
       const dx = bx - ax, dy = by - ay
@@ -830,7 +832,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         out.push({
           id: i === 0 ? id : `${id}~${i}`, ax: ax + dx * from, ay: ay + dy * from,
           bx: ax + dx * to, by: ay + dy * to, anchorX: ax, clipOffset: from * len, topEdge, len: partLen, ang: a, wall, solid, bounce,
-          ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}),
+          ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}), ...(side ? { side } : {}),
         })
       })
     }
@@ -888,11 +890,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
             }
           }
         })
+        // a wire (`data-chicken-wire`) has two sides: under each floor piece, a ceiling she hangs from
+        const wire = node.dataset.chickenWire !== undefined
         lines?.forEach((line, group) => {
+          const base = `${id}:${group}`
           for (let i = 1; i < line.length; i++) {
             const [ax, ay] = line[i - 1], [bx, by] = line[i]
             if (ax !== bx && r.top + Math.max(ay, by) < groundY - 4) {
-              add(`${id}:l${group ? `${group}:` : ''}${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, true)
+              const g = group ? `${group}:` : ''
+              add(`${id}:l${g}${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, true, false, undefined, false, false, undefined, wire ? { base, top: true } : undefined)
+              if (wire) add(`${id}:h${g}${i}`, r.left + ax, r.top + ay, r.left + bx, r.top + by, false, false, false, undefined, true, false, undefined, { base, top: false })
             }
           }
         })
@@ -1080,18 +1087,29 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (n2[0] * toward[0] + n2[1] * toward[1] < 0) n2 = [u2[1], -u2[0]]
     return n2
   }
-  // whether the floating floor is a box top with an underside right below her (where hangUnder would put her)
-  function canHangUnder(plat: Seg) {
-    const bp = boxPart(plat.id)
-    return !!bp && bp.part === 'top' && !!partAt(bp.base, 'under', S.x, null)
+  // the piece of a wire's side (its floor, `top`, or the ceiling under it) covering x
+  function wireSideAt(base: string, top: boolean, x: number) {
+    return SEGS.find(o => o.side?.base === base && o.side.top === top && x >= Math.min(o.ax, o.bx) - 0.5 && x <= Math.max(o.ax, o.bx) + 0.5) ?? null
   }
-  // standing on a floating box: hang upside down from its underside, right below (switching sides)
-  function hangUnder(plat: Seg, look: number) {
+  // the ceiling right below her feet on a floating floor: a box top's underside, or the other side of a wire
+  function underSide(plat: Seg) {
+    if (plat.side?.top) return wireSideAt(plat.side.base, false, S.x)
     const bp = boxPart(plat.id)
-    if (!bp || bp.part !== 'top') return false
-    const under = partAt(bp.base, 'under', S.x, null)
+    return bp && bp.part === 'top' ? partAt(bp.base, 'under', S.x, null) : null
+  }
+  // whether the floating floor is a box top (or a wire) with an underside right below her (where hangUnder would put her)
+  function canHangUnder(plat: Seg) {
+    return !!underSide(plat)
+  }
+  // standing on a floating box (or a wire): hang upside down from its underside, right below (switching sides)
+  function hangUnder(plat: Seg, look: number) {
+    const under = underSide(plat)
     if (!under) return false
-    clingFrame(under, [0, 1], S.x, under.ay)
+    const y = floorY(under, S.x) ?? under.ay
+    // on a sloped wire piece her feet point into the line, square to it
+    const ux = (under.bx - under.ax) / under.len, uy = (under.by - under.ay) / under.len
+    const n = ux >= 0 ? [-uy, ux] : [uy, -ux]
+    clingFrame(under, n, S.x, y)
     S.face = -look
     S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5; sfx('grab')
     return true
@@ -1122,6 +1140,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function switchSide(sg: Seg) {
     if (sg.solid) return false
     const c = S.cl, bp = boxPart(sg.id)
+    // under a wire: up onto it, at the same point
+    if (sg.side && !sg.side.top) {
+      const top = wireSideAt(sg.side.base, true, c.px)
+      if (!top) return false
+      const look = screenFace()
+      standAt(c.px, floorY(top, c.px) ?? c.py, top, look)
+      return true
+    }
     if (bp && (bp.part === 'under' || bp.part === 'topBelow')) {
       const top = partAt(bp.base, 'top', c.px, null)
       if (!top) return false
@@ -1207,7 +1233,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     if (s < 0 || s > sg.len) {
       const end = s < 0 ? [sg.ax, sg.ay] : [sg.bx, sg.by], other = s < 0 ? [sg.bx, sg.by] : [sg.ax, sg.ay]
-      const upper = end[1] < other[1] - 1
+      // a wire's underside is no wall: its higher end never climbs over onto the wire, and past its last piece she falls
+      const upper = end[1] < other[1] - 1 && !sg.side
       if (upper) {
         // top end: climb over onto the floor behind it (a box's top edge), if there is one
         const ix = end[0] - c.n[0] * 26 * R.scale

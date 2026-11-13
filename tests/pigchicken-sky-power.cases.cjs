@@ -347,3 +347,55 @@ test('clouds: cumulus heaps of puffs, more of them with Gomos and Desfiado; old 
     assert.ok(c.puffs.every(p => p.r - p.dy <= c.top), 'every puff is inside the cloud\'s box')
   }
 })
+
+const BD = loadTs('lib/pigchicken/backdrop-layers.ts')
+// live-camera's depthOffset, with the camera at (camX, camY) and its resting height restY
+const offset = (camX, camY, restY) => (d, pinned) => ({ x: camX * d, y: -(camY - (pinned ? 0 : restY)) * d })
+
+test('the backdrop layers listed for pinning follow what the Pátio shows, farthest first', () => {
+  const m = { ...MT.MOUNTAINS_DEFAULT, show: true, ranges: 3 }
+  const all = BD.backdropLayers({ mountains: m, clouds: true, forest: true })
+  assert.deepEqual(all.map(l => l.id), ['sun', 'clouds', 'range0', 'range1', 'range2', 'forestFar', 'forestNear'])
+  assert.deepEqual(all.map(l => l.depth), [...all.map(l => l.depth)].sort((a, b) => b - a))
+  const bare = BD.backdropLayers({ mountains: { ...m, show: false }, clouds: false, forest: false })
+  assert.deepEqual(bare.map(l => l.id), ['sun'])
+})
+
+test('pinning a tower to a range keeps it in place sideways, puts its foot on the crest and slides like the layer', () => {
+  const m = MT.MOUNTAINS_DEFAULT, worldW = 3 * world.SCENE_W
+  const tower = L.normalizeElement({ ...L.createElement('tower', 900, 300), params: { power: P.defaultPower('tower') } })
+  const cam = offset(400, 120, 60)
+  const pinned = BD.moveToDepth(tower, { depth: 0, backdrop: 'range0' }, cam, { worldW, mountains: m })
+  assert.equal(pinned.backdrop, 'range0')
+  assert.equal(pinned.depth, BD.MOUNTAIN_RANGES[0].p)
+  // same place on the screen sideways: x + camX × depth stays
+  assert.ok(Math.abs(pinned.x + 400 * pinned.depth - tower.x) < 1e-6)
+  // its foot on the range's crest below its centre (layer units start BACKDROP_PAD_L before the world)
+  const crest = BD.rangeRidge(worldW, 0, m).crest
+  assert.ok(Math.abs(pinned.y + pinned.h - BD.crestY(crest, pinned.x + pinned.w / 2 + BD.BACKDROP_PAD_L)) < 1e-6)
+  // saved and loaded, it keeps the layer and its depth
+  const again = L.normalizeElement(JSON.parse(JSON.stringify(pinned)))
+  assert.equal(again.backdrop, 'range0')
+  assert.equal(again.depth, BD.MOUNTAIN_RANGES[0].p)
+  assert.equal(again.solid, false)
+  // letting go keeps the depth and the place on the screen
+  const free = BD.moveToDepth(pinned, { depth: pinned.depth }, cam)
+  assert.equal(free.backdrop, undefined)
+  assert.equal(free.depth, pinned.depth)
+  assert.ok(Math.abs(free.y + 60 * pinned.depth - pinned.y) < 1e-6)
+  // a backdrop id that does not exist is dropped
+  assert.equal(L.normalizeElement({ ...pinned, backdrop: 'lua' }).backdrop, undefined)
+})
+
+test('a wire to a pinned tower slides its end from the camera at 0, like the layer', () => {
+  const near = L.normalizeElement({ ...L.createElement('tower', 200, 300), params: { power: P.defaultPower('tower') } })
+  const far = L.normalizeElement({ ...L.createElement('tower', 1200, 300), backdrop: 'range1', params: { power: P.defaultPower('tower') } })
+  const [s] = P.powerSpans([near, far])
+  assert.equal(s.b.pin, true)
+  assert.equal(P.fixedDepth([s]), false)
+  const d = BD.MOUNTAIN_RANGES[1].p
+  // camera 100 above its resting height of 50: the pinned end rises (100 + 50) × depth, the near one stays
+  const c = P.spanCurve(s, 0, 100, 50)
+  assert.ok(Math.abs(c.b.y - (s.b.y - 150 * d)) < 1e-6)
+  assert.equal(c.a.y, s.a.y)
+})
