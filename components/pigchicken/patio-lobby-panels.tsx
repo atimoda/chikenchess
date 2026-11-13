@@ -19,6 +19,7 @@ import {
   UNSAVED_DAYS, type PatioLobby, type PatioLobbyInfo, type PatioPerson,
 } from "@/lib/pigchicken/patio-online"
 import type { PatioSaveState } from "./use-patio-lobby"
+import { NewPatioGenerator } from "./new-patio-generator"
 import { usePatioLiveCounts, type PatioLiveCounts } from "@/lib/pigchicken/patio-live"
 
 export const DEFAULT_PATIO_NAME = "Pátio das Galinhas"
@@ -219,7 +220,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   isAdmin: boolean
   isAccount: boolean
   onOpen: (id: string | null) => void
-  onNew: (empty?: NewPatioKind) => void
+  onNew: (kind?: NewPatioKind) => void
   onLogin: () => void
   onDeleted: (id: string) => void | Promise<void>
   // the star on the open Pátio's row goes through its own state, so the Salvar panel shows it too
@@ -247,6 +248,8 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [dup, setDup] = useState<Dup>(null)
   const [tick, setTick] = useState(0)
+  // the generator of a Pátio "do zero" (Empty or Basic biome)
+  const [generator, setGenerator] = useState(false)
   const local = useMemo(() => { void tick; return localPatios() }, [tick])
   const all = savedAll || favAll
   useEffect(() => {
@@ -305,9 +308,10 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
     <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(580, vw - 24) - 12), y: 64, w: Math.min(580, vw - 24), h: Math.min(720, vh - 80) })} className={panelCls}>
       <PanelHead title="Playgrounds" icon={<FolderOpen className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
       <div className="flex shrink-0 gap-2">
-        <button type="button" onClick={() => onNew(false)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
-        <button type="button" onClick={() => onNew(true)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio vazio</button>
+        <button type="button" onClick={() => onNew("default")} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
+        <button type="button" aria-expanded={generator} onClick={() => setGenerator(v => !v)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]", generator && "bg-[#ffd166]/15")}><Plus className="h-4 w-4" /> Novo Pátio do zero</button>
       </div>
+      {generator && <div className="shrink-0"><NewPatioGenerator onCreate={recipe => onNew(recipe)} /></div>}
 
       {!server && (
         <p className="text-[11px] leading-relaxed text-[#ffd166]">
