@@ -17,12 +17,14 @@ import { CustomTreeArt, CustomTreeStyles } from "./tree-art"
 import { SceneryWindStyles } from "./scenery-wind-bend"
 import { LanesArt, ZoneArt } from "./sound-zone-art"
 import { SurfaceArt } from "./surface-art"
+import { ChalkboardArt } from "./chalkboard-art"
 
 // one element's art filling its box
 export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h"> & { depth?: number }; worldX?: number; editing?: boolean }) {
   if ((el.kind === "pole" || el.kind === "tower") && el.params.power) return <PowerArt kind={el.kind} power={el.params.power} w={el.w} depth={el.depth} />
   if (el.kind === "zone") return el.params.zone ? <ZoneArt zone={el.params.zone} /> : null
   if (el.kind === "lanes") return el.params.lanes ? <LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing={editing} /> : null
+  if (el.kind === "chalkboard") return el.params.chalkboard ? <ChalkboardArt board={el.params.chalkboard} w={el.w} h={el.h} /> : null
   if (el.kind === "house") return <HouseArt house={el.params.house ?? normalizeHouse(null)} />
   if ((el.kind === "ground" || el.kind === "wall") && el.params.surface) return <SurfaceArt surface={el.params.surface} w={el.w} h={el.h} />
   if (el.kind === "tree" && el.params.tree) return <CustomTreeArt tree={el.params.tree} worldX={worldX} />

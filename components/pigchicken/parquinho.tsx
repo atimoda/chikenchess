@@ -75,6 +75,7 @@ import { drawAbductions, drawFreedSouls } from "@/components/pigchicken/draw/sou
 import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeSoulEntries } from "@/lib/pigchicken/soul-library"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { stageWidth } from "@/lib/stage-size"
+import { createTrainingGhosts } from "@/components/pigchicken/training-ghosts"
 
 // Próximo instrumento / Próxima arma / Próximo utilitário pressed this frame: the group to go through (the first
 // one listed wins when several are pressed together)
@@ -269,6 +270,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const hitboxesRef = useRef(hitboxes)
   hitboxesRef.current = hitboxes
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const ghostHostRef = useRef<HTMLDivElement>(null)
   // the inventory wheel has its own canvas, above the chicken
   const wheelCanvasRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLDivElement>(null)
@@ -606,6 +608,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
     const layoutSync = createLayoutSync(combat)
     let syncedElements: LayoutElement[] | null = null, syncedScreens = -1, syncedPatio: string | null | undefined = undefined
+    // the Quadros de lousa's ghosts (training-ghosts.ts), in world units like the layout they come from
+    const ghosts = ghostHostRef.current ? createTrainingGhosts(ghostHostRef.current) : null
+    let ghostElements: LayoutElement[] = []
     const place = () => {
       // the temple: the gong (strike it to start) and a few weapons and instruments by the entrance
       combat.addButton(0, G - 40, "gong", 130, 150)
@@ -706,6 +711,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         }
         worldBoxes = nextBoxes
         worldMusic = layoutMusic(shown)
+        ghostElements = shown
         setPerchSpans(perches, powerSpans(shown.filter(e => !e.hidden)))
         playZones = allZones()
       }
@@ -778,7 +784,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         panDeltaX = 0; panDeltaY = 0
       }
       // the other local players' chickens and the chicks that follow her live in the same camera
-      const others = [...(extras?.current?.values() ?? []), ...(chicks?.current?.values() ?? [])]
+      const others = [...(extras?.current?.values() ?? []), ...(chicks?.current?.values() ?? []), ...(ghosts?.engines() ?? [])]
       if (next !== camX || nextOy !== oy) {
         engine.shift(camX - next, nextOy - oy)
         others.forEach(o => o.shift(camX - next, nextOy - (oy as number)))
@@ -799,6 +805,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const os = o.getMotionState()
         if (Math.abs(os.groundY - (G + camY)) > 0.01) o.setGroundHeight(os.height - G - camY)
         o.setBounds(walls)
+      })
+      ghosts?.frame({
+        elements: ghostElements, camX, camY, zoom, dt, walls,
+        players: [st, ...[...(extras?.current?.values() ?? [])].map(o => o.getMotionState())].map(os => ({ x: os.x + camX, y: os.y - camY })),
       })
       // the zoom pivots on the stage's centre, so a new stage size (the editor's dock) also redraws it
       if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY || zoom !== drawnZoom || stageWidth() !== drawnW || window.innerHeight !== drawnH)) {
@@ -1470,6 +1480,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     return () => {
       headerObserver.disconnect()
       cancelGameFrame(raf)
+      ghosts?.dispose()
       net.dispose()
       unsub()
       unsubItems()
@@ -1519,6 +1530,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play.pigchicken-camera-mode { cursor: grab; } body.pigchicken-play.pigchicken-camera-dragging { cursor: grabbing; } body.pigchicken-play.pigchicken-soul-hover { cursor: pointer; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
       {cameraMode && <div role="img" aria-label="Modo zoom e panorama" className="pointer-events-none fixed left-4 top-16 z-[209] text-white opacity-40"><Search className="h-8 w-8" aria-hidden="true" /></div>}
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
+      {/* the Quadros de lousa's ghosts, behind the players and the chicks */}
+      <div ref={ghostHostRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[198] [&_*]:!pointer-events-none" />
       <canvas ref={wheelCanvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[205] h-full w-full" />
       <div ref={hudRef} className="pointer-events-none absolute left-3 z-[120] font-mono text-[11px] text-[#93a79a]" style={{ bottom: groundHeight + 10 }} />
       {/* the inventory bar is drawn on the canvas; this invisible layer sits on top of it: a click or a tap equips the

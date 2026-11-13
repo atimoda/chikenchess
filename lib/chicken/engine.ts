@@ -119,6 +119,9 @@ export type ChickenEngine = {
   setBot: (read: (() => Partial<Record<ChickenAction, boolean>>) | null) => void
   // falls from above the screen at x (screen px): a player arriving in the lobby
   dropAt: (x: number) => void
+  // puts her at (x, y) (screen px, her feet) facing `face`, still, in the air: she falls onto the floor below
+  // (the Quadro de lousa's ghost starting its move again)
+  placeAt: (x: number, y: number, face?: 1 | -1) => void
   destroy: () => void
 }
 
@@ -261,7 +264,7 @@ function releaseSharedAudio() {
 }
 
 // species: the bird's tuning over the configured chicken's (lib/chicken/species.ts); art: its own set of parts
-export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean; species?: BirdSpecies; art?: ChickenArtSet }): ChickenEngine {
+export function createChickenEngine(host: HTMLElement, opts: { groundHeight: number; look?: ChickenLook; dropIn?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean; species?: BirdSpecies; art?: ChickenArtSet; ghost?: boolean }): ChickenEngine {
   sharedAudio.users++
   const svg = document.createElementNS(NS, 'svg')
   svg.setAttribute('aria-hidden', 'true')
@@ -402,7 +405,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function sfx(ev: string) {
     const v = (R as any)['sfx_' + ev] as string | undefined
     actx = sharedAudio.ctx
-    if (!v || !actx || !controls.sound || R.volume <= 0) return
+    if (!v || !actx || !controls.sound || R.volume <= 0 || opts.ghost) return
     const cats = v === 'all' ? Object.keys(CHICKEN_CLUCKS).filter(c => (R as any)['snd_' + c]) : [v]
     const ready = (c: string) => chickenClucks(voice, c).filter(n => buffers[n])
     // byType: draw the type first, so every type has the same chance however many samples it has
@@ -1363,7 +1366,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   const onRootDown = (e: PointerEvent) => {
     // the Pátio (game mode) can pick her up too; a remote chicken (online) is not ours to move
-    if (portalEntry || e.button !== 0 || remote) return
+    if (portalEntry || e.button !== 0 || remote || opts.ghost) return
     goal = null
     e.preventDefault(); e.stopPropagation(); ensureAudio()
     const p = local(e.clientX, e.clientY)
@@ -2131,6 +2134,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       paintLook(next ?? config.look)
     },
     dropAt(x) { if (!portalEntry) fallFrom(clamp(x, 40 * R.scale, W - 40 * R.scale), -160 * R.scale, 0, 0) },
+    placeAt(x, y, face) {
+      if (portalEntry || S.held) return
+      S.broodLatch = false; S.shocking = false; S.sliding = false; S.boostT = 0; S.standT = 0; prevJump = false
+      fallFrom(x, y, 0, 0)
+      if (face) S.face = face
+    },
     destroy() {
       throwTransition.reset()
       cancelGameFrame(raf)

@@ -37,6 +37,7 @@ import { TreePanel } from "./tree-panel"
 import { SurfacePoints } from "./surface-points"
 import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
+import { CHALK_TEXT_MAX, DEMO_IDS, GHOST_OFFSET, GHOST_REACH, TRAINING_DEMOS, chalkboardForDemo, type ChalkboardParams, type DemoId } from "@/lib/pigchicken/chalkboard"
 import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, GONG_TITLE_MAX, type GongParams } from "@/lib/pigchicken/gong"
 import { loadLibrary, subscribeLibrary } from "@/lib/pigchicken/song-library"
 import { EditorDock, useEditorDocked } from "./editor-dock"
@@ -698,6 +699,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
       {isSurfaceElement(el.kind) && el.params.surface && <SurfaceFields el={el} surface={el.params.surface} onChange={surface => set({ surface })} />}
       {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
+      {el.kind === "chalkboard" && el.params.chalkboard && <ChalkboardFields board={el.params.chalkboard} onChange={(chalkboard, step) => set({ chalkboard }, step && `${step}:${el.id}`)} />}
       {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
       {el.kind === "button" && (
         <label className="grid gap-1">
@@ -710,6 +712,35 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
 
     </FloatingPanel>
   )
+}
+
+// a Quadro de lousa: its text (in chalk) and the move its ghost does while a player is near
+function ChalkboardFields({ board, onChange }: { board: ChalkboardParams; onChange: (board: ChalkboardParams, step?: string) => void }) {
+  const gesture = useRef(0)
+  const end = () => { gesture.current++ }
+  return <>
+    <label className="grid gap-1">
+      <span>Texto da lousa</span>
+      <textarea aria-label="Texto da lousa" value={board.text} maxLength={CHALK_TEXT_MAX} rows={6}
+        onChange={e => onChange({ ...board, text: e.target.value }, "chalk-text")}
+        className="resize-y rounded-md border border-white/15 bg-[#0b110e] p-2 text-[#dfe8df] outline-none focus:border-primary" />
+    </label>
+    <label className="grid gap-1">
+      <span>Fantasma</span>
+      <select aria-label="Movimento do fantasma" value={board.demo} onChange={e => onChange(chalkboardForDemo(board, e.target.value as DemoId | ""))} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        <option value="">Nenhum</option>
+        {DEMO_IDS.map(id => <option key={id} value={id}>{TRAINING_DEMOS[id].label}</option>)}
+      </select>
+    </label>
+    {board.demo && <div className="grid gap-field">
+      <PatioRange label="Início · horizontal" min={GHOST_OFFSET.min} max={GHOST_OFFSET.max} step={10} value={board.ghostX} onEnd={end}
+        onChange={ghostX => onChange({ ...board, ghostX }, `chalk-x:${gesture.current}`)} />
+      <PatioRange label="Início · vertical" min={GHOST_OFFSET.min} max={GHOST_OFFSET.max} step={10} value={board.ghostY} onEnd={end}
+        onChange={ghostY => onChange({ ...board, ghostY }, `chalk-y:${gesture.current}`)} />
+      <PatioRange label="Aparece a" min={GHOST_REACH.min} max={GHOST_REACH.max} step={10} value={board.reach} onEnd={end}
+        onChange={reach => onChange({ ...board, reach }, `chalk-reach:${gesture.current}`)} />
+    </div>}
+  </>
 }
 
 // a Gongo: the song it plays (picked here, not in the jukebox), the strikes, its title and how it forgets
@@ -770,6 +801,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
     return { key: `power-${id}`, kind: m.kind as ElementKind, label: `${m.kind === "pole" ? "Poste" : "Torre"} · ${m.label}`, params: { power: { ...defaultPower(m.kind), model: id, links: [] } } }
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
+  { group: "Treino", items: [{ key: "chalkboard", kind: "chalkboard", label: ELEMENT_DEFS.chalkboard.label }] },
   { group: "Música", items: (["zone", "lanes", "gong", "jukebox"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
   { group: "Esportivos", items: SPORTS_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
@@ -789,6 +821,7 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "zone") return <span className="flex h-7 w-10 items-center justify-center rounded-md border-2 border-dashed border-[#7b8cff] bg-[#7b8cff]/20 text-[13px] text-[#7b8cff]">♫</span>
   if (entry.kind === "gong") return <span aria-hidden="true" className="relative block h-8 w-9"><span className="absolute inset-x-0 top-0 h-1 rounded-sm bg-[#b3261e]" /><span className="absolute bottom-0 left-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute bottom-0 right-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute left-1/2 top-2 h-5 w-5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f2c46d,#c58b2e_55%,#7a4f12)]" /></span>
   if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
+  if (entry.kind === "chalkboard") return <span aria-hidden="true" className="block h-7 w-11 rounded-[3px] border-[3px] border-[#7a4f27] bg-[#2f5b3f]" />
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
   const m = entry.params?.power ? POWER_MODELS[entry.params.power.model] : null
   const w = m?.w ?? d.w, h = m?.h ?? d.h
