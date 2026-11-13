@@ -10,7 +10,7 @@
 
 # Pátios de exemplo
 
-- Todo Pátio de exemplo (hoje: Pátio padrão, Pôr do sol com torres, Vales e ilhas no céu) é criado no banco como um Pátio normal, com criador, padrinho e quem salvou = conta admin “jéjé” (profile code `7B23E26B10944F18`) e com o atributo Destaque, para aparecer em Destaques e ser atualizado pelo admin no Modo editor. Não vira botão do painel Playgrounds. Para um novo: layout em `lib/pigchicken/`, uma entrada em `lib/pigchicken/example-seed.ts` e `node scripts/example-patios-migration.cjs <AAAAMMDDNNNN>` para gerar a migração (detalhes em `docs/mechanics/patio/lobbies.md`).
+- Todo Pátio de exemplo (hoje: Pátio padrão, Pôr do sol com torres, Vales e ilhas no céu, Training room) é criado no banco como um Pátio normal, com criador, padrinho e quem salvou = conta admin “jéjé” (profile code `7B23E26B10944F18`) e com o atributo Destaque, para aparecer em Destaques e ser atualizado pelo admin no Modo editor. Não vira botão do painel Playgrounds. Para um novo: layout em `lib/pigchicken/`, uma entrada em `lib/pigchicken/example-seed.ts` e `node scripts/example-patios-migration.cjs <AAAAMMDDNNNN>` para gerar a migração (detalhes em `docs/mechanics/patio/lobbies.md`).
 
 # Versão e changelog
 

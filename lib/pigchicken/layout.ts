@@ -19,6 +19,7 @@ import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge } from './village
 import { VILLAGE_GROUND_ID, defaultSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
 import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from './power-lines'
 import { GONG_BOX, JUKEBOX_BOX, defaultGong, normalizeGong, type GongParams } from './gong'
+import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
@@ -50,7 +51,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'chalkboard'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -70,6 +71,7 @@ export type ElementParams = {
   surface?: SurfaceParams // Chão (biome) and Parede (style): the outline's points
   power?: PowerParams // Poste de energia and Torre de transmissão: model, line, wires
   gong?: GongParams // Gongo: its song, the strikes to start and stop it, its title
+  chalkboard?: ChalkboardParams // Quadro de lousa: its text and the ghost's move
 }
 
 export type LayoutElement = {
@@ -132,6 +134,8 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   tower: { label: 'Torre de transmissão', group: 'Energia', w: 380, h: 920, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 100 },
   // the guitar hero mode anywhere: the Gongo plays its song after its strikes, the Jukebox lets her pick one
   gong: { label: 'Gongo', group: 'Música', ...GONG_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GONG_BOX.w, minH: GONG_BOX.h },
+  // a green chalkboard with a text in chalk; its ghost chicken shows a move while a player is near (chalkboard.ts)
+  chalkboard: { label: 'Quadro de lousa', group: 'Treino', w: 420, h: 260, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 80 },
   jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
 }
 // the Gongo and the Jukebox keep their art's size
@@ -182,6 +186,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (isSurfaceElement(kind)) return { surface: defaultSurface(kind) }
   if (isPowerElement(kind)) return { power: defaultPower(kind) }
   if (kind === 'gong') return { gong: defaultGong() }
+  if (kind === 'chalkboard') return { chalkboard: defaultChalkboard() }
   return {}
 }
 
@@ -401,6 +406,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.power = normalizePower(kind, p.power)
   } else if (kind === 'gong') {
     params.gong = normalizeGong(p.gong)
+  } else if (kind === 'chalkboard') {
+    params.chalkboard = normalizeChalkboard(p.chalkboard)
   }
   const music = isMusicElement(kind)
   // in a depth of its own it is only scenery: no collisions of any kind
