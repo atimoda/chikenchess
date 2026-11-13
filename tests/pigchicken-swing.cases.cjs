@@ -122,9 +122,8 @@ test('a temple bomb a peck cancels does not hurt her', () => {
 test('each item has its own combo: order, window and the hit arc of each blow', () => {
   const c = createCombat()
   const items = structuredClone(DEFAULT_ITEMS)
-  items.wing.combo = ['spin', 'flat']
+  items.wing.combo = [{ kind: 'spin', arc: 360 }, { kind: 'flat', arc: 300 }]
   items.wing.comboWindow = 0.1
-  items.wing.meleeArcFlat = 300
   c.setItems(items)
   const kinds = []
   for (let i = 0; i < 3; i++) { step(c, { melee: true }); kinds.push(c.swing.kind); run(c, items.wing.meleeTime + 0.15) }
@@ -137,17 +136,43 @@ test('each item has its own combo: order, window and the hit arc of each blow', 
   assert.deepEqual(kinds, [['spin', 360], ['flat', 300], ['spin', 360]])
 })
 
-test('the combo order is saved and checked when loading', () => {
+test('two blows of the same direction can cover different angles', () => {
+  const c = createCombat()
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.wing.combo = [{ kind: 'down', arc: 45 }, { kind: 'down', arc: 270 }, { kind: 'up', arc: 90 }]
+  c.setItems(items)
+  const got = []
+  for (let i = 0; i < 4; i++) { step(c, { melee: true }); got.push([c.swing.kind, Math.round(c.swing.arc * 180 / Math.PI)]); run(c, 0.02) }
+  assert.deepEqual(got, [['down', 45], ['down', 270], ['up', 90], ['down', 45]])
+})
+
+test('the default combos keep the arcs the blows had before each one had its own', () => {
+  const arcs = id => DEFAULT_ITEMS[id].combo.map(s => `${s.kind}:${s.arc}`).join()
+  assert.equal(arcs('wing'), 'down:120,up:120,flat:120,spin:360')
+  assert.equal(arcs('pistol'), 'down:110,up:110,flat:110,spin:360')
+  assert.equal(arcs('bat'), 'down:150,up:150,flat:200,spin:360')
+  assert.equal(arcs('passagua'), 'down:150,up:150,flat:190,spin:360')
+  assert.equal(arcs('mjolnir'), 'down:150,up:150,flat:200,spin:360')
+  for (const d of Object.values(DEFAULT_ITEMS)) assert.ok(!('meleeArcUp' in d) && !('meleeArcFlat' in d), d.id)
+})
+
+test('the combo is saved and checked when loading; older saves get their arcs per direction', () => {
   const { loadItems } = loadTs('lib/pigchicken/items.ts')
   const previous = globalThis.window
   try {
-    let saved = { _v: 4, pistol: { combo: ['up', 'spin'], comboWindow: 0.8, meleeArcUp: 200 }, smg: { combo: ['up', 'nope'] }, rifle: { combo: [] } }
+    let saved = { _v: 4, pistol: { combo: ['up', 'spin', 'down'], comboWindow: 0.8, meleeArc: 60, meleeArcUp: 200 }, smg: { combo: ['up', 'nope'] }, rifle: { combo: [] }, bat: { meleeArcFlat: 250 } }
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
-    const it = loadItems()
-    assert.deepEqual(it.pistol.combo, ['up', 'spin'])
-    assert.equal(it.pistol.comboWindow, 0.8); assert.equal(it.pistol.meleeArcUp, 200)
+    let it = loadItems()
+    assert.deepEqual(it.pistol.combo, [{ kind: 'up', arc: 200 }, { kind: 'spin', arc: 360 }, { kind: 'down', arc: 60 }])
+    assert.equal(it.pistol.comboWindow, 0.8)
     assert.deepEqual(it.smg.combo, DEFAULT_ITEMS.smg.combo)
     assert.deepEqual(it.rifle.combo, DEFAULT_ITEMS.rifle.combo)
+    assert.deepEqual(it.bat.combo.map(s => s.arc), [150, 150, 250, 360], 'an old arc with no combo saved goes to the default order')
+    saved = { _v: 10, pistol: { combo: [{ kind: 'flat', arc: 500 }, { kind: 'spin', arc: 90 }, { kind: 'up', arc: 135 }] }, smg: { combo: [{ kind: 'up' }] }, rifle: { combo: ['up'] } }
+    it = loadItems()
+    assert.deepEqual(it.pistol.combo, [{ kind: 'flat', arc: 360 }, { kind: 'spin', arc: 360 }, { kind: 'up', arc: 135 }])
+    assert.deepEqual(it.smg.combo, DEFAULT_ITEMS.smg.combo, 'a blow with no angle is not a combo')
+    assert.deepEqual(it.rifle.combo, [{ kind: 'up', arc: 110 }], 'a bare direction takes the item\'s arc for it')
   } finally { globalThis.window = previous }
 })
 

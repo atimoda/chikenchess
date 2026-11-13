@@ -1,7 +1,7 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
-import { SWING_COMBO, SWING_PHASES, nextCombo, swingHitAt, swingLife, type Swing } from './swing'
+import { SWING_PHASES, nextCombo, swingCombo as comboOf, swingHitAt, swingLife, type Swing } from './swing'
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
@@ -183,6 +183,8 @@ export const pickupReach = (scale: number) => ({ x: (46 * scale + 10) * 1.15, y:
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const DEG = Math.PI / 180
+// a combo for an item that has none (never in the game: every item has one)
+const DEFAULT_COMBO = comboOf(110)
 
 export function createCombat() {
   let items: Record<ItemId, ItemDef> = structuredClone(DEFAULT_ITEMS)
@@ -1153,12 +1155,13 @@ export function createCombat() {
     const range = (strong ? d.heavyRange : d.meleeRange) * far
     // an item in the wing rides on its tip: the blow reaches its length further
     const reach = range + (wing ? 0 : d.length * scale * size)
-    // blows in a row alternate: down, up, horizontal, a full spin. Down comes clockwise facing right. The strong
-    // blow is always the same move and starts the combo over
-    const order = d.combo.length ? d.combo : SWING_COMBO
+    // blows in a row follow the item's combo (by default down, up, horizontal, a full spin), each with its own
+    // arc. Down comes clockwise facing right. The strong blow is always the same move and starts the combo over
+    const order = d.combo.length ? d.combo : DEFAULT_COMBO
     swingCombo = strong ? -1 : nextCombo(swingCombo, swingGap, d.comboWindow, order.length)
-    const kind = strong ? d.heavyKind : order[swingCombo % order.length]
-    const arc = kind === 'spin' ? Math.PI * 2 : (strong ? d.heavyArc : kind === 'up' ? d.meleeArcUp : kind === 'flat' ? d.meleeArcFlat : d.meleeArc) * DEG
+    const step = order[Math.max(0, swingCombo) % order.length]
+    const kind = strong ? d.heavyKind : step.kind
+    const arc = kind === 'spin' ? Math.PI * 2 : (strong ? d.heavyArc : step.arc) * DEG
     const face = Math.cos(aimAngle) >= 0 ? 1 : -1
     const time = Math.max(0.02, strong ? d.heavyTime : d.meleeTime), trailTime = Math.max(0.05, strong ? d.heavyTrailTime : d.trailTime)
     swing = {

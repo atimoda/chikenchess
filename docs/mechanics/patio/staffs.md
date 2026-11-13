@@ -1,6 +1,6 @@
 # Pátio: armas de bastão (pose, golpe rápido e golpe forte)
 
-Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). O golpe comum (fases, rastro, combo, rebate) está em [Combate](combat.md); inventário, munição do Taco e capturas do Passaguá em [Itens](items.md) e [Almas](souls.md).
+Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). O golpe comum (fases, rastro, combo, rebate) está em [Golpe e combo](melee.md); inventário, munição do Taco e capturas do Passaguá em [Itens](items.md) e [Almas](souls.md).
 
 ## O que é um bastão — 12/11, v2.9.0
 

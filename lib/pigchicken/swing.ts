@@ -14,6 +14,29 @@ export const SWING_KINDS: { value: SwingKind; label: string }[] = [
 // the default order of a combo (each item can have its own, up to COMBO_MAX blows)
 export const SWING_COMBO: SwingKind[] = ['down', 'up', 'flat', 'spin']
 export const COMBO_MAX = 6
+// one blow of a combo: its direction and the hit area's arc (degrees; the spin always 360)
+export type ComboStep = { kind: SwingKind; arc: number }
+export const COMBO_ARC_MIN = 20
+export const COMBO_ARC_MAX = 360
+// the arcs the combo's angle list offers (a saved arc outside it is shown too)
+export const COMBO_ARCS = [20, 30, 45, 60, 90, 110, 120, 135, 150, 160, 170, 180, 190, 200, 225, 240, 270, 300, 330, 360]
+// the default combo with the arcs of the blows down, up and horizontal
+export function swingCombo(down: number, up = down, flat = up): ComboStep[] {
+  const arcs: Record<SwingKind, number> = { down, up, flat, spin: 360 }
+  return SWING_COMBO.map(kind => ({ kind, arc: arcs[kind] }))
+}
+// one blow as it is kept: a known kind and a finite arc, clamped (the spin's is 360); anything else is null
+export function comboStep(kind: unknown, arc: unknown): ComboStep | null {
+  if (!isSwingKind(kind) || typeof arc !== 'number' || !Number.isFinite(arc)) return null
+  return { kind, arc: kind === 'spin' ? 360 : Math.min(COMBO_ARC_MAX, Math.max(COMBO_ARC_MIN, arc)) }
+}
+// a saved combo, or null when it is not one (empty, more than COMBO_MAX blows, a bad blow). Older saves kept only
+// the kinds: arcOf gives each one's arc
+export function cleanCombo(v: unknown, arcOf: (kind: SwingKind) => number): ComboStep[] | null {
+  if (!Array.isArray(v) || v.length < 1 || v.length > COMBO_MAX) return null
+  const out = v.map(s => typeof s === 'string' ? comboStep(s, isSwingKind(s) ? arcOf(s) : NaN) : s && typeof s === 'object' ? comboStep(s.kind, s.arc) : null)
+  return out.every(Boolean) ? out as ComboStep[] : null
+}
 // fractions of meleeTime; recuperação is what is left (0.40)
 export const SWING_PHASES = { prep: 0.25, strike: 0.1, follow: 0.25 }
 export const SWING_WINDUP = 18 * DEG // how far the wing winds back before the blow
