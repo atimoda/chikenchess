@@ -190,12 +190,32 @@ export function zombieImage(a: ZombieAnim) {
   return img.complete && img.naturalWidth ? img : null
 }
 export const ZOMBIE_HEIGHT = 175 // px on screen for the walk frame
-export function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
+// where its head and its feet are in each frame (sheet px from the anchor, towards where it faces): the frames lean
+// and sway, and the skeleton of a shocked one follows them (draw/shock.ts)
+const ZOMBIE_SPINE: Partial<Record<ZombieAnim, [number, number][]>> = {
+  walk: [[-15, -6], [5, -2], [21, 19], [-1, -16], [-15, -25], [-22, 1]],
+  attack: [[34, -1], [37, -1], [40, -1], [39, -1], [46, -1], [22, -1]],
+  hurt: [[-13, -2], [25, 4], [55, 11], [28, -12], [4, -1]],
+  idle: [[-33, -2], [-32, 3], [-31, 7], [-30, 8]],
+}
+// the sheet and the frame it shows right now
+function zombieFrame(g: Combat["targets"][number]) {
   const a: ZombieAnim = g.state === "attack" ? "attack" : g.state === "hurt" ? "hurt" : g.state === "dead" ? "dead" : g.state === "idle" ? "idle" : "walk"
+  const n = ZOMBIE_SHEETS[a].n
+  const dur = a === "attack" ? ZOMBIE_TIMES.attack : a === "hurt" ? ZOMBIE_TIMES.hurt : a === "dead" ? ZOMBIE_TIMES.dead : a === "idle" ? 0.9 : 0.8
+  const f = a === "walk" || a === "idle" ? Math.floor((g.animT / dur) * n) % n : Math.min(n - 1, Math.floor((g.animT / dur) * n))
+  return { a, f }
+}
+/** where a zombie's head and feet are on screen right now, from its place (px, already turned to its side) */
+export function zombieSpine(g: Combat["targets"][number]) {
+  const { a, f } = zombieFrame(g), [head, feet] = ZOMBIE_SPINE[a]?.[f] ?? [0, 0]
+  const k = (ZOMBIE_HEIGHT / ZOMBIE_SHEETS.walk.h) * (g.face < 0 ? -1 : 1)
+  return { head: head * k, feet: feet * k }
+}
+export function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
+  const { a, f } = zombieFrame(g)
   const sheet = ZOMBIE_SHEETS[a], img = zombieImage(a)
   if (!img) return
-  const dur = a === "attack" ? ZOMBIE_TIMES.attack : a === "hurt" ? ZOMBIE_TIMES.hurt : a === "dead" ? ZOMBIE_TIMES.dead : a === "idle" ? 0.9 : 0.8
-  const f = a === "walk" || a === "idle" ? Math.floor((g.animT / dur) * sheet.n) % sheet.n : Math.min(sheet.n - 1, Math.floor((g.animT / dur) * sheet.n))
   const k = ZOMBIE_HEIGHT / ZOMBIE_SHEETS.walk.h
   const hue = (g.data as { hue?: number } | undefined)?.hue ?? 0
   ctx.save()

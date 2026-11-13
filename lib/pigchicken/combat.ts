@@ -22,6 +22,7 @@ import { TAKE_WAIT, glideSoulMirror, importSouls, soulFromWho, soulWho, type Net
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
+import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
 import { scaleAt, type InstrumentScale } from './instrument-scales'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES, type PitchSet } from './music'
 import type { Drum, Held, Vibrato, VoiceId } from './synth'
@@ -84,7 +85,9 @@ const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
 // refill: seconds the gradual auto reload has counted toward the next shots coming back (reset whenever it is used).
 // group: the inventory group it sits in (its own when taken; dragging it on the bar may change it)
 // scale: the index in its item's `scales` it plays now (instruments with more than one scale)
-export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number }
+// flying: thrown and on its way back to her wing (a staff that comes back); specialAt: when its special is ready
+// again, on the world's clock (missing: ready)
+export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number; flying?: boolean; specialAt?: number }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
@@ -96,6 +99,15 @@ export type Bullet = {
 }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
+// a bolt of a shock, from one point to another: t counts up from before 0 (it shows a moment after the bolt it comes
+// from) to life; special: a special's (thicker, longer); sky: the thunder's bolt from the sky
+export type Bolt = { x1: number; y1: number; x2: number; y2: number; t: number; life: number; seed: number; special: boolean; sky?: boolean }
+// a staff thrown that comes back (the Martelo de Thor): straight out for `left` px, then back to its owner's wing;
+// hits: who it already hit on this leg. remote: another browser's (it only shows, back to where it left from: home)
+export type Flight = {
+  x: number; y: number; vx: number; vy: number; angle: number; spin: number; owned: Owned; owner: string; back: boolean; left: number; speed: number
+  damage: number; push: number; hits: Set<number>; remote?: boolean; home?: { x: number; y: number }
+}
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 // undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
@@ -115,6 +127,8 @@ export type Target = {
   net?: number; mirror?: boolean; netX?: number; netY?: number
   // what the soul it leaves will remember: the weapon that killed it, the instrument and the note that finished it
   soul?: SoulMark
+  // shocked by a lightning weapon (lib/pigchicken/shock.ts): it shakes, stands still and blinks in x-ray
+  shock?: Shock
 }
 export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
 // how long the tip stays up after it is destroyed (and after each hit while wrecked)
@@ -226,6 +240,10 @@ export function createCombat() {
   const kills = { aliens: 0, zombies: 0, bites: 0, undead: 0 }
   let view = { l: 0, r: 1280 }
   const bullets: Bullet[] = [], thrown: Thrown[] = [], targets: Target[] = [], pickups: Pickup[] = [], sparks: Spark[] = [], texts: FloatText[] = []
+  // the lightning weapons: the bolts showing, the staffs thrown that are coming back, the world's clock (the
+  // specials' cooldowns count on it) and how bright the sky still is from a special (1 right at the thunder)
+  const bolts: Bolt[] = [], flights: Flight[] = []
+  let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number }[] = []
   let swing: Swing | null = null
@@ -349,6 +367,90 @@ export function createCombat() {
       t.state = 'dead'; t.animT = 0; t.deadT = ZOMBIE_TIMES.dead + ZOMBIE_TIMES.fade; kills.zombies++; sound('zombieDie', null)
     }
   }
+
+  // ---------- shock (lib/pigchicken/shock.ts) ----------
+  const shockable = (t: Target) => t.deadT <= 0 && t.kind !== 'button' && t.state !== 'converted' && t.state !== 'dead' && (t.shield ?? 0) < 1
+  // the state itself: it shakes and blinks, stands still, and loses some of its harmony bar
+  function applyShock(t: Target, time: number, power: number, drain: number) {
+    t.shock = addShock(t.shock, time, power)
+    if (t.kind !== 'dummy') t.stun = Math.max(t.stun ?? 0, time)
+    if (drain > 0 && t.harmony) t.harmony = Math.max(0, t.harmony - drain)
+    if (t.kind === 'zombie' && (t.state === 'walk' || t.state === 'idle')) { t.state = 'hurt'; t.animT = 0 }
+    burst(t.x, t.y - t.h / 2, 5, '#cfe9ff', 180, 2)
+  }
+  function shockTarget(t: Target, time: number, power: number, drain: number, damage: number) {
+    const x = t.x, y = t.y - t.h / 2
+    // the owner's enemy: it shakes here at once, and the owner decides the rest
+    if (t.mirror && reportHit && t.net !== undefined) {
+      t.shock = addShock(t.shock, time, power)
+      reportHit({ id: t.net, d: damage, px: 0, x, y, sh: [time, power, drain] })
+      return
+    }
+    if (damage > 0) hitTarget(t, damage, 0, x, y, 'impact')
+    if (shockable(t)) applyShock(t, time, power, drain)
+  }
+  // a blow of a lightning weapon landed on `direct`: they are shocked, and the shock jumps on to the ones around,
+  // one after the other. from: where the bolt leaves the weapon; o: the item (the blow may be its special, which
+  // then starts counting again)
+  function zap(from: { x: number; y: number }, direct: Target[], d: ItemDef, heavy: boolean, o: Owned | null) {
+    if (!direct.length) return
+    const special = !!o && d.specialCooldown > 0 && d.specialRange > 0 && clock >= (o.specialAt ?? 0)
+    const range = special ? d.specialRange : heavy ? d.heavyShockRange : d.shockRange
+    if (range <= 0) return
+    if (special) o!.specialAt = clock + d.specialCooldown
+    const time = special ? d.specialTime : heavy ? d.heavyShockTime : d.shockTime
+    const power = special ? SHOCK_POWER.special : heavy ? SHOCK_POWER.heavy : SHOCK_POWER.quick
+    const life = special ? BOLT_LIFE_SPECIAL : BOLT_LIFE
+    const point = (t: Target) => ({ id: t.id, x: t.x, y: t.y - t.h / 2 })
+    const links = shockChain(direct.map(point), targets.filter(t => shockable(t) && !direct.includes(t)).map(point), range, special ? d.specialJumps : d.shockJumps)
+    // what the other browsers draw: x1, y1, x2, y2 and the hop of each bolt (-1: the one from the sky)
+    const sent: number[] = []
+    const bolt = (x1: number, y1: number, x2: number, y2: number, hop: number, sky = false) => {
+      bolts.push({ x1, y1, x2, y2, t: -hop * BOLT_HOP, life, seed: Math.random() * 1000, special, sky })
+      sent.push(Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2), sky ? -1 : hop)
+    }
+    const first = point(direct[0])
+    direct.forEach(t => { const p = point(t); bolt(from.x, from.y, p.x, p.y, 0); if (shockable(t)) shockTarget(t, time, power, d.shockDrain, special ? d.specialDamage : 0) })
+    links.forEach(l => {
+      bolt(l.from.x, l.from.y, l.to.x, l.to.y, l.hop)
+      const t = targets.find(g => g.id === l.to.id)
+      if (t) shockTarget(t, time, power, d.shockDrain, special ? d.specialDamage : d.shockDamage)
+    })
+    // the special: thunder falls from the sky on the first one hit and lights everything up; lightning glows less
+    if (special && d.specialKind === 'thunder') { bolt(first.x + rand(-80, 80), first.y - 1100, first.x, first.y, 0, true); skyFlash = 1 }
+    else if (special) skyFlash = 0.45
+    sound(special ? d.specialKind : 'zap', null)
+    if (netOn) netShots.push({ k: 'z', i: d.id, p: sent, s: special ? 1 : 0 })
+  }
+  // a staff that comes back (the Martelo de Thor) leaves her wing: straight where she aims, further with the charge
+  function launch(h: Owned, d: ItemDef, from: { x: number; y: number }, charge: number) {
+    const reach = d.returnRange * (d.returnMin + (1 - d.returnMin) * charge)
+    const face = Math.cos(aimAngle) >= 0 ? 1 : -1
+    flights.push({
+      x: from.x, y: from.y, vx: Math.cos(aimAngle) * d.returnSpeed, vy: Math.sin(aimAngle) * d.returnSpeed, angle: aimAngle, spin: face * 24, owned: h, owner: active,
+      back: false, left: reach, speed: d.returnSpeed, damage: d.returnDamage * (0.5 + 0.5 * charge), push: d.returnPush, hits: new Set(),
+    })
+    h.flying = true
+    sound('throw', null)
+    if (netOn) netShots.push({ k: 'hm', i: h.item, x: Math.round(from.x), y: Math.round(from.y), a: aimAngle, sp: d.returnSpeed, rg: Math.round(reach) })
+  }
+  // where a staff that comes back would fly if let go now: a straight line as long as the charge reaches, cut
+  // short by walls and the floor (null: the item in her wing is not being charged for that)
+  function predictReturn(from: { x: number; y: number }, ctx: StepCtx) {
+    const d = def()
+    if (!d.returnThrow || !heavyItem || heavyItem !== held()) return null
+    const charge = Math.min(1, heavyT / Math.max(0.05, d.returnCharge))
+    const reach = d.returnRange * (d.returnMin + (1 - d.returnMin) * charge)
+    const points = [{ x: from.x, y: from.y }]
+    for (let r = 12; r <= reach; r += 12) {
+      const x = from.x + Math.cos(aimAngle) * r, y = from.y + Math.sin(aimAngle) * r
+      points.push({ x, y })
+      if (y >= ctx.groundY || solidAt(ctx.boxes, x, y)) break
+    }
+    return points
+  }
+  // the charge of a staff's Atirar fills in its strong blow's time, or in its throw's when it is one that comes back
+  const staffCharge = (d: ItemDef) => Math.max(0.05, d.returnThrow ? d.returnCharge : d.heavyCharge)
 
   // a training dummy takes a hit: it loses life and breaks a stage at a time; wrecked, it only rattles and shows its tip again
   function hurtDummy(t: Target, damage: number, pushX: number, x: number, y: number) {
@@ -802,8 +904,21 @@ export function createCombat() {
     for (const s of list) {
       const d = items[s.i]
       if (!d) continue
-      const x = s.k === 't' ? s.x1 : s.x
+      const x = s.k === 't' ? s.x1 : s.k === 'z' ? s.p[0] ?? 0 : s.x
       const near = x > view.l - 200 && x < view.r + 200
+      if (s.k === 'z') {
+        // another browser's shock: its bolts (and the light of its special), only to be seen
+        const special = !!s.s
+        for (let n = 0; n + 4 < s.p.length; n += 5) bolts.push({ x1: s.p[n], y1: s.p[n + 1], x2: s.p[n + 2], y2: s.p[n + 3], t: -Math.max(0, s.p[n + 4]) * BOLT_HOP, life: special ? BOLT_LIFE_SPECIAL : BOLT_LIFE, seed: Math.random() * 1000, special, sky: s.p[n + 4] < 0 })
+        if (special && near) skyFlash = Math.max(skyFlash, d.specialKind === 'thunder' ? 1 : 0.45)
+        if (near && heard++ < 4) sounds.push({ kind: special ? d.specialKind : 'zap', item: null })
+        continue
+      }
+      if (s.k === 'hm') {
+        flights.push({ x: s.x, y: s.y, vx: Math.cos(s.a) * s.sp, vy: Math.sin(s.a) * s.sp, angle: s.a, spin: (Math.cos(s.a) >= 0 ? 1 : -1) * 24, owned: fresh(s.i), owner: '', back: false, left: s.rg, speed: s.sp, damage: 0, push: 0, hits: new Set(), remote: true, home: { x: s.x, y: s.y } })
+        if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
+        continue
+      }
       if (s.k === 't') { tracers.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, life: 0.12 }); burst(s.x2, s.y2, 4, '#fff3b0', 120, 2) }
       else if (s.k === 'th') {
         thrown.push({ x: s.x, y: s.y, vx: s.vx, vy: s.vy, spin: s.sp, angle: s.a, owned: fresh(s.i), damage: 0, hit: false, remote: true })
@@ -1129,6 +1244,7 @@ export function createCombat() {
       }
       // whatever it did not catch (aliens, zombies, dummies, undead on the ground) takes its damage and push below
     }
+    const struck: Target[] = []
     targets.forEach(t => {
       if (t.deadT > 0 || sw.damage <= 0) return
       const cx = t.x, cy = t.y - t.h / 2
@@ -1141,9 +1257,12 @@ export function createCombat() {
       hitTarget(t, sw.damage, Math.sign(dx || 1) * sw.push, hx, cy, 'impact')
       sw.impacts.push({ x: hx - origin.x, y: cy - origin.y })
       sw.hits++
+      if (t.kind !== 'button') struck.push(t)
     })
     // items wear out on hits; the wing never breaks
     const h = sw.item as Owned | null
+    // a lightning weapon: whoever the blow hit is shocked, and the ones around after them
+    if (h && struck.length) zap({ x: origin.x + Math.cos(sw.angle) * sw.reach * 0.85, y: origin.y + Math.sin(sw.angle) * sw.reach * 0.85 }, struck, items[h.item], !!sw.heavy, h)
     if (h && sw.hits > 0 && sw.durability && inv.includes(h)) {
       h.durability -= sw.hits
       if (h.durability <= 0) {
@@ -1623,7 +1742,17 @@ export function createCombat() {
     get hoverSwaps() { return !room() && !inv.some(o => o.item === hover?.owned.item) },
     // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
     get heavyCharging() { return !!heavyItem && heavyItem === held() },
-    get heavyCharge() { return heavyItem && heavyItem === held() ? Math.min(1, heavyT / Math.max(0.05, def().heavyCharge)) : 0 },
+    get heavyCharge() { return heavyItem && heavyItem === held() ? Math.min(1, heavyT / staffCharge(def())) : 0 },
+    // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,
+    // how bright the sky is from a special (0..1) and where a throw that comes back would fly if let go now
+    bolts, flights,
+    get skyFlash() { return skyFlash },
+    predictReturn,
+    // an item's special: null when it has none, else how full it is (1 = ready, the next blow that hits is one)
+    special(o: Owned) {
+      const d = items[o.item]
+      return d.specialCooldown > 0 && d.specialRange > 0 ? Math.max(0, Math.min(1, 1 - ((o.specialAt ?? 0) - clock) / d.specialCooldown)) : null
+    },
     get throwCharge() { return throwT > 0 ? Math.min(1, throwT / Math.max(0.05, def().throwCharge)) : 0 },
     get aimAngle() { return aimAngle },
     // what a soul's mischief does to this player right now (lib/pigchicken/soul-acts.ts): how far it turns their aim
@@ -1719,6 +1848,7 @@ export function createCombat() {
       // a note in a voice no instrument has was sung by a soul flying free: it fills, and leaves no mark
       if (h.n) harmonize(t, h.d, h.px, h.x, h.y, { midi: h.n.m, color: h.n.c, sym: h.n.s, wave: h.n.w, phase: 0, voice: h.n.v as VoiceId }, h.st ?? 0, shotClass(null, h.n.v) ? null : 'soul')
       else hitTarget(t, h.d, h.px, h.x, h.y)
+      if (h.sh && shockable(t)) applyShock(t, h.sh[0], h.sh[1], h.sh[2])
       return true
     },
     // what a follower plays on its own screen when the owner's enemy dies, turns into a bird / a person, comes back
@@ -1823,6 +1953,8 @@ export function createCombat() {
       }
       // pecked by a soul (lib/pigchicken/soul-acts.ts): her item does not answer for a moment
       if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
+      // her hammer is out flying: the wing waits for it (she can still change items)
+      if (held()?.flying) input = { ...input, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false }
       const d = def()
       if (consumption) {
         consumption.left -= dt
@@ -1847,7 +1979,7 @@ export function createCombat() {
       } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0 }
 
       lastBody = body
-      if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt) }
+      if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt); clock += dt; skyFlash = Math.max(0, skyFlash - dt * 2.2) }
       // the arpeggio starts over after a pause
       if (!input.fire) { arpIdle += dt; if (arpIdle > 0.6) arpStep = 0 } else arpIdle = 0
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
@@ -2001,7 +2133,9 @@ export function createCombat() {
         if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
         else if (heavyItem === h && input.fire) { if (meleeCool <= 0) heavyT += dt }
         else if (heavyItem === h) {
-          if (meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else melee(false, body.scale, Math.min(1, heavyT / Math.max(0.05, sd.heavyCharge))) }
+          // one that comes back is thrown instead (the Martelo de Thor)
+          if (sd.returnThrow) launch(h, sd, opts.throwOrigin ?? origin, Math.min(1, heavyT / staffCharge(sd)))
+          else if (meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else melee(false, body.scale, Math.min(1, heavyT / staffCharge(sd))) }
           heavyItem = null; heavyT = 0
         }
       } else if (d.meleeOnly || d.mag === 0) {
@@ -2103,7 +2237,7 @@ export function createCombat() {
         if (!t.hit) for (const g of targets) {
           if (g.deadT > 0) continue
           if (Math.abs(t.x - g.x) < g.w / 2 + 10 && t.y > g.y - g.h && t.y < g.y) {
-            if (!t.remote) hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y, 'impact')
+            if (!t.remote) { hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y, 'impact'); zap({ x: t.x, y: t.y }, [g], items[t.owned.item], false, t.owned) }
             t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
@@ -2118,6 +2252,45 @@ export function createCombat() {
           thrown.splice(i, 1)
         }
       }
+
+      // a staff thrown that comes back: straight out, hitting and shocking whoever it crosses, then to its owner's wing
+      if (world) for (let i = flights.length - 1; i >= 0; i--) {
+        const f = flights[i], fd = items[f.owned.item]
+        f.angle += f.spin * dt
+        const touch = () => {
+          if (!f.remote) for (const g of targets) {
+            if (g.deadT > 0 || f.hits.has(g.id) || Math.abs(f.x - g.x) > g.w / 2 + 16 || f.y < g.y - g.h - 12 || f.y > g.y + 12) continue
+            f.hits.add(g.id)
+            hitTarget(g, f.damage, Math.sign(f.vx || 1) * f.push, f.x, f.y, 'impact')
+            if (g.kind !== 'button') zap({ x: f.x, y: f.y }, [g], fd, false, f.owned)
+          }
+        }
+        if (!f.back) {
+          // in short steps, so it never jumps over a thin wall or a small enemy
+          for (let left = f.speed * dt; left > 0 && !f.back; left -= 12) {
+            const k = Math.min(12, left) / f.speed
+            f.x += f.vx * k; f.y += f.vy * k; f.left -= Math.min(12, left)
+            touch()
+            if (f.left <= 0 || f.y >= groundY || inBox(f.x, f.y)) { if (f.left > 0) { burst(f.x, f.y, 8, '#c9d6e2', 170, 2); sound('bounce', null) } f.back = true; f.hits.clear() }
+          }
+          continue
+        }
+        const her = f.remote ? null : bodyOf(f.owner)
+        const home = f.home ?? (her ? { x: her.x, y: her.y - 90 * her.scale } : null)
+        // its owner is gone: it falls where it is
+        if (!home) { f.owned.flying = false; pickups.push({ id: nextId++, owned: f.owned, x: f.x, y: f.y, vy: 0, resting: false, noPick: 0.3 }); flights.splice(i, 1); continue }
+        const dx = home.x - f.x, dy = home.y - f.y, dist = Math.hypot(dx, dy) || 1
+        f.speed = Math.min(f.speed + 2400 * dt, fd.returnSpeed * 1.6)
+        if (dist <= Math.max(34, f.speed * dt)) {
+          f.owned.flying = false; flights.splice(i, 1)
+          if (!f.remote) sound('catch', null)
+          continue
+        }
+        f.vx = (dx / dist) * f.speed; f.vy = (dy / dist) * f.speed
+        f.x += f.vx * dt; f.y += f.vy * dt
+        touch()
+      }
+      if (world) for (let i = bolts.length - 1; i >= 0; i--) { bolts[i].t += dt; if (bolts[i].t >= bolts[i].life) bolts.splice(i, 1) }
 
       // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
       hover = null; hoverOwned = null
@@ -2145,7 +2318,7 @@ export function createCombat() {
       // Golpe or a Bicada (when it is let go) also stores the new item offered at her body
       const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover
       const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
-      if (grabNow && hover && pickups.includes(hover) && (room() || held() || inv.some(o => o.item === hover!.owned.item))) {
+      if (grabNow && hover && pickups.includes(hover) && (room() || (held() && !held()!.flying) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
         pickups.splice(at, 1)
         const picked = pickUp(g, !meleePickup)
@@ -2242,7 +2415,10 @@ export function createCombat() {
       })
 
       // every target: the stillness of a note wears off; answers cool down
-      targets.forEach(t => { if (t.stun && !t.mirror) t.stun = Math.max(0, t.stun - dt); if (t.answerCool) t.answerCool = Math.max(0, t.answerCool - dt) })
+      targets.forEach(t => {
+        if (t.stun && !t.mirror) t.stun = Math.max(0, t.stun - dt); if (t.answerCool) t.answerCool = Math.max(0, t.answerCool - dt)
+        if (t.shock && (t.shock.left -= dt) <= 0) t.shock = undefined
+      })
       // converted enemies leave: birds flap up and away, people run off with little hops
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]

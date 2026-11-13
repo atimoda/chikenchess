@@ -16,6 +16,7 @@ import { drawGong, drawGongTotem, drawResetStone, drawTempleAlien, type GongLook
 import { lookTargets, drawBird, drawUndead, drawPerson, drawButton, drawAlien, drawZombie, drawDummy, drawDummyTip } from "./creatures"
 import { drawNote, drawPuff } from "./effects"
 import { drawItem, type Ctx } from "./shared"
+import { drawBolts, drawFlights, drawShocked, drawSkyFlash } from "./shock"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
 // gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the jukebox struck last (its ring)
@@ -74,10 +75,8 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.save(); ctx.translate(X(o.x), o.y); ctx.rotate(o.angle); drawItem(ctx, o.owned.item, 64, 34); ctx.restore()
   })
   combat.critters.forEach(c => { if (!visible(c.x, c.y + 60)) return; if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
-  combat.targets.forEach(g => {
-    if (!visible(g.x, g.y + 60, Math.max(320, g.w + 160), g.h + 240)) return
-    const x = X(g.x)
-    if (g.state === "converted") return
+  drawFlights(ctx, combat, camX, view)
+  const drawTarget = (ctx: Ctx, g: Combat["targets"][number], x: number) => {
     if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }
     if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
@@ -93,6 +92,13 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }
     if (g.kind === "button") { drawButton(ctx, g, x); return }
     drawDummy(ctx, g, x, t)
+  }
+  combat.targets.forEach(g => {
+    if (!visible(g.x, g.y + 60, Math.max(320, g.w + 160), g.h + 240)) return
+    if (g.state === "converted") return
+    // shocked by a lightning weapon: it shakes and blinks in x-ray
+    if (g.shock && g.kind !== "button") drawShocked(ctx, g, X(g.x), t, (c, x) => drawTarget(c, g, x))
+    else drawTarget(ctx, g, X(g.x))
   })
   const pulse = Math.pow(1 - combat.music.beatPhase, 3)
   combat.bullets.forEach(b => {
@@ -137,6 +143,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.fillStyle = `rgba(255,170,70,${0.45 * (1 - k)})`; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = `rgba(255,240,200,${0.8 * (1 - k)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X(b.x), b.y, b.r * k, 0, Math.PI * 2); ctx.stroke()
   })
+  drawBolts(ctx, combat, camX, view, t)
   combat.puffs.forEach(p => { if (visible(p.x, p.y + 30, 60, 60)) drawPuff(ctx, X(p.x), p.y, p) })
   combat.sparks.forEach(s => { if (!visible(s.x, s.y + s.size, s.size * 2, s.size * 2)) return; ctx.globalAlpha = Math.max(0, s.life / s.max); ctx.fillStyle = s.color; ctx.fillRect(X(s.x) - s.size / 2, s.y - s.size / 2, s.size, s.size) })
   ctx.globalAlpha = 1
@@ -147,6 +154,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.globalAlpha = Math.min(1, tx.life * 2); ctx.fillStyle = "#000"; ctx.fillText(tx.text, X(tx.x) + 1, tx.y + 1); ctx.fillStyle = tx.color; ctx.fillText(tx.text, X(tx.x), tx.y)
   })
   ctx.globalAlpha = 1
+  drawSkyFlash(ctx, combat, camX, view)
   // the tips of destroyed dummies, above everything
   combat.targets.forEach(g => { if (g.dummy && (g.dummy.tipT > 0 || visible(g.x, g.y, 400, g.h + 300))) drawDummyTip(ctx, g, X(g.x), t) })
 }

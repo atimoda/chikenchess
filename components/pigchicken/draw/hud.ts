@@ -317,10 +317,20 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
       ctx.fillStyle = effectTint(fx.look); ctx.fillRect(x, y + size - fh, size, fh)
       ctx.restore()
     }
+    // an item with a special (the lightning weapons): the slot's background is blue while it is ready; after it is
+    // used the blue fills back from the bottom up as its interval runs
+    const sp = o ? combat.special(o) : null
+    if (sp !== null) {
+      ctx.save(); roundRect(ctx, x, y, size, size, r); ctx.clip()
+      if (sp >= 1) { ctx.fillStyle = `rgba(70,150,255,${0.42 + 0.1 * Math.sin(now / 260)})`; ctx.fillRect(x, y, size, size) }
+      else { ctx.fillStyle = "rgba(70,150,255,0.32)"; ctx.fillRect(x, y + size * (1 - sp), size, size * sp) }
+      ctx.restore()
+    }
     // a soft light along the top edge: glass
     ctx.save(); roundRect(ctx, x + 1, y + 1, size - 2, size * 0.45, r - 1); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill(); ctx.restore()
     if (o) {
-      ctx.save(); ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size * (bottom ? 0.79 : 0.82), size * (bottom ? 0.75 : 0.76)); ctx.restore()
+      // thrown and on its way back: faint until it is in her wing again
+      ctx.save(); if (o.flying) ctx.globalAlpha *= 0.3; ctx.translate(x + size / 2, y + size / 2 + 1); drawItem(ctx, o.item, size * (bottom ? 0.79 : 0.82), size * (bottom ? 0.75 : 0.76)); ctx.restore()
       const d = combat.item(o.item)
       // an instrument: its arpeggiator's pattern over the slot (the other players' small rows sit too close for it:
       // there it goes small inside the slot's top, without the click)

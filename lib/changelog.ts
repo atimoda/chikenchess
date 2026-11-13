@@ -7,12 +7,22 @@ const RECENT = [
   {
     version: '2.10.0',
     date: '13/11/2026',
-    title: 'Pátio Training room, Quadro de lousa e fantasma que mostra os movimentos',
+    title: 'Pátio Training room, Quadro de lousa e fantasma que mostra os movimentos; Martelo de Thor e Cajado de Odin com choque em cadeia, raio-x e especial',
     groups: [
       { title: 'Pátio', items: [
         'Novo Pátio de exemplo em Destaques, Training room: 15 estações em sequência, do andar e correr ao pulo chocando no ar, cada uma com as plataformas, caixas, paredes, buraco ou trampolim que o movimento pede. No fim, um portal leva de volta ao começo.',
         'Novo elemento Quadro de lousa (grupo Treino do Modo editor): uma lousa verde com o texto que você escrever em giz branco. Em Editar, escolha o texto e, se quiser, um movimento para o fantasma.',
         'Com um movimento escolhido, ao chegar perto da lousa aparece uma galinha fantasma, branca e meio transparente, repetindo a sequência de botões do movimento; ela some quando você se afasta. Escolher o movimento já escreve os botões na lousa.',
+      ] },
+      { title: 'Martelo de Thor e Cajado de Odin', items: [
+        'Dois itens novos de magia, no grupo Utilitário do inventário. No Modo editor, os suportes ficam na paleta Magia; também podem entrar como Item solto.',
+        'Choque em cadeia: o golpe que acerta alguém dá choque nele e o raio pula, um por vez, para aliens, zumbis, mortos-vivos e bonecos de treino por perto, ramificando. Cada atingido treme, fica parado por um instante e perde um pouco da barra de harmonia. O Cajado alcança mais longe e pula mais vezes que o Martelo.',
+        'Estado de choque: quem leva choque pisca em raio-x, com o corpo escuro e o esqueleto aparecendo no meio. Quanto mais forte o choque, mais rápido pisca e mais treme.',
+        'Especial: o primeiro golpe que acerta depois de 12 s sai mais forte, alcança mais alvos, causa mais dano e deixa todos em raio-x por cerca de 3 s. No Martelo cai um raio do céu com trovão e clarão; no Cajado saem arcos longos com estalo de raio.',
+        'O fundo do slot do item fica azul quando o especial está pronto e, depois de usado, volta a encher de baixo para cima. É separado das barrinhas de munição.',
+        'Martelo de Thor: Atirar arremessa o martelo em linha reta e ele volta para a asa. Segurar carrega para ir mais longe e bater mais forte, e um toque rápido já sai com metade da distância. Uma linha pontilhada mostra até onde ele vai. Ele acerta e dá choque na ida e na volta.',
+        'Cajado de Odin: Golpe dá o golpe rápido, com choque curto; Atirar carrega o golpe forte, com choque mais longo e de maior alcance.',
+        'Em Itens, os grupos Choque, Especial e Arremesso que volta ajustam alcance, saltos, tempos, danos e intervalo.',
       ] },
     ],
   },

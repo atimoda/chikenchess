@@ -2,7 +2,7 @@
 // Each item has its own shot; equipping, dry fire, aiming, reloading and explosions share a few recipes.
 import type { ItemId } from './items'
 
-export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat' | 'puff' | 'scale'
+export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat' | 'puff' | 'scale' | 'zap' | 'thunder' | 'lightning' | 'catch'
 
 let ac: AudioContext | null = null, master: GainNode | null = null, noise: AudioBuffer | null = null
 let volume = 0.6
@@ -133,5 +133,29 @@ export function playWeaponSound(kind: WeaponSound, item: ItemId | null) {
     // the inventory wheel: a very soft tick when the pointer passes onto another item
     case 'tick': tone(a, { gain: 0.018, attack: 0.001, decay: 0.018 }, 'sine', 2100, 1700); click(a, 0, 0.025, 4200); break
     case 'throw': hiss(a, { gain: 0.15, attack: 0.03, decay: 0.2 }, 'bandpass', 400, 1200, 1); break
+    // a thrown staff back in the wing: a short metallic clap
+    case 'catch': click(a, 0, 0.22, 1700); tone(a, { gain: 0.1, decay: 0.09 }, 'triangle', 520, 300); break
+    // a shock: a short electric crackle (buzzing squares and a few bright snaps)
+    case 'zap':
+      tone(a, { gain: 0.09, decay: 0.16 }, 'sawtooth', 1900, 240); tone(a, { gain: 0.07, decay: 0.12 }, 'square', 110, 70)
+      for (let i = 0; i < 4; i++) click(a, i * 0.03 + Math.random() * 0.015, 0.16, 3500 + Math.random() * 3500)
+      hiss(a, { gain: 0.12, decay: 0.14 }, 'highpass', 4200, undefined, 0.6)
+      break
+    // the staff's special: lightning, a long tearing crackle that runs on
+    case 'lightning':
+      hiss(a, { gain: 0.5, attack: 0.003, decay: 0.09 }, 'highpass', 2600, undefined, 0.6)
+      for (let i = 0; i < 16; i++) click(a, i * 0.045 + Math.random() * 0.03, 0.2 - i * 0.008, 2800 + Math.random() * 5000)
+      tone(a, { gain: 0.14, decay: 0.7 }, 'sawtooth', 2400, 160); tone(a, { gain: 0.12, attack: 0.01, decay: 0.75 }, 'square', 120, 60)
+      hiss(a, { at: 0.05, gain: 0.3, attack: 0.02, decay: 0.8 }, 'bandpass', 3200, 700, 0.9)
+      hiss(a, { at: 0.2, gain: 0.25, attack: 0.05, decay: 1.1 }, 'lowpass', 500, 90)
+      break
+    // the hammer's special: thunder, a sharp crack and a long low rumble that rolls away
+    case 'thunder':
+      hiss(a, { gain: 1, attack: 0.002, decay: 0.16 }, 'highpass', 1500, undefined, 0.5); click(a, 0, 0.5, 5000)
+      hiss(a, { at: 0.03, gain: 0.95, attack: 0.01, decay: 1.5 }, 'lowpass', 900, 55)
+      tone(a, { at: 0.02, gain: 0.8, attack: 0.005, decay: 1.1 }, 'sine', 85, 26)
+      hiss(a, { at: 0.5, gain: 0.45, attack: 0.25, decay: 1.6 }, 'lowpass', 300, 50)
+      hiss(a, { at: 1.1, gain: 0.25, attack: 0.3, decay: 1.4 }, 'lowpass', 220, 45)
+      break
   }
 }
