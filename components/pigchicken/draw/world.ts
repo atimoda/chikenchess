@@ -16,6 +16,7 @@ import { drawGong, drawGongTotem, drawResetStone, drawTempleAlien, type GongLook
 import { lookTargets, drawBird, drawUndead, drawPerson, drawButton, drawAlien, drawZombie, drawDummy, drawDummyTip } from "./creatures"
 import { drawNote, drawPuff } from "./effects"
 import { drawItem, type Ctx } from "./shared"
+import { chestMarks, drawChest } from "./chests"
 import { drawBolts, drawFlights, drawShocked, drawSkyFlash } from "./shock"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
@@ -28,6 +29,8 @@ export function markHover(combat: Combat, key: string) {
   const at = (p: Pickup | null, c: string, t: string) => { if (p && !pickupMarks.has(p)) pickupMarks.set(p, { c, t: key ? `${key}: ${t}` : t }) }
   at(combat.hover, "#4cc9f0", combat.hoverSwaps ? "trocar" : "pegar")
   at(combat.hoverOwned, "#9aa0a8", "equipar")
+  const near = combat.chestNear
+  if (near && !chestMarks.has(near.chest)) chestMarks.set(near.chest, { key, block: near.block, souls: combat.capturedSouls })
 }
 // the grab bind a player sees: from the keyboard they hold (primary first), else from their gamepad
 // the name of an action's first bind on a player's inputs: their keyboard's, else their gamepad's ("" when unbound)
@@ -55,6 +58,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
   })
+  combat.chests.forEach(c => { if (visible(c.x, c.y + 40, 320, 520)) drawChest(ctx, c, X(c.x), t) })
   combat.pickups.forEach(p => {
     if (!visible(p.x, p.y + 40)) return
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3

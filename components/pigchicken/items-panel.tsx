@@ -8,7 +8,7 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
@@ -37,6 +37,8 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   odinstaff: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música"],
   wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
+  // a key only opens Baús: it has no effect, just its slap and its throw
+  ...Object.fromEntries(KEY_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
 }
 // Pontos of a staff (how she carries it, lib/pigchicken/staff-pose.ts); the other items have the pivot and the wings' points
 // the strong blow's own shock numbers, for the staffs that have a strong blow (one that is thrown and comes back has none)
@@ -74,6 +76,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <optgroup label="Chaves">{KEY_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value="wing">{items.wing.name}</option>
         </select>
         <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do código" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>

@@ -21,6 +21,7 @@ import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from '
 import { BACKDROP_DEPTH, isBackdropLayer, type BackdropLayerId } from './backdrop-layers'
 import { GONG_BOX, JUKEBOX_BOX, defaultGong, normalizeGong, type GongParams } from './gong'
 import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
+import { CHEST_BOX, defaultChest, normalizeChest, type ChestParams } from './chests'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
@@ -52,7 +53,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'chalkboard'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'chalkboard', 'chest'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -76,6 +77,7 @@ export type ElementParams = {
   power?: PowerParams // Poste de energia and Torre de transmissão: model, line, wires
   gong?: GongParams // Gongo: its song, the strikes to start and stop it, its title
   chalkboard?: ChalkboardParams // Quadro de lousa: its text and the ghost's move
+  chest?: ChestParams // Baú: what opens it, what is inside, its rarity
 }
 
 export type LayoutElement = {
@@ -145,9 +147,11 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   // a green chalkboard with a text in chalk; its ghost chicken shows a move while a player is near (chalkboard.ts)
   chalkboard: { label: 'Quadro de lousa', group: 'Treino', w: 420, h: 260, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 80 },
   jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
+  // a chest the players open with Pegar (lib/pigchicken/chests.ts): free, with a key or by merit (the Bag of souls)
+  chest: { label: 'Baú', group: 'Baús', ...CHEST_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: CHEST_BOX.w, minH: CHEST_BOX.h },
 }
-// the Gongo and the Jukebox keep their art's size
-const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'gong' || kind === 'jukebox'
+// the Gongo, the Jukebox and the Baú keep their art's size
+const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'gong' || kind === 'jukebox' || kind === 'chest'
 // Postes and Torres: their wires join the next one of the same model and line (lib/pigchicken/power-lines.ts)
 export const isPowerElement = (kind: ElementKind): kind is 'pole' | 'tower' => kind === 'pole' || kind === 'tower'
 // what may stand in a parallax depth of its own: the scenery (not the game's things, the music or the entry)
@@ -195,6 +199,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (isPowerElement(kind)) return { power: defaultPower(kind) }
   if (kind === 'gong') return { gong: defaultGong() }
   if (kind === 'chalkboard') return { chalkboard: defaultChalkboard() }
+  if (kind === 'chest') return { chest: defaultChest() }
   return {}
 }
 
@@ -437,6 +442,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.gong = normalizeGong(p.gong)
   } else if (kind === 'chalkboard') {
     params.chalkboard = normalizeChalkboard(p.chalkboard)
+  } else if (kind === 'chest') {
+    params.chest = normalizeChest(p.chest)
   }
   const music = isMusicElement(kind)
   // in a depth of its own it is only scenery: no collisions of any kind

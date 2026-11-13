@@ -122,7 +122,7 @@ test('a bird made by the flute is a living soul that remembers the alien, the in
   land(c)
   assert.equal(c.abductions.length, 0)
   assert.equal(c.capturedSouls, 1)
-  const soul = c.basket[0]
+  const soul = c.bagOfSouls[0]
   assert.deepEqual({ species: soul.species, state: soul.state, shot: soul.shot, weapon: soul.weapon }, { species: 'jelly', state: 'alive', shot: 'wind', weapon: null })
   assert.equal(soul.note, bird.soul.note)
   assert.equal(soul.color, '#c77dff', "the alien's colour")
@@ -167,14 +167,14 @@ test('an alien shot down and brought back by notes is a dead soul that remembers
   sweep(c, () => { u.x = 40; u.y = u.h / 2; u.data.homeX = 40; u.data.homeY = 0; u.data.t = 0 }, slot)
   land(c)
   assert.equal(c.capturedSouls, 1)
-  const soul = c.basket[0]
+  const soul = c.bagOfSouls[0]
   assert.deepEqual({ species: soul.species, state: soul.state, shot: soul.shot, weapon: soul.weapon }, { species: 'jelly', state: 'dead', shot: 'wind', weapon: 'bullet' })
   assert.equal(soul.color, u.data.eye, "the colour of the note that brought it back")
   assert.equal(soul.bird, u.data.bird)
   assert.notEqual(soul.rarity, 'common', 'a dead one is never common')
 })
 
-test('chicks are souls too; the basket is a stack and each player has their own', () => {
+test('chicks are souls too; the Bag of souls is a stack and each player has their own', () => {
   const c = world('passagua')
   let gone = 0
   c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => gone++ }])
@@ -182,17 +182,17 @@ test('chicks are souls too; the basket is a stack and each player has their own'
   land(c)
   assert.equal(gone, 1)
   assert.equal(c.capturedSouls, 1)
-  assert.deepEqual({ species: c.basket[0].species, state: c.basket[0].state, shot: c.basket[0].shot, note: c.basket[0].note }, { species: 'chick', state: 'alive', shot: null, note: null })
-  assert.equal(c.basket[0].color, S.CHICK_SOUL_COLOR)
+  assert.deepEqual({ species: c.bagOfSouls[0].species, state: c.bagOfSouls[0].state, shot: c.bagOfSouls[0].shot, note: c.bagOfSouls[0].note }, { species: 'chick', state: 'alive', shot: null, note: null })
+  assert.equal(c.bagOfSouls[0].color, S.CHICK_SOUL_COLOR)
 
   // two at once: they count one after the other, the last one on top
   c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => gone++ }, { x: 30, y: 10, r: 20, catch: () => gone++ }])
   const counts = []
   for (let i = 0; i < 80; i++) { step(c, { melee: i === 0 }); if (counts[counts.length - 1] !== c.capturedSouls) counts.push(c.capturedSouls) }
   assert.deepEqual(counts, [1, 2, 3], 'one at a time')
-  assert.ok(c.basket[2].id > c.basket[1].id && c.basket[1].id > c.basket[0].id, 'the last one caught is on top')
+  assert.ok(c.bagOfSouls[2].id > c.bagOfSouls[1].id && c.bagOfSouls[1].id > c.bagOfSouls[0].id, 'the last one caught is on top')
 
-  // the second player's catch goes to their own basket, even though the first player's step moves the world
+  // the second player's catch goes to their own Bag of souls, even though the first player's step moves the world
   c.use('p2'); c.give('passagua'); step(c, { slot: 1 }, 0, false)
   c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => gone++ }])
   for (let i = 0; i < 40; i++) { c.use('p2'); step(c, { melee: i === 0 }, 0, false); c.use('p1'); step(c) }
@@ -201,12 +201,12 @@ test('chicks are souls too; the basket is a stack and each player has their own'
   assert.equal(c.capturedSouls, 3, "the first player's")
   c.use('p2')
   assert.equal(c.capturedSouls, 1, "the second player's")
-  assert.equal(c.basket[0].species, 'chick')
+  assert.equal(c.bagOfSouls[0].species, 'chick')
 })
 
-// ---------- let out of the basket: friends, and the Callback ----------
+// ---------- let out of the Bag of souls: friends, and the Callback ----------
 // n chicks caught, one sweep each
-function basketOf(c, n) {
+function bagOf(c, n) {
   for (let k = 0; k < n; k++) {
     c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
     for (let i = 0; i < 50; i++) step(c, { melee: i === 0 })
@@ -219,10 +219,10 @@ const holdSoul = (f, x, y) => { Object.assign(f.brain, { x, y, ax: x, ay: y, vx:
 
 test('a press on the counter lets the last soul caught out where the counter is, and it flies with her', () => {
   const c = world('passagua')
-  assert.equal(c.releaseSoul({ x: 0, y: 0 }), null, 'an empty basket: nothing')
-  basketOf(c, 3)
+  assert.equal(c.releaseSoul({ x: 0, y: 0 }), null, 'an empty Bag of souls: nothing')
+  bagOf(c, 3)
   assert.equal(c.capturedSouls, 3)
-  const top = c.basket[2]
+  const top = c.bagOfSouls[2]
   for (let t = 0; t < 1; t += 0.016) step(c)
   assert.equal(c.soulPulse, 0)
   assert.equal(c.releaseSoul({ x: 500, y: -400 }), top, 'the last one in is the first one out')
@@ -239,7 +239,7 @@ test('a press on the counter lets the last soul caught out where the counter is,
 
 test('with every soul out, a press calls them back: the nearest one first, one every 0.2 s', () => {
   const c = world('passagua')
-  basketOf(c, 3)
+  bagOf(c, 3)
   assert.equal(c.callSouls(), 0, 'none out: nothing to call')
   for (let i = 0; i < 3; i++) c.releaseSoul({ x: 300, y: -300 })
   assert.equal(c.capturedSouls, 0)
@@ -258,13 +258,13 @@ test('with every soul out, a press calls them back: the nearest one first, one e
   assert.deepEqual(left.map(l => l.id), [near.soul.id, mid.soul.id, far.soul.id])
   for (const i of [1, 2]) assert.ok(Math.abs(left[i].t - left[i - 1].t - 0.2) < 0.02, `0.2 s apart (${left[i].t - left[i - 1].t})`)
   assert.equal(c.looseSouls, 0)
-  assert.equal(c.capturedSouls, 3, 'back in the basket')
-  assert.equal(c.basket[2].id, far.soul.id, 'the last one to arrive is on top')
+  assert.equal(c.capturedSouls, 3, 'back in the Bag of souls')
+  assert.equal(c.bagOfSouls[2].id, far.soul.id, 'the last one to arrive is on top')
 })
 
-test("a soul flying free goes to the basket of whoever's Passaguá catches it", () => {
+test("a soul flying free goes to the Bag of souls of whoever's Passaguá catches it", () => {
   const c = world('passagua')
-  basketOf(c, 2)
+  bagOf(c, 2)
   c.releaseSoul({ x: 40, y: 0 }); c.releaseSoul({ x: 40, y: 0 })
   const [one, other] = c.freedSouls
   c.use('p2'); c.give('passagua'); step(c, { slot: 1 }, 0, false); c.use('p1')
@@ -278,15 +278,15 @@ test("a soul flying free goes to the basket of whoever's Passaguá catches it", 
   assert.equal(c.capturedSouls, 0)
   c.use('p2')
   assert.equal(c.capturedSouls, 1)
-  assert.equal(c.basket[0], one.soul, 'the same soul, in the other basket')
+  assert.equal(c.bagOfSouls[0], one.soul, 'the same soul, in the other Bag of souls')
   assert.equal(c.looseSouls, 0, 'it is theirs now')
   c.use('p1')
-  // and her own Passaguá puts the other one back in her basket
+  // and her own Passaguá puts the other one back in her Bag of souls
   for (let i = 0; i < 50; i++) { holdSoul(other, 40, 0); step(c, { melee: i === 0 }) }
   land(c)
   assert.equal(c.freedSouls.length, 0)
   assert.equal(c.capturedSouls, 1)
-  assert.equal(c.basket[0], other.soul)
+  assert.equal(c.bagOfSouls[0], other.soul)
 })
 
 test('the souls of a player who left the game fly away', () => {
@@ -310,11 +310,11 @@ test('the souls of a player who left the game fly away', () => {
 // ---------- the library: what is news, and how an entry flies ----------
 test('only a soul caught from the wild is news for the library; let out, it flies as its entry does', () => {
   const c = world('passagua')
-  basketOf(c, 2)
+  bagOf(c, 2)
   const news = c.soulNews.splice(0)
   assert.equal(news.length, 2, 'each chick caught')
   assert.deepEqual(news.map(n => n.owner), ['p1', 'p1'])
-  assert.deepEqual(news.map(n => n.soul), [...c.basket], 'the very souls that got to the basket')
+  assert.deepEqual(news.map(n => n.soul), [...c.bagOfSouls], 'the very souls that got to the Bag of souls')
   assert.ok(Math.abs(news[0].x - 40) < 1 && Math.abs(news[0].y) < 1, 'where it was caught')
 
   // let out and caught again with the Passaguá: the same soul, no news
@@ -334,16 +334,16 @@ test('only a soul caught from the wild is news for the library; let out, it flie
 
   // a keys soul escorts her; the same one killed by an arrow on the tonic is a rare one that patrols
   const keys = { id: 5000, species: 'shell', state: 'dead', shot: 'keys', note: 'tonic', weapon: 'bullet', rarity: 'uncommon', color: '#ffffff', bird: 'pardal' }
-  c.basket.push(keys); c.releaseSoul({ x: 40, y: 0 })
+  c.bagOfSouls.push(keys); c.releaseSoul({ x: 40, y: 0 })
   assert.equal(c.freedSouls[c.freedSouls.length - 1].params.pattern, 'orbit')
-  c.basket.push({ ...keys, id: 5001, weapon: 'arrow' }); c.releaseSoul({ x: 40, y: 0 })
+  c.bagOfSouls.push({ ...keys, id: 5001, weapon: 'arrow' }); c.releaseSoul({ x: 40, y: 0 })
   assert.equal(c.freedSouls[c.freedSouls.length - 1].params.pattern, 'eight')
 })
 
 test('an admin changes a sheet: the souls already flying free take its numbers', () => {
   const L = loadTs('lib/pigchicken/soul-library.ts')
   const c = world('passagua')
-  c.basket.push({ id: 5000, species: 'shell', state: 'dead', shot: 'keys', note: 'tonic', weapon: 'bullet', rarity: 'uncommon', color: '#ffffff', bird: 'pardal' })
+  c.bagOfSouls.push({ id: 5000, species: 'shell', state: 'dead', shot: 'keys', note: 'tonic', weapon: 'bullet', rarity: 'uncommon', color: '#ffffff', bird: 'pardal' })
   c.releaseSoul({ x: 40, y: 0 })
   const f = c.freedSouls[c.freedSouls.length - 1]
   assert.equal(f.params.pattern, 'orbit')

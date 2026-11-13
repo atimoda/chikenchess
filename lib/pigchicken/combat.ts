@@ -13,7 +13,8 @@ import { entryActParams, entryFollowParams, entryOf } from './soul-library'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
-import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { chestBlock, rollLoot, type ChestParams } from './chests'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isKey, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
@@ -59,8 +60,8 @@ export type Critter = {
   soul?: SoulOrigin // a bird: the alien it was and how it became one (lib/pigchicken/souls.ts)
   perch?: PerchState | null // resting on a wire (lib/pigchicken/bird-perch.ts); null: it already tried
 }
-// a soul let out of its owner's basket: it flies with them as a friend (lib/pigchicken/soul-follow.ts) until it is
-// called back (recallIn: s until it leaves for the counter) or a Passaguá catches it. away: s since its owner left
+// a soul let out of its owner's Bag of souls: it flies with them as a friend (lib/pigchicken/soul-follow.ts) until it is
+// called back (recallIn: s until it leaves for the Bag of souls) or a Passaguá catches it. away: s since its owner left
 // the game (it flies off); null while it has one. act, clock: what it does for and against its owner, and when
 // (lib/pigchicken/soul-acts.ts); job: what it is off doing right now; acts: how many helps it has done; warned: the
 // enemy it last warned of
@@ -72,7 +73,7 @@ export type FreeSoul = {
 // or something against her. t: s on it; item: the one it goes for or carries; side: the side of her it comes from
 export type SoulJob = { kind: 'fetch' | 'carry' | 'step' | Exclude<SoulHinder, 'own' | 'none' | 'detune'>; t: number; item?: Pickup; side?: 1 | -1 }
 export const CALLBACK_GAP = 0.2 // s between two souls called back
-export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on the counter can call them back
+export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on the Bag of souls can call them back
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
 // beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through); rebate: the
@@ -147,6 +148,11 @@ export function combineEffects(list: readonly Effect[]): Effect | null {
   return { ...last, left: Math.max(...list.map(e => e.left)), total: Math.max(...list.map(e => e.total)), speed: list.reduce((k, e) => k * e.speed, 1), accel: list.reduce((k, e) => k * e.accel, 1) }
 }
 export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
+// a Baú of the layout (lib/pigchicken/chests.ts): x is its middle, y the floor it stands on. lid: 0 shut … 1 open
+// (eased by the world's step); t: s since it opened; shake: s left of the shiver of a press that could not open it
+export type Chest = { id: string; x: number; y: number; params: ChestParams; open: boolean; lid: number; t: number; shake: number }
+// what a player sees of the nearest closed Baú in reach: whether Pegar opens it, and what keeps it shut
+export type ChestNear = { chest: Chest; block: 'key' | 'souls' | null }
 export type Spark = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number }
 // a peck's defence: while the beak is out, damaging notes and projectiles in its cone vanish in a little cloud
 export type ParryZone = { x: number; y: number; angle: number; reach: number; arc: number }
@@ -178,6 +184,8 @@ const ITEM_GRAVITY = 1800
 // where it rests
 export const PICKUP_HIT_R = 14
 const SWING_PICKUP_R = PICKUP_HIT_R
+// how much wider than an item's the reach of a Baú is (px each side): it is wider than an item
+const CHEST_REACH_X = 30
 // how near her feet (horizontally, vertically) an item on the floor counts as touching her body (offered to Pegar)
 export const pickupReach = (scale: number) => ({ x: (46 * scale + 10) * 1.15, y: 60 * scale + 20 })
 
@@ -246,6 +254,9 @@ export function createCombat() {
   let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number }[] = []
+  // the Baús of the layout (the layout sync adds, moves and removes them) and the one each local player is next to
+  const chests: Chest[] = []
+  const chestNear = new Map<string, ChestNear>()
   let swing: Swing | null = null
   // the pecks defending right now (one per local player) and the little clouds of what they cancelled
   const parryZones = new Map<string, ParryZone>()
@@ -328,6 +339,14 @@ export function createCombat() {
   const shown = (): (Owned | null)[] => room() ? [...inv, null] : inv.slice()
   // the held item leaves (broke, thrown): her hands are empty (the empty slot, at the end)
   const removeHeld = () => { inv.splice(cur, 1); cur = inv.length }
+  // the keys (Chave) in her inventory, and using one up (the stack goes when it is the last)
+  const keyCount = () => inv.reduce((n, o) => n + (isKey(o.item) ? o.ammo : 0), 0)
+  const useKey = () => {
+    const i = inv.findIndex(o => isKey(o.item) && o.ammo > 0)
+    if (i < 0) return
+    if (--inv[i].ammo > 0) return
+    if (i === cur) removeHeld(); else { inv.splice(i, 1); if (i < cur) cur-- }
+  }
   const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
   const fresh = (item: ItemId): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability })
 
@@ -682,20 +701,20 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; souls: Soul[]
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; bag: Soul[]
     trem: TremoloState; tremBend: number; aimReach: number
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
-  // her basket of souls, a stack: the last one caught is the first one out
-  let souls: Soul[] = []
-  // souls on their way to a counter (the world's: each one knows whose it is) and how long each counter still swells
+  // her Bag of souls, a stack: the last one caught is the first one out
+  let bag: Soul[] = []
+  // souls on their way to a Bag of souls (the world's: each one knows whose it is) and how long each Bag of souls still swells
   const abductions: Abduction[] = []
   const soulPulses = new Map<string, number>()
-  // the souls caught from the wild since the screen last asked (not the ones that only changed baskets or came back):
+  // the souls caught from the wild since the screen last asked (not the ones that only changed bags or came back):
   // whoever draws takes them from here to the library (lib/pigchicken/soul-library.ts)
   const soulNews: { soul: Soul; owner: string; x: number; y: number }[] = []
-  // the souls out of the baskets (the world's: each one knows whose it is), the world's clock for them and when each
+  // the souls out of the bags (the world's: each one knows whose it is), the world's clock for them and when each
   // player last let one out
   const freed: FreeSoul[] = []
   // online (lib/pigchicken/net-souls.ts): the souls the other browsers fly, drawn here; what this browser asks of the
@@ -714,18 +733,18 @@ export function createCombat() {
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, bag, trem, tremBend, aimReach,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], souls: [], trem: newTremolo(), tremBend: 0, aimReach: 1,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], bag: [], trem: newTremolo(), tremBend: 0, aimReach: 1,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, souls, trem, tremBend, aimReach } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, bag, trem, tremBend, aimReach } = l)
     active = id
   }
 
@@ -768,6 +787,30 @@ export function createCombat() {
     cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
+  }
+  // Pegar at a Baú: shut for her (no key, not enough souls in the Bag of souls), it shivers and says why; otherwise
+  // it opens (a key is used up) and its items jump out, each line of the loot drawn by its chance
+  function openChest(c: Chest) {
+    const block = chestBlock(c.params, { keys: keyCount(), souls: bag.length })
+    const top = c.y - 70
+    if (block) {
+      c.shake = 0.35
+      sound('locked', null)
+      addText(c.x, top - 16, block === 'key' ? 'Precisa de uma chave' : `Bag of souls: ${bag.length}/${c.params.souls}`, '#ffb4a8')
+      return
+    }
+    if (c.params.lock === 'key') useKey()
+    c.open = true; c.t = 0
+    const legend = c.params.rarity === 'legendary'
+    sound(legend ? 'chestLegend' : 'chest', null)
+    burst(c.x, top + 20, legend ? 34 : 18, legend ? '#7cc4ff' : '#ffd76a', legend ? 320 : 220, 3)
+    const loot = rollLoot(c.params.loot)
+    if (!loot.length) { addText(c.x, top - 16, 'Vazio', '#c9ced6'); return }
+    // they jump out of the lid side by side and fall to the floor around it
+    loot.forEach((item, i) => {
+      const off = (i - (loot.length - 1) / 2) * 30
+      pickups.push({ id: nextId++, owned: fresh(item), x: c.x + off, y: top + 10, vy: -rand(420, 560), resting: false, noPick: 0.45 })
+    })
   }
   let hover: Pickup | null = null
   // items taken (or dropped by a swap) during the current hold of Pegar: each is taken once per hold
@@ -1213,7 +1256,7 @@ export function createCombat() {
         if (c.perch && perchWorld) perchEnd(perchWorld, c.perch)
         critters.splice(i, 1); caught.push({ x: c.x, y: c.y, wild: true, soul: newSoul(nextId++, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null) })
       }
-      // souls flying free, whoever let them out: they change baskets (or go back to their own)
+      // souls flying free, whoever let them out: they change bags (or go back to their own)
       for (let i = freed.length - 1; i >= 0; i--) {
         const f = freed[i]
         if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
@@ -1234,7 +1277,7 @@ export function createCombat() {
         return false
       })
       if (caught.length) {
-        // each one leaves a little cloud and flies to this player's counter, where it counts (one after the other)
+        // each one leaves a little cloud and flies to this player's Bag of souls, where it counts (one after the other)
         caught.forEach(({ x, y, soul, wild }, i) => {
           puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
           abductions.push({ soul, owner: active, x, y, t: -i * ABDUCT_GAP })
@@ -1484,7 +1527,7 @@ export function createCombat() {
   const hang = (f: FreeSoul, p: Pickup) => { p.x = f.x; p.y = f.y + SOUL_ACT.fetch.hang; p.resting = true; p.vy = 0; p.noPick = Math.max(p.noPick, 0.2) }
   const cloud = (x: number, y: number) => puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
   // online: this player's Passaguá went over something another browser decides. A little cloud now; the soul flies
-  // to their counter when that browser gives it
+  // to their Bag of souls when that browser gives it
   function askFor(take: NetTake & { pid?: number }, x: number, y: number) {
     cloud(x, y); sound('puff', null)
     asked.set(take.k + take.id, { owner: active, x, y, t: 0 })
@@ -1659,34 +1702,34 @@ export function createCombat() {
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
     use(id: string) { useLoadout(id) },
     get player() { return active },
-    // this player's souls: how many are in the basket, the basket itself (the last one caught on top) and how much
-    // the counter swells now (1 right when one arrives, 0 at rest)
-    get capturedSouls() { return souls.length },
-    get basket() { return souls as readonly Soul[] },
+    // this player's souls: how many are in the Bag of souls, the bag itself (the last one caught on top) and how much
+    // the Bag of souls swells now (1 right when one arrives, 0 at rest)
+    get capturedSouls() { return bag.length },
+    get bagOfSouls() { return bag as readonly Soul[] },
     get soulPulse() { return (soulPulses.get(active) ?? 0) / SOUL_PULSE },
-    // every player's souls flying to their counters (lib/pigchicken/souls.ts)
+    // every player's souls flying to their Bags of souls (lib/pigchicken/souls.ts)
     get abductions() { return abductions as readonly Abduction[] },
     // the souls caught from the wild, to be taken (spliced) by whoever keeps the library; (x, y): where, in world px
     soulNews,
     // the library's sheets changed: the souls flying free take the numbers their entries have now
     refreshSouls() { for (const f of freed) { const e = entryOf(f.soul); f.params = entryFollowParams(e); f.act = entryActParams(e) } },
-    // the souls out of the baskets, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
+    // the souls out of the bags, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
     get freedSouls() { return freed as readonly FreeSoul[] },
     get looseSouls() { let n = 0; for (const f of freed) if (f.owner === active) n++; return n },
-    // lets the soul on top of this player's basket out at `from` (world px: where their counter is); it flies with them
+    // lets the soul on top of this player's Bag of souls out at `from` (world px: where their Bag of souls is); it flies with them
     releaseSoul(from: { x: number; y: number }) {
-      const soul = souls.pop()
+      const soul = bag.pop()
       if (!soul) return null
       // how it flies and what it does are its entry's in the library (the class of its family, or a rare one's own)
       const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry), brain = createSoulBrain(from.x, from.y, params)
-      // it pops out of the counter, down and to one side
+      // it pops out of the Bag of souls, down and to one side
       brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
       freed.push({ soul, owner: active, x: from.x, y: from.y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null })
       lastRelease.set(active, soulClock); soulPulses.set(active, SOUL_PULSE)
       sound('puff', null)
       return soul
     },
-    // Callback: every soul of this player's flying free goes back to the counter, one every CALLBACK_GAP, the one
+    // Callback: every soul of this player's flying free goes back to the Bag of souls, one every CALLBACK_GAP, the one
     // nearest to them first. Returns how many were called.
     callSouls() {
       if (soulClock - (lastRelease.get(active) ?? -Infinity) < CALLBACK_GUARD) return 0
@@ -1782,7 +1825,11 @@ export function createCombat() {
     get converted() { return conv },
     setMusicOut(o: MusicOut) { out = o },
     setQuantize(v: boolean) { quantizeAll = v },
-    bullets, thrown, targets, pickups, sparks, texts, racks,
+    bullets, thrown, targets, pickups, sparks, texts, racks, chests,
+    // the nearest closed Baú this player is next to (null: none), for the hint over it
+    get chestNear() { return chestNear.get(active) ?? null },
+    // the keys this player carries
+    get keys() { return keyCount() },
     // effects for the modes built on top (the temple): sparks and floating text
     burst, addText(x: number, y: number, text: string, color = '#ffffff', size?: number) { texts.push({ x, y, text, life: size ? 1.2 : 0.9, color, size }) },
     def,
@@ -1900,7 +1947,7 @@ export function createCombat() {
       cloud(t.x, t.y - t.h / 2); sound('puff', null)
       return soulWho(newSoul(0, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird))
     },
-    // the answer: the soul flies from where it was caught to the counter of the player who caught it, and is new
+    // the answer: the soul flies from where it was caught to the Bag of souls of the player who caught it, and is new
     // to this browser's library
     applyNetGive(g: NetGive) {
       const a = asked.get(g.k + g.id), soul = a ? soulFromWho(g.soul, nextId++) : null
@@ -1925,6 +1972,8 @@ export function createCombat() {
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
     // an item on its own in the world (a Pátio's "Item solto"): it falls to the floor there and never comes back
     addPickup(x: number, item: ItemId, y: number) { const id = nextId++; pickups.push({ id, owned: fresh(item), x, y, vy: 0, resting: false, noPick: 0 }); return id },
+    // a Baú of the layout (x: its middle, y: its floor); the layout sync keeps its place and params up to date
+    addChest(id: string, x: number, y: number, params: ChestParams): Chest { const c: Chest = { id, x, y, params, open: false, lid: 0, t: 0, shake: 0 }; chests.push(c); return c },
     addRack(x: number, item: ItemId, y?: number, respawnDelay?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay) }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
@@ -2124,7 +2173,8 @@ export function createCombat() {
           }
         }
       } else if (h && d.consumable) {
-        if (input.firePressed && cooldown <= 0) consume(h, d, origin)
+        // a key (Chave) is only for the Baús: Atirar does nothing with it
+        if (input.firePressed && cooldown <= 0 && !isKey(h.item)) consume(h, d, origin)
       } else if (isStaff(items[h.item])) {
         // a staff (the taco, the passaguá): Atirar is its strong blow. A press arms it, holding charges it (once the
         // interval of the last blow is over) and letting go hits, with whatever charge it has
@@ -2318,6 +2368,8 @@ export function createCombat() {
       // Golpe or a Bicada (when it is let go) also stores the new item offered at her body
       const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover
       const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      // an item offered at her body (to take or to equip) goes before a Baú
+      const itemOffered = !!hover || !!hoverOwned
       if (grabNow && hover && pickups.includes(hover) && (room() || (held() && !held()!.flying) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
         pickups.splice(at, 1)
@@ -2335,7 +2387,25 @@ export function createCombat() {
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
+      // the nearest closed Baú in her reach: Pegar (not Correr's own key) opens it when no item is offered
+      let nearChest: Chest | null = null
+      for (const c of chests) {
+        if (c.open || Math.abs(c.x - body.x) > pickupReachX + CHEST_REACH_X || body.y < c.y - 70 - pickupReachY || body.y > c.y + pickupReachY) continue
+        if (!nearChest || Math.abs(c.x - body.x) < Math.abs(nearChest.x - body.x)) nearChest = c
+      }
+      // (an item offered at her feet hides its hint: Pegar takes the item first)
+      if (nearChest && !itemOffered) chestNear.set(active, { chest: nearChest, block: chestBlock(nearChest.params, { keys: keyCount(), souls: bag.length }) })
+      else chestNear.delete(active)
+      if (nearChest && input.grab && !input.grabRun && !itemOffered) openChest(nearChest)
       if (!world) return
+      // the Baús: the lid eases open or shut, the shiver fades and one that closes again does so after its time
+      for (const c of chests) {
+        c.lid = c.open ? Math.min(1, c.lid + dt * 4) : Math.max(0, c.lid - dt * 3)
+        c.shake = Math.max(0, c.shake - dt)
+        if (!c.open) continue
+        c.t += dt
+        if (c.params.reopen > 0 && c.t >= c.params.reopen) { c.open = false; c.t = 0 }
+      }
       // Each rack owns its pickup, so neighbouring racks and dropped copies
       // cannot suppress its refill. A partially collected stack still occupies it.
       racks.forEach(r => {
@@ -2459,7 +2529,7 @@ export function createCombat() {
         const stay = c.bird ? BIRDS[c.bird].stay : 0
         if (c.t > stay && (c.y < -120 || c.t > 9 + stay || c.x < view.l - 500 || c.x > view.r + 500)) critters.splice(i, 1)
       }
-      // the souls flying free: each one flies with its owner; called back, it leaves for the counter in its turn
+      // the souls flying free: each one flies with its owner; called back, it leaves for the Bag of souls in its turn
       soulClock += dt
       // what they do needs each owner's fall, the floors and the beat; what they did to a player wears off
       actGround = ctx
@@ -2495,11 +2565,11 @@ export function createCombat() {
       for (const m of soulMirrors) glideSoulMirror(m, dt)
       asked.forEach((a, key) => { if ((a.t += dt) > TAKE_WAIT * 2) asked.delete(key) })
       takenFoes.forEach((left, id) => { if (left > dt) takenFoes.set(id, left - dt); else takenFoes.delete(id) })
-      // souls on their way: each one counts in its owner's basket when it gets to the counter
+      // souls on their way: each one counts in its owner's Bag of souls when it gets there
       for (const a of stepAbductions(abductions, dt)) {
-        const basket = a.owner === active ? souls : loadouts.get(a.owner)?.souls
-        if (!basket) continue
-        basket.push(a.soul); soulPulses.set(a.owner, SOUL_PULSE)
+        const ownerBag = a.owner === active ? bag : loadouts.get(a.owner)?.bag
+        if (!ownerBag) continue
+        ownerBag.push(a.soul); soulPulses.set(a.owner, SOUL_PULSE)
       }
       soulPulses.forEach((left, id) => { if (left > 0) soulPulses.set(id, Math.max(0, left - dt)) })
       for (let i = puffs.length - 1; i >= 0; i--) { puffs[i].t += dt; if (puffs[i].t >= puffs[i].life) puffs.splice(i, 1) }

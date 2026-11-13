@@ -2,7 +2,7 @@
 // Each item has its own shot; equipping, dry fire, aiming, reloading and explosions share a few recipes.
 import type { ItemId } from './items'
 
-export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat' | 'puff' | 'scale' | 'zap' | 'thunder' | 'lightning' | 'catch'
+export type WeaponSound = 'equip' | 'shot' | 'dry' | 'aim' | 'charge' | 'reload' | 'reloadDone' | 'shell' | 'pump' | 'explode' | 'bounce' | 'swing' | 'throw' | 'bite' | 'button' | 'alienDie' | 'zombieDie' | 'block' | 'tick' | 'drink' | 'eat' | 'puff' | 'scale' | 'zap' | 'thunder' | 'lightning' | 'catch' | 'chest' | 'chestLegend' | 'locked'
 
 let ac: AudioContext | null = null, master: GainNode | null = null, noise: AudioBuffer | null = null
 let volume = 0.6
@@ -133,6 +133,20 @@ export function playWeaponSound(kind: WeaponSound, item: ItemId | null) {
     // the inventory wheel: a very soft tick when the pointer passes onto another item
     case 'tick': tone(a, { gain: 0.018, attack: 0.001, decay: 0.018 }, 'sine', 2100, 1700); click(a, 0, 0.025, 4200); break
     case 'throw': hiss(a, { gain: 0.15, attack: 0.03, decay: 0.2 }, 'bandpass', 400, 1200, 1); break
+    // a Baú opens: the lid's wooden creak and a little rising chime (the legendary one: brighter, longer, an octave
+    // more and a shimmer)
+    case 'chest':
+    case 'chestLegend': {
+      const legend = kind === 'chestLegend'
+      hiss(a, { gain: 0.14, attack: 0.02, decay: 0.18 }, 'bandpass', 380, 760, 3)
+      click(a, 0.16, 0.18, 1400)
+      const notes = legend ? [784, 988, 1175, 1568, 1976] : [659, 784, 988]
+      notes.forEach((f, i) => tone(a, { at: 0.2 + i * 0.07, gain: legend ? 0.07 : 0.06, decay: legend ? 0.6 : 0.35 }, 'triangle', f))
+      if (legend) hiss(a, { at: 0.22, gain: 0.08, attack: 0.08, decay: 0.9 }, 'highpass', 6000, undefined, 0.5)
+      break
+    }
+    // a Baú that stays shut: the lock rattles
+    case 'locked': click(a, 0, 0.2, 1800); click(a, 0.06, 0.16, 1500); tone(a, { gain: 0.05, decay: 0.08 }, 'square', 180, 140); break
     // a thrown staff back in the wing: a short metallic clap
     case 'catch': click(a, 0, 0.22, 1700); tone(a, { gain: 0.1, decay: 0.09 }, 'triangle', 520, 300); break
     // a shock: a short electric crackle (buzzing squares and a few bright snaps)

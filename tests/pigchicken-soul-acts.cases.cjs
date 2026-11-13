@@ -93,7 +93,7 @@ let ids = 7000
 const soulOf = (over = {}) => ({ id: ids++, species: 'jelly', state: 'alive', shot: 'wind', note: 'tonic', weapon: null, rarity: 'common', color: '#c77dff', bird: 'pardal', ...over })
 // lets a soul out; its clock comes round on the next frame unless told otherwise
 function free(c, over = {}, at = { x: 0, y: -300 }) {
-  c.basket.push(soulOf(over)); c.releaseSoul(at)
+  c.bagOfSouls.push(soulOf(over)); c.releaseSoul(at)
   const f = c.freedSouls[c.freedSouls.length - 1]
   f.clock.in = 0.001
   return f
