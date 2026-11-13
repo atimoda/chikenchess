@@ -17,6 +17,7 @@ import { kitReactionsSchema, reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
 import { CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES } from '../chicken/controls'
 import { itemsFileProblem } from '../pigchicken/items'
+import { scalesFileProblem } from '../pigchicken/scale-params'
 import { soulsFileProblem } from '../pigchicken/soul-library'
 import { patioDefaultsProblem } from '../pigchicken/patio-defaults'
 
@@ -136,6 +137,11 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
     }
     case 'pigchicken-items': {
       const problem = itemsFileProblem(value)
+      if (problem) throw new Error(problem)
+      break
+    }
+    case 'pigchicken-scales': {
+      const problem = scalesFileProblem(value)
       if (problem) throw new Error(problem)
       break
     }

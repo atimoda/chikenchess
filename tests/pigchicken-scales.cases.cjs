@@ -274,3 +274,47 @@ test('Hangdrum in the hands: a shot on a note sounds its kind of hang; between t
   assert.equal(DEFAULT_ITEMS.hangdrum.instrument, true)
   assert.equal(INSTRUMENT_WEAPON.hangdrum, 'pistol')
 })
+
+test('Escalas editor: the standby fades the layer after the wait, keeps the aimed cell, wakes on playing and never fades with "Prevenir fadeout"', () => {
+  const S = loadTs('lib/pigchicken/scale-params.ts')
+  const p = { ...S.DEFAULT_SCALES.primary }
+  assert.deepEqual([p.standbyAfter, p.fadeTime, p.standbyVis, p.aimedVis], [0.5, 1.5, 0, 33])
+  const st = S.newStandby(), run = (secs, playing = false, key = 'flute:primary', keep = false) => {
+    let r; for (let t = 0; t < secs - 1e-9; t += 0.05) r = S.standbyStep(st, p, 0.05, playing, key, keep); return r
+  }
+  assert.deepEqual(run(0.45), { all: 1, aimed: 1 })
+  // half way through the fade, then all the way: the scale at its standby, the aimed cell 33% over it
+  const mid = run(0.8)
+  assert.ok(mid.all > 0.2 && mid.all < 0.8, `mid fade ${mid.all}`)
+  assert.deepEqual(run(2), { all: 0, aimed: 0.33 })
+  // playing wakes it quickly (not in a single frame)
+  const woke = run(0.05, true)
+  assert.ok(woke.all > 0 && woke.all < 1)
+  assert.equal(run(0.2, true).all, 1)
+  // another scale (or item) wakes it too
+  run(3)
+  assert.equal(run(0.2, false, 'flute:fifths').all, 1)
+  // aimed cell 0: it fades with the rest; standby 40%: the scale stays there
+  p.aimedVis = 0; p.standbyVis = 40
+  assert.deepEqual(run(3), { all: 0.4, aimed: 0.4 })
+  // Camadas → Prevenir fadeout das escalas
+  assert.equal(run(3, false, 'flute:fifths', true).all, 1)
+})
+
+test('Escalas editor: the charts\' ring split decides the ring; the defaults file round-trips', () => {
+  const S = loadTs('lib/pigchicken/scale-params.ts')
+  const fifths = S.DEFAULT_SCALES.fifths
+  assert.equal(fifths.ringSplit, 0.6)
+  const file = require('../data/pigchicken/default-scales.json')
+  assert.deepEqual(S.scalesDefaultsFile(S.DEFAULT_SCALES), file)
+  assert.equal(S.scalesFileProblem(file), null)
+  assert.match(S.scalesFileProblem({ ...file, fifths: { ...file.fifths, ringSplit: 2 } }), /fora dos limites/)
+  assert.match(S.scalesFileProblem({ ...file, primary: { ...file.primary, ringSplit: 0.5 } }), /desconhecido/)
+  assert.match(S.scalesFileProblem({ ...file, nope: {} }), /desconhecida/)
+  // the scale reads its shape: half a stick (0.5) is inside at 0.6, outside at 0.4
+  const scale = INSTRUMENT_SCALES.fifths
+  assert.equal(scale.regionAt(UP, 0.5).label, 'Am')
+  scale.shape = { ringSplit: 0.4, hole: 0.2 }
+  assert.equal(scale.regionAt(UP, 0.5).label, 'C')
+  scale.shape = { ringSplit: 0.6, hole: 0.2 }
+})

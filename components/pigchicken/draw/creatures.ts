@@ -191,11 +191,11 @@ export function zombieImage(a: ZombieAnim) {
 }
 export const ZOMBIE_HEIGHT = 175 // px on screen for the walk frame
 export function drawZombie(ctx: Ctx, g: Combat["targets"][number], x: number) {
-  const a: ZombieAnim = g.state === "attack" ? "attack" : g.state === "hurt" ? "hurt" : g.state === "dead" ? "dead" : "walk"
+  const a: ZombieAnim = g.state === "attack" ? "attack" : g.state === "hurt" ? "hurt" : g.state === "dead" ? "dead" : g.state === "idle" ? "idle" : "walk"
   const sheet = ZOMBIE_SHEETS[a], img = zombieImage(a)
   if (!img) return
-  const dur = a === "attack" ? ZOMBIE_TIMES.attack : a === "hurt" ? ZOMBIE_TIMES.hurt : a === "dead" ? ZOMBIE_TIMES.dead : 0.8
-  const f = a === "walk" ? Math.floor((g.animT / dur) * sheet.n) % sheet.n : Math.min(sheet.n - 1, Math.floor((g.animT / dur) * sheet.n))
+  const dur = a === "attack" ? ZOMBIE_TIMES.attack : a === "hurt" ? ZOMBIE_TIMES.hurt : a === "dead" ? ZOMBIE_TIMES.dead : a === "idle" ? 0.9 : 0.8
+  const f = a === "walk" || a === "idle" ? Math.floor((g.animT / dur) * sheet.n) % sheet.n : Math.min(sheet.n - 1, Math.floor((g.animT / dur) * sheet.n))
   const k = ZOMBIE_HEIGHT / ZOMBIE_SHEETS.walk.h
   const hue = (g.data as { hue?: number } | undefined)?.hue ?? 0
   ctx.save()

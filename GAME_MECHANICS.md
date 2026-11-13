@@ -31,9 +31,10 @@
 | Pátio: almas capturadas (identidade, raridade, cesto, contador, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
 | Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel e editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
-| Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução) e troca de escala no inventário | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
+| Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: golpe, bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
+| Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
 | Pátio: camadas (olho), tags das zonas, música ambiente (drone e percussão), zonas das cenas, paredes com vida | [Zonas e camadas](docs/mechanics/patio/zones.md) |
@@ -79,13 +80,14 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Online 1v1: partida, confirmação, análise, áudio e rede](docs/mechanics/online/match.md) | 14 KB |
 | [Pátio: combate, mira, golpe, bicada e arremesso](docs/mechanics/patio/combat.md) | 29 KB |
 | [Pátio: armas de bastão](docs/mechanics/patio/staffs.md) | 7 KB |
+| [Pátio: zumbis e hordas](docs/mechanics/patio/enemies.md) | 2 KB |
 | [Pátio: modo editor e layout](docs/mechanics/patio/editor.md) | 21 KB |
 | [Pátio: salvar/abrir, Playgrounds, Destaques](docs/mechanics/patio/lobbies.md) | 10 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 4 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
 | [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 20 KB |
 | [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 12 KB |
-| [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 5 KB |
+| [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 18 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |
 | [Pátio: zonas sonoras, camadas e música ambiente](docs/mechanics/patio/zones.md) | 10 KB |
