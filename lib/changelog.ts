@@ -32,6 +32,8 @@ const RECENT = [
         'No Editar de um poste ou torre, Camadas do fundo lista as camadas do cenário ao longe (céu, nuvens, cada cordilheira e as matas). Apontar uma mostra só ela; escolher prende o poste num ponto fixo dela, de pé na crista da montanha ou no chão da mata, e daí ele anda junto com a camada em qualquer tela. Os fios até uma torre mais perto acompanham, dando a profundidade da linha indo para o fundo. Escolher de novo solta, mantendo a profundidade.',
         'Nos fios dos postes e torres, Chocar + Pulo põe a galinha pendurada de cabeça para baixo debaixo do fio, e de volta em cima, como nas caixas, em vez de atravessar o fio. Pendurada, ela anda pelo fio e passa para o seguinte no poste; Pulo para o lado contrário e subir com Cima também a penduram.',
         'O painel Itens abre já na arma ou no instrumento que a sua galinha está segurando; de mãos vazias, abre na Bicada.',
+        'Configurações do Pátio ganham a categoria Aurora: cortinas de luz no céu, atrás das nuvens e das montanhas, com Intensidade (0 = desligada, como em todo Pátio até agora), Cor e Cor do alto, Faixas, Largura, Altura dos raios, Altura no céu, Ondulação, Raios, Movimento e Só à noite (ligado, ela aparece com o céu escuro e some de dia, como as estrelas). Sortear forma desenha outras cortinas e Padrão tira a aurora.',
+        'A aurora segue a qualidade gráfica: em Alta balança e cintila, em Média só balança e em Baixa fica parada.',
       ] },
       { title: 'Martelo de Thor e Cajado de Odin', items: [
         'Dois itens novos de magia, no grupo Utilitário do inventário. No Modo editor, os suportes ficam na paleta Magia; também podem entrar como Item solto.',

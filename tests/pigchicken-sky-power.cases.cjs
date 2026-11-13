@@ -399,3 +399,57 @@ test('a wire to a pinned tower slides its end from the camera at 0, like the lay
   assert.ok(Math.abs(c.b.y - (s.b.y - 150 * d)) < 1e-6)
   assert.equal(c.a.y, s.a.y)
 })
+
+const AU = loadTs('lib/pigchicken/aurora.ts')
+const AD = loadTs('lib/pigchicken/aurora-draw.ts')
+
+test('aurora: off by default, cleaned and kept with the Pátio', () => {
+  assert.equal(AU.AURORA_DEFAULT.amount, 0)
+  assert.equal(PS.normalizePatioSettings({ screens: 3 }).aurora, undefined)
+  const a = AU.normalizeAurora({ amount: 500, bands: 9, width: 1, lift: -4, color: '#ABCDEF', top: 'red', night: false, shape: 2000 })
+  assert.deepEqual([a.amount, a.bands, a.width, a.lift, a.color, a.top, a.night, a.shape], [200, 5, AU.AURORA_SCALE.min, 0, '#abcdef', AU.AURORA_DEFAULT.top, false, AU.AURORA_SHAPES - 1])
+  assert.equal(AU.normalizeAurora({}).night, true)
+  assert.equal(PS.normalizePatioSettings({ aurora: { amount: 60 } }).aurora.amount, 60)
+  assert.equal(PS.patioSettingsDefaultsFile({ aurora: { amount: 60 } }, 3).aurora.amount, 60)
+  assert.equal(PS.patioSettingsOver({ aurora: { amount: 60 } }).aurora.amount, 60)
+})
+
+test('aurora: Só à noite fades it with the dark of the sky, off shows it at any hour', () => {
+  const at = h => S.skyLook({ ...S.SKY_DEFAULT, hour: h, follow: true })
+  const on = { ...AU.AURORA_DEFAULT, amount: 100 }
+  assert.equal(AU.auroraOpacity(on, at(0).night), 1)
+  assert.equal(AU.auroraOpacity(on, at(12).night), 0)
+  assert.equal(AU.auroraOpacity({ ...on, night: false }, at(12).night), 1)
+  assert.equal(AU.auroraOpacity({ ...on, amount: 0 }, 1), 0)
+  assert.equal(AU.auroraOpacity({ ...on, amount: 200 }, 1), 1)
+  // the stars still follow their own Intensidade; the night does not
+  const dim = S.skyLook({ ...S.SKY_DEFAULT, hour: 0, follow: true, starGlow: 0 })
+  assert.equal(dim.stars, 0); assert.equal(dim.night, 1)
+  assert.ok(S.classicLook().night > 0)
+})
+
+test('aurora: curtains spread over the span, rays stand on the foot line inside their box', () => {
+  const p = { ...AU.AURORA_DEFAULT, amount: 100 }
+  const span = AD.auroraSpan(9000, 1600, 0.97)
+  const cs = AD.auroraCurtains(span, p)
+  assert.equal(cs.length, p.bands)
+  for (const c of cs) {
+    assert.ok(c.x + c.w > span[0] && c.x < span[1])
+    const rays = AD.auroraRays(c, p.rays / 100)
+    assert.ok(rays.length > c.w / AD.AURORA_RAY_STEP * 0.6)
+    for (const r of rays) {
+      assert.ok(r.y - r.h >= c.top && r.y <= c.bottom, 'ray inside the box')
+      assert.ok(r.a > 0 && r.a <= 1)
+    }
+  }
+  // the same Pátio draws the same curtains; Sortear forma draws others
+  assert.deepEqual(AD.auroraCurtains(span, p), cs)
+  assert.notDeepEqual(AD.auroraCurtains(span, { ...p, shape: 1 }), cs)
+  // Raios 0 is an even veil; higher, the rays differ
+  const c = cs[0], spread = list => { const v = list.map(r => r.h); return Math.max(...v) - Math.min(...v) }
+  const mid = list => list.slice(Math.floor(list.length * 0.3), Math.floor(list.length * 0.7))
+  assert.ok(spread(mid(AD.auroraRays(c, 0))) < spread(mid(AD.auroraRays(c, 1))))
+  // Altura no céu lifts the feet
+  const low = AD.auroraCurtains(span, { ...p, lift: 0 })[0], high = AD.auroraCurtains(span, { ...p, lift: 100 })[0]
+  assert.ok(high.base < low.base)
+})

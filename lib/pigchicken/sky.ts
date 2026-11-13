@@ -183,6 +183,7 @@ export type SkyLook = {
   moon: { y: number; opacity: number }
   horizonGlow: number // 0 to 1: the light along the horizon under the sun
   stars: number; starCount: number; starSize: number // how visible (0 to 1), how many and how big (1 = usual)
+  night: number // how dark the sky is for the night's lights (0 day to 1 night), whatever Estrelas says: the Aurora
   clouds: { amount: number; lit: string; shade: string; opacity: number }
   // the landscape's far ranges and tree lines, back to front, and the haze at their feet
   ranges: [string, string, string]; trees: [string, string]; haze: string; hazeAmount: number
@@ -208,7 +209,7 @@ export function classicLook(): SkyLook {
   return {
     stops: [{ at: 0, color: '#0a0f20' }, { at: 0.27, color: '#121a33' }, { at: 0.54, color: '#222a48' }, { at: 0.75, color: '#3d3f5c' }, { at: 0.88, color: '#5e5468' }, { at: 1, color: '#7a6670' }],
     space: '#04060f',
-    sun: { x: 0, y: 640, r: 54, color: '#f1d8bc', glowColor: '#f1d8bc', soft: 0, glow: 0.82, glowSize: 1, opacity: 1 }, moon: { y: 0, opacity: 0 }, horizonGlow: 0, stars: 0, starCount: 1, starSize: 1,
+    sun: { x: 0, y: 640, r: 54, color: '#f1d8bc', glowColor: '#f1d8bc', soft: 0, glow: 0.82, glowSize: 1, opacity: 1 }, moon: { y: 0, opacity: 0 }, horizonGlow: 0, stars: 0, starCount: 1, starSize: 1, night: 0.6,
     clouds: { amount: 1, lit: '#d9d3e2', shade: '#b79fa6', opacity: 1 },
     ranges: ['#4d4d68', '#3d3f58', '#30344a'], trees: ['#282d41', '#212637'], haze: '#6a5c6c', hazeAmount: 1,
     texture: 0, forest: true, textureLook: { scale: 1, streak: 0.5, grain: 0.5, blend: 'soft-light' }, radial: { amount: 0, x: 0, y: 0, sun: false, size: 1 }, scenery: 'none', silhouette: '#0b0a12', horizon: '#7a6670',
@@ -239,12 +240,14 @@ export function skyLook(p: SkyParams | undefined): SkyLook {
   const away = [0.72, 0.55, 0.38, 0.24, 0.12].map(f => f * (0.3 + haze))
   const scen = land.map((c, i) => mix(c, hazeTo, away[i]))
   const sunOn = clamp((e + 0.15) * 4, 0, 1)
+  // the night's darkness: by the hour's key, or by how dark the top of the sky is
+  const night = clamp(Math.max(k.stars, clamp(0.35 - luma(top) * 2, 0, 1)) * (p.follow ? 1 : clamp(1 - luma(top) * 4, 0, 1)), 0, 1)
   return {
     stops, space: mix(top, '#000000', 0.65),
     sun: { x: p.sunX * SKY_SUN_MOVE.x, y: SUN_HORIZON_Y - e * 640 - p.sunLift * SKY_SUN_MOVE.y, r: p.sunSize * 1.4, color: p.sunColor || k.sun, glowColor: p.glowColor || p.sunColor || k.sun, soft: p.sunSoft / 100, glow: p.glow / 100, glowSize: p.glowSize / 100, opacity: sunOn },
     moon: { y: SUN_HORIZON_Y - sunElevation(p.hour - 12.5) * 560, opacity: clamp((-e - 0.05) * 3, 0, 1) * 0.9 },
     horizonGlow: Math.min(1, p.glow / 100) * clamp(1 - Math.abs(e) * 2.2, 0, 1),
-    stars: clamp(Math.max(k.stars, clamp(0.35 - luma(top) * 2, 0, 1)) * (p.follow ? 1 : clamp(1 - luma(top) * 4, 0, 1)) * p.starGlow / 100, 0, 1),
+    stars: clamp(night * p.starGlow / 100, 0, 1), night,
     starCount: p.starCount / 100, starSize: p.starSize / 100,
     clouds: { amount: p.clouds / 100, lit: mix(mix(p.sunColor || k.sun, '#ffffff', 0.35), nearHorizon, 0.35), shade: mix(stopColor(stops, 0.35), silhouette, 0.25), opacity: 1.6 },
     ranges: [scen[0], scen[1], scen[2]], trees: [scen[3], scen[4]], haze: hazeTo, hazeAmount: haze * 1.2,
