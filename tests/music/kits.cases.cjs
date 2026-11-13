@@ -71,6 +71,32 @@ test('Classical campaigns use recorded multisamples, articulations and dedicated
   assert.equal(sampleRegistration({ kind: 'sample', bank: 'chicken-classical-v1', asset: 'violin-pizzicato', variant: 3, pitched: true }).files.length, 4)
 })
 
+test('Marseille 1997 loops a sampled orchestra over a swung breakbeat in the Classical campaign', () => {
+  const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
+  const { cities } = loadTs('lib/cities-data.ts')
+  const kit = defaultCityKit('marseille-1997'), city = cities.find(item => item.id === 'marseille-1997')
+  assert.deepEqual(city.campaigns, ['classical'])
+  assert.match(city.image, /^https:\/\//)
+  assert.equal(kit.harmony, 'kit')
+  assert.deepEqual([kit.meter, kit.bpm, kit.root, kit.scale], ['4/4', 90, 'C', 'Harmônica menor'])
+  const sections = kit.arrangement.sections, instruments = kit.instruments
+  assert.deepEqual(sections.map(section => section.label), ['Intro', 'Verse', 'Chorus', 'Interlude', 'Verse', 'Break', 'Solo', 'Chorus', 'Outro'])
+  // Drums from the sampler, the orchestra from the classical recordings.
+  for (const [id, asset] of [['w:a2', 'dusty-kick'], ['w:b2', 'break-snare'], ['w:c2', 'dusty-hat']]) assert.equal(instruments[id].source.asset, asset, id)
+  for (const id of ['w:b1', 'w:c1', 'w:d1', 'w:f1', 'w:g1', 'w:h1']) assert.equal(instruments[id].source.bank, 'chicken-classical-v1', id)
+  // The intro opens with the piano alone and the beat drops in its seventh bar.
+  const intro = sections[0].id, starts = id => instruments[id].pianoRolls[0].notes.map(note => note.start)
+  assert.ok(Math.min(...starts('w:f1')) < .01, 'the piano starts the record')
+  assert.ok(Math.min(...starts('w:a2')) >= 6 - .01, 'the kick waits for bar 7')
+  assert.equal(instruments['w:d1'].arrangement.sections[intro].variation, null, 'the solo violin keeps the hook for the chorus')
+  // The sampler swing: the off sixteenths of the verse hats land late.
+  const hats = instruments['w:c2'].pianoRolls[1].notes.filter(note => Math.abs(note.start * 16 - Math.round(note.start * 16)) > 1e-6)
+  assert.ok(hats.length > 0)
+  // The orchestra hit follows the chords (a pitched phrase, not a fixed pulse).
+  assert.equal(instruments['w:h2'].behavior, 'phrase')
+  assert.ok(instruments['w:h2'].source.pitched)
+})
+
 test('Salvador 1992 sets trumpet, trombone and coro over the bloco\'s complementary surdos', () => {
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
   const { cities } = loadTs('lib/cities-data.ts')
@@ -305,8 +331,8 @@ test('every city has a reproducible, distinct kit with roles independent of ches
 test('curated arrangements vary density, timbre and harmonic direction by city', () => {
   const { cities, getCityById } = loadTs('lib/cities-data.ts')
   const { defaultCityKit } = loadTs('lib/music/city-kits.ts')
-  assert.equal(cities.length, 82)
-  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 63)
+  assert.equal(cities.length, 83)
+  assert.equal(new Set(cities.map(city => `${city.geoCoordinates.lat}:${city.geoCoordinates.lng}`)).size, 64)
   const jozi = getCityById('johannesburg')
   assert.equal(jozi.year, 1994)
   assert.match(jozi.genre, /Kwaito/)
@@ -336,7 +362,7 @@ test('every stage belongs to its intended campaign without sharing progression I
   const {CAMPAIGNS,citiesInCampaign}=loadTs('lib/campaigns.ts')
   assert.equal(new Set(cities.map(city=>city.id)).size,cities.length)
   assert.ok(cities.every(city=>city.campaigns.length>0))
-  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,6,12,12,13,17])
+  assert.deepEqual(CAMPAIGNS.map(c=>citiesInCampaign(cities,c.id).length),[16,6,7,12,12,13,17])
   assert.deepEqual(cities.find(city=>city.id==='manchester-1999').campaigns,['world-ballads'])
   assert.deepEqual(cities.find(city=>city.id==='vienna').campaigns,['classical'])
 })

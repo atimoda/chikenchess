@@ -14,6 +14,8 @@ export const CITY_STYLE_REVISIONS: Record<string, string> = {
   'venice-1725': 'venice-2026-11-07-concerto-v1',
   'copenhagen-1869': 'copenhagen-2026-11-07-concerto-v1',
   'paris-1913': 'paris-2026-11-07-ballet-v1',
+  // Classical meets hip hop: official kit authored by scripts/classical/marseille-1997.cjs.
+  'marseille-1997': 'marseille-1997-2026-11-13-classical-v1',
   'buenos-aires-1940': 'buenos-aires-2026-11-10-tango-v1',
   // World ballads rewrite: official kits authored by scripts/ballads/<city>.cjs.
   'manchester-1999': 'manchester-1999-2026-11-11-ballads-v2',

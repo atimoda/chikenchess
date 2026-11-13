@@ -7,8 +7,14 @@ const RECENT = [
   {
     version: '2.10.0',
     date: '13/11/2026',
-    title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo e pendurar nos fios; Martelo de Thor e Cajado de Odin',
+    title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo; Martelo de Thor e Cajado de Odin; fase Marseille 1997 · Orchestral rap na campanha Classical',
     groups: [
+      { title: 'Classical', items: [
+        'Nova fase Marseille 1997 · Orchestral rap, a sétima da campanha: violinos em lamento, cravo recortado, violoncelos em spiccato e piano tirados de um "disco" clássico, em loop sobre um breakbeat empoeirado com o swing do sampler, baixo sub, scratches do DJ e orchestra hits.',
+        'A música tem forma completa: o disco começa sozinho com piano e chiado de vinil e os instrumentos entram um a um; o refrão abre com violino solo, coro e trompas; o interlúdio é um coral suave; a quebra junta a orquestra inteira nos mesmos acentos; o solo de violino barroco conversa com o scratch.',
+        'Os lances da partida levam a cada parte, como nas outras fases: refrão no primeiro roque, quebra no xeque, interlúdio ao perder a dama e final no mate.',
+        'A cidade tem foto do Vieux-Port, texto de abertura e descrição no mapa.',
+      ] },
       { title: 'Pátio', items: [
         'Novo Pátio de exemplo em Destaques, Training room: 15 estações em sequência, do andar e correr ao pulo chocando no ar, cada uma com as plataformas, caixas, paredes, buraco ou trampolim que o movimento pede. No fim, um portal leva de volta ao começo.',
         'Novo elemento Quadro de lousa (grupo Treino do Modo editor): uma lousa verde com o texto que você escrever em giz branco. Em Editar, escolha o texto e, se quiser, um movimento para o fantasma.',
