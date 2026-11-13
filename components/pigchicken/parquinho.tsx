@@ -1032,7 +1032,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
       }))
       if (perches.spans.length) {
-        perches.camX = camX; perches.camY = camY - yr.lo; perches.time += dt
+        perches.camX = camX; perches.camY = camY - yr.lo; perches.restY = yr.lo; perches.time += dt
         perches.players = [{ x: body.x, y: body.y - 90 * st.scale }, ...[...(extras?.current?.values() ?? [])].map(e => { const s = e.getMotionState(); return { x: s.x + camX, y: s.y - camY - 90 * s.scale } })]
       }
       // the chicks are caught by any player's Passaguá, like the birds (and count as souls); online, the other

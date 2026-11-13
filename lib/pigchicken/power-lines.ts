@@ -44,8 +44,10 @@ export function normalizePower(kind: PowerKind, raw: unknown): PowerParams {
 export const normalizeDepth = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.max(ELEMENT_DEPTH.min, Math.min(ELEMENT_DEPTH.max, v)) * 100) / 100 : 0
 
 // ---------- spans: one wire between two neighbours ----------
-type Pole = { id: string; kind: string; x: number; y: number; w: number; h: number; depth?: number; params: { power?: PowerParams } }
-export type WireEnd = { x: number; y: number; d: number }
+type Pole = { id: string; kind: string; x: number; y: number; w: number; h: number; depth?: number; backdrop?: string; params: { power?: PowerParams } }
+// pin: its pole is pinned to a layer of the scenery far behind (LayoutElement.backdrop): it slides vertically from
+// the camera at 0, not from the resting height
+export type WireEnd = { x: number; y: number; d: number; pin?: boolean }
 export type Span = { id: string; group: string; a: WireEnd; b: WireEnd; sag: number; wire: number; depth: number; floor: boolean }
 
 export const powerGroup = (kind: string, p: PowerParams) => `${kind}:${p.model}:${p.line}`
@@ -89,8 +91,8 @@ export function powerSpans(elements: readonly Pole[]): Span[] {
       const qb = POWER_MODELS[B.params.power!.model].attach[k] ?? [px, py]
       return {
         id: `${A.id}>${B.id}:${k}`, group,
-        a: { x: A.x + (px / 100) * A.w, y: A.y + (py / 100) * A.h, d: da },
-        b: { x: B.x + (qb[0] / 100) * B.w, y: B.y + (qb[1] / 100) * B.h, d: db },
+        a: { x: A.x + (px / 100) * A.w, y: A.y + (py / 100) * A.h, d: da, ...(A.backdrop ? { pin: true } : {}) },
+        b: { x: B.x + (qb[0] / 100) * B.w, y: B.y + (qb[1] / 100) * B.h, d: db, ...(B.backdrop ? { pin: true } : {}) },
         sag: pa.sag, wire: pa.wire, depth: Math.max(da, db), floor: pa.floor,
       }
     })
@@ -167,24 +169,26 @@ export function spanFloor(s: Span, n = 12) {
 }
 
 // where a span's ends are in the world with the camera at (camX, camY) (live-camera's: x at the screen's left,
-// y the screen y of world 0): a thing at depth d moves d × camX right and d × camY up
-export const endAt = (e: WireEnd, camX: number, camY: number) => ({ x: e.x + e.d * camX, y: e.y - e.d * camY })
+// camY the screen y of world 0 less the resting height restY): a thing at depth d moves d × camX right and d × camY
+// up; pinned to a backdrop layer, d × (camY + restY) up, like the layer
+export const endAt = (e: WireEnd, camX: number, camY: number, restY = 0) => ({ x: e.x + e.d * camX, y: e.y - e.d * (camY + (e.pin ? restY : 0)) })
 
 // the quadratic curve of a span: its two ends and the control point that makes it sag
-export function spanCurve(s: Span, camX: number, camY: number) {
-  const a = endAt(s.a, camX, camY), b = endAt(s.b, camX, camY)
+export function spanCurve(s: Span, camX: number, camY: number, restY = 0) {
+  const a = endAt(s.a, camX, camY, restY), b = endAt(s.b, camX, camY, restY)
   const len = Math.hypot(b.x - a.x, b.y - a.y)
   // the middle sags `sag` % of 18% of the span; a quadratic's middle sits half way to its control point
   const drop = (s.sag / 100) * 0.18 * len * 2
   return { a, c: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + drop }, b, len }
 }
-export function spanPoint(s: Span, t: number, camX: number, camY: number) {
-  const { a, c, b } = spanCurve(s, camX, camY), u = 1 - t
+export function spanPoint(s: Span, t: number, camX: number, camY: number, restY = 0) {
+  const { a, c, b } = spanCurve(s, camX, camY, restY), u = 1 - t
   return { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y }
 }
-export function spanPath(s: Span, camX: number, camY: number) {
-  const { a, c, b } = spanCurve(s, camX, camY)
+export function spanPath(s: Span, camX: number, camY: number, restY = 0) {
+  const { a, c, b } = spanCurve(s, camX, camY, restY)
   return `M${a.x.toFixed(1)} ${a.y.toFixed(1)}Q${c.x.toFixed(1)} ${c.y.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}`
 }
-// all spans share one depth: their curve only slides with the camera (drawn once, moved as a layer)
-export const fixedDepth = (spans: Span[]) => spans.every(s => s.a.d === s.b.d && s.a.d === spans[0]?.a.d)
+// all spans share one depth (and pinned or not alike): their curve only slides with the camera (drawn once, moved as
+// a layer)
+export const fixedDepth = (spans: Span[]) => spans.every(s => s.a.d === s.b.d && s.a.d === spans[0]?.a.d && !s.a.pin === !s.b.pin && !s.a.pin === !spans[0]?.a.pin)

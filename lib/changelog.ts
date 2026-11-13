@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.10.0',
     date: '13/11/2026',
-    title: 'Pátio Training room, Quadro de lousa e fantasma de treino; portais para outro Pátio e gerador de Pátio novo; Martelo de Thor e Cajado de Odin com choque em cadeia, raio-x e especial',
+    title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo e pendurar nos fios; Martelo de Thor e Cajado de Odin',
     groups: [
       { title: 'Pátio', items: [
         'Novo Pátio de exemplo em Destaques, Training room: 15 estações em sequência, do andar e correr ao pulo chocando no ar, cada uma com as plataformas, caixas, paredes, buraco ou trampolim que o movimento pede. No fim, um portal leva de volta ao começo.',
@@ -17,6 +17,8 @@ const RECENT = [
         'Ao entrar num desses portais, todos os players locais são sugados por ele e saem do portal de entrada do outro Pátio.',
         'Se o Pátio do destino não existe mais, a galinha volta pelo mesmo portal e aparece “Este pátio não existe mais...”. O portal continua lá, e o painel Editar dele avisa quem edita para escolher outro destino.',
         'Gerador de Pátio novo: “Pátio novo” no Destino do portal cria um Pátio e já liga o portal a ele, sem sair de onde está; no Playgrounds, “Novo Pátio do zero” substitui “Novo Pátio vazio”. Há duas opções: Empty (só o portal de entrada) e Basic biome (chão com morros, árvores, moitas, pedras e árvores ao fundo, sorteados num bioma de campo, pinheiral, neve ou deserto), com o slider Densidade, de Desmatado a Floresta.',
+        'No Editar de um poste ou torre, Camadas do fundo lista as camadas do cenário ao longe (céu, nuvens, cada cordilheira e as matas). Apontar uma mostra só ela; escolher prende o poste num ponto fixo dela, de pé na crista da montanha ou no chão da mata, e daí ele anda junto com a camada em qualquer tela. Os fios até uma torre mais perto acompanham, dando a profundidade da linha indo para o fundo. Escolher de novo solta, mantendo a profundidade.',
+        'Nos fios dos postes e torres, Chocar + Pulo põe a galinha pendurada de cabeça para baixo debaixo do fio, e de volta em cima, como nas caixas, em vez de atravessar o fio. Pendurada, ela anda pelo fio e passa para o seguinte no poste; Pulo para o lado contrário e subir com Cima também a penduram.',
       ] },
       { title: 'Martelo de Thor e Cajado de Odin', items: [
         'Dois itens novos de magia, no grupo Utilitário do inventário. No Modo editor, os suportes ficam na paleta Magia; também podem entrar como Item solto.',

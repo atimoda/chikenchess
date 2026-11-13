@@ -51,9 +51,10 @@ export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el
 })
 
 // something in a parallax depth of its own: slides with the camera inside the layer that already follows it
-export function DepthLayer({ depth, children, className = "pointer-events-none absolute left-0 top-0" }: { depth: number; children: React.ReactNode; className?: string }) {
+// pinned: on a fixed point of a layer of the scenery far behind (LayoutElement.backdrop), see live-camera
+export function DepthLayer({ depth, pinned = false, children, className = "pointer-events-none absolute left-0 top-0" }: { depth: number; pinned?: boolean; children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => (ref.current ? followDepth(ref.current, depth) : undefined), [depth])
+  useEffect(() => (ref.current ? followDepth(ref.current, depth, pinned) : undefined), [depth, pinned])
   return <div ref={ref} className={className}>{children}</div>
 }
 
@@ -86,7 +87,7 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
             <ElementArt el={el} editing={editing} worldX={el.kind === "tree" || el.kind === "pine" || el.kind === "blossom" ? el.x + el.w / 2 : undefined} />
           </SceneryRegion>
         )
-        return el.depth ? <DepthLayer key={el.id} depth={el.depth}>{art}</DepthLayer> : art
+        return el.depth ? <DepthLayer key={el.id} depth={el.depth} pinned={!!el.backdrop}>{art}</DepthLayer> : art
       })}
       {power !== false && <PowerLines elements={elements} layer={layer} />}
     </>
