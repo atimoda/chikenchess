@@ -66,6 +66,9 @@ export type ElementParams = {
   tree?: TreeParams
   trampoline?: TrampolineParams
   portalPairId?: string; portalLabel?: string; portalInstruction?: 'always' | 'hover'
+  // a portal to another Pátio (lib/pigchicken/portal-links.ts): its lobby id or "default"; '' not chosen yet; absent:
+  // it leads to its pair. portalTargetName: that Pátio's name when it was chosen (shown even after it is gone)
+  portalTarget?: string; portalTargetName?: string
   zone?: SoundZoneParams // Zona sonora
   lanes?: LanesParams // Faixas fixas
   surface?: SurfaceParams // Chão (biome) and Parede (style): the outline's points
@@ -190,6 +193,20 @@ export function defaultParams(kind: ElementKind): ElementParams {
   return {}
 }
 
+// the name shown for an element (a portal on its own is not a pair)
+export const elementLabel = (el: Pick<LayoutElement, 'kind' | 'params'>) =>
+  el.kind === 'portal' && !el.params.portalPairId && el.params.portalTarget !== undefined ? 'Portal para outro Pátio' : ELEMENT_DEFS[el.kind].label
+
+// a portal to another Pátio: the lobby id (a uuid) or the default Pátio; anything else is "not chosen yet"
+export const DEFAULT_PATIO_TARGET = 'default'
+const LOBBY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const normalizePortalTarget = (raw: unknown) =>
+  typeof raw !== 'string' ? undefined : raw === DEFAULT_PATIO_TARGET || LOBBY_ID.test(raw) ? raw : ''
+// one portal on its own, leading to another Pátio (the palette's "Portal para outro Pátio")
+export function createPatioPortal(cx: number, cy: number): LayoutElement {
+  return createElement('portal', cx, cy, { portalPairId: '', portalTarget: '' })
+}
+
 export function createPortalPair(cx: number, cy: number): [LayoutElement, LayoutElement] {
   const a = createElement('portal', cx, cy), b = createElement('portal', cx + 240, cy)
   a.params.portalPairId = a.id; b.params.portalPairId = a.id
@@ -254,6 +271,8 @@ export function portalPartner(portal: LayoutElement, elements: LayoutElement[]) 
 }
 
 export function duplicatePortalPair(portal: LayoutElement, elements: LayoutElement[]) {
+  // a portal on its own (to another Pátio): its copy is on its own too, to the same Pátio
+  if (!portal.params.portalPairId && portal.params.portalTarget !== undefined) return [{ ...structuredClone(portal), id: newElementId('portal'), x: portal.x + 32, y: portal.y - 32, locked: false }]
   const partner = portalPartner(portal, elements)
   if (!partner) return createPortalPair(portal.x + portal.w / 2 + 32, portal.y + portal.h / 2 - 32)
   const pair = [portal, partner].map(e => ({ ...structuredClone(e), id: newElementId('portal'), x: e.x + 32, y: e.y - 32, locked: false }))
@@ -393,6 +412,11 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.portalPairId = typeof p.portalPairId === 'string' ? p.portalPairId.slice(0, 64) : ''
     params.portalLabel = String(p.portalLabel ?? 'Entrar no portal?').slice(0, 100)
     params.portalInstruction = p.portalInstruction === 'always' ? 'always' : 'hover'
+    const target = normalizePortalTarget(p.portalTarget)
+    if (target !== undefined) {
+      params.portalTarget = target
+      if (target && typeof p.portalTargetName === 'string' && p.portalTargetName.trim()) params.portalTargetName = p.portalTargetName.slice(0, 60)
+    }
   } else if (kind === 'pine' || kind === 'blossom') {
     params.seed = Math.floor(clamp(num(p.seed, 1), 0, 2 ** 31))
     params.flip = !!p.flip

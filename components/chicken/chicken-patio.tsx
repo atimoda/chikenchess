@@ -28,7 +28,8 @@ import { getOnlineClient } from "@/lib/online/client"
 import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, playPortalSound, type ChickenPortalWorld } from "./chicken-portal"
 import { portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
-import { PatioPortals } from "@/components/pigchicken/patio-portals"
+import { PatioPortals, type PatioPortalTravel } from "@/components/pigchicken/patio-portals"
+import { checkPatioTarget, MISSING_PATIO_TEXT, OFFLINE_PATIO_TEXT, targetLobbyId } from "@/lib/pigchicken/portal-links"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
 import { stageInset, subscribeStageInset } from "@/lib/stage-size"
@@ -362,13 +363,14 @@ export function ChickenPatio() {
   // drawn), they come out of its entry portal.
   const entryRef = useRef<LayoutElement | null>(null)
   const travelling = useRef(false)
-  const travel = async <T,>(go: () => Promise<T>): Promise<T> => {
+  // through: the portal (to another Pátio) they leave by, instead of the entry portal
+  const travel = async <T,>(go: () => Promise<T>, through?: () => { x: number; y: number } | null): Promise<T> => {
     const actors = () => [...(engine ? [engine] : []), ...extraEngines.current.values()]
     const centre = () => {
       const box = worldRef.current?.getBoundingClientRect(), el = entryRef.current
       return box && el ? { x: box.left + el.x + el.w / 2, y: box.top + el.y + el.h / 2 } : null
     }
-    const from = centre()
+    const from = through?.() ?? centre()
     if (travelling.current || !from || !actors().length) return go()
     travelling.current = true
     try {
@@ -389,7 +391,7 @@ export function ChickenPatio() {
     }
   }
   // another lobby (from "Abrir" or the lobby panel's Próximo / Anterior): what is pending is saved, the editor closes
-  const switchLobby = (id: string | null, savePending = true) => {
+  const switchLobby = (id: string | null, savePending = true, through?: () => { x: number; y: number } | null) => {
     setEditorOn(false)
     setEditActive(false)
     setEditHint(false)
@@ -397,19 +399,34 @@ export function ChickenPatio() {
     setPerson(null)
     // the players' lobby is the Pátio open here
     setLobby(prev => (prev ? { ...prev, id: id ?? prev.id } : prev))
-    return travel(() => pl.switchTo(id, savePending))
+    return travel(() => pl.switchTo(id, savePending), through)
+  }
+  // a portal to another Pátio: she waits hidden in it while the Pátio is checked; gone (or no connection), she comes
+  // back out of the same portal with the notice and the portal stays for whoever edits this Pátio
+  const travelThroughPortal: PatioPortalTravel = (target, portal, actor) => {
+    const back = (text: string) => {
+      const at = portal.centre()
+      if (at) { portalGate(actor, portal.id).block(); actor.arriveAtPortal({ ...at, durationMs: PORTAL_TRANSITION_MS }); playPortalSound("arrive") }
+      else actor.setPortalEntry(null)
+      setToast(text)
+    }
+    if (travelling.current) { actor.setPortalEntry(null); return }
+    void checkPatioTarget(target).then(status => {
+      if (status !== "ok") { back(status === "missing" ? MISSING_PATIO_TEXT : OFFLINE_PATIO_TEXT); return }
+      switchLobby(targetLobbyId(target), true, portal.centre).catch(() => back(OFFLINE_PATIO_TEXT))
+    })
   }
   const switchRef = useRef(switchLobby)
   switchRef.current = switchLobby
   useEffect(() => onPatioOpenRequest(id => switchRef.current(id)), [])
   // a new Pátio of mine (a copy of the default one, or an empty one): I am its creator and may edit it
-  const startNewPatio = (empty: NewPatioKind = false) => {
+  const startNewPatio = (kind: NewPatioKind = 'default') => {
     setEditorOn(false)
     setEditActive(false)
     setEditHint(false)
     setOpenOpen(false)
     setPerson(null)
-    void travel(() => pl.startNew(meId ?? deviceId(), empty)).then(id => {
+    void travel(() => pl.startNew(meId ?? deviceId(), kind)).then(id => {
       if (id) setLobby(prev => (prev ? { ...prev, id } : prev))
       setEditorOn(true)
     })
@@ -662,14 +679,14 @@ export function ChickenPatio() {
 
       <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
       <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
-      <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editing} />
+      <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editing} onTravel={travelThroughPortal} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
       <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} temple={patioTemple(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
-        soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })} />}
+        me={meId ?? deviceId()} signedIn={!!meId} soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })} />}
       {/* the "Zonas sonoras" layer outside the editor: only shown, the tags do not change anything */}
       {patioLayers.layers.zones > 0 && !(editing && patio && access.canEdit) && (
         <MusicZonesLayer elements={elementsInWorld({ v: 1, elements: patio?.layout.elements ?? [] }, screens)} screens={screens} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} editable={false} opacity={patioLayers.layers.zones / 100} />

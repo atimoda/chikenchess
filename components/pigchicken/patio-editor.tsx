@@ -11,10 +11,11 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
+import { PortalTargetFields } from "./portal-target-fields"
 import { cn } from "@/lib/utils"
 import {
   ELEMENT_DEFS, HARD_KINDS, HORDE_BUTTONS, canHaveDepth, isMusicElement, isPowerElement, isSurfaceElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
-  looseFromRack, newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
+  looseFromRack, newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, elementLabel, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
@@ -85,7 +86,9 @@ const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 // soundLayer: the "Zonas sonoras" layer (shared with the header's eye), editable here
 // active: the switch in the panel's title; off, the panel stays open and its cards still place elements, but the
 // elements cannot be selected, moved or edited and the Pátio plays as outside the editor
-export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, active = true, onActive, palette = true }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void }) {
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, active = true, onActive, palette = true, me, signedIn = false }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void
+  // who makes a Pátio new from a portal's Destino (the account, or this browser) and whether it may be saved/named
+  me: string; signedIn?: boolean }) {
   const history = useHistory(layout, onChange)
   const { back, forward, canUndo, canRedo } = history
   // the gesture under way (move, resize, turn); the element being dragged does not fall until it is let go
@@ -181,7 +184,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   const floorBelow = useCallback((x: number, y: number) =>
     layoutFloorBelow(elementsInWorld(layoutRef.current, screens), x, y), [screens])
   const add = useCallback((el: LayoutElement) => {
-    append(el.kind === 'portal' ? createPortalPair(el.x + el.w / 2, el.y + el.h / 2) : [el])
+    // "Par de portais" makes two; "Portal para outro Pátio" stands on its own
+    append(el.kind === 'portal' && el.params.portalTarget === undefined ? createPortalPair(el.x + el.w / 2, el.y + el.h / 2) : [el])
   }, [append])
 
   const placement = usePatioPlacement((el, clientX, clientY) => {
@@ -348,6 +352,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
               onDuplicate={() => duplicate(sel)}
               onDelete={() => remove(sel.id)}
               deleteBlocked={!!portalPartner(sel, layout.elements)?.locked}
+              pair={!!portalPartner(sel, layout.elements)}
             /></DepthLayer>
           )}
         </div>
@@ -358,7 +363,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         : selectedTree
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
-          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} />)}
+          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking}
+            portal={sel.kind === "portal" ? { hasPartner: !!portalPartner(sel, layout.elements), me, signedIn } : undefined} />)}
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
@@ -402,7 +408,7 @@ const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, e
       data-sel={selected || undefined}
       data-locked={el.locked || undefined}
       data-link={link}
-      aria-label={d.label}
+      aria-label={elementLabel(el)}
       className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry") && "z-[1]")}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
@@ -432,11 +438,11 @@ const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, e
 const TOOL = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-[#101713]/95 text-[#dfe8df] transition-colors hover:border-primary hover:text-white disabled:opacity-40"
 
 // the selected element's bar, over its top-right corner
-function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onUp, onDuplicate, onDelete, deleteBlocked }: {
+function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onUp, onDuplicate, onDelete, deleteBlocked, pair }: {
   el: LayoutElement; panel: string; setPanel: (p: "" | "layers" | "edit" | "delete") => void
   onLock: () => void; onGravity: () => void; onRotate: (e: React.PointerEvent) => void; onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void
   onDuplicate: () => void; onDelete: () => void
-  deleteBlocked: boolean
+  deleteBlocked: boolean; pair: boolean
 }) {
   const d = ELEMENT_DEFS[el.kind]
   const b = elementBounds(el)
@@ -444,7 +450,7 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
   const top = Math.max(b.y - 46, -2990)
   return (
     <div data-chicken-ignore className="pointer-events-auto absolute z-[2] flex items-center gap-1 font-mono text-[11px]" style={{ left: b.x + b.w, top, transform: "translateX(-100%)" }} onPointerDown={e => e.stopPropagation()}>
-      <span className="mr-1 whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-white/80">{d.label}</span>
+      <span className="mr-1 whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-white/80">{elementLabel(el)}</span>
       <button type="button" className={cn(TOOL, el.locked && "border-amber-300 text-amber-300")} title={el.locked ? "Destrancar" : "Trancar (bloqueia mover, redimensionar, girar e apagar)"} aria-label={el.locked ? "Destrancar" : "Trancar"} aria-pressed={el.locked} onClick={onLock}>
         {el.locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
       </button>
@@ -486,7 +492,7 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
             </button>
             {panel === "delete" && (
               <div role="dialog" aria-label="Confirmar" className="absolute right-0 top-10 flex items-center gap-2 whitespace-nowrap rounded-lg border border-red-400/60 bg-[#101713] px-3 py-2 text-white shadow-lg">
-                <span>{el.kind === 'portal' ? 'Apagar os dois portais do par?' : 'Apagar?'}</span>
+                <span>{pair ? 'Apagar os dois portais do par?' : 'Apagar?'}</span>
                 <button type="button" className="h-7 rounded-md border border-red-400 bg-red-500/80 px-2 font-bold" onClick={onDelete}>Apagar</button>
                 <button type="button" className="h-7 rounded-md border border-white/20 px-2" onClick={() => setPanel("")}>Não</button>
               </div>
@@ -562,7 +568,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
   return (
     <FloatingPanel id="patio-layers" overDock aria-label="Camada e colisões" initial={vw => ({ x: Math.max(12, vw - 312), y: 64, w: 300, h: 470 })} minW={240} minH={200} className="gap-field overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="mb-2.5 flex shrink-0 items-center gap-2">
-        <h2 className="flex-1 text-sm text-white">Camada · {ELEMENT_DEFS[el.kind].label}</h2>
+        <h2 className="flex-1 text-sm text-white">Camada · {elementLabel(el)}</h2>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div role="radiogroup" aria-label="Camada" className="grid gap-field">
@@ -601,7 +607,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
 }
 
 // the Edit panel for elements that do not have their own customizer
-function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onLinking }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onDelete?: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void }) {
+function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onLinking, portal }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onDelete?: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void; portal?: { hasPartner: boolean; me: string; signedIn: boolean } }) {
   const set = (p: ElementParams, step?: string) => onChange({ ...el, params: { ...el.params, ...p } }, step)
   const [msg, setMsg] = useState(el.params.message ?? "")
   const editSession = useId()
@@ -611,7 +617,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
   return (
     <FloatingPanel id="patio-edit" overDock aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-field overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="mb-2.5 flex shrink-0 items-center gap-2">
-        <h2 className="flex-1 text-sm text-white">Editar · {ELEMENT_DEFS[el.kind].label}</h2>
+        <h2 className="flex-1 text-sm text-white">Editar · {elementLabel(el)}</h2>
         {onDelete && el.kind !== "entry" && !el.locked && <button type="button" aria-label="Excluir" title="Excluir (Del)" onClick={onDelete} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-red-400 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
@@ -642,7 +648,8 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
         </>
       )}
       {el.kind === "portal" && <>
-        <p className="text-[#93a79a]">Este portal leva ao outro portal do mesmo par. Mova cada um separadamente. Duplicar ou apagar afeta o par inteiro.</p>
+        {portal?.hasPartner && el.params.portalTarget === undefined && <p className="text-[#93a79a]">Este portal leva ao outro portal do mesmo par. Mova cada um separadamente. Duplicar ou apagar afeta o par inteiro.</p>}
+        {portal && <PortalTargetFields el={el} hasPartner={portal.hasPartner} me={portal.me} signedIn={portal.signedIn} onChange={set} />}
         <label className="grid gap-1">
           <span>Texto da instrução / confirmação</span>
           <input aria-label="Texto do portal" maxLength={100} value={el.params.portalLabel ?? ''} onChange={e => set({ portalLabel: e.target.value }, `portal-label:${el.id}`)} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
@@ -792,7 +799,7 @@ function SurfaceFields({ el, surface, onChange }: { el: LayoutElement; surface: 
 // ---------- the palette: drag an element onto the Pátio ----------
 type Entry = { key: string; kind: ElementKind; label: string; params?: ElementParams }
 const ENTRIES: { group: string; items: Entry[] }[] = [
-  { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }] },
+  { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }, { key: "portal-patio", kind: "portal", label: "Portal para outro Pátio", params: { portalPairId: "", portalTarget: "" } }] },
   { group: "Plataformas", items: (["platform", "terrace", "pillar", "trampoline"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Chãos e paredes", items: [
     ...GROUND_BIOMES.map(style => ({ key: `ground-${style}`, kind: "ground" as ElementKind, label: `Chão · ${SURFACE_STYLE_LABELS[style]}`, params: { surface: defaultSurface("ground", style) } })),

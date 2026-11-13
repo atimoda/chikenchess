@@ -3,7 +3,8 @@
 // Without one the page shows the default Pátio (the admin's). Each Pátio is kept in this browser as soon as it is
 // edited, so nothing is lost while offline; the database copy (lib/pigchicken/patio-online.ts) is saved over it on
 // "Salvar" and every minute, and `revision` / `dirty` say how this copy relates to the saved one.
-import { defaultLayout, emptyLayout, normalizeLayout, type PatioLayout } from './layout'
+import { defaultLayout, normalizeLayout, type PatioLayout } from './layout'
+import { generatePatioLayout, type PatioRecipe } from './patio-generator'
 
 export type PatioRecord = {
   id: string | null // null: the default Pátio
@@ -74,13 +75,16 @@ export function loadPatio(id: string | null): PatioRecord {
   return read(id) ?? { ...loadDefaultPatio(), id, creatorId: null, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
 }
 
-// a new Pátio of mine: a copy of the default (kept only once it is edited) or an empty one (only the entry portal).
+// a new Pátio of mine: a copy of the default (kept only once it is edited) or one from the generator (Empty: only the
+// entry portal; Basic biome: random nature, lib/pigchicken/patio-generator.ts).
 // The example Pátios are normal lobbies of the admin's, featured (lib/pigchicken/example-seed.ts).
-export type NewPatioKind = boolean
-export function newPatio(creatorId: string, empty: NewPatioKind = false): PatioRecord {
+export type NewPatioKind = 'default' | PatioRecipe
+export function newPatio(creatorId: string, kind: NewPatioKind = 'default'): PatioRecord {
   const id = uuid()
-  return { id, layout: empty ? emptyLayout() : structuredClone(loadDefaultPatio().layout), creatorId, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
+  return { id, layout: kind === 'default' ? structuredClone(loadDefaultPatio().layout) : generatePatioLayout(kind), creatorId, name: null, godparentId: null, updatedAt: null, edited: false, revision: 0, dirty: false, dbId: id }
 }
+// a Pátio this browser keeps (null: it only knows it from the database, or not at all)
+export const keptPatio = (id: string) => read(id)
 export const newPatioId = uuid
 
 export function keepPatio(rec: PatioRecord): PatioRecord {
