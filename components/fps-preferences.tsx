@@ -6,6 +6,7 @@ import {
   cancelGameFrame, GAME_FPS_LIMIT, getFramePreferences, getServerFramePreferences,
   requestGameFrame, setFramePreference, subscribeFramePreferences,
 } from "@/lib/game-frame"
+import { audioHealth } from "@/lib/quality-monitor"
 
 export const useFramePreferences = () => useSyncExternalStore(subscribeFramePreferences, getFramePreferences, getServerFramePreferences)
 
@@ -40,7 +41,9 @@ export function FpsCounter() {
         frames++
         const elapsed = now - start
         if (elapsed >= 500) {
-          node.textContent = `${Math.round(frames * 1000 / elapsed)} FPS`
+          // While some sound is running: late music scheduler ticks and output glitches since the page opened.
+          const audio = audioHealth()
+          node.textContent = `${Math.round(frames * 1000 / elapsed)} FPS` + (audio.playing ? ` · atrasos ${audio.late} · falhas ${audio.measured ? audio.glitches : "n/d"}` : "")
           start = now
           frames = 0
         }

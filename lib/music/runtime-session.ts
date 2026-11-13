@@ -142,7 +142,7 @@ export class MusicRuntime {
     void workletsReady.catch(this.error)
     if (this.disposed) return
     const context: AudioContext = s.getAudioContext()
-    watchAudioOutput(context)
+    watchAudioOutput(context, true)
     this.analyser = context.createAnalyser()
     this.analyser.fftSize = 256
     this.teamMixer = new TeamMixer(context, this.analyser)

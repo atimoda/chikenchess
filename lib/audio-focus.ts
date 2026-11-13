@@ -3,6 +3,8 @@
 // Contexts are tracked by wrapping the AudioContext constructor once, so code that creates its own context needs
 // no change. A context that was already suspended or closed when the tab was hidden is left alone.
 
+import { watchAudioOutput } from './quality-monitor'
+
 let installed = false
 const contexts = new Set<AudioContext>()
 const suspendedByUs = new Set<AudioContext>()
@@ -29,6 +31,8 @@ export function installAudioFocus() {
       constructor(options?: AudioContextOptions) {
         super(options)
         contexts.add(this)
+        // the FPS counter and "Ajustar automaticamente" read this context's output glitches
+        watchAudioOutput(this)
         // created while away (a timer, a late load): start quiet
         if (document.visibilityState === 'hidden') { suspendedByUs.add(this); void this.suspend().catch(() => {}) }
       }

@@ -15,6 +15,7 @@ const RECENT = [
         'Gráficos em Baixa: o jogo roda a 30 quadros por segundo e o cenário do Pátio fica parado (árvores, pétalas, lanternas, nuvens e neve). Sons em Baixa: os loops tocam sem reverb e com menos fontes simultâneas. Média é o que os celulares já usavam, e Alta, o que os computadores já usavam. As notas e o arranjo são os mesmos nos três níveis.',
         'Trocar o nível sonoro com a música tocando vale na hora e pode cortar uma vez as caudas que estavam soando.',
         'A música pesa bem menos no aparelho, em todos os modos: o agendador passou a consultar cada instrumento uma vez por compasso, e os painéis usam a mesma consulta. Num celular mediano emulado com 32 peças tocando, as fases mais densas (Paris 1945, New York 1930, San Diego 1999) deixaram de perder notas e foram de 11 a 18 para cerca de 45 quadros por segundo. As notas e o arranjo são os mesmos.',
+        'Com o Contador de FPS ligado e algum som do jogo tocando, ele mostra também “atrasos” (vezes em que o agendador da música chegou atrasado) e “falhas” (cortes na saída de áudio contados pelo navegador), somados desde a abertura da página. Servem para dizer, no seu aparelho, se a música está travando e por quê.',
       ] },
       { title: 'Classical', items: [
         'Nova fase Marseille 1997 · Orchestral rap, a sétima da campanha: violinos em lamento, cravo recortado, violoncelos em spiccato e piano tirados de um "disco" clássico, em loop sobre um breakbeat empoeirado com o swing do sampler, baixo sub, scratches do DJ e orchestra hits.',
