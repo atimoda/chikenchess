@@ -242,6 +242,10 @@ export type ItemDef = {
   returnSpeed: number // px/s
   returnCharge: number // s
   returnPush: number // knockback px/s
+  // its curve (lib/pigchicken/return-flight.ts), degrees a leg bends: the least, with nobody steering (0: straight
+  // out and back), and the most, with the aim turned far from where it was thrown to
+  returnCurveMin: number
+  returnCurveMax: number
 }
 // what a special sounds and looks like: thunder (a bolt from the sky and its rumble) or lightning (long crackling arcs)
 export type SpecialKind = 'thunder' | 'lightning'
@@ -273,7 +277,7 @@ const NO_MUSIC = {
   heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
   shockRange: 0, shockJumps: 3, shockTime: 0.35, shockDamage: 0, shockDrain: 0, heavyShockRange: 0, heavyShockTime: 0.6,
   specialCooldown: 0, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 20, specialKind: 'thunder' as SpecialKind,
-  returnThrow: false, returnDamage: 30, returnRange: 700, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 500,
+  returnThrow: false, returnDamage: 30, returnRange: 700, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 500, returnCurveMin: 0, returnCurveMax: 0,
 }
 
 // a rebate chain from [kind, mode, n?] steps (always happening)
@@ -405,7 +409,7 @@ const MJOLNIR: ItemDef = {
   trailWidth: 34, trailColor: '#bfe6ff', gripX: 6, staffX: 36, staffY: 30, staffAngle: -120,
   shockRange: 170, shockJumps: 3, shockTime: 0.35, shockDamage: 8, shockDrain: 10,
   specialCooldown: 12, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 25, specialKind: 'thunder',
-  returnThrow: true, returnDamage: 35, returnRange: 720, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 600,
+  returnThrow: true, returnDamage: 35, returnRange: 720, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 600, returnCurveMin: 16, returnCurveMax: 70,
 }
 // Cajado de Odin: a long golden staff. Both its blows shock, further than the hammer's: the quick one (Golpe) a short
 // shock, the strong one (Atirar, charged) a longer one that reaches more of them
@@ -655,6 +659,8 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'returnCharge', label: 'Tempo de carga', min: 0.1, max: 4, step: 0.05, unit: 's', group: 'Arremesso que volta', hint: 'Quanto segurar Atirar até a distância máxima' },
   { key: 'returnSpeed', label: 'Velocidade', min: 300, max: 3000, step: 50, unit: 'px/s', group: 'Arremesso que volta' },
   { key: 'returnPush', label: 'Empurrão', min: 0, max: 2000, step: 10, unit: 'px/s', group: 'Arremesso que volta' },
+  { key: 'returnCurveMin', label: 'Curvatura mínima', min: 0, max: 90, step: 1, unit: '°', group: 'Arremesso que volta', hint: 'Quanto o caminho dobra sem mexer a mira; 0 = vai e volta em linha reta' },
+  { key: 'returnCurveMax', label: 'Curvatura máxima', min: 0, max: 180, step: 1, unit: '°', group: 'Arremesso que volta', hint: 'Quanto dobra com a mira virada para longe da direção do arremesso; a curva puxa para o lado da mira' },
   { key: 'shockRange', label: 'Alcance do choque', min: 0, max: 800, step: 10, unit: 'px', group: 'Choque', hint: 'Distância que o raio pula de um para o próximo; 0 = sem choque' },
   { key: 'shockJumps', label: 'Pulos do raio', min: 0, max: 20, step: 1, group: 'Choque', hint: 'Quantos o raio alcança além dos que levaram o golpe' },
   { key: 'shockTime', label: 'Duração do choque', min: 0.05, max: 3, step: 0.05, unit: 's', group: 'Choque', hint: 'Quanto tempo tremem e ficam parados' },

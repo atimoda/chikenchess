@@ -23,6 +23,7 @@ import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, 
 import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
 import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
+import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
 import { scaleAt, type InstrumentScale } from './instrument-scales'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES, type PitchSet } from './music'
 import type { Drum, Held, Vibrato, VoiceId } from './synth'
@@ -107,6 +108,10 @@ export type Bolt = { x1: number; y1: number; x2: number; y2: number; t: number; 
 export type Flight = {
   x: number; y: number; vx: number; vy: number; angle: number; spin: number; owned: Owned; owner: string; back: boolean; left: number; speed: number
   damage: number; push: number; hits: Set<number>; remote?: boolean; home?: { x: number; y: number }
+  // its curve (lib/pigchicken/return-flight.ts). dir: where it heads; launch: where it was thrown to; reach: how long
+  // the way out is; aim: where its owner aims now; side: the side it bends to; bend: how much it bends now (radians
+  // over a leg, with the side's sign; it follows the aim softly); far: how far it was when it turned back
+  dir: number; launch: number; reach: number; aim?: number; side: number; bend: number; far?: number
 }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
@@ -429,25 +434,22 @@ export function createCombat() {
     flights.push({
       x: from.x, y: from.y, vx: Math.cos(aimAngle) * d.returnSpeed, vy: Math.sin(aimAngle) * d.returnSpeed, angle: aimAngle, spin: face * 24, owned: h, owner: active,
       back: false, left: reach, speed: d.returnSpeed, damage: d.returnDamage * (0.5 + 0.5 * charge), push: d.returnPush, hits: new Set(),
+      dir: launchDir(aimAngle, d.returnCurveMin), launch: aimAngle, reach, aim: aimAngle, side: curveSide(aimAngle), bend: curveSide(aimAngle) * Math.max(0, d.returnCurveMin) * DEG,
     })
     h.flying = true
     sound('throw', null)
     if (netOn) netShots.push({ k: 'hm', i: h.item, x: Math.round(from.x), y: Math.round(from.y), a: aimAngle, sp: d.returnSpeed, rg: Math.round(reach) })
   }
-  // where a staff that comes back would fly if let go now: a straight line as long as the charge reaches, cut
-  // short by walls and the floor (null: the item in her wing is not being charged for that)
+  // where a staff that comes back would fly if let go now and not steered: as long as the charge reaches, with the
+  // least bend of its curve, cut short by walls and the floor (null: the item in her wing is not being charged for that)
   function predictReturn(from: { x: number; y: number }, ctx: StepCtx) {
     const d = def()
     if (!d.returnThrow || !heavyItem || heavyItem !== held()) return null
     const charge = Math.min(1, heavyT / Math.max(0.05, d.returnCharge))
     const reach = d.returnRange * (d.returnMin + (1 - d.returnMin) * charge)
-    const points = [{ x: from.x, y: from.y }]
-    for (let r = 12; r <= reach; r += 12) {
-      const x = from.x + Math.cos(aimAngle) * r, y = from.y + Math.sin(aimAngle) * r
-      points.push({ x, y })
-      if (y >= ctx.groundY || solidAt(ctx.boxes, x, y)) break
-    }
-    return points
+    const path = outPath(from.x, from.y, aimAngle, reach, d.returnCurveMin)
+    const stop = path.findIndex((p, i) => i > 0 && (p.y >= ctx.groundY || solidAt(ctx.boxes, p.x, p.y)))
+    return stop < 0 ? path : path.slice(0, stop + 1)
   }
   // the charge of a staff's Atirar fills in its strong blow's time, or in its throw's when it is one that comes back
   const staffCharge = (d: ItemDef) => Math.max(0.05, d.returnThrow ? d.returnCharge : d.heavyCharge)
@@ -915,7 +917,7 @@ export function createCombat() {
         continue
       }
       if (s.k === 'hm') {
-        flights.push({ x: s.x, y: s.y, vx: Math.cos(s.a) * s.sp, vy: Math.sin(s.a) * s.sp, angle: s.a, spin: (Math.cos(s.a) >= 0 ? 1 : -1) * 24, owned: fresh(s.i), owner: '', back: false, left: s.rg, speed: s.sp, damage: 0, push: 0, hits: new Set(), remote: true, home: { x: s.x, y: s.y } })
+        flights.push({ x: s.x, y: s.y, vx: Math.cos(s.a) * s.sp, vy: Math.sin(s.a) * s.sp, angle: s.a, spin: (Math.cos(s.a) >= 0 ? 1 : -1) * 24, owned: fresh(s.i), owner: '', back: false, left: s.rg, speed: s.sp, damage: 0, push: 0, hits: new Set(), remote: true, home: { x: s.x, y: s.y }, dir: launchDir(s.a, items[s.i].returnCurveMin), launch: s.a, reach: s.rg, side: curveSide(s.a), bend: curveSide(s.a) * Math.max(0, items[s.i].returnCurveMin) * DEG })
         if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
         continue
       }
@@ -2253,7 +2255,10 @@ export function createCombat() {
         }
       }
 
-      // a staff thrown that comes back: straight out, hitting and shocking whoever it crosses, then to its owner's wing
+      // where she aims steers her staff in the air
+      for (const f of flights) if (!f.remote && f.owner === active) f.aim = aimAngle
+      // a staff thrown that comes back: out along its curve, hitting and shocking whoever it crosses, then to its
+      // owner's wing. Its path bends to the side its owner aims, the more the further the aim is from its line
       if (world) for (let i = flights.length - 1; i >= 0; i--) {
         const f = flights[i], fd = items[f.owned.item]
         f.angle += f.spin * dt
@@ -2265,11 +2270,19 @@ export function createCombat() {
             if (g.kind !== 'button') zap({ x: f.x, y: f.y }, [g], fd, false, f.owned)
           }
         }
+        // it bends to the side she turned the aim to since the throw; the bend follows the aim in about a tenth of a
+        // second, so a change of side is a smooth turn
+        const steer = steerCurve((f.aim ?? f.launch) - f.launch, f.side, fd.returnCurveMin, fd.returnCurveMax)
+        f.side = steer.side
+        f.bend += (steer.side * steer.curve - f.bend) * Math.min(1, dt * 12)
         if (!f.back) {
+          // on the way out it is its heading that turns
+          const turn = f.reach > 0 ? f.bend / f.reach : 0
           // in short steps, so it never jumps over a thin wall or a small enemy
           for (let left = f.speed * dt; left > 0 && !f.back; left -= 12) {
-            const k = Math.min(12, left) / f.speed
-            f.x += f.vx * k; f.y += f.vy * k; f.left -= Math.min(12, left)
+            const s = Math.min(12, left)
+            f.dir += turn * s * 0.5; f.vx = Math.cos(f.dir) * f.speed; f.vy = Math.sin(f.dir) * f.speed
+            f.x += Math.cos(f.dir) * s; f.y += Math.sin(f.dir) * s; f.left -= s; f.dir += turn * s * 0.5
             touch()
             if (f.left <= 0 || f.y >= groundY || inBox(f.x, f.y)) { if (f.left > 0) { burst(f.x, f.y, 8, '#c9d6e2', 170, 2); sound('bounce', null) } f.back = true; f.hits.clear() }
           }
@@ -2286,7 +2299,10 @@ export function createCombat() {
           if (!f.remote) sound('catch', null)
           continue
         }
-        f.vx = (dx / dist) * f.speed; f.vy = (dy / dist) * f.speed
+        // on the way back it swings round her to the same side, less and less as it gets near, so it always arrives
+        f.far = Math.max(f.far ?? dist, 1)
+        f.dir = Math.atan2(dy, dx) - Math.max(-1, Math.min(1, f.bend * 0.5)) * Math.min(1, dist / f.far)
+        f.vx = Math.cos(f.dir) * f.speed; f.vy = Math.sin(f.dir) * f.speed
         f.x += f.vx * dt; f.y += f.vy * dt
         touch()
       }
