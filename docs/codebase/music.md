@@ -15,6 +15,7 @@ Parte do [mapa de trabalho](../CODEBASE_MAP.md). Abra só os módulos da linha d
 | Marcas de articulação dos perfis em texto | `lib/music/profile-tokens.ts` | `styled-kits.ts` (`phraseRoll`), `lib/admin/validation.ts` |
 | Orbits de efeitos e ciclo de vida dos buses | `lib/music/voice-spec.ts`, `runtime-session.ts` | Quatro buses na qualidade sonora Alta, dois em Média e Baixa; audições isoladas; `team-mixer.ts` recebe a saída por equipe |
 | Perfil por nível de qualidade sonora | `lib/music/sound-profile.ts` | `runtime-session.ts` lê o nível de `lib/quality.ts` e o aplica também com a música tocando (`applyQuality`); `transport.ts` avisa tiques atrasados (`onLate`) a `lib/quality-monitor.ts` |
+| Consulta dos padrões no agendamento | `lib/music/transport.ts` | `setPatterns` recebe um padrão por voz de `runtime-session.ts`; cada voz é consultada uma vez por compasso e os tiques recortam o trecho; `barHaps` entrega o mesmo compasso ao monitor dos painéis |
 | Agrupamento de notas / exportação compacta | `lib/music/roll-optimizer.ts` | `pattern-compiler.ts`, `code-export.ts`; preserva sobreposições |
 | Reverb durante arraste | `lib/music/manual-reverb-cache.ts` | `runtime-session.ts`; adapter Superdough, nunca compartilha nós ativos |
 | Reverb dos loops na qualidade sonora Média | `lib/music/shared-reverb.ts` | `runtime-session.ts` (perfil Média); adapter Superdough: um convolver para os dois buses de equipe, sends por bus, retorno dividido entre as equipes |

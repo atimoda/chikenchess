@@ -133,3 +133,27 @@ Com o preview acima, o usuário relatou que o áudio ainda “quebra”, distorc
 | Impulso truncado (1–1,5 s) ou mono | sem melhora consistente | um pouco menor |
 
 O reverb é a maior parcela do áudio; drive, filtros e quantidade de nós por nota pesam pouco. Encurtar ou tornar mono o impulso não reduziu o custo em tempo real, porque o que pesa é cada convolver ativo. A implementação passou a usar um único convolver para os dois buses no celular. Em três execuções alternadas contra a v1.6.6: thread de áudio 1,44 s → 0,93 s por 10 s (−35%) e convolução em segundo plano 0,44 s → 0,18 s (−59%), com o mesmo pico de saída. Se ainda não bastar, o próximo passo é desligar o reverb no celular (cerca de −45% adicional), o que muda o timbre e por isso fica para decisão do usuário.
+
+## Consulta por compasso no agendador — 13/11, v2.10.0
+
+O perfil de CPU das fases Blues, Jazz & Rock no celular emulado mostrou ~29% da thread principal dentro de `queryArc`: o tique do agendador consultava a pilha das 32 vozes em fatias de até 1/16 de compasso, e o monitor dos painéis consultava o compasso outra vez. Em Node, as mesmas notas custavam de 10 a 59 vezes menos pedidas em compassos inteiros.
+
+`MusicTransport` agora guarda, por voz, o compasso consultado (`setPatterns`, `barHaps`) e cada tique só recorta o seu trecho; o compasso seguinte é adiantado um sexto das vozes por tique. Comportamento em `docs/mechanics/performance.md`.
+
+Medição A/B no mesmo dia, builds de produção da `main` e desta mudança servidos localmente e intercalados: Chromium, tela 393×873, toque, CPU 4× mais lenta, nível Média, 32 peças tocando no Criativo por 20 s. Emulação, não aparelho físico.
+
+| Fase | FPS antes | FPS depois | Script ms/s antes | Script ms/s depois | Nós de áudio/s antes | depois |
+| --- | --- | --- | --- | --- | --- | --- |
+| Paris 1945 | 10,8 | 44,5 | 737 | 191 | 241 | 475 |
+| San Diego 1999 | 12,0 | 48,5 | 670 | 164 | 245 | 325 |
+| New York 1961 | 15,0 | 53,5 | 649 | 150 | 383 | 390 |
+| New York 1930 | 18,3 | 44,9 | 620 | 190 | 233 | 454 |
+| Columbus 2013 | 28,0 | 55,3 | 577 | 134 | 228 | 227 |
+| Chicago 1958 | 31,2 | 56,0 | 545 | 122 | 164 | 165 |
+| Cambridge 1973 | 32,0 | 55,7 | 505 | 100 | 145 | 143 |
+| Detroit | 36,2 | 46,6 | 391 | 160 | 336 | 390 |
+| Manchester 1999 | 47,9 | 56,6 | 369 | 101 | 87 | 110 |
+
+Antes, o console registrou nota atrasada ou pulada em 5 das 9 fases; depois, em nenhuma. Nas fases mais pesadas o build anterior criava cerca de metade dos nós de áudio: o agendador chegava atrasado e descartava ataques. Sem limitar a CPU os dois builds criam o mesmo número de nós (New York 1930: 442 e 445/s; Paris 1945: 487 e 487/s), então a mudança não dobra notas, e o script cai de ~250 para ~44 ms/s. A igualdade de ataques entre compasso inteiro e fatias foi conferida nos 83 kits oficiais (8 compassos, perfil leve, 21.248 pares voz/compasso, zero diferenças).
+
+O que resta por quadro nessas fases é principalmente estilo, layout e pintura dos painéis do Criativo (tarefa total de 500 a 765 ms/s com script de 100 a 190 ms/s) e a criação de nós por nota.

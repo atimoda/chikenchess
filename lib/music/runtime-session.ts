@@ -484,7 +484,9 @@ export class MusicRuntime {
         const pattern = this.patternFor(voice)
         let cached = this.displayCache.get(voice.key)
         if (!cached || cached.pattern !== pattern || cached.cycle !== cycleIndex) {
-          const haps = pattern.queryArc(cycleIndex, cycleIndex + 1, { _cps: this.state.bpm / (60 * beatsPerBar(this.state.meter)) })
+          // The same bar the transport queried to schedule the notes, when it still holds it.
+          const cps = this.state.bpm / (60 * beatsPerBar(this.state.meter))
+          const haps: any[] = this.scheduler.barHaps?.(pattern, cycleIndex, cps) ?? pattern.queryArc(cycleIndex, cycleIndex + 1, { _cps: cps })
           const events: NoteEvent[] = haps.slice(0, 128).map((hap: any) => ({
             start: Math.max(cycleIndex, Number(hap.whole?.begin ?? hap.part.begin)),
             end: Math.min(cycleIndex + 1, Number(hap.whole?.end ?? hap.part.end)),
@@ -613,8 +615,9 @@ export class MusicRuntime {
       this.scheduler.setCps(this.state.bpm / (60 * beatsPerBar(this.state.meter)), this.rampBars)
       this.rampBars = 0
       if (changed) {
-        const pattern = compiledLoops.length ? this.api.stack(...compiledLoops) : this.api.silence
-        void this.scheduler.setPattern(pattern)
+        // The transport keeps each voice's queried bars, so only the voices that changed are asked again.
+        if (this.scheduler.setPatterns) this.scheduler.setPatterns(compiledLoops)
+        else void this.scheduler.setPattern(compiledLoops.length ? this.api.stack(...compiledLoops) : this.api.silence)
         this.scheduledLoops = compiledLoops
       }
       const shouldRun = this.pageVisible && (this.state.playing || specs.length > 0)
