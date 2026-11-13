@@ -42,6 +42,7 @@ const RECENT = [
         'Especial: o primeiro golpe que acerta depois de 12 s sai mais forte, alcança mais alvos, causa mais dano e deixa todos em raio-x por cerca de 3 s. No Martelo cai um raio do céu com trovão e clarão; no Cajado saem arcos longos com estalo de raio.',
         'O fundo do slot do item fica azul quando o especial está pronto e, depois de usado, volta a encher de baixo para cima. É separado das barrinhas de munição.',
         'Martelo de Thor: Atirar arremessa o martelo em linha reta e ele volta para a asa. Segurar carrega para ir mais longe e bater mais forte, e um toque rápido já sai com metade da distância. Uma linha pontilhada mostra até onde ele vai. Ele acerta e dá choque na ida e na volta.',
+        'O arremesso do Martelo agora faz curva: sem mexer a mira ele vai por cima da linha da mira e volta por baixo, em laço. Com ele no ar, girar a mira puxa a curva para esse lado, na ida e na volta, e quanto mais longe a mira, mais ele dobra. Em Itens → Arremesso que volta, Curvatura mínima (0 = vai e volta reto, como antes) e Curvatura máxima.',
         'Cajado de Odin: Golpe dá o golpe rápido, com choque curto; Atirar carrega o golpe forte, com choque mais longo e de maior alcance.',
         'Em Itens, os grupos Choque, Especial e Arremesso que volta ajustam alcance, saltos, tempos, danos e intervalo.',
       ] },
