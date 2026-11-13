@@ -16,7 +16,7 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
 ]
 export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum'
-  | 'maryjane' | 'cok' | 'passagua'
+  | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // each family's reticle shows what matters for it
@@ -214,7 +214,38 @@ export type ItemDef = {
   heavyTrailTime: number
   heavyTrailWisps: number
   heavyTrailOpacity: number
+  // the shock of a lightning weapon (lib/pigchicken/shock.ts): whoever a blow hits is shocked, and the shock jumps
+  // from one to the nearest next within `shockRange` px (0 = no shock), up to `shockJumps` times. The ones it reaches
+  // shake for `shockTime` s (the strong blow has its own range and time), take `shockDamage` and lose `shockDrain`
+  // of their harmony bar
+  shockRange: number
+  shockJumps: number
+  shockTime: number
+  shockDamage: number
+  shockDrain: number
+  heavyShockRange: number
+  heavyShockTime: number
+  // the special: the first blow that hits someone after `specialCooldown` s (0 = no special) shocks with these
+  // numbers, with thunder or lightning, and leaves the ones it reaches in the x-ray state for `specialTime` s
+  specialCooldown: number
+  specialRange: number
+  specialJumps: number
+  specialTime: number
+  specialDamage: number
+  specialKind: SpecialKind
+  // a staff that is thrown and comes back (Atirar, in place of the strong blow): held to charge, it flies straight
+  // from `returnMin` of `returnRange` px (no charge) to all of it (`returnCharge` s), then back to her wing
+  returnThrow: boolean
+  returnDamage: number
+  returnRange: number
+  returnMin: number
+  returnSpeed: number // px/s
+  returnCharge: number // s
+  returnPush: number // knockback px/s
 }
+// what a special sounds and looks like: thunder (a bolt from the sky and its rumble) or lightning (long crackling arcs)
+export type SpecialKind = 'thunder' | 'lightning'
+export const SPECIAL_KINDS: { value: SpecialKind; label: string }[] = [{ value: 'thunder', label: 'Trovão (raio do céu)' }, { value: 'lightning', label: 'Raio (arcos longos)' }]
 /** A staff: an item only for hitting, carried in its own pose and with a strong blow on Atirar. */
 export const isStaff = (d: ItemDef) => d.meleeOnly
 // the body parts a held item can turn around
@@ -240,6 +271,9 @@ const NO_MUSIC = {
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
   heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as SwingKind,
   heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
+  shockRange: 0, shockJumps: 3, shockTime: 0.35, shockDamage: 0, shockDrain: 0, heavyShockRange: 0, heavyShockTime: 0.6,
+  specialCooldown: 0, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 20, specialKind: 'thunder' as SpecialKind,
+  returnThrow: false, returnDamage: 30, returnRange: 700, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 500,
 }
 
 // a rebate chain from [kind, mode, n?] steps (always happening)
@@ -363,6 +397,27 @@ const PASSAGUA: ItemDef = {
   rebateChain: [], rebateSnap: 0, rebateSnapForce: 0, rebateSpeed: 1, rebateTok: false,
 }
 
+// Martelo de Thor: a short, heavy war hammer. Golpe hits and shocks whoever it hits and the ones around; Atirar
+// throws it straight and it comes back to her wing. No blows to count: it never runs out
+const MJOLNIR: ItemDef = {
+  ...BAT, id: 'mjolnir', name: 'Martelo de Thor', family: 'Magia', mag: 0, refillTime: 0, weight: 0.9,
+  length: 48, meleeDamage: 30, meleeRange: 66, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200, meleeTime: 0.2, meleePush: 520, throwDamage: 30,
+  trailWidth: 34, trailColor: '#bfe6ff', gripX: 6, staffX: 36, staffY: 30, staffAngle: -120,
+  shockRange: 170, shockJumps: 3, shockTime: 0.35, shockDamage: 8, shockDrain: 10,
+  specialCooldown: 12, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 25, specialKind: 'thunder',
+  returnThrow: true, returnDamage: 35, returnRange: 720, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 600,
+}
+// Cajado de Odin: a long golden staff. Both its blows shock, further than the hammer's: the quick one (Golpe) a short
+// shock, the strong one (Atirar, charged) a longer one that reaches more of them
+const ODINSTAFF: ItemDef = {
+  ...BAT, id: 'odinstaff', name: 'Cajado de Odin', family: 'Magia', mag: 0, refillTime: 0,
+  length: 90, meleeDamage: 16, meleeRange: 70, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200, meleeTime: 0.2, meleePush: 300, throwDamage: 16,
+  trailWidth: 26, trailColor: '#ffe9a8', gripX: 34, staffX: 34, staffY: 30, staffAngle: -100,
+  heavyDamage: 30, heavyRange: 75, heavyArc: 170, heavyTime: 0.45, heavyPush: 500, heavyTrailWidth: 34,
+  shockRange: 220, shockJumps: 4, shockTime: 0.3, shockDamage: 8, shockDrain: 12, heavyShockRange: 340, heavyShockTime: 0.7,
+  specialCooldown: 12, specialRange: 420, specialJumps: 10, specialTime: 3.5, specialDamage: 25, specialKind: 'lightning',
+  rebateTok: false, rebateSpeed: 1.2,
+}
 const PECK: ItemDef = {
   ...WING, id: 'peck', name: 'Bicada', family: 'Sem item',
   meleeDamage: 12, meleeRange: 85, meleeArc: 160, meleeCooldown: 0.1, meleeTime: 0.16, meleePush: 220,
@@ -479,7 +534,7 @@ const COK: ItemDef = {
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM,
-  maryjane: MARYJANE, cok: COK,
+  maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
@@ -491,10 +546,12 @@ export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
 export const SPORTS_IDS: ItemId[] = ['bat', 'passagua']
-export const MELEE_IDS: ItemId[] = SPORTS_IDS
+// magic weapons: staffs like the sports tools (held in the wing, Golpe / Atirar), whose blows shock
+export const MAGIC_IDS: ItemId[] = ['mjolnir', 'odinstaff']
+export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 // the items a rack can hold
-export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, 'wing', 'peck']
+export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS]
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, 'wing', 'peck']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
@@ -592,6 +649,24 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'heavyTrailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe forte' },
   { key: 'heavyTrailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe forte' },
   { key: 'heavyTrailOpacity', label: 'Rastro: opacidade', min: 0, max: 1, step: 0.05, unit: '×', group: 'Golpe forte', hint: '0 = sem rastro' },
+  { key: 'returnDamage', label: 'Dano', min: 0, max: 200, step: 1, group: 'Arremesso que volta', hint: 'Com a carga cheia; sem carga, metade' },
+  { key: 'returnRange', label: 'Distância máxima', min: 100, max: 3000, step: 20, unit: 'px', group: 'Arremesso que volta', hint: 'Até onde ele vai com a carga cheia antes de voltar' },
+  { key: 'returnMin', label: 'Distância sem carga', min: 0.1, max: 1, step: 0.05, unit: '×', group: 'Arremesso que volta', hint: 'Parte da distância máxima com um toque rápido; a mira já começa aqui' },
+  { key: 'returnCharge', label: 'Tempo de carga', min: 0.1, max: 4, step: 0.05, unit: 's', group: 'Arremesso que volta', hint: 'Quanto segurar Atirar até a distância máxima' },
+  { key: 'returnSpeed', label: 'Velocidade', min: 300, max: 3000, step: 50, unit: 'px/s', group: 'Arremesso que volta' },
+  { key: 'returnPush', label: 'Empurrão', min: 0, max: 2000, step: 10, unit: 'px/s', group: 'Arremesso que volta' },
+  { key: 'shockRange', label: 'Alcance do choque', min: 0, max: 800, step: 10, unit: 'px', group: 'Choque', hint: 'Distância que o raio pula de um para o próximo; 0 = sem choque' },
+  { key: 'shockJumps', label: 'Pulos do raio', min: 0, max: 20, step: 1, group: 'Choque', hint: 'Quantos o raio alcança além dos que levaram o golpe' },
+  { key: 'shockTime', label: 'Duração do choque', min: 0.05, max: 3, step: 0.05, unit: 's', group: 'Choque', hint: 'Quanto tempo tremem e ficam parados' },
+  { key: 'shockDamage', label: 'Dano do choque', min: 0, max: 100, step: 1, group: 'Choque', hint: 'Em cada um que o raio alcança além dos que levaram o golpe' },
+  { key: 'shockDrain', label: 'Tira da barra de harmonia', min: 0, max: 100, step: 1, group: 'Choque', hint: 'Quanto cada um que toma choque perde da barra que as notas enchem' },
+  { key: 'heavyShockRange', label: 'Golpe forte: alcance do choque', min: 0, max: 800, step: 10, unit: 'px', group: 'Choque', hint: '0 = o golpe forte não dá choque' },
+  { key: 'heavyShockTime', label: 'Golpe forte: duração do choque', min: 0.05, max: 3, step: 0.05, unit: 's', group: 'Choque' },
+  { key: 'specialCooldown', label: 'Intervalo do especial', min: 0, max: 120, step: 1, unit: 's', group: 'Especial', hint: 'O primeiro golpe que acerta alguém depois deste tempo sai como especial; 0 = sem especial' },
+  { key: 'specialRange', label: 'Alcance do choque', min: 0, max: 1200, step: 10, unit: 'px', group: 'Especial' },
+  { key: 'specialJumps', label: 'Pulos do raio', min: 0, max: 30, step: 1, group: 'Especial' },
+  { key: 'specialTime', label: 'Tempo em raio-x', min: 0.2, max: 15, step: 0.1, unit: 's', group: 'Especial', hint: 'Quanto tempo ficam em estado de choque' },
+  { key: 'specialDamage', label: 'Dano do choque', min: 0, max: 200, step: 1, group: 'Especial' },
   { key: 'trailWidth', label: 'Rastro: espessura', min: 2, max: 60, step: 1, unit: 'px', group: 'Golpe', hint: 'Na ponta do golpe; afina até a cauda' },
   { key: 'trailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Quanto o ar leva pra se desfazer' },
   { key: 'trailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe', hint: 'Fiapos de ar que se soltam do rastro' },
@@ -676,6 +751,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
   if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
   if (isSwingKind(s.heavyKind)) out[id].heavyKind = s.heavyKind
+  if (SPECIAL_KINDS.some(k => k.value === s.specialKind)) out[id].specialKind = s.specialKind
   if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
   if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
   { const sc = cleanScales(s.scales); if (sc) out[id].scales = sc }
@@ -695,7 +771,7 @@ const ITEMS_VERSION = 9
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)

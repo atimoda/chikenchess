@@ -8,6 +8,8 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
   const held = combat.held, eating = combat.consumption
   const id = eating?.item ?? held?.item
   if (!id) return null
+  // thrown and on its way back (the Martelo de Thor): her wing is empty until it arrives
+  if (held?.flying && !eating) return null
   const svg = ITEM_SVG[id]
   if (!svg) return null
   const d = combat.item(id), sw = combat.swing, swinging = !!sw

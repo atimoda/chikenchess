@@ -19,7 +19,7 @@ import {
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
-import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
 import { ELEMENT_DEPTH, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, dropLinks, linkedTo, spreadPower, toggleLink, type PowerParams } from "@/lib/pigchicken/power-lines"
@@ -677,6 +677,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
             <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
           </select>
         </label>
       )}
@@ -688,6 +689,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
             <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
             <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
           </select>
         </label>
         <label className="grid gap-1" title="Espera após pegar o item. Consumíveis: 0,1 s por padrão; armas e instrumentos: 2 s. Zero repõe imediatamente.">
@@ -808,6 +810,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Armas", items: WEAPON_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Instrumentos", items: INSTRUMENT_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Habilidades especiais", items: CONSUMABLE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Magia", items: MAGIC_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
 ]
 
 function Thumb({ entry }: { entry: Entry }) {
