@@ -7,8 +7,14 @@ const RECENT = [
   {
     version: '2.10.0',
     date: '13/11/2026',
-    title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo; Martelo de Thor e Cajado de Odin; fase Marseille 1997 · Orchestral rap na campanha Classical',
+    title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo; Martelo de Thor e Cajado de Odin; fase Marseille 1997 · Orchestral rap na campanha Classical; qualidade gráfica e sonora com ajuste automático',
     groups: [
+      { title: 'Qualidade e desempenho', items: [
+        'Preferências (no globo, na partida, no online e no Criativo) e o painel Camadas do Pátio ganham “Qualidade e efeitos gráficos” e “Qualidade e efeitos sonoros”, cada um com Alta, Média e Baixa. No primeiro acesso os dois níveis vêm da capacidade do aparelho; depois, a escolha fica salva neste navegador e vale em todos os modos.',
+        'Abaixo deles, “Ajustar automaticamente” vem ligada: em qualquer aparelho, inclusive computador, quando o jogo trava por vários segundos a qualidade gráfica desce um nível, e quando a música atrasa ou falha a qualidade sonora desce um nível, com um aviso curto. Ela nunca sobe sozinha; desligar e religar a caixa volta aos níveis do aparelho.',
+        'Gráficos em Baixa: o jogo roda a 30 quadros por segundo e o cenário do Pátio fica parado (árvores, pétalas, lanternas, nuvens e neve). Sons em Baixa: os loops tocam sem reverb e com menos fontes simultâneas. Média é o que os celulares já usavam, e Alta, o que os computadores já usavam. As notas e o arranjo são os mesmos nos três níveis.',
+        'Trocar o nível sonoro com a música tocando vale na hora e pode cortar uma vez as caudas que estavam soando.',
+      ] },
       { title: 'Classical', items: [
         'Nova fase Marseille 1997 · Orchestral rap, a sétima da campanha: violinos em lamento, cravo recortado, violoncelos em spiccato e piano tirados de um "disco" clássico, em loop sobre um breakbeat empoeirado com o swing do sampler, baixo sub, scratches do DJ e orchestra hits.',
         'A música tem forma completa: o disco começa sozinho com piano e chiado de vinil e os instrumentos entram um a um; o refrão abre com violino solo, coro e trompas; o interlúdio é um coral suave; a quebra junta a orquestra inteira nos mesmos acentos; o solo de violino barroco conversa com o scratch.',

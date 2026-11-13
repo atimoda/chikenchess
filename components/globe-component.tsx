@@ -10,7 +10,7 @@ import { CityData, getCityEras } from '@/lib/cities-data'
 import { CityPopup, type PopupExitMotion } from './city-popup'
 import { cityDirection, cityFlightPose, popupStandbyCompensation, sphereFillDistance } from '@/lib/globe-navigation'
 import { cityFlagColor, createCityFlagTexture } from '@/lib/globe-flags'
-import { isConstrainedDevice } from '@/lib/performance'
+import { useReducedGraphics } from '@/hooks/use-reduced-graphics'
 import { cancelGameFrame, requestGameFrame } from '@/lib/game-frame'
 import { RealisticEarth } from './globe-realistic'
 import { constrainPopupPosition, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
@@ -1450,7 +1450,7 @@ function GlobeFrames() {
 }
 
 export const GlobeComponent = (props: GlobeProps) => {
-    const [constrained] = useState(isConstrainedDevice)
+    const constrained = useReducedGraphics()
     return (
         <Canvas frameloop="never" camera={{ position: [0, 0, 2.5], fov: 45 }} dpr={constrained ? 1 : [1, 1.5]} gl={{ alpha: true, powerPreference: 'high-performance' }} className="w-full h-full">
             <GlobeFrames />

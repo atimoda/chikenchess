@@ -4,7 +4,7 @@
 // map's) and Escalas (debug: each player's aim fan with the notes) have a slider from 0 to 100%: 0 turns the layer
 // off, above that it is how strongly it shows; Escalas (Tamanho) and Escalas (Degradê) shape the fan; "Prevenir fadeout
 // das escalas" keeps every scale out of its standby (the Escalas editor's fade out). Hit-boxes
-// (debug) is on or off, and below it this browser's FPS options (Contador de FPS, limit). Each Pátio starts from its own saved values (or the defaults): anyone may change them here,
+// (debug) is on or off, and below it this browser's quality levels (lib/quality.ts) and FPS options (Contador de FPS, limit). Each Pátio starts from its own saved values (or the defaults): anyone may change them here,
 // and whoever may edit the Pátio saves them into it with "Salvar no pátio". An admin also sees "Salvar no game": the values
 // become the defaults of every Pátio that saved none (data/pigchicken/default-patio.json).
 import { useCallback, useEffect, useState } from "react"
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import { useFramePreferences } from "@/components/fps-preferences"
+import { QualityFields } from "@/components/quality-preferences"
 import { GAME_FPS_LIMIT, setFramePreference } from "@/lib/game-frame"
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultPatioLayers } from "@/lib/admin/game-defaults-client"
@@ -76,6 +77,8 @@ export function LayerEyes({ layers, set, base, onSave }: ReturnType<typeof usePa
             <span className={cn(layers.hitboxes !== DEFAULT.hitboxes && "text-amber-300")}>Hit-boxes</span>
             <input type="checkbox" checked={layers.hitboxes} onChange={e => set({ hitboxes: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
+          <QualityFields rowClassName="flex items-center justify-between gap-3"
+            selectClassName="rounded-md border border-white/15 bg-[#0c120f] px-2 py-1 text-xs text-[#dfe8df]" checkboxClassName="h-5 w-5 accent-[var(--primary)]" />
           <label className="flex items-center justify-between gap-3">
             <span>Contador de FPS</span>
             <input type="checkbox" checked={fps.counter} onChange={e => setFramePreference("counter", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />

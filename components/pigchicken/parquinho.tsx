@@ -45,7 +45,7 @@ import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbySt
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
 import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
-import { isLiteDevice } from "@/lib/performance"
+import { graphicsQuality, subscribeQuality } from "@/lib/quality"
 import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken/platform-geometry"
 import { needsTrajectory, patioPixelRatio, trajectoryVisible, zoomedView } from "@/lib/pigchicken/viewport"
 import { moveLiveCamera, setCameraRestY } from "@/lib/pigchicken/live-camera"
@@ -667,7 +667,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const headerObserver = new ResizeObserver(measureHeader)
     if (header) headerObserver.observe(header)
     const fit = () => {
-      const dpr = patioPixelRatio(window.devicePixelRatio, isLiteDevice())
+      const dpr = patioPixelRatio(window.devicePixelRatio, graphicsQuality() !== "high")
       canvas.width = Math.round(stageWidth() * dpr); canvas.height = Math.round(window.innerHeight * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       // Allocate the wheel's full buffer only while it is open.
@@ -678,6 +678,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     fit()
     window.addEventListener("resize", fit)
+    // a new graphics level changes the canvases' pixel ratio
+    const unsubscribeQuality = subscribeQuality(fit)
 
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now
@@ -1512,6 +1514,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       window.removeEventListener("keydown", onKey)
       window.removeEventListener("keyup", onKeyUp)
       window.removeEventListener("resize", fit)
+      unsubscribeQuality()
       engine.setGame({ gameMode: false, throwCharging: false, throwHeld: false, aimFace: null, lookAngle: null, ...effectGame(null, 1) })
       engine.setHeld(null)
       engine.setSwing(null)

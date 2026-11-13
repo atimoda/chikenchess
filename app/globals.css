@@ -202,3 +202,8 @@ html[data-power-targeting-cursor="grabbing"] * {
 @media (prefers-reduced-motion: reduce) {
   .match-status-your-move { animation: none; }
 }
+
+/* "Qualidade e efeitos gráficos" Baixa (lib/quality.ts): the Pátio's scenery stands still, as with reduced motion. */
+:root[data-graphics="low"] :is(.pt-tree, .pt-petal, .tp-lantern, .tp-glow, .tp-tree, .tp-petal, .px-cloud, .custom-tree-sway) { animation: none !important; }
+:root[data-graphics="low"] .custom-tree-particles { display: none; }
+:root[data-graphics="low"] .scenery-wind-bend { transform: none !important; transition: none; }

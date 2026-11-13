@@ -1,4 +1,8 @@
+import { graphicsQuality } from './quality'
+
 export const GAME_FPS_LIMIT = 240
+/** The games' frame rate at "Qualidade e efeitos gráficos" Baixa, whatever the limit option says. */
+export const LOW_GRAPHICS_FPS = 30
 const INTERVAL = 1000 / GAME_FPS_LIMIT
 const ROUNDING = .15
 const KEY = 'chickenchess:frame-preferences:v1'
@@ -47,11 +51,12 @@ if (typeof window !== 'undefined') {
 // Keep the cadence on the frame grid so a 240 Hz screen does not drop every
 // other frame due to timestamp rounding. No work is replayed after a stall.
 export function createFrameGate() {
-  let due: number | undefined
-  return (now: number, limited: boolean) => {
+  let due: number | undefined, pace = INTERVAL
+  return (now: number, limited: boolean, interval = INTERVAL) => {
     if (!limited) { due = undefined; return true }
+    if (interval !== pace) { pace = interval; due = undefined }
     if (due !== undefined && now + ROUNDING < due) return false
-    due = due === undefined ? now + INTERVAL : due + (1 + Math.floor((now + ROUNDING - due) / INTERVAL)) * INTERVAL
+    due = due === undefined ? now + interval : due + (1 + Math.floor((now + ROUNDING - due) / interval)) * interval
     return true
   }
 }
@@ -69,7 +74,8 @@ function schedule() {
 
 function tick(now: number) {
   nativeFrame = undefined
-  if (gate(now, getFramePreferences().limit)) {
+  const low = graphicsQuality() === 'low'
+  if (gate(now, low || getFramePreferences().limit, low ? 1000 / LOW_GRAPHICS_FPS : INTERVAL)) {
     running = pending
     pending = spare
     for (const callback of running.values()) {

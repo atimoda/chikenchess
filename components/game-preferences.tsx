@@ -5,6 +5,7 @@ import * as Popover from "@radix-ui/react-popover"
 import { Settings2 } from "lucide-react"
 import { Button } from "./ui/button"
 import { FpsCounter, FpsPreferences } from "./fps-preferences"
+import { QualityPreferences } from "./quality-preferences"
 import { getServerSimultaneousPulses, getSimultaneousPulses, setSimultaneousPulses, subscribeSimultaneousPulses } from "@/lib/music/pulse-preference"
 import type { PowerDisplay } from "@/hooks/use-power-display"
 import type { ChancePosition } from "@/hooks/use-chance-position"
@@ -116,6 +117,7 @@ export function GamePreferences({
           <input type="checkbox" className="size-4 accent-primary" checked={simultaneousPulses}
             onChange={e => setSimultaneousPulses(e.target.checked)} />
         </label>
+        <QualityPreferences />
         <FpsPreferences />
       </Popover.Content>
     </Popover.Portal>

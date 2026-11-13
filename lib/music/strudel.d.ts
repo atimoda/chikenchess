@@ -9,6 +9,7 @@ declare module '@strudel/web' {
   export const miniAllStrings: any
   export const registerSynthSounds: any
   export const initAudio: any
+  export const setMaxPolyphony: any
   export const getAudioContext: any
   export const setAudioContext: any
   export const getSuperdoughAudioController: any

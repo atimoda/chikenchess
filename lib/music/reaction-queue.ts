@@ -11,7 +11,7 @@ export class ReactionQueue {
   private scope=''
   private cycle=0
   /** instant: gain/filter glides land at once (phones), so the voices are not recompiled every bar. */
-  constructor(private instant=false){}
+  constructor(public instant=false){}
   private glideBars(entry:TimedReaction|undefined){return this.instant?0:glide(entry)}
   update(config:Reactions,context:ReactionContext,running:boolean,cycle:number,scope:string) {
     const desired=reactionEntries(config,context);let bars=0
