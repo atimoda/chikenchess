@@ -257,6 +257,8 @@ export function createCombat() {
   // the Baús of the layout (the layout sync adds, moves and removes them) and the one each local player is next to
   const chests: Chest[] = []
   const chestNear = new Map<string, ChestNear>()
+  // online: the Baús opened here this frame, for the sync to tell the other browsers (lib/pigchicken/net-chests.ts)
+  const chestOpens: string[] = []
   let swing: Swing | null = null
   // the pecks defending right now (one per local player) and the little clouds of what they cancelled
   const parryZones = new Map<string, ParryZone>()
@@ -788,6 +790,13 @@ export function createCombat() {
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
   }
+  // a Baú opens: the lid goes up (the world's step eases it), its sound and sparks in its rarity's colour
+  function openChestFx(c: Chest) {
+    c.open = true; c.t = 0
+    const legend = c.params.rarity === 'legendary'
+    sound(legend ? 'chestLegend' : 'chest', null)
+    burst(c.x, c.y - 50, legend ? 34 : 18, legend ? '#7cc4ff' : '#ffd76a', legend ? 320 : 220, 3)
+  }
   // Pegar at a Baú: shut for her (no key, not enough souls in the Bag of souls), it shivers and says why; otherwise
   // it opens (a key is used up) and its items jump out, each line of the loot drawn by its chance
   function openChest(c: Chest) {
@@ -800,10 +809,8 @@ export function createCombat() {
       return
     }
     if (c.params.lock === 'key') useKey()
-    c.open = true; c.t = 0
-    const legend = c.params.rarity === 'legendary'
-    sound(legend ? 'chestLegend' : 'chest', null)
-    burst(c.x, top + 20, legend ? 34 : 18, legend ? '#7cc4ff' : '#ffd76a', legend ? 320 : 220, 3)
+    openChestFx(c)
+    if (netOn && chestOpens.length < 16) chestOpens.push(c.id)
     const loot = rollLoot(c.params.loot)
     if (!loot.length) { addText(c.x, top - 16, 'Vazio', '#c9ced6'); return }
     // they jump out of the lid side by side and fall to the floor around it
@@ -1884,7 +1891,7 @@ export function createCombat() {
     setNetFollower(fn: ((h: NetHit) => void) | null) { reportHit = fn },
     get netFollower() { return !!reportHit },
     // while online, the shots fired here are kept for the sync to send (it empties the list)
-    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
+    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; chestOpens.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
     netShots,
     setNetBodies(list: { x: number; y: number }[]) { netBodies = list },
     addRemoteShots,
@@ -1972,6 +1979,19 @@ export function createCombat() {
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
     // an item on its own in the world (a Pátio's "Item solto"): it falls to the floor there and never comes back
     addPickup(x: number, item: ItemId, y: number) { const id = nextId++; pickups.push({ id, owned: fresh(item), x, y, vy: 0, resting: false, noPick: 0 }); return id },
+    // online: the Baús opened here since the sync last asked
+    chestOpens,
+    // another browser opened this Baú `t` s ago: it opens here too, with its animation and sound when it is news (the
+    // items came out only for whoever opened it)
+    openNetChest(id: string, t: number) {
+      const c = chests.find(o => o.id === id)
+      if (!c) return
+      // already open here: only its clock follows (the one that closes again closes with the others)
+      if (c.open) { c.t = Math.max(c.t, t); return }
+      if (t < 0.5) { openChestFx(c); c.t = t } else { c.open = true; c.lid = 1; c.t = t }
+    },
+    // the lobby's owner has it shut (its time ran out there, or it never opened)
+    closeNetChest(id: string) { const c = chests.find(o => o.id === id); if (c?.open) { c.open = false; c.t = 0 } },
     // a Baú of the layout (x: its middle, y: its floor); the layout sync keeps its place and params up to date
     addChest(id: string, x: number, y: number, params: ChestParams): Chest { const c: Chest = { id, x, y, params, open: false, lid: 0, t: 0, shake: 0 }; chests.push(c); return c },
     addRack(x: number, item: ItemId, y?: number, respawnDelay?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay) }) },

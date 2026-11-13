@@ -26,7 +26,7 @@
 | Pátio: espaço abaixo do chão, Salvar no game (Configurações do Pátio, Camadas, Câmera de Mira, Volume, Ajustes) e ícones do cabeçalho dos painéis | [Padrões do jogo](docs/mechanics/patio/game-defaults.md) |
 | Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, Item solto | [Editor do Pátio](docs/mechanics/patio/editor.md) |
 | Pátio: salvar/abrir, Playgrounds, Destaques, Pátios de exemplo | [Lobbies do Pátio](docs/mechanics/patio/lobbies.md) |
-| Pátio: Baú do Modo editor (abrir por chave ou merecimento, itens com chance, raridade) e item Chave | [Baú e Chave](docs/mechanics/patio/chests.md) |
+| Pátio: Baú do Modo editor (abrir por chave ou merecimento, itens com chance, raridade, Pátio online) e item Chave | [Baú e Chave](docs/mechanics/patio/chests.md) |
 | Pátio: Quadro de lousa, fantasma de treino e o Pátio Training room | [Treino](docs/mechanics/patio/training.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, presos às camadas do fundo, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
@@ -90,7 +90,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: zumbis e hordas](docs/mechanics/patio/enemies.md) | 2 KB |
 | [Pátio: modo editor e layout](docs/mechanics/patio/editor.md) | 21 KB |
 | [Pátio: salvar/abrir, Playgrounds, Destaques](docs/mechanics/patio/lobbies.md) | 10 KB |
-| [Pátio: Baú e Chave](docs/mechanics/patio/chests.md) | 5 KB |
+| [Pátio: Baú e Chave](docs/mechanics/patio/chests.md) | 6 KB |
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 4 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |

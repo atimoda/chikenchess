@@ -35,6 +35,7 @@ const RECENT = [
         'Novo elemento Baú (grupo Baús do Modo editor), simples ou lendário: o simples brilha num amarelo suave, o lendário num azul mais forte. Perto dele, Pegar abre: a tampa sobe, sai um facho de luz e os itens pulam para fora.',
         'Em Editar, “Abre com” escolhe Livre, Chave (gasta uma chave do inventário) ou Merecimento (pede um mínimo de almas na Bag of souls, que continuam lá). Sem o que ele pede, o baú treme e diz o que falta; de perto, ele já mostra o que pede.',
         'Os itens do baú são uma lista: cada linha é um item específico ou um sorteio (qualquer item, uma arma, um instrumento, um esportivo, uma habilidade especial, um item de magia ou uma chave), com a sua chance em %. “Fecha de novo após” deixa o baú abrir outra vez, com novo sorteio; com 0, ele fica aberto.',
+        'No Pátio online, abrir um baú abre para todos, com a tampa, a luz e o som; os itens saem para quem abriu. Quem entra depois vê os baús que já estão abertos.',
         'Novo item Chave: fica em pilha (até 9) no grupo Utilitário do inventário e entra em suportes (paleta Chaves), Item solto e baús.',
         'O contador de almas ao lado do avatar passa a se chamar Bag of souls.',
       ] },

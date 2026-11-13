@@ -127,3 +127,40 @@ test('one that closes again can be opened again; the layout sync moves it, keeps
   sync.sync([],8); assert.equal(c.chests.length,0)
   sync.sync([el],8); sync.reset(); assert.equal(c.chests.length,0)
 })
+
+// ---------- online (lib/pigchicken/net-chests.ts) ----------
+const N=loadTs('lib/pigchicken/net-chests.ts')
+
+test('online: a Baú opened in one browser opens in the others, with its animation and sound, but no items',()=>{
+  const chest={rarity:'legendary',lock:'free',souls:5,reopen:0,loot:[{pick:'pistol',chance:100}]}
+  const a=withChest(chest).c, b=withChest(chest).c
+  a.setNetOn(true)
+  step(a,{grab:true})
+  assert.deepEqual([...a.chestOpens],['chest-1'],'news for the others')
+  const msg=N.cleanNetChests(JSON.parse(JSON.stringify({l:a.chestOpens.splice(0).map(id=>[id,0]),o:1})))
+  b.sounds.length=0
+  N.applyNetChests(b,msg,false,()=>false)
+  assert.equal(b.chests[0].open,true)
+  assert.ok(b.sounds.some(s=>s.kind==='chestLegend'),'the same sound')
+  assert.equal(b.chests[0].lid,0,'the lid goes up there too'); step(b); assert.ok(b.chests[0].lid>0)
+  assert.equal(b.pickups.length,0,'the items are for whoever opened it')
+  assert.equal(b.chestOpens.length,0,'news from elsewhere is not sent back')
+})
+
+test('online: the owner\'s list opens the ones open there (late joiners, quietly) and shuts the rest, but not one just opened here',()=>{
+  const chest={rarity:'simple',lock:'free',souls:5,reopen:0,loot:[]}
+  const owner=withChest(chest).c, late=withChest(chest).c
+  step(owner,{grab:true}); for(let i=0;i<120;i++) step(owner)
+  const list=N.exportOpenChests(owner.chests)
+  assert.equal(list.length,1); assert.ok(list[0][1]>=1.9)
+  late.sounds.length=0
+  N.applyNetChests(late,N.cleanNetChests({l:list}),true,()=>false)
+  assert.equal(late.chests[0].open,true); assert.equal(late.chests[0].lid,1,'already open, no animation')
+  assert.equal(late.sounds.length,0)
+  // the owner shut it: shut here too, unless it was opened here a moment ago
+  N.applyNetChests(late,{l:[]},true,()=>true); assert.equal(late.chests[0].open,true)
+  N.applyNetChests(late,{l:[]},false,()=>false); assert.equal(late.chests[0].open,true,'only the owner\'s list shuts')
+  N.applyNetChests(late,{l:[]},true,()=>false); assert.equal(late.chests[0].open,false)
+  assert.equal(N.cleanNetChests({l:'x'}),null)
+  assert.deepEqual(N.cleanNetChests({l:[['a',-3],[5,1],['b',1e9]],o:1}),{l:[['a',0],['b',3600]],o:1})
+})

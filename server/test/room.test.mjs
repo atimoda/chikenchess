@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [], chests: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,7 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
-  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks']) room.onMessage(type, m => seen[type].push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks', 'chests']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -218,4 +218,25 @@ test('chicks: each browser sends its own to everyone else, and one is asked for 
   assert.equal(b.seen.chicks.length, 0, 'its own chicks do not come back')
   assert.equal(a.seen.chicks.length, 2); assert.equal(c.seen.chicks.length, 2)
   for (const x of [a, b, c]) await x.room.leave()
+})
+
+test('chests: an opened Baú goes to everyone else; only the owner sends the list of open ones', async () => {
+  const patioId = '0f000000-0000-4000-8000-000000000007'
+  const a = await browser({ patioId, name: 'Dona' })
+  const b = await browser({ patioId, name: 'Bia' })
+  assert.equal(a.seen.hello.caps.chests, 1, 'the server says it relays them')
+  assert.equal(a.seen.room.ownerPid, a.seen.hello.pid)
+  const pa = a.seen.hello.pid, pb = b.seen.hello.pid
+  b.room.send('chests', { l: [['chest-1', 0]], o: 1 })
+  assert.deepEqual(await until(() => a.seen.chests[0]), { pid: pb, l: [['chest-1', 0]], o: 1 })
+  // the list without o: the owner's only
+  b.room.send('chests', { l: [] })
+  a.room.send('chests', { l: [['chest-1', 1.5]] })
+  assert.deepEqual(await until(() => b.seen.chests[0]), { pid: pa, l: [['chest-1', 1.5]] })
+  // too many, not a list: dropped
+  b.room.send('chests', { l: Array.from({ length: 65 }, (_, i) => [`c${i}`, 0]), o: 1 })
+  b.room.send('chests', { l: 'x', o: 1 })
+  await wait(150)
+  assert.equal(a.seen.chests.length, 1); assert.equal(b.seen.chests.length, 1)
+  for (const x of [a, b]) await x.room.leave()
 })

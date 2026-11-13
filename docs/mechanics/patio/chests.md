@@ -25,7 +25,16 @@ Código: `lib/pigchicken/chests.ts` (parâmetros, limpeza, regra de abertura e s
 - **Abrindo:** com Chave, uma chave do inventário de quem abriu é gasta (a última sai do inventário). Com Merecimento, as almas continuam na Bag of souls. A tampa sobe em 0,25 s, sai um facho de luz para cima por 2 s (mais alto no lendário), faíscas na cor da raridade e o som de abertura (rangido e um arpejo; o lendário com mais notas e brilho). Aberto, o brilho fica mais fraco.
 - **Itens:** cada linha é sorteada por conta própria pela sua chance; um grupo dá um dos seus itens, ao acaso. Os que saem pulam juntos de cima do baú, lado a lado (30 px entre eles), e caem no chão ou na plataforma em volta, como itens soltos (sem reposição). Ninguém os pega nos primeiros 0,45 s. Nada sorteado: “Vazio”.
 - **Mover ou editar um baú aberto** não o fecha; a nova lista vale na próxima abertura.
-- **Escopo:** todos os Pátios e modos, todos os players locais (cada um com as suas chaves e a sua Bag of souls). No Pátio online cada navegador tem os seus baús: abrir num navegador não abre nos outros, e os itens que saem são deste navegador.
+- **Escopo:** todos os Pátios e modos, todos os players locais (cada um com as suas chaves e a sua Bag of souls).
+
+## No Pátio online (13/11, v2.10.0)
+
+`lib/pigchicken/net-chests.ts` (dados e regras), envio em `lib/pigchicken/net-world-sync.ts`, `sendNetChests` em `lib/chicken/online-room.ts`, repasse em `server/src/patio-room.mjs` (`onChests`); testes em `tests/pigchicken-chests.cases.cjs` e `server/test/room.test.mjs`.
+
+- **Abrir:** quem abre confere a chave ou as almas do próprio player, abre na hora e avisa todos os navegadores (`chests` com `o: 1`). Nos outros, o baú abre também, com a tampa subindo, o facho de luz, as faíscas e o som. Os itens saem só no navegador de quem abriu (os itens no chão são de cada navegador, como os dos suportes).
+- **Lista do dono:** o dono do lobby manda a cada 2 s, e quando alguém entra, os baús abertos no mundo dele e há quanto tempo. Quem entrou depois vê esses baús já abertos, sem animação nem som. O relógio de “Fecha de novo após” segue o do dono. Um baú que está fechado no dono fecha nos outros, menos um aberto ali há menos de 3 s (o aviso ainda está a caminho do dono).
+- **Ao mesmo tempo:** dois navegadores que abrem o mesmo baú antes de o aviso de um chegar ao outro abrem os dois, e cada um recebe os seus itens.
+- **Servidor:** só repassa, conferindo tamanho e ritmo (até 64 baús por mensagem); a lista sem `o` vale só do dono. Ele avisa em `hello.caps.chests`; com um servidor antigo os baús ficam locais em cada navegador.
 
 ## Chave (13/11, v2.10.0)
 
