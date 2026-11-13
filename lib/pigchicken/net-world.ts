@@ -17,6 +17,8 @@ export type NetHit = {
   id: number; d: number; px: number; x: number; y: number
   // notes (instruments) fill the harmony bar instead of hurting: the note and how long it stuns
   n?: { m: number; c: string; s: string; v: string; w: number }; st?: number
+  // a lightning weapon's shock (lib/pigchicken/shock.ts): seconds, strength (0..1) and what it takes from the harmony bar
+  sh?: [number, number, number]
 }
 
 // a projectile someone fired: a bullet / note ('b'), an instant shot's tracer ('t'), a thrown item ('th')
@@ -24,13 +26,18 @@ export type NetShot =
   | { k: 'b'; i: ItemId; x: number; y: number; vx: number; vy: number; sz: number; dr: number; rg: number; fu: number; bo: number; ex: number; ep?: number; pi: number; n?: { m: number; c: string; s: string; w: number; v: string }; rn?: number; gh?: boolean }
   | { k: 't'; i: ItemId; x1: number; y1: number; x2: number; y2: number }
   | { k: 'th'; i: ItemId; x: number; y: number; vx: number; vy: number; sp: number; a: number }
+  // the bolts of a shock ('z': five numbers each, x1, y1, x2, y2 and its hop, -1 for the one from the sky; s: 1 for
+  // a special) and a staff thrown that comes back ('hm': from where, its angle, speed and how far it goes)
+  | { k: 'z'; i: ItemId; p: number[]; s: number }
+  | { k: 'hm'; i: ItemId; x: number; y: number; a: number; sp: number; rg: number }
 
 // what spawns are asked of the owner (the horde buttons and the editor's training enemies), with the scene they are
 // for: the horde moves inside it whoever is watching
 export type NetSpawn = { what: 'aliens' | 'zombies' | 'alien' | 'zombie'; x: number; y: number; l: number; r: number; n?: number }
 
-// one enemy per entry: [id, kind, x, y, w, h, hp, maxHp, face, state, animT, deadT, harmony, stun, tint, flash, angle, data?]
-export type NetFoe = [number, number, number, number, number, number, number, number, number, string, number, number, number, number, string, number, number, unknown?]
+// one enemy per entry: [id, kind, x, y, w, h, hp, maxHp, face, state, animT, deadT, harmony, stun, tint, flash, angle, data?, shock?]
+// data: only when it changed (0 holds its place when only the shock follows); shock: [left, total, power] while shocked
+export type NetFoe = [number, number, number, number, number, number, number, number, number, string, number, number, number, number, string, number, number, unknown?, number[]?]
 // the horde formations by id: [x, y, dir, targetY, speed, cols, gap, total, l, r]
 export type NetFoes = { fs: Record<string, number[]>; l: NetFoe[] }
 
@@ -97,6 +104,7 @@ export function exportFoes(targets: readonly Target[], pid: number, cache: FoeCa
     if (send) cache.sent.set(id, sig)
     const entry: NetFoe = [id, kind, r1(t.x), r1(t.y), t.w, t.h, r1(t.hp), t.maxHp, t.face < 0 ? -1 : 1, t.state, r2(t.animT), t.deadT > 0 ? Math.max(0.01, r2(t.deadT)) : 0, r1(t.harmony ?? 0), r2(t.stun ?? 0), t.tint ?? '', r2(t.flash), angle]
     if (send) entry.push(out === undefined ? null : out)
+    if (t.shock && t.shock.left > 0) { if (!send) entry.push(0); entry.push([r2(t.shock.left), r2(t.shock.total), r2(t.shock.power)]) }
     l.push(entry)
   }
   for (const id of [...cache.sent.keys()]) if (!live.has(id)) cache.sent.delete(id)
@@ -128,7 +136,8 @@ export function importFoes(targets: Target[], msg: NetFoes, formations: Map<numb
     const [id, k, x, y, w, h, hp, maxHp, face, state, animT, deadT, harmony, stun, tint, flash, angle] = e
     const kind = KINDS[k]
     if (!kind) continue
-    let data = e.length > 17 ? e[17] : undefined
+    let data = e.length > 17 && e[17] !== 0 ? e[17] : undefined
+    const sh = e[18]
     if (data && (data as AnyData).kind === 'alien' && 'fid' in (data as AnyData)) {
       const d = data as AnyData & { fid: number }
       const f = formations.get(d.fid)
@@ -160,6 +169,8 @@ export function importFoes(targets: Target[], msg: NetFoes, formations: Map<numb
     // far away (just appeared, a portal, a big knockback): straight there
     if (Math.hypot(t.x - x, t.y - y) > 400) { t.x = x; t.y = y }
     t.harmony = harmony; t.stun = stun; t.tint = tint || undefined
+    // shocked on the owner: it shakes here too (a shock this browser gave shows at once and runs out on its own)
+    if (Array.isArray(sh) && sh.length === 3 && sh.every(num) && sh[0] > 0) t.shock = { left: Math.min(30, sh[0]), total: Math.max(0.05, Math.min(30, sh[1])), power: Math.max(0, Math.min(1, sh[2])) }
     t.flash = Math.max(t.flash, flash)
     if (kind === 'undead' && t.data) (t.data as AnyData).angle = angle
     seen.add(id)
@@ -195,6 +206,7 @@ export function cleanHit(h: unknown): NetHit | null {
     hit.n = { m: o.n.m, c: o.n.c.slice(0, 16), s: o.n.s.slice(0, 4), v: o.n.v.slice(0, 16), w: o.n.w }
     hit.st = num(o.st) ? Math.max(0, Math.min(10, o.st!)) : 0
   }
+  if (Array.isArray(o.sh) && o.sh.length === 3 && o.sh.every(num)) hit.sh = [Math.max(0, Math.min(30, o.sh[0])), Math.max(0, Math.min(1, o.sh[1])), Math.max(0, Math.min(1000, o.sh[2]))]
   return Math.abs(hit.x) < LIMIT && Math.abs(hit.y) < LIMIT ? hit : null
 }
 
@@ -210,6 +222,8 @@ export function cleanShot(s: unknown, items: Record<string, unknown>): NetShot |
   }
   if (o.k === 't' && all('x1', 'y1', 'x2', 'y2')) return o as NetShot
   if (o.k === 'th' && all('x', 'y', 'vx', 'vy', 'sp', 'a')) return o as NetShot
+  if (o.k === 'z' && Array.isArray(o.p) && o.p.length >= 5 && o.p.length <= 5 * 48 && o.p.length % 5 === 0 && o.p.every(v => num(v) && Math.abs(v as number) < LIMIT)) return { k: 'z', i: o.i as ItemId, p: o.p as number[], s: o.s ? 1 : 0 }
+  if (o.k === 'hm' && all('x', 'y', 'a', 'sp', 'rg')) return { k: 'hm', i: o.i as ItemId, x: o.x as number, y: o.y as number, a: o.a as number, sp: Math.max(100, Math.min(4000, o.sp as number)), rg: Math.max(0, Math.min(6000, o.rg as number)) }
   return null
 }
 

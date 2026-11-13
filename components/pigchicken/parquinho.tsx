@@ -1389,6 +1389,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         combat.use("p1")
       }
       if (charge > 0) { const from = engine.heldPoint(combat.throwAngle, 0, 0); drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY }))) }
+      // a staff that comes back being charged (the Martelo de Thor): the straight line it would fly, each local player's
+      const returnPath = (eng: typeof engine) => {
+        const from = eng.heldPoint(combat.aimAngle, 0, 0), pts = combat.predictReturn({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G })
+        if (pts) drawThrowPath(ctx, pts.map(p => ({ x: p.x - camX, y: p.y + camY })))
+      }
+      returnPath(engine)
+      extraList.forEach(([id, eng]) => { combat.use(id); returnPath(eng) })
+      combat.use("p1")
       // the other local players' reticles, each in their own color, where their item points
       extraList.forEach(([id, eng]) => {
         const at = extraAim.get(id)

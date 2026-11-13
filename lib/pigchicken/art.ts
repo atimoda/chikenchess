@@ -63,6 +63,40 @@ const ART: Partial<Record<ItemId, Art>> = {
     <ellipse cx="62" cy="0" rx="17" ry="12.5" fill="none" stroke="#d4eeeb" stroke-width="2.8"/>
     <rect x="42.5" y="-2.8" width="4.5" height="5.6" rx="1.2" fill="#b9c4c2"/>`,
   },
+  // Martelo de Thor: a short war hammer. A leather-wrapped handle with a strap at the pommel and a heavy block of
+  // grey steel across its end, bevelled at the corners, with an engraved band on each face
+  mjolnir: {
+    box: [-20, -19, 80, 38],
+    svg: `<path d="M-8 0.6 C-13 -7 -19 -3 -17 1.5 C-15.5 5 -11 4.5 -8 -0.6" fill="none" stroke="#6b4226" stroke-width="1.9" stroke-linecap="round"/>
+    <rect x="-3" y="-2.7" width="35" height="5.4" fill="#7a4a2b"/>
+    <path d="M-3 -2.7 L32 -2.7 L32 -1 L-3 -1 Z" fill="#96603a" opacity="0.8"/>
+    <path d="M0 -2.7 L3.4 2.7 M6 -2.7 L9.4 2.7 M12 -2.7 L15.4 2.7 M18 -2.7 L21.4 2.7 M24 -2.7 L27.4 2.7" stroke="#dfe4ea" stroke-width="1.1"/>
+    <rect x="-9" y="-3.6" width="6.5" height="7.2" rx="1.5" fill="#aab2bc"/><path d="M-8 -2 L-3.5 -2" stroke="#e6eaef" stroke-width="1"/>
+    <rect x="29.5" y="-4" width="3.5" height="8" rx="0.9" fill="#858d98"/>
+    <path d="M32 -13 L36 -17 L54 -17 L58 -13 L58 13 L54 17 L36 17 L32 13 Z" fill="#b7bec8"/>
+    <path d="M36 -17 L54 -17 L58 -13 L32 -13 Z" fill="#e3e8ee"/>
+    <path d="M32 13 L58 13 L54 17 L36 17 Z" fill="#858d98"/>
+    <path d="M32 -13 L36 -13 L36 13 L32 13 Z" fill="#9ea6b1"/>
+    <path d="M36 -9.5 L58 -9.5 M36 9.5 L58 9.5" stroke="#737b86" stroke-width="0.8"/>
+    <path d="M37.5 -11 l2 -1.4 l2 1.4 l2 -1.4 l2 1.4 l2 -1.4 l2 1.4 l2 -1.4 l2 1.4 l2 -1.4 M37.5 11.6 l2 1.4 l2 -1.4 l2 1.4 l2 -1.4 l2 1.4 l2 -1.4 l2 1.4 l2 -1.4 l2 1.4" fill="none" stroke="#6a727d" stroke-width="0.8"/>
+    <path d="M40 -6 L55 -6" stroke="#d3d9e0" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>`,
+  },
+  // Cajado de Odin: a long golden staff, ringed along the shaft, a spike at the foot and at the top a pointed blade
+  // between two horns that curl around it
+  odinstaff: {
+    box: [-11, -18, 138, 36],
+    svg: `<path d="M-9 0 L-1 -2 L-1 2 Z" fill="#a86a12"/>
+    <rect x="-2" y="-2.1" width="97" height="4.2" rx="1.6" fill="#d9982b"/>
+    <path d="M0 -1 L93 -1" stroke="#ffd98a" stroke-width="1" stroke-linecap="round" opacity="0.85"/>
+    <rect x="18" y="-3" width="3" height="6" rx="1" fill="#a86a12"/><rect x="52" y="-3" width="3" height="6" rx="1" fill="#a86a12"/><rect x="84" y="-3" width="3" height="6" rx="1" fill="#a86a12"/>
+    <path d="M96 -3 C99 -15 113 -17 116 -8 C112 -12 104 -10 102 -3 Z" fill="#d9982b"/>
+    <path d="M96 3 C99 15 113 17 116 8 C112 12 104 10 102 3 Z" fill="#c4841f"/>
+    <path d="M97 -4.5 C91 -9 94 -14.5 99.5 -12" fill="none" stroke="#d9982b" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M97 4.5 C91 9 94 14.5 99.5 12" fill="none" stroke="#c4841f" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M96 -3.4 Q110 -6.5 126 0 Q110 6.5 96 3.4 Z" fill="#f0b540"/>
+    <path d="M98 -1.6 Q110 -3.6 122 -0.4" fill="none" stroke="#fff0c2" stroke-width="1.1" stroke-linecap="round" opacity="0.9"/>
+    <rect x="92" y="-3.8" width="5" height="7.6" rx="1.5" fill="#f0b540"/>`,
+  },
   pistol: {
     box: [-6, -16, 64, 40],
     svg: `<g transform="scale(1.7)">

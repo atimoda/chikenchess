@@ -3,7 +3,7 @@ const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const { createCombat } = loadTs('lib/pigchicken/combat.ts')
 const items = loadTs('lib/pigchicken/items.ts')
-const { DEFAULT_ITEMS, SPORTS_IDS, isStaff } = items
+const { DEFAULT_ITEMS, MELEE_IDS, isStaff } = items
 const pose = loadTs('lib/pigchicken/staff-pose.ts')
 const { heldItemPose } = loadTs('lib/pigchicken/held-pose.ts')
 
@@ -28,7 +28,7 @@ const charge = (c, s) => { step(c, { fire: true, firePressed: true }); run(c, s,
 const alien = (c, x = 60, hp = 500) => { const t = { id: 900 + c.targets.length, kind: 'alien', home: 0, x, y: 15, w: 40, h: 30, hp, maxHp: hp, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'fly', animT: 0, data: { kind: 'temple', species: 'jelly', color: '#c77dff' } }; c.targets.push(t); return t }
 
 test('the staffs are the items only for hitting; the others have no strong blow', () => {
-  assert.deepEqual(Object.keys(DEFAULT_ITEMS).filter(id => isStaff(DEFAULT_ITEMS[id])).sort(), SPORTS_IDS.slice().sort())
+  assert.deepEqual(Object.keys(DEFAULT_ITEMS).filter(id => isStaff(DEFAULT_ITEMS[id])).sort(), MELEE_IDS.slice().sort())
   const c = createCombat(); c.give('pistol'); step(c, { slot: 1 })
   step(c, { fire: true, firePressed: true })
   assert.equal(c.heavyCharging, false)
