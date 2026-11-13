@@ -812,6 +812,8 @@ export function announceHeldItem(id: ItemId | null) {
   heldItem = id
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(HELD_EVENT, { detail: id }))
 }
+// what the main player holds right now (null: empty-handed, or the Pátio isn't running)
+export function currentHeldItem(): ItemId | null { return heldItem }
 export function subscribeHeldItem(onChange: (id: ItemId | null) => void) {
   const handler = (e: Event) => onChange((e as CustomEvent<ItemId | null>).detail)
   window.addEventListener(HELD_EVENT, handler)

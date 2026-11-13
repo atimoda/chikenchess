@@ -8,7 +8,7 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, WEAPON_IDS, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
@@ -47,7 +47,8 @@ const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", 
 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
-  const [sel, setSel] = useState<ItemId>("pistol")
+  // opens on the item the main player holds; empty-handed, on the Bicada (what she attacks with then)
+  const [sel, setSel] = useState<ItemId>(() => currentHeldItem() ?? "peck")
   const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, "Golpe forte": true, Combo: true, Bicada: true, Pontos: true, "Arremesso que volta": true, Choque: true, Especial: true })
   useEffect(() => {
     setItems(loadItems())
