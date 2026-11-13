@@ -11,7 +11,7 @@ import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OUTLINE_PX, type MountainParams } from "@/lib/pigchicken/mountains"
 import { rng, shadeFaces, snowRegion } from "@/lib/pigchicken/mountain-draw"
-import { BACKDROP_BOTTOM, BACKDROP_PAD_L, BACKDROP_PAD_R, CLOUD_DEPTH, FOREST_FAR, FOREST_NEAR, MOUNTAIN_RANGES, SUN_DEPTH, backdropLayerW, rangeRidge, type BackdropLayerId } from "@/lib/pigchicken/backdrop-layers"
+import { BACKDROP_BOTTOM, BACKDROP_PAD_L, BACKDROP_PAD_R, CLOUD_DEPTH, backdropLayerTop, FOREST_FAR, FOREST_NEAR, MOUNTAIN_RANGES, SUN_DEPTH, backdropLayerW, rangeRidge, type BackdropLayerId } from "@/lib/pigchicken/backdrop-layers"
 import { cloudReach, cumulusClouds, softClouds, type CloudShape } from "@/lib/pigchicken/cloud-draw"
 import { CLOUDS_DEFAULT, type CloudParams } from "@/lib/pigchicken/clouds"
 import type { SnowfallParams } from "@/lib/pigchicken/snowfall"
@@ -101,11 +101,13 @@ function RadialSky({ look, left, width, top, height, cx }: { look: SkyLook; left
 
 // one parallax layer: depth p (0 = with the ground, 1 = fixed on the screen)
 // id: which one it is (the editor shows it alone while a Poste or Torre is being pinned to it)
-function Layer({ p, w, id, children }: { p: number; w: number; id: BackdropLayerId; children: React.ReactNode }) {
+// top: how far up its box reaches (backdropLayerTop: 0, or above it for whatever is drawn higher); the drawing keeps
+// the world's y, so a taller box never moves it
+function Layer({ p, w, id, top = 0, children }: { p: number; w: number; id: BackdropLayerId; top?: number; children: React.ReactNode }) {
   const ref = useRef<SVGSVGElement>(null)
   useEffect(() => ref.current ? followParallax(ref.current, p) : undefined, [p])
   return (
-    <svg ref={ref} aria-hidden="true" data-backdrop-layer={id} className="absolute" viewBox={`0 0 ${w} ${BOTTOM}`} style={{ left: -PAD_L, top: 0, width: w, height: BOTTOM, overflow: "hidden" }}>
+    <svg ref={ref} aria-hidden="true" data-backdrop-layer={id} className="absolute" viewBox={`0 ${top} ${w} ${BOTTOM - top}`} style={{ left: -PAD_L, top, width: w, height: BOTTOM - top, overflow: "hidden" }}>
       {children}
     </svg>
   )
@@ -210,6 +212,10 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   // the moon keeps its place; the sun may be moved sideways (Posição do sol)
   const moonX = PAD_L + 1350 + 900, sunX = PAD_L + 1350 + look.sun.x
   const skyTop = -4200
+  // the sun's layer reaches up to its highest star, glow or moon
+  const sunGlowR = look.sun.r * 7.8 * look.sun.glowSize
+  const sunTop = backdropLayerTop(Math.min(look.stars > 0 ? -300 - 3 * look.starSize : 0, look.sun.opacity > 0 ? look.sun.y - sunGlowR : 0, look.moon.opacity > 0 ? look.moon.y - 150 : 0,
+    look.horizonGlow > 0 ? 860 - 420 * Math.sqrt(look.sun.glowSize) : 0))
   return (
     <div aria-hidden="true" className="absolute inset-0">
       {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top and, in its last colour, down to the layers' foot */}
@@ -224,7 +230,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         backgroundImage: `url(${texture})`, backgroundSize: `${Math.round(1024 * look.textureLook.scale)}px ${Math.round(256 * look.textureLook.scale)}px`,
         mixBlendMode: look.textureLook.blend as React.CSSProperties["mixBlendMode"],
       }} />}
-      <Layer p={SUN_DEPTH} w={wSun} id="sun">
+      <Layer p={SUN_DEPTH} w={wSun} id="sun" top={sunTop}>
         <defs>
           <radialGradient id="px-sun">
             <stop offset="0" stopColor={look.sun.glowColor} stopOpacity={Math.min(1, 0.55 * look.sun.glow + 0.05)} />
@@ -256,7 +262,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
           <circle cx={moonX + 12} cy={look.moon.y - 6} r={26} fill={look.stops[0].color} opacity={look.moon.opacity * 0.85} />
         </>}
         {look.sun.opacity > 0 && <>
-          <circle cx={sunX} cy={look.sun.y} r={look.sun.r * 7.8 * look.sun.glowSize} fill="url(#px-sun)" opacity={look.sun.opacity} />
+          <circle cx={sunX} cy={look.sun.y} r={sunGlowR} fill="url(#px-sun)" opacity={look.sun.opacity} />
           {look.sun.soft > 0
             ? <circle cx={sunX} cy={look.sun.y} r={look.sun.r * (1 + look.sun.soft * 1.4)} fill="url(#px-disc)" opacity={0.9 * look.sun.opacity} />
             : <circle cx={sunX} cy={look.sun.y} r={look.sun.r} fill={look.sun.color} opacity={0.9 * look.sun.opacity} />}
@@ -279,7 +285,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         const snowFill = mountains.snowTintAmount > 0 ? mix(lit, mountains.snowTint, mountains.snowTintAmount / 100) : lit
         const g = mountains.gradient / 100
         return (
-          <Layer key={r.i} p={r.p} w={r.w} id={`range${r.i}` as BackdropLayerId}>
+          <Layer key={r.i} p={r.p} w={r.w} id={`range${r.i}` as BackdropLayerId} top={backdropLayerTop(r.top - mountains.outline / 100 * MOUNTAIN_OUTLINE_PX)}>
            <g opacity={mountains.opacity < 100 ? mountains.opacity / 100 : undefined}>
             {/* Degradê: darker at the tops, lighter at the feet */}
             {g > 0 && <defs><linearGradient id={`px-mg${r.i}`} gradientUnits="userSpaceOnUse" x1="0" y1={r.top} x2="0" y2={r.base}>

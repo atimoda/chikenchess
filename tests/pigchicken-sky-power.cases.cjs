@@ -399,3 +399,19 @@ test('a wire to a pinned tower slides its end from the camera at 0, like the lay
   assert.ok(Math.abs(c.b.y - (s.b.y - 150 * d)) < 1e-6)
   assert.equal(c.a.y, s.a.y)
 })
+
+test('a range as tall as the settings allow stays inside its layer: only the Pátio frame cuts it', () => {
+  const M = loadTs('lib/pigchicken/mountains.ts')
+  const worldW = 1920 * 8
+  for (const peak of ['wave', 'sharp', 'geo']) for (const height of [100, M.MOUNTAIN_SCALE.max]) for (const lift of [0, M.MOUNTAIN_LIFT.max]) {
+    const m = { ...M.MOUNTAINS_DEFAULT, height, lift, peak, rough: M.MOUNTAIN_SCALE.max }
+    BD.MOUNTAIN_RANGES.forEach((_, i) => {
+      const rg = BD.rangeRidge(worldW, i, m)
+      const top = BD.backdropLayerTop(rg.top - M.MOUNTAIN_OUTLINE_PX)
+      assert.ok(top <= 0)
+      assert.ok(rg.crest.every(([, y]) => y - M.MOUNTAIN_OUTLINE_PX / 2 > top), `${peak} ${height} ${lift} range ${i}`)
+    })
+  }
+  // the usual ranges keep the layer box at the world's top, as before
+  BD.MOUNTAIN_RANGES.forEach((_, i) => assert.equal(BD.backdropLayerTop(BD.rangeRidge(worldW, i, M.MOUNTAINS_DEFAULT).top), 0))
+})
