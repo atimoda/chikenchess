@@ -3,7 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const [stage, ...pairs] = process.argv.slice(2)
-const file = ['brazilian', 'africa', 'world'].map(dir => path.join(__dirname, '..', dir, `${stage}.cjs`)).find(candidate => fs.existsSync(candidate))
+const file = ['brazilian', 'africa', 'world', 'classical'].map(dir => path.join(__dirname, '..', dir, `${stage}.cjs`)).find(candidate => fs.existsSync(candidate))
 if (!file) throw new Error(`no script for ${stage}`)
 let text = fs.readFileSync(file, 'utf8')
 for (const pair of pairs) {

@@ -50,6 +50,7 @@ Imagens são servidas pelas URLs indicadas em `lib/cities-data.ts`. Parâmetros 
 | Honolulu, 1935 · Hula | Vista do mirante de Diamond Head | Wikimedia Commons · Farragutful; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:2022_Views_from_Diamond_Head_07.jpg) |
 | Rotorua, 1920 · Haka | Orla do lago Rotorua | Wikimedia Commons · Kiwiz1338; CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Lake_Rotorua_lake_front.jpg) |
 | Port Moresby, 1970 · String band | Porto de Port Moresby | Wikimedia Commons · Masalai; CC BY-SA 3.0 | [Commons](https://commons.wikimedia.org/wiki/File:Port_Moresby_Harbour_with_floating_and_sunk_ships.jpg) |
+| Marseille, 1997 · Orchestral rap | Vieux-Port com Notre-Dame de la Garde ao fundo; foto recente escolhida pela cidade, sem representar o ano do kit | Wikimedia Commons; ver licença na página do arquivo | [Commons](https://commons.wikimedia.org/wiki/File:Marseille_-_Vieux-Port.jpg) |
 
 As demais imagens são fotografias próprias por kit servidas por Unsplash ou pelos provedores indicados no próprio endereço. Consulte cada URL no catálogo de dados para conferir a origem e os termos aplicáveis.
 

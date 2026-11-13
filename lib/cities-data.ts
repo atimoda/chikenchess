@@ -600,6 +600,7 @@ const rhythmCityPhotos: Record<string, string> = {
   'venice-1725': '/cities/rhythm/venice-1725.svg',
   'copenhagen-1869': '/cities/rhythm/copenhagen-1869.svg',
   'paris-1913': '/cities/rhythm/paris-1913.svg',
+  'marseille-1997': 'https://commons.wikimedia.org/wiki/Special:FilePath/Marseille_-_Vieux-Port.jpg?width=1600',
   'rio-1910': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_de_Janeiro_ca1910s_photo_from_USA_Library_of_Congress_19301u.jpg?width=1600',
   'rio-1930': 'https://commons.wikimedia.org/wiki/Special:FilePath/Revolu%C3%A7%C3%A3o_de_1930%3B_populares_e_revolucion%C3%A1rios_na_avenida_Rio_Branco_%28002080RJ3602%29.jpg?width=1600',
   'rio-1960': 'https://commons.wikimedia.org/wiki/Special:FilePath/Rio_ipanema.jpg?width=1600',
