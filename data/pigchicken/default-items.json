@@ -57,8 +57,6 @@
     "meleeTime": 0.16,
     "meleePush": 420,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 200,
     "heavyDamage": 40,
     "heavyRange": 75,
     "heavyArc": 170,
@@ -150,10 +148,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 200
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -229,8 +239,6 @@
     "meleeTime": 0.22,
     "meleePush": 0,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 190,
     "heavyDamage": 0,
     "heavyRange": 70,
     "heavyArc": 170,
@@ -322,10 +330,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 190
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -394,8 +414,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -487,10 +505,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -566,8 +596,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -659,10 +687,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -738,8 +778,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -831,10 +869,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -910,8 +960,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1003,10 +1051,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1082,8 +1142,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1175,10 +1233,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1260,8 +1330,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1353,10 +1421,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1432,8 +1512,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1525,10 +1603,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1604,8 +1694,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1697,10 +1785,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1776,8 +1876,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1869,10 +1967,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1952,8 +2062,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2045,10 +2153,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2128,8 +2248,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2221,10 +2339,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2304,8 +2434,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2397,10 +2525,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2486,8 +2626,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2579,10 +2717,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2668,8 +2818,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2761,10 +2909,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2844,8 +3004,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2937,10 +3095,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3026,8 +3196,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3119,10 +3287,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3208,8 +3388,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3301,10 +3479,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3380,8 +3570,6 @@
     "meleeTime": 0.2,
     "meleePush": 180,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3473,10 +3661,22 @@
     "effectCurve": "superIn",
     "effectLook": "buddha",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 120
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3545,8 +3745,6 @@
     "meleeTime": 0.2,
     "meleePush": 180,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3638,10 +3836,22 @@
     "effectCurve": "linear",
     "effectLook": "fizz",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 120
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3710,8 +3920,6 @@
     "meleeTime": 0.2,
     "meleePush": 520,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 200,
     "heavyDamage": 40,
     "heavyRange": 75,
     "heavyArc": 170,
@@ -3803,10 +4011,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 200
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3882,8 +4102,6 @@
     "meleeTime": 0.2,
     "meleePush": 300,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 200,
     "heavyDamage": 30,
     "heavyRange": 75,
     "heavyArc": 170,
@@ -3975,10 +4193,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 200
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "lightning",
@@ -4054,8 +4284,6 @@
     "meleeTime": 0.2,
     "meleePush": 180,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -4147,10 +4375,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 120
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -4226,8 +4466,6 @@
     "meleeTime": 0.16,
     "meleePush": 220,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -4319,10 +4557,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 160
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",

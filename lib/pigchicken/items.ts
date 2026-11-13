@@ -1,7 +1,7 @@
 // PigChicKen items: weapons and instruments share one sheet of numbers. An instrument is its weapon family's
 // sheet with a music block: the projectile is a note, and notes convert (fill the harmony bar) instead of
 // destroying. The Parquinho's item popup edits these sheets; they are saved in this browser for now.
-import { COMBO_MAX, COMBO_WINDOW, SWING_COMBO, isSwingKind, type SwingKind } from './swing'
+import { COMBO_WINDOW, cleanCombo, isSwingKind, swingCombo, type ComboStep, type SwingKind } from './swing'
 import type { PitchSet } from './music'
 import { cleanScales, type InstrumentScaleId } from './instrument-scales'
 import type { VoiceId } from './synth'
@@ -92,18 +92,16 @@ export type ItemDef = {
   // melee (Y / right click)
   meleeDamage: number
   meleeRange: number // px
-  meleeArc: number // degrees
+  meleeArc: number // degrees: the Bicada's cone (the other items' blows take their arc from the combo)
   meleeCooldown: number // s
   meleeInterrupt: boolean // a blow pressed while the last one is still going cuts it off and starts at once
   meleeTime: number // s the swing takes to sweep its arc
   durability: number // melee hits on a target before it breaks (0 = never)
   meleePush: number // knockback px/s
-  // the combo: the order of the blows in a row, how long after a blow the next still carries it on (s), and the
-  // hit arc of the blows up and horizontal (degrees; meleeArc is the blow down's, the spin always 360)
-  combo: SwingKind[]
+  // the combo: the blows in a row, each with its direction and hit arc (degrees; the spin always 360), and how
+  // long after a blow the next still carries it on (s)
+  combo: ComboStep[]
   comboWindow: number
-  meleeArcUp: number
-  meleeArcFlat: number
   // the blow's air trail: thickness at the tip (px), colour, seconds it takes to dissolve, little curls, opacity
   trailWidth: number
   trailColor: string
@@ -289,7 +287,7 @@ const PISTOL: ItemDef = {
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
   meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, meleeTime: 0.2, durability: 0, meleePush: 260,
-  combo: SWING_COMBO.slice(), comboWindow: COMBO_WINDOW, meleeArcUp: 110, meleeArcFlat: 110,
+  combo: swingCombo(110), comboWindow: COMBO_WINDOW,
   trailWidth: 24, trailColor: TRAIL_CREAM, trailTime: 0.2, trailWisps: 4, trailOpacity: 0.7,
   rebateChain: chain(['dynamics', 'staccato']), rebateSnap: 15, rebateSnapForce: 0.4, rebateSpeed: 1, rebateTok: false,
   throwDamage: 25, throwMin: 275, throwSpeed: 1100, throwCharge: 1,
@@ -370,7 +368,7 @@ const BOW: ItemDef = {
 const WING: ItemDef = {
   ...PISTOL, id: 'wing', name: 'Asa (sem item)', family: 'Sem item',
   mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
-  meleeDamage: 8, meleeRange: 80, meleeArc: 120, meleeArcUp: 120, meleeArcFlat: 120, meleeCooldown: 0, durability: 0, meleePush: 180, throwDamage: 0,
+  meleeDamage: 8, meleeRange: 80, meleeArc: 120, combo: swingCombo(120), meleeCooldown: 0, durability: 0, meleePush: 180, throwDamage: 0,
   trailWidth: 18, trailWisps: 3,
   rebateChain: chain(['dynamics', 'soft']), rebateSnap: 25, rebateSnapForce: 0.5,
 }
@@ -380,7 +378,7 @@ const WING: ItemDef = {
 // in a row (its "bullets"), which come back one every half second, or all at once when it is emptied
 const BAT: ItemDef = {
   ...WING, id: 'bat', name: 'Taco', family: 'Taco', reticle: 'dot', meleeOnly: true, mag: 8, reloadTime: 1.2, autoReload: true, refillTime: 0.5, refillAmount: 1,
-  muzzleX: 0, muzzleY: 0, length: 74, meleeDamage: 22, meleeRange: 70, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200,
+  muzzleX: 0, muzzleY: 0, length: 74, meleeDamage: 22, meleeRange: 70, meleeArc: 150, combo: swingCombo(150, 150, 200),
   meleeTime: 0.16, meleePush: 420, durability: 0, throwDamage: 22, trailWidth: 30, trailWisps: 5,
   gripX: 5, heavyDamage: 40, heavyRange: 75, heavyArc: 170, heavyTime: 0.42, heavyPush: 700, heavyTrailWidth: 40,
   rebateChain: chain(['dynamics', 'accent']), rebateSnap: 25, rebateSnapForce: 0.5, rebateSpeed: 1.6, rebateTok: true,
@@ -390,7 +388,7 @@ const BAT: ItemDef = {
 // set, the same blow hurts and pushes whatever it did not catch.
 const PASSAGUA: ItemDef = {
   ...WING, id: 'passagua', name: 'Passaguá', family: 'Esportivos', reticle: 'dot', meleeOnly: true, mag: 0,
-  muzzleX: 0, muzzleY: 0, length: 72, meleeDamage: 0, meleeRange: 66, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 190,
+  muzzleX: 0, muzzleY: 0, length: 72, meleeDamage: 0, meleeRange: 66, meleeArc: 150, combo: swingCombo(150, 150, 190),
   meleeTime: 0.22, meleePush: 0, durability: 0, throwDamage: 0, throwMin: 0, throwSpeed: 0,
   trailWidth: 16, trailColor: '#cceef0', trailTime: 0.3, trailWisps: 2, trailOpacity: 0.26,
   gripX: 6, heavyDamage: 0, heavyRange: 70, heavyArc: 170, heavyTime: 0.45, heavyPush: 0, heavyTrailWidth: 20, heavyTrailTime: 0.35, heavyTrailWisps: 2, heavyTrailOpacity: 0.3,
@@ -401,7 +399,7 @@ const PASSAGUA: ItemDef = {
 // throws it straight and it comes back to her wing. No blows to count: it never runs out
 const MJOLNIR: ItemDef = {
   ...BAT, id: 'mjolnir', name: 'Martelo de Thor', family: 'Magia', mag: 0, refillTime: 0, weight: 0.9,
-  length: 48, meleeDamage: 30, meleeRange: 66, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200, meleeTime: 0.2, meleePush: 520, throwDamage: 30,
+  length: 48, meleeDamage: 30, meleeRange: 66, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.2, meleePush: 520, throwDamage: 30,
   trailWidth: 34, trailColor: '#bfe6ff', gripX: 6, staffX: 36, staffY: 30, staffAngle: -120,
   shockRange: 170, shockJumps: 3, shockTime: 0.35, shockDamage: 8, shockDrain: 10,
   specialCooldown: 12, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 25, specialKind: 'thunder',
@@ -411,7 +409,7 @@ const MJOLNIR: ItemDef = {
 // shock, the strong one (Atirar, charged) a longer one that reaches more of them
 const ODINSTAFF: ItemDef = {
   ...BAT, id: 'odinstaff', name: 'Cajado de Odin', family: 'Magia', mag: 0, refillTime: 0,
-  length: 90, meleeDamage: 16, meleeRange: 70, meleeArc: 150, meleeArcUp: 150, meleeArcFlat: 200, meleeTime: 0.2, meleePush: 300, throwDamage: 16,
+  length: 90, meleeDamage: 16, meleeRange: 70, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.2, meleePush: 300, throwDamage: 16,
   trailWidth: 26, trailColor: '#ffe9a8', gripX: 34, staffX: 34, staffY: 30, staffAngle: -100,
   heavyDamage: 30, heavyRange: 75, heavyArc: 170, heavyTime: 0.45, heavyPush: 500, heavyTrailWidth: 34,
   shockRange: 220, shockJumps: 4, shockTime: 0.3, shockDamage: 8, shockDrain: 12, heavyShockRange: 340, heavyShockTime: 0.7,
@@ -629,13 +627,11 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'windAngle', label: 'Carregando: inclinação', min: -360, max: 360, step: 1, unit: '°', group: 'Pontos', hint: 'Para onde a ponta vai com o golpe forte todo carregado; o bastão gira da Inclinação até aqui' },
   { key: 'meleeDamage', label: 'Dano do golpe', min: 0, max: 100, step: 1, group: 'Golpe' },
   { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
-  { key: 'meleeArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe', hint: 'Do golpe para baixo; o giro acerta em volta toda' },
+  { key: 'meleeArc', label: 'Arco da bicada', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe', hint: 'Abertura do cone da bicada' },
   { key: 'meleeCooldown', label: 'Intervalo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Golpe', hint: '0 = golpes seguidos sem espera' },
   { key: 'meleeTime', label: 'Duração do giro', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Menos = giro mais rápido' },
   { key: 'meleePush', label: 'Empurrão', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Golpe' },
   { key: 'comboWindow', label: 'Janela do combo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Combo', hint: 'Até quanto tempo depois do fim de um golpe o próximo continua a sequência; depois disso ela recomeça' },
-  { key: 'meleeArcUp', label: 'Arco para cima', min: 20, max: 360, step: 10, unit: '°', group: 'Combo', hint: 'Área de acerto do golpe para cima' },
-  { key: 'meleeArcFlat', label: 'Arco horizontal', min: 20, max: 360, step: 10, unit: '°', group: 'Combo', hint: 'Área de acerto do golpe horizontal (o desenho cobre pelo menos 200°)' },
   { key: 'heavyDamage', label: 'Dano do golpe', min: 0, max: 200, step: 1, group: 'Golpe forte' },
   { key: 'heavyRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe forte', hint: 'Sem carga; a carga estica até o Alcance máximo' },
   { key: 'heavyArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe forte' },
@@ -752,7 +748,12 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (EFFECT_LOOKS.some(c => c.value === s.effectLook)) out[id].effectLook = s.effectLook
   if (isSwingKind(s.heavyKind)) out[id].heavyKind = s.heavyKind
   if (SPECIAL_KINDS.some(k => k.value === s.specialKind)) out[id].specialKind = s.specialKind
-  if (Array.isArray(s.combo) && s.combo.length >= 1 && s.combo.length <= COMBO_MAX && s.combo.every(isSwingKind)) out[id].combo = s.combo.slice()
+  { // saved before each blow had its own arc (v10): the kinds only, with the arcs of down (meleeArc), up and horizontal
+    const old: Partial<Record<SwingKind, unknown>> = v >= 10 ? {} : { down: s.meleeArc, up: s.meleeArcUp, flat: s.meleeArcFlat }
+    const arcOf = (kind: SwingKind) => { const a = old[kind]; return typeof a === 'number' && Number.isFinite(a) ? a : out[id].combo.find(c => c.kind === kind)?.arc ?? out[id].meleeArc }
+    const combo = cleanCombo(s.combo, arcOf) ?? (v >= 10 ? null : cleanCombo(out[id].combo.map(c => c.kind), arcOf))
+    if (combo) out[id].combo = combo
+  }
   if (Array.isArray(s.rebateChain)) out[id].rebateChain = s.rebateChain.map(cleanTransform).filter((t: Transform | null): t is Transform => !!t).slice(0, CHAIN_MAX)
   { const sc = cleanScales(s.scales); if (sc) out[id].scales = sc }
   // saved before the Espiral (v7): an instrument that had every scale on gets the new one too
@@ -767,7 +768,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
 // Giro da mira the instruments had before v8 (now 0 = instant)
 const V7_TURN_RATE: Partial<Record<ItemId, number>> = { sax: 120, violin: 420, keys: 300 }
 
-const ITEMS_VERSION = 9
+const ITEMS_VERSION = 10
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',

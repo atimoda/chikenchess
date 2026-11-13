@@ -34,7 +34,8 @@
 | Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel e editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
-| Pátio: golpe, bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
+| Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
+| Pátio: golpe rápido em quatro tempos, rastro, combo (direção e ângulo de cada golpe), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
 | Pátio: Martelo de Thor e Cajado de Odin: choque em cadeia, estado de choque (raio-x), especial com intervalo no slot, arremesso que volta | [Armas de raio](docs/mechanics/patio/lightning.md) |
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
@@ -83,7 +84,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Online 1v1: partidas simultâneas, globo, salas recentes e indisponibilidade](docs/mechanics/online/globe-and-recovery.md) | 8 KB |
 | [Online 1v1: salas, lobby, convites e popup](docs/mechanics/online/lobby.md) | 14 KB |
 | [Online 1v1: partida, confirmação, análise, áudio e rede](docs/mechanics/online/match.md) | 14 KB |
-| [Pátio: combate, mira, golpe, bicada e arremesso](docs/mechanics/patio/combat.md) | 29 KB |
+| [Pátio: combate, mira, bicada e arremesso](docs/mechanics/patio/combat.md) | 24 KB |
+| [Pátio: golpe e combo](docs/mechanics/patio/melee.md) | 8 KB |
 | [Pátio: armas de bastão](docs/mechanics/patio/staffs.md) | 7 KB |
 | [Pátio: armas de raio e estado de choque](docs/mechanics/patio/lightning.md) | 7 KB |
 | [Pátio: zumbis e hordas](docs/mechanics/patio/enemies.md) | 2 KB |
