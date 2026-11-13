@@ -10,7 +10,7 @@ import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { ACCEL_CURVES, ARPS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
-import { COMBO_MAX, SWING_KINDS, type SwingKind } from "@/lib/pigchicken/swing"
+import { COMBO_ARCS, COMBO_MAX, SWING_KINDS, type ComboStep, type SwingKind } from "@/lib/pigchicken/swing"
 import { ChainEditor } from "./chain-editor"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
@@ -44,6 +44,9 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
 // the strong blow's own shock numbers, for the staffs that have a strong blow (one that is thrown and comes back has none)
 const HEAVY_SHOCK: (keyof ItemDef)[] = ["heavyShockRange", "heavyShockTime"]
 const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
+// the arc a combo blow of this kind starts with: another blow of the same kind, the code's, or 150°
+const comboArc = (combo: ComboStep[], base: ItemDef, kind: SwingKind) =>
+  combo.find(c => c.kind === kind)?.arc ?? base.combo.find(c => c.kind === kind)?.arc ?? 150
 // a consumable's doses are the magazine's number
 const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", unit: "", group: "Efeito", hint: "Cada Atirar usa uma; 0 = nunca acaba" }
 
@@ -213,19 +216,24 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               {g === "Combo" && (
                 <div className="grid gap-1.5">
-                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam">Ordem dos golpes</span>
-                  <div className="flex flex-wrap items-center gap-field">
-                    {it.combo.map((k, i) => (
-                      <select key={i} aria-label={`Golpe ${i + 1} do combo`} value={k} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = v as SwingKind }) }} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-1.5">
+                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com a direção e o ângulo que cobre">Ordem dos golpes</span>
+                  {it.combo.map((c, i) => (
+                    <div key={i} className="flex items-center gap-field">
+                      <select aria-label={`Golpe ${i + 1} do combo: direção`} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { kind: v as SwingKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as SwingKind) : c.arc } }) }} className="h-8 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-1.5">
                         {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{i + 1}. {o.label}</option>)}
                         {it.combo.length > 1 && <option value="">remover</option>}
                       </select>
-                    ))}
+                      <select aria-label={`Golpe ${i + 1} do combo: ângulo`} title="Ângulo que o golpe cobre" value={c.arc} disabled={c.kind === "spin"} onChange={e => { const v = Number(e.target.value); update(d => { d.combo[i] = { kind: c.kind, arc: v } }) }} className="h-8 w-24 rounded-md border border-white/15 bg-[#0b110e] px-1.5 disabled:opacity-60">
+                        {(COMBO_ARCS.includes(c.arc) ? COMBO_ARCS : [...COMBO_ARCS, c.arc].sort((a, b) => a - b)).map(a => <option key={a} value={a}>{a}°</option>)}
+                      </select>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-field">
                     {it.combo.length < COMBO_MAX && (
-                      <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push("down") })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
+                      <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push({ kind: "down", arc: comboArc(d.combo, base, "down") }) })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
                     )}
-                    {it.combo.join() !== base.combo.join() && (
-                      <button type="button" title="Volta a ordem do código" onClick={() => update(d => { d.combo = base.combo.slice() })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+                    {JSON.stringify(it.combo) !== JSON.stringify(base.combo) && (
+                      <button type="button" title="Volta os golpes do código" onClick={() => update(d => { d.combo = structuredClone(base.combo) })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
                     )}
                   </div>
                 </div>
@@ -246,7 +254,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 </label>
               )}
               <div className="grid gap-field">
-              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers

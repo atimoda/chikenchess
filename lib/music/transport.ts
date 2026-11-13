@@ -28,6 +28,9 @@ export class TempoMap {
   }
   transition(cycle:number) { const s=this.segment(cycle);return {from:s.from,target:s.to,start:s.cycle,end:s.cycle+s.bars,progress:s.bars?Math.min(1,Math.max(0,(cycle-s.cycle)/s.bars)):1} }
 }
+type BarEntry={bar:number;haps:any[];onsets:{at:number;hap:any}[]}
+// Bars kept per voice: the one being heard, the one being queued, the next one and a queued jump's landing.
+const BARS_KEPT=4
 export class MusicTransport {
   started=false
   lastEnd=0
@@ -39,7 +42,11 @@ export class MusicTransport {
   private preceding: {until:number;map:TempoMap}[]=[]
   private queuedSeek?: {at:number;target:number;commit:()=>void}
   private landing?: {time:number;target:number}
-  private pattern:any
+  // One pattern per voice. Each is queried once per bar and ticks only cut their slice out of the result:
+  // asking Strudel for every 1/16 slice cost 10 to 59 times more for the same attacks. A voice's pattern
+  // object changes when its notes change, so only that voice is asked again.
+  private voices:any[]=[]
+  private bars=new Map<any,BarEntry[]>()
   private timer?:ReturnType<typeof setInterval>
   private target=120
   private beatsPerBar=4
@@ -56,7 +63,40 @@ export class MusicTransport {
   get lastTick() {return this.options.getTime()-this.latency}
   setMeter(beatsPerBar:number) {if(this.beatsPerBar===beatsPerBar)return;this.stop();this.beatsPerBar=beatsPerBar;this.tempoMap.setBeatsPerBar(beatsPerBar,this.target,this.options.getTime())}
   setCps(cps:number,bars=0) {const factor=60*this.beatsPerBar,bpm=Math.max(30,Math.min(240,cps*factor));if(bpm===this.target)return;this.target=bpm;if(this.started)this.tempoMap.change(this.lastEnd,bpm,bars);else this.tempoMap.reset(bpm,this.options.getTime())}
-  async setPattern(pattern:any) {this.pattern=pattern}
+  async setPattern(pattern:any) {this.setPatterns(pattern?[pattern]:[])}
+  /** The voices to schedule from the next slice on. A pattern kept from the last call keeps its queried bars. */
+  setPatterns(patterns:readonly any[]) {
+    this.voices=[...patterns]
+    const kept=new Set(this.voices)
+    for(const pattern of this.bars.keys())if(!kept.has(pattern))this.bars.delete(pattern)
+  }
+  /** Every event of one voice in one bar, queried at most once while the bar is in use. Panels read it too. */
+  barHaps(pattern:any,bar:number,cps=this.cps):any[] {return this.bar(pattern,bar,cps).haps}
+  private bar(pattern:any,bar:number,cps:number) {
+    let entries=this.bars.get(pattern)
+    if(!entries){entries=[];if(this.voices.includes(pattern))this.bars.set(pattern,entries)}
+    let entry=entries.find(item=>item.bar===bar)
+    if(!entry){
+      // No compiled voice reads the tempo from the query, so a bar queried during a ramp stays valid.
+      const haps:any[]=pattern.queryArc(bar,bar+1,{_cps:cps})??[]
+      const onsets=haps.filter(hap=>hap.hasOnset()).map(hap=>({at:Number(hap.whole.begin),hap})).filter(item=>item.at>=bar&&item.at<bar+1).sort((a,b)=>a.at-b.at)
+      entry={bar,haps,onsets}
+      entries.push(entry)
+      if(entries.length>BARS_KEPT)entries.shift()
+    }
+    return entry
+  }
+  /** Queries a few voices of the coming bar per tick, so a bar line does not ask for every voice at once. */
+  private prepare(cps:number) {
+    const jump=this.queuedSeek, current=Math.floor(this.lastEnd+1e-9)
+    const next=jump&&jump.at<=current+1+1e-9?Math.floor(jump.target+1e-9):current+1
+    let budget=Math.max(1,Math.ceil(this.voices.length/6))
+    for(const pattern of this.voices){
+      if(this.bars.get(pattern)?.some(item=>item.bar===next))continue
+      this.bar(pattern,next,cps)
+      if(--budget<=0)break
+    }
+  }
   async start() {if(this.started)return;this.started=true;this.lastEnd=this.stoppedCycle;this.boundary=-1;this.tempoMap.reset(this.target,this.options.getTime()+.03,this.stoppedCycle);this.tick();this.timer=setInterval(()=>this.tick(),this.interval)}
   /** Look-ahead and tick period can change while playing (sound quality); attacks already queued stay. */
   setTiming(latency:number,interval:number) {
@@ -115,16 +155,19 @@ export class MusicTransport {
         const end=Math.min(begin+1/16,integer+1,this.tempoMap.cycleAt(horizon),this.queuedSeek?.at??Infinity)
         if(end<=begin+1e-10)break
         const cps=this.tempoMap.bpmAt(begin)/(60*this.beatsPerBar)
-        const haps=this.pattern?.queryArc(begin,end,{_cps:cps})??[]
-        for(const hap of haps){
-          if(!hap.hasOnset())continue
-          const onset=Number(hap.whole.begin),time=this.tempoMap.timeAt(onset)
-          if(time<now-.01)continue
-          const duration=this.tempoMap.timeAt(Number(hap.whole.end))-time
-          this.options.onTrigger(hap,time-now,duration,this.tempoMap.bpmAt(onset)/(60*this.beatsPerBar),time)
+        for(const pattern of this.voices){
+          for(const {at,hap} of this.bar(pattern,integer,cps).onsets){
+            if(at<begin)continue
+            if(at>=end)break
+            const time=this.tempoMap.timeAt(at)
+            if(time<now-.01)continue
+            const duration=this.tempoMap.timeAt(Number(hap.whole.end))-time
+            this.options.onTrigger(hap,time-now,duration,this.tempoMap.bpmAt(at)/(60*this.beatsPerBar),time)
+          }
         }
         this.lastEnd=end
       }
+      if(this.voices.length)this.prepare(this.tempoMap.bpmAt(this.lastEnd)/(60*this.beatsPerBar))
     }catch(error){this.options.onError(error)}
   }
 }
