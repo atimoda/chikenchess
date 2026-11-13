@@ -51,15 +51,17 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M-2 -2.6 L1 2.6 M3 -2.6 L6 2.6 M8 -2.6 L11 2.6 M13 -2.6 L16 2.6" stroke="#4a5262" stroke-width="1"/>
     <ellipse cx="-8" cy="0" rx="3.4" ry="4.4" fill="#9c6331"/>`,
   },
-  // Passaguá: a hand-sized grip at (0,0), light shaft and a soft mesh bag inside an oval hoop.
+  // Passaguá: a hand-sized grip at (0,0), a light shaft and, stuck to its tip and going on the same way, the hoop
+  // with its mesh (seen from the side of the net: the hoop is long along the shaft)
   passagua: {
-    box: [-7, -28, 82, 56],
-    svg: `<path d="M1 0 L62 0" stroke="#805b35" stroke-width="4.2" stroke-linecap="round"/>
-    <path d="M5 -1.5 L54 -1.5" stroke="#c99b61" stroke-width="1.2" stroke-linecap="round" opacity="0.85"/>
+    box: [-7, -16, 90, 32],
+    svg: `<path d="M1 0 L45 0" stroke="#805b35" stroke-width="4.2" stroke-linecap="round"/>
+    <path d="M5 -1.5 L41 -1.5" stroke="#c99b61" stroke-width="1.2" stroke-linecap="round" opacity="0.85"/>
     <path d="M-5 -3 L2 -3 L2 3 L-5 3 Z" fill="#70502f"/><path d="M-3 -2.5 L-3 2.5 M0 -2.5 L0 2.5" stroke="#d7bb8e" stroke-width="0.8"/>
-    <path d="M61 -21 Q48 -18 40 -8 Q36 0 40 8 Q48 18 61 21" fill="rgba(171,223,220,0.1)" stroke="#b5e7e4" stroke-width="1.2"/>
-    <ellipse cx="64" cy="0" rx="5" ry="24" fill="none" stroke="#d4eeeb" stroke-width="2.8"/>
-    <path d="M43 -11 L61 -17 M39 -5 L60 -9 M38 0 L59 0 M39 5 L60 9 M43 11 L61 17 M46 -14 L40 8 M51 -16 L42 13 M56 -18 L46 15" fill="none" stroke="#9bcac7" stroke-width="0.65" opacity="0.8"/>`,
+    <ellipse cx="62" cy="0" rx="17" ry="12.5" fill="rgba(171,223,220,0.14)"/>
+    <path d="M51 -9.5 L51 9.5 M56.5 -11.8 L56.5 11.8 M62 -12.5 L62 12.5 M67.5 -11.8 L67.5 11.8 M73 -9.5 L73 9.5 M47.1 -6 L76.9 -6 M45 0 L79 0 M47.1 6 L76.9 6" fill="none" stroke="#9bcac7" stroke-width="0.65" opacity="0.8"/>
+    <ellipse cx="62" cy="0" rx="17" ry="12.5" fill="none" stroke="#d4eeeb" stroke-width="2.8"/>
+    <rect x="42.5" y="-2.8" width="4.5" height="5.6" rx="1.2" fill="#b9c4c2"/>`,
   },
   pistol: {
     box: [-6, -16, 64, 40],

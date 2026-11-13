@@ -541,7 +541,7 @@ function PowerFields({ el, power, onChange, linking = false, onLinking }: { el: 
     {onLinking && <button type="button" aria-pressed={linking} onClick={() => onLinking(!linking)}
       title={`Clique em ${kind === "pole" ? "outro poste" : "outra torre"} para ligar os fios, ou desligar se já estiverem ligados. A seleção passa para ${kind === "pole" ? "o ligado" : "a ligada"}, para seguir a linha. Esc termina.`}
       className={cn("h-9 shrink-0 rounded-md border", linking ? "border-[#7bdff2] bg-[#7bdff2]/15 text-white" : "border-white/15 hover:border-white/40")}>Ligar fios</button>}
-    <div className="grid gap-[3px]">
+    <div className="grid gap-field">
       <PatioRange label="Caimento dos fios" min={POWER_SAG.min} max={POWER_SAG.max} step={POWER_SAG.step} value={power.sag} display={`${power.sag}%`}
         changed={power.sag !== POWER_SAG.default} onReset={() => set({ sag: POWER_SAG.default })} onChange={sag => set({ sag }, `sag:${el.id}`)} />
       <PatioRange label="Espessura dos fios" min={POWER_WIRE.min} max={POWER_WIRE.max} step={POWER_WIRE.step} value={power.wire} display={`${power.wire} px`}
@@ -559,12 +559,12 @@ function PowerFields({ el, power, onChange, linking = false, onLinking }: { el: 
 // the layer dropdown and the collisions
 function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (el: LayoutElement) => void; onClose: () => void }) {
   return (
-    <FloatingPanel id="patio-layers" overDock aria-label="Camada e colisões" initial={vw => ({ x: Math.max(12, vw - 312), y: 64, w: 300, h: 470 })} minW={240} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex shrink-0 items-center gap-2">
+    <FloatingPanel id="patio-layers" overDock aria-label="Camada e colisões" initial={vw => ({ x: Math.max(12, vw - 312), y: 64, w: 300, h: 470 })} minW={240} minH={200} className="gap-field overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <div data-drag-handle className="mb-2.5 flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Camada · {ELEMENT_DEFS[el.kind].label}</h2>
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
-      <div role="radiogroup" aria-label="Camada" className="grid gap-1">
+      <div role="radiogroup" aria-label="Camada" className="grid gap-field">
         {[...LAYERS].reverse().map(l => (
           <label key={l} title={LAYER_HINTS[l]} className={cn("flex cursor-pointer items-start gap-2 rounded-md border px-2 py-1.5", el.layer === l ? "border-primary bg-primary/10 text-white" : "border-white/10 hover:border-white/30")}>
             <input type="radio" name="patio-layer" checked={el.layer === l} onChange={() => onChange({ ...el, layer: l })} className="mt-0.5 accent-[var(--primary)]" />
@@ -573,12 +573,12 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
         ))}
       </div>
       {canHaveDepth(el.kind) && <DepthField el={el} onChange={onChange} />}
-      {el.depth ? <div className="grid gap-3 border-t border-white/10 pt-3">
+      {el.depth ? <div className="grid gap-field border-t border-white/10 pt-3">
         <p className="text-[#93a79a]">Na profundidade ele é só cenário: sem colisões.</p>
         <Toggle label="Invisível no jogo" hint="Só aparece no modo editor" checked={el.hidden} onChange={v => onChange({ ...el, hidden: v })} />
         <PatioRange label="Opacidade" min={10} max={100} step={5} value={Math.round(el.opacity * 100)}
           display={`${Math.round(el.opacity * 100)}%`} onChange={v => onChange({ ...el, opacity: v / 100 })} />
-      </div> : isMusicElement(el.kind) ? <p className="border-t border-white/10 pt-3 text-[#93a79a]">{el.kind === "zone" ? "A zona sonora é invisível no jogo e não tem colisões." : "As faixas não têm colisões: só mudam as notas que passam por elas."}</p> : <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-t border-white/10 pt-3">
+      </div> : isMusicElement(el.kind) ? <p className="border-t border-white/10 pt-3 text-[#93a79a]">{el.kind === "zone" ? "A zona sonora é invisível no jogo e não tem colisões." : "As faixas não têm colisões: só mudam as notas que passam por elas."}</p> : <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field border-t border-white/10 pt-3">
         {el.kind === 'house'
           ? <p className="text-[#93a79a]">Base, telhado, peitoris e vergas são pisos de mão única. A galinha pode saltar através da fachada.</p>
           : el.kind === 'tree' ? <p className="text-[#93a79a]">Configure os apoios no Editor de árvores.</p>
@@ -608,8 +608,8 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
   const endSlider = () => { sliderGesture.current++ }
   const bounce = el.params.trampoline
   return (
-    <FloatingPanel id="patio-edit" overDock aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex shrink-0 items-center gap-2">
+    <FloatingPanel id="patio-edit" overDock aria-label="Editar elemento" initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 380 })} minW={260} minH={200} className="gap-field overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <div data-drag-handle className="mb-2.5 flex shrink-0 items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Editar · {ELEMENT_DEFS[el.kind].label}</h2>
         {onDelete && el.kind !== "entry" && !el.locked && <button type="button" aria-label="Excluir" title="Excluir (Del)" onClick={onDelete} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-red-400 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
@@ -658,7 +658,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
         <div className="grid h-24 shrink-0 place-items-center rounded-md border border-white/10 bg-[#0b110e]" aria-label="Prévia do trampolim">
           <div className="relative h-12 w-48"><ElementArt el={el} /></div>
         </div>
-        <div className="grid gap-[3px]">
+        <div className="grid gap-field">
         <PatioRange label="Força do impulso" min={1} max={TRAMPOLINE_LEVELS.length} value={bounce.strength}
           display={`Nível ${bounce.strength}`} onEnd={endSlider}
           onChange={strength => set({ trampoline: { ...bounce, strength } }, `bounce-strength:${editSession}:${sliderGesture.current}`)} />
@@ -730,7 +730,7 @@ function GongFields({ gong, onChange }: { gong: GongParams; onChange: (gong: Gon
       <span>Título</span>
       <input aria-label="Título do gongo" maxLength={GONG_TITLE_MAX} value={gong.title} placeholder="Sem título" onChange={e => set({ title: e.target.value }, "gong-title")} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
     </label>
-    <div className="grid gap-[3px]">
+    <div className="grid gap-field">
       <PatioRange label="Batidas para começar" min={GONG_HITS.min} max={GONG_HITS.max} value={gong.hits} onChange={hits => set({ hits }, "gong-hits")} />
       <PatioRange label="Batidas para parar a música" min={GONG_STOP_HITS.min} max={GONG_STOP_HITS.max} value={gong.stopHits} display={gong.stopHits || "Não para"} onChange={stopHits => set({ stopHits }, "gong-stop")} />
       <PatioRange label="Esquecer as batidas depois de" min={GONG_FORGET.min} max={GONG_FORGET.max} value={gong.forget} display={gong.forget ? `${gong.forget} s` : "Nunca"} onChange={forget => set({ forget }, "gong-forget")} />
@@ -928,8 +928,8 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
 function SceneZonePanel({ scene, zones, onChange, onReset, onClose }: { scene: number; zones?: SceneZones; onChange: (z: SoundZoneParams, step?: string) => void; onReset: () => void; onClose: () => void }) {
   const zone = sceneZoneParams(zones, scene), changed = !!zones?.[String(scene)]
   return (
-    <FloatingPanel id="patio-scene-zone" overDock aria-label={`Zona da cena ${scene + 1}`} initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 560 })} minW={260} minH={220} className="gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex items-center gap-2">
+    <FloatingPanel id="patio-scene-zone" overDock aria-label={`Zona da cena ${scene + 1}`} initial={vw => ({ x: Math.max(12, vw - 352), y: 64, w: 340, h: 560 })} minW={260} minH={220} className="gap-field overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <div data-drag-handle className="mb-2.5 flex items-center gap-2">
         <h2 className="flex-1 text-sm text-white">Zona da cena {scene + 1}</h2>
         <button type="button" className={TOOL} onClick={onClose} title="Fechar" aria-label="Fechar"><X className="h-4 w-4" /></button>
       </div>

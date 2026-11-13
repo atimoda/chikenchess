@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.9.0',
     date: '12/11/2026',
-    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha World com 13 estilos novos, Africa Cult recomposta com percussões mais naturais e campanha Brazilian revista, com dez kits recompostos por seção e duas fases novas, Chula e Chamamé; Pátios em Destaque e Item solto no editor',
+    title: 'Campanha Blues, Jazz & Rock recriada com 13 músicas novas; campanha World com 13 estilos novos, Africa Cult recomposta com percussões mais naturais e campanha Brazilian revista, com dez kits recompostos por seção e duas fases novas, Chula e Chamamé; Pátios em Destaque e Item solto no editor; golpe forte carregado para Taco e Passaguá',
     groups: [
       { title: 'World', items: [
         'A campanha passa de 4 para 17 fases. Oito estilos novos: Jerez 1970 · Flamenco (bulerías em doze tempos, com palmas, taconeo, nudillos, violões e cante), Havana 1950 · Son cubano (clave, bongó, tres no montuno, trompete e coro), Barranquilla 1960 · Cumbia (tambora, llamador, maracas, gaitas e acordeão), Guča 1975 · Čoček (banda de metais dos Bálcãs em nove), Cairo 1960 · Baladi (tabla, riq, oud, qanun, cordas, acordeão e nay), Amritsar 1980 · Bhangra (dhol, tumbi e gritos em resposta), Ubud 1935 · Gamelan (metalofones entrelaçados, gongos e escala de cinco notas) e Lima 1975 · Festejo (cajón, quijada, cajita e violões em 12/8).',
@@ -60,6 +60,15 @@ const RECENT = [
         'As escalas entram em standby: depois de 0,5 s sem tocar o instrumento, a camada Escalas some em 1,5 s. Cada escala tem Fade out (standby) depois de (0,1 a 3 s), Tempo do fade out (0,1 a 5 s), Visibilidade em standby (0 a 100%, padrão 0%) e Visibilidade da célula mirada (padrão 33%: em standby a célula da mira continua aparecendo; em 0 ela some junto). Atirar, golpear ou trocar de escala ou de item faz a escala voltar na hora.',
         'Ciclo de quintas e Tensão e resolução ganharam Divisa dos anéis (até onde vai o anel de dentro, que decide qual anel a mira toca) e Miolo vazio; o Campo harmônico ganhou Miolo vazio.',
         'Camadas ganhou a caixa Prevenir fadeout das escalas (desligada por padrão): ligada, as escalas ficam sempre visíveis.',
+        'Painéis do PigChicKen mais compactos: sliders, seletores, caixas de marcar, botões de opção e as teclas de Controles ficam a 2 px um do outro em todos os painéis (Volume, Camadas, Configurações do Pátio, Câmera de Mira, Controles, Ajustes, Itens, Catálogo de aliens, Biblioteca de almas, editores de árvore, casa, elementos, zonas, músicas e Gerar de MIDI).',
+        'Armas de bastão (Taco e Passaguá) ganharam o golpe forte: segure Atirar para carregar e solte para bater. Enquanto carrega, a asa leva o bastão para trás e ele fica balançando; quanto mais tempo segurando, mais longe o golpe chega e maiores ficam o bastão e o rastro, até os limites de cada item. O golpe de sempre continua no botão de Golpe, agora como golpe rápido.',
+        'Itens → Golpe forte (Taco e Passaguá): dano, alcance, arco, intervalo, duração, empurrão, rastro e movimento próprios, mais o tempo de carga e os limites de alcance e de tamanho com a carga cheia.',
+        'Taco e Passaguá agora ficam apoiados no ombro, e Itens → Pontos virou um editor visual para eles: arraste o ponto do bastão que a mão da asa segura, a posição da mão no corpo e a bolinha da ponta (inclinação), parado e carregando o golpe forte.',
+        'Passaguá: com Dano do golpe e Empurrão configurados, o golpe agora fere e empurra aliens, zumbis e bonecos (antes não fazia nada neles). Aves e almas capturáveis continuam sendo capturadas sem levar o golpe. A redinha ficou na mesma direção do cabo, presa na ponta.',
+        'Celular: arrastar a partir de Correr move o analógico de movimento, então dá para correr e escolher a direção com o mesmo dedo; passando por cima de Chocar ou Pular, esses botões também são apertados.',
+        'Celular: Pular, Chocar e Correr funcionam com um dedo só deslizando: o botão onde o dedo encostou fica apertado até soltar, e cada botão por onde ele passa é apertado enquanto o dedo estiver em cima. Botões sobrepostos (posicionados em Editar posição dos botões) são apertados juntos num toque só, para combos.',
+        'Celular: Throw arremessa ao soltar o dedo. Um toque arremessa na hora, sem carga, para onde o analógico de movimento aponta ou para onde a galinha olha; arrastar para fora do botão mira no ângulo do arraste e carrega até soltar.',
+        'Celular: o avatar e o contador de almas capturadas de cada player ficam sempre no canto superior direito, mesmo quando a linha do inventário foi movida.',
       ] },
     ],
   },

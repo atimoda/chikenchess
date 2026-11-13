@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Distância entre controles consecutivos (sliders, seletores, caixas de marcar...) nos painéis do PigChicKen. */
+@utility gap-field {
+  gap: 2px;
+}
+
 /* Cover overlays mounted directly in the body as well as the active mode. */
 body:has([data-disable-text-selection]) {
   -webkit-user-select: none;

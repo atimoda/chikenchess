@@ -45,7 +45,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
       <div className="min-h-0 flex-1 overflow-y-auto">
       {canEdit ? (
         <>
-          <div className="grid gap-[3px] border-b border-white/10 px-4 pb-4">
+          <div className="grid gap-field border-b border-white/10 px-4 pb-4">
           <PatioRange label="Largura limite" min={PATIO_SCREENS.min} max={PATIO_SCREENS.max} step={PATIO_SCREENS.step} value={screens}
             display={`${screens} ${screens === 1 ? "tela" : "telas"}`} onChange={v => set({ screens: v })}
             hint={`Telas do Parquinho antes do Templo e da Vila. O mundo inteiro tem ${units(width)} unidades de largura.`} />

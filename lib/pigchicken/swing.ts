@@ -34,6 +34,9 @@ export type Swing = {
   seed: number
   // what it hits with: the item in the wing (it wears out), damage, knockback (px/s), whether it can break, its name
   item: unknown; damage: number; push: number; durability: boolean; name: string
+  // the strong blow (a staff's Atirar, let go after charging): how much of the charge it left with (0..1) and how
+  // much bigger the staff is drawn while it sweeps (×, 1 = its own size)
+  heavy?: boolean; charge?: number; size?: number
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
