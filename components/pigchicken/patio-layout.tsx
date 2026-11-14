@@ -71,6 +71,7 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
         const art = (
           <SceneryRegion
             depth={el.depth}
+            pinned={!!el.backdrop}
             key={el.id}
             bounds={elementBounds(el)}
             aria-hidden="true"

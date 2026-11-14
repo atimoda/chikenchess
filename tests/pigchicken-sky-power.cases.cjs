@@ -338,6 +338,10 @@ test('clouds: cumulus heaps of puffs, more of them with Gomos and Desfiado; old 
   assert.equal(CL.normalizeClouds({ size: 900 }).size, CL.CLOUD_SCALE.max)
   const soft = CD.softClouds(6000, 11, 1, 0.5, 0.5)
   assert.ok(soft.length > 3 && soft.every(c => c.puffs.length === 0 && c.lobes[c.lobes.length - 1].shade))
+  // a big soft cloud's box reaches its highest and lowest lobe (it was a fixed 100 units: cut flat on top)
+  for (const size of [1, 3, 6]) for (const c of CD.softClouds(6000, 11, size, 0.5, 0.5)) {
+    assert.ok(c.lobes.every(l => l.ry - l.dy <= c.top && l.ry + l.dy <= c.bottom), `soft cloud at size ${size} inside its box`)
+  }
   const few = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 0, 0), many = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 1, 1)
   assert.ok(few.length > 3 && few.every(c => c.puffs.length === 5))
   assert.ok(many.every(c => c.puffs.length >= 14 * 4))

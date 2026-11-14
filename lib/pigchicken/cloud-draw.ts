@@ -30,7 +30,9 @@ export function softClouds(w: number, seed: number, size = 1, height = 0.5, spre
     })
     // a flat base under the lobes
     lobes.push({ dx: 0, dy: thick * 0.15, rx: span * 0.62, ry: thick * 0.35, shade: true })
-    out.push({ x, y: mid + (r() - 0.5) * band, lobes, puffs: [], o: 0.12 + r() * 0.22, drift: 60 + r() * 90, top: 100, bottom: 100 })
+    // its box reaches its highest and lowest lobe (a big cloud is taller than the usual one: never cut flat)
+    const top = Math.max(...lobes.map(l => l.ry - l.dy)) + 8, bottom = Math.max(...lobes.map(l => l.ry + l.dy)) + 8
+    out.push({ x, y: mid + (r() - 0.5) * band, lobes, puffs: [], o: 0.12 + r() * 0.22, drift: 60 + r() * 90, top, bottom })
   }
   return out
 }
