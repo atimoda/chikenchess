@@ -54,6 +54,8 @@ const RECENT = [
         'O contador de almas ao lado do avatar passa a se chamar Bag of souls.',
         'Itens → Combo: cada golpe da sequência agora tem dois seletores, a direção (para baixo, para cima, horizontal ou giro) e o ângulo que ele cobre. Dois golpes na mesma direção podem ter ângulos diferentes. Os ângulos já vêm iguais aos de antes, e combos ajustados neste navegador mantêm os arcos que tinham. “Arco para cima” e “Arco horizontal” saem do painel.',
         'Montanhas bem altas (Inclinação e Altura no máximo) não têm mais o topo cortado numa linha reta: os picos sobem o quanto a configuração pedir e só a moldura do Pátio os corta. O brilho de um sol alto, a lua e as estrelas mais altas também deixam de ser cortados.',
+        'Configurações do Pátio ganham a categoria Aurora: cortinas de luz no céu, atrás das nuvens e das montanhas, com Intensidade (0 = desligada, como em todo Pátio até agora), Cor e Cor do alto, Faixas, Largura, Altura dos raios, Altura no céu, Ondulação, Raios, Movimento e Só à noite (ligado, ela aparece com o céu escuro e some de dia, como as estrelas). Sortear forma desenha outras cortinas e Padrão tira a aurora.',
+        'A aurora segue a qualidade gráfica: em Alta balança e cintila, em Média só balança e em Baixa fica parada.',
       ] },
       { title: 'Martelo de Thor e Cajado de Odin', items: [
         'Dois itens novos de magia, no grupo Utilitário do inventário. No Modo editor, os suportes ficam na paleta Magia; também podem entrar como Item solto.',

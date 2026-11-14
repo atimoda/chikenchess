@@ -3,12 +3,14 @@
 // Configurações do Pátio → Céu e luz: the hour, the sky's gradient (by the hour or band by band) and its curvature,
 // sun, clouds, texture, haze, the contraluz and the light on the Pátio, and Randomize. Saved with the Pátio
 // (settings.sky). → Montanhas: MountainFields (settings.mountains). → Nuvens: CloudFields (settings.clouds).
+// → Aurora: AuroraFields (settings.aurora).
 import { Plus, X } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { cn } from "@/lib/utils"
 import { SKY_DEFAULT, SKY_GLOW, SKY_HOUR, SKY_PCT, SKY_RADIAL_SIZE, SKY_RADIAL_X, SKY_SCALE, SKY_STAR_COUNT, SKY_BLENDS, SKY_STAR_GLOW, SKY_STOPS, SKY_SUN, SKY_TEX_SCALE, hourLabel, hourStops, randomSky, skyGradient, skyLook, skyRadial, stopColor, type SkyParams, type SkyStop } from "@/lib/pigchicken/sky"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OPACITY, MOUNTAIN_PCT, MOUNTAIN_PEAKS, MOUNTAIN_RANGES, MOUNTAIN_SCALE, MOUNTAIN_SHADES, MOUNTAIN_SHAPES, MOUNTAIN_SNOWS, type MountainParams } from "@/lib/pigchicken/mountains"
 import { SNOWFALL_DEFAULT, SNOWFALL_OPACITY, SNOWFALL_PCT, SNOWFALL_SIZE, SNOWFALL_SPEED, SNOWFALL_WIND, type SnowfallParams } from "@/lib/pigchicken/snowfall"
+import { AURORA_AMOUNT, AURORA_BANDS, AURORA_DEFAULT, AURORA_PCT, AURORA_SCALE, AURORA_SHAPES, AURORA_SPEED, type AuroraParams } from "@/lib/pigchicken/aurora"
 import { CLOUDS_DEFAULT, CLOUD_KINDS, CLOUD_OPACITY, CLOUD_PCT, CLOUD_SCALE, CLOUD_SHAPES, CLOUD_WIND, type CloudParams } from "@/lib/pigchicken/clouds"
 
 const BTN = "h-7 rounded-md border border-white/20 px-2 hover:border-[#ffd166]"
@@ -290,6 +292,43 @@ export function SnowfallFields({ snowfall, onChange }: { snowfall: SnowfallParam
         {range("Velocidade", "speed", SNOWFALL_SPEED, "Quão rápido eles caem. 0: parados no ar.")}
         {range("Vento", "wind", SNOWFALL_WIND, "Para a esquerda (negativo) ou para a direita.", f.wind > 0 ? `+${f.wind}` : String(f.wind))}
         {range("Opacidade", "opacity", SNOWFALL_OPACITY, "Quão visíveis eles são.")}
+      </>}
+    </div>
+  )
+}
+
+// Configurações do Pátio → Aurora: curtains of light in the sky (Intensidade 0 turns it off)
+export function AuroraFields({ aurora, onChange }: { aurora: AuroraParams | undefined; onChange: (a: AuroraParams | undefined) => void }) {
+  const a = aurora ?? AURORA_DEFAULT
+  const set = (p: Partial<AuroraParams>) => onChange({ ...a, ...p })
+  type Key = "amount" | "bands" | "width" | "height" | "lift" | "wave" | "rays" | "speed"
+  const range = (label: string, key: Key, r: { min: number; max: number; step: number }, hint: string, display = `${a[key]}%`) => (
+    <PatioRange label={label} min={r.min} max={r.max} step={r.step} value={a[key]} display={display}
+      changed={a[key] !== AURORA_DEFAULT[key]} onReset={() => set({ [key]: AURORA_DEFAULT[key] })} onChange={v => set({ [key]: v })} hint={hint} />
+  )
+  const color = (label: string, key: "color" | "top") => (
+    <label className="flex h-10 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span className={a[key] !== AURORA_DEFAULT[key] ? "text-amber-300" : undefined}>{label}</span>
+      <input type="color" aria-label={label} value={a[key]} onChange={e => set({ [key]: e.target.value })} className="h-7 w-7 cursor-pointer rounded border border-white/15 bg-transparent p-0" /></label>
+  )
+  return (
+    <div className="grid gap-field px-4 pb-4">
+      {a.amount > 0 && <div className="flex items-center justify-end gap-2">
+        <button type="button" className={BTN} onClick={() => set({ shape: (a.shape + 1 + Math.floor(Math.random() * (AURORA_SHAPES - 1))) % AURORA_SHAPES })} title="Desenha outras cortinas com os mesmos ajustes">Sortear forma</button>
+        {aurora && <button type="button" className={BTN} onClick={() => onChange(undefined)} title="Tira a aurora">Padrão</button>}
+      </div>}
+      {range("Intensidade", "amount", AURORA_AMOUNT, "Quão forte a aurora brilha. 0: nenhuma. Acima de 100%, raios mais claros.")}
+      {a.amount > 0 && <>
+        <div className="grid grid-cols-2 gap-field">{color("Cor", "color")}{color("Cor do alto", "top")}</div>
+        {range("Faixas", "bands", AURORA_BANDS, "Quantas cortinas de luz pelo céu.", String(a.bands))}
+        {range("Largura", "width", AURORA_SCALE, "O comprimento de cada cortina.")}
+        {range("Altura dos raios", "height", AURORA_SCALE, "Até onde os raios sobem.")}
+        {range("Altura no céu", "lift", AURORA_PCT, "Baixa, saindo de trás das montanhas, ou alta no céu.")}
+        {range("Ondulação", "wave", AURORA_PCT, "Quanto as cortinas dobram. 0: retas.")}
+        {range("Raios", "rays", AURORA_PCT, "Raios de comprimentos e brilhos diferentes. 0: um véu liso.")}
+        {range("Movimento", "speed", AURORA_SPEED, "A velocidade com que elas balançam e cintilam. 0: paradas.")}
+        <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3" title="Ligado: aparece com o céu escuro e some de dia, como as estrelas. Desligado: em qualquer hora.">
+          <span>Só à noite</span>
+          <input type="checkbox" checked={a.night} onChange={e => set({ night: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" /></label>
       </>}
     </div>
   )

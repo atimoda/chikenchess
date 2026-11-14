@@ -16,6 +16,8 @@ import { cloudReach, cumulusClouds, softClouds, type CloudShape } from "@/lib/pi
 import { CLOUDS_DEFAULT, type CloudParams } from "@/lib/pigchicken/clouds"
 import type { SnowfallParams } from "@/lib/pigchicken/snowfall"
 import { Snowfall } from "./snowfall"
+import { auroraOpacity, type AuroraParams } from "@/lib/pigchicken/aurora"
+import { AuroraLayer } from "./aurora"
 
 const G = WORLD_GROUND_Y
 // the layers' reach, widths and depths are shared with the editor (Postes e Torres pinned to a layer)
@@ -165,8 +167,9 @@ function rangeColor(look: SkyLook, p: number) {
 }
 
 // mountains: Configurações do Pátio → Montanhas (shape, snow, tint); their light and haze come from the sky
-// clouds: Configurações do Pátio → Nuvens (amount, size, height, softness, wind, tint…); snowfall: → Neve caindo
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall }: { worldW: number; look?: SkyLook; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams }) {
+// clouds: Configurações do Pátio → Nuvens (amount, size, height, softness, wind, tint…); snowfall: → Neve caindo;
+// aurora: → Aurora (curtains of light at the sun's depth, behind the clouds)
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora }: { worldW: number; look?: SkyLook; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams }) {
   const wSun = layerW(worldW, SUN_DEPTH), wCloud = layerW(worldW, CLOUD_DEPTH)
   const wTreesFar = layerW(worldW, FOREST_FAR.p), wTrees = layerW(worldW, FOREST_NEAR.p)
   const shapes = useMemo(() => ({
@@ -216,6 +219,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   const sunGlowR = look.sun.r * 7.8 * look.sun.glowSize
   const sunTop = backdropLayerTop(Math.min(look.stars > 0 ? -300 - 3 * look.starSize : 0, look.sun.opacity > 0 ? look.sun.y - sunGlowR : 0, look.moon.opacity > 0 ? look.moon.y - 150 : 0,
     look.horizonGlow > 0 ? 860 - 420 * Math.sqrt(look.sun.glowSize) : 0))
+  const auroraShown = aurora ? auroraOpacity(aurora, look.night) : 0
   return (
     <div aria-hidden="true" className="absolute inset-0">
       {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top and, in its last colour, down to the layers' foot */}
@@ -268,6 +272,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
             : <circle cx={sunX} cy={look.sun.y} r={look.sun.r} fill={look.sun.color} opacity={0.9 * look.sun.opacity} />}
         </>}
       </Layer>
+      {aurora && auroraShown > 0 && <AuroraLayer worldW={worldW} aurora={aurora} opacity={auroraShown} />}
       {shownClouds.length > 0 && <CloudLayer w={wCloud} opacity={Math.min(1, cloudAlpha)}>
         <style>{`
           .px-cloud { animation: px-drift var(--d) ease-in-out infinite alternate; }

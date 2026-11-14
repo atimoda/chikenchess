@@ -12,6 +12,7 @@ import { normalizeSky, type SkyParams } from './sky'
 import { MOUNTAINS_DEFAULT, normalizeMountains, type MountainParams } from './mountains'
 import { normalizeClouds, type CloudParams } from './clouds'
 import { normalizeSnowfall, type SnowfallParams } from './snowfall'
+import { normalizeAurora, type AuroraParams } from './aurora'
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
 
 // sceneZones: the scenes' own music changed in this Pátio (the "Zonas sonoras" layer), by scene number
@@ -22,8 +23,9 @@ import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
 // clouds: the clouds' shape (lib/pigchicken/clouds.ts); temple: false leaves out the Templo do Gongo (gong, stones,
 // jukebox, its weapon racks, its music) and the Vila dos Telhados' mountain: their two scenes are empty space
 // snowfall: the snow falling over the far scenery (lib/pigchicken/snowfall.ts); without it, none
+// aurora: the curtains of light in the sky (lib/pigchicken/aurora.ts); without it, none
 // sceneMusic: false turns off the scenes' own zones (only the map's Zonas sonoras play); missing or true: on
-export type PatioSettings = { screens?: number; height?: number; ground?: number; inventory?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; layers?: PatioLayers; sky?: SkyParams; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; temple?: boolean; sceneMusic?: boolean }
+export type PatioSettings = { screens?: number; height?: number; ground?: number; inventory?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; layers?: PatioLayers; sky?: SkyParams; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; temple?: boolean; sceneMusic?: boolean }
 
 export const PATIO_SCREENS = { min: 1, max: 8, step: 1 } as const
 export const PATIO_HEIGHT = { min: 400, max: 8000, step: 10, default: WORLD_GROUND_Y - WORLD_TOP } as const
@@ -37,7 +39,7 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
 export function normalizePatioSettings(raw: unknown): PatioSettings | undefined {
   if (!raw || typeof raw !== 'object') return undefined
-  const r = raw as { screens?: unknown; height?: unknown; ground?: unknown; inventory?: unknown; sceneZones?: unknown; sceneEdges?: unknown; layers?: unknown; sky?: unknown; mountains?: unknown; clouds?: unknown; snowfall?: unknown; temple?: unknown; sceneMusic?: unknown }
+  const r = raw as { screens?: unknown; height?: unknown; ground?: unknown; inventory?: unknown; sceneZones?: unknown; sceneEdges?: unknown; layers?: unknown; sky?: unknown; mountains?: unknown; clouds?: unknown; snowfall?: unknown; aurora?: unknown; temple?: unknown; sceneMusic?: unknown }
   const out: PatioSettings = {}
   if (typeof r.screens === 'number' && Number.isFinite(r.screens)) out.screens = Math.round(clamp(r.screens, PATIO_SCREENS.min, PATIO_SCREENS.max))
   if (typeof r.height === 'number' && Number.isFinite(r.height)) out.height = Math.round(clamp(r.height, PATIO_HEIGHT.min, PATIO_HEIGHT.max))
@@ -60,6 +62,8 @@ export function normalizePatioSettings(raw: unknown): PatioSettings | undefined 
   if (clouds) out.clouds = clouds
   const snowfall = normalizeSnowfall(r.snowfall)
   if (snowfall) out.snowfall = snowfall
+  const aurora = normalizeAurora(r.aurora)
+  if (aurora) out.aurora = aurora
   if (r.temple === false) out.temple = false
   if (r.sceneMusic === false) out.sceneMusic = false
   return Object.keys(out).length ? out : undefined
@@ -82,7 +86,7 @@ export const patioTemple = (settings: PatioSettings | undefined) => settings?.te
 
 // ---------- the game's defaults for a new empty Pátio (data/pigchicken/default-patio.json → settings) ----------
 // what Configurações do Pátio edits, and so what the file keeps (not the scenes' zones nor the layers)
-export const PATIO_DEFAULT_KEYS = ['screens', 'height', 'ground', 'inventory', 'sceneMusic', 'temple', 'sky', 'mountains', 'clouds', 'snowfall'] as const
+export const PATIO_DEFAULT_KEYS = ['screens', 'height', 'ground', 'inventory', 'sceneMusic', 'temple', 'sky', 'mountains', 'clouds', 'snowfall', 'aurora'] as const
 
 /** The defaults file's `settings` for a Pátio (what "Salvar no game" writes): `screens` is its width as shown. */
 export function patioSettingsDefaultsFile(settings: PatioSettings | undefined, screens: number): PatioSettings {
@@ -94,6 +98,7 @@ export function patioSettingsDefaultsFile(settings: PatioSettings | undefined, s
   if (s.mountains) out.mountains = s.mountains
   if (s.clouds) out.clouds = s.clouds
   if (s.snowfall) out.snowfall = s.snowfall
+  if (s.aurora) out.aurora = s.aurora
   return out
 }
 /** What a defaults file's `settings` gives a new Pátio: only the keys above, as the game reads them. */

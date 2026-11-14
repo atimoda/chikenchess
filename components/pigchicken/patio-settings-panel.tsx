@@ -15,7 +15,7 @@ import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
-import { CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
+import { AuroraFields, CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 
@@ -78,6 +78,10 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             onChange({ ...layout, settings: sky ? { ...rest, sky } : rest })
           }} />)}
           {group("Estrelas", <StarFields sky={layout.settings?.sky} onChange={sky => onChange({ ...layout, settings: { ...layout.settings, sky } })} />)}
+          {group("Aurora", <AuroraFields aurora={layout.settings?.aurora} onChange={aurora => {
+            const { aurora: _old, ...rest } = layout.settings ?? {}
+            onChange({ ...layout, settings: aurora ? { ...rest, aurora } : rest })
+          }} />)}
           {group("Montanhas", <MountainFields mountains={layout.settings?.mountains} onChange={mountains => {
             const { mountains: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: mountains ? { ...rest, mountains } : rest })
