@@ -19,7 +19,7 @@ const RECENT = [
   {
     version: '2.10.0',
     date: '13/11/2026',
-    title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo; Martelo de Thor e Cajado de Odin; fase Marseille 1997 · Orchestral rap na campanha Classical; qualidade gráfica e sonora com ajuste automático',
+    title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo; Martelo de Thor e Cajado de Odin; fase Marseille 1997 · Orchestral rap na campanha Classical; qualidade gráfica e sonora com ajuste automático; Baú no Modo editor e Bag of souls',
     groups: [
       { title: 'Qualidade e desempenho', items: [
         'Preferências (no globo, na partida, no online e no Criativo) e o painel Camadas do Pátio ganham “Qualidade e efeitos gráficos” e “Qualidade e efeitos sonoros”, cada um com Alta, Média e Baixa. No primeiro acesso os dois níveis vêm da capacidade do aparelho; depois, a escolha fica salva neste navegador e vale em todos os modos.',
@@ -45,6 +45,12 @@ const RECENT = [
         'No Editar de um poste ou torre, Camadas do fundo lista as camadas do cenário ao longe (céu, nuvens, cada cordilheira e as matas). Apontar uma mostra só ela; escolher prende o poste num ponto fixo dela, de pé na crista da montanha ou no chão da mata, e daí ele anda junto com a camada em qualquer tela. Os fios até uma torre mais perto acompanham, dando a profundidade da linha indo para o fundo. Escolher de novo solta, mantendo a profundidade.',
         'Nos fios dos postes e torres, Chocar + Pulo põe a galinha pendurada de cabeça para baixo debaixo do fio, e de volta em cima, como nas caixas, em vez de atravessar o fio. Pendurada, ela anda pelo fio e passa para o seguinte no poste; Pulo para o lado contrário e subir com Cima também a penduram.',
         'O painel Itens abre já na arma ou no instrumento que a sua galinha está segurando; de mãos vazias, abre na Bicada.',
+        'Novo elemento Baú (grupo Baús do Modo editor), simples ou lendário: o simples brilha num amarelo suave, o lendário num azul mais forte. Perto dele, Pegar abre: a tampa sobe, sai um facho de luz e os itens pulam para fora.',
+        'Em Editar, “Abre com” escolhe Livre, Chave (gasta uma chave do inventário) ou Merecimento (pede um mínimo de almas na Bag of souls, que continuam lá). Sem o que ele pede, o baú treme e diz o que falta; de perto, ele já mostra o que pede.',
+        'Os itens do baú são uma lista: cada linha é um item específico ou um sorteio (qualquer item, uma arma, um instrumento, um esportivo, uma habilidade especial, um item de magia ou uma chave), com a sua chance em %. “Fecha de novo após” deixa o baú abrir outra vez, com novo sorteio; com 0, ele fica aberto.',
+        'No Pátio online, abrir um baú abre para todos, com a tampa, a luz e o som; os itens saem para quem abriu. Quem entra depois vê os baús que já estão abertos.',
+        'Novo item Chave: fica em pilha (até 9) no grupo Utilitário do inventário e entra em suportes (paleta Chaves), Item solto e baús.',
+        'O contador de almas ao lado do avatar passa a se chamar Bag of souls.',
         'Itens → Combo: cada golpe da sequência agora tem dois seletores, a direção (para baixo, para cima, horizontal ou giro) e o ângulo que ele cobre. Dois golpes na mesma direção podem ter ângulos diferentes. Os ângulos já vêm iguais aos de antes, e combos ajustados neste navegador mantêm os arcos que tinham. “Arco para cima” e “Arco horizontal” saem do painel.',
       ] },
       { title: 'Martelo de Thor e Cajado de Odin', items: [

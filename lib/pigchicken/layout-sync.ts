@@ -1,10 +1,10 @@
-// Keeps the game's own things (training dummies, item racks, loose items, horde buttons, Gongos and Jukeboxes) in step with
+// Keeps the game's own things (training dummies, item racks, loose items, horde buttons, Gongos, Jukeboxes and Baús) in step with
 // the Pátio's layout: adds the new ones, moves and resizes the ones that changed, removes the deleted ones. A loose item
 // (Item solto) puts its item in the world once; taken, it does not come back until the Pátio opens again (reset). A
 // rack deleted in the editor becomes a loose item with the same id, which keeps the item already there (and back). A dummy keeps its life
 // and stage while it is moved; a new total life keeps the share it had. Things past a narrow world's last scene
 // wait out of the world (they would land in the temple) and come back when the world is made wider.
-import type { Combat, Target } from './combat'
+import type { Chest, Combat, Target } from './combat'
 import { DUMMY_DEFAULTS } from './dummies'
 import { SCENE_W } from './world'
 import { elementWorldX, type LayoutElement } from './layout'
@@ -24,6 +24,8 @@ export function createLayoutSync(combat: Combat) {
   const targets = new Map<string, Target>()
   const racks = new Map<string, Rack>()
   const lastParams = new Map<string, string>()
+  // the Baús: an open one stays open while it is moved or its params change (its new loot comes the next time)
+  const chests = new Map<string, Chest>()
   // each loose item's pickup in the world (undefined once taken) and where it was put
   const looses = new Map<string, { pickupId?: number; x: number; y: number; item: string }>()
   const activePickup = (id: number | undefined) => (id === undefined ? undefined : combat.pickups.find(p => p.id === id))
@@ -33,10 +35,17 @@ export function createLayoutSync(combat: Combat) {
     const end = screens * SCENE_W
     const seen = new Set<string>()
     for (const el of elements) {
-      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox') continue
+      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox' && el.kind !== 'chest') continue
       seen.add(el.id)
       const cx = elementWorldX(el, screens) + el.w / 2, bottom = el.y + el.h
       const inside = !!el.region || cx < end
+      if (el.kind === 'chest') {
+        const params = el.params.chest!
+        let c = chests.get(el.id)
+        if (!c) { c = combat.addChest(el.id, inside ? cx : AWAY, bottom, params); chests.set(el.id, c) }
+        c.x = inside ? cx : AWAY; c.y = bottom; c.params = params
+        continue
+      }
       if (el.kind === 'loose') {
         const item = el.params.item!
         const x = inside ? cx : AWAY, y = bottom - el.h / 2
@@ -109,14 +118,16 @@ export function createLayoutSync(combat: Combat) {
     for (const [id, t] of targets) if (!seen.has(id)) { const i = combat.targets.indexOf(t); if (i >= 0) combat.targets.splice(i, 1); targets.delete(id); lastParams.delete(id) }
     for (const [id, r] of racks) if (!seen.has(id)) { const i = combat.racks.indexOf(r); if (i >= 0) combat.racks.splice(i, 1); racks.delete(id) }
     for (const [id, l] of looses) if (!seen.has(id)) { dropPickup(l.pickupId); looses.delete(id) }
+    for (const [id, c] of chests) if (!seen.has(id)) { const i = combat.chests.indexOf(c); if (i >= 0) combat.chests.splice(i, 1); chests.delete(id) }
   }
 
-  // another Pátio opened: everything of the last one leaves (its dummies, racks, buttons and every item lying in the
+  // another Pátio opened: everything of the last one leaves (its dummies, racks, buttons, Baús and every item lying in the
   // world, its racks' and the ones dropped there), so the next sync builds the new one from its layout alone
   function reset() {
     for (const t of targets.values()) { const i = combat.targets.indexOf(t); if (i >= 0) combat.targets.splice(i, 1) }
     for (const r of racks.values()) { const i = combat.racks.indexOf(r); if (i >= 0) combat.racks.splice(i, 1) }
-    targets.clear(); racks.clear(); looses.clear(); lastParams.clear()
+    for (const c of chests.values()) { const i = combat.chests.indexOf(c); if (i >= 0) combat.chests.splice(i, 1) }
+    targets.clear(); racks.clear(); looses.clear(); chests.clear(); lastParams.clear()
     combat.pickups.length = 0
   }
 

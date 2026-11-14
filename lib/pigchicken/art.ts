@@ -200,6 +200,15 @@ const ART: Partial<Record<ItemId, Art>> = {
     <rect x="47" y="-5.6" width="5.2" height="11.2" rx="1" fill="#d7192a"/>
     <path d="M48 -5.6 L48 5.6 M49.8 -5.6 L49.8 5.6 M51.4 -5.6 L51.4 5.6" stroke="#9c0f1c" stroke-width="0.6"/>`,
   },
+  // Chave: an old golden key, its bow a ring with a hole, the shaft and two teeth
+  key: {
+    box: [-14, -12, 52, 24],
+    svg: `<circle cx="-3" cy="0" r="9" fill="#e7b43a" stroke="#8a5a12" stroke-width="1.6"/>
+    <circle cx="-3" cy="0" r="3.6" fill="#2a1d08"/>
+    <rect x="5" y="-2.2" width="30" height="4.4" rx="1.2" fill="#e7b43a" stroke="#8a5a12" stroke-width="1.2"/>
+    <path d="M25 2 L25 8 L29 8 L29 2 M31 2 L31 6 L34 6 L34 2" fill="#e7b43a" stroke="#8a5a12" stroke-width="1.2"/>
+    <path d="M-8 -5 Q-4 -8 0 -6.5 M8 -1 L32 -1" stroke="#fff3c4" stroke-width="1" fill="none" opacity="0.8"/>`,
+  },
   // Hangdrum: the hang seen from the side, two steel domes joined at the rim, the ding on top and dents of notes
   hangdrum: {
     box: [-2, -15, 64, 26],

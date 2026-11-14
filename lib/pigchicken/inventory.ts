@@ -2,7 +2,7 @@
 // consumables and utilities), at most the Pátio's limit of them (INVENTORY_MAX at most). The bar and the selection
 // wheel show only the items she has plus one empty slot (empty hands) while there is room. Pure helpers, shared by
 // the combat, the bar and the wheel.
-import { CONSUMABLE_IDS, MAGIC_IDS, SPORTS_IDS, type ItemId } from './items'
+import { CONSUMABLE_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, type ItemId } from './items'
 
 // the most a Pátio may allow (Configurações do Pátio → Limite do inventário); new Pátios start with all of it
 export const INVENTORY_MAX = 25
@@ -52,8 +52,8 @@ export function quickSwitchStep(
 // An item taken goes to its own group; dragged on the bar, it may join another one (the player's choice).
 export type ItemGroup = 0 | 1 | 2
 export const ITEM_GROUPS: ItemGroup[] = [0, 1, 2]
-// the third group (sports tools: Taco, Passaguá; consumables: Maryjane, Cok; utilities, when there are some)
-const UTILITY_ITEMS = new Set<ItemId>([...SPORTS_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS])
+// the third group (sports tools: Taco, Passaguá; consumables: Maryjane, Cok; magic; utilities: the keys)
+const UTILITY_ITEMS = new Set<ItemId>([...SPORTS_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS])
 export function itemGroup(id: ItemId, instrument: boolean): ItemGroup {
   if (instrument) return 0
   return UTILITY_ITEMS.has(id) ? 2 : 1

@@ -16,7 +16,7 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
 ]
 export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum'
-  | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff'
+  | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // each family's reticle shows what matters for it
@@ -531,12 +531,17 @@ const COK: ItemDef = {
   consumeKind: 'liquid',
   effectTime: 15, effectSpeed: 0.78, effectAccel: 1.33, effectCurve: 'linear', effectRamp: 0.5, effectLook: 'fizz',
 }
+// Chave: opens a Baú that asks for one (lib/pigchicken/chests.ts); kept in a stack like the consumables, but Atirar
+// does nothing with it
+const KEY: ItemDef = {
+  ...CONSUMABLE, id: 'key', name: 'Chave', family: 'Chaves',
+}
 
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM,
-  maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF,
+  maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
@@ -544,16 +549,19 @@ export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'v
 export const INSTRUMENT_WEAPON: Partial<Record<ItemId, ItemId>> = {
   flute: 'pistol', sax: 'smg', trumpet: 'rifle', guitar: 'pump', violin: 'sniper', keys: 'launcher', tambourine: 'grenade', harp: 'bow', hangdrum: 'pistol',
 }
-export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3 }
+export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3, key: 9 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
 export const SPORTS_IDS: ItemId[] = ['bat', 'passagua']
 // magic weapons: staffs like the sports tools (held in the wing, Golpe / Atirar), whose blows shock
 export const MAGIC_IDS: ItemId[] = ['mjolnir', 'odinstaff']
+// the keys: each one opens one Baú that asks for a key (lib/pigchicken/chests.ts)
+export const KEY_IDS: ItemId[] = ['key']
+export const isKey = (id: ItemId) => KEY_IDS.includes(id)
 export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 // the items a rack can hold
-export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, 'wing', 'peck']
+export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS]
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, 'wing', 'peck']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)

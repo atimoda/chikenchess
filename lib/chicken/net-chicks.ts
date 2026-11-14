@@ -2,7 +2,7 @@
 // chicken and tells the others where they are ("chicks", ~10 times a second, in world units like the chickens); the
 // others draw mirrors that glide there and do nothing else. A Passaguá over a mirror asks the chick's browser for
 // it, the way it asks for a soul flying free (lib/pigchicken/net-souls.ts, kind 'c'): the chick leaves there, and
-// only then counts in the basket of whoever asked. Pure functions, so the browser and the tests use the same code:
+// only then counts in the Bag of souls of whoever asked. Pure functions, so the browser and the tests use the same code:
 // lib/chicken/online-room.ts keeps the mirrors and components/chicken/online-chickens.tsx sends and draws.
 
 // one chick: [n, x, y, vx, vy, face, state, style] (n: its number in its own browser; state: stateByte of
