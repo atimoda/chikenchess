@@ -74,31 +74,45 @@ function act(kind: QualityKind | null) {
   if (changed) lowered?.(changed)
 }
 
+// What the FPS counter shows next to the frame rate, counted since the page opened whether or not
+// "Ajustar automaticamente" is on: late scheduler ticks and output glitches of every watched context.
+const health = { late: 0, glitches: 0, musicGlitches: 0, measured: false }
+
 /** The music transport reports a tick that came later than its look-ahead (attacks start late or are skipped). */
 export function reportSchedulerLate() {
-  if (!watch || typeof document === 'undefined' || document.hidden || !getQuality().auto) return
+  if (typeof document === 'undefined' || document.hidden) return
+  health.late++
+  if (!watch || !getQuality().auto) return
   act(judgeTrouble(watch, clock()))
 }
 
 type PlaybackStats = { underrunEvents?: number; fallbackFramesEvents?: number }
 const contexts = new Set<AudioContext>()
+// The contexts whose glitches lower the sound level: the music engine's, the one that level changes.
+const music = new WeakSet<AudioContext>()
 const glitches = new WeakMap<AudioContext, number>()
-/** Output glitches the browser counted (AudioContext.playbackStats, where it exists) since the last look. */
-function newGlitches() {
-  let found = false
+/** Adds the output glitches the browser counted (AudioContext.playbackStats, where it exists) since the last look. */
+function countGlitches() {
   for (const context of contexts) {
     if (context.state === 'closed') { contexts.delete(context); continue }
     const stats = (context as AudioContext & { playbackStats?: PlaybackStats }).playbackStats
     const count = stats?.underrunEvents ?? stats?.fallbackFramesEvents
     if (typeof count !== 'number') continue
+    health.measured = true
     const before = glitches.get(context)
     glitches.set(context, count)
-    if (before !== undefined && count > before && context.state === 'running') found = true
+    if (before === undefined || count <= before || context.state !== 'running') continue
+    health.glitches += count - before
+    if (music.has(context)) health.musicGlitches += count - before
   }
-  return found
 }
-/** Audio contexts whose output the monitor watches for glitches (the music runtime registers its own). */
-export function watchAudioOutput(context: AudioContext) { contexts.add(context) }
+/** Sound trouble since the page opened. `playing`: some watched context is running; `measured`: the browser counts glitches. */
+export function audioHealth() {
+  countGlitches()
+  return { late: health.late, glitches: health.glitches, measured: health.measured, playing: [...contexts].some(context => context.state === 'running') }
+}
+/** Audio contexts whose output is watched for glitches: audio-focus.ts registers every context the game creates, for the counter; the music runtime marks its own, for the automatic adjustment. */
+export function watchAudioOutput(context: AudioContext, isMusic = false) { contexts.add(context); if (isMusic) music.add(context) }
 
 /** Mounted once (components/quality-monitor.tsx); onLowered hears each automatic step down. Returns its cleanup. */
 export function installQualityMonitor(onLowered?: (kind: QualityKind) => void) {
@@ -106,7 +120,7 @@ export function installQualityMonitor(onLowered?: (kind: QualityKind) => void) {
   const current = watch = createQualityWatch(clock())
   lowered = onLowered
   getQuality()
-  let frame = 0, start: number | undefined, last = 0, frames = 0, stalled = 0
+  let frame = 0, start: number | undefined, last = 0, frames = 0, stalled = 0, seenGlitches = health.musicGlitches
   const reset = () => { start = undefined; frames = 0; stalled = 0 }
   const sample = (now: number) => {
     frame = requestAnimationFrame(sample)
@@ -119,9 +133,12 @@ export function installQualityMonitor(onLowered?: (kind: QualityKind) => void) {
     if (elapsed < QUALITY_WATCH.window) return
     const finished = { frames, elapsed, stalled }
     reset()
+    countGlitches()
+    const glitched = health.musicGlitches > seenGlitches
+    seenGlitches = health.musicGlitches
     if (!getQuality().auto) return
     act(judgeFrames(current, finished, now))
-    if (newGlitches()) act(judgeTrouble(current, now))
+    if (glitched) act(judgeTrouble(current, now))
   }
   const run = () => {
     cancelAnimationFrame(frame)

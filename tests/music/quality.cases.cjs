@@ -159,3 +159,31 @@ test('a running match follows the sound level: buses regroup and Baixa sends loo
     runtime.dispose()
   })
 })
+
+test('the FPS counter reads late scheduler ticks and output glitches since the page opened', () => {
+  const before = monitor.audioHealth()
+  assert.deepEqual([before.playing, before.measured], [false, false], 'nothing is shown before any sound runs')
+  const sfx = { state: 'running', playbackStats: { underrunEvents: 4 } }
+  const music = { state: 'suspended', playbackStats: { underrunEvents: 0 } }
+  const old = { state: 'running' }
+  monitor.watchAudioOutput(sfx); monitor.watchAudioOutput(music, true); monitor.watchAudioOutput(old)
+  let health = monitor.audioHealth()
+  assert.deepEqual([health.playing, health.measured, health.glitches - before.glitches], [true, true, 0], 'glitches from before the first look are not counted')
+  sfx.playbackStats.underrunEvents = 7
+  music.playbackStats.underrunEvents = 2
+  health = monitor.audioHealth()
+  assert.equal(health.glitches - before.glitches, 3, 'a suspended context does not count')
+  music.state = 'running'
+  music.playbackStats.underrunEvents = 5
+  assert.equal(monitor.audioHealth().glitches - before.glitches, 6)
+  const previous = globalThis.document
+  try {
+    globalThis.document = { hidden: false }
+    monitor.reportSchedulerLate(); monitor.reportSchedulerLate()
+    globalThis.document = { hidden: true }
+    monitor.reportSchedulerLate()
+  } finally { if (previous === undefined) delete globalThis.document; else globalThis.document = previous }
+  assert.equal(monitor.audioHealth().late - before.late, 2, 'a hidden tab throttles its timers: those ticks are not counted')
+  sfx.state = music.state = old.state = 'closed'
+  assert.equal(monitor.audioHealth().playing, false)
+})
