@@ -39,8 +39,13 @@ Código: `lib/pigchicken/items.ts` (`mjolnir`, `odinstaff`, `MAGIC_IDS`, campos 
 
 - **Gatilho:** como o golpe forte dos bastões: um aperto novo de Atirar arma, segurar carrega, **soltar** arremessa. A asa faz a mesma animação de carga.
 - **Carga:** de 0 a 1 em `returnCharge` segundos (padrão 0,8 s). A distância vai de `returnRange × returnMin` (padrão 50%, o arremesso já sai meio forte) até `returnRange` (720 px); o dano vai de 50% a 100% de `returnDamage` (35).
-- **Mira:** enquanto carrega, uma linha pontilhada mostra até onde o martelo vai, reta na direção da mira e cortada onde bateria numa parede.
-- **Voo:** reto, a `returnSpeed` (1300 px/s), girando. Acerta cada alvo uma vez na ida e uma na volta, com dano, empurrão `returnPush` e o choque em cadeia (ou o especial, se estiver pronto). Vira ao chegar à distância, bater em parede, chão ou plataforma; na volta atravessa o cenário, acelera e persegue o peito de quem arremessou.
+- **Mira:** enquanto carrega, uma linha pontilhada mostra o caminho de ida sem mexer a mira (com a curvatura mínima), até onde o martelo vira, cortada onde bateria numa parede ou no chão.
+- **Voo:** a `returnSpeed` (1300 px/s), girando, pelo caminho curvo descrito abaixo. Acerta cada alvo uma vez na ida e uma na volta, com dano, empurrão `returnPush` e o choque em cadeia (ou o especial, se estiver pronto). Vira ao chegar à distância, bater em parede, chão ou plataforma; na volta atravessa o cenário, acelera e persegue o peito de quem arremessou.
+- **Curvatura** (13/11; `lib/pigchicken/return-flight.ts`): `returnCurveMin` e `returnCurveMax`, em graus que cada perna do caminho dobra (padrão 16° e 70°).
+  - *Sem mexer a mira:* vale a mínima. O martelo sai inclinado metade da mínima para cima da mira, passa por cima da linha da mira, vira exatamente sobre ela e volta por baixo, fechando um laço. Arremessado para a esquerda, o desenho é espelhado. Com a mínima em 0 ele vai e volta em linha reta.
+  - *Mexendo a mira com ele no ar:* a curva puxa para o lado em que a mira girou desde o arremesso (mira para cima, dobra para cima; para baixo, para baixo), na ida e na volta. Quanto mais longe a mira estiver da direção do arremesso, mais dobra: da mínima até a máxima, que vale com 35° de giro ou mais. Giros menores que 4° não trocam o lado (o tremor da mão não vira a curva). A dobra segue a mira em cerca de um décimo de segundo, então a troca de lado é uma virada suave.
+  - *Ida:* é a direção do martelo que gira, no total da curvatura ao longo da distância do arremesso. *Volta:* ele contorna a dona para o mesmo lado, cada vez menos conforme chega perto (desvio de metade da curvatura, no máximo 57°), e sempre chega.
+  - Máxima menor que a mínima vale como a mínima. A distância percorrida na ida não muda com a curva.
 - **Enquanto está no ar:** a asa fica vazia, o item aparece apagado no slot e Atirar, Golpe e Arremesso desse slot ficam sem efeito; trocar de slot continua valendo, mas a troca por um item do chão é recusada com o martelo no ar.
 - **Chegada:** a 34 px do peito ele volta para a asa, com um som de pegada. Se quem arremessou saiu do jogo, o martelo cai no chão como item solto.
 - **Arremesso comum:** o bind de Arremesso continua jogando a arma como qualquer item (ela fica no chão); ao acertar alguém também dá o choque.
@@ -49,7 +54,7 @@ Código: `lib/pigchicken/items.ts` (`mjolnir`, `odinstaff`, `MAGIC_IDS`, campos 
 
 - O dono do mundo decide dano, harmonia e atordoamento. Em quem segue, o inimigo treme na hora e o golpe vai ao dono com o choque (`sh` em `NetHit`: tempo, força, harmonia), como os outros acertos.
 - O estado de choque de cada inimigo viaja junto do inimigo (índice 18 de `NetFoe`), então todos veem o mesmo raio-x.
-- Raios, clarão e som chegam como disparos (`NetShot` `z`); o martelo no ar como `hm`, desenhado indo e voltando ao ponto de saída, sem dano no navegador de quem só assiste.
+- Raios, clarão e som chegam como disparos (`NetShot` `z`); o martelo no ar como `hm`, desenhado indo e voltando ao ponto de saída, sem dano no navegador de quem só assiste. Lá ele faz o laço da curvatura mínima; a curva que a dona conduz com a mira não é transmitida (os acertos valem pelo caminho de quem arremessou).
 
 ## Painel Itens
 

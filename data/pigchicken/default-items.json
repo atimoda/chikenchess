@@ -57,8 +57,6 @@
     "meleeTime": 0.16,
     "meleePush": 420,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 200,
     "heavyDamage": 40,
     "heavyRange": 75,
     "heavyArc": 170,
@@ -78,6 +76,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -150,10 +150,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 200
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -229,8 +241,6 @@
     "meleeTime": 0.22,
     "meleePush": 0,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 190,
     "heavyDamage": 0,
     "heavyRange": 70,
     "heavyArc": 170,
@@ -250,6 +260,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -322,10 +334,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 190
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -394,8 +418,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -415,6 +437,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -487,10 +511,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -566,8 +602,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -587,6 +621,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -659,10 +695,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -738,8 +786,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -759,6 +805,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -831,10 +879,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -910,8 +970,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -931,6 +989,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -1003,10 +1063,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1082,8 +1154,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1103,6 +1173,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -1175,10 +1247,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1260,8 +1344,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1281,6 +1363,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -1353,10 +1437,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1432,8 +1528,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1453,6 +1547,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -1525,10 +1621,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1604,8 +1712,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1625,6 +1731,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -1697,10 +1805,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1776,8 +1896,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1797,6 +1915,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -1869,10 +1989,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -1952,8 +2084,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -1973,6 +2103,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -2045,10 +2177,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2128,8 +2272,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2149,6 +2291,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -2221,10 +2365,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2304,8 +2460,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2325,6 +2479,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -2397,10 +2553,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2486,8 +2654,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2507,6 +2673,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -2579,10 +2747,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2668,8 +2848,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2689,6 +2867,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -2761,10 +2941,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -2844,8 +3036,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -2865,6 +3055,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -2937,10 +3129,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3026,8 +3230,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3047,6 +3249,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -3119,10 +3323,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3208,8 +3424,6 @@
     "meleeTime": 0.2,
     "meleePush": 260,
     "comboWindow": 0.45,
-    "meleeArcUp": 110,
-    "meleeArcFlat": 110,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3229,6 +3443,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -3301,10 +3517,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 110
+      },
+      {
+        "kind": "up",
+        "arc": 110
+      },
+      {
+        "kind": "flat",
+        "arc": 110
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3380,8 +3608,6 @@
     "meleeTime": 0.2,
     "meleePush": 180,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3401,6 +3627,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -3473,10 +3701,22 @@
     "effectCurve": "superIn",
     "effectLook": "buddha",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 120
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3545,8 +3785,6 @@
     "meleeTime": 0.2,
     "meleePush": 180,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -3566,6 +3804,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -3638,10 +3878,22 @@
     "effectCurve": "linear",
     "effectLook": "fizz",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 120
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3710,8 +3962,6 @@
     "meleeTime": 0.2,
     "meleePush": 520,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 200,
     "heavyDamage": 40,
     "heavyRange": 75,
     "heavyArc": 170,
@@ -3731,6 +3981,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 600,
+    "returnCurveMin": 16,
+    "returnCurveMax": 70,
     "shockRange": 170,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -3803,10 +4055,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 200
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -3882,8 +4146,6 @@
     "meleeTime": 0.2,
     "meleePush": 300,
     "comboWindow": 0.45,
-    "meleeArcUp": 150,
-    "meleeArcFlat": 200,
     "heavyDamage": 30,
     "heavyRange": 75,
     "heavyArc": 170,
@@ -3903,6 +4165,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 220,
     "shockJumps": 4,
     "shockTime": 0.3,
@@ -3975,10 +4239,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 150
+      },
+      {
+        "kind": "up",
+        "arc": 150
+      },
+      {
+        "kind": "flat",
+        "arc": 200
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "lightning",
@@ -3991,6 +4267,183 @@
       }
     ],
     "trailColor": "#ffe9a8",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false
+  },
+  "key": {
+    "peckPull": 38,
+    "rate": 2,
+    "burst": 3,
+    "chargeTime": 0.1,
+    "chargeMin": 0.3,
+    "mag": 1,
+    "reloadTime": 0.2,
+    "refillTime": 0,
+    "refillAmount": 1,
+    "speed": 1500,
+    "drop": 0,
+    "damage": 0,
+    "pierce": 0,
+    "range": 1100,
+    "size": 3,
+    "pellets": 1,
+    "explodeRadius": 0,
+    "explodePush": 0,
+    "explodeDamage": 0,
+    "fuse": 0,
+    "bounce": 0,
+    "spreadBase": 1.5,
+    "spreadShot": 2.2,
+    "spreadMax": 9,
+    "spreadRecover": 14,
+    "spreadMove": 1.5,
+    "spreadAir": 3,
+    "crouchMult": 0.7,
+    "broodMult": 0.5,
+    "recoilKick": 0,
+    "recoilPush": 0,
+    "weight": 1,
+    "turnRate": 0,
+    "muzzleX": 10,
+    "muzzleY": -6,
+    "length": 0,
+    "pivotX": 0,
+    "pivotY": 0,
+    "handX": 0,
+    "handY": 0,
+    "backX": 0,
+    "backY": 0,
+    "gripX": 0,
+    "gripY": 0,
+    "staffX": 38,
+    "staffY": 34,
+    "staffAngle": -135,
+    "windX": -34,
+    "windY": -44,
+    "windAngle": -205,
+    "meleeDamage": 4,
+    "meleeRange": 70,
+    "meleeArc": 120,
+    "meleeCooldown": 0,
+    "meleeTime": 0.2,
+    "meleePush": 180,
+    "comboWindow": 0.45,
+    "heavyDamage": 30,
+    "heavyRange": 80,
+    "heavyArc": 170,
+    "heavyCooldown": 0.15,
+    "heavyTime": 0.4,
+    "heavyPush": 500,
+    "heavyCharge": 1,
+    "heavyReachMax": 1.5,
+    "heavySizeMax": 1.6,
+    "heavyTrailWidth": 34,
+    "heavyTrailTime": 0.3,
+    "heavyTrailWisps": 6,
+    "heavyTrailOpacity": 0.8,
+    "returnDamage": 30,
+    "returnRange": 700,
+    "returnMin": 0.5,
+    "returnCharge": 0.8,
+    "returnSpeed": 1300,
+    "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
+    "shockRange": 0,
+    "shockJumps": 3,
+    "shockTime": 0.35,
+    "shockDamage": 0,
+    "shockDrain": 0,
+    "heavyShockRange": 0,
+    "heavyShockTime": 0.6,
+    "specialCooldown": 0,
+    "specialRange": 260,
+    "specialJumps": 6,
+    "specialTime": 3,
+    "specialDamage": 20,
+    "trailWidth": 18,
+    "trailTime": 0.2,
+    "trailWisps": 3,
+    "trailOpacity": 0.7,
+    "durability": 0,
+    "rebateSnap": 25,
+    "rebateSnapForce": 0.5,
+    "rebateSpeed": 1,
+    "throwDamage": 4,
+    "throwMin": 275,
+    "throwSpeed": 900,
+    "throwCharge": 0.8,
+    "octave": 0,
+    "span": 2,
+    "arpRate": 10,
+    "noteLen": 0.25,
+    "wave": 6,
+    "quantWindow": 60,
+    "beatBonus": 1.5,
+    "stun": 0,
+    "strum": 0.018,
+    "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
+    "tremoloRange": 0.5,
+    "meleeNotes": 3,
+    "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
+    "effectTime": 0,
+    "effectSpeed": 1,
+    "effectAccel": 1,
+    "effectRamp": 0.5,
+    "fireMode": "semi",
+    "pathShow": "off",
+    "landShow": "always",
+    "autoReload": false,
+    "slideFire": true,
+    "shellReload": false,
+    "hitscan": false,
+    "quantize": true,
+    "beam": false,
+    "gliss": false,
+    "fretless": false,
+    "meleeInterrupt": true,
+    "rebateTok": false,
+    "pivotAt": "shoulder",
+    "handOn": false,
+    "backOn": false,
+    "wingFlip": false,
+    "arp": "off",
+    "pitchSet": "chord",
+    "volMin": 1,
+    "volMax": 1,
+    "voice": "flute",
+    "effectCurve": "linear",
+    "effectLook": "none",
+    "combo": [
+      {
+        "kind": "down",
+        "arc": 120
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
+    ],
+    "heavyKind": "down",
+    "specialKind": "thunder",
+    "rebateChain": [],
+    "trailColor": "#fff4dc",
     "scales": [
       "primary"
     ],
@@ -4054,8 +4507,6 @@
     "meleeTime": 0.2,
     "meleePush": 180,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -4075,6 +4526,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -4147,10 +4600,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 120
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",
@@ -4226,8 +4691,6 @@
     "meleeTime": 0.16,
     "meleePush": 220,
     "comboWindow": 0.45,
-    "meleeArcUp": 120,
-    "meleeArcFlat": 120,
     "heavyDamage": 30,
     "heavyRange": 80,
     "heavyArc": 170,
@@ -4247,6 +4710,8 @@
     "returnCharge": 0.8,
     "returnSpeed": 1300,
     "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
     "shockRange": 0,
     "shockJumps": 3,
     "shockTime": 0.35,
@@ -4319,10 +4784,22 @@
     "effectCurve": "linear",
     "effectLook": "none",
     "combo": [
-      "down",
-      "up",
-      "flat",
-      "spin"
+      {
+        "kind": "down",
+        "arc": 160
+      },
+      {
+        "kind": "up",
+        "arc": 120
+      },
+      {
+        "kind": "flat",
+        "arc": 120
+      },
+      {
+        "kind": "spin",
+        "arc": 360
+      }
     ],
     "heavyKind": "down",
     "specialKind": "thunder",

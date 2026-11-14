@@ -338,6 +338,10 @@ test('clouds: cumulus heaps of puffs, more of them with Gomos and Desfiado; old 
   assert.equal(CL.normalizeClouds({ size: 900 }).size, CL.CLOUD_SCALE.max)
   const soft = CD.softClouds(6000, 11, 1, 0.5, 0.5)
   assert.ok(soft.length > 3 && soft.every(c => c.puffs.length === 0 && c.lobes[c.lobes.length - 1].shade))
+  // a big soft cloud's box reaches its highest and lowest lobe (it was a fixed 100 units: cut flat on top)
+  for (const size of [1, 3, 6]) for (const c of CD.softClouds(6000, 11, size, 0.5, 0.5)) {
+    assert.ok(c.lobes.every(l => l.ry - l.dy <= c.top && l.ry + l.dy <= c.bottom), `soft cloud at size ${size} inside its box`)
+  }
   const few = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 0, 0), many = CD.cumulusClouds(6000, 11, 1, 0.5, 0.5, 1, 1)
   assert.ok(few.length > 3 && few.every(c => c.puffs.length === 5))
   assert.ok(many.every(c => c.puffs.length >= 14 * 4))
@@ -398,6 +402,22 @@ test('a wire to a pinned tower slides its end from the camera at 0, like the lay
   const c = P.spanCurve(s, 0, 100, 50)
   assert.ok(Math.abs(c.b.y - (s.b.y - 150 * d)) < 1e-6)
   assert.equal(c.a.y, s.a.y)
+})
+
+test('a range as tall as the settings allow stays inside its layer: only the Pátio frame cuts it', () => {
+  const M = loadTs('lib/pigchicken/mountains.ts')
+  const worldW = 1920 * 8
+  for (const peak of ['wave', 'sharp', 'geo']) for (const height of [100, M.MOUNTAIN_SCALE.max]) for (const lift of [0, M.MOUNTAIN_LIFT.max]) {
+    const m = { ...M.MOUNTAINS_DEFAULT, height, lift, peak, rough: M.MOUNTAIN_SCALE.max }
+    BD.MOUNTAIN_RANGES.forEach((_, i) => {
+      const rg = BD.rangeRidge(worldW, i, m)
+      const top = BD.backdropLayerTop(rg.top - M.MOUNTAIN_OUTLINE_PX)
+      assert.ok(top <= 0)
+      assert.ok(rg.crest.every(([, y]) => y - M.MOUNTAIN_OUTLINE_PX / 2 > top), `${peak} ${height} ${lift} range ${i}`)
+    })
+  }
+  // the usual ranges keep the layer box at the world's top, as before
+  BD.MOUNTAIN_RANGES.forEach((_, i) => assert.equal(BD.backdropLayerTop(BD.rangeRidge(worldW, i, M.MOUNTAINS_DEFAULT).top), 0))
 })
 
 const AU = loadTs('lib/pigchicken/aurora.ts')

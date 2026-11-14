@@ -77,7 +77,7 @@ test('the strong blow has its own numbers; Golpe keeps the quick blow and its co
   const t = alien(c)
   step(c, { melee: true })
   assert.ok(c.swing && !c.swing.heavy)
-  assert.equal(c.swing.kind, d.combo[0])
+  assert.equal(c.swing.kind, d.combo[0].kind)
   assert.equal(c.swing.time, d.meleeTime)
   run(c, d.meleeTime + 0.05)
   assert.equal(t.hp, 500 - d.meleeDamage)
@@ -89,7 +89,7 @@ test('the strong blow has its own numbers; Golpe keeps the quick blow and its co
   // the quick blow after a strong one starts its combo over
   run(c, d.heavyCooldown + 0.05)
   step(c, { melee: true })
-  assert.equal(c.swing.kind, d.combo[0])
+  assert.equal(c.swing.kind, d.combo[0].kind)
 })
 
 test('Golpe, another item, empty hands and the interface call the charge off without hitting', () => {

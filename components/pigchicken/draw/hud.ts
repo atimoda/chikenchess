@@ -449,21 +449,21 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   return glyphs
 }
 
-// Each player's captured birds remain as a soul count beside their avatar, including when the first player's
-// inventory is displayed in the desktop bottom bar.
-// where a player's counter is (screen px): the souls caught fly to its middle
-export function soulCounterBox(row: number, offset?: { x: number; y: number }) {
+// Each player's captured birds stay in their Bag of souls, the soul count beside their avatar, including when the
+// first player's inventory is displayed in the desktop bottom bar.
+// where a player's Bag of souls is (screen px): the souls caught fly to its middle
+export function bagOfSoulsBox(row: number, offset?: { x: number; y: number }) {
   const size = INV_STACK.size
   return { x: stageWidth() - INV_STACK.right - size - INV_STACK.avatarGap - size + (offset?.x ?? 0), y: invRowY(row) + (offset?.y ?? 0), size }
 }
-// the count of the basket; the inner arc takes the colour of the soul on top of it, and the circle swells for a
-// moment when one arrives or is let out. A press on it lets the top soul out; with the basket empty and souls of
+// the Bag of souls: its count; the inner arc takes the colour of the soul on top of it, and the circle swells for a
+// moment when one arrives or is let out. A press on it lets the top soul out; with the bag empty and souls of
 // this player's flying free, it is the Callback button instead (a press calls them back). hover: the pointer is on
 // it. Returns its middle and radius (screen px) and whether a press does anything right now.
-export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: string, offset?: { x: number; y: number }, hover = false) {
-  const { x, y, size } = soulCounterBox(row, offset), r = size / 2
-  const basket = combat.basket, top = basket[basket.length - 1], pulse = combat.soulPulse
-  const callback = !basket.length && combat.looseSouls > 0, on = basket.length > 0 || callback
+export function drawBagOfSouls(ctx: Ctx, combat: Combat, row: number, color: string, offset?: { x: number; y: number }, hover = false) {
+  const { x, y, size } = bagOfSoulsBox(row, offset), r = size / 2
+  const bag = combat.bagOfSouls, top = bag[bag.length - 1], pulse = combat.soulPulse
+  const callback = !bag.length && combat.looseSouls > 0, on = bag.length > 0 || callback
   ctx.save()
   if (pulse > 0) { const k = 1 + 0.22 * pulse; ctx.translate(x + r, y + r); ctx.scale(k, k); ctx.translate(-x - r, -y - r) }
   ctx.beginPath(); ctx.arc(x + r, y + r, r - 1, 0, Math.PI * 2)
@@ -482,7 +482,7 @@ export function drawSoulCounter(ctx: Ctx, combat: Combat, row: number, color: st
   } else {
     ctx.beginPath(); ctx.arc(x + r, y + r, r - 4, -Math.PI * 0.82, -Math.PI * 0.18)
     ctx.strokeStyle = top ? top.color : 'rgba(220,250,245,0.32)'; ctx.lineWidth = top ? 1.6 : 1; ctx.stroke()
-    const count = String(basket.length)
+    const count = String(bag.length)
     const fontSize = count.length > 3 ? 8 : count.length > 2 ? 10 : 12
     ctx.font = `bold ${fontSize}px ui-monospace, monospace`
     write(count, 0, 2.5)

@@ -20,7 +20,9 @@ import {
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
-import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from "@/lib/pigchicken/items"
+import { CHEST_GLOW, CHEST_RARITIES, defaultChest, type ChestRarity } from "@/lib/pigchicken/chests"
+import { ChestFields, ItemOptGroups } from "./chest-fields"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
 import { moveToDepth } from "@/lib/pigchicken/backdrop-layers"
@@ -691,11 +693,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
         <label className="grid gap-1">
           <span>Item</span>
           <select aria-label="Item solto" value={el.params.item} onChange={e => set({ item: e.target.value as ItemId })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
-            <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <ItemOptGroups />
           </select>
         </label>
       )}
@@ -703,11 +701,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
         <label className="grid gap-1">
           <span>Item do suporte</span>
           <select aria-label="Item do suporte" value={el.params.item} onChange={e => { const item = e.target.value as ItemId; set({ item, respawnDelay: rackRespawnDelay(item) }) }} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
-            <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
-            <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{DEFAULT_ITEMS[id].name}</option>)}</optgroup>
+            <ItemOptGroups />
           </select>
         </label>
         <label className="grid gap-1" title="Espera após pegar o item. Consumíveis: 0,1 s por padrão; armas e instrumentos: 2 s. Zero repõe imediatamente.">
@@ -720,6 +714,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
       {el.kind === "zone" && el.params.zone && <SoundZoneFields zone={el.params.zone} onChange={(zone, step) => set({ zone }, step && `${step}:${el.id}`)} />}
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
       {el.kind === "chalkboard" && el.params.chalkboard && <ChalkboardFields board={el.params.chalkboard} onChange={(chalkboard, step) => set({ chalkboard }, step && `${step}:${el.id}`)} />}
+      {el.kind === "chest" && el.params.chest && <ChestFields chest={el.params.chest} onChange={(chest, step) => set({ chest }, step && `${step}:${el.id}`)} />}
       {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
       {el.kind === "button" && (
         <label className="grid gap-1">
@@ -829,6 +824,8 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Instrumentos", items: INSTRUMENT_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Habilidades especiais", items: CONSUMABLE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Magia", items: MAGIC_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Chaves", items: KEY_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Baús", items: CHEST_RARITIES.map(r => ({ key: `chest-${r.value}`, kind: "chest" as ElementKind, label: `Baú ${r.label.toLowerCase()}`, params: { chest: defaultChest(r.value) } })) },
 ]
 
 function Thumb({ entry }: { entry: Entry }) {
@@ -842,6 +839,7 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "zone") return <span className="flex h-7 w-10 items-center justify-center rounded-md border-2 border-dashed border-[#7b8cff] bg-[#7b8cff]/20 text-[13px] text-[#7b8cff]">♫</span>
   if (entry.kind === "gong") return <span aria-hidden="true" className="relative block h-8 w-9"><span className="absolute inset-x-0 top-0 h-1 rounded-sm bg-[#b3261e]" /><span className="absolute bottom-0 left-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute bottom-0 right-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute left-1/2 top-2 h-5 w-5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f2c46d,#c58b2e_55%,#7a4f12)]" /></span>
   if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
+  if (entry.kind === "chest") return <ChestThumb rarity={entry.params?.chest?.rarity ?? "simple"} />
   if (entry.kind === "chalkboard") return <span aria-hidden="true" className="block h-7 w-11 rounded-[3px] border-[3px] border-[#7a4f27] bg-[#2f5b3f]" />
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
   const m = entry.params?.power ? POWER_MODELS[entry.params.power.model] : null
@@ -849,6 +847,16 @@ function Thumb({ entry }: { entry: Entry }) {
   const k = Math.min(48 / w, (m ? 44 : 34) / h)
   // the postes and torres take the sky's silhouette colour: light here, on the dark card
   return <span className="relative block" style={{ width: w * k, height: h * k, ...(m ? { ["--patio-sil" as string]: "#dfe8df" } : {}) }}><ElementArt el={{ kind: entry.kind, params: previewParams(entry), w: w * k, h: h * k }} editing /></span>
+}
+
+// a Baú on its card: the chest in the glow of its rarity
+function ChestThumb({ rarity }: { rarity: ChestRarity }) {
+  const g = CHEST_GLOW[rarity], trim = rarity === "legendary" ? "#9fd4ff" : "#e7b43a"
+  return <span aria-hidden="true" className="relative block h-8 w-11" style={{ filter: `drop-shadow(0 0 ${rarity === "legendary" ? 6 : 3}px ${g.color})` }}>
+    <span className="absolute inset-x-0 top-0 h-3 rounded-t-md bg-[#8a5a2b]" style={{ borderTop: `2px solid ${trim}` }} />
+    <span className="absolute inset-x-0 bottom-0 top-3 bg-[#8a5a2b]" style={{ borderLeft: `3px solid ${trim}`, borderRight: `3px solid ${trim}`, borderTop: `2px solid ${trim}` }} />
+    <span className="absolute left-1/2 top-2 h-2.5 w-2 -translate-x-1/2 rounded-[2px]" style={{ background: trim }} />
+  </span>
 }
 
 // what a palette entry looks like before it is placed
@@ -891,7 +899,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       const p = screenToWorld(e.clientX, e.clientY)
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       // dummies and racks stand on the floor right under where they were dropped
-      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "chest") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       // postes and torres in their model's proportions, planted on the floor under where they were dropped
       if (el.params.power) {

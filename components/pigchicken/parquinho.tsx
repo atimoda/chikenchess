@@ -71,10 +71,11 @@ import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/d
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
-import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawSoulCounter, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
+import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawBagOfSouls, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { drawAbductions, drawFreedSouls } from "@/components/pigchicken/draw/souls"
 import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeSoulEntries } from "@/lib/pigchicken/soul-library"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
+import { chestMarks } from "@/components/pigchicken/draw/chests"
 import { stageWidth } from "@/lib/stage-size"
 import { createTrainingGhosts } from "@/components/pigchicken/training-ghosts"
 
@@ -396,27 +397,27 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the pointer is over a UI control or panel (the same ones that keep the normal cursor): p1's mouse reticle hides
     const overUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, [role='dialog'], button, input, select, textarea, a, label, summary, [data-chicken-ignore]")
     let mouseOverUi = false
-    // the soul counters drawn this frame (screen px: middle and radius; on: a press does something now) and the
-    // presses waiting for the frame. A press on a counter lets the soul on top of that player's basket out or, with
-    // the basket empty, calls their souls back; it neither fires nor walks
-    const soulBoxes: { id: string; x: number; y: number; r: number; on: boolean }[] = []
-    const soulTaps: string[] = []
-    let soulHover: string | null = null
-    const soulBoxAt = (x: number, y: number) => soulBoxes.find(b => b.on && Math.hypot(x - b.x, y - b.y) <= b.r) ?? null
-    const hoverSoul = (id: string | null) => { soulHover = id; document.body.classList.toggle("pigchicken-soul-hover", !!id) }
-    const onSoulDown = (e: PointerEvent) => {
+    // the Bags of souls drawn this frame (screen px: middle and radius; on: a press does something now) and the
+    // presses waiting for the frame. A press on a Bag of souls lets the soul on top of it out or, with the bag
+    // empty, calls that player's souls back; it neither fires nor walks
+    const bagBoxes: { id: string; x: number; y: number; r: number; on: boolean }[] = []
+    const bagTaps: string[] = []
+    let bagHover: string | null = null
+    const bagBoxAt = (x: number, y: number) => bagBoxes.find(b => b.on && Math.hypot(x - b.x, y - b.y) <= b.r) ?? null
+    const hoverBag = (id: string | null) => { bagHover = id; document.body.classList.toggle("pigchicken-bag-hover", !!id) }
+    const onBagDown = (e: PointerEvent) => {
       if (e.button !== 0 || cameraKey || overUi(e.target)) return
-      const hit = soulBoxAt(e.clientX, e.clientY)
+      const hit = bagBoxAt(e.clientX, e.clientY)
       if (!hit) return
       e.preventDefault(); e.stopImmediatePropagation()
-      soulTaps.push(hit.id)
+      bagTaps.push(hit.id)
     }
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse" || noMouse()) return
       mouseOverUi = overUi(e.target)
-      // a soul counter that can be pressed is a button too: the normal cursor, no reticle
-      hoverSoul(mouseOverUi || cameraKey ? null : soulBoxAt(e.clientX, e.clientY)?.id ?? null)
-      if (soulHover) mouseOverUi = true
+      // a Bag of souls that can be pressed is a button too: the normal cursor, no reticle
+      hoverBag(mouseOverUi || cameraKey ? null : bagBoxAt(e.clientX, e.clientY)?.id ?? null)
+      if (bagHover) mouseOverUi = true
       if (cameraKey) {
         if (e.button === 1 && (e.buttons & 4)) resetView()
         if (panPointer === e.pointerId && (e.buttons & 1) && mouse) {
@@ -494,7 +495,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
     }
     window.addEventListener("pointerdown", onArpDown, true)
-    window.addEventListener("pointerdown", onSoulDown, true)
+    window.addEventListener("pointerdown", onBagDown, true)
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerdown", onDown, true)
     window.addEventListener("pointerdown", onTouchDown, true)
@@ -1057,11 +1058,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.setCatchables(catchables)
       // the air the souls flying free keep inside: the world's walls and the top of what the camera shows
       combat.setSoulAir({ l: walls.lo + camX, r: walls.hi + camX, top: Math.max(walls.top, zoomedView(viewW, st.height, zoom, viewTop).y) - camY })
-      // presses on the soul counters: the soul comes out where the counter is on the screen (in world px)
-      if (soulTaps.length) {
+      // presses on the Bags of souls: the soul comes out where the bag is on the screen (in world px)
+      if (bagTaps.length) {
         const scx = stageWidth() / 2, scy = window.innerHeight / 2
-        for (const id of soulTaps.splice(0)) {
-          const at = soulBoxes.find(b => b.id === id)
+        for (const id of bagTaps.splice(0)) {
+          const at = bagBoxes.find(b => b.id === id)
           if (!at || (id !== "p1" && !extras?.current?.has(id))) continue
           combat.use(id)
           if (combat.capturedSouls) combat.releaseSoul({ x: (at.x - scx) / zoom + scx + camX, y: (at.y - scy) / zoom + scy - camY })
@@ -1080,7 +1081,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       announceHeldScale(combat.held && combat.def().instrument ? combat.scale.id : null)
       scalePlaying.set("p1", input.fire || input.melee)
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
-      pickupMarks.clear()
+      pickupMarks.clear(); chestMarks.clear()
       markHover(combat, grabLabel(controls, devs))
 
       // ---------- the other local players: their own items (a loadout each), in the same world ----------
@@ -1435,15 +1436,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const drag = barDrag.current?.active ? barDrag.current : null
       arpBoxes.length = 0
       arpBoxes.push(...drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
-      soulBoxes.length = 0
-      // with the on-screen controls (phones) the avatars and soul counters stay in the top right corner, wherever
+      bagBoxes.length = 0
+      // with the on-screen controls (phones) the avatars and Bags of souls stay in the top right corner, wherever
       // the inventory row was moved to
       const soulsAt = showTouchRef.current ? undefined : offsets.inventory
-      combat.use("p1"); soulBoxes.push({ id: "p1", ...drawSoulCounter(ctx, combat, 0, tints?.p1 ?? "#7bd88f", soulsAt, soulHover === "p1") })
-      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); soulBoxes.push({ id, ...drawSoulCounter(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", soulsAt, soulHover === id) }) })
-      // the counter under the pointer stopped being a button (its last soul left): the reticle comes back
-      if (soulHover && !soulBoxes.some(b => b.id === soulHover && b.on)) { hoverSoul(null); mouseOverUi = false }
-      // the souls just caught, flying to the counter of whoever caught them
+      combat.use("p1"); bagBoxes.push({ id: "p1", ...drawBagOfSouls(ctx, combat, 0, tints?.p1 ?? "#7bd88f", soulsAt, bagHover === "p1") })
+      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); bagBoxes.push({ id, ...drawBagOfSouls(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", soulsAt, bagHover === id) }) })
+      // the Bag of souls under the pointer stopped being a button (its last soul left): the reticle comes back
+      if (bagHover && !bagBoxes.some(b => b.id === bagHover && b.on)) { hoverBag(null); mouseOverUi = false }
+      // the souls just caught, flying to the Bag of souls of whoever caught them
       if (combat.abductions.length) drawAbductions(ctx, combat, new Map<string, number>([["p1", 0], ...extraList.map(([id], i): [string, number] => [id, i + 1])]), soulsAt, { x: camX, y: camY, zoom })
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
@@ -1505,7 +1506,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerdown", onArpDown, true)
-      window.removeEventListener("pointerdown", onSoulDown, true)
+      window.removeEventListener("pointerdown", onBagDown, true)
       window.removeEventListener("pointerdown", onDown, true)
       window.removeEventListener("pointerdown", onTouchDown, true)
       window.removeEventListener("pointerup", onUp, true)
@@ -1525,7 +1526,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       templeDraw.temple = null
       templeDraw.stage = null
       if (worldRef.current) delete worldRef.current.dataset.temple
-      document.body.classList.remove("pigchicken-play", "pigchicken-soul-hover")
+      document.body.classList.remove("pigchicken-play", "pigchicken-bag-hover")
       document.body.classList.remove('pigchicken-camera-mode', 'pigchicken-camera-dragging')
       setCameraMode(false)
       if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(window.innerHeight - groundHRef.current).lo - oy)
@@ -1539,7 +1540,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
   return (
     <>
-      <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play.pigchicken-camera-mode { cursor: grab; } body.pigchicken-play.pigchicken-camera-dragging { cursor: grabbing; } body.pigchicken-play.pigchicken-soul-hover { cursor: pointer; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
+      <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play.pigchicken-camera-mode { cursor: grab; } body.pigchicken-play.pigchicken-camera-dragging { cursor: grabbing; } body.pigchicken-play.pigchicken-bag-hover { cursor: pointer; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; }`}</style>
       {cameraMode && <div role="img" aria-label="Modo zoom e panorama" className="pointer-events-none fixed left-4 top-16 z-[209] text-white opacity-40"><Search className="h-8 w-8" aria-hidden="true" /></div>}
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
       {/* the Quadros de lousa's ghosts, behind the players and the chicks */}

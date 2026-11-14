@@ -5,7 +5,7 @@
 // - each browser flies the souls its own players let out and sends them ~10 times a second ("souls"); the other
 //   browsers draw mirrors that glide to where they are and do nothing else;
 // - a Passaguá over a mirror asks the browser that flies it for the soul ("take"); that browser lets it go and
-//   answers with what it is ("give"), and only then does it count in the basket of whoever asked. A soul asked for
+//   answers with what it is ("give"), and only then does it count in the Bag of souls of whoever asked. A soul asked for
 //   twice is given once: the second one finds nothing;
 // - the undead birds are the lobby owner's enemies: a browser that is not the owner asks the owner for them the
 //   same way;

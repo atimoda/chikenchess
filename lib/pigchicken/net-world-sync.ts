@@ -2,12 +2,13 @@
 // mirrors the owner's, and moves enemies, hits, spawns and shots through the game server (lib/chicken/online-room.ts).
 // The rules and the data are in lib/pigchicken/net-world.ts. It also sends the souls this browser's players let out,
 // shows the other browsers', and passes on what a Passaguá asks of another browser and what that browser gives
-// (lib/pigchicken/net-souls.ts). ParquinhoPlay calls frame() once a frame, before the combat's step.
-import { getNetState, netCan, onNetWorld, remoteChicken, sendNetFoes, sendNetGive, sendNetHits, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
+// (lib/pigchicken/net-souls.ts), and the Baús opened in each browser (lib/pigchicken/net-chests.ts). ParquinhoPlay calls frame() once a frame, before the combat's step.
+import { getNetState, netCan, onNetWorld, remoteChicken, sendNetChests, sendNetFoes, sendNetGive, sendNetHits, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
 import type { Combat } from './combat'
 import { DEFAULT_ITEMS } from './items'
 import { cleanHit, cleanShot, cleanSpawn, exportFoes, importFoes, newFoeCache, type NetFormation, type NetHit, type NetShot, type NetSpawn } from './net-world'
 import { cleanGive, cleanTake, exportSouls, takeOwner } from './net-souls'
+import { applyNetChests, cleanNetChests, exportOpenChests } from './net-chests'
 
 const FOES_MS = 100 // the owner's enemies: 10 times a second
 const FULL_MS = 2000 // and everything about them (also right after someone joins)
@@ -27,6 +28,11 @@ export function createNetWorldSync(combat: Combat) {
   // the souls this browser flies: the ones the others already know, and when they were last sent (and all of them)
   const soulsTold = new Set<number>()
   let lastSouls = 0, lastSoulsFull = 0, soulsKey = '', soulsEmpty = true
+  // the Baús: when the owner last sent the open ones (and to whom), and the ones opened here a moment ago (the owner's
+  // list may not have them yet)
+  let lastChests = 0, chestsKey = ''
+  const openedHere = new Map<string, number>()
+  const CHEST_NEWS_MS = 3000
 
   function become(next: NetRole) {
     if (next === 'follower') { combat.yieldShared(); combat.setNetFollower(h => { if (hitsOut.length < 256) hitsOut.push(h) }) }
@@ -36,6 +42,7 @@ export function createNetWorldSync(combat: Combat) {
     inbox.length = 0; hitsOut.length = 0; formations.clear()
     cache = newFoeCache(); lastFull = 0; sentEmpty = true
     soulsTold.clear(); lastSoulsFull = 0; soulsEmpty = true
+    lastChests = 0; chestsKey = ''; openedHere.clear()
   }
 
   return {
@@ -80,6 +87,10 @@ export function createNetWorldSync(combat: Combat) {
         else if (m.type === 'give') { const c = cleanGive(m.give); if (c && m.pid === (c.k === 'f' ? s.info!.ownerPid : takeOwner(c.id))) combat.applyNetGive(c) }
         else if (m.type === 'hits') { if (role === 'owner') for (const h of m.list.slice(0, 64)) { const c = cleanHit(h); if (c) combat.applyNetHit(c) } }
         else if (m.type === 'spawn') { if (role === 'owner') { const c = cleanSpawn(m.spawn); if (c) spawns.push(c) } }
+        else if (m.type === 'chests') {
+          const c = cleanNetChests(m.chests)
+          if (c && others.some(p => p.pid === m.pid)) applyNetChests(combat, c, m.pid === s.info!.ownerPid, id => now - (openedHere.get(id) ?? -Infinity) < CHEST_NEWS_MS)
+        }
         else if (m.type === 'shots') {
           const list = m.list.slice(0, BATCH).map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
           if (list.length) combat.addRemoteShots(list)
@@ -106,6 +117,16 @@ export function createNetWorldSync(combat: Combat) {
         const l = exportSouls(combat.freedSouls, s.myPid!, soulsTold, full)
         // none flying: one empty message clears the others' mirrors, then quiet
         if (l.length || !soulsEmpty) { sendNetSouls(l); soulsEmpty = !l.length }
+      }
+      // the Baús opened here: everyone opens them too; the owner's list of open ones, every 2 s and when someone joins
+      if (combat.chestOpens.length) {
+        const ids = combat.chestOpens.splice(0)
+        for (const id of ids) openedHere.set(id, now)
+        if (others.length) sendNetChests({ l: ids.map(id => [id, 0]), o: 1 })
+      }
+      if (role === 'owner' && others.length && netCan('chests')) {
+        const key = others.map(p => p.pid).join(',')
+        if (key !== chestsKey || now - lastChests >= FULL_MS) { chestsKey = key; lastChests = now; sendNetChests({ l: exportOpenChests(combat.chests) }) }
       }
       if (role === 'owner' && others.length && now - lastFoes >= FOES_MS) {
         lastFoes = now

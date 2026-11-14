@@ -1,20 +1,20 @@
-// Souls on their way to a counter: each one flies from where it was caught (the world) to the counter of the player
-// who caught it (the screen), shrinking, with a glow and a streak in its colour. And the souls let out of the
-// baskets, flying with their owners in the world. Each one is drawn as its entry in the library (./soul-art.ts).
+// Souls on their way to a Bag of souls: each one flies from where it was caught (the world) to the Bag of souls of
+// the player who caught it (the screen), shrinking, with a glow and a streak in its colour. And the souls let out of
+// the bags, flying with their owners in the world. Each one is drawn as its entry in the library (./soul-art.ts).
 import { ABDUCT_TIME, abductPoint, type Soul } from "@/lib/pigchicken/souls"
 import { type Combat } from "@/lib/pigchicken/combat"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { stageWidth } from "@/lib/stage-size"
-import { soulCounterBox } from "./hud"
+import { bagOfSoulsBox } from "./hud"
 import { type Ctx } from "./shared"
 import { drawSoulArt, soulLook } from "./soul-art"
 
-// rows: each local player's row in the counters' stack; cam: the world's camera and zoom this frame.
-// Drawn in screen px, over the counters
+// rows: each local player's row in the Bags of souls' stack; cam: the world's camera and zoom this frame.
+// Drawn in screen px, over the Bags of souls
 export function drawAbductions(ctx: Ctx, combat: Combat, rows: ReadonlyMap<string, number>, offset: { x: number; y: number } | undefined, cam: { x: number; y: number; zoom: number }) {
   const cx = stageWidth() / 2, cy = window.innerHeight / 2
   for (const a of combat.abductions) {
-    const box = soulCounterBox(rows.get(a.owner) ?? 0, offset)
+    const box = bagOfSoulsBox(rows.get(a.owner) ?? 0, offset)
     const from = { x: cx + (a.x - cam.x - cx) * cam.zoom, y: cy + (a.y + cam.y - cy) * cam.zoom }
     const to = { x: box.x + box.size / 2, y: box.y + box.size / 2 }
     // waiting its turn, it hovers where it was caught
@@ -41,7 +41,7 @@ export function drawAbductions(ctx: Ctx, combat: Combat, rows: ReadonlyMap<strin
   }
 }
 
-// a soul just out of the counter is small (as it was when it went in) and grows in this long (s)
+// a soul just out of the Bag of souls is small (as it was when it went in) and grows in this long (s)
 const RELEASE_GROW = 0.35
 
 // The souls flying free, in world px (inside the world's transform): each one as its entry, with a glow in its

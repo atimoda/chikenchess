@@ -14,7 +14,9 @@ const SOULS_MAX = 64, TAKE_BYTES = 200, GIVE_BYTES = 400
 const CHICKS_MAX = 16, CHICKS_BYTES = 1200
 // what this server relays beyond the first version's messages: a browser only sends those to a server that says so
 // (a message without a handler closes the connection)
-const CAPS = { souls: 1, chicks: 1 }
+// the Baús opened (the browser's lib/pigchicken/net-chests.ts)
+const CHESTS_MAX = 64, CHESTS_BYTES = 4000
+const CAPS = { souls: 1, chicks: 1, chests: 1 }
 const jsonSize = v => { try { return JSON.stringify(v).length } catch { return Infinity } }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
@@ -40,6 +42,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "chicks"   { l }      the chicks that follow its first chicken (~10/s while they move); relayed to everyone else
 //   "take"     { to, take }  its Passaguá went over a soul the browser `to` flies, a chick of its own, or an undead bird of the owner's; relayed to `to` only
 //   "give"     { to, give }  the soul it lets go to the browser `to`, which asked for it; relayed to `to` only
+//   "chests"   { l, o? }  the Baús it opened (o: 1) or, the owner, the ones open in its world; relayed to everyone else
 // Messages to the browser:
 //   "hello"    { pid, room, caps }  right after joining (caps: the newer messages this server relays)
 //   "room"     the room info below, whenever it changes
@@ -57,6 +60,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "chicks"   { pid, l }     another browser's chicks
 //   "take"     { pid, take }  another browser asks for a soul this one flies
 //   "give"     { pid, give }  the soul another browser gave this one
+//   "chests"   { pid, l, o? }  the Baús another browser opened, or the owner's open ones
 export class PatioRoom extends Room {
   maxClients = MAX_BROWSERS
   players = new Map() // sessionId -> player
@@ -93,6 +97,7 @@ export class PatioRoom extends Room {
     this.onMessage('chicks', (client, msg) => this.onChicks(client, msg))
     this.onMessage('take', (client, msg) => this.onDirect(client, msg, 'take', TAKE_BYTES))
     this.onMessage('give', (client, msg) => this.onDirect(client, msg, 'give', GIVE_BYTES))
+    this.onMessage('chests', (client, msg) => this.onChests(client, msg))
     this.setSimulationInterval(() => this.broadcastSnapshot(), TICK_MS)
   }
 
@@ -119,7 +124,7 @@ export class PatioRoom extends Room {
       state: new Map(), // slot -> latest chicken state
       sendOk: bucket(30, 40), chatOk: bucket(2, 4), profileOk: bucket(4, 8), layoutOk: bucket(4, 8),
       foesOk: bucket(15, 20), hitsOk: bucket(30, 60), spawnOk: bucket(2, 4), shotsOk: bucket(30, 40),
-      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16), chicksOk: bucket(15, 20),
+      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16), chicksOk: bucket(15, 20), chestsOk: bucket(4, 8),
     }
     this.players.set(client.sessionId, p)
     this.settleOwner()
@@ -288,6 +293,14 @@ export class PatioRoom extends Room {
     const p = this.players.get(client.sessionId)
     if (!p || !p.chicksOk() || !Array.isArray(msg?.l) || msg.l.length > CHICKS_MAX || jsonSize(msg.l) > CHICKS_BYTES) return
     this.broadcast('chicks', { pid: p.pid, l: msg.l }, { except: client })
+  }
+
+  // the Baús a browser opened (o: 1) or, from the owner, the ones open in its world: to everyone else, as they are
+  onChests(client, msg) {
+    const p = this.players.get(client.sessionId)
+    if (!p || !p.chestsOk() || !Array.isArray(msg?.l) || msg.l.length > CHESTS_MAX || jsonSize(msg.l) > CHESTS_BYTES) return
+    if (msg.o !== 1 && p.pid !== this.ownerPid) return
+    this.broadcast('chests', msg.o === 1 ? { pid: p.pid, l: msg.l, o: 1 } : { pid: p.pid, l: msg.l }, { except: client })
   }
 
   // a soul or a chick asked of one browser ("take") and its answer ("give"): only to the browser it names

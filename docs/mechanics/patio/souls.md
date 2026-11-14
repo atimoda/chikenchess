@@ -2,7 +2,7 @@
 
 Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). O Passaguá como item fica em [items.md](items.md); as mortes dos aliens e os pássaros em [temple.md](temple.md); os pintinhos em [../chicken/chicks.md](../chicken/chicks.md); o pouso e a fuga dos pássaros nos fios em [sky-and-power.md](sky-and-power.md); o catálogo, o desenho de cada alma, a coleção e o painel em [soul-library.md](soul-library.md).
 
-Código: `lib/pigchicken/souls.ts` (identidade, raridade, abdução; puro), `lib/pigchicken/soul-follow.ts` (voo do bot amigo, ficha de parâmetros e classes; puro), `lib/pigchicken/soul-acts.ts` (ajudas e atrapalhos: ficha de ações, classes, relógio; puro), ganchos em `lib/pigchicken/combat.ts` (`markSoul`, `convert`, `spawnUndead`, `strike`, cesto por player, `releaseSoul`, `callSouls`, `freedSouls`, `soulActs`, `soulJobStep`, `aimSkew`, `detune`), contador em `drawSoulCounter`/`soulCounterBox` (`components/pigchicken/draw/hud.ts`), voo até o contador e almas soltas em `components/pigchicken/draw/souls.ts`, clique no contador em `components/pigchicken/parquinho.tsx` (`onSoulDown`). Testes: `tests/pigchicken-souls.cases.cjs`, `tests/pigchicken-soul-follow.cases.cjs` e `tests/pigchicken-soul-acts.cases.cjs`.
+Código: `lib/pigchicken/souls.ts` (identidade, raridade, abdução; puro), `lib/pigchicken/soul-follow.ts` (voo do bot amigo, ficha de parâmetros e classes; puro), `lib/pigchicken/soul-acts.ts` (ajudas e atrapalhos: ficha de ações, classes, relógio; puro), ganchos em `lib/pigchicken/combat.ts` (`markSoul`, `convert`, `spawnUndead`, `strike`, Bag of souls por player, `releaseSoul`, `callSouls`, `freedSouls`, `soulActs`, `soulJobStep`, `aimSkew`, `detune`), Bag of souls em `drawBagOfSouls`/`bagOfSoulsBox` (`components/pigchicken/draw/hud.ts`), voo até a Bag of souls e almas soltas em `components/pigchicken/draw/souls.ts`, clique na Bag of souls em `components/pigchicken/parquinho.tsx` (`onBagDown`). Testes: `tests/pigchicken-souls.cases.cjs`, `tests/pigchicken-soul-follow.cases.cjs` e `tests/pigchicken-soul-acts.cases.cjs`.
 
 ## Identidade da alma (10/11, v2.7.0)
 
@@ -20,26 +20,28 @@ Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde
 - **Raridade** (`soulRarity`): cada eixo soma pontos (Dragão 3, Lanterna 1, Gêmeos 1; Tensão 1, Sensível 2, Fora da escala 3; Morta 1). 0 comum, 1 incomum, 2 a 4 rara, 5 ou mais lendária. Os pesos ficam em `RARITY_POINTS`/`RARITY_AT`.
 - **Cor:** a alma viva guarda a cor do alien; a morta, a cor da nota que a ressuscitou (a dos olhos); o pintinho, amarelo. Ela guarda também o tipo de pássaro em que voava, mas depois de capturada é desenhada como a sua entrada da biblioteca.
 
-## Cesto e contador (10/11, v2.7.0)
+## Bag of souls (10/11, v2.7.0; nome desde 13/11, v2.10.0)
 
-- **Cesto:** cada player local tem o seu, uma pilha: a última alma capturada fica no topo (`combat.basket`). Vale só durante a sessão; não é salvo nem enviado no Pátio online.
-- **Contador:** o círculo à esquerda do avatar mostra quantas almas há no cesto. O arco de dentro toma a cor da alma do topo (cinza claro com o cesto vazio). Ele é o botão de soltar e, com o cesto vazio e almas soltas, o botão Callback (abaixo).
+- **Nome:** o contador de almas se chama **Bag of souls**, no jogo e no código (`combat.bagOfSouls`, `drawBagOfSouls`). Antes era “cesto” e “contador”.
+- **Pilha:** cada player local tem a sua: a última alma capturada fica no topo. Vale só durante a sessão; não é salva nem enviada no Pátio online.
+- **Merecimento:** um Baú pode pedir um mínimo de almas na Bag of souls de quem o abre; elas continuam lá ([chests.md](chests.md)).
+- **Aparência:** o círculo à esquerda do avatar mostra quantas almas há na Bag of souls. O arco de dentro toma a cor da alma do topo (cinza claro com a Bag vazia). Ele é o botão de soltar e, com a Bag vazia e almas soltas, o botão Callback (abaixo).
 
 ## Abdução (10/11, v2.7.0)
 
 - **Gatilho:** o Passaguá acerta um pássaro vivo, um pássaro morto-vivo ou um pintinho (as mesmas regras de alcance de antes).
-- **Efeito:** o pássaro some do mundo numa nuvem e a alma voa em curva até o contador de quem capturou: sobe primeiro, acelera e encolhe, com brilho e rastro na cor dela, em 0,55 s (`ABDUCT_TIME`). Várias capturadas no mesmo golpe saem uma atrás da outra, a cada 0,08 s (`ABDUCT_GAP`). O texto “+N almas” não aparece mais; a primeira captura de cada entrada da biblioteca mostra o nome dela ([soul-library.md](soul-library.md)).
-- **Contagem:** a alma entra no cesto, e o número sobe, só quando chega ao contador; o círculo cresce e volta em 0,3 s (`SOUL_PULSE`).
+- **Efeito:** o pássaro some do mundo numa nuvem e a alma voa em curva até a Bag of souls de quem capturou: sobe primeiro, acelera e encolhe, com brilho e rastro na cor dela, em 0,55 s (`ABDUCT_TIME`). Várias capturadas no mesmo golpe saem uma atrás da outra, a cada 0,08 s (`ABDUCT_GAP`). O texto “+N almas” não aparece mais; a primeira captura de cada entrada da biblioteca mostra o nome dela ([soul-library.md](soul-library.md)).
+- **Contagem:** a alma entra na Bag of souls, e o número sobe, só quando chega a ela; o círculo cresce e volta em 0,3 s (`SOUL_PULSE`).
 - **Câmera:** o ponto de partida é do mundo e o de chegada é da tela, então o voo acompanha a câmera e o zoom enquanto dura.
 - **Cancelamento:** não há. Se o player que capturou sair do lobby antes de a alma chegar, ela se perde.
-- **Escopo:** Pátio e Templo, todos os players locais (cada um com o seu contador). No Pátio online cada navegador vê só as próprias capturas.
+- **Escopo:** Pátio e Templo, todos os players locais (cada um com a sua Bag of souls). No Pátio online cada navegador vê só as próprias capturas.
 
-## Soltar pelo contador (10/11, v2.7.0)
+## Soltar pela Bag of souls (10/11, v2.7.0)
 
-- **Gatilho:** clique ou toque no contador de um player com almas no cesto. Qualquer ponteiro vale para qualquer contador (o mouse solta as almas do player 2 clicando no contador dele). O clique não atira, não bica e não faz a galinha andar. Não vale com a tecla de câmera segurada nem com um painel por cima.
-- **Efeito:** sai a alma do topo do cesto, a última capturada (`combat.releaseSoul`), uma por clique. Ela nasce pequena no ponto do mundo que está embaixo do contador naquele instante, cresce em 0,35 s e voa para o seu lugar perto do dono. O número desce na hora e o contador pulsa.
+- **Gatilho:** clique ou toque na Bag of souls de um player com almas nela. Qualquer ponteiro vale para qualquer Bag of souls (o mouse solta as almas do player 2 clicando na dele). O clique não atira, não bica e não faz a galinha andar. Não vale com a tecla de câmera segurada nem com um painel por cima.
+- **Efeito:** sai a alma do topo da Bag of souls, a última capturada (`combat.releaseSoul`), uma por clique. Ela nasce pequena no ponto do mundo que está embaixo da Bag of souls naquele instante, cresce em 0,35 s e voa para o seu lugar perto do dono. O número desce na hora e o contador pulsa.
 - **Aparência:** o desenho da entrada dela na biblioteca (forma pela família do instrumento; a morta, cinza com o olho na cor), com um brilho redondo na cor da alma. Com mais de um player local, um anel na cor do dono em volta de cada uma.
-- **Mouse em cima:** quando um clique faria algo (cesto com almas, ou Callback), o contador acende na cor do player, a mira some e o cursor vira o de botão.
+- **Mouse em cima:** quando um clique faria algo (Bag of souls com almas, ou Callback), ela acende na cor do player, a mira some e o cursor vira o de botão.
 - **Sem tecla nem botão de controle ainda:** só clique ou toque.
 - **Escopo:** Pátio e Templo, todos os players locais. As almas soltas valem só na sessão. No Pátio online aparecem para todos os navegadores ([abaixo](#no-pátio-online-1111-v280)).
 
@@ -85,15 +87,15 @@ Classes (`SOUL_CLASSES`). A alma voa na classe da sua entrada da biblioteca: a d
 
 ## Callback (10/11, v2.7.0)
 
-- **Gatilho:** com o cesto vazio e ao menos uma alma do player solta, o contador mostra “Call back” e fica preenchido na cor do player. Um clique ou toque nele chama as almas (`combat.callSouls`).
-- **Efeito:** todas as almas soltas daquele player voltam para o contador, uma a cada 0,2 s (`CALLBACK_GAP`), da mais perto do boneco para a mais longe (distância medida no instante do clique). Cada uma faz o mesmo voo da abdução e conta ao chegar.
+- **Gatilho:** com a Bag of souls vazia e ao menos uma alma do player solta, ela mostra “Call back” e fica preenchido na cor do player. Um clique ou toque nele chama as almas (`combat.callSouls`).
+- **Efeito:** todas as almas soltas daquele player voltam para a Bag of souls, uma a cada 0,2 s (`CALLBACK_GAP`), da mais perto do boneco para a mais longe (distância medida no instante do clique). Cada uma faz o mesmo voo da abdução e conta ao chegar.
 - **Proteção:** um clique até 0,5 s depois de soltar uma alma não chama ninguém (`CALLBACK_GUARD`), para o último clique de uma sequência não desfazer tudo.
-- **Depois:** assim que a primeira chega, o contador volta a mostrar o número, e um clique solta de novo.
+- **Depois:** assim que a primeira chega, a Bag of souls volta a mostrar o número, e um clique solta de novo.
 - **Cancelamento:** não há; uma alma chamada pode ser capturada por um Passaguá antes de partir.
 
 ## Captura de alma solta (10/11, v2.7.0)
 
-- O Passaguá de qualquer player local captura almas soltas no arco do golpe, com a mesma abdução. A alma (a mesma, com a identidade dela) vai para o cesto de quem capturou: a de outro player muda de dono; a própria volta para o próprio cesto.
+- O Passaguá de qualquer player local captura almas soltas no arco do golpe, com a mesma abdução. A alma (a mesma, com a identidade dela) vai para a Bag of souls de quem capturou: a de outro player muda de dono; a própria volta para a própria Bag of souls.
 
 ## Ajudas e atrapalhos (11/11, v2.8.0)
 
@@ -151,13 +153,13 @@ A alma solta age pelo dono, e às vezes contra ele (`lib/pigchicken/soul-acts.ts
 `lib/pigchicken/net-souls.ts` (dados e regras), `lib/pigchicken/net-world-sync.ts` (envio), ganchos em `combat.ts`, repasse em `server/src/patio-room.mjs`; testes em `tests/pigchicken-net-souls.cases.cjs` e `server/test/room.test.mjs`.
 
 - **Quem decide:** cada navegador simula as almas que os seus players soltaram e manda todas 10 vezes por segundo (`souls`: id, posição e lado; o que a alma é vai só na primeira vez, e tudo de novo a cada 2 s ou quando alguém entra; até 64 por navegador). Os outros desenham cópias que deslizam até a posição recebida (saltam acima de 400 px), com o desenho da entrada da biblioteca e um anel na cor do navegador dono. As cópias não agem.
-- **Roubo:** o Passaguá de um player sobre a cópia mostra a nuvem na hora, esconde a cópia e pede a alma ao navegador que a simula (`take`). Esse navegador tira a alma do ar (ela larga o que carregava) e responde com o que ela é (`give`); só então ela voa até o contador de quem pediu e conta no cesto dele. Conta também como captura na Biblioteca de quem roubou. Com dois pedidos pela mesma alma, o primeiro a chegar leva e o segundo não recebe nada. Sem resposta em 1,5 s (`TAKE_WAIT`) a cópia volta a aparecer; uma resposta depois de 3 s é ignorada.
+- **Roubo:** o Passaguá de um player sobre a cópia mostra a nuvem na hora, esconde a cópia e pede a alma ao navegador que a simula (`take`). Esse navegador tira a alma do ar (ela larga o que carregava) e responde com o que ela é (`give`); só então ela voa até a Bag of souls de quem pediu e conta nela. Conta também como captura na Biblioteca de quem roubou. Com dois pedidos pela mesma alma, o primeiro a chegar leva e o segundo não recebe nada. Sem resposta em 1,5 s (`TAKE_WAIT`) a cópia volta a aparecer; uma resposta depois de 3 s é ignorada.
 - **Sumiço:** quando a alma deixa de ser enviada (Callback, capturada, o navegador saiu do lobby), a cópia some numa nuvem. Sair do online apaga as cópias; as almas soltas deste navegador continuam, locais.
 - **Pássaro morto-vivo:** é um inimigo do dono do lobby. Num navegador que não é o dono, o Passaguá sobre ele some com a cópia e faz o mesmo pedido ao dono do lobby, que tira o pássaro do mundo e responde com a alma morta (espécie, instrumento, nota e a arma que o matou, que só ele conhece). Antes, a cópia capturada voltava em até 2 s e dava outra alma.
 - **Pássaro vivo:** continua de cada tela: cada navegador vê nascer o seu quando o alien vira pássaro e pode capturar o seu. Ele lembra a última nota que aquele navegador tocou no alien; sem nota dali, instrumento e nota ficam em branco. A nota cantada por uma alma enche a harmonia no dono do lobby sem mudar o que o alien lembra.
 - **Pintinho de outro navegador:** os bandos de todos aparecem em todos ([pintinhos](../chicken/chicks.md#no-pátio-online-11112026-v280)). O Passaguá sobre o pintinho de outro navegador esconde a cópia e faz o mesmo pedido ao navegador dono (`take` do tipo `c`), que tira o pintinho do seu bando e responde com a alma Pintinho.
 - **Servidor:** só repassa, conferindo tamanho, quantidade e ritmo (`souls` para os outros; `take` e `give` só para o navegador indicado). Ele avisa em `hello.caps.souls` que conhece essas mensagens; com um servidor antigo o navegador não as envia (uma mensagem desconhecida derruba a conexão) e as almas ficam locais.
-- **Não enviado:** o cesto e o contador dos outros e o voo até o contador.
+- **Não enviado:** a Bag of souls dos outros e o voo até ela.
 
 ## Ainda não implementado
 

@@ -18,6 +18,10 @@ export const BACKDROP_PAD_L = 1600, BACKDROP_PAD_R = 4200
 // a layer's width in its own units: what the camera can reveal of it over the whole world
 export const backdropLayerW = (worldW: number, p: number) => Math.ceil(worldW * (1 - p)) + BACKDROP_PAD_L + BACKDROP_PAD_R
 
+// how far up a layer's drawing reaches: it starts at the world's top (y = 0) and grows upward to hold anything drawn
+// higher (a tall range, the sun's glow), so only the Pátio's own frame ever cuts it, never the layer's box
+export const backdropLayerTop = (highestY: number) => Math.min(0, Math.floor(highestY) - 8)
+
 // the ranges, in the order Cordilheiras adds them (the usual three first, then one behind and two in between):
 // depth, seed, base (their feet), peaks' height, roughness, sampling step, the haze. Drawn back to front.
 export const MOUNTAIN_RANGES = [

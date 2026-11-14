@@ -1,6 +1,6 @@
 # Pátio: biblioteca de almas
 
-Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). A identidade das almas, o cesto, a abdução e o voo das almas soltas ficam em [souls.md](souls.md).
+Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). A identidade das almas, a Bag of souls, a abdução e o voo das almas soltas ficam em [souls.md](souls.md).
 
 Código: `lib/pigchicken/soul-library.ts` (catálogo, receitas das raras, aparência, fichas editáveis, coleção; puro, mais as cópias deste navegador), fichas publicadas em `data/pigchicken/default-souls.json` (registro no Admin em `lib/admin/catalog.ts`, `validation.ts` e `game-defaults-client.ts`), desenho em `components/pigchicken/draw/soul-art.ts`, painel em `components/pigchicken/soul-library-panel.tsx`, botão no cabeçalho em `components/chicken/chicken-patio.tsx`, aviso de captura em `combat.soulNews` (`lib/pigchicken/combat.ts`), lido por `components/pigchicken/parquinho.tsx`. Testes: `tests/pigchicken-soul-library.cases.cjs`, `tests/pigchicken-soul-sync.cases.cjs` (coleção na conta), os dois últimos casos de `tests/pigchicken-souls.cases.cjs` e, para o banco, o caso das almas em `supabase/tests/database.test.cjs`.
 
@@ -41,7 +41,7 @@ Raras (`RARE_SOULS`; eixo que a receita não cita vale qualquer):
 
 - **Forma pela família** (`SOUL_FRAMES`, pixel art de 13 × 8 em duas batidas de asa; tamanho do pixel e batidas por segundo em `SOUL_SHAPES`): Sopro tem rabo comprido e claro (3 px, 12/s); Cordas, topete (4 px, 7/s); Teclas, barriga de teclas de piano (4 px, 8/s); Percussão é gorducha e de bico curto (4 px, 9/s); Rebate é coruja, com dois tufos e dois olhos (5 px, 5/s); o Pintinho tem asas curtas (3 px, 10/s).
 - **Cores:** a viva usa a cor da espécie, com asas mais escuras e barriga clara; a morta é cinza com o olho brilhando na cor da espécie; a rara tem cores próprias (algumas com olho brilhante) e pode ter outra forma e tamanho.
-- **No mundo** (voando para o contador ou solta): a forma é a da entrada. A viva aparece na cor do alien que ela era; a morta, cinza com o olho na cor da nota que a ressuscitou; a rara, nas cores da entrada. O brilho em volta segue a cor da alma. Antes de capturado, o pássaro continua com o desenho do seu tipo de pássaro. Numa alma da regra, a cor que a ficha pintou por cima da do código vale no lugar da cor do alien ou da nota (`entryLookFor`).
+- **No mundo** (voando para a Bag of souls ou solta): a forma é a da entrada. A viva aparece na cor do alien que ela era; a morta, cinza com o olho na cor da nota que a ressuscitou; a rara, nas cores da entrada. O brilho em volta segue a cor da alma. Antes de capturado, o pássaro continua com o desenho do seu tipo de pássaro. Numa alma da regra, a cor que a ficha pintou por cima da do código vale no lugar da cor do alien ou da nota (`entryLookFor`).
 
 ## Voo (10/11, v2.7.0)
 

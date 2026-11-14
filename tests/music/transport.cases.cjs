@@ -238,3 +238,65 @@ test('queued rules coalesce, cancel stale events, and apply independently at aud
  q.advance(2);assert.equal(q.entries.get('check').hit,undefined)
  q.update(config,active,true,2.5,'a');q.update(config,idle,false,2.6,'a');assert.equal(q.pending.size,0)
 })
+
+test('the transport asks each voice once per bar and schedules the same attacks as slice-by-slice queries', async () => {
+  const api = await strudel()
+  const { MusicTransport } = loadTs('lib/music/transport.ts')
+  const kit = creative.createDusseldorfSession()
+  const snapshot = creative.creativeSnapshot(kit, true)
+  snapshot.pieces = snapshot.pieces.map(piece => ({ ...piece, active: true }))
+  const { compileVoice } = loadTs('lib/music/pattern-compiler.ts')
+  const patterns = voiceSpecs(snapshot, null).map(voice => compileVoice(api, voice))
+  assert.ok(patterns.length > 8)
+  const queries = []
+  const counted = patterns.map((pattern, index) => ({ queryArc: (begin, end, controls) => { queries.push([index, begin, end]); return pattern.queryArc(begin, end, controls) } }))
+  let now = 0
+  const attacks = []
+  const transport = new MusicTransport({ getTime: () => now, latency: .1, interval: 50, onBoundary() {}, onError(error) { throw error }, onTrigger: hap => attacks.push(JSON.stringify([Number(hap.whole.begin).toFixed(9), hap.value])) })
+  transport.setCps(.5)
+  transport.setPatterns(counted)
+  await transport.start()
+  // Irregular ticks, as a busy main thread gives them: 4 bars at 2 s per bar.
+  for (let step = 0; now < 8; step++) { now += .031 + (step * 7 % 5) * .011; transport.tick() }
+  const reached = transport.lastEnd
+  transport.stop()
+  assert.ok(queries.every(([, begin, end]) => Number.isInteger(begin) && end === begin + 1), 'only whole bars are queried')
+  const perVoiceBar = new Map()
+  for (const [index, begin] of queries) perVoiceBar.set(`${index}:${begin}`, (perVoiceBar.get(`${index}:${begin}`) ?? 0) + 1)
+  assert.ok([...perVoiceBar.values()].every(count => count === 1), 'each voice is asked once per bar')
+  const expected = patterns.flatMap(pattern => pattern.queryArc(0, reached).filter(hap => hap.hasOnset() && Number(hap.whole.begin) < reached).map(hap => JSON.stringify([Number(hap.whole.begin).toFixed(9), hap.value])))
+  assert.deepEqual([...attacks].sort(), expected.sort(), 'no attack is lost or doubled')
+})
+
+test('the next bar is queried a few voices per tick and a changed voice is the only one asked again', async () => {
+  const { MusicTransport } = loadTs('lib/music/transport.ts')
+  const queries = []
+  const hap = (begin, note) => ({ whole: { begin, end: begin + .25 }, value: { note }, hasOnset: () => true })
+  const voice = name => ({ queryArc: (begin, end) => { queries.push(`${name}:${begin}`); return [hap(begin, name), hap(begin + .5, name)] } })
+  const voices = Array.from({ length: 12 }, (_, index) => voice(`v${index}`))
+  let now = 0
+  const attacks = []
+  const transport = new MusicTransport({ getTime: () => now, latency: .1, interval: 50, onBoundary() {}, onError(error) { throw error }, onTrigger: hit => attacks.push(`${hit.value.note}@${hit.whole.begin}`) })
+  transport.setCps(.5)
+  transport.setPatterns(voices)
+  await transport.start()
+  assert.equal(queries.filter(query => query.endsWith(':0')).length, 12, 'the opening bar needs every voice at once')
+  assert.equal(queries.filter(query => query.endsWith(':1')).length, 2, 'the next bar starts with 12 / 6 voices')
+  now = .05; transport.tick()
+  assert.equal(queries.filter(query => query.endsWith(':1')).length, 4)
+  for (let tick = 0; tick < 6; tick++) { now += .05; transport.tick() }
+  assert.equal(queries.filter(query => query.endsWith(':1')).length, 12, 'bar 1 is ready long before its bar line')
+  // One voice changes its notes: only the new pattern is queried, and the shared panel read reuses the bar.
+  const before = queries.length
+  const changed = voice('changed')
+  transport.setPatterns([changed, ...voices.slice(1)])
+  now += .05; transport.tick()
+  assert.deepEqual(queries.slice(before), ['changed:0', 'changed:1'])
+  assert.equal(transport.barHaps(voices[3], 0).length, 2)
+  assert.equal(queries.length, before + 2, 'reading a scheduled bar for the panels does not query again')
+  while (now < 2.2) { now += .05; transport.tick() }
+  transport.stop()
+  assert.ok(attacks.includes('changed@1') && attacks.includes('changed@0.5') && !attacks.includes('changed@0'), 'the new voice enters from the next slice')
+  assert.ok(attacks.includes('v0@0') && !attacks.includes('v0@1'), 'the replaced voice stops there')
+  assert.equal(attacks.filter(attack => attack === 'v5@1').length, 1)
+})

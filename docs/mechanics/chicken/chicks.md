@@ -41,4 +41,4 @@ Cada pintinho tem seu próprio cérebro (`followStep`, a cada quadro, pelo laço
 
 ## Captura
 
-- O Passaguá de qualquer player captura os pintinhos no arco do golpe, como os pássaros: o pintinho some numa nuvem e vira uma alma de espécie Pintinho, que voa até o contador de quem capturou e soma 1 ao chegar ([almas](../patio/souls.md)). Pintinhos capturados não voltam até o Pátio ser aberto de novo.
+- O Passaguá de qualquer player captura os pintinhos no arco do golpe, como os pássaros: o pintinho some numa nuvem e vira uma alma de espécie Pintinho, que voa até a Bag of souls de quem capturou e soma 1 ao chegar ([almas](../patio/souls.md)). Pintinhos capturados não voltam até o Pátio ser aberto de novo.

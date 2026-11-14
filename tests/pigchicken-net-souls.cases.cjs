@@ -27,7 +27,7 @@ function world(item) {
 }
 const land = c => { for (let t = 0; t < S.ABDUCT_TIME + 0.4; t += 0.016) step(c) }
 // n chicks caught, one sweep each
-function basketOf(c, n) {
+function bagOf(c, n) {
   for (let k = 0; k < n; k++) {
     c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
     for (let i = 0; i < 50; i++) step(c, { melee: i === 0 })
@@ -62,7 +62,7 @@ test('what a soul is travels whole, and junk is not a soul', () => {
 
 test("a browser's souls show on the others as mirrors that glide to where they are, and leave when they do", () => {
   const a = world('passagua'), b = world()
-  basketOf(a, 2)
+  bagOf(a, 2)
   a.releaseSoul({ x: 300, y: -300 }); a.releaseSoul({ x: 300, y: -300 })
   for (let t = 0; t < 1; t += 0.016) step(a)
   const [one, other] = a.freedSouls
@@ -119,10 +119,10 @@ test("a browser's souls show on the others as mirrors that glide to where they a
   assert.equal(N.exportSouls(many, A, new Set(), true).length, N.NET_SOULS_MAX)
 })
 
-test("a Passaguá over another browser's soul asks that browser for it; it is given once and changes baskets", () => {
+test("a Passaguá over another browser's soul asks that browser for it; it is given once and changes bags", () => {
   const a = world('passagua'), b = world('passagua'), c = world('passagua')
-  basketOf(a, 1)
-  const soul = a.basket[0]
+  bagOf(a, 1)
+  const soul = a.bagOfSouls[0]
   a.releaseSoul({ x: 40, y: 0 })
   const told = new Set()
   const sync = () => { const l = N.exportSouls(a.freedSouls, A, told, true); b.importNetSouls(A, l); c.importNetSouls(A, l) }
@@ -135,7 +135,7 @@ test("a Passaguá over another browser's soul asks that browser for it; it is gi
   assert.equal(m.asked !== null, true)
   assert.ok(b.puffs.length > 0 || b.sounds.some(s => s.kind === 'puff'))
   land(b)
-  assert.equal(b.capturedSouls, 0, 'not in the basket before the answer')
+  assert.equal(b.capturedSouls, 0, 'not in the Bag of souls before the answer')
   assert.equal(b.abductions.length, 0)
   // C asks too, a moment later
   for (let i = 0; i < 40; i++) { holdMirror(c.netSouls[0], 40, 0); step(c, { melee: i === 0 }) }
@@ -144,7 +144,7 @@ test("a Passaguá over another browser's soul asks that browser for it; it is gi
   const who = a.giveNetTake(take, A)
   assert.deepEqual(who, N.soulWho(soul))
   assert.equal(a.freedSouls.length, 0, 'it left the browser that flew it')
-  assert.equal(a.capturedSouls, 0, 'and its basket')
+  assert.equal(a.capturedSouls, 0, 'and its Bag of souls')
   assert.equal(a.giveNetTake(N.cleanTake(c.netTakes.splice(0)[0]), A), null, 'given once')
   assert.equal(a.giveNetTake({ k: 's', id: W.netIdFor(B, soul.id) }, A), null, "another browser's id is not this one's soul")
   // the answer: it flies to B's counter and counts; it is new to B's library
@@ -153,7 +153,7 @@ test("a Passaguá over another browser's soul asks that browser for it; it is gi
   assert.deepEqual({ x: b.abductions[0].x, y: b.abductions[0].y, owner: b.abductions[0].owner }, { x: 40, y: 0, owner: 'p1' }, 'from where it was caught')
   land(b)
   assert.equal(b.capturedSouls, 1)
-  const got = b.basket[0]
+  const got = b.bagOfSouls[0]
   assert.deepEqual(N.soulWho(got), N.soulWho(soul), 'the same soul')
   assert.equal(b.soulNews.length, 1)
   assert.equal(b.soulNews[0].soul, got)
@@ -172,7 +172,7 @@ test("a Passaguá over another browser's soul asks that browser for it; it is gi
 
 test('a soul asked for and never answered shows again; a late answer is nothing', () => {
   const a = world('passagua'), b = world('passagua')
-  basketOf(a, 1)
+  bagOf(a, 1)
   a.releaseSoul({ x: 40, y: 0 })
   b.importNetSouls(A, N.exportSouls(a.freedSouls, A, new Set(), true))
   const m = b.netSouls[0]
@@ -226,7 +226,7 @@ test("the lobby owner's undead bird is asked of the owner by the other browsers,
   assert.equal(follower.applyNetGive(N.cleanGive({ ...take, soul: who })), true)
   land(follower)
   assert.equal(follower.capturedSouls, 1)
-  assert.deepEqual((({ species, state, shot, weapon, bird }) => ({ species, state, shot, weapon, bird }))(follower.basket[0]), { species: 'jelly', state: 'dead', shot: 'wind', weapon: 'bullet', bird: u.data.bird })
+  assert.deepEqual((({ species, state, shot, weapon, bird }) => ({ species, state, shot, weapon, bird }))(follower.bagOfSouls[0]), { species: 'jelly', state: 'dead', shot: 'wind', weapon: 'bullet', bird: u.data.bird })
   for (let t = 0; t < N.TAKE_WAIT; t += 0.016) step(follower)
   assert.equal(follower.netFoeTaken(u.net), false)
   // a game server that does not pass the asking on: the mirror is caught here, as before
@@ -328,7 +328,7 @@ test("a Passaguá over another browser's chick asks that browser for it; it leav
   assert.equal(hiddenB, 1, 'out of sight here meanwhile')
   assert.ok(b.puffs.length > 0 || b.sounds.some(s => s.kind === 'puff'))
   land(b)
-  assert.equal(b.capturedSouls, 0, 'not in the basket before the answer')
+  assert.equal(b.capturedSouls, 0, 'not in the Bag of souls before the answer')
   assert.equal(b.soulNews.length, 0)
   c.setCatchables([{ x: 40, y: 0, r: 20, net: { pid: A, id }, catch: () => { hiddenC++ } }])
   for (let i = 0; i < 40; i++) step(c, { melee: i === 0 })
@@ -347,7 +347,7 @@ test("a Passaguá over another browser's chick asks that browser for it; it leav
   assert.equal(b.applyNetGive(give), true)
   land(b)
   assert.equal(b.capturedSouls, 1)
-  assert.deepEqual({ species: b.basket[0].species, state: b.basket[0].state, bird: b.basket[0].bird }, { species: 'chick', state: 'alive', bird: null })
+  assert.deepEqual({ species: b.bagOfSouls[0].species, state: b.bagOfSouls[0].state, bird: b.bagOfSouls[0].bird }, { species: 'chick', state: 'alive', bird: null })
   assert.equal(b.soulNews.length, 1)
   assert.equal(b.applyNetGive(give), false, 'the same answer twice counts once')
   land(c)

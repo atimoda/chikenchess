@@ -2,7 +2,7 @@
 // where it came from and how. Four things make it: the species of the alien it was, whether it is alive (its
 // harmony filled up) or dead (killed, then brought back by notes), the family of the instrument whose note finished
 // it and what that note is in the key. A dead one also remembers the kind of weapon that killed it.
-// Each player keeps theirs in a basket, a stack: the last one caught is the first one out.
+// Each player keeps theirs in a Bag of souls, a stack: the last one caught is the first one out.
 // Pure data and functions; the combat (lib/pigchicken/combat.ts) fills it in.
 import type { BirdId } from './birds'
 
@@ -81,10 +81,10 @@ export function soulRarity(o: SoulOrigin): SoulRarity {
 
 export const newSoul = (id: number, origin: SoulOrigin, color: string, bird: BirdId | null): Soul => ({ ...origin, id, rarity: soulRarity(origin), color, bird })
 
-// ---------- abduction: a caught soul flies to its owner's counter, and counts when it gets there ----------
+// ---------- abduction: a caught soul flies to its owner's Bag of souls, and counts when it gets there ----------
 export const ABDUCT_TIME = 0.55
 export const ABDUCT_GAP = 0.08 // several caught at once leave one after the other
-export const SOUL_PULSE = 0.3 // s the counter swells when one arrives
+export const SOUL_PULSE = 0.3 // s the Bag of souls swells when one arrives
 // (x, y): where it was caught (world px); t: s on its way (negative: still waiting its turn)
 export type Abduction = { soul: Soul; owner: string; x: number; y: number; t: number }
 
@@ -99,7 +99,7 @@ export function stepAbductions(list: Abduction[], dt: number): Abduction[] {
   return done
 }
 
-// where it is on its way (k: 0 at the catch, 1 at the counter): pulled up first, then faster and faster, shrinking
+// where it is on its way (k: 0 at the catch, 1 at the Bag of souls): pulled up first, then faster and faster, shrinking
 export function abductPoint(from: { x: number; y: number }, to: { x: number; y: number }, k: number): { x: number; y: number; scale: number } {
   const u = Math.max(0, Math.min(1, k)), e = u * u
   const cx = from.x + (to.x - from.x) * 0.2, cy = Math.min(from.y, to.y) - 70

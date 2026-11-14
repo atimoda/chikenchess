@@ -7,6 +7,7 @@ const { createCombat } = loadTs('lib/pigchicken/combat.ts')
 const { DEFAULT_ITEMS, MAGIC_IDS, RACK_ITEM_IDS, isStaff, itemsFileProblem, itemsDefaultsFile } = loadTs('lib/pigchicken/items.ts')
 const { itemGroup } = loadTs('lib/pigchicken/inventory.ts')
 const S = loadTs('lib/pigchicken/shock.ts')
+const R = loadTs('lib/pigchicken/return-flight.ts')
 const N = loadTs('lib/pigchicken/net-world.ts')
 const { heldItemPose } = loadTs('lib/pigchicken/held-pose.ts')
 
@@ -153,7 +154,8 @@ test("Atirar throws the hammer: further with the charge, already half way with a
 })
 
 test('the hammer in flight hits and shocks whoever it crosses, and her wing waits for it', () => {
-  const { c, d } = holding('mjolnir')
+  // with no curve, so that the path over the two of them is the straight one
+  const { c, d } = holding('mjolnir', d => { d.specialCooldown = 0; d.returnCurveMin = 0 })
   const t = alien(c, 200), side = alien(c, 200 + 150)
   step(c, { fire: true, firePressed: true }); step(c)
   step(c, { melee: true })
@@ -173,6 +175,71 @@ test('the hammer in flight hits and shocks whoever it crosses, and her wing wait
   for (let i = 0; i < 400 && (i < 2 || w.c.flights.length); i++) { w.c.step(DT, body, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 }, wall, 1000, () => {}); max = Math.max(max, w.c.flights[0]?.x ?? 0) }
   assert.ok(max >= 100 && max < 125, `it stops at the wall (${max})`)
   assert.equal(w.c.held.flying, false)
+})
+
+// throws the hammer along `angle` and flies it with her aim held at `aim`; the points of the way out and of the way back
+function flown(change, angle = 0, aim = angle) {
+  const { c, d } = holding('mjolnir', d => { d.specialCooldown = 0; change(d) })
+  step(c, { fire: true, firePressed: true }, angle); step(c, {}, angle)
+  const out = [], back = []
+  for (let i = 0; i < 900 && c.flights.length; i++) { const f = c.flights[0]; (f.back ? back : out).push({ x: f.x, y: f.y }); step(c, {}, aim) }
+  // the first point of the way back is where it turned
+  return { c, d, out, back, far: back[0] }
+}
+// how far a point is from the line a → b, to its right (in the canvas: below a line that goes right)
+const beside = (p, a, b) => ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)) / Math.hypot(b.x - a.x, b.y - a.y)
+
+test('the curve of the throw: the least bend with the aim still, more to the side the aim turns, never past the most', () => {
+  const DEG = Math.PI / 180
+  assert.deepEqual(R.steerCurve(0, 1, 16, 70), { side: 1, curve: 16 * DEG })
+  assert.deepEqual(R.steerCurve(2 * DEG, -1, 16, 70), { side: -1, curve: 16 * DEG }, 'a small tremble of the aim keeps the side')
+  const up = R.steerCurve(-20 * DEG, 1, 16, 70), far = R.steerCurve(-80 * DEG, 1, 16, 70)
+  assert.equal(up.side, -1); assert.ok(up.curve > 16 * DEG && up.curve < 70 * DEG)
+  assert.equal(far.side, -1); assert.ok(Math.abs(far.curve - 70 * DEG) < 1e-9)
+  assert.equal(R.steerCurve(0, 1, 0, 70).curve, 0, 'no least bend: straight until she steers')
+  assert.ok(Math.abs(R.steerCurve(1, 1, 30, 10).curve - 30 * DEG) < 1e-9, 'the most is never under the least')
+  // with nobody steering the way out ends on the line she aimed along
+  const path = R.outPath(0, 0, 0, 600, 20), end = path[path.length - 1]
+  assert.ok(Math.abs(end.y) < 2 && end.x > 590, `${end.x}, ${end.y}`)
+  assert.ok(Math.min(...path.map(p => p.y)) < -20, 'and goes over that line')
+})
+
+test('with no curve the hammer goes and comes back straight; with the least bend it goes over the line and comes back under it', () => {
+  const flat = flown(d => { d.returnCurveMin = 0 })
+  assert.ok(flat.out.every(p => Math.abs(p.y) < 1e-6), 'straight out')
+  const chest = { x: 0, y: -90 }
+  assert.ok(flat.back.every(p => Math.abs(beside(p, flat.far, chest)) < 1), 'and straight back to her')
+  assert.equal(flat.c.flights.length, 0)
+  const loop = flown(() => {})
+  assert.ok(Math.min(...loop.out.map(p => p.y)) < -8, 'out over the line')
+  assert.ok(Math.abs(loop.far.y) < 6, `it turns back on the line she aimed along (${loop.far.y})`)
+  // going left, the right of far → chest is the upper side: the way back is on the other side, under
+  assert.ok(Math.min(...loop.back.map(p => beside(p, loop.far, chest))) < -8, 'back under the straight way home')
+  assert.ok(loop.back.every(p => beside(p, loop.far, chest) < 1))
+  assert.equal(loop.c.flights.length, 0, 'and it arrives'); assert.equal(loop.c.held.flying, false)
+  // thrown to the left it is the same picture mirrored
+  const left = flown(() => {}, Math.PI)
+  assert.ok(Math.min(...left.out.map(p => p.y)) < -8 && Math.abs(left.far.y) < 6 && left.far.x < -300)
+  // the aim line while charging is that same way out
+  const { c } = holding('mjolnir')
+  step(c, { fire: true, firePressed: true })
+  const line = c.predictReturn({ x: 0, y: 0 }, { boxes: [], groundY: 1000 }), end = line[line.length - 1]
+  assert.ok(Math.hypot(end.x - loop.far.x, end.y - loop.far.y) < 14, 'the aim line ends where it turns back')
+  assert.ok(Math.min(...line.map(p => p.y)) < -8)
+})
+
+test('the aim steers the hammer in the air: it bends to the side she turns the aim to, out and back, and still comes home', () => {
+  const still = flown(() => {}), up = flown(() => {}, 0, -0.6), down = flown(() => {}, 0, 0.6)
+  assert.ok(up.far.y < still.far.y - 80, `aim up, it goes up (${up.far.y})`)
+  assert.ok(down.far.y > still.far.y + 80, `aim down, it goes down (${down.far.y})`)
+  const chest = { x: 0, y: -90 }
+  // back on the side she aims: over the straight way home with the aim up, under it with the aim down
+  assert.ok(Math.max(...up.back.map(p => beside(p, up.far, chest))) > 20)
+  assert.ok(Math.min(...down.back.map(p => beside(p, down.far, chest))) < -20)
+  for (const f of [up, down]) { assert.equal(f.c.flights.length, 0); assert.equal(f.c.held.flying, false) }
+  // the most bend there is, with the aim held far away, still lets it arrive
+  const wild = flown(d => { d.returnCurveMax = 180 }, 0, 2.5)
+  assert.equal(wild.c.flights.length, 0); assert.equal(wild.c.held.flying, false)
 })
 
 test("the staff's strong blow shocks further and longer than its quick one", () => {
