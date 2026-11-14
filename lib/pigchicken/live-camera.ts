@@ -7,7 +7,7 @@ import { stageWidth } from "../stage-size"
 export const liveCamera = { x: 0, y: 0, zoom: 1 }
 const followers = new Set<HTMLElement>()
 const parallaxLayers = new Map<HTMLElement | SVGElement, number>()
-const regions = new Set<{ el: HTMLElement | SVGElement; bounds: ViewRect; depth: number }>()
+const regions = new Set<{ el: HTMLElement | SVGElement; bounds: ViewRect; depth: number; pinned: boolean }>()
 const cameraTransform = () => {
   const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
   if (z === 1) return `translate(${-liveCamera.x}px, ${liveCamera.y}px)`
@@ -21,8 +21,11 @@ const parallaxTransform = (depth: number) => `translate3d(${liveCamera.x * depth
 function updateRegions() {
   const screenView = zoomedView(stageWidth(), window.innerHeight, liveCamera.zoom)
   const view = { ...screenView, x: screenView.x + liveCamera.x, y: screenView.y - liveCamera.y }
-  regions.forEach(({ el, bounds, depth }) => {
-    const visible = String(intersectsView({ ...bounds, x: bounds.x + liveCamera.x * depth }, view, 192))
+  regions.forEach(({ el, bounds, depth, pinned }) => {
+    // where the region is now: its depth slides it on both axes (depthOffset), so a cloud or a far tree is tested
+    // where the screen shows it, also with the camera up high
+    const o = depthOffset(depth, pinned)
+    const visible = String(intersectsView({ ...bounds, x: bounds.x + o.x, y: bounds.y + o.y }, view, 192))
     if (el.getAttribute('data-patio-visible') !== visible) el.setAttribute('data-patio-visible', visible)
   })
 }
@@ -42,8 +45,10 @@ function unregister(remove: () => void) {
 }
 
 // Numeric world bounds: no getBoundingClientRect in the camera's visibility pass.
-export function watchCameraRegion(el: HTMLElement | SVGElement, bounds: ViewRect, depth = 0) {
-  const region = { el, bounds, depth }
+// depth/pinned: how it slides with the camera, as followDepth (a parallax layer of the backdrop slides like a pinned
+// one: from the camera at 0)
+export function watchCameraRegion(el: HTMLElement | SVGElement, bounds: ViewRect, depth = 0, pinned = false) {
+  const region = { el, bounds, depth, pinned }
   register(() => regions.add(region)); updateRegions()
   return () => unregister(() => regions.delete(region))
 }
@@ -77,6 +82,7 @@ export function setCameraRestY(y: number) {
   if (y === restY) return
   restY = y
   depthFollowers.forEach(placeDepth)
+  updateRegions()
   cameraListeners.forEach(fn => fn(liveCamera.x, liveCamera.y - restY))
 }
 export function followDepth(el: HTMLElement | SVGElement, depth: number, pinned = false) {

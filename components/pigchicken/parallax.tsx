@@ -120,7 +120,7 @@ function Cloud({ c, id, lit, shade, wind = 1, sun, blur, fray = 0, grain = 1 }: 
   const ref = useRef<SVGSVGElement>(null)
   const reach = cloudReach(c), pad = Math.ceil(blur * 3 + fray * 0.5) + 2
   const x = c.x + reach.l - pad, y = c.y - c.top - pad, w = reach.r - reach.l + pad * 2, h = c.top + c.bottom + pad * 2
-  useEffect(() => ref.current ? watchCameraRegion(ref.current, { x: -PAD_L + x - c.drift, y, w: w + c.drift * 2, h }, 0.9) : undefined, [x, y, w, h, c.drift])
+  useEffect(() => ref.current ? watchCameraRegion(ref.current, { x: -PAD_L + x - c.drift, y, w: w + c.drift * 2, h }, CLOUD_DEPTH, true) : undefined, [x, y, w, h, c.drift])
   const dx = sun[0] - c.x, dy = sun[1] - c.y, far = Math.hypot(dx, dy) || 1, lx = dx / far, ly = dy / far
   return <svg ref={ref} className={wind > 0 ? "px-cloud absolute" : "absolute"} viewBox={`${x} ${y} ${w} ${h}`}
     style={{ left: x, top: y, width: w, height: h, opacity: c.o, willChange: wind > 0 ? "transform" : undefined, ["--d" as string]: `${(c.drift / Math.max(wind, 0.05)).toFixed(1)}s`, ["--a" as string]: `${c.drift}px` }}>
