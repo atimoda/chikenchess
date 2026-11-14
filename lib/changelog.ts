@@ -53,6 +53,7 @@ const RECENT = [
         'Novo item Chave: fica em pilha (até 9) no grupo Utilitário do inventário e entra em suportes (paleta Chaves), Item solto e baús.',
         'O contador de almas ao lado do avatar passa a se chamar Bag of souls.',
         'Itens → Combo: cada golpe da sequência agora tem dois seletores, a direção (para baixo, para cima, horizontal ou giro) e o ângulo que ele cobre. Dois golpes na mesma direção podem ter ângulos diferentes. Os ângulos já vêm iguais aos de antes, e combos ajustados neste navegador mantêm os arcos que tinham. “Arco para cima” e “Arco horizontal” saem do painel.',
+        'Montanhas bem altas (Inclinação e Altura no máximo) não têm mais o topo cortado numa linha reta: os picos sobem o quanto a configuração pedir e só a moldura do Pátio os corta. O brilho de um sol alto, a lua e as estrelas mais altas também deixam de ser cortados.',
       ] },
       { title: 'Martelo de Thor e Cajado de Odin', items: [
         'Dois itens novos de magia, no grupo Utilitário do inventário. No Modo editor, os suportes ficam na paleta Magia; também podem entrar como Item solto.',
