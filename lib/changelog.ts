@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira',
+    title: 'Trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira; Mute no painel Volume do Pátio',
     groups: [
       { title: 'Pátio', items: [
         'Trocar de Pátio agora é uma mudança completa de mundo: o Pátio em que você estava é fechado e nada dele aparece no novo. Antes, aliens, zumbis, pássaros, tiros e outras coisas do Pátio anterior continuavam no Pátio aberto (um Pátio novo vazio aparecia com aliens). Vale no modo local e no online, por qualquer caminho: Playgrounds, Próximo / Anterior, Pátio novo, portal para outro Pátio.',
@@ -21,6 +21,7 @@ const RECENT = [
         'O ângulo de cada golpe do combo agora é uma bolinha que mostra a fatia coberta: clique e arraste para os lados ou para cima e para baixo para mudar, como um knob. O número aparece pequeno ao lado.',
         'Abaixo de “Janela do combo” há uma barra fina que enche a cada golpe e esvazia durante a janela, para ver o tempo que resta para continuar a sequência. Ela só funciona com o painel Itens aberto.',
         'Nova direção de golpe “Relativo à mira”, nos golpes do combo e no Movimento do golpe forte: com a mira acima do horizonte o golpe sai para cima, e com a mira abaixo, para baixo.',
+        'O painel Volume ganhou o botão Mute, à esquerda de Padrão: silencia todo o som do Pátio (e os cacarejos e o portal no globo) sem mexer nos volumes. Com ele ligado os sliders ficam cinza, mas continuam ajustáveis, e os valores voltam a valer ao desligar.',
       ] },
       { title: 'Partida', items: [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
