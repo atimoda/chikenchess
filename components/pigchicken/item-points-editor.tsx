@@ -2,8 +2,10 @@
 
 // The item's points on its drawing, dragged with the pointer (rig units, x forward from the grip, y down): the pivot
 // it turns around (sitting on her shoulder or mouth), where the wing and the back wing hold it, and where the shot leaves.
+// With "Arco e Flecha" the bow and the arrow are drawn apart: the arrow sits with its nock on the wing's point, the
+// string bends to it, and a dashed line shows how far back the charge pulls it.
 import { useMemo, useRef, useState } from "react"
-import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
+import { ARCHERY_ART, ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { PIVOT_PARTS, type ItemDef, type ItemId, type PivotPart } from "@/lib/pigchicken/items"
 
 type PointKey = "pivot" | "hand" | "back" | "muzzle"
@@ -41,6 +43,7 @@ export function ItemPointsEditor({ id, item, base, onChange }: { id: ItemId; ite
     if (p) onChange(d => { (d as Record<string, unknown>)[pt.x] = Math.max(-200, Math.min(200, p.x)); (d as Record<string, unknown>)[pt.y] = Math.max(-200, Math.min(200, p.y)) })
   }
   if (!art) return null
+  const parts = item.archery ? ARCHERY_ART[id] : undefined
   return (
     <div className="grid gap-field">
       <label className="flex items-center justify-between gap-3" title="A parte do corpo onde o eixo do item fica preso">
@@ -63,13 +66,27 @@ export function ItemPointsEditor({ id, item, base, onChange }: { id: ItemId; ite
           <input type="checkbox" checked={item.wingFlip} onChange={e => { const v = e.target.checked; onChange(d => { d.wingFlip = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
           <span>Inverter asa (vertical)</span>
         </label>
+        {item.fireMode === "charge" && (
+          <label className="flex items-center gap-2" title="Na carga do tiro, a asa da frente puxa a flecha para trás e a corda dobra junto; a asa de trás segura o arco parado">
+            <input type="checkbox" checked={item.archery} onChange={e => { const v = e.target.checked; onChange(d => { d.archery = v; if (v) { d.handOn = true; d.backOn = true } }) }} className="h-4 w-4 accent-[var(--primary)]" />
+            <span>Arco e Flecha</span>
+          </label>
+        )}
       </div>
       <svg ref={svgRef} viewBox={`${view.l} ${view.t} ${view.w} ${view.h}`} preserveAspectRatio="xMidYMid meet" aria-label="Pontos do item: arraste para mudar"
         onPointerMove={move} onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}
         className="h-64 w-full touch-none select-none rounded-md border border-white/10 bg-[#a9bcb1]">
         <line x1={view.l} y1={0} x2={view.l + view.w} y2={0} stroke="#0b110e" strokeOpacity={0.25} strokeWidth={unit} />
         <line x1={0} y1={view.t} x2={0} y2={view.t + view.h} stroke="#0b110e" strokeOpacity={0.25} strokeWidth={unit} />
-        <g dangerouslySetInnerHTML={{ __html: art }} style={{ pointerEvents: "none" }} />
+        {parts ? (
+          <g style={{ pointerEvents: "none" }}>
+            <path d={`M${parts.string[0]} ${parts.string[1]} L${item.handX} ${item.handY} L${parts.string[2]} ${parts.string[3]}`} fill="none" stroke="#e8e2d0" strokeWidth={1.2} strokeLinejoin="round" />
+            <g transform={`translate(${item.handX} ${item.handY})`} dangerouslySetInnerHTML={{ __html: parts.arrow }} />
+            <g dangerouslySetInnerHTML={{ __html: parts.body }} />
+          </g>
+        ) : <g dangerouslySetInnerHTML={{ __html: art }} style={{ pointerEvents: "none" }} />}
+        {/* how far back the charge pulls the wing's point */}
+        {item.archery && item.fireMode === "charge" && <line x1={item.handX} y1={item.handY} x2={item.handX - item.drawLen} y2={item.handY} stroke="#ffd166" strokeOpacity={0.7} strokeWidth={unit} strokeDasharray={`${4 * unit} ${3 * unit}`} />}
         {/* the shot's line, from the muzzle forward */}
         <line x1={item.muzzleX} y1={item.muzzleY} x2={view.l + view.w} y2={item.muzzleY} stroke="#4cc9f0" strokeOpacity={0.4} strokeWidth={unit} strokeDasharray={`${4 * unit} ${3 * unit}`} />
         {POINTS.map(p => {
