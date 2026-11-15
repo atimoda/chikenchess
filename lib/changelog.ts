@@ -7,11 +7,15 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida',
+    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio',
     groups: [
       { title: 'Partida', items: [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
         'Preferências da partida ganhou “Match log”, com o botão Copy: copia o histórico completo da partida, uma linha por acontecimento, com cada lance (posição, lances possíveis, listas Best e Worst com os scores, classificação, sequência e ovos pagos), Freeze e Shield, Undo, Redo, Mulligan e cada vez que as setas foram abertas. Serve para colar numa conversa ao relatar um bug. Vale na campanha e no online.',
+      ] },
+      { title: 'Pátio', items: [
+        'O Arco agora é manuseado como um arco de verdade: a asa de trás segura o arco parado, à frente do corpo, e a asa da frente segura a flecha na corda. Ao segurar Atirar, a asa da frente puxa a flecha para trás e a corda dobra junto; ao soltar, a corda volta e a flecha sai. Sem flechas ou recarregando, a corda fica vazia.',
+        'Em Itens → Pontos, o arco e a flecha aparecem como desenhos separados e há a caixa “Arco e Flecha”, que liga esse manuseio. O ponto Asa é onde a asa da frente segura a flecha (a flecha e a corda acompanham o ponto), o ponto Asa de trás é onde a outra asa segura o arco, e a barra “Puxada da flecha” define quanto a flecha recua com a carga cheia (linha tracejada no desenho).',
       ] },
     ],
   },

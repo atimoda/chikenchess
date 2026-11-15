@@ -91,10 +91,13 @@ export type ChickenEngine = {
   // `rig`: how it sits on her (rig units on the item's drawing): the point (x, y) sits on her shoulder or mouth (`at`)
   // and the item turns around it; `hand` / `back`: the points the wing's and the back wing's tips hold, the wing turning
   // and stretching to keep touching them (the bow, while it plays, takes the wing's hand)
+  // `archery`: a bow and its arrow drawn apart ("Arco e Flecha"): the string runs from one end on the bow to the
+  // arrow's nock at (x, y) to the other end (`string`: [x1, y1, x2, y2]), and the arrow (`arrow`: its drawing with the
+  // nock at (0, 0), or null with none on the string) sits with its nock there; all on the item's drawing, turning with it
   // `staff`: a staff carried in its own pose (lib/pigchicken/staff-pose.ts), in her body's frame: the wing's hand at
   // (x, y) from her shoulder holding the drawing's point (gripX, gripY), the staff turned to `angle` (degrees, 0 = to
   // her front, -90 = up). A swing leaves from this pose and comes back to it
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; staff?: HeldStaff | null } | null) => void
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in. `size`: how much bigger
   // the item is drawn at the height of the blow (×, a charged strong blow)
@@ -230,7 +233,7 @@ const SVG_MARKUP = `
         </g>
       </g>
       <g data-part="wing"><g data-part="artWing"></g></g>
-      <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"><g data-part="heldArt"></g><g data-part="heldBow" style="display:none">${BOW_MARKUP}</g></g></g>
+      <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"><path data-part="heldString" fill="none" stroke="#e8e2d0" stroke-width="1.2" stroke-linejoin="round" style="display:none"/><g data-part="heldArrow" style="display:none"></g><g data-part="heldArt"></g><g data-part="heldBow" style="display:none">${BOW_MARKUP}</g></g></g>
     </g>
   </g>`
 
@@ -276,7 +279,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldArt', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -430,7 +433,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   // ---------- game hooks ----------
-  let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = ''
+  let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = '', heldArrowSvg = ''
   const throwTransition = createThrowTransition()
   let peckNow: PeckPose | null = null
   let swingNow: { angle: number; reach: number; t: number; size?: number } | null = null
@@ -1697,6 +1700,18 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // the bow: it slides across the strings and the wing holds it by the frog (its tip reaches the frog)
     const bow = heldItem && !swingNow ? heldItem.bow : null
     el.heldBow.style.display = bow ? '' : 'none'
+    // "Arco e Flecha": the string bent to the arrow's nock, and the arrow on it
+    const archery = heldItem?.archery ?? null
+    el.heldString.style.display = archery ? '' : 'none'
+    el.heldArrow.style.display = archery?.arrow ? '' : 'none'
+    if (archery) {
+      const [x1, y1, x2, y2] = archery.string
+      el.heldString.setAttribute('d', `M${x1} ${y1} L${archery.x.toFixed(2)} ${archery.y.toFixed(2)} L${x2} ${y2}`)
+      if (archery.arrow) {
+        if (archery.arrow !== heldArrowSvg) { heldArrowSvg = archery.arrow; el.heldArrow.innerHTML = archery.arrow }
+        el.heldArrow.setAttribute('transform', `translate(${archery.x.toFixed(2)} ${archery.y.toFixed(2)})`)
+      }
+    }
     const consumable = heldItem && !swingNow ? heldItem.consumable : null
     // Aim rotates the wing, while food/bottles keep their own upright pose in
     // screen space, with only a small sway. Consumption uses the mouth pose.
