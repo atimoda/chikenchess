@@ -14,6 +14,8 @@ function step(c, input = {}, angle = 0, dt = 0.016) {
     [], 1000, () => {}, { peckOrigin: { x: 0, y: 0 } })
 }
 const run = (c, s) => { for (let t = 0; t < s; t += 0.016) step(c) }
+// a combo blow with the plain duration, block and reach
+const blow = (kind, arc, more = {}) => ({ ...swing.comboBlow(kind, arc), ...more })
 
 test('a swing goes through preparação, golpe, continuação and recuperação', () => {
   const time = 0.4
@@ -122,7 +124,7 @@ test('a temple bomb a peck cancels does not hurt her', () => {
 test('each item has its own combo: order, window and the hit arc of each blow', () => {
   const c = createCombat()
   const items = structuredClone(DEFAULT_ITEMS)
-  items.wing.combo = [{ kind: 'spin', arc: 360 }, { kind: 'flat', arc: 300 }]
+  items.wing.combo = [blow('spin', 360), blow('flat', 300)]
   items.wing.comboWindow = 0.1
   c.setItems(items)
   const kinds = []
@@ -139,7 +141,7 @@ test('each item has its own combo: order, window and the hit arc of each blow', 
 test('two blows of the same direction can cover different angles', () => {
   const c = createCombat()
   const items = structuredClone(DEFAULT_ITEMS)
-  items.wing.combo = [{ kind: 'down', arc: 45 }, { kind: 'down', arc: 270 }, { kind: 'up', arc: 90 }]
+  items.wing.combo = [blow('down', 45), blow('down', 270), blow('up', 90)]
   c.setItems(items)
   const got = []
   for (let i = 0; i < 4; i++) { step(c, { melee: true }); got.push([c.swing.kind, Math.round(c.swing.arc * 180 / Math.PI)]); run(c, 0.02) }
@@ -163,16 +165,16 @@ test('the combo is saved and checked when loading; older saves get their arcs pe
     let saved = { _v: 4, pistol: { combo: ['up', 'spin', 'down'], comboWindow: 0.8, meleeArc: 60, meleeArcUp: 200 }, smg: { combo: ['up', 'nope'] }, rifle: { combo: [] }, bat: { meleeArcFlat: 250 } }
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     let it = loadItems()
-    assert.deepEqual(it.pistol.combo, [{ kind: 'up', arc: 200 }, { kind: 'spin', arc: 360 }, { kind: 'down', arc: 60 }])
+    assert.deepEqual(it.pistol.combo, [blow('up', 200), blow('spin', 360), blow('down', 60)])
     assert.equal(it.pistol.comboWindow, 0.8)
     assert.deepEqual(it.smg.combo, DEFAULT_ITEMS.smg.combo)
     assert.deepEqual(it.rifle.combo, DEFAULT_ITEMS.rifle.combo)
     assert.deepEqual(it.bat.combo.map(s => s.arc), [150, 150, 250, 360], 'an old arc with no combo saved goes to the default order')
     saved = { _v: 10, pistol: { combo: [{ kind: 'flat', arc: 500 }, { kind: 'spin', arc: 90 }, { kind: 'up', arc: 135 }] }, smg: { combo: [{ kind: 'up' }] }, rifle: { combo: ['up'] } }
     it = loadItems()
-    assert.deepEqual(it.pistol.combo, [{ kind: 'flat', arc: 360 }, { kind: 'spin', arc: 360 }, { kind: 'up', arc: 135 }])
+    assert.deepEqual(it.pistol.combo, [blow('flat', 360), blow('spin', 360), blow('up', 135)])
     assert.deepEqual(it.smg.combo, DEFAULT_ITEMS.smg.combo, 'a blow with no angle is not a combo')
-    assert.deepEqual(it.rifle.combo, [{ kind: 'up', arc: 110 }], 'a bare direction takes the item\'s arc for it')
+    assert.deepEqual(it.rifle.combo, [blow('up', 110)], 'a bare direction takes the item\'s arc for it')
   } finally { globalThis.window = previous }
 })
 
@@ -265,4 +267,87 @@ test('a Golpe cancels a charge without shooting it, and a held button charges ag
   assert.ok(c.fireCharge > 0, 'charging again')
   step(c)
   assert.equal(ammo(c), before - 1, 'let go: it throws')
+})
+
+test('each combo blow has its own duration, reach and block on the next blow', () => {
+  const c = createCombat()
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.wing.combo = [blow('down', 90, { time: 2, reach: 1.5 }), blow('up', 90, { cooldown: 0.5 }), blow('flat', 90)]
+  c.setItems(items)
+  step(c, { melee: true })
+  assert.ok(Math.abs(c.swing.time - items.wing.meleeTime * 2) < 1e-9, 'twice as slow')
+  assert.ok(Math.abs(c.swing.reach - items.wing.meleeRange * 1.5) < 1e-9, 'and reaching further')
+  step(c, { melee: true })
+  assert.equal(c.swing.kind, 'up')
+  assert.ok(Math.abs(c.swing.time - items.wing.meleeTime) < 1e-9 && Math.abs(c.swing.reach - items.wing.meleeRange) < 1e-9)
+  // blocked for 0.5 s from the start of the second blow: pressing does nothing, and the window does not run out meanwhile
+  run(c, 0.3); step(c, { melee: true })
+  assert.equal(c.swing?.kind ?? 'up', 'up')
+  assert.equal(c.swing?.combo ?? 1, 1)
+  run(c, 0.25); step(c, { melee: true })
+  assert.equal(c.swing.kind, 'flat', 'the combo carries on once the block ends')
+})
+
+test('an item\'s reach multiplier stretches the wing and the item together', () => {
+  const c = createCombat(); c.give('bat')
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.bat.combo = [blow('down', 150, { reach: 2 })]
+  c.setItems(items)
+  step(c, { melee: true })
+  assert.ok(Math.abs(c.swing.reach - (items.bat.meleeRange + items.bat.length) * 2) < 1e-9)
+})
+
+test('a blow relative to the aim goes up when she aims above the horizon and down otherwise', () => {
+  assert.equal(swing.blowKind('aim', -0.4), 'up')
+  assert.equal(swing.blowKind('aim', 0.4), 'down')
+  assert.equal(swing.blowKind('aim', 0), 'down')
+  assert.equal(swing.blowKind('aim', Math.PI + 0.3), 'up', 'aiming left and up')
+  assert.equal(swing.blowKind('flat', -1), 'flat')
+  const c = createCombat()
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.wing.combo = [blow('aim', 100)]
+  c.setItems(items)
+  step(c, {}, -0.5); step(c, { melee: true }, -0.5)
+  assert.deepEqual([c.swing.kind, c.swing.dir], ['up', -1])
+  step(c, {}, 0.5); step(c, { melee: true }, 0.5)
+  assert.deepEqual([c.swing.kind, c.swing.dir], ['down', 1])
+})
+
+test('the strong blow can be relative to the aim too', () => {
+  const c = createCombat(); c.give('bat')
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.bat.heavyKind = 'aim'
+  c.setItems(items)
+  step(c, { fire: true, firePressed: true }, -0.6)
+  for (let t = 0; t < 0.3; t += 0.016) step(c, { fire: true }, -0.6)
+  step(c, {}, -0.6)
+  assert.ok(c.swing?.heavy, 'the strong blow left')
+  assert.equal(c.swing.kind, 'up')
+})
+
+test('saved blows keep their duration, block and reach inside the limits; older ones get the plain numbers', () => {
+  const { loadItems } = loadTs('lib/pigchicken/items.ts')
+  const previous = globalThis.window
+  try {
+    const saved = { _v: 10, pistol: { heavyKind: 'aim', combo: [{ kind: 'aim', arc: 90, time: 9, cooldown: -1, reach: 1.5 }, { kind: 'up', arc: 135 }, { kind: 'down', arc: 60, time: 'x' }] } }
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    const it = loadItems()
+    assert.deepEqual(it.pistol.combo, [blow('aim', 90, { time: 4, cooldown: 0, reach: 1.5 }), blow('up', 135), blow('down', 60)])
+    assert.equal(it.pistol.heavyKind, 'aim')
+    for (const d of Object.values(DEFAULT_ITEMS)) for (const s of d.combo) assert.deepEqual([s.time, s.cooldown, s.reach], [1, 0, 1], d.id)
+  } finally { globalThis.window = previous }
+})
+
+test('the combo window bar hears the main player\'s blows only while something listens', () => {
+  const c = createCombat()
+  const items = structuredClone(DEFAULT_ITEMS)
+  items.wing.combo = [blow('down', 90, { cooldown: 0.6 })]; items.wing.comboWindow = 0.7
+  c.setItems(items)
+  const heard = []
+  const stop = swing.subscribeComboBlow(e => heard.push(e))
+  step(c, { melee: true })
+  assert.deepEqual(heard, [{ busy: 0.6, window: 0.7 }])
+  stop()
+  run(c, 1); step(c, { melee: true })
+  assert.equal(heard.length, 1)
 })

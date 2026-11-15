@@ -163,6 +163,17 @@ test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and 
   assert.deepEqual(layers.LAYERS_DEFAULT, file.layers)
   assert.deepEqual(camera.parquinhoDefaultsFile(camera.DEFAULT_PARQUINHO), file.camera)
   assert.deepEqual(mixer.DEFAULT_MIX, file.volume)
+  // Mute silences every layer and keeps the volumes, which still change while it is on
+  mixer.setMix({ master: 1, notes: 0.7 })
+  assert.equal(mixer.mixGain('notes'), 0.7)
+  mixer.setMuted(true)
+  assert.equal(mixer.isMuted(), true)
+  mixer.MIX_LAYERS.forEach(l => assert.equal(mixer.mixGain(l.key), 0))
+  mixer.setMix({ notes: 0.4 })
+  assert.equal(mixer.getMix().notes, 0.4)
+  mixer.setMuted(false)
+  assert.equal(mixer.mixGain('notes'), 0.4)
+  mixer.setMix(mixer.DEFAULT_MIX)
   // what each panel writes is accepted
   const settings = PS.patioSettingsDefaultsFile({ ground: 160, temple: false, sky: sky.SKY_DEFAULT, sceneZones: { 0: {} }, layers: file.layers }, 3)
   assert.deepEqual(Object.keys(settings).sort(), ['ground', 'height', 'inventory', 'screens', 'sky', 'temple'])

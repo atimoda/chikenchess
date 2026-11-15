@@ -8,33 +8,52 @@ const DEG = Math.PI / 180
 
 export type SwingKind = 'down' | 'up' | 'flat' | 'spin'
 export type SwingPhase = 'prep' | 'strike' | 'follow' | 'recover' | 'done'
-export const SWING_KINDS: { value: SwingKind; label: string }[] = [
+// what a blow is set to: one of the moves, or "relative to the aim" (up when she aims above the horizon, down otherwise)
+export type BlowKind = SwingKind | 'aim'
+export const SWING_KINDS: { value: BlowKind; label: string }[] = [
   { value: 'down', label: 'Para baixo' }, { value: 'up', label: 'Para cima' }, { value: 'flat', label: 'Horizontal' }, { value: 'spin', label: 'Giro 360°' },
+  { value: 'aim', label: 'Relativo à mira' },
 ]
+// the move a blow makes with this aim (screen angle, y down: a negative sine points above the horizon)
+export function blowKind(kind: BlowKind, aim: number): SwingKind {
+  return kind === 'aim' ? (Math.sin(aim) < -1e-9 ? 'up' : 'down') : kind
+}
 // the default order of a combo (each item can have its own, up to COMBO_MAX blows)
 export const SWING_COMBO: SwingKind[] = ['down', 'up', 'flat', 'spin']
 export const COMBO_MAX = 6
-// one blow of a combo: its direction and the hit area's arc (degrees; the spin always 360)
-export type ComboStep = { kind: SwingKind; arc: number }
+// one blow of a combo: its direction, the hit area's arc (degrees; the spin always 360), how long it takes (× the
+// item's meleeTime), for how long after it starts the next blow is blocked (s) and how far it reaches (× the item's)
+export type ComboStep = { kind: BlowKind; arc: number; time: number; cooldown: number; reach: number }
 export const COMBO_ARC_MIN = 20
 export const COMBO_ARC_MAX = 360
-// the arcs the combo's angle list offers (a saved arc outside it is shown too)
-export const COMBO_ARCS = [20, 30, 45, 60, 90, 110, 120, 135, 150, 160, 170, 180, 190, 200, 225, 240, 270, 300, 330, 360]
+// the values the combo's lists offer (a saved one outside them is shown too) and the limits a saved one is kept in
+export const COMBO_TIMES = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4]
+export const COMBO_COOLDOWNS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1, 1.5, 2]
+export const COMBO_REACHES = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3]
+const COMBO_LIMITS = { time: [0.25, 4], cooldown: [0, 3], reach: [0.25, 3] } as const
+// a blow with the plain numbers: the item's own duration and reach, no block
+export const comboBlow = (kind: BlowKind, arc: number): ComboStep => ({ kind, arc: kind === 'spin' ? 360 : arc, time: 1, cooldown: 0, reach: 1 })
 // the default combo with the arcs of the blows down, up and horizontal
 export function swingCombo(down: number, up = down, flat = up): ComboStep[] {
   const arcs: Record<SwingKind, number> = { down, up, flat, spin: 360 }
-  return SWING_COMBO.map(kind => ({ kind, arc: arcs[kind] }))
+  return SWING_COMBO.map(kind => comboBlow(kind, arcs[kind]))
 }
-// one blow as it is kept: a known kind and a finite arc, clamped (the spin's is 360); anything else is null
-export function comboStep(kind: unknown, arc: unknown): ComboStep | null {
+// one blow as it is kept: a known kind and a finite arc, clamped (the spin's is 360); anything else is null. The
+// duration, block and reach are clamped too; one saved before they existed (or not a number) gets the plain value
+export function comboStep(kind: unknown, arc: unknown, more: { time?: unknown; cooldown?: unknown; reach?: unknown } = {}): ComboStep | null {
   if (!isSwingKind(kind) || typeof arc !== 'number' || !Number.isFinite(arc)) return null
-  return { kind, arc: kind === 'spin' ? 360 : Math.min(COMBO_ARC_MAX, Math.max(COMBO_ARC_MIN, arc)) }
+  const plain = comboBlow(kind, Math.min(COMBO_ARC_MAX, Math.max(COMBO_ARC_MIN, arc)))
+  for (const k of ['time', 'cooldown', 'reach'] as const) {
+    const v = more[k]
+    if (typeof v === 'number' && Number.isFinite(v)) plain[k] = Math.min(COMBO_LIMITS[k][1], Math.max(COMBO_LIMITS[k][0], v))
+  }
+  return plain
 }
 // a saved combo, or null when it is not one (empty, more than COMBO_MAX blows, a bad blow). Older saves kept only
 // the kinds: arcOf gives each one's arc
-export function cleanCombo(v: unknown, arcOf: (kind: SwingKind) => number): ComboStep[] | null {
+export function cleanCombo(v: unknown, arcOf: (kind: BlowKind) => number): ComboStep[] | null {
   if (!Array.isArray(v) || v.length < 1 || v.length > COMBO_MAX) return null
-  const out = v.map(s => typeof s === 'string' ? comboStep(s, isSwingKind(s) ? arcOf(s) : NaN) : s && typeof s === 'object' ? comboStep(s.kind, s.arc) : null)
+  const out = v.map(s => typeof s === 'string' ? comboStep(s, isSwingKind(s) ? arcOf(s) : NaN) : s && typeof s === 'object' ? comboStep(s.kind, s.arc, s) : null)
   return out.every(Boolean) ? out as ComboStep[] : null
 }
 // fractions of meleeTime; recuperação is what is left (0.40)
@@ -71,7 +90,7 @@ const easeInOut = (k: number) => k < 0.5 ? 2 * k * k : 1 - 2 * (1 - k) * (1 - k)
 export function nextCombo(prev: number, gap: number, window: number, length: number) {
   return gap <= window ? (prev + 1) % Math.max(1, length) : 0
 }
-export const isSwingKind = (v: unknown): v is SwingKind => SWING_KINDS.some(k => k.value === v)
+export const isSwingKind = (v: unknown): v is BlowKind => SWING_KINDS.some(k => k.value === v)
 
 export function swingHitAt(time: number) { return time * SWING_PHASES.prep }
 
@@ -138,3 +157,10 @@ export function trailSpan(sw: Pick<Swing, 'arc' | 'kind' | 't' | 'time' | 'hitAt
 
 // how long a swing stays: the move itself or until its trail is gone
 export function swingLife(time: number, trailTime: number) { return Math.max(time, swingHitAt(time) + trailTime) }
+
+// A blow of the main player's combo, told to whoever listens (the Itens panel's combo window bar). Nothing is sent
+// while nobody listens. busy: how long until the window starts counting (the move and the block, s); window: s
+export type ComboBlowEvent = { busy: number; window: number }
+const comboListeners = new Set<(e: ComboBlowEvent) => void>()
+export function announceComboBlow(e: () => ComboBlowEvent) { if (comboListeners.size) { const v = e(); comboListeners.forEach(fn => fn(v)) } }
+export function subscribeComboBlow(fn: (e: ComboBlowEvent) => void) { comboListeners.add(fn); return () => { comboListeners.delete(fn) } }

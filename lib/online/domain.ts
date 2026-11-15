@@ -1,7 +1,7 @@
 import { Chess, type Square } from "chess.js";
 import { z } from "zod";
 import { HARMONY_PLAN_IDS } from "../music/harmony";
-import { cappedMatchEggs, rankedMoveEggsForPosition, rankedMovesPerList, squareEggsExtraMs } from "../egg-rewards";
+import { cappedMatchEggs, rankedMoveEggsForPosition, rankedMoveStreakKind, rankedMovesPerList, rankedStreakDoubles, squareEggsExtraMs } from "../egg-rewards";
 import { ROOTS, SCALE_NAMES } from "../music/scales";
 import {
   advanceMatchPowers,
@@ -118,24 +118,43 @@ export function rankedRewardEggs(
   actor: OnlineColor,
   reward: "best" | "worst",
   legalMoves = Infinity,
+  comeback = false,
 ): number {
-  return cappedMatchEggs(state.eggs[actor], rankedRewardTotal(state, actor, reward, legalMoves));
+  return cappedMatchEggs(state.eggs[actor], rankedRewardTotal(state, actor, reward, legalMoves, comeback));
 }
 
-/** Whole reward of a ranked move, before the match cap: x2 from the third in a row, at most 3 with a single Best/Worst move. */
+/**
+ * Whole reward of a ranked move, before the match cap: x2 from the third in a row, at most 3 with a single Best/Worst move.
+ * A comeback (Best-list move paid as Worst for its bad score) counts in the Best streak and is never doubled.
+ */
 export function rankedRewardTotal(
   state: Pick<MatchState, "actions">,
   actor: OnlineColor,
   reward: "best" | "worst",
   legalMoves = Infinity,
+  comeback = false,
 ): number {
+  return rankedMoveEggsForPosition(
+    (reward === "best" ? 1 : 3) * (rankedStreakDoubles(rankedStreakCount(state, actor, reward, comeback), comeback) ? 2 : 1),
+    legalMoves,
+  );
+}
+
+/** Position of the next ranked move of `actor` in its streak: 1 starts a new one. */
+export function rankedStreakCount(
+  state: Pick<MatchState, "actions">,
+  actor: OnlineColor,
+  reward: "best" | "worst",
+  comeback = false,
+): number {
+  const kind = rankedMoveStreakKind(reward, comeback);
   let streak = 1;
   for (const action of [...state.actions].reverse()) {
     if (action.kind !== "move" || action.color !== actor) continue;
-    if (action.reward !== reward) break;
+    if (!action.reward || rankedMoveStreakKind(action.reward, action.comeback === true) !== kind) break;
     streak++;
   }
-  return rankedMoveEggsForPosition((reward === "best" ? 1 : 3) * (streak >= 3 ? 2 : 1), legalMoves);
+  return streak;
 }
 
 /** Destination squares of the actor's shared suggestions keep their eggs until this time. */
@@ -150,12 +169,23 @@ export function squareReward(
   key: string,
   uci: string,
   now: number,
-): "best" | "worst" | null {
+): RankedReward | null {
   const shared = state.suggestions;
   if (!shared || shared.actor !== actor || shared.position !== key || now > squareEggsUntil(shared)) return null;
   const move = shared.moves.find((m) => m.uci.slice(2, 4) === uci.slice(2, 4));
   if (!move) return null;
-  return shared.kind === "best" && move.score >= -100 && !(move.mate != null && move.mate < 0) ? "best" : "worst";
+  return listedReward(shared.kind, move);
+}
+
+/** How a ranked move pays; `comeback` marks a Best-list move paid as Worst. */
+export interface RankedReward {
+  reward: "best" | "worst";
+  comeback: boolean;
+}
+/** A Best-list move with its own score below -1.00 pawn, or mate against the mover, pays as Worst. */
+function listedReward(list: "best" | "worst", move: SharedSuggestion): RankedReward {
+  const reward = list === "best" && move.score >= -100 && !(move.mate != null && move.mate < 0) ? "best" : "worst";
+  return { reward, comeback: list === "best" && reward === "worst" };
 }
 
 /** Each team may apply each power at most once per turn: since the last move. */
@@ -267,7 +297,7 @@ function rewardFor(
   key: string,
   uci: string,
   analysis?: Extract<MatchCommand, { kind: "move" }>["analysis"],
-): "best" | "worst" | null {
+): RankedReward | null {
   const legalMoves = game.moves().length;
   if (legalMoves < 2) return null;
   // Only the head of each list earns eggs; positions with few moves reward fewer.
@@ -275,22 +305,15 @@ function rewardFor(
   for (const seen of state.seen) {
     if (seen.position !== key) continue;
     const move = seen.moves.slice(0, count).find((m) => m.uci === uci);
-    if (move)
-      return seen.kind === "best" &&
-        move.score >= -100 &&
-        !(move.mate != null && move.mate < 0)
-        ? "best"
-        : "worst";
+    if (move) return listedReward(seen.kind, move);
   }
   if (analysis?.position !== key) return null;
   validateSuggestions(game, analysis.best);
   validateSuggestions(game, analysis.worst);
   const best = analysis.best.slice(0, count).find((m) => m.uci === uci);
-  if (best)
-    return best.score < -100 || (best.mate != null && best.mate < 0)
-      ? "worst"
-      : "best";
-  return analysis.worst.slice(0, count).some((m) => m.uci === uci) ? "worst" : null;
+  if (best) return listedReward("best", best);
+  const worst = analysis.worst.slice(0, count).find((m) => m.uci === uci);
+  return worst ? listedReward("worst", worst) : null;
 }
 
 /** Serial command evaluation; Postgres rechecks identity/version and commits atomically. */
@@ -414,9 +437,11 @@ export function applyMatchCommand(
     if (state.actions.length >= 768) reject("Match action limit reached");
     const uci = `${command.from}${command.to}${command.promotion ?? ""}`;
     const legalMoves = game.moves().length;
-    const reward =
+    const ranked =
       (legalMoves > 1 ? squareReward(state, actor, key, uci, now) : null) ??
       rewardFor(state, game, key, uci, command.analysis);
+    const reward = ranked?.reward ?? null;
+    const comeback = ranked?.comeback ?? false;
     // Powered adapter validates castling, en passant, frozen movement and protected captures.
     game.move({
       from: command.from,
@@ -430,11 +455,12 @@ export function applyMatchCommand(
       promotion: command.promotion,
       color: actor,
       reward,
+      ...(comeback ? { comeback: true } : {}),
     });
     const rewardKey = `${actor}|${key}|${uci}`;
     if (reward && !state.rewarded.includes(rewardKey)) {
       // The move was already pushed: count the streak before it.
-      const total = rankedRewardTotal({ actions: state.actions.slice(0, -1) }, actor, reward, legalMoves);
+      const total = rankedRewardTotal({ actions: state.actions.slice(0, -1) }, actor, reward, legalMoves, comeback);
       const earned = cappedMatchEggs(state.eggs[actor], total);
       state.eggs[actor] += earned;
       // `collected` holds the eggs earned with a full counter: the settlement adds them as historic points.

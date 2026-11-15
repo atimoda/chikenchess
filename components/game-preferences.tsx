@@ -22,6 +22,7 @@ export function GamePreferences({
   onCrossfaderSyncChange,
   awardAnimations = true,
   onAwardAnimationsChange,
+  onCopyMatchLog,
   className,
 }: {
   display?: PowerDisplay
@@ -35,6 +36,8 @@ export function GamePreferences({
   /** Flying eggs and the Best/Worst whistle when a move earns golden eggs. */
   awardAnimations?: boolean
   onAwardAnimationsChange?: (value: boolean) => void
+  /** Copies the match's full log (moves, powers, Undo/Redo, egg rewards) for bug reports; resolves to whether it was copied. */
+  onCopyMatchLog?: () => Promise<boolean>
   className?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -45,6 +48,12 @@ export function GamePreferences({
   const spectrogramLabelId = useId()
   const crossfaderLabelId = useId()
   const awardLabelId = useId()
+  const [matchLogCopy, setMatchLogCopy] = useState<"idle" | "copied" | "failed">("idle")
+  const copyMatchLog = async () => {
+    if (!onCopyMatchLog) return
+    setMatchLogCopy(await onCopyMatchLog() ? "copied" : "failed")
+    window.setTimeout(() => setMatchLogCopy("idle"), 2000)
+  }
   return <><Popover.Root open={open} onOpenChange={setOpen} modal={false}>
     <Popover.Trigger asChild>
       <Button variant="outline" size="icon" aria-label="Preferências" title="Preferências" className={className}>
@@ -112,6 +121,12 @@ export function GamePreferences({
           </button>
         </div>
         </>}
+        {onCopyMatchLog && <div className="flex items-center justify-between gap-5 border-t border-border/40 px-2 py-2">
+          <div className="text-sm font-medium">Match log</div>
+          <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs hover:text-foreground" onClick={() => { void copyMatchLog() }}>
+            <span aria-live="polite">{matchLogCopy === "copied" ? "Copied" : matchLogCopy === "failed" ? "Copy failed" : "Copy"}</span>
+          </Button>
+        </div>}
         <label className="flex cursor-pointer items-center justify-between gap-5 border-t border-border/40 px-2 py-2 text-sm">
           Pulsos simultâneos no tabuleiro
           <input type="checkbox" className="size-4 accent-primary" checked={simultaneousPulses}

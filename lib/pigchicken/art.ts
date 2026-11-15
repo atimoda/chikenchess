@@ -230,6 +230,20 @@ const ART: Partial<Record<ItemId, Art>> = {
   },
 }
 
+// "Arco e Flecha" (lib/pigchicken/held-pose.ts): the bow and the arrow as separate drawings. `body` is the bow alone
+// (no string, no arrow), `arrow` the arrow with its nock at (0, 0) pointing right, `string` the two ends of the
+// string on the bow [x1, y1, x2, y2]; the string is drawn from one end to the arrow's nock to the other
+export const ARCHERY_ART: Partial<Record<ItemId, { body: string; arrow: string; string: [number, number, number, number] }>> = {
+  bow: {
+    body: `<path d="M-12 -52 Q12 0 -12 52" fill="none" stroke="#8b5a2b" stroke-width="5" stroke-linecap="round"/>
+    <rect x="-3" y="-7" width="6" height="14" rx="2" fill="#3b2a1a"/>`,
+    arrow: `<path d="M0 0 L43 0" stroke="#c9a46a" stroke-width="2"/>
+    <path d="M50 0 L42 -4 L42 4 Z" fill="#8a8f98"/>
+    <path d="M2 0 L-2 -4 M2 0 L-2 4 M6 0 L2 -4 M6 0 L2 4" stroke="#d6453d" stroke-width="2"/>`,
+    string: [-12, -52, -12, 52],
+  },
+}
+
 export const ITEM_SVG: Partial<Record<ItemId, string>> = Object.fromEntries(Object.entries(ART).map(([k, a]) => [k, a!.svg]))
 // each item's art box [x, y, width, height]: the viewBox to show ITEM_SVG inside an <svg>
 export const ITEM_BOX: Partial<Record<ItemId, Art['box']>> = Object.fromEntries(Object.entries(ART).map(([k, a]) => [k, a!.box]))
