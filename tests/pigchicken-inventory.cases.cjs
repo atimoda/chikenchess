@@ -49,9 +49,9 @@ test('quick switch cycles through the items and one empty slot, then back to the
   step(c, { slot: 9 }); assert.equal(c.held.item, 'flute')
 })
 
-test('the Pátio sets the limit (up to 25, all of it by default): a full inventory has no empty slot', () => {
-  assert.equal(inv.INVENTORY_MAX, 25)
-  assert.equal(createCombat().inventoryLimit, 25)
+test('the Pátio sets the limit (up to 30, all of it by default): a full inventory has no empty slot', () => {
+  assert.equal(inv.INVENTORY_MAX, 30)
+  assert.equal(createCombat().inventoryLimit, 30)
   const c = createCombat()
   c.setInventoryLimit(13)
   const ids = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow', 'flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys']
@@ -62,9 +62,9 @@ test('the Pátio sets the limit (up to 25, all of it by default): a full invento
   assert.equal(c.hoverSwaps, true)
   // lowering it keeps what she carries; raising it brings the empty slot back
   c.setInventoryLimit(5); assert.equal(c.inventory.length, 13); assert.ok(c.inventory.every(Boolean))
-  c.setInventoryLimit(99); assert.equal(c.inventoryLimit, 25); assert.equal(c.inventory.length, 14); assert.equal(c.inventory[13], null)
+  c.setInventoryLimit(99); assert.equal(c.inventoryLimit, 30); assert.equal(c.inventory.length, 14); assert.equal(c.inventory[13], null)
   c.setInventoryLimit(0); assert.equal(c.inventoryLimit, 1)
-  // every item there is fits in the default 25
+  // every item there is fits in the default 30
   const { RACK_ITEM_IDS } = loadTs('lib/pigchicken/items.ts')
   // (the Gaiolas are not carried in it: she hangs up to three of them)
   const { CAGE_IDS } = loadTs('lib/pigchicken/items.ts')
@@ -81,7 +81,7 @@ test('the wheel: equal slices, the first at the top, clockwise', () => {
   assert.equal(inv.wheelSliceAt(Math.PI, 4), 3) // left
   assert.equal(inv.wheelSliceAt(up + 0.01, 1), 0)
   for (let n = 1; n <= 25; n++) for (let i = 0; i < n; i++) assert.equal(inv.wheelSliceAt(inv.wheelSliceCenter(i, n), n), i)
-  assert.equal(inv.slotCount(0), 1); assert.equal(inv.slotCount(24), 25); assert.equal(inv.slotCount(25), 25)
+  assert.equal(inv.slotCount(0), 1); assert.equal(inv.slotCount(29), 30); assert.equal(inv.slotCount(30), 30)
   assert.equal(inv.slotCount(12, 13), 13); assert.equal(inv.slotCount(13, 13), 13); assert.equal(inv.slotCount(15, 13), 15)
 })
 

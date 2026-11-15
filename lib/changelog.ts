@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Gaiolas no Pátio: as almas ficam em gaiolas de seis modelos, até três por jogador; almas e pássaros exploram o mapa, pousam em árvores, plataformas e objetos, e algumas aves cagam; trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira; Mute no painel Volume do Pátio; rajada só enquanto segura Atirar; rei não pode mais encostar numa peça congelada; Modo editor do Pátio sem travar ao arrastar elementos',
+    title: 'Gaiolas no Pátio: as almas ficam em gaiolas de seis modelos, até três por jogador; almas e pássaros exploram o mapa, pousam em árvores, plataformas e objetos, e algumas aves cagam; trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira; Mute no painel Volume do Pátio; rajada só enquanto segura Atirar; Boomerang e baralhos de cartas explosivas no Pátio; rei não pode mais encostar numa peça congelada; Modo editor do Pátio sem travar ao arrastar elementos',
     groups: [
       { title: 'Pátio: Gaiolas', items: [
         'Nova categoria de item, Gaiolas, em seis modelos com arte própria: Gaiola básica (8 almas), de arame (12), Concorde (16), de madeira (20), Gaiolão arqueado (30) e Voadeira (50). O limite de almas de cada modelo é ajustável no painel Itens, e cada cavalete ou item solto do Modo editor pode ter o seu. Elas também entram na lista de itens do Baú.',
@@ -30,6 +30,20 @@ const RECENT = [
         'As almas vivas poupam o dono; as almas mortas cagam também nele. Os outros jogadores nunca são poupados.',
         'Editor de fichas da Biblioteca de almas (admin): novo grupo Exploração (Explorar, Alcance, Tempo pousada e o gosto por Fios, Árvores, Plataformas e Objetos) e, em Ações, Cagar a cada, Dano do cagado e Poupar o dono.',
         'No Pátio online, cagados, manchas e almas de asas fechadas aparecem só no navegador de quem os vê acontecer; o dano em inimigos é compartilhado.',
+      ] },
+      { title: 'Pátio: Boomerang e baralhos', items: [
+        'Três itens novos, que usam o arremesso que vai e volta do Martelo de Thor, sem raio. O botão direito (Golpe) dá o golpe normal com os três. Eles aparecem no painel Itens, na paleta de suportes do Modo editor (Boomerang em Esportivos, baralhos em Magia), como Item solto e na lista de itens do Baú.',
+        'Boomerang: dano físico, vai mais longe que o Martelo (1100 px) e segue a curva da mira. A galinha leva dois, um em cada asa: dá para arremessar o segundo com o primeiro no ar, e com os dois fora só dá para arremessar (ou golpear) de novo quando um volta para a asa. Barrinhas no slot mostram quantos estão na mão.',
+        'Baralho vermelho e Baralho azul: Atirar joga uma carta até onde a mira está (no máximo 800 px), e ela fica estacionada, flutuando. Segurar Atirar joga uma carta atrás da outra. Parede, plataforma ou chão no caminho param a carta ali.',
+        'As cartas saem na ordem do baralho, começando por um Coringa no lugar do Ás: Coringa, 2 a 10, Valete, Dama, Rei e Ás. O slot mostra a próxima carta. Até 14 cartas ficam fora ao mesmo tempo; a que estoura ou volta fica disponível de novo.',
+        'A carta estoura quando alguém encosta nela (alien, zumbi, boneco de treino, outro player), na ida, estacionada ou na volta. Quem jogou não a dispara.',
+        'O 7 e o Ás estouram sozinhos ao chegar ao destino, com o dobro do raio. Todo estouro que alcança outras cartas faz elas estourarem também, uma depois da outra: cartas próximas viram uma cadeia.',
+        'Baralho vermelho: estouro de dano físico, com empurrão.',
+        'Baralho azul: cada carta guarda a nota da escala em que a mira estava quando foi jogada e fica em silêncio; ao estourar toca essa nota, dá dano musical (harmonia) nessa nota a quem está no raio e empurra um pouco. O símbolo da carta tem a cor da nota guardada.',
+        'Quando quem jogou se afasta mais de 1000 px de uma carta estacionada, ela volta para a mão sem estourar; se encontra alguém no caminho, estoura.',
+        'Itens: o grupo “Arremesso que volta” ganhou “Quantos de uma vez”, e os baralhos têm o grupo “Baralho”, com Distância de retorno, Explosão do 7 e do Ás, Área de contato e Intervalo entre cartas. Raio, dano e empurrão do estouro ficam em Explosão.',
+        'O limite máximo do inventário do Pátio passou de 25 para 30 itens, para caber um de cada. Pátios que salvaram um limite menor continuam com o deles.',
+        'No Pátio online todos veem as cartas e os estouros, e o estouro empurra os players de todos os navegadores.',
       ] },
       { title: 'Pátio', items: [
         'Modo editor: arrastar um item da paleta (arma, instrumento, esportivo, habilidade, magia, chave ou gaiola) para cima de um baú do Pátio coloca o item dentro do baú, com 100% de chance de sair. Enquanto o item está sobre o baú, o baú acende e aparece o ícone de inserir no ponteiro. Fora de um baú, o item continua virando suporte.',

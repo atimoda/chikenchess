@@ -2,7 +2,7 @@
 // Width: how many scenes of the Parquinho come before the Templo and the Vila (the world's right wall follows).
 // Height: from the ground up to the world's ceiling, in world units (the camera stops there and she climbs it).
 // Ground: how much ground shows below the floor at the foot of the screen, in px (room for the inventory bar).
-// Inventory: how many items each player may carry here (1 to 25).
+// Inventory: how many items each player may carry here (1 to 30).
 // New empty Pátios start from data/pigchicken/default-patio.json (its `settings`, written by "Salvar no game").
 import { WORLD_GROUND_Y, WORLD_TOP } from './world'
 import { INVENTORY_MAX, INVENTORY_MIN } from './inventory'
@@ -77,7 +77,7 @@ export const patioHeight = (settings: PatioSettings | undefined) => settings?.he
 export const patioGround = (settings: PatioSettings | undefined) => settings?.ground ?? PATIO_GROUND.default
 // world y of the ceiling (negative is above y = 0)
 export const patioWorldTop = (settings: PatioSettings | undefined) => WORLD_GROUND_Y - patioHeight(settings)
-// how many items each player may carry in this Pátio (a Pátio saved before it had the setting: all 25)
+// how many items each player may carry in this Pátio (a Pátio saved before it had the setting: all of them)
 // whether the scenes play their own zones here (Configurações do Pátio → Zonas das cenas)
 export const patioSceneMusic = (settings: PatioSettings | undefined) => settings?.sceneMusic !== false
 export const patioInventoryLimit = (settings: PatioSettings | undefined) => settings?.inventory ?? PATIO_INVENTORY.default

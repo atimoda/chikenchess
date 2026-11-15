@@ -28,6 +28,7 @@ import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
 import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
 import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
+import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
 import { scaleAt, type InstrumentScale } from './instrument-scales'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES, type PitchSet } from './music'
 import type { Drum, Held, Vibrato, VoiceId } from './synth'
@@ -104,10 +105,11 @@ const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
 // refill: seconds the gradual auto reload has counted toward the next shots coming back (reset whenever it is used).
 // group: the inventory group it sits in (its own when taken; dragging it on the bar may change it)
 // scale: the index in its item's `scales` it plays now (instruments with more than one scale)
-// flying: thrown and on its way back to her wing (a staff that comes back); specialAt: when its special is ready
-// again, on the world's clock (missing: ready)
+// out: how many of it are away now (a staff that comes back, thrown; a deck's cards); flying: all of them are, and
+// her wing is empty until one is back; specialAt: when its special is ready again, on the world's clock (missing: ready)
+// next: a deck's card of the order that its next throw starts looking from (lib/pigchicken/cards.ts)
 // cage: a Gaiola's limit and the souls in it (lib/pigchicken/cages.ts); it goes with the item wherever it is
-export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number; flying?: boolean; specialAt?: number; cage?: CageState }
+export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number; out?: number; flying?: boolean; next?: number; specialAt?: number; cage?: CageState }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
@@ -131,6 +133,14 @@ export type Flight = {
   // the way out is; aim: where its owner aims now; side: the side it bends to; bend: how much it bends now (radians
   // over a leg, with the side's sign; it follows the aim softly); far: how far it was when it turned back
   dir: number; launch: number; reach: number; aim?: number; side: number; bend: number; far?: number
+}
+// a card of a deck (lib/pigchicken/cards.ts): thrown to (tx, ty), it floats there until someone touches it and it
+// bursts, or its owner goes too far and it flies back. rank: which card of the deck; t: s in this phase; seed: its
+// own sway and tilt; fuse: s until it bursts because another burst reached it; note: what a music deck's card keeps
+// to play when it bursts; remote: another browser's (it only shows; net: its id there; home: where it left from)
+export type Card = {
+  id: number; rank: number; x: number; y: number; tx: number; ty: number; phase: CardPhase; t: number; seed: number; speed: number; angle: number
+  item: ItemId; owned: Owned; owner: string; fuse?: number; note?: NoteInfo; remote?: boolean; net: number; home?: { x: number; y: number }
 }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
@@ -203,6 +213,10 @@ export const SLOTS = INVENTORY_MAX
 const NO_SWITCH = { pick: 0, slot: 0, groupPick: null }
 const THROW_GRAVITY = 1500
 const ITEM_GRAVITY = 1800
+// a card of a deck: half its size (px), for the bursts that reach it; s another browser's card floats here at most
+// (its burst or its way back may never arrive: the shots' queue drops the oldest when it is full)
+const CARD_HALF = 14
+const REMOTE_CARD_LIFE = 90
 // an item on the floor, as a circle for the blows' hit areas (Golpe and Bicada): radius (px), centred this far above
 // where it rests
 export const PICKUP_HIT_R = 14
@@ -276,6 +290,8 @@ export function createCombat() {
   // the lightning weapons: the bolts showing, the staffs thrown that are coming back, the world's clock (the
   // specials' cooldowns count on it) and how bright the sky still is from a special (1 right at the thunder)
   const bolts: Bolt[] = [], flights: Flight[] = []
+  // the cards of the decks out in the world: flying, floating where they were thrown to, or on their way back
+  const cards: Card[] = []
   let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; cageSouls?: number }[] = []
@@ -324,6 +340,8 @@ export function createCombat() {
   let trem: TremoloState = newTremolo(), tremBend = 0
   // how far the aim reaches (0 at her … 1 far; lib/pigchicken/aim-volume.ts): the instrument's notes get louder with it
   let aimReach = 1
+  // where the reticle is, in world px (null: unknown, only the aim's angle): a deck's card flies there
+  let aimPoint: { x: number; y: number } | null = null
   const noteVol = (d: ItemDef) => aimVolume(d.volMin, d.volMax, aimReach)
   // the held instrument's scale (lib/pigchicken/instrument-scales.ts) and its notes for the aim right now
   const scaleOf = (h: Owned | null | undefined, d: ItemDef): InstrumentScale => scaleAt(d.instrument ? d.scales : undefined, h?.scale)
@@ -469,7 +487,12 @@ export function createCombat() {
     sound(special ? d.specialKind : 'zap', null)
     if (netOn) netShots.push({ k: 'z', i: d.id, p: sent, s: special ? 1 : 0 })
   }
-  // a staff that comes back (the Martelo de Thor) leaves her wing: straight where she aims, further with the charge
+  // how many of an item that comes back can be away at once, and one more of them leaving / arriving: her wing is
+  // empty only while all of them are away
+  const awayMax = (d: ItemDef) => Math.max(1, Math.min(d.deck ? DECK_SIZE : 14, Math.round(d.returnCount)))
+  const leaves = (h: Owned, d: ItemDef) => { h.out = (h.out ?? 0) + 1; h.flying = h.out >= awayMax(d) }
+  const arrives = (h: Owned) => { h.out = Math.max(0, (h.out ?? 1) - 1); h.flying = false }
+  // a staff that comes back (the Martelo de Thor, the Boomerang) leaves her wing: where she aims, further with the charge
   function launch(h: Owned, d: ItemDef, from: { x: number; y: number }, charge: number) {
     const reach = d.returnRange * (d.returnMin + (1 - d.returnMin) * charge)
     const face = Math.cos(aimAngle) >= 0 ? 1 : -1
@@ -478,7 +501,7 @@ export function createCombat() {
       back: false, left: reach, speed: d.returnSpeed, damage: d.returnDamage * (0.5 + 0.5 * charge), push: d.returnPush, hits: new Set(),
       dir: launchDir(aimAngle, d.returnCurveMin), launch: aimAngle, reach, aim: aimAngle, side: curveSide(aimAngle), bend: curveSide(aimAngle) * Math.max(0, d.returnCurveMin) * DEG,
     })
-    h.flying = true
+    leaves(h, d)
     sound('throw', null)
     if (netOn) netShots.push({ k: 'hm', i: h.item, x: Math.round(from.x), y: Math.round(from.y), a: aimAngle, sp: d.returnSpeed, rg: Math.round(reach) })
   }
@@ -486,7 +509,7 @@ export function createCombat() {
   // least bend of its curve, cut short by walls and the floor (null: the item in her wing is not being charged for that)
   function predictReturn(from: { x: number; y: number }, ctx: StepCtx) {
     const d = def()
-    if (!d.returnThrow || !heavyItem || heavyItem !== held()) return null
+    if (!d.returnThrow || d.deck || !heavyItem || heavyItem !== held()) return null
     const charge = Math.min(1, heavyT / Math.max(0.05, d.returnCharge))
     const reach = d.returnRange * (d.returnMin + (1 - d.returnMin) * charge)
     const path = outPath(from.x, from.y, aimAngle, reach, d.returnCurveMin)
@@ -727,7 +750,7 @@ export function createCombat() {
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number
-    trem: TremoloState; tremBend: number; aimReach: number
+    trem: TremoloState; tremBend: number; aimReach: number; aimPoint: { x: number; y: number } | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
@@ -770,18 +793,18 @@ export function createCombat() {
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach, aimPoint,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, trem: newTremolo(), tremBend: 0, aimReach: 1,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, trem: newTremolo(), tremBend: 0, aimReach: 1, aimPoint: null,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach, aimPoint } = l)
     active = id
   }
 
@@ -1029,7 +1052,7 @@ export function createCombat() {
     for (const s of list) {
       const d = items[s.i]
       if (!d) continue
-      const x = s.k === 't' ? s.x1 : s.k === 'z' ? s.p[0] ?? 0 : s.x
+      const x = s.k === 't' ? s.x1 : s.k === 'z' ? s.p[0] ?? 0 : s.k === 'cb' ? 0 : s.x
       const near = x > view.l - 200 && x < view.r + 200
       if (s.k === 'z') {
         // another browser's shock: its bolts (and the light of its special), only to be seen
@@ -1037,6 +1060,25 @@ export function createCombat() {
         for (let n = 0; n + 4 < s.p.length; n += 5) bolts.push({ x1: s.p[n], y1: s.p[n + 1], x2: s.p[n + 2], y2: s.p[n + 3], t: -Math.max(0, s.p[n + 4]) * BOLT_HOP, life: special ? BOLT_LIFE_SPECIAL : BOLT_LIFE, seed: Math.random() * 1000, special, sky: s.p[n + 4] < 0 })
         if (special && near) skyFlash = Math.max(skyFlash, d.specialKind === 'thunder' ? 1 : 0.45)
         if (near && heard++ < 4) sounds.push({ kind: special ? d.specialKind : 'zap', item: null })
+        continue
+      }
+      if (s.k === 'cd') {
+        // another browser's card: it flies to its place and floats there, only to be seen
+        cards.push({ id: nextId++, rank: s.r, x: s.x, y: s.y, tx: s.tx, ty: s.ty, phase: 'out', t: 0, seed: Math.random(), speed: s.sp, angle: Math.atan2(s.ty - s.y, s.tx - s.x), item: s.i, owned: fresh(s.i), owner: '', remote: true, net: s.c, home: { x: s.x, y: s.y }, ...(s.col ? { note: { midi: 60, color: s.col, sym: NOTE_SYMBOLS[s.r % NOTE_SYMBOLS.length], wave: 0, phase: 0, voice: d.voice } } : {}) })
+        if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
+        continue
+      }
+      if (s.k === 'cb') { const c = cards.find(o => o.remote && o.net === s.c); if (c) { c.phase = 'back'; c.t = 0 } continue }
+      if (s.k === 'cx') {
+        // it burst over there: it is gone here, with its burst (which pushes the players here and sets off the
+        // cards of this browser it reaches); the damage is the other browser's
+        const at = cards.findIndex(o => o.remote && o.net === s.c)
+        if (at >= 0) cards.splice(at, 1)
+        blastPush(s.x, s.y, s.rd, d.explodePush)
+        booms.push({ x: s.x, y: s.y, r: s.rd, life: s.n ? 0.5 : 0.35, ...(s.n ? { color: s.n.c } : {}) })
+        burst(s.x, s.y, 16, s.n ? s.n.c : '#ff6b5b', 300, 3)
+        if (near && heard++ < 4) { if (s.n) out.note(s.n.v as VoiceId, s.n.m, 0, d.noteLen, 0.4); else sounds.push({ kind: 'explode', item: null }) }
+        chainCards(s.x, s.y, s.rd)
         continue
       }
       if (s.k === 'hm') {
@@ -1060,8 +1102,8 @@ export function createCombat() {
     }
   }
 
-  function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
-    const strength = b ? b.explodePush ?? items[b.item].explodePush : 0
+  // a burst pushes away whoever is in its radius: the players (the one who made it too) and the enemies
+  function blastPush(x: number, y: number, r: number, strength: number) {
     blastActors.forEach(actor => {
       const push = explosionImpulse(x, y, r, strength, actor.box)
       if (push) actor.push(push.x, push.y)
@@ -1073,6 +1115,9 @@ export function createCombat() {
       const m = t.blast ??= { x: 0, y: 0, vx: 0, vy: 0 }
       m.vx += push.x; m.vy += push.y
     })
+  }
+  function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
+    blastPush(x, y, r, b ? b.explodePush ?? items[b.item].explodePush : 0)
     if (b?.note) { musicBurst(x, y, r, damage, b); return }
     booms.push({ x, y, r, life: 0.35 })
     sound('explode', null)
@@ -1109,6 +1154,132 @@ export function createCombat() {
         item: b.item, t: 0, explode: 0, explodeDamage: 0, fuse: 0, bounce: 0,
         note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true, remote: b.remote,
       })
+    }
+  }
+
+  // ---------- the decks of cards (lib/pigchicken/cards.ts) ----------
+  // Atirar with a deck: its next card still in it flies to the reticle (no further than the deck reaches) and stays
+  // there. A music deck's card keeps the note of the scale she aims at, to play when it bursts
+  // the card a deck throws next (null: as many as it may have away already are)
+  function deckNext(h: Owned, d: ItemDef) {
+    const away = cards.filter(c => c.owned === h).map(c => c.rank)
+    return away.length >= awayMax(d) ? null : nextCard(h.next ?? 0, away)
+  }
+  function throwCard(h: Owned, d: ItemDef, from: { x: number; y: number }) {
+    const rank = deckNext(h, d)
+    if (rank === null) return false
+    const angle = aimPoint ? Math.atan2(aimPoint.y - from.y, aimPoint.x - from.x) : aimAngle
+    const to = cardSpot(from.x, from.y, angle, aimPoint ? Math.hypot(aimPoint.x - from.x, aimPoint.y - from.y) : d.returnRange * aimReach, d.returnRange)
+    let note: NoteInfo | undefined
+    if (d.instrument) {
+      const t = tones(d), m = t.note()
+      note = { midi: m + detuneNow(), color: t.color(m), sym: NOTE_SYMBOLS[rank % NOTE_SYMBOLS.length], wave: 0, phase: 0, voice: d.voice }
+    }
+    const c: Card = { id: nextId++, rank, x: from.x, y: from.y, tx: to.x, ty: to.y, phase: 'out', t: 0, seed: Math.random(), speed: d.returnSpeed, angle, item: h.item, owned: h, owner: active, note, net: Math.floor(Math.random() * 190000) }
+    cards.push(c)
+    h.next = (rank + 1) % DECK_SIZE
+    leaves(h, d)
+    sound('throw', null)
+    if (netOn) netShots.push({ k: 'cd', i: h.item, c: c.net, r: rank, x: Math.round(from.x), y: Math.round(from.y), tx: Math.round(to.x), ty: Math.round(to.y), sp: d.returnSpeed, ...(note ? { col: note.color } : {}) })
+    return true
+  }
+  // who makes a card burst by touching it: the enemies still standing and the training dummies (a broken one only
+  // for a music card, which mends it), the other players (never the one who threw it, nor the chicks) and, online,
+  // the other browsers' chickens
+  function cardTouched(c: Card, touch: number) {
+    for (const g of targets) {
+      if (!alive(g) || g.kind === 'button' || (g.shield ?? 0) >= 1 || (g.kind === 'undead' && (g.data as UndeadState).bird) || (g.dummy && g.hp <= 0 && !c.note)) continue
+      if (cardTouches(c.x, c.y, touch, { l: g.x - g.w / 2, r: g.x + g.w / 2, t: g.y - g.h, b: g.y })) return true
+    }
+    for (const a of blastActors) if (a.id && a.id !== c.owner && cardTouches(c.x, c.y, touch, a.box)) return true
+    for (const b of netBodies) if (cardTouches(c.x, c.y, touch, { l: b.x - 45, r: b.x + 45, t: b.y - 200, b: b.y })) return true
+    return false
+  }
+  // a burst reaches the cards floating around it: each one bursts too, a moment later (a chain goes off in a row)
+  const chainCards = (x: number, y: number, r: number) => {
+    for (const o of burstReaches(cards, x, y, r, CARD_HALF)) if (!o.remote && o.fuse === undefined) o.fuse = CHAIN_DELAY
+  }
+  // a card bursts: it is gone from the world and back in its deck; whoever is in the burst's radius is pushed and
+  // takes its damage, or its harmony in the note the card kept (a music deck). The 7 and the Ás burst wider
+  function burstCard(c: Card) {
+    const d = items[c.item], at = cards.indexOf(c)
+    if (at >= 0) cards.splice(at, 1)
+    arrives(c.owned)
+    const r = Math.max(10, d.explodeRadius) * (burstsAlone(c.rank) ? Math.max(1, d.deckBig) : 1)
+    blastPush(c.x, c.y, r, d.explodePush)
+    const reach = (hit: (t: Target, cx: number, cy: number, dist: number) => void) => targets.forEach(t => {
+      if (t.deadT > 0) return
+      const cx = Math.max(t.x - t.w / 2, Math.min(c.x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(c.y, t.y))
+      const dist = Math.hypot(cx - c.x, cy - c.y)
+      if (dist <= r) hit(t, cx, cy, dist)
+    })
+    const note = c.note
+    if (note) {
+      booms.push({ x: c.x, y: c.y, r, life: 0.5, color: note.color })
+      out.note(note.voice, note.midi, 0, d.noteLen, 0.7, undefined, vibOf(d))
+      burst(c.x, c.y, 14, note.color, 260, 3)
+      reach((t, cx, cy, dist) => harmonize(t, d.explodeDamage * (1 - 0.5 * dist / r), 0, cx, cy, note, d.stun, c.item))
+    } else {
+      booms.push({ x: c.x, y: c.y, r, life: 0.35 })
+      sound('explode', null)
+      burst(c.x, c.y, 20, '#ff6b5b', 340, 4); burst(c.x, c.y, 10, '#fff3b0', 200, 3)
+      reach((t, cx, cy, dist) => hitTarget(t, d.explodeDamage * (1 - dist / r), 0, cx, cy, 'blast'))
+    }
+    chainCards(c.x, c.y, r)
+    if (netOn) netShots.push({ k: 'cx', i: c.item, c: c.net, x: Math.round(c.x), y: Math.round(c.y), rd: Math.round(r), ...(note ? { n: { m: note.midi, c: note.color, v: note.voice } } : {}) })
+  }
+  // a card is gone without bursting (its owner left the game): a little cloud where it was
+  function dropCard(c: Card) {
+    const at = cards.indexOf(c)
+    if (at >= 0) cards.splice(at, 1)
+    if (!c.remote) { arrives(c.owned); if (netOn) netShots.push({ k: 'cb', i: c.item, c: c.net }) }
+    puffs.push({ x: c.x, y: c.y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#ffffff' })
+  }
+  // the cards in the world, one step: out to where they were thrown (a wall or the floor stops them short), floating
+  // there, and back to their owner once she is further than the deck's leash. Touching someone on any of the three
+  // bursts them; the 7 and the Ás burst on their own as they arrive
+  function stepCards(dt: number, { boxes, groundY }: StepCtx) {
+    for (let i = cards.length - 1; i >= 0; i--) {
+      const c = cards[i], d = items[c.item]
+      c.t += dt
+      if (c.remote) {
+        // another browser's card: it only shows. Out to its place and floating; sent back, to where it left from
+        const to = c.phase === 'back' ? c.home ?? { x: c.tx, y: c.ty } : { x: c.tx, y: c.ty }
+        const dx = to.x - c.x, dy = to.y - c.y, dist = Math.hypot(dx, dy), go = c.speed * dt
+        if (c.phase === 'park') { if (c.t > REMOTE_CARD_LIFE) cards.splice(i, 1); continue }
+        if (dist <= Math.max(1, go)) { if (c.phase === 'back') cards.splice(i, 1); else { c.x = to.x; c.y = to.y; c.phase = 'park'; c.t = 0 } continue }
+        c.x += (dx / dist) * go; c.y += (dy / dist) * go
+        continue
+      }
+      if (c.fuse !== undefined) { c.fuse -= dt; if (c.fuse <= 0) { burstCard(c); continue } }
+      const her = bodyOf(c.owner)
+      if (c.phase === 'out') {
+        let arrived = false, burstNow = false
+        // in short steps, so it never jumps over a thin wall or a small enemy
+        for (let left = c.speed * dt; left > 0 && !arrived && !burstNow; left -= 12) {
+          const rem = Math.hypot(c.tx - c.x, c.ty - c.y), s = Math.min(12, left, rem)
+          if (rem < 0.5) { arrived = true; break }
+          const nx = c.x + ((c.tx - c.x) / rem) * s, ny = c.y + ((c.ty - c.y) / rem) * s
+          if (ny >= groundY || solidAt(boxes, nx, ny)) { arrived = true; break }
+          c.x = nx; c.y = ny
+          if (cardTouched(c, d.deckTouch)) burstNow = true
+          else if (rem - s < 0.5) arrived = true
+        }
+        if (burstNow || (arrived && burstsAlone(c.rank))) { burstCard(c); continue }
+        if (arrived) { c.phase = 'park'; c.t = 0; c.tx = c.x; c.ty = c.y }
+        continue
+      }
+      // its owner is gone: it goes in a little cloud
+      if (!her) { dropCard(c); continue }
+      const hx = her.x, hy = her.y - 90 * her.scale, dx = hx - c.x, dy = hy - c.y, dist = Math.hypot(dx, dy) || 1
+      if (c.phase === 'park') {
+        if (dist > d.deckLeash) { c.phase = 'back'; c.t = 0; c.speed = d.returnSpeed * 0.5; if (netOn) netShots.push({ k: 'cb', i: c.item, c: c.net }) }
+      } else {
+        c.speed = Math.min(c.speed + 2400 * dt, d.returnSpeed * 1.6)
+        if (dist <= Math.max(34, c.speed * dt)) { cards.splice(i, 1); arrives(c.owned); sound('catch', null); continue }
+        c.x += (dx / dist) * c.speed * dt; c.y += (dy / dist) * c.speed * dt
+      }
+      if (cardTouched(c, d.deckTouch)) burstCard(c)
     }
   }
 
@@ -2008,7 +2179,8 @@ export function createCombat() {
         }
         out[id] = {
           // a hammer still on its way back is in her wing again; the specials are ready (the next world's clock is new)
-          inv: l.inv.map(({ item, ammo, durability, refill, group, scale }) => ({ item, ammo, durability, refill, group, scale })),
+          // (the Boomerangs and a deck's cards too; the deck goes on from the card it was at)
+          inv: l.inv.map(({ item, ammo, durability, refill, group, scale, next }) => ({ item, ammo, durability, refill, group, scale, ...(next !== undefined ? { next } : {}) })),
           cur: l.cur, cages: kept, loose,
         }
       })
@@ -2077,6 +2249,12 @@ export function createCombat() {
     // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,
     // how bright the sky is from a special (0..1) and where a throw that comes back would fly if let go now
     bolts, flights,
+    // the cards of the decks out in the world (lib/pigchicken/cards.ts)
+    get cards() { return cards as readonly Card[] },
+    // the card a deck throws next (its place in CARD_RANKS), or null: not a deck, or all its cards are away
+    nextCard(o: Owned) { return items[o.item]?.deck ? deckNext(o, items[o.item]) : null },
+    // how many of an item that comes back are in her wings now (the Boomerang: one in each)
+    inHand(o: Owned) { const d = items[o.item]; return d?.returnThrow ? Math.max(0, awayMax(d) - (o.out ?? 0)) : 1 },
     get skyFlash() { return skyFlash },
     predictReturn,
     // an item's special: null when it has none, else how full it is (1 = ready, the next blow that hits is one)
@@ -2092,6 +2270,8 @@ export function createCombat() {
     get detune() { return detuneNow() },
     // the aim's reach (0..1) for the current player, set by the page before step; the loudness it gives the held item
     setAimReach(r: number) { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1 },
+    // where the current player's reticle is, in world px (a deck's card is thrown there); null: only the aim's angle
+    setAimPoint(p: { x: number; y: number } | null) { aimPoint = p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y } : null },
     get aimReach() { return aimReach },
     // the held instrument's scale now (the primary one for anything else)
     get scale() { return scaleOf(held(), def()) },
@@ -2308,8 +2488,10 @@ export function createCombat() {
       }
       // pecked by a soul (lib/pigchicken/soul-acts.ts): her item does not answer for a moment
       if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
-      // her hammer is out flying: the wing waits for it (she can still change items)
+      // her hammer is out flying: the wing waits for it (she can still change items). With one of two Boomerangs or
+      // some of a deck's cards away she still hits and throws the rest, but the item itself is not thrown (Arremesso)
       if (held()?.flying) input = { ...input, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false }
+      else if (held()?.out) input = { ...input, throwHeld: false, throwReleased: false }
       const d = def()
       if (consumption) {
         consumption.left -= dt
@@ -2487,7 +2669,13 @@ export function createCombat() {
         // interval of the last blow is over) and letting go hits, with whatever charge it has
         // (the item in the wing now: `d` is still the one she held when the frame started)
         const sd = items[h.item]
-        if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
+        if (sd.deck) {
+          // a deck: a press throws its next card where she aims; held, one more every `deckGap` s
+          if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) heavyItem = h
+          else if (heavyItem === h && !input.fire) heavyItem = null
+          if (heavyItem === h && cooldown <= 0 && throwCard(h, sd, opts.throwOrigin ?? origin)) cooldown = Math.max(0.05, sd.deckGap)
+        }
+        else if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
         else if (heavyItem === h && input.fire) { if (meleeCool <= 0) heavyT += dt }
         else if (heavyItem === h) {
           // one that comes back is thrown instead (the Martelo de Thor)
@@ -2648,11 +2836,11 @@ export function createCombat() {
         const her = f.remote ? null : bodyOf(f.owner)
         const home = f.home ?? (her ? { x: her.x, y: her.y - 90 * her.scale } : null)
         // its owner is gone: it falls where it is
-        if (!home) { f.owned.flying = false; pickups.push({ id: nextId++, owned: f.owned, x: f.x, y: f.y, vy: 0, resting: false, noPick: 0.3 }); flights.splice(i, 1); continue }
+        if (!home) { arrives(f.owned); if (!f.owned.out) pickups.push({ id: nextId++, owned: f.owned, x: f.x, y: f.y, vy: 0, resting: false, noPick: 0.3 }); flights.splice(i, 1); continue }
         const dx = home.x - f.x, dy = home.y - f.y, dist = Math.hypot(dx, dy) || 1
         f.speed = Math.min(f.speed + 2400 * dt, fd.returnSpeed * 1.6)
         if (dist <= Math.max(34, f.speed * dt)) {
-          f.owned.flying = false; flights.splice(i, 1)
+          arrives(f.owned); flights.splice(i, 1)
           if (!f.remote) sound('catch', null)
           continue
         }
@@ -2663,6 +2851,7 @@ export function createCombat() {
         f.x += f.vx * dt; f.y += f.vy * dt
         touch()
       }
+      if (world) stepCards(dt, { boxes, groundY })
       if (world) for (let i = bolts.length - 1; i >= 0; i--) { bolts[i].t += dt; if (bolts[i].t >= bolts[i].life) bolts.splice(i, 1) }
 
       // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
@@ -2693,7 +2882,7 @@ export function createCombat() {
       const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       // an item offered at her body (to take or to equip) goes before a Baú
       const itemOffered = !!hover || !!hoverOwned
-      if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.flying) || inv.some(o => o.item === hover!.owned.item))) {
+      if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.out) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
         pickups.splice(at, 1)
         const picked = pickUp(g, !meleePickup)

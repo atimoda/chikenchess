@@ -49,6 +49,7 @@ Código: `lib/pigchicken/items.ts` (`mjolnir`, `odinstaff`, `MAGIC_IDS`, campos 
 - **Enquanto está no ar:** a asa fica vazia, o item aparece apagado no slot e Atirar, Golpe e Arremesso desse slot ficam sem efeito; trocar de slot continua valendo, mas a troca por um item do chão é recusada com o martelo no ar.
 - **Chegada:** a 34 px do peito ele volta para a asa, com um som de pegada. Se quem arremessou saiu do jogo, o martelo cai no chão como item solto.
 - **Arremesso comum:** o bind de Arremesso continua jogando a arma como qualquer item (ela fica no chão); ao acertar alguém também dá o choque.
+- **Quantos de uma vez** (15/11): `returnCount` (padrão 1 no Martelo) diz quantos podem estar no ar; com todos fora valem os bloqueios acima. O Boomerang (2) e os baralhos de cartas usam o mesmo arremesso, sem raio: [Boomerang e baralhos](boomerangs.md).
 
 ## Pátio online
 
