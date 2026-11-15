@@ -69,7 +69,15 @@ export type Critter = {
 export type FreeSoul = {
   soul: Soul; owner: string; x: number; y: number; face: number; t: number; brain: SoulBrain; params: SoulFollowParams; recallIn: number | null; away: number | null
   act: SoulActParams; clock: SoulActClock; job: SoulJob | null; acts: number; warned: { id: number; at: number } | null
+  // in a portal with its owner: where it was when she went in (it flies from there to the portal's centre) and how big
+  // it is drawn meanwhile (1 .. 0 inside; missing: its own size)
+  portal?: { x: number; y: number } | null; k?: number
 }
+// where a player is in a portal now (world px: its centre): going in or coming out, and how far (0..1)
+export type SoulPortal = { mode: 'enter' | 'arrive'; x: number; y: number; k: number }
+// what goes with the players from one Pátio to the next (each local player's): the inventory and the item in hand, the
+// Bag of souls, and the souls that were flying free with them (they come out of the portal with them)
+export type WorldCarry = Record<string, { inv: Owned[]; cur: number; bag: Soul[]; loose: Soul[] }>
 // an errand of a soul: fetching an item (fetch: on its way to it; carry: bringing it), a step under its owner's feet,
 // or something against her. t: s on it; item: the one it goes for or carries; side: the side of her it comes from
 export type SoulJob = { kind: 'fetch' | 'carry' | 'step' | Exclude<SoulHinder, 'own' | 'none' | 'detune'>; t: number; item?: Pickup; side?: 1 | -1 }
@@ -735,6 +743,8 @@ export function createCombat() {
   let netAsks = false
   const lastRelease = new Map<string, number>()
   let soulClock = 0
+  // the players in a portal now (the Parquinho says it each frame): their souls flying free go in and out with them
+  const soulPortals = new Map<string, SoulPortal>()
   // the walls of the world and the top of the sky the camera shows (the Parquinho keeps it up to date)
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
@@ -1271,7 +1281,7 @@ export function createCombat() {
       // souls flying free, whoever let them out: they change bags (or go back to their own)
       for (let i = freed.length - 1; i >= 0; i--) {
         const f = freed[i]
-        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
+        if (f.portal || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
         letGo(f); freed.splice(i, 1); caught.push({ x: f.x, y: f.y, wild: false, soul: f.soul })
       }
       // online, a soul another browser flies: it is asked of that browser
@@ -1745,11 +1755,42 @@ export function createCombat() {
     // nearest to them first. Returns how many were called.
     callSouls() {
       if (soulClock - (lastRelease.get(active) ?? -Infinity) < CALLBACK_GUARD) return 0
-      const mine = freed.filter(f => f.owner === active && f.recallIn === null && f.away === null)
+      const mine = freed.filter(f => f.owner === active && f.recallIn === null && f.away === null && !f.portal)
       const her = lastBody ? { x: lastBody.x, y: lastBody.y - 90 * lastBody.scale } : null
       if (her) mine.sort((a, b) => Math.hypot(a.x - her.x, a.y - her.y) - Math.hypot(b.x - her.x, b.y - her.y))
       mine.forEach((f, i) => { f.recallIn = i * CALLBACK_GAP })
       return mine.length
+    },
+    // the players in a portal this frame (by player; world px), for their souls flying free
+    setSoulPortals(list: ReadonlyMap<string, SoulPortal>) { soulPortals.clear(); list.forEach((t, id) => soulPortals.set(id, t)) },
+    // Leaving this Pátio for another: what each local player takes along. Everything else of this world stays behind.
+    exportCarry(): WorldCarry {
+      loadouts.set(active, save())
+      const out: WorldCarry = {}
+      loadouts.forEach((l, id) => {
+        out[id] = {
+          // a hammer still on its way back is in her wing again; the specials are ready (the next world's clock is new)
+          inv: l.inv.map(({ item, ammo, durability, refill, group, scale }) => ({ item, ammo, durability, refill, group, scale })),
+          cur: l.cur,
+          // the ones on their way to the Bag of souls are in it; the ones flying free go as they are
+          bag: [...l.bag, ...abductions.filter(a => a.owner === id).map(a => a.soul)],
+          loose: freed.filter(f => f.owner === id && f.away === null).map(f => f.soul),
+        }
+      })
+      return out
+    },
+    // Arriving from another Pátio (a new world: call it before the first step). The souls that were flying free wait
+    // unseen until their owner comes out of the portal, and come out with them.
+    importCarry(carry: WorldCarry) {
+      for (const [id, c] of Object.entries(carry)) {
+        const l: Loadout = { ...blank(), inv: c.inv.map(o => ({ ...o })), cur: Math.max(0, Math.min(c.cur, c.inv.length)), bag: c.bag.slice() }
+        if (id === active) { inv.splice(0, inv.length, ...l.inv); cur = l.cur; bag = l.bag } else loadouts.set(id, l)
+        for (const soul of [...c.bag, ...c.loose]) nextId = Math.max(nextId, soul.id + 1)
+        for (const soul of c.loose) {
+          const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry)
+          freed.push({ soul, owner: id, x: 0, y: 0, face: 1, t: 0, brain: createSoulBrain(0, 0, params), params, recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null, portal: { x: 0, y: 0 }, k: 0 })
+        }
+      }
     },
     drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id); for (const f of freed) if (f.owner === id && f.away === null) { letGo(f); f.away = 0 } } },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
@@ -1925,7 +1966,7 @@ export function createCombat() {
     // the souls the other browsers fly, drawn here
     get netSouls() { return soulMirrors as readonly SoulMirror[] },
     // a browser's souls as it just sent them; the ones that left (called back, caught) go in a little cloud
-    importNetSouls(pid: number, list: unknown) { for (const m of importSouls(soulMirrors, pid, list)) if (m.asked === null) cloud(m.x, m.y) },
+    importNetSouls(pid: number, list: unknown) { for (const m of importSouls(soulMirrors, pid, list)) if (m.asked === null && (m.k ?? 1) > 0.2) cloud(m.x, m.y) },
     // only these browsers are still in the lobby
     keepNetSouls(pids: ReadonlySet<number>) { for (let i = soulMirrors.length - 1; i >= 0; i--) if (!pids.has(soulMirrors[i].pid)) soulMirrors.splice(i, 1) },
     // what this browser asks of the others (the sync empties the list), and whether it can ask
@@ -1938,7 +1979,7 @@ export function createCombat() {
     // here any more)
     giveNetTake(take: NetTake, pid: number): NetSoulWho | null {
       if (take.k === 's') {
-        const i = freed.findIndex(f => netIdFor(pid, f.soul.id) === take.id)
+        const i = freed.findIndex(f => !f.portal && netIdFor(pid, f.soul.id) === take.id)
         if (i < 0) return null
         const [f] = freed.splice(i, 1)
         letGo(f); cloud(f.x, f.y); sound('puff', null)
@@ -2586,6 +2627,22 @@ export function createCombat() {
           f.away += dt; f.brain.vy = Math.max(-260, f.brain.vy - 240 * dt); f.x += f.face * 130 * dt; f.y += f.brain.vy * dt
           if (f.away > 5) freed.splice(i, 1)
           continue
+        }
+        // its owner is in a portal: it is sucked in with them (from where it was to the portal's centre, shrinking) and
+        // waits inside; it comes out with them, small as when let out, or pops back by them if they never left
+        const transit = soulPortals.get(f.owner)
+        if (transit?.mode === 'enter') {
+          if (!f.portal) { letGo(f); f.recallIn = null; f.portal = { x: f.x, y: f.y } }
+          const u = transit.k * transit.k * (3 - 2 * transit.k)
+          f.x = f.portal.x + (transit.x - f.portal.x) * u; f.y = f.portal.y + (transit.y - f.portal.y) * u; f.k = 1 - u
+          continue
+        }
+        if (f.portal) {
+          const owner = bodyOf(f.owner)
+          const at = transit ?? (owner ? { x: owner.x, y: owner.y - 90 * owner.scale } : null)
+          if (!at) continue
+          f.portal = null; f.k = undefined
+          f.x = at.x; f.y = at.y; f.t = 0; f.brain = createSoulBrain(at.x, at.y, f.params); f.clock = newActClock(f.act)
         }
         if (f.recallIn !== null) {
           f.recallIn -= dt

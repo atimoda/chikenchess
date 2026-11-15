@@ -7,8 +7,15 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida',
+    title: 'Trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida',
     groups: [
+      { title: 'Pátio', items: [
+        'Trocar de Pátio agora é uma mudança completa de mundo: o Pátio em que você estava é fechado e nada dele aparece no novo. Antes, aliens, zumbis, pássaros, tiros e outras coisas do Pátio anterior continuavam no Pátio aberto (um Pátio novo vazio aparecia com aliens). Vale no modo local e no online, por qualquer caminho: Playgrounds, Próximo / Anterior, Pátio novo, portal para outro Pátio.',
+        'Para o Pátio novo vão só os bonecos, o inventário de cada um e a Bag of souls. As almas que estavam soltas saem do portal junto com o dono.',
+        'Ao entrar em qualquer portal, as almas soltas do boneco são sugadas junto com ele e saem com ele do outro lado.',
+        'No online, você vê o boneco de outro player e as almas dele sendo sugados para o portal, e surgindo do portal de chegada.',
+        'A animação de entrar e sair de um portal dura 0,2 s a mais (0,95 s).',
+      ] },
       { title: 'Partida', items: [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
         'Preferências da partida ganhou “Match log”, com o botão Copy: copia o histórico completo da partida, uma linha por acontecimento, com cada lance (posição, lances possíveis, listas Best e Worst com os scores, classificação, sequência e ovos pagos), Freeze e Shield, Undo, Redo, Mulligan e cada vez que as setas foram abertas. Serve para colar numa conversa ao relatar um bug. Vale na campanha e no online.',

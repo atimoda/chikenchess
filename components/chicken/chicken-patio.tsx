@@ -268,6 +268,10 @@ export function ChickenPatio() {
   netJoin.current = { name: myName, chickens: localCount, looks: myLooks, patio }
   // online on: join the oldest public lobby of this Pátio with a seat (or the room of an invite); off: leave
   const patioKey = patio ? patio.id ?? "default" : null
+  const patioKeyRef = useRef(patioKey)
+  patioKeyRef.current = patioKey
+  // a switch of Pátio that ended in the same one (it left the lobby on the way out): join it again
+  const [rejoin, setRejoin] = useState(0)
   useEffect(() => {
     if (mode !== "online" || !patioKey) { void leavePatioOnline(); return }
     let alive = true
@@ -285,7 +289,7 @@ export function ChickenPatio() {
     })()
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, patioKey])
+  }, [mode, patioKey, rejoin])
   useEffect(() => () => { void leavePatioOnline() }, [])
   // name, chickens and looks reach the others as they change
   useEffect(() => { if (net.status === "online") sendNetProfile({ name: myName, chickens: localCount, looks: myLooks }) }, [net.status, myName, localCount, myLooks])
@@ -359,8 +363,10 @@ export function ChickenPatio() {
     setPatioEditAccess(netLive ? { lobbyId: patio?.id ?? null, mode: "online", canEdit: amEditor } : null)
     return () => setPatioEditAccess(null)
   }, [netLive, amEditor, patio?.id])
-  // Switching Pátio: every local chicken is sucked into this Pátio's entry portal; once the other one is open (and
-  // drawn), they come out of its entry portal.
+  // Switching Pátio is leaving one world for another: every local chicken is sucked into this Pátio's entry portal
+  // (their souls flying free with them), this Pátio closes for this browser (its online lobby is left before the other
+  // one loads, so nothing of it reaches the next; the Parquinho's world ends with its id) and, once the other one is
+  // open (and drawn), they come out of its entry portal.
   const entryRef = useRef<LayoutElement | null>(null)
   const travelling = useRef(false)
   // through: the portal (to another Pátio) they leave by, instead of the entry portal
@@ -377,8 +383,13 @@ export function ChickenPatio() {
       for (const a of actors()) { portalGate(a, "patio").block(); a.setPortalEntry({ ...from, durationMs: PORTAL_TRANSITION_MS }) }
       playPortalSound("enter")
       await new Promise(r => window.setTimeout(r, PORTAL_TRANSITION_MS))
-      const result = await go()
+      const leaving = patioKeyRef.current, wasOnline = getNetState().status !== "off"
+      if (wasOnline) await leavePatioOnline()
+      trainingSpawns.current.length = 0
+      let result: T
+      try { result = await go() } catch (err) { if (wasOnline) setRejoin(n => n + 1); throw err }
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      if (wasOnline && patioKeyRef.current === leaving) setRejoin(n => n + 1)
       const to = centre() ?? from
       for (const a of actors()) { portalGate(a, "patio").block(); a.arriveAtPortal({ ...to, durationMs: PORTAL_TRANSITION_MS }) }
       playPortalSound("arrive")
