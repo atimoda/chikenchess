@@ -1,7 +1,7 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
-import { SWING_PHASES, nextCombo, swingCombo as comboOf, swingHitAt, swingLife, type Swing } from './swing'
+import { SWING_PHASES, announceComboBlow, blowKind, nextCombo, swingCombo as comboOf, swingHitAt, swingLife, type Swing } from './swing'
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
@@ -1196,7 +1196,6 @@ export function createCombat() {
   function melee(wing: boolean, scale: number, heavy: number | null = null) {
     const d = wing ? items.wing : def()
     const strong = heavy !== null
-    meleeCool = strong ? d.heavyCooldown : d.meleeCooldown
     const own = wing ? null : held()
     if (own && d.meleeOnly && d.mag > 0) {
       own.ammo = Math.max(0, own.ammo - 1); if (own.refill) own.refill = 0
@@ -1214,18 +1213,23 @@ export function createCombat() {
     }
     // the strong blow: its own numbers, and the charge stretches its reach and makes the staff and its air bigger
     const far = strong ? 1 + (Math.max(1, d.heavyReachMax) - 1) * heavy : 1, size = strong ? 1 + (Math.max(1, d.heavySizeMax) - 1) * heavy : 1
-    const range = (strong ? d.heavyRange : d.meleeRange) * far
-    // an item in the wing rides on its tip: the blow reaches its length further
-    const reach = range + (wing ? 0 : d.length * scale * size)
     // blows in a row follow the item's combo (by default down, up, horizontal, a full spin), each with its own
-    // arc. Down comes clockwise facing right. The strong blow is always the same move and starts the combo over
+    // arc, duration, block and reach. Down comes clockwise facing right. A blow "relative to the aim" goes up when
+    // she aims above the horizon and down otherwise. The strong blow is always the same move and starts the combo over
     const order = d.combo.length ? d.combo : DEFAULT_COMBO
     swingCombo = strong ? -1 : nextCombo(swingCombo, swingGap, d.comboWindow, order.length)
     const step = order[Math.max(0, swingCombo) % order.length]
-    const kind = strong ? d.heavyKind : step.kind
+    const kind = blowKind(strong ? d.heavyKind : step.kind, aimAngle)
     const arc = kind === 'spin' ? Math.PI * 2 : (strong ? d.heavyArc : step.arc) * DEG
     const face = Math.cos(aimAngle) >= 0 ? 1 : -1
-    const time = Math.max(0.02, strong ? d.heavyTime : d.meleeTime), trailTime = Math.max(0.05, strong ? d.heavyTrailTime : d.trailTime)
+    // the combo blow's reach multiplies the whole reach (wing and item); the wing stretches by the same share
+    const mult = strong ? 1 : step.reach
+    const range = (strong ? d.heavyRange : d.meleeRange) * far * mult
+    // an item in the wing rides on its tip: the blow reaches its length further
+    const reach = range + (wing ? 0 : d.length * scale * size * mult)
+    // the item's interval and the blow's own block both hold the next blow, counted from this one's start
+    meleeCool = strong ? d.heavyCooldown : Math.max(d.meleeCooldown, step.cooldown)
+    const time = Math.max(0.02, strong ? d.heavyTime : d.meleeTime * step.time), trailTime = Math.max(0.05, strong ? d.heavyTrailTime : d.trailTime)
     swing = {
       angle: aimAngle, arc, range, reach, t: 0, time, wing,
       dir: kind === 'up' ? -face : face, kind, combo: Math.max(0, swingCombo), hitAt: swingHitAt(time), hit: false, hits: 0,
@@ -1237,6 +1241,8 @@ export function createCombat() {
       ...(strong ? { heavy: true, charge: heavy, size } : {}),
     }
     swingGap = 0
+    // the Itens panel's combo window bar (only while it is open): the window counts once the move and the block end
+    if (active === 'p1') announceComboBlow(() => ({ busy: Math.max(time, meleeCool), window: strong ? 0 : d.comboWindow }))
   }
 
   // the blow's hit area also collects the new items on the floor it touches, like Golpe near her body: each one is
@@ -2106,7 +2112,8 @@ export function createCombat() {
         rebateNotes(swing, origin)
         if (swing.t > swing.life) swing = null
       }
-      if (!swing || swing.t > swing.time) swingGap += dt
+      // the combo window counts from the end of the move, and not while the blow's block still holds the next one
+      if ((!swing || swing.t > swing.time) && meleeCool <= 0) swingGap += dt
 
       // switching items
       // the shown slots: the empty one (empty hands) belongs to the last group, so Próximo utilitário passes by it
