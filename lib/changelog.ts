@@ -23,6 +23,7 @@ const RECENT = [
         'Limites desta primeira parte: no Pátio online as gaiolas do chão são de cada navegador, e os contadores dos outros jogadores só aparecem depois que o servidor de jogo for atualizado.',
       ] },
       { title: 'Pátio', items: [
+        'Modo editor: arrastar um item da paleta (arma, instrumento, esportivo, habilidade, magia, chave ou gaiola) para cima de um baú do Pátio coloca o item dentro do baú, com 100% de chance de sair. Enquanto o item está sobre o baú, o baú acende e aparece o ícone de inserir no ponteiro. Fora de um baú, o item continua virando suporte.',
         'A rodinha do mouse inverteu: rolar para cima vai ao Próximo item e para baixo ao Item anterior.',
         'Segurar Alt (o bind Edição) para abrir ou fechar o painel do Modo editor agora leva 0,75 s, metade do tempo de antes.',
         'Trocar de Pátio agora é uma mudança completa de mundo: o Pátio em que você estava é fechado e nada dele aparece no novo. Antes, aliens, zumbis, pássaros, tiros e outras coisas do Pátio anterior continuavam no Pátio aberto (um Pátio novo vazio aparecia com aliens). Vale no modo local e no online, por qualquer caminho: Playgrounds, Próximo / Anterior, Pátio novo, portal para outro Pátio.',

@@ -34,6 +34,17 @@ test('a Baú is an element of the layout: fixed size, its params cleaned, a pale
   assert.deepEqual(back.elements.find(e=>e.kind==='chest').params.chest,odd.params.chest)
 })
 
+test('an item dropped on a Baú becomes one more line of it, always coming out; a full list takes no more',()=>{
+  const a=C.defaultChest('simple'),b=C.addChestItem(a,'pistol')
+  assert.deepEqual(b.loot,[{pick:'any',chance:100},{pick:'pistol',chance:100}])
+  assert.equal(a.loot.length,1)
+  assert.deepEqual(C.normalizeChest(b),b)
+  let full=a
+  while(full.loot.length<C.CHEST_LOOT_MAX)full=C.addChestItem(full,'key')
+  assert.equal(C.addChestItem(full,'pistol'),null)
+  assert.ok(C.rollLoot(b.loot,()=>0.999).includes('pistol'))
+})
+
 test('each loot line is drawn on its own chance; a group gives one of its items',()=>{
   assert.deepEqual(C.rollLoot([{pick:'pistol',chance:100},{pick:'sax',chance:0}],seq(0.99)),['pistol'])
   assert.deepEqual(C.rollLoot([{pick:'pistol',chance:50}],seq(0.49)),['pistol'])

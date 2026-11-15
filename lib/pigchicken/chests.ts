@@ -71,6 +71,12 @@ export function defaultChest(rarity: ChestRarity = 'simple'): ChestParams {
   }
 }
 
+// one more line for a specific item, always coming out (dropping an item of the palette on the Baú); null when the
+// list is full
+export function addChestItem(p: ChestParams, item: ItemId): ChestParams | null {
+  return p.loot.length >= CHEST_LOOT_MAX ? null : { ...p, loot: [...p.loot, { pick: item, chance: 100 }] }
+}
+
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const validPick = (p: unknown): p is LootEntry['pick'] => typeof p === 'string' && (isLootGroup(p) || (RACK_ITEM_IDS as string[]).includes(p))

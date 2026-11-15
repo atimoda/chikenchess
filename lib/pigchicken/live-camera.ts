@@ -117,3 +117,9 @@ export const screenToWorld = (sx: number, sy: number) => {
   const x = (sx - cx) / z + cx, y = (sy - cy) / z + cy
   return { x: x + liveCamera.x, y: y - liveCamera.y }
 }
+
+// a world point on the screen (the other way round)
+export const worldToScreen = (wx: number, wy: number) => {
+  const cx = stageWidth() / 2, cy = window.innerHeight / 2, z = liveCamera.zoom
+  return { x: (wx - liveCamera.x - cx) * z + cx, y: (wy + liveCamera.y - cy) * z + cy }
+}

@@ -9,7 +9,7 @@
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PortalTargetFields } from "./portal-target-fields"
 import { cn } from "@/lib/utils"
@@ -21,10 +21,10 @@ import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
 import { CAGE_IDS, CAGE_SOULS_MAX, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS, isCage, loadItems, type ItemId } from "@/lib/pigchicken/items"
-import { CHEST_GLOW, CHEST_RARITIES, defaultChest, type ChestRarity } from "@/lib/pigchicken/chests"
+import { addChestItem, CHEST_GLOW, CHEST_RARITIES, defaultChest, type ChestRarity } from "@/lib/pigchicken/chests"
 import { ChestFields, ItemOptGroups } from "./chest-fields"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
-import { depthOffset, followCamera, screenToWorld } from "@/lib/pigchicken/live-camera"
+import { depthOffset, followCamera, liveCamera, screenToWorld, worldToScreen } from "@/lib/pigchicken/live-camera"
 import { moveToDepth } from "@/lib/pigchicken/backdrop-layers"
 import { MOUNTAINS_DEFAULT } from "@/lib/pigchicken/mountains"
 import { patioClouds } from "@/lib/pigchicken/clouds"
@@ -189,6 +189,17 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }, [append])
   const floorBelow = useCallback((x: number, y: number) =>
     layoutFloorBelow(elementsInWorld(layoutRef.current, screens), x, y), [screens])
+  // the Baú under a screen point that still takes an item (not locked, its list not full); the last one drawn first
+  const chestAt = useCallback((clientX: number, clientY: number) => {
+    const p = screenToWorld(clientX, clientY), m = CHEST_DROP_MARGIN
+    return elementsInWorld(layoutRef.current, screens).findLast(e => e.kind === 'chest' && !e.locked && !e.depth && !!e.params.chest && !!addChestItem(e.params.chest, 'key')
+      && p.x >= e.x - m && p.x <= e.x + e.w + m && p.y >= e.y - m && p.y <= e.y + e.h + m) ?? null
+  }, [screens])
+  // an item of the palette let go on a Baú goes inside it, always coming out
+  const insertInChest = useCallback((chest: LayoutElement, item: ItemId) => {
+    const next = chest.params.chest && addChestItem(chest.params.chest, item)
+    if (next) update({ ...chest, params: { ...chest.params, chest: next } })
+  }, [update])
   const add = useCallback((el: LayoutElement) => {
     // "Par de portais" makes two; "Portal para outro Pátio" stands on its own
     append(el.kind === 'portal' && el.params.portalTarget === undefined ? createPortalPair(el.x + el.w / 2, el.y + el.h / 2) : [el])
@@ -393,7 +404,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
         soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer}
-        floorBelow={floorBelow} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />}
+        floorBelow={floorBelow} chestAt={chestAt} onInsert={insertInChest} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />}
       {palette && draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
       {palette && draft?.kind === "tree" && <TreePanel tree={draft.value} onChange={value => setDraft({ kind: "tree", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
@@ -870,6 +881,9 @@ function ChestThumb({ rarity }: { rarity: ChestRarity }) {
 const previewParams = (entry: Entry): ElementParams =>
   isMusicElement(entry.kind) ? defaultParams(entry.kind) : isSurfaceElement(entry.kind) || isPowerElement(entry.kind) ? { ...defaultParams(entry.kind), ...entry.params } : { seed: 4242 }
 
+// how far around a Baú (world units) a dragged item still goes inside it
+const CHEST_DROP_MARGIN = 10
+
 const PALETTE_CARD = "flex min-h-16 cursor-grab touch-none flex-col items-center justify-center gap-1 rounded-md border border-white/10 bg-[#0b110e] px-1 py-1.5 text-center text-[10px] leading-tight hover:border-[#ffd166] active:cursor-grabbing disabled:opacity-50"
 
 function PaletteSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -881,13 +895,15 @@ function PaletteSection({ title, children }: { title: string; children: React.Re
   </PatioDisclosure>
 }
 
-function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, floorBelow, onClose, undo, redo, canUndo, canRedo }: {
+function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, floorBelow, chestAt, onInsert, onClose, undo, redo, canUndo, canRedo }: {
   active: boolean; onActive?: (on: boolean) => void
   onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
   bindTree: (tree: TreeParams) => PatioPlacementHandlers
   canAddScenery: boolean; hidden: boolean; draggingScenery: boolean
   soundLayer: boolean; onSoundLayer: () => void
-  floorBelow: (x: number, y: number) => number; onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
+  floorBelow: (x: number, y: number) => number
+  chestAt: (clientX: number, clientY: number) => LayoutElement | null; onInsert: (chest: LayoutElement, item: ItemId) => void
+  onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
 }) {
   const [housePreviews] = useState(() => (Object.keys(HOUSE_STYLE_LABELS) as HouseStyle[]).map(style => randomHouse(style).house))
   const [treePreviews] = useState(() => (Object.keys(TREE_STYLES) as TreeParams["style"][]).map(style => randomTree(style)))
@@ -898,11 +914,16 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
     ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
     setDrag({ entry, x: e.clientX, y: e.clientY, pointer: e.pointerId })
   }
+  // an item (a rack's card) dragged over a Baú goes inside it instead of standing on a rack
+  const chestUnder = (d: { entry: Entry; x: number; y: number }) => (d.entry.kind === "rack" && d.entry.params?.item ? chestAt(d.x, d.y) : null)
+  const into = drag ? chestUnder(drag) : null
   const move = (e: React.PointerEvent) => { if (drag?.pointer === e.pointerId) setDrag({ ...drag, x: e.clientX, y: e.clientY }) }
   const end = (e: React.PointerEvent) => {
     if (drag?.pointer !== e.pointerId) return
     const over = document.elementsFromPoint(e.clientX, e.clientY).some(n => n.closest?.("aside, header"))
-    if (!over) {
+    const chest = over ? null : chestUnder({ ...drag, x: e.clientX, y: e.clientY })
+    if (chest) onInsert(chest, drag.entry.params!.item!)
+    else if (!over) {
       const p = screenToWorld(e.clientX, e.clientY)
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       // dummies and racks stand on the floor right under where they were dropped
@@ -984,13 +1005,26 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
         ? <EditorDock aria-label="Elementos do Pátio" className="font-mono text-xs">{body}</EditorDock>
         : <FloatingPanel id="patio-palette" aria-label="Elementos do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(260, vw - 24), h: vw < 640 ? Math.min(300, vh * 0.38) : Math.min(560, vh - 80) })} minW={180} minH={140} className={cn("rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]", hidden && "hidden", draggingScenery && "pointer-events-none opacity-0")}>{body}</FloatingPanel>}
       {/* what is being dragged, at its real size in the world */}
-      {drag && d && (
+      {drag && into && <InsertHint chest={into} entry={drag.entry} x={drag.x} y={drag.y} />}
+      {drag && d && !into && (
         <div aria-hidden="true" className="pointer-events-none fixed z-[250] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: drag.y - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
           {d.entity ? <div className="absolute inset-0 flex items-center justify-center bg-[#ffd166]/15"><Thumb entry={drag.entry} /></div> : <ElementArt el={{ kind: drag.entry.kind, params: previewParams(drag.entry), w: d.w, h: d.h }} editing />}
         </div>
       )}
     </>
   )
+}
+
+// an item dragged over a Baú: the Baú lit in its rarity's colour and, at the pointer, the item with the "insert" mark
+function InsertHint({ chest, entry, x, y }: { chest: LayoutElement; entry: Entry; x: number; y: number }) {
+  const at = worldToScreen(chest.x, chest.y), z = liveCamera.zoom, color = CHEST_GLOW[chest.params.chest?.rarity ?? "simple"].color
+  return <>
+    <div aria-hidden="true" className="pointer-events-none fixed z-[250] rounded-lg border-2" style={{ left: at.x - 6, top: at.y - 6, width: chest.w * z + 12, height: chest.h * z + 12, borderColor: color, boxShadow: `0 0 18px ${color}` }} />
+    <div aria-hidden="true" data-chest-insert className="pointer-events-none fixed z-[251] flex -translate-x-1/2 -translate-y-full flex-col items-center gap-0.5" style={{ left: x, top: y - 4 }}>
+      <Thumb entry={entry} />
+      <span className="flex h-6 w-6 items-center justify-center rounded-full text-[#101713]" style={{ background: color }}><PackagePlus className="h-4 w-4" strokeWidth={2.5} /></span>
+    </div>
+  </>
 }
 
 // a scene's own zone: the same fields as a Zona sonora of the map (it is one, stuck to the ground), for this Pátio
