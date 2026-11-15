@@ -152,19 +152,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 200
+        "arc": 200,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -336,19 +348,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 190
+        "arc": 190,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -513,19 +537,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -697,19 +733,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -881,19 +929,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1065,19 +1125,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1249,19 +1321,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1439,19 +1523,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1623,19 +1719,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1691,11 +1799,11 @@
     "muzzleX": 28,
     "muzzleY": 0,
     "length": 40,
-    "pivotX": 0,
+    "pivotX": -74,
     "pivotY": 0,
-    "handX": 0,
+    "handX": -12,
     "handY": 0,
-    "backX": 0,
+    "backX": 1,
     "backY": 0,
     "gripX": 0,
     "gripY": 0,
@@ -1794,8 +1902,8 @@
     "meleeInterrupt": true,
     "rebateTok": false,
     "pivotAt": "shoulder",
-    "handOn": false,
-    "backOn": false,
+    "handOn": true,
+    "backOn": true,
     "wingFlip": false,
     "arp": "off",
     "pitchSet": "chord",
@@ -1807,19 +1915,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1991,19 +2111,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2179,19 +2311,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2367,19 +2511,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2555,19 +2711,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2749,19 +2917,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2943,19 +3123,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3131,19 +3323,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3325,19 +3529,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3519,19 +3735,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3703,19 +3931,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3880,19 +4120,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4057,19 +4309,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 200
+        "arc": 200,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4241,19 +4505,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 200
+        "arc": 200,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4425,19 +4701,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4602,19 +4890,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4786,19 +5086,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 160
+        "arc": 160,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",

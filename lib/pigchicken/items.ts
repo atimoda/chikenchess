@@ -1,7 +1,7 @@
 // PigChicKen items: weapons and instruments share one sheet of numbers. An instrument is its weapon family's
 // sheet with a music block: the projectile is a note, and notes convert (fill the harmony bar) instead of
 // destroying. The Parquinho's item popup edits these sheets; they are saved in this browser for now.
-import { COMBO_WINDOW, cleanCombo, isSwingKind, swingCombo, type ComboStep, type SwingKind } from './swing'
+import { COMBO_WINDOW, cleanCombo, isSwingKind, swingCombo, type BlowKind, type ComboStep } from './swing'
 import type { PitchSet } from './music'
 import { cleanScales, type InstrumentScaleId } from './instrument-scales'
 import type { VoiceId } from './synth'
@@ -183,6 +183,11 @@ export type ItemDef = {
   backOn: boolean
   backX: number
   backY: number
+  // "Arco e Flecha": while Fire charges, the wing's hand pulls its point (`hand`, where it holds the arrow) straight
+  // back along the item, up to `drawLen` rig units at the full charge; the arrow and the string follow it and the item
+  // itself stays where it is, held by the back wing (lib/pigchicken/held-pose.ts)
+  archery: boolean
+  drawLen: number
   wingFlip: boolean // the wings that hold it are flipped vertically (mirrored along their length), for poses that turn them upside down
   // a staff (an item only for hitting: taco, passaguá): how she carries it. The wing's hand grips the point `grip` of
   // its drawing; that point sits at (staffX, staffY) from her shoulder (rig units, x to her front, y down) with the
@@ -205,7 +210,7 @@ export type ItemDef = {
   heavyCooldown: number // s
   heavyTime: number // s the whole move takes
   heavyPush: number // knockback px/s
-  heavyKind: SwingKind
+  heavyKind: BlowKind
   heavyCharge: number
   heavyReachMax: number
   heavySizeMax: number
@@ -255,9 +260,10 @@ export const isStaff = (d: ItemDef) => d.meleeOnly
 export type PivotPart = 'shoulder' | 'mouth'
 // the rig the chicken's engine draws it with: the pivot on a body part and the wings' touch points (null: as always,
 // turning around the shoulder with the wing following the aim)
-export function itemRig(d: ItemDef): { at: PivotPart; x: number; y: number; hand: { x: number; y: number } | null; back: { x: number; y: number } | null; flip: boolean } | null {
+// `draw`: how far back (rig units) the wing's hand has pulled its point ("Arco e Flecha")
+export function itemRig(d: ItemDef, draw = 0): { at: PivotPart; x: number; y: number; hand: { x: number; y: number } | null; back: { x: number; y: number } | null; flip: boolean } | null {
   if (d.pivotAt === 'shoulder' && !d.pivotX && !d.pivotY && !d.handOn && !d.backOn) return null
-  return { at: d.pivotAt, x: d.pivotX, y: d.pivotY, hand: d.handOn ? { x: d.handX, y: d.handY } : null, back: d.backOn ? { x: d.backX, y: d.backY } : null, flip: d.wingFlip }
+  return { at: d.pivotAt, x: d.pivotX, y: d.pivotY, hand: d.handOn ? { x: d.handX - draw, y: d.handY } : null, back: d.backOn ? { x: d.backX, y: d.backY } : null, flip: d.wingFlip }
 }
 export const PIVOT_PARTS: { value: PivotPart; label: string }[] = [{ value: 'shoulder', label: 'Ombro (padrão)' }, { value: 'mouth', label: 'Boca (bico)' }]
 
@@ -270,9 +276,9 @@ const NO_MUSIC = {
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
-  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
+  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false, archery: false, drawLen: 30,
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
-  heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as SwingKind,
+  heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as BlowKind,
   heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
   shockRange: 0, shockJumps: 3, shockTime: 0.35, shockDamage: 0, shockDrain: 0, heavyShockRange: 0, heavyShockTime: 0.6,
   specialCooldown: 0, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 20, specialKind: 'thunder' as SpecialKind,
@@ -366,6 +372,8 @@ const BOW: ItemDef = {
   spreadBase: 0.5, spreadShot: 0, spreadMax: 3, spreadMove: 1, spreadAir: 2,
   recoilKick: 0, recoilPush: 0,
   muzzleX: 28, muzzleY: 0, length: 40, meleeDamage: 12, durability: 0, throwDamage: 15,
+  // held like a real bow: the grip out in front of her in the back wing, the front wing on the arrow's nock
+  archery: true, drawLen: 30, pivotX: -74, handOn: true, handX: -12, handY: 0, backOn: true, backX: 1, backY: 0,
   rebateChain: chain(['counter', 'thirds', 1]), rebateSnap: 0,
 }
 
@@ -496,7 +504,7 @@ const TAMBOURINE: ItemDef = {
 }
 // Harpas → bow: the charge is a glissando, the note rises with the charge and flies far and precise
 const HARP: ItemDef = {
-  ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa', family: 'Harpas', reticle: 'bow',
+  ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa', family: 'Harpas', reticle: 'bow', archery: false, pivotX: 0,
   damage: 40, size: 12, speed: 1500, drop: 700, muzzleX: 21, muzzleY: -10, length: 30,
   instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
@@ -630,6 +638,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'handY', label: 'Mão da asa Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'backX', label: 'Mão da asa de trás X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'backY', label: 'Mão da asa de trás Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'drawLen', label: 'Puxada da flecha', min: 0, max: 120, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Quanto a asa puxa a flecha para trás com a carga cheia' },
   { key: 'gripX', label: 'Mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a mão da asa segura' },
   { key: 'gripY', label: 'Mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'staffX', label: 'Posição no corpo X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Onde a mão fica, a partir do ombro; positivo é para a frente dela' },
@@ -754,7 +763,9 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip', 'archery', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  // saved before "Arco e Flecha" (v11): a bow whose points were never touched takes the new ones (both wings on it)
+  if (id === 'bow' && !(v >= 11) && !s.handOn && !s.backOn && !s.pivotX && !s.pivotY) (['pivotX', 'handOn', 'handX', 'handY', 'backOn', 'backX', 'backY'] as const).forEach(k => { (out.bow as Record<string, unknown>)[k] = DEFAULT_ITEMS.bow[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
   if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
   ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
@@ -764,8 +775,8 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (isSwingKind(s.heavyKind)) out[id].heavyKind = s.heavyKind
   if (SPECIAL_KINDS.some(k => k.value === s.specialKind)) out[id].specialKind = s.specialKind
   { // saved before each blow had its own arc (v10): the kinds only, with the arcs of down (meleeArc), up and horizontal
-    const old: Partial<Record<SwingKind, unknown>> = v >= 10 ? {} : { down: s.meleeArc, up: s.meleeArcUp, flat: s.meleeArcFlat }
-    const arcOf = (kind: SwingKind) => { const a = old[kind]; return typeof a === 'number' && Number.isFinite(a) ? a : out[id].combo.find(c => c.kind === kind)?.arc ?? out[id].meleeArc }
+    const old: Partial<Record<BlowKind, unknown>> = v >= 10 ? {} : { down: s.meleeArc, up: s.meleeArcUp, flat: s.meleeArcFlat }
+    const arcOf = (kind: BlowKind) => { const a = old[kind]; return typeof a === 'number' && Number.isFinite(a) ? a : out[id].combo.find(c => c.kind === kind)?.arc ?? out[id].meleeArc }
     const combo = cleanCombo(s.combo, arcOf) ?? (v >= 10 ? null : cleanCombo(out[id].combo.map(c => c.kind), arcOf))
     if (combo) out[id].combo = combo
   }
@@ -783,11 +794,11 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
 // Giro da mira the instruments had before v8 (now 0 = instant)
 const V7_TURN_RATE: Partial<Record<ItemId, number>> = { sax: 120, violin: 420, keys: 300 }
 
-const ITEMS_VERSION = 10
+const ITEMS_VERSION = 11
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)
