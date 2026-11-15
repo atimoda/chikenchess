@@ -34,10 +34,10 @@
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: almas capturadas (identidade, raridade, Bag of souls, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
 | Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel e editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
-| Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
+| Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
-| Pátio: golpe rápido em quatro tempos, rastro, combo (direção e ângulo de cada golpe), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
+| Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
 | Pátio: Martelo de Thor e Cajado de Odin: choque em cadeia, estado de choque (raio-x), especial com intervalo no slot, arremesso que volta | [Armas de raio](docs/mechanics/patio/lightning.md) |
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
@@ -50,6 +50,7 @@
 | Online 1v1: contas, perfil e amigos | [Contas](docs/mechanics/online/accounts.md) |
 | Online 1v1: partida, confirmação, análise e rede | [Partida online](docs/mechanics/online/match.md) |
 | Perfil, pontuação e ovos | [Progresso](docs/mechanics/progression.md) |
+| Copiar o histórico completo da partida para relatar bugs | [Match log](docs/mechanics/match-log.md) |
 | Páginas legais, links do login/globo e analytics | [Páginas públicas](docs/mechanics/public-pages.md) |
 | Freeze, Shield e casas especiais | [Poderes](docs/mechanics/powers.md) |
 | Processamento | [Gestos e custo](docs/mechanics/performance.md) |
@@ -80,6 +81,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Manutenção, ideias e histórico](docs/mechanics/maintenance.md) | 7 KB |
 | [Mapa, globo e popups das cidades](docs/mechanics/map.md) | 27 KB |
 | [Cabeçalho, barra de chance e abertura da partida](docs/mechanics/match-header-and-intro.md) | 5 KB |
+| [Histórico completo da partida (Match log)](docs/mechanics/match-log.md) | 5 KB |
 | [MIDI-only e persistência](docs/mechanics/midi-persistence.md) | 5 KB |
 | [Mixer DJ na partida](docs/mechanics/mixer.md) | 7 KB |
 | [Online 1v1: contas, perfil, amigos e nomes](docs/mechanics/online/accounts.md) | 9 KB |
@@ -87,7 +89,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Online 1v1: salas, lobby, convites e popup](docs/mechanics/online/lobby.md) | 14 KB |
 | [Online 1v1: partida, confirmação, análise, áudio e rede](docs/mechanics/online/match.md) | 14 KB |
 | [Pátio: combate, mira, bicada e arremesso](docs/mechanics/patio/combat.md) | 24 KB |
-| [Pátio: golpe e combo](docs/mechanics/patio/melee.md) | 8 KB |
+| [Pátio: golpe e combo](docs/mechanics/patio/melee.md) | 11 KB |
 | [Pátio: armas de bastão](docs/mechanics/patio/staffs.md) | 7 KB |
 | [Pátio: armas de raio e estado de choque](docs/mechanics/patio/lightning.md) | 7 KB |
 | [Pátio: zumbis e hordas](docs/mechanics/patio/enemies.md) | 2 KB |
@@ -107,7 +109,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: mundo, cenário, portais, Vila, árvores e trampolim](docs/mechanics/patio/world.md) | 25 KB |
 | [Gestos e custo de processamento](docs/mechanics/performance.md) | 21 KB |
 | [Poderes da partida](docs/mechanics/powers.md) | 25 KB |
-| [Progresso e ovos dourados](docs/mechanics/progression.md) | 27 KB |
+| [Progresso e ovos dourados](docs/mechanics/progression.md) | 28 KB |
 | [Páginas públicas, privacidade e analytics](docs/mechanics/public-pages.md) | 5 KB |
 | [Escopo, dados e kits](docs/mechanics/scope-and-data.md) | 18 KB |
 | [Estados e Eventos: editor no Criativo](docs/mechanics/states-and-events-editor.md) | 20 KB |

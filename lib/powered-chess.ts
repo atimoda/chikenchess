@@ -16,6 +16,8 @@ interface InternalMove {
 interface ChessInternals {
   _attacked(color: 'w' | 'b', square: number, verbose?: boolean): boolean | Square[]
   _moves(options?: { legal?: boolean; square?: Square; piece?: string }): InternalMove[]
+  _makeMove(move: InternalMove): void
+  _undoMove(): unknown
   _history: Array<{ move: InternalMove }>
   _board: unknown[]
   _turn: 'w' | 'b'
@@ -54,6 +56,34 @@ function shieldedOwnKing(game: Chess, powers: MatchPower[], color: 'w' | 'b'): b
   })
 }
 
+/**
+ * A frozen piece does not threaten squares, but it can thaw early: when no legal
+ * reply remains, every power fades on the owner's turn. A king that stepped into
+ * its reach (even next to a frozen king) would then be capturable. So a move may
+ * not newly expose the mover's king to a frozen enemy piece. A king already in
+ * the reach of a frozen checker keeps the existing freeze-the-checker play.
+ */
+function withoutNewFrozenThreats(game: Chess, powers: MatchPower[], moves: InternalMove[]): InternalMove[] {
+  const variant = game as unknown as ChessInternals
+  const us = variant._turn, them = us === 'w' ? 'b' : 'w'
+  if (variant._kings[us] === -1) return moves
+  const frozen = new Set<Square>()
+  for (const power of powers) {
+    if (power.kind !== 'freeze' || power.frozenColor !== them) continue
+    const at = activeSquare(game, power)
+    if (game.get(at)?.color === them) frozen.add(at)
+  }
+  if (!frozen.size) return moves
+  const frozenAttackers = () => (original._attacked.call(game, them, variant._kings[us], true) as Square[]).filter(from => frozen.has(from))
+  const before = new Set(frozenAttackers())
+  return moves.filter(move => {
+    variant._makeMove(move)
+    const exposed = frozenAttackers().some(from => !before.has(from))
+    variant._undoMove()
+    return !exposed
+  })
+}
+
 export function setPoweredChessPowers(game: Chess, powers: MatchPower[]): void {
   const context = contexts.get(game)
   if (context) context.powers = powers.map(power => ({ ...power }))
@@ -76,12 +106,13 @@ export function makePoweredChess(game: Chess = new Chess(), powers: MatchPower[]
     return verbose ? (protectedKing ? [] : effective) : !protectedKing && effective.length > 0
   }
   variant._moves = function (this: Chess, options = {}) {
-    return original._moves.call(this, options).filter(move => {
+    const moves = original._moves.call(this, options).filter(move => {
       if (move.captured === 'k') return false
       const flags = `${move.flags & 8 ? 'e' : ''}${move.flags & 32 ? 'k' : ''}${move.flags & 64 ? 'q' : ''}`
       const to = square(move.to)
       return permitsPowerMove({ from: square(move.from), to, color: move.color, flags, captured: move.captured }, context.powers, (this as unknown as ChessInternals)._history.length + 1)
     })
+    return options.legal === false ? moves : withoutNewFrozenThreats(this, context.powers, moves)
   }
   game.move = function (move, options) {
     const result = originalMove.call(this, move, options)
