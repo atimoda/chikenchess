@@ -53,9 +53,9 @@ const COMBO_SELECT = "h-8 w-auto cursor-pointer appearance-none rounded-md borde
 // the numbers of a combo blow that come as lists, as narrow as what they show: duration (× the item's), the block on
 // the next blow (s) and the reach (× the item's)
 const COMBO_LISTS: { key: "time" | "cooldown" | "reach"; name: string; hint: string; values: number[]; show: (v: number) => string }[] = [
-  { key: "time", name: "duração", hint: "Duração deste golpe, em vezes a Duração do giro do item: mais = golpe mais lento", values: COMBO_TIMES, show: v => `dur ×${v}` },
-  { key: "cooldown", name: "cooldown", hint: "Cooldown: por quanto tempo, a partir do início deste golpe, o próximo fica bloqueado", values: COMBO_COOLDOWNS, show: v => `cd ${v}s` },
-  { key: "reach", name: "alcance", hint: "Alcance deste golpe, em vezes o alcance do item", values: COMBO_REACHES, show: v => `alc ×${v}` },
+  { key: "time", name: "duração", hint: "Duração deste golpe, em vezes a Duração do giro do item: mais = golpe mais lento", values: COMBO_TIMES, show: v => `×${v}` },
+  { key: "cooldown", name: "cooldown", hint: "Cooldown: por quanto tempo, a partir do início deste golpe, o próximo fica bloqueado", values: COMBO_COOLDOWNS, show: v => `${v}s` },
+  { key: "reach", name: "alcance", hint: "Alcance deste golpe, em vezes o alcance do item", values: COMBO_REACHES, show: v => `×${v}` },
 ]
 // a consumable's doses are the magazine's number
 const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", unit: "", group: "Efeito", hint: "Cada Atirar usa uma; 0 = nunca acaba" }
@@ -226,7 +226,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               {g === "Combo" && (
                 <div className="grid gap-1.5">
-                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com direção, ângulo que cobre, duração, cooldown e alcance">Ordem dos golpes</span>
+                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com direção, ângulo que cobre, duração, cooldown e alcance">Direção / Ângulo / Duração / Cooldown / Alcance</span>
                   {it.combo.map((c, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-1">
                       <select aria-label={`Golpe ${i + 1} do combo: direção`} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { ...c, kind: v as BlowKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as BlowKind) : c.arc } }) }} className={COMBO_SELECT}>
