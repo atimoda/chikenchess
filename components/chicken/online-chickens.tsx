@@ -12,6 +12,7 @@ import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import type { ChickenLook } from "@/lib/chicken/look-art"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import { angleByte, byteAngle, stateByte, stateName } from "@/lib/chicken/net-protocol"
+import { PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { getNetState, hideRemoteChick, netCan, remoteChicken, remoteChicks, sendNetChicks, sendOwnChickens, subscribeNet, type NetPlayer } from "@/lib/chicken/online-room"
 import { CHICK_STYLES, chickArt } from "@/lib/chicken/chick-art"
 import { chickAt, chickNumber, chickStyleOf, exportChicks } from "@/lib/chicken/net-chicks"
@@ -39,7 +40,8 @@ export const netColor = (index: number) => PLAYER_COLORS[index % PLAYER_COLORS.l
 export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getNetState)
 
 // aim: the angle she is drawn pointing at, eased toward the latest one (the packets come 20 times a second)
-type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; item: number; aim: number | null; at: number }
+// portal: the portal animation she is in on this screen (as her browser says), and the camera it was last drawn with
+type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number }
 // another browser's chick drawn here (id: its id in the lobby; hidden: asked of its browser, out of sight meanwhile)
 export type NetChickMirror = { engine: ChickenEngine; wrap: HTMLDivElement; pid: number; id: number; hidden: boolean; hide: () => void }
 // the shortest turn from a to b
@@ -69,8 +71,11 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
       const list = ownRef.current().slice(0, 4).map((eng, slot) => {
         const s = eng.getMotionState()
         const clinging = s.state === "cling"
+        // going into a portal, she is sent where the portal is (her feet, were she standing in its centre): the others
+        // draw her being sucked into it
+        const into = s.state === "portal" ? eng.getPortalTransit() : null
         return {
-          slot, x: s.x + liveCamera.x, y: s.y - liveCamera.y, vx: s.vx, vy: s.vy, face: s.face, state: stateByte(s.networkAnimation ?? s.state), item: itemByte(eng.getHeldItem()),
+          slot, x: (into ? into.x : s.x) + liveCamera.x, y: (into ? into.y + 80 * s.scale : s.y) - liveCamera.y, vx: s.vx, vy: s.vy, face: s.face, state: stateByte(s.networkAnimation ?? s.state), item: itemByte(eng.getHeldItem()),
           aim: angleByte(eng.getAim()), rot: clinging ? angleByte(s.angle) : 0,
         }
       })
@@ -118,7 +123,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const tag = document.createElement("div")
         tag.className = "pointer-events-none fixed left-0 top-0 z-[203] whitespace-nowrap rounded-full border-2 bg-black/60 px-2 py-0.5 font-mono text-[11px] font-bold text-white"
         host.appendChild(tag)
-        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, item: 0, aim: null, at: performance.now() }
+        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0 }
         engine.setRemote(() => {
           const c = remoteChicken(entry.pid, entry.slot)
           if (!c) return null
@@ -138,6 +143,23 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
             engine.setHeld(key && svg ? { svg, itemKey: key, angle, kick: 0, atHand: !!staff, rig: def ? itemRig(def) : null, staff } : null)
           }
           engine.setGame({ lookAngle: entry.aim })
+          // in a portal: the same animation as on her browser, into (or out of) the portal's centre on this screen
+          const state = stateName(c.state)
+          if (state === "portal" || state === "portalArrival") {
+            const centre = { x: c.x - liveCamera.x, y: c.y + liveCamera.y - 80 * engine.getMotionState().scale, durationMs: PORTAL_TRANSITION_MS }
+            if (entry.portal !== state) {
+              entry.portal = state
+              if (state === "portal") { engine.setPortalEntry(null); engine.setPortalEntry(centre) } else engine.arriveAtPortal(centre)
+            } else {
+              // this screen's camera moved meanwhile: she and the portal move with the world
+              const dx = entry.camX - liveCamera.x, dy = liveCamera.y - entry.camY
+              if (dx || dy) engine.shift(dx, dy)
+              if (state === "portal") engine.setPortalEntry(centre)
+            }
+            entry.camX = liveCamera.x; entry.camY = liveCamera.y
+            return null
+          }
+          if (entry.portal) { if (entry.portal === "portal") engine.setPortalEntry(null); entry.portal = null }
           return { x: c.x - liveCamera.x, y: c.y + liveCamera.y, vx: c.vx, vy: c.vy, face: c.face, state: stateName(c.state), cling: byteAngle(c.rot) }
         })
         tag.style.visibility = "hidden"
@@ -188,6 +210,8 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
         const x = cx + (s.x - cx) * z - r.tag.offsetWidth * z / 2
         const y = cy + (s.y - TAG_UP * s.scale - cy) * z
+        // sucked into a portal, her name goes with her
+        r.tag.style.opacity = r.portal === "portal" ? "0" : ""
         r.tag.style.transformOrigin = "0 0"
         r.tag.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) scale(${z})`
       })

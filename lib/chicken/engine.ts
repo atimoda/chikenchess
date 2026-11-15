@@ -72,6 +72,8 @@ export type ChickenEngine = {
   // Repeated calls update the target without restarting; null cancels the transition.
   setPortalEntry: (entry: { x: number; y: number; durationMs: number } | null) => void
   arriveAtPortal: (arrival: { x: number; y: number; durationMs: number }) => void
+  // The portal she is going into or coming out of now: its centre on the screen and how far the animation is (0..1).
+  getPortalTransit: () => { mode: 'enter' | 'arrive'; x: number; y: number; k: number } | null
   // camera moved: move her (and everything she keeps in screen coordinates) by dx, dy pixels
   shift: (dx: number, dy?: number) => void
   // left and right walls and the ceiling (top) in screen pixels; null = the screen edges inside the limits' border
@@ -1653,7 +1655,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.shadow.setAttribute('opacity', '0')
     if (p.mode === 'arrive' && t >= 1) {
       portalEntry = null
-      el.root.style.pointerEvents = 'visiblePainted'
+      el.root.style.pointerEvents = remote ? 'none' : 'visiblePainted'
       render()
     }
   }
@@ -1860,6 +1862,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let remote: (() => ChickenRemote | null) | null = null
   function remoteStep(dt: number) {
     const t = remote?.()
+    // her browser says she is in a portal (the page started it while answering): the portal draws her from now on
+    if (portalEntry) { renderPortal(frameNow); return }
     if (!t) { render(); return }
     if (t.cling != null) { remoteCling(dt, t); return }
     if (S.cl) {
@@ -1917,8 +1921,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     frameNow = now
     const dt = Math.min(1 / 30, (now - last) / 1000); last = now; frameDt = dt
     tagT -= dt; if (tagT <= 0) { tagBoxes(); tagT = 0.5 }
-    if (remote) remoteStep(dt)
-    else if (portalEntry) renderPortal(now)
+    // an online player's chicken in a portal: her browser is still asked (it says when she is out), the portal draws her
+    if (portalEntry) { remote?.(); if (portalEntry) renderPortal(now) }
+    else if (remote) remoteStep(dt)
     else if (!isChickenControlsListening()) step(dt); else render()
     raf = requestGameFrame(frame)
   }
@@ -1973,7 +1978,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (!portalEntry) return
         portalEntry = null
         el.root.setAttribute('opacity', '1')
-        el.root.style.pointerEvents = 'visiblePainted'
+        el.root.style.pointerEvents = remote ? 'none' : 'visiblePainted'
         render()
         return
       }
@@ -1990,6 +1995,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       pressed.clear(); virtTapped.clear(); gameTaps.clear()
       el.root.style.pointerEvents = 'none'
       renderPortal(portalEntry.start)
+    },
+    getPortalTransit() {
+      const p = portalEntry
+      if (!p) return null
+      const k = clamp((performance.now() - p.start) / p.duration, 0, 1)
+      return p.mode === 'enter' ? { mode: 'enter', x: p.x, y: p.y, k } : { mode: 'arrive', x: p.fromX + p.dx, y: p.fromY + p.dy, k }
     },
     arriveAtPortal(arrival) {
       throwTransition.reset()
