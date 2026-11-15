@@ -274,7 +274,10 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   const worldRef = useRef(world)
   worldRef.current = world
   const worldD = world?.d
-  useEffect(() => { if (world) setHost(world.host.current) }, [world])
+  // keyed on the host ref, not on `world`: the Pátio builds a new `world` object on every render (each move in the
+  // editor), and a setHost per render chained into React's "Maximum update depth exceeded" while dragging
+  const worldHost = world?.host
+  useEffect(() => { if (worldHost) setHost(h => (h === worldHost.current ? h : worldHost.current)) }, [worldHost])
 
   useEffect(() => { if (!local) router.prefetch(href) }, [router, href, local])
   useEffect(() => {
