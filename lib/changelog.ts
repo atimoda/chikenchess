@@ -7,9 +7,16 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira',
+    title: 'Trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira',
     groups: [
       { title: 'Pátio', items: [
+        'Trocar de Pátio agora é uma mudança completa de mundo: o Pátio em que você estava é fechado e nada dele aparece no novo. Antes, aliens, zumbis, pássaros, tiros e outras coisas do Pátio anterior continuavam no Pátio aberto (um Pátio novo vazio aparecia com aliens). Vale no modo local e no online, por qualquer caminho: Playgrounds, Próximo / Anterior, Pátio novo, portal para outro Pátio.',
+        'Para o Pátio novo vão só os bonecos, o inventário de cada um e a Bag of souls. As almas que estavam soltas saem do portal junto com o dono.',
+        'Ao entrar em qualquer portal, as almas soltas do boneco são sugadas junto com ele e saem com ele do outro lado.',
+        'No online, você vê o boneco de outro player e as almas dele sendo sugados para o portal, e surgindo do portal de chegada.',
+        'A animação de entrar e sair de um portal dura 0,2 s a mais (0,95 s).',
+        'O Arco agora é manuseado como um arco de verdade: a asa de trás segura o arco parado, à frente do corpo, e a asa da frente segura a flecha na corda. Ao segurar Atirar, a asa da frente puxa a flecha para trás e a corda dobra junto; ao soltar, a corda volta e a flecha sai. Sem flechas ou recarregando, a corda fica vazia.',
+        'Em Itens → Pontos, o arco e a flecha aparecem como desenhos separados e há a caixa “Arco e Flecha”, que liga esse manuseio. O ponto Asa é onde a asa da frente segura a flecha (a flecha e a corda acompanham o ponto), o ponto Asa de trás é onde a outra asa segura o arco, e a barra “Puxada da flecha” define quanto a flecha recua com a carga cheia (linha tracejada no desenho).',
         'Itens → Combo: cada golpe do combo ganhou três ajustes, além da direção e do ângulo: duração (em vezes a Duração do giro do item, para golpes mais lentos ou mais rápidos), cooldown (tempo em que o próximo golpe fica bloqueado, para não dar golpes sem parar) e alcance (em vezes o alcance do item). Os cinco controles seguem a ordem do título da lista (Direção / Ângulo / Duração / Cooldown / Alcance), ficam numa linha só quando cabem e quebram a linha sozinhos quando o painel é estreito.',
         'O ângulo de cada golpe do combo agora é uma bolinha que mostra a fatia coberta: clique e arraste para os lados ou para cima e para baixo para mudar, como um knob. O número aparece pequeno ao lado.',
         'Abaixo de “Janela do combo” há uma barra fina que enche a cada golpe e esvazia durante a janela, para ver o tempo que resta para continuar a sequência. Ela só funciona com o painel Itens aberto.',

@@ -34,7 +34,7 @@
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: almas capturadas (identidade, raridade, Bag of souls, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
 | Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel e editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
-| Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
+| Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
