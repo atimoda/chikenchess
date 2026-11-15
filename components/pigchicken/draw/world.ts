@@ -17,6 +17,8 @@ import { lookTargets, drawBird, drawUndead, drawPerson, drawButton, drawAlien, d
 import { drawNote, drawPuff } from "./effects"
 import { drawItem, type Ctx } from "./shared"
 import { chestMarks, drawChest } from "./chests"
+import { CAGE_WORLD_SCALE, drawCageOnFloor } from "./cages"
+import { cageArt } from "@/lib/pigchicken/cage-art"
 import { drawBolts, drawFlights, drawShocked, drawSkyFlash } from "./shock"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
@@ -62,6 +64,20 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
   combat.pickups.forEach(p => {
     if (!visible(p.x, p.y + 40)) return
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3
+    // a Gaiola stands on the floor with whoever is in it (its own image: ./cages.ts)
+    const cage = p.owned.cage
+    if (cage) {
+      const mark = pickupMarks.get(p), top = p.y - (cageArt(p.owned.item).h - cageArt(p.owned.item).hang[1]) * CAGE_WORLD_SCALE
+      ctx.save()
+      if (mark) ctx.filter = `drop-shadow(2px 0 0 ${mark.c}) drop-shadow(-2px 0 0 ${mark.c}) drop-shadow(0 2px 0 ${mark.c}) drop-shadow(0 -2px 0 ${mark.c})`
+      drawCageOnFloor(ctx, p.owned.item, cage, x, p.y)
+      ctx.filter = "none"
+      ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
+      if (mark) { ctx.fillStyle = mark.c; ctx.fillText(mark.t, x, top - 18) }
+      ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.fillText(`${cage.souls.length}/${cage.cap}`, x, top - 5)
+      ctx.restore()
+      return
+    }
     ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
     ctx.save(); ctx.translate(x, y - 8)
     // the item grab would take: a blue outline and the key to press

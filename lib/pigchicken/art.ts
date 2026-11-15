@@ -1,6 +1,7 @@
 // SVG art of the items held in the chicken's wing: pointing right, grip at (0, 0), in rig units.
 // `box` is the art's bounding box [x, y, width, height], used to draw it on the canvas (pickups, inventory).
 import type { ItemId } from './items'
+import { CAGE_ART, cageItemArt } from './cage-art'
 
 type Art = { svg: string; box: [number, number, number, number]; pic?: Pic }
 // a drawing (PNG) placed in rig units: `len` along its height, the point (gx, gy) of the picture (0..1) at the grip,
@@ -229,6 +230,9 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M6 -4 Q14 -10 22 -4" stroke="#d6453d" stroke-width="2" fill="none"/>`,
   },
 }
+
+// the Gaiolas: each model's whole drawing (lib/pigchicken/cage-art.ts)
+for (const id of Object.keys(CAGE_ART) as ItemId[]) ART[id] = cageItemArt(id)
 
 export const ITEM_SVG: Partial<Record<ItemId, string>> = Object.fromEntries(Object.entries(ART).map(([k, a]) => [k, a!.svg]))
 // each item's art box [x, y, width, height]: the viewBox to show ITEM_SVG inside an <svg>

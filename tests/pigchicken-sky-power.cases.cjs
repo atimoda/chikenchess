@@ -100,6 +100,40 @@ test('birds perch on free spots, slide away from a player and sometimes fly to a
   assert.ok(v.vx < 0 && Math.hypot(v.vx, v.vy) < B.CHICKEN_RUN)
 })
 
+test('a bird scared off by a Passaguá without a Gaiola goes to a free spot on a wire in sight and sits there', () => {
+  const w = B.createPerchWorld()
+  B.setPerchSpans(w, P.powerSpans([pole(200), pole(900)]))
+  const p = B.birdPerchParams()
+  const box = { l: 0, r: 1200, t: 0, b: 900 }
+  const far = B.perchSeekIn(w, box, p, () => 0.5, { x: 550, y: 480 })
+  assert.ok(far, 'a wire in sight')
+  assert.ok(far.x >= box.l && far.x <= box.r && far.y >= box.t && far.y <= box.b)
+  assert.ok(Math.hypot(far.x - 550, far.y - 480) >= p.alert * 1.6 - B.PERCH_LIFT - 1, 'away from whoever scared it')
+  assert.equal(B.perchSeekIn(w, { l: 5000, r: 6000, t: 0, b: 900 }, p), null, 'no wire in that part of the world')
+  const st = B.perchSit(w, far, p, () => 0.5)
+  assert.deepEqual([st.phase, st.span, st.t, w.birds.has(st)], ['sit', far.span, far.t, true])
+  for (let i = 0; i < 200; i++) { const o = B.perchSeekIn(w, box, p); assert.ok(o.span !== far.span || Math.abs(o.t - far.t) > 1e-6, 'its spot is taken') }
+
+  // in the combat: the bird in the net leaves in the quick flight and lands on the wire
+  const { createCombat } = loadTs('lib/pigchicken/combat.ts')
+  const c = createCombat()
+  c.setMusicOut({ note: () => {}, hold: () => null, drum: () => {} })
+  c.setView(0, 1200)
+  const pw = B.createPerchWorld()
+  B.setPerchSpans(pw, P.powerSpans([pole(200), pole(900)]))
+  c.setPerchWorld(pw)
+  const me = { x: 550, y: 900, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
+  const step = (input = {}) => c.step(0.016, me, { x: 550, y: 900 }, { x: 550, y: 900 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...input }, [], 940, () => {}, { world: true, peckOrigin: { x: 550, y: 900 } })
+  c.give('passagua'); step({ slot: 1 })
+  const bird = { kind: 'bird', bird: 'pardal', x: 590, y: 900, vx: 0, vy: 0, t: 0, color: '#9be7ff', face: 1, groundY: 0, homeX: 590, homeY: 900, whistleIn: 99, perch: null }
+  c.critters.push(bird)
+  for (let i = 0; i < 30 && !c.scares.length; i++) { Object.assign(bird, { x: 590, y: 900, vx: 0, vy: 0 }); step({ melee: i === 0 }) }
+  assert.equal(c.scares.length, 1)
+  for (let i = 0; i < 80 && c.scares.length; i++) step()
+  assert.ok(c.critters.includes(bird) && bird.perch && pw.birds.has(bird.perch), 'on the wire')
+  assert.equal(pw.byId.has(bird.perch.span), true)
+})
+
 test('the example Pátio survives saving and has wires, a sky and the Passaguá', () => {
   const layout = EX.sunsetPowerLayout()
   assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(layout))), layout)

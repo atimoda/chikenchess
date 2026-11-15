@@ -8,6 +8,8 @@ export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
   | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'itemWheel' | 'reload' | 'grab' | 'deselectItem'
   | 'nextInstrument' | 'nextWeapon' | 'nextUtility'
+  // the Gaiolas (lib/pigchicken/cages.ts): lets a soul out of the one in front (held: the next one comes to the front)
+  | 'cageRelease' | 'cageSwap'
   // the Pátio: turns the Modo editor's editing switch on and off (a tap: pressed and let go with no other key)
   | 'editMode'
 export type ChickenTouchMode = 'auto' | 'on' | 'off'
@@ -34,8 +36,8 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
   { key: 'fire', label: 'Atirar', keys: ['Key:KeyV', null, null], keys2: ['Key:Insert', 'Key:BracketRight'], pad: ['Pad:b7', null, null], group: 'items' },
-  { key: 'melee', label: 'Golpe de perto', keys: ['Key:KeyC', null, null], keys2: ['Key:Home', 'Key:BracketLeft'], pad: ['Pad:b3', null, null], group: 'items' },
-  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:End', 'Key:Backslash'], pad: ['Pad:b11', null, null], group: 'items' },
+  { key: 'melee', label: 'Golpe de perto', keys: ['Key:KeyC', null, null], keys2: ['Key:BracketLeft', null], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:Backslash', null], pad: ['Pad:b11', null, null], group: 'items' },
   // every item in the bar's order (the mouse wheel does the same); the three below go through one group each
   { key: 'nextItem', label: 'Próximo item', keys: [null, null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Quote', null], pad: [null, null, null], group: 'items' },
@@ -44,7 +46,12 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'nextUtility', label: 'Próximo utilitário', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: ['Pad:b1', null, null], group: 'items' },
   { key: 'deselectItem', label: 'Deselecionar item', keys: ['Key:KeyB', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   // the inventory wheel stays open while held: aim at an item (mouse / right stick) and let go (or fire / jump / run)
-  { key: 'itemWheel', label: 'Roda do inventário', keys: ['Key:KeyT', null, null], keys2: [null, null], pad: ['Pad:b10', null, null], group: 'items' },
+  // (no gamepad button since 15/11: L3 went to the Gaiolas)
+  { key: 'itemWheel', label: 'Roda do inventário', keys: ['Key:KeyT', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
+  // the Gaiolas: a press lets the last soul of the one in front out (with it empty, calls the souls back); the same
+  // bind held for CAGE_HOLD turns the cages instead, so one button (L3) does both on the gamepad
+  { key: 'cageRelease', label: 'Soltar alma (segurar: trocar)', keys: ['Key:KeyH', null, null], keys2: ['Key:End', null], pad: ['Pad:b10', null, null], group: 'items' },
+  { key: 'cageSwap', label: 'Trocar de gaiola', keys: ['Key:KeyY', null, null], keys2: ['Key:Home', null], pad: [null, null, null], group: 'items' },
   // X runs and also grabs while standing on an item; the Shifts do the same on the keyboards. R3 throws, Y hits, LT broods.
   { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', 'Key:ShiftLeft', null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: [null, null], pad: ['Pad:b9', null, null], group: 'items' },
@@ -136,6 +143,12 @@ export function loadChickenControls(): ChickenControls {
       if (!Array.isArray(saved?.keys?.[a])) base.keys[a] = [null, null, null]
       if (!Array.isArray(saved?.pad?.[a])) base.pad[a] = [null, null, null]
     })
+    // the Gaiolas' binds (15/11) start empty too on controls saved before them, so the older migrations see the
+    // buttons they move as free; the migration at the end gives them their keys
+    if (!saved?.cageBinds) (['cageRelease', 'cageSwap'] as const).forEach(a => {
+      if (!Array.isArray(saved?.keys?.[a])) base.keys[a] = [null, null, null]
+      if (!Array.isArray(saved?.pad?.[a])) base.pad[a] = [null, null, null]
+    })
     // Add the new default only after legacy Throw migrations have freed F.
     if (!Array.isArray(saved?.keys?.deselectItem)) base.keys.deselectItem = [null, null, null]
     if (isTouchMode(saved?.touch)) base.touch = saved.touch
@@ -207,6 +220,7 @@ export function loadChickenControls(): ChickenControls {
       addKey('fire', 'Key:KeyV'); addKey('melee', 'Key:KeyB')
     } else {
       CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = slots(saved?.keys2?.[a.key], base.keys2[a.key], 'Key:', CHICKEN_INPUT_TYPES.find(t => t.id === 'keys2')!.slots) })
+      if (!saved?.cageBinds) (['cageRelease', 'cageSwap'] as const).forEach(a => { if (!Array.isArray(saved?.keys2?.[a])) base.keys2[a] = [null, null] })
       // controls saved before the secondary keyboard could grab (03/11): / takes grab there, if it is free
       if (!saved?.grabKeys2 && !base.keys2.grab.some(Boolean) && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:Slash') || base.keys2[a.key].includes('Key:Slash'))) base.keys2.grab[0] = 'Key:Slash'
       // right-hand punctuation (08/11): / broods, P grabs, ' goes back an item, and ] [ ; \ join fire / melee / jump /
@@ -355,6 +369,20 @@ export function loadChickenControls(): ChickenControls {
       const held = (tok: string | null) => !!tok && CHICKEN_ACTIONS.some(a => a.key !== 'editMode' && (base.keys[a.key].includes(tok) || base.keys2[a.key].includes(tok)))
       base.keys.editMode = base.keys.editMode.map(t => held(t) ? null : t)
     }
+    // 15/11: the Gaiolas' binds. Soltar alma: H, End, L3; Trocar de gaiola: Y, Home. End and Home leave Arremessar and
+    // Golpe on the secondary keyboard and L3 leaves the Roda do inventário, each only while still on the previous
+    // default; a key or button only enters its new action if nothing else holds it.
+    if (!saved?.cageBinds) {
+      const only = (list: Slots, toks: string[]) => { const on = list.filter(Boolean); return on.length === toks.length && toks.every(t => on.includes(t)) }
+      const keyHeld = (tok: string) => CHICKEN_ACTIONS.some(a => a.key !== 'cageRelease' && a.key !== 'cageSwap' && (base.keys[a.key].includes(tok) || base.keys2[a.key].includes(tok)))
+      const padHeld = (tok: string) => CHICKEN_ACTIONS.some(a => a.key !== 'cageRelease' && a.key !== 'cageSwap' && base.pad[a.key].includes(tok))
+      if (only(base.keys2.throw, ['Key:End', 'Key:Backslash'])) base.keys2.throw = ['Key:Backslash', null]
+      if (only(base.keys2.melee, ['Key:Home', 'Key:BracketLeft'])) base.keys2.melee = ['Key:BracketLeft', null]
+      if (only(base.pad.itemWheel, ['Pad:b10'])) base.pad.itemWheel = [null, null, null]
+      base.keys.cageRelease = [keyHeld('Key:KeyH') ? null : 'Key:KeyH', null, null]; base.keys.cageSwap = [keyHeld('Key:KeyY') ? null : 'Key:KeyY', null, null]
+      base.keys2.cageRelease = [keyHeld('Key:End') ? null : 'Key:End', null]; base.keys2.cageSwap = [keyHeld('Key:Home') ? null : 'Key:Home', null]
+      base.pad.cageRelease = [padHeld('Pad:b10') ? null : 'Pad:b10', null, null]; base.pad.cageSwap = [null, null, null]
+    }
     // one key, one action, on one keyboard type: the primary keyboard wins
     const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
     CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = base.keys2[a.key].map(t => t && primary.has(t) ? null : t) })
@@ -363,7 +391,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, cageBinds: true, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

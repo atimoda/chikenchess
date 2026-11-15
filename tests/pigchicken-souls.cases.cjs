@@ -2,6 +2,7 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const S = loadTs('lib/pigchicken/souls.ts')
+const { CAGE_FLASH } = loadTs('lib/pigchicken/cages.ts')
 const { createCombat } = loadTs('lib/pigchicken/combat.ts')
 
 const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10]
@@ -85,6 +86,8 @@ function world(item) {
   const c = createCombat()
   c.setMusicOut({ note: () => {}, hold: () => null, drum: () => {} })
   c.setView(-1000, 1000)
+  // a Gaiola to keep what the Passaguá catches (the biggest one: these are about the souls)
+  c.give('cageFlight')
   if (item) { c.give(item); step(c, { slot: 1 }) }
   return c
 }
@@ -130,19 +133,22 @@ test('a bird made by the flute is a living soul that remembers the alien, the in
   assert.equal(soul.rarity, S.soulRarity(soul))
 })
 
-test('the counter swells when a soul arrives and settles again', () => {
+test('the cage glows blue when a soul arrives and red when one goes out, and settles again', () => {
   const c = world('flute')
   alien(c)
   for (let i = 0; i < 20 && !c.critters.length; i++) step(c, { fire: true, firePressed: i % 2 === 0 })
   c.give('passagua')
   const slot = c.inventory.findIndex(o => o && o.item === 'passagua') + 1
-  assert.equal(c.soulPulse, 0)
+  const cage = c.cages[0].cage
+  assert.equal(cage.flash, null)
   step(c, { slot })
   let peak = 0
-  for (let i = 0; i < 80; i++) { holdCritter(c.critters[0] ?? {})(); step(c, { melee: i === 0 }); peak = Math.max(peak, c.soulPulse); if (c.capturedSouls && peak === 0) assert.fail('no swell on arrival') }
-  assert.ok(peak > 0.8 && peak <= 1, 'it swelled')
-  for (let t = 0; t < S.SOUL_PULSE + 0.1; t += 0.016) step(c)
-  assert.equal(c.soulPulse, 0)
+  for (let i = 0; i < 80; i++) { holdCritter(c.critters[0] ?? {})(); step(c, { melee: i === 0 }); if (cage.flash === 'gain') peak = Math.max(peak, cage.flashT / CAGE_FLASH); if (c.capturedSouls && peak === 0) assert.fail('no glow on arrival') }
+  assert.ok(peak > 0.8 && peak <= 1, 'it glowed')
+  for (let t = 0; t < CAGE_FLASH + 0.1; t += 0.016) step(c)
+  assert.equal(cage.flash, null); assert.equal(cage.flashT, 0)
+  c.releaseSoul({ x: 0, y: 0 })
+  assert.equal(cage.flash, 'lose'); assert.equal(cage.flashT, CAGE_FLASH)
 })
 
 test('an alien shot down and brought back by notes is a dead soul that remembers the weapon', () => {
@@ -193,7 +199,7 @@ test('chicks are souls too; the Bag of souls is a stack and each player has thei
   assert.ok(c.bagOfSouls[2].id > c.bagOfSouls[1].id && c.bagOfSouls[1].id > c.bagOfSouls[0].id, 'the last one caught is on top')
 
   // the second player's catch goes to their own Bag of souls, even though the first player's step moves the world
-  c.use('p2'); c.give('passagua'); step(c, { slot: 1 }, 0, false)
+  c.use('p2'); c.give('cageFlight'); c.give('passagua'); step(c, { slot: 1 }, 0, false)
   c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => gone++ }])
   for (let i = 0; i < 40; i++) { c.use('p2'); step(c, { melee: i === 0 }, 0, false); c.use('p1'); step(c) }
   land(c)
@@ -205,13 +211,13 @@ test('chicks are souls too; the Bag of souls is a stack and each player has thei
 })
 
 // ---------- let out of the Bag of souls: friends, and the Callback ----------
-// n chicks caught, one sweep each
+// n birds caught, one sweep each (a chick let out of a Gaiola is a chick again, not a soul flying free)
 function bagOf(c, n) {
   for (let k = 0; k < n; k++) {
-    c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
-    for (let i = 0; i < 50; i++) step(c, { melee: i === 0 })
+    const b = { kind: 'bird', x: 40, y: 0, vx: 0, vy: 0, t: 0, color: '#9be7ff', face: 1, groundY: 0, homeX: 40, homeY: 0 }
+    c.critters.push(b)
+    for (let i = 0; i < 50; i++) { if (c.critters.includes(b)) Object.assign(b, { x: 40, y: 0, vx: 0, vy: 0 }); step(c, { melee: i === 0 }) }
   }
-  c.setCatchables([])
   land(c)
 }
 // keeps a soul flying free at (x, y), whatever its flight wants
@@ -224,16 +230,17 @@ test('a press on the counter lets the last soul caught out where the counter is,
   assert.equal(c.capturedSouls, 3)
   const top = c.bagOfSouls[2]
   for (let t = 0; t < 1; t += 0.016) step(c)
-  assert.equal(c.soulPulse, 0)
+  const cage = c.cages[0].cage
+  assert.equal(cage.flash, null)
   assert.equal(c.releaseSoul({ x: 500, y: -400 }), top, 'the last one in is the first one out')
   assert.equal(c.capturedSouls, 2)
   assert.equal(c.looseSouls, 1)
   const f = c.freedSouls[0]
   assert.deepEqual({ soul: f.soul, owner: f.owner, x: f.x, y: f.y }, { soul: top, owner: 'p1', x: 500, y: -400 })
-  assert.ok(c.soulPulse > 0.8, 'the counter answers the press')
+  assert.deepEqual({ flash: cage.flash, t: cage.flashT }, { flash: 'lose', t: CAGE_FLASH }, 'the cage glows red')
   for (let t = 0; t < 8; t += 0.016) step(c)
-  // a chick's soul keeps low and close to her (she stands at 0, 0)
-  assert.ok(Math.abs(f.x) < 200 && f.y < -100 && f.y > -320, `beside and above her (${Math.round(f.x)}, ${Math.round(f.y)})`)
+  // it flies around her (she stands at 0, 0)
+  assert.ok(Math.abs(f.x) < 700 && f.y < -60 && f.y > -800, `around and above her (${Math.round(f.x)}, ${Math.round(f.y)})`)
   assert.equal(c.freedSouls.length, 1, 'it stays')
 })
 
@@ -267,7 +274,7 @@ test("a soul flying free goes to the Bag of souls of whoever's Passaguá catches
   bagOf(c, 2)
   c.releaseSoul({ x: 40, y: 0 }); c.releaseSoul({ x: 40, y: 0 })
   const [one, other] = c.freedSouls
-  c.use('p2'); c.give('passagua'); step(c, { slot: 1 }, 0, false); c.use('p1')
+  c.use('p2'); c.give('cageFlight'); c.give('passagua'); step(c, { slot: 1 }, 0, false); c.use('p1')
   // the second player sweeps where one of them is
   for (let i = 0; i < 50; i++) {
     holdSoul(one, 40, 0); holdSoul(other, -900, -500)
@@ -291,9 +298,10 @@ test("a soul flying free goes to the Bag of souls of whoever's Passaguá catches
 
 test('the souls of a player who left the game fly away', () => {
   const c = world()
-  c.use('p2'); c.give('passagua'); step(c, { slot: 1 }, 0, false)
-  c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
-  for (let i = 0; i < 50; i++) { c.use('p2'); step(c, { melee: i === 0 }, 0, false); c.use('p1'); step(c) }
+  c.use('p2'); c.give('cageFlight'); c.give('passagua'); step(c, { slot: 1 }, 0, false)
+  const b = { kind: 'bird', x: 40, y: 0, vx: 0, vy: 0, t: 0, color: '#9be7ff', face: 1, groundY: 0, homeX: 40, homeY: 0 }
+  c.critters.push(b)
+  for (let i = 0; i < 50; i++) { Object.assign(b, { x: 40, y: 0, vx: 0, vy: 0 }); c.use('p2'); step(c, { melee: i === 0 }, 0, false); c.use('p1'); step(c) }
   land(c)
   c.use('p2')
   assert.ok(c.releaseSoul({ x: 0, y: -200 }))

@@ -5,7 +5,7 @@
 // by the racks and loose items.
 import { Plus, X } from "lucide-react"
 import { CHEST_LOCKS, CHEST_LOOT_MAX, CHEST_RARITIES, CHEST_REOPEN_MAX, CHEST_SOULS, LOOT_GROUPS, type ChestLock, type ChestParams, type ChestRarity, type LootEntry } from "@/lib/pigchicken/chests"
-import { CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS } from "@/lib/pigchicken/items"
+import { CAGE_IDS, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS } from "@/lib/pigchicken/items"
 
 const FIELD = "h-9 rounded-md border border-white/15 bg-[#0b110e] px-2"
 
@@ -19,6 +19,7 @@ export function ItemOptGroups() {
     {group("Habilidades especiais", CONSUMABLE_IDS)}
     {group("Magia", MAGIC_IDS)}
     {group("Chaves", KEY_IDS)}
+    {group("Gaiolas", CAGE_IDS)}
   </>
 }
 
@@ -39,8 +40,8 @@ export function ChestFields({ chest, onChange }: { chest: ChestParams; onChange:
       </select>
     </label>
     {chest.lock === "souls" && <label className="grid gap-1">
-      <span>Almas na Bag of souls</span>
-      <input aria-label="Almas na Bag of souls" type="number" min={CHEST_SOULS.min} max={CHEST_SOULS.max} step={1} value={chest.souls}
+      <span>Almas nas gaiolas</span>
+      <input aria-label="Almas nas gaiolas" type="number" min={CHEST_SOULS.min} max={CHEST_SOULS.max} step={1} value={chest.souls}
         onChange={e => { if (e.target.value !== "") set({ souls: Math.round(Math.max(CHEST_SOULS.min, Math.min(CHEST_SOULS.max, Number(e.target.value)))) }, "chest-souls") }} className={FIELD} />
     </label>}
     <label className="grid gap-1" title="Depois de aberto, fecha de novo após este tempo e pode ser aberto outra vez, com novo sorteio. 0: fica aberto até o Pátio ser aberto de novo.">

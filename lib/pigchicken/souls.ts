@@ -2,9 +2,10 @@
 // where it came from and how. Four things make it: the species of the alien it was, whether it is alive (its
 // harmony filled up) or dead (killed, then brought back by notes), the family of the instrument whose note finished
 // it and what that note is in the key. A dead one also remembers the kind of weapon that killed it.
-// Each player keeps theirs in a Bag of souls, a stack: the last one caught is the first one out.
+// Each player keeps theirs in their Gaiolas (lib/pigchicken/cages.ts), each a stack: the last one in is the first one out.
 // Pure data and functions; the combat (lib/pigchicken/combat.ts) fills it in.
 import type { BirdId } from './birds'
+import type { CageState } from './cages'
 
 export type SoulSpecies = 'horde' | 'jelly' | 'lantern' | 'shell' | 'twin' | 'mini' | 'drum' | 'dragon' | 'chick'
 export type SoulState = 'alive' | 'dead'
@@ -21,7 +22,8 @@ export type SoulOrigin = { species: SoulSpecies; state: SoulState; shot: SoulSho
 // what an alien gathers while it is hit, before it is a bird
 export type SoulMark = { shot?: SoulShot | null; note?: SoulNote | null; weapon?: SoulWeapon | null }
 // color: the alien's (alive), the note's that brought it back (dead); bird: the drawing it flies as (null: a chick)
-export type Soul = SoulOrigin & { id: number; rarity: SoulRarity; color: string; bird: BirdId | null }
+// chick: a chick's style (lib/chicken/chick-art.ts), so it is the same chick when it is let out
+export type Soul = SoulOrigin & { id: number; rarity: SoulRarity; color: string; bird: BirdId | null; chick?: number }
 
 const SPECIES: readonly SoulSpecies[] = ['horde', 'jelly', 'lantern', 'shell', 'twin', 'mini', 'drum', 'dragon', 'chick']
 export const CHICK_SOUL_COLOR = '#ffd23f'
@@ -81,12 +83,12 @@ export function soulRarity(o: SoulOrigin): SoulRarity {
 
 export const newSoul = (id: number, origin: SoulOrigin, color: string, bird: BirdId | null): Soul => ({ ...origin, id, rarity: soulRarity(origin), color, bird })
 
-// ---------- abduction: a caught soul flies to its owner's Bag of souls, and counts when it gets there ----------
+// ---------- abduction: a caught soul flies to its owner's Gaiola, and counts when it gets there ----------
 export const ABDUCT_TIME = 0.55
 export const ABDUCT_GAP = 0.08 // several caught at once leave one after the other
-export const SOUL_PULSE = 0.3 // s the Bag of souls swells when one arrives
-// (x, y): where it was caught (world px); t: s on its way (negative: still waiting its turn)
-export type Abduction = { soul: Soul; owner: string; x: number; y: number; t: number }
+// (x, y): where it was caught (world px); t: s on its way (negative: still waiting its turn); cage: the Gaiola of
+// its owner's it goes into (lib/pigchicken/cages.ts), which keeps a place for it
+export type Abduction = { soul: Soul; owner: string; x: number; y: number; t: number; cage: CageState | null }
 
 // a step of every abduction; the ones that arrived leave the list, in the order they were caught
 export function stepAbductions(list: Abduction[], dt: number): Abduction[] {
@@ -99,10 +101,31 @@ export function stepAbductions(list: Abduction[], dt: number): Abduction[] {
   return done
 }
 
-// where it is on its way (k: 0 at the catch, 1 at the Bag of souls): pulled up first, then faster and faster, shrinking
+// where it is on its way (k: 0 at the catch, 1 at the Gaiola): pulled up first, then faster and faster, shrinking
 export function abductPoint(from: { x: number; y: number }, to: { x: number; y: number }, k: number): { x: number; y: number; scale: number } {
   const u = Math.max(0, Math.min(1, k)), e = u * u
   const cx = from.x + (to.x - from.x) * 0.2, cy = Math.min(from.y, to.y) - 70
   const a = (1 - e) * (1 - e), b = 2 * (1 - e) * e, c = e * e
   return { x: a * from.x + b * cx + c * to.x, y: a * from.y + b * cy + c * to.y, scale: 1 - 0.7 * e }
+}
+
+// ---------- scared off: a bird a Passaguá could not keep (its player carries no Gaiola) goes in the same quick flight
+// to somewhere else in sight, a wire when there is one ----------
+// (x, y) → (tx, ty): world px; t: s on its way; land: puts the bird back in the world there
+export type Scare = { soul: Soul; x: number; y: number; tx: number; ty: number; t: number; land: () => void }
+export function stepScares(list: Scare[], dt: number) {
+  for (let i = 0; i < list.length;) {
+    const s = list[i]
+    s.t += dt
+    if (s.t >= ABDUCT_TIME) { list.splice(i, 1); s.land() } else i++
+  }
+}
+// a point of the box far from `from`: the farthest of a few tries
+export function farSpot(box: { l: number; r: number; t: number; b: number }, from: { x: number; y: number }, rand: () => number = Math.random): { x: number; y: number } {
+  let best = { x: from.x, y: from.y }, far = -1
+  for (let i = 0; i < 10; i++) {
+    const x = box.l + rand() * Math.max(0, box.r - box.l), y = box.t + rand() * Math.max(0, box.b - box.t), d = Math.hypot(x - from.x, y - from.y)
+    if (d > far) { far = d; best = { x, y } }
+  }
+  return best
 }

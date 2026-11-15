@@ -1,4 +1,4 @@
-// The friend bot: a soul let out of the Bag of souls flies along with whoever freed it. Pure (no combat, no DOM): the
+// The friend bot: a soul let out of its Gaiola flies along with whoever freed it. Pure (no combat, no DOM): the
 // combat keeps a SoulBrain on each freed soul and calls soulFollowStep every frame with where its owner is.
 //
 // - Its spot is beside the owner (dist, to one side) and above her (height: 0 at her head, 1 at the top of the sky

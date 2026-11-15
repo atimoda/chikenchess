@@ -57,8 +57,8 @@ test('the default layout is the Pátio the code always drew: same platform boxes
   const trees = lay.elements.filter(e => e.kind === 'pine' || e.kind === 'blossom')
   assert.equal(trees.length, L.defaultTrees(L.LAYOUT_MAX_SCREENS).length)
   trees.forEach(t => { assert.equal(t.layer, 'frontGhost'); assert.equal(t.solid, false) })
-  // 8 weapons, 9 instruments (the Hangdrum at the end of the shelf) and the 2 consumables (Maryjane, Cok)
-  assert.equal(lay.elements.filter(e => e.kind === 'rack').length, 19)
+  // 8 weapons, 9 instruments (the Hangdrum at the end of the shelf), the 2 consumables (Maryjane, Cok) and the Gaiola básica
+  assert.equal(lay.elements.filter(e => e.kind === 'rack').length, 20)
   assert.equal(lay.elements.filter(e => e.kind === 'button').length, 4)
   const dummies = lay.elements.filter(e => e.kind === 'dummy')
   assert.equal(dummies.length, 5)

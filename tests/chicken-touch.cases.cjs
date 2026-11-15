@@ -161,7 +161,9 @@ test('gamepad defaults use X Run, R3 Throw, Y Melee, LT Brood, X Grab and LB/RB/
   // one action per button
   const used = Object.values(d.pad).flat().filter(t => t && t !== 'Pad:b2')
   assert.equal(new Set(used).size, used.length)
-  assert.equal(d.pad.itemWheel[0], 'Pad:b10')
+  // L3 lets a soul out of the Gaiola (held: the next cage); the Roda do inventário has no button (15/11)
+  assert.deepEqual(d.pad.itemWheel, [null, null, null])
+  assert.deepEqual([d.pad.cageRelease[0], d.pad.cageSwap[0]], ['Pad:b10', null])
   assert.equal(d.pad.reload[0], 'Pad:b9')
   assert.ok(!Object.values(d.pad).flat().includes('Pad:b8'))
 })
@@ -173,6 +175,7 @@ test('old default gamepad trio migrates without changing custom bindings', () =>
     for (const a of ['nextInstrument', 'nextWeapon', 'nextUtility']) { delete saved.keys[a]; delete saved.pad[a] }
     saved.pad.run = ['Pad:b2', null, null]; saved.pad.throw = ['Pad:b5', null, null]; saved.pad.melee = ['Pad:b3', null, null]
     saved.pad.itemWheel = ['Pad:b8', null, null]; saved.pad.jump = ['Pad:b0', null, null]; saved.pad.reload = ['Pad:b11', null, null]
+    for (const a of ['cageRelease', 'cageSwap']) { delete saved.keys[a]; delete saved.keys2[a]; delete saved.pad[a] }
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     assert.equal(controls.loadChickenControls().pad.run[0], 'Pad:b5')
     // Y first, then (09/11) R3, which leaves Jump
@@ -247,11 +250,13 @@ test('stick shortcut migration frees R3 from reload and Select from the wheel', 
   try {
     const saved = { ...controls.defaultChickenControls(), padXRun: true, padRunRBThrowY: true, padMeleeB: true, itemsV1: true, broodLTB: true }
     saved.pad.jump = ['Pad:b0', null, null]; saved.pad.itemWheel = ['Pad:b8', null, null]; saved.pad.reload = ['Pad:b11', null, null]; saved.pad.throw = ['Pad:b3', null, null]
+    for (const a of ['cageRelease', 'cageSwap']) { delete saved.keys[a]; delete saved.keys2[a]; delete saved.pad[a] }
     globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
     const next = controls.loadChickenControls()
     // R3 joined Jump then; since 09/11 it is Throw's
     assert.deepEqual(next.pad.jump, ['Pad:b0', null, null]); assert.equal(next.pad.throw[0], 'Pad:b11')
-    assert.equal(next.pad.itemWheel[0], 'Pad:b10'); assert.equal(next.pad.reload[0], 'Pad:b9')
+    // the wheel went from Select to L3 then; since 15/11 L3 lets a soul out of the Gaiola and the wheel has no button
+    assert.deepEqual([next.pad.itemWheel[0], next.pad.cageRelease[0]], [null, 'Pad:b10']); assert.equal(next.pad.reload[0], 'Pad:b9')
     assert.ok(!Object.values(next.pad).flat().includes('Pad:b8'))
     saved.pad.jump = ['Pad:b12', null, null]; saved.pad.reload = ['Pad:b4', null, null]; saved.pad.itemWheel = ['Pad:b13', null, null]
     const custom = controls.loadChickenControls()
@@ -364,9 +369,11 @@ test('secondary keyboard defaults use right-hand punctuation and migrate once, p
   assert.deepEqual(d.keys2.grab, ['Key:KeyP', 'Key:ShiftRight'])
   assert.deepEqual(d.keys2.prevItem, ['Key:Quote', null])
   assert.deepEqual(d.keys2.fire, ['Key:Insert', 'Key:BracketRight'])
-  assert.deepEqual(d.keys2.melee, ['Key:Home', 'Key:BracketLeft'])
+  // Home and End went to the Gaiolas (15/11): Golpe and Arremessar keep [ and \\
+  assert.deepEqual(d.keys2.melee, ['Key:BracketLeft', null])
+  assert.deepEqual([d.keys2.cageRelease, d.keys2.cageSwap], [['Key:End', null], ['Key:Home', null]])
   assert.deepEqual(d.keys2.jump, ['Key:PageUp', 'Key:Semicolon'])
-  assert.deepEqual(d.keys2.throw, ['Key:End', 'Key:Backslash'])
+  assert.deepEqual(d.keys2.throw, ['Key:Backslash', null])
   assert.deepEqual(d.keys2.crouch, ['Key:PageDown', 'Key:ArrowDown'])
   // no key repeats across both keyboards (the Shifts run and grab, as X on the gamepad)
   const all = controls.CHICKEN_ACTIONS.filter(a => a.key !== 'grab').flatMap(a => [...d.keys[a.key], ...d.keys2[a.key]]).filter(Boolean)
@@ -391,12 +398,45 @@ test('secondary keyboard defaults use right-hand punctuation and migrate once, p
     assert.deepEqual(c.keys2.grab, ['Key:Slash', 'Key:KeyK'])
     assert.deepEqual(c.keys2.down, ['Key:ArrowDown', 'Key:ControlRight'])
     assert.deepEqual(c.keys2.fire, ['Key:Insert', null])
-    assert.deepEqual(c.keys2.melee, ['Key:Home', 'Key:BracketLeft'])
+    assert.deepEqual(c.keys2.melee, ['Key:BracketLeft', null], 'it got [ and then (15/11) gave Home to the Gaiolas')
     assert.deepEqual(c.keys2.crouch, ['Key:PageDown', null], 'the down arrow stays on brood, so crouch does not get it')
     // once saved with the marker, a removed key does not come back
     saved = { ...old(), keys2Punctuation: true }
     assert.deepEqual(controls.loadChickenControls().keys2.jump, ['Key:PageUp', null])
   } finally { globalThis.window = previous }
+})
+
+test("the Gaiolas' binds: H / End / L3 let a soul out, Y / Home turn the cages, and saved controls get them once", () => {
+  const d = controls.defaultChickenControls()
+  assert.deepEqual([d.keys.cageRelease[0], d.keys.cageSwap[0], d.keys2.cageRelease[0], d.keys2.cageSwap[0], d.pad.cageRelease[0], d.pad.cageSwap[0]], ['Key:KeyH', 'Key:KeyY', 'Key:End', 'Key:Home', 'Pad:b10', null])
+  const previous = globalThis.window
+  try {
+    const FLAGS = ['padX', 'padXRun', 'padRunRBThrowY', 'padMeleeB', 'padStickShortcuts', 'padRunRBX', 'itemsV1', 'broodLTB', 'grabE', 'throwF', 'keyboardThrowG', 'keyboardInventoryQ', 'keyboardVCXZ', 'keyboardJumpZ', 'grabKeys2', 'keys2Punctuation', 'noCmdBrood', 'shiftGrabLBRB', 'inventoryGroupBinds', 'padMeleeY', 'keys2NoDelBksp']
+    // controls saved on the day before: End and Home on Arremessar and Golpe, L3 on the Roda do inventário
+    const old = () => {
+      const saved = { ...JSON.parse(JSON.stringify(controls.defaultChickenControls())), ...Object.fromEntries(FLAGS.map(f => [f, true])) }
+      for (const a of ['cageRelease', 'cageSwap']) { delete saved.keys[a]; delete saved.keys2[a]; delete saved.pad[a] }
+      saved.keys2.throw = ['Key:End', 'Key:Backslash']; saved.keys2.melee = ['Key:Home', 'Key:BracketLeft']; saved.pad.itemWheel = ['Pad:b10', null, null]
+      return saved
+    }
+    let saved = old()
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    const next = controls.loadChickenControls()
+    assert.deepEqual(next.keys, d.keys); assert.deepEqual(next.keys2, d.keys2); assert.deepEqual(next.pad, d.pad)
+    // custom binds stay, and a key or button something else holds does not go to the cages
+    saved = old()
+    saved.keys.reload = ['Key:KeyR', 'Key:KeyH', null]; saved.keys2.throw = ['Key:End', null]; saved.pad.itemWheel = ['Pad:b10', 'Pad:b13', null]
+    const c = controls.loadChickenControls()
+    assert.deepEqual([c.keys.cageRelease[0], c.keys.cageSwap[0]], [null, 'Key:KeyY'])
+    assert.deepEqual([c.keys2.throw, c.keys2.cageRelease, c.keys2.melee, c.keys2.cageSwap], [['Key:End', null], [null, null], ['Key:BracketLeft', null], ['Key:Home', null]])
+    assert.deepEqual([c.pad.itemWheel, c.pad.cageRelease], [['Pad:b10', 'Pad:b13', null], [null, null, null]])
+    // once saved with the marker, a bind taken off does not come back
+    saved = { ...old(), cageBinds: true }
+    saved.keys.cageRelease = [null, null, null]; saved.keys.cageSwap = ['Key:KeyU', null, null]; saved.keys2.cageRelease = [null, null]; saved.keys2.cageSwap = [null, null]; saved.pad.cageRelease = [null, null, null]; saved.pad.cageSwap = ['Pad:b10', null, null]
+    const kept = controls.loadChickenControls()
+    assert.deepEqual([kept.keys.cageRelease[0], kept.keys.cageSwap[0], kept.keys2.cageRelease[0], kept.pad.cageRelease[0], kept.pad.cageSwap[0]], [null, 'Key:KeyU', null, null, 'Pad:b10'])
+    assert.deepEqual(kept.keys2.throw, ['Key:End', 'Key:Backslash'], 'and nothing else moves')
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
 })
 
 test('Del and Backspace leave the secondary keyboard, once, also on saved controls', () => {

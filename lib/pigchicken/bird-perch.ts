@@ -91,6 +91,32 @@ export function perchSeek(w: PerchWorld, x: number, y: number, p: BirdPerchParam
   return { span: pick.span, t: pick.t }
 }
 
+// a free spot on a wire inside a box of the world (what the screen shows), away from `avoid`: for a bird scared off
+// that goes straight to a wire in sight. null: no wire there has room
+export function perchSeekIn(w: PerchWorld, box: { l: number; r: number; t: number; b: number }, p: BirdPerchParams, rand: () => number = Math.random, avoid?: { x: number; y: number }): { span: string; t: number; x: number; y: number } | null {
+  const found: { span: string; t: number; x: number; y: number }[] = []
+  for (const s of w.spans) {
+    const { len } = spanCurve(s, w.camX, w.camY, w.restY)
+    if (len < p.spacing * 2) continue
+    const slots = Math.min(60, Math.floor(len / p.spacing))
+    for (let k = 1; k < slots; k++) {
+      const t = k / slots
+      const at = spanPoint(s, t, w.camX, w.camY, w.restY)
+      if (at.x < box.l || at.x > box.r || at.y < box.t || at.y > box.b) continue
+      if (avoid && Math.hypot(at.x - avoid.x, at.y - avoid.y) < p.alert * 1.6) continue
+      if (!free(w, null, s, t, len, p.spacing)) continue
+      found.push({ span: s.id, t, x: at.x, y: at.y - PERCH_LIFT })
+    }
+  }
+  return found.length ? found[Math.min(found.length - 1, Math.floor(rand() * found.length))] : null
+}
+// a bird put straight on a wire (it flew there some other way): it sits from now on
+export function perchSit(w: PerchWorld, spot: { span: string; t: number }, p: BirdPerchParams, rand: () => number = Math.random): PerchState {
+  const st: PerchState = { span: spot.span, t: spot.t, phase: 'sit', speed: 240, left: p.perchTime * (0.75 + rand() * 0.5), cool: p.cooldown, uneasy: 0, rolled: false, flights: 0, seen: w.time }
+  w.birds.add(st)
+  return st
+}
+
 // starts a bird toward a wire (or null when there is no free spot): call perchStep every frame after it
 export function perchStart(w: PerchWorld, x: number, y: number, p: BirdPerchParams, rand: () => number = Math.random): PerchState | null {
   const spot = perchSeek(w, x, y, p, rand)

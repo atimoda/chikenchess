@@ -32,7 +32,8 @@
 | Pátio: aurora no céu (Configurações do Pátio → Aurora) | [Aurora](docs/mechanics/patio/aurora.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
-| Pátio: almas capturadas (identidade, raridade, Bag of souls, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
+| Pátio: almas capturadas (identidade, raridade, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
+| Pátio: Gaiolas (modelos e limite de almas, até três por player, captura, negação, espanto sem gaiola, soltar e trocar, contadores e avatares dos players, binds, Pátio online) | [Gaiolas](docs/mechanics/patio/cages.md) |
 | Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel e editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
@@ -99,7 +100,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 4 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
-| [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 20 KB |
+| [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 21 KB |
+| [Pátio: Gaiolas](docs/mechanics/patio/cages.md) | 9 KB |
 | [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 12 KB |
 | [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 18 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |

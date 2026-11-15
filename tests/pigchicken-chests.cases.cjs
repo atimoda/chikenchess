@@ -94,13 +94,14 @@ test('a key lock asks for a Chave and uses one up; merit asks for souls in the B
   assert.ok(c.sounds.some(s=>s.kind==='chestLegend'))
 
   const m=withChest({rarity:'simple',lock:'souls',souls:3,reopen:0,loot:[{pick:'flute',chance:100}]}).c
+  m.give('cage')
   m.bagOfSouls.push({id:1},{id:2})
   step(m); assert.equal(m.chestNear.block,'souls')
   step(m,{grab:true}); assert.equal(m.chests[0].open,false)
-  assert.ok(m.texts.some(t=>t.text==='Bag of souls: 2/3'))
+  assert.ok(m.texts.some(t=>t.text==='Almas nas gaiolas: 2/3'))
   m.bagOfSouls.push({id:3})
   step(m,{grab:true}); assert.equal(m.chests[0].open,true)
-  assert.equal(m.capturedSouls,3,'the souls stay in the Bag of souls')
+  assert.equal(m.capturedSouls,3,'the souls stay in the cage')
 })
 
 test('the last key leaves the inventory; Atirar with a key in hand uses nothing',()=>{

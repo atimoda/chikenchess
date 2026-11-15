@@ -66,8 +66,11 @@ test('the Pátio sets the limit (up to 25, all of it by default): a full invento
   c.setInventoryLimit(0); assert.equal(c.inventoryLimit, 1)
   // every item there is fits in the default 25
   const { RACK_ITEM_IDS } = loadTs('lib/pigchicken/items.ts')
+  // (the Gaiolas are not carried in it: she hangs up to three of them)
+  const { CAGE_IDS } = loadTs('lib/pigchicken/items.ts')
   const all = createCombat(); RACK_ITEM_IDS.forEach(id => all.give(id))
-  assert.equal(all.inventory.filter(Boolean).length, RACK_ITEM_IDS.length)
+  assert.equal(all.inventory.filter(Boolean).length, RACK_ITEM_IDS.length - CAGE_IDS.length)
+  assert.deepEqual(all.cages.map(o => o.item), CAGE_IDS.slice(0, 3))
 })
 
 test('the wheel: equal slices, the first at the top, clockwise', () => {
@@ -381,7 +384,7 @@ test('Shift reverses Next item on press, without a second switch when the modifi
 test('every throwable item marks its Throw pose without changing its launch angle; proportional Fire is separate', () => {
   const {DEFAULT_ITEMS, RACK_ITEM_IDS}=loadTs('lib/pigchicken/items.ts')
   const {heldItemPose}=loadTs('lib/pigchicken/held-pose.ts')
-  for(const item of RACK_ITEM_IDS.filter(id => DEFAULT_ITEMS[id].throwSpeed > 0)){
+  for(const item of RACK_ITEM_IDS.filter(id => DEFAULT_ITEMS[id].throwSpeed > 0 && !DEFAULT_ITEMS[id].cageSouls)){
     const c=createCombat();c.give(item)
     for(let i=0;i<15;i++)step(c,{throwHeld:true})
     const pose=heldItemPose(c,0)

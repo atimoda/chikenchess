@@ -4,6 +4,7 @@
 // rack deleted in the editor becomes a loose item with the same id, which keeps the item already there (and back). A dummy keeps its life
 // and stage while it is moved; a new total life keeps the share it had. Things past a narrow world's last scene
 // wait out of the world (they would land in the temple) and come back when the world is made wider.
+import { cageCap } from './cages'
 import type { Chest, Combat, Target } from './combat'
 import { DUMMY_DEFAULTS } from './dummies'
 import { SCENE_W } from './world'
@@ -29,6 +30,8 @@ export function createLayoutSync(combat: Combat) {
   // each loose item's pickup in the world (undefined once taken) and where it was put
   const looses = new Map<string, { pickupId?: number; x: number; y: number; item: string }>()
   const activePickup = (id: number | undefined) => (id === undefined ? undefined : combat.pickups.find(p => p.id === id))
+  // a Gaiola waiting in the world takes the limit its place gives it (none: its model's); the souls in it stay
+  const setCageLimit = (p: ReturnType<typeof activePickup>, limit: number | undefined) => { const c = p?.owned.cage; if (p && c) c.cap = cageCap(limit, combat.item(p.owned.item).cageSouls) }
   const dropPickup = (id: number | undefined) => { const p = activePickup(id); if (p) combat.pickups.splice(combat.pickups.indexOf(p), 1) }
 
   function sync(elements: LayoutElement[], screens: number) {
@@ -59,13 +62,14 @@ export function createLayoutSync(combat: Combat) {
         }
         if (!l || l.item !== item) {
           if (l) dropPickup(l.pickupId)
-          l = { pickupId: combat.addPickup(x, item, y), x, y, item }
+          l = { pickupId: combat.addPickup(x, item, y, el.params.cageSouls), x, y, item }
           looses.set(el.id, l)
         } else if (l.x !== x || l.y !== y) {
           const p = activePickup(l.pickupId)
           if (p) { p.x = x; p.y = y; p.vy = 0; p.resting = false }
           l.x = x; l.y = y
         }
+        setCageLimit(activePickup(l.pickupId), el.params.cageSouls)
         continue
       }
       if (el.kind === 'rack') {
@@ -73,7 +77,7 @@ export function createLayoutSync(combat: Combat) {
         const item = el.params.item!
         if (!r || r.item !== item) {
           if (r) combat.racks.splice(combat.racks.indexOf(r), 1)
-          combat.addRack(cx, item, bottom, el.params.respawnDelay)
+          combat.addRack(cx, item, bottom, el.params.respawnDelay, el.params.cageSouls)
           r = combat.racks[combat.racks.length - 1]
           racks.set(el.id, r)
           // the loose item it was (undone delete): it holds that item again
@@ -86,6 +90,8 @@ export function createLayoutSync(combat: Combat) {
         }
         r.x = inside ? cx : AWAY; r.y = bottom
         r.respawnDelay = rackRespawnDelay(item, el.params.respawnDelay)
+        // a Gaiola's limit here: the next ones come with it, and the one waiting takes it now
+        r.cageSouls = el.params.cageSouls; setCageLimit(activePickup(r.pickupId), el.params.cageSouls)
         continue
       }
       let t = targets.get(el.id)

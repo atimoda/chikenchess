@@ -1,8 +1,8 @@
-// The Baú (chest) of the Pátio's editor mode: what opens it (nothing, a Chave or enough souls in the Bag of souls),
+// The Baú (chest) of the Pátio's editor mode: what opens it (nothing, a Chave or enough souls in their Gaiolas),
 // what comes out of it (a list of items or groups of items, each one with its own chance) and how it shines (its
 // rarity). Pure: the layout keeps the params, combat.ts opens it and spawns the items, components/pigchicken/draw/
 // chests.ts draws it.
-import { CONSUMABLE_IDS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, RACK_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from './items'
+import { CAGE_IDS, CONSUMABLE_IDS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, RACK_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from './items'
 
 // simples: a soft yellow glow; lendário: a stronger blue one
 export type ChestRarity = 'simple' | 'legendary'
@@ -17,16 +17,16 @@ export const CHEST_GLOW: Record<ChestRarity, { color: string; core: string; reac
 }
 
 // what opens it: anyone (Livre), a key in the inventory (one is used up) or merit: at least `souls` souls in the
-// Bag of souls of whoever opens it (they stay there)
+// Gaiolas of whoever opens it (they stay there)
 export type ChestLock = 'free' | 'key' | 'souls'
 export const CHEST_LOCKS: { value: ChestLock; label: string }[] = [
   { value: 'free', label: 'Livre' },
   { value: 'key', label: 'Chave' },
-  { value: 'souls', label: 'Merecimento (Bag of souls)' },
+  { value: 'souls', label: 'Merecimento (almas nas gaiolas)' },
 ]
 
 // a group of items: one of them is drawn when its entry comes out
-export type LootGroup = 'any' | 'sports' | 'weapons' | 'instruments' | 'consumables' | 'magic' | 'keys'
+export type LootGroup = 'any' | 'sports' | 'weapons' | 'instruments' | 'consumables' | 'magic' | 'keys' | 'cages'
 export const LOOT_GROUPS: { value: LootGroup; label: string; items: ItemId[] }[] = [
   { value: 'any', label: 'Qualquer item', items: RACK_ITEM_IDS },
   { value: 'weapons', label: 'Uma arma', items: WEAPON_IDS },
@@ -35,6 +35,7 @@ export const LOOT_GROUPS: { value: LootGroup; label: string; items: ItemId[] }[]
   { value: 'consumables', label: 'Uma habilidade especial', items: CONSUMABLE_IDS },
   { value: 'magic', label: 'Um item de magia', items: MAGIC_IDS },
   { value: 'keys', label: 'Uma chave', items: KEY_IDS },
+  { value: 'cages', label: 'Uma gaiola', items: CAGE_IDS },
 ]
 const GROUP_IDS = LOOT_GROUPS.map(g => g.value) as string[]
 export const isLootGroup = (pick: string): pick is LootGroup => GROUP_IDS.includes(pick)
@@ -46,7 +47,7 @@ export type LootEntry = { pick: ItemId | LootGroup; chance: number }
 export type ChestParams = {
   rarity: ChestRarity
   lock: ChestLock
-  souls: number // merit: how many souls the Bag of souls needs
+  souls: number // merit: how many souls their Gaiolas need
   // s until it closes again after opening (and can be opened again, with new items); 0: it stays open until the
   // Pátio opens again
   reopen: number
@@ -93,7 +94,7 @@ export function normalizeChest(raw: unknown): ChestParams {
   }
 }
 
-// what keeps it shut for someone with `keys` keys and `souls` souls in the Bag of souls: null (it opens), 'key' or
+// what keeps it shut for someone with `keys` keys and `souls` souls in their Gaiolas: null (it opens), 'key' or
 // 'souls'
 export function chestBlock(p: Pick<ChestParams, 'lock' | 'souls'>, has: { keys: number; souls: number }): 'key' | 'souls' | null {
   if (p.lock === 'key') return has.keys > 0 ? null : 'key'

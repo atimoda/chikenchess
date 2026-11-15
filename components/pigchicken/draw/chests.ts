@@ -6,7 +6,7 @@ import { type Chest } from "@/lib/pigchicken/combat"
 import { type Ctx } from "./shared"
 
 // the hint over the Baú a local player is next to (set every frame): the first player next to one shows theirs
-// key: the grab bind's name; block: what keeps it shut for them; souls: how many they have in the Bag of souls
+// key: the grab bind's name; block: what keeps it shut for them; souls: how many they have in their Gaiolas
 export const chestMarks = new Map<Chest, { key: string; block: "key" | "souls" | null; souls: number }>()
 
 const W = 84, BODY = 44, LID = 24
@@ -88,7 +88,7 @@ export function drawChest(ctx: Ctx, c: Chest, x: number, now: number) {
   // a local player is next to it: the bind to open it, or what it still asks of them
   const mark = chestMarks.get(c)
   if (mark && !c.open) {
-    const text = mark.block === "key" ? "precisa de chave" : mark.block === "souls" ? `Bag of souls ${mark.souls}/${c.params.souls}` : mark.key ? `${mark.key}: abrir` : "abrir"
+    const text = mark.block === "key" ? "precisa de chave" : mark.block === "souls" ? `almas nas gaiolas ${mark.souls}/${c.params.souls}` : mark.key ? `${mark.key}: abrir` : "abrir"
     ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
     // under it, like the items' hint (over it the chicken would hide it)
     ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.strokeText(text, x, floor + 16)

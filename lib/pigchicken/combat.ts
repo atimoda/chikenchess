@@ -5,8 +5,8 @@ import { SWING_PHASES, nextCombo, swingCombo as comboOf, swingHitAt, swingLife, 
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
-import { birdPerchParams, perchEnd, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
-import { ABDUCT_GAP, CHICK_SOUL_COLOR, SOUL_PULSE, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, weaponClass, type Abduction, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
+import { birdPerchParams, perchEnd, perchSeekIn, perchSit, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
+import { ABDUCT_GAP, CHICK_SOUL_COLOR, farSpot, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, stepScares, weaponClass, type Abduction, type Scare, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
 import { SOUL_FLIGHT, createSoulBrain, soulErrandStep, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
 import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
 import { entryActParams, entryFollowParams, entryOf } from './soul-library'
@@ -14,7 +14,8 @@ import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, ne
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { chestBlock, rollLoot, type ChestParams } from './chests'
-import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isKey, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { CAGES_MAX, CAGE_DENY, bringFront, cageCap, cageRoom, cageSouls, cageWithRoom, cycleCages, flashCage, newCage, stepCage, type CageState } from './cages'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isCage, isKey, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
@@ -51,7 +52,8 @@ export type NoteInfo = { midi: number; color: string; sym: string; wave: number;
 // a bird the Passaguá can catch apart from the enemies (a chick): its middle and radius in world px. Online, id:
 // the number this browser's chick goes by in the lobby; net: another browser's chick (pid: whose, id: its id in
 // the lobby), which is asked of that browser (catch: it hides here meanwhile)
-export type Catchable = { x: number; y: number; r: number; catch: () => void; id?: number; net?: { pid: number; id: number } }
+// push: shoves it (a Passaguá whose player carries no Gaiola); style: the chick's look, kept by its soul
+export type Catchable = { x: number; y: number; r: number; catch: () => void; id?: number; net?: { pid: number; id: number }; push?: (vx: number, vy: number) => void; style?: number }
 
 // a converted enemy leaving the scene: aliens become birds, zombies become happy people
 // birds: their type, where they circle or perch, their next whistle and when they leave
@@ -61,8 +63,8 @@ export type Critter = {
   soul?: SoulOrigin // a bird: the alien it was and how it became one (lib/pigchicken/souls.ts)
   perch?: PerchState | null // resting on a wire (lib/pigchicken/bird-perch.ts); null: it already tried
 }
-// a soul let out of its owner's Bag of souls: it flies with them as a friend (lib/pigchicken/soul-follow.ts) until it is
-// called back (recallIn: s until it leaves for the Bag of souls) or a Passaguá catches it. away: s since its owner left
+// a soul let out of its owner's Gaiola: it flies with them as a friend (lib/pigchicken/soul-follow.ts) until it is
+// called back (recallIn: s until it leaves for their Gaiola) or a Passaguá catches it. away: s since its owner left
 // the game (it flies off); null while it has one. act, clock: what it does for and against its owner, and when
 // (lib/pigchicken/soul-acts.ts); job: what it is off doing right now; acts: how many helps it has done; warned: the
 // enemy it last warned of
@@ -74,7 +76,7 @@ export type FreeSoul = {
 // or something against her. t: s on it; item: the one it goes for or carries; side: the side of her it comes from
 export type SoulJob = { kind: 'fetch' | 'carry' | 'step' | Exclude<SoulHinder, 'own' | 'none' | 'detune'>; t: number; item?: Pickup; side?: 1 | -1 }
 export const CALLBACK_GAP = 0.2 // s between two souls called back
-export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on the Bag of souls can call them back
+export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on the Gaiola can call them back
 
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
 // beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through); rebate: the
@@ -89,7 +91,8 @@ const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
 // scale: the index in its item's `scales` it plays now (instruments with more than one scale)
 // flying: thrown and on its way back to her wing (a staff that comes back); specialAt: when its special is ready
 // again, on the world's clock (missing: ready)
-export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number; flying?: boolean; specialAt?: number }
+// cage: a Gaiola's limit and the souls in it (lib/pigchicken/cages.ts); it goes with the item wherever it is
+export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number; flying?: boolean; specialAt?: number; cage?: CageState }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
@@ -260,7 +263,7 @@ export function createCombat() {
   const bolts: Bolt[] = [], flights: Flight[] = []
   let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
-  const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number }[] = []
+  const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; cageSouls?: number }[] = []
   // the Baús of the layout (the layout sync adds, moves and removes them) and the one each local player is next to
   const chests: Chest[] = []
   const chestNear = new Map<string, ChestNear>()
@@ -357,7 +360,8 @@ export function createCombat() {
     if (i === cur) removeHeld(); else { inv.splice(i, 1); if (i < cur) cur-- }
   }
   const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
-  const fresh = (item: ItemId): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability })
+  // a Gaiola is born empty with its model's limit (cap: this one's own, a rack's or a loose item's)
+  const fresh = (item: ItemId, cap?: number): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability, ...(items[item].cageSouls > 0 ? { cage: newCage(cageCap(cap, items[item].cageSouls)) } : {}) })
 
   function addText(x: number, y: number, text: string, color = '#ffffff') { texts.push({ x, y, text, life: 0.9, color }) }
   function burst(x: number, y: number, n: number, color: string, speed = 220, size = 3) {
@@ -707,16 +711,26 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; bag: Soul[]
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number
     trem: TremoloState; tremBend: number; aimReach: number
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
-  // her Bag of souls, a stack: the last one caught is the first one out
-  let bag: Soul[] = []
-  // souls on their way to a Bag of souls (the world's: each one knows whose it is) and how long each Bag of souls still swells
+  // her Gaiolas (lib/pigchicken/cages.ts), at most CAGES_MAX: the first one is in front, where the souls caught go
+  // and come out of; each one is a stack (the last soul in is the first one out). cageDeny: s left of the shake of a
+  // catch that did not fit anywhere
+  let cages: Owned[] = []
+  let cageDeny = 0
+  // the ground's y, as the last step had it
+  let floorY = 0
+  // souls on their way to a Gaiola (the world's: each one knows whose it is and which cage keeps its place)
   const abductions: Abduction[] = []
-  const soulPulses = new Map<string, number>()
+  // the birds a Passaguá without a Gaiola scared off, on their quick flight to somewhere else in sight
+  const scares: Scare[] = []
+  // the chicks let out of a Gaiola since the screen last asked: each one is a chick again (the Parquinho puts it in
+  // the flock); (x, y): where its cage is, in world px
+  const chickReleases: { soul: Soul; owner: string; x: number; y: number }[] = []
+  const NO_SOULS: Soul[] = []
   // the souls caught from the wild since the screen last asked (not the ones that only changed bags or came back):
   // whoever draws takes them from here to the library (lib/pigchicken/soul-library.ts)
   const soulNews: { soul: Soul; owner: string; x: number; y: number }[] = []
@@ -739,27 +753,67 @@ export function createCombat() {
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, bag, trem, tremBend, aimReach,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], bag: [], trem: newTremolo(), tremBend: 0, aimReach: 1,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, trem: newTremolo(), tremBend: 0, aimReach: 1,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, bag, trem, tremBend, aimReach } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach } = l)
     active = id
   }
 
   // One slot per type; consumables can top up their existing stack.
-  const canTake = (p: Pickup) => p.noPick <= 0 && (!inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
+  // A Gaiola is always offered: it hangs with the others, or takes the place of the one in front.
+  const canTake = (p: Pickup) => p.noPick <= 0 && (!!p.owned.cage || !inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
+
+  // ---------- Gaiolas (lib/pigchicken/cages.ts) ----------
+  // the souls on their way to a cage (caught, called back, asked of another browser) keep their place in it
+  const reserved = (c: CageState) => { let n = 0; for (const a of abductions) if (a.cage === c) n++; return n }
+  // the cage of the active player's a soul caught now goes into: the one in front, or the first one behind it with
+  // room, which comes to the front (null: nothing fits)
+  function cageForCatch(): CageState | null {
+    const i = cageWithRoom(cages, reserved)
+    if (i < 0) return null
+    if (i > 0) { bringFront(cages, i); sound('equip', cages[0].item) }
+    return cages[0].cage!
+  }
+  // how many more souls this player's cages take, with the ones already on their way
+  // (the ones asked of other browsers and not answered yet count too)
+  const cageRoomLeft = () => { let n = cages.reduce((m, o) => m + (o.cage ? cageRoom(o.cage, reserved(o.cage)) : 0), 0); asked.forEach(a => { if (a.owner === active) n-- }); return Math.max(0, n) }
+  const cagesOf = (id: string): Owned[] => (id === active ? cages : loadouts.get(id)?.cages ?? [])
+  // the cage of `owner`'s a soul on its way back takes (the one in front first; no cage comes to the front for it)
+  const cageFor = (owner: string): CageState | null => { const list = cagesOf(owner), i = cageWithRoom(list, reserved); return i < 0 ? null : list[i].cage! }
+  const denyCatch = () => { if (cageDeny <= 0) sound('locked', null); cageDeny = CAGE_DENY }
+  // a Gaiola taken hangs with her others, behind them (the first one is in front). With CAGES_MAX already, Pegar
+  // (swap) puts it in front and the one that was there falls to the floor with its souls; Golpe never swaps
+  function takeCage(p: Pickup, swap: boolean) {
+    const cage = p.owned.cage!
+    if (cages.length >= CAGES_MAX) {
+      if (!swap) return false
+      const old = cages[0]
+      old.cage!.enterT = Infinity
+      pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -30 : 30), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
+      cages[0] = p.owned
+      addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
+    } else {
+      cages.push(p.owned)
+      addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
+    }
+    cage.enterT = 0
+    sound('equip', p.owned.item)
+    return true
+  }
 
   // Usar/Pegar equips a new item; Golpe can store it without changing the item she already holds.
   function pickUp(p: Pickup, equip = true) {
     if (!canTake(p)) return false
+    if (p.owned.cage) return takeCage(p, equip)
     const stack = inv.find(o => o.item === p.owned.item)
     if (stack) {
       const amount = Math.min(p.owned.ammo, (CONSUMABLE_LIMITS[stack.item] ?? 0) - stack.ammo)
@@ -801,15 +855,15 @@ export function createCombat() {
     sound(legend ? 'chestLegend' : 'chest', null)
     burst(c.x, c.y - 50, legend ? 34 : 18, legend ? '#7cc4ff' : '#ffd76a', legend ? 320 : 220, 3)
   }
-  // Pegar at a Baú: shut for her (no key, not enough souls in the Bag of souls), it shivers and says why; otherwise
+  // Pegar at a Baú: shut for her (no key, not enough souls in her Gaiolas), it shivers and says why; otherwise
   // it opens (a key is used up) and its items jump out, each line of the loot drawn by its chance
   function openChest(c: Chest) {
-    const block = chestBlock(c.params, { keys: keyCount(), souls: bag.length })
+    const block = chestBlock(c.params, { keys: keyCount(), souls: cageSouls(cages) })
     const top = c.y - 70
     if (block) {
       c.shake = 0.35
       sound('locked', null)
-      addText(c.x, top - 16, block === 'key' ? 'Precisa de uma chave' : `Bag of souls: ${bag.length}/${c.params.souls}`, '#ffb4a8')
+      addText(c.x, top - 16, block === 'key' ? 'Precisa de uma chave' : `Almas nas gaiolas: ${cageSouls(cages)}/${c.params.souls}`, '#ffb4a8')
       return
     }
     if (c.params.lock === 'key') useKey()
@@ -1241,13 +1295,70 @@ export function createCombat() {
     }
   }
 
+  // A Passaguá whose player carries no Gaiola keeps nothing. The chicks in its arc are shoved away; the birds (the
+  // living ones and the undead ones flying) are scared off: each goes, in the quick flight of a soul being caught, to
+  // a free spot on a wire the screen shows and sits there; with no wire in sight, to somewhere on the screen far
+  // from whoever swung
+  function scareSweep(sw: Swing, origin: { x: number; y: number }) {
+    const box = { l: view.l + 40, r: view.r - 40, t: (soulAir?.top ?? floorY - 700) + 40, b: floorY - 120 }
+    const spotFor = (pp: ReturnType<typeof birdPerchParams>) => (perchWorld?.spans.length ? perchSeekIn(perchWorld, box, pp, Math.random, origin) : null)
+    let n = 0
+    const fly = (x: number, y: number, soul: Soul, to: { x: number; y: number }, land: () => void) => {
+      puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
+      scares.push({ soul, x, y, tx: to.x, ty: to.y, t: -n++ * ABDUCT_GAP, land })
+    }
+    for (let i = targets.length - 1; i >= 0; i--) {
+      const t = targets[i]
+      if (t.kind !== 'undead' || t.deadT > 0 || t.mirror) continue
+      const u = t.data as UndeadState | undefined
+      if (!u?.bird || (u.phase !== 'bird' && u.phase !== 'leave')) continue
+      const x = t.x, y = t.y - t.h / 2
+      if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35)) continue
+      if (u.perch && perchWorld) perchEnd(perchWorld, u.perch)
+      const pp = birdPerchParams(BIRDS[u.bird].perch), spot = spotFor(pp), to = spot ?? farSpot(box, origin)
+      targets.splice(i, 1)
+      fly(x, y, newSoul(0, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird), to, () => {
+        t.x = to.x; t.y = to.y + t.h / 2; u.phase = 'bird'; u.homeX = to.x; u.homeY = to.y; u.t = 0
+        u.perch = spot && perchWorld?.byId.has(spot.span) ? perchSit(perchWorld, spot, pp) : null
+        targets.push(t)
+      })
+    }
+    for (let i = critters.length - 1; i >= 0; i--) {
+      const c = critters[i]
+      if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16)) continue
+      if (c.perch && perchWorld) perchEnd(perchWorld, c.perch)
+      const pp = birdPerchParams(c.bird ? BIRDS[c.bird].perch : undefined), spot = spotFor(pp), to = spot ?? farSpot(box, origin)
+      critters.splice(i, 1)
+      fly(c.x, c.y, newSoul(0, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null), to, () => {
+        // on a wire it sits; in the air it circles there for as long as its kind stays, then leaves as it would have
+        c.x = to.x; c.y = to.y; c.vx = 0; c.vy = 0; c.homeX = to.x; c.homeY = to.y; c.groundY = 0; c.t = 0
+        c.perch = spot && perchWorld?.byId.has(spot.span) ? perchSit(perchWorld, spot, pp) : null
+        critters.push(c)
+      })
+    }
+    // the chicks only get a shove away from her (the other browsers' are theirs to move)
+    for (const c of catchables) {
+      if (c.net || !c.push || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r)) continue
+      c.push((Math.sign(c.x - origin.x) || 1) * rand(380, 520), -rand(260, 380))
+      puffs.push({ x: c.x, y: c.y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
+      n++
+    }
+    if (n) sound('puff', null)
+  }
+
   // the blow lands at the end of the preparação: everything in its arc is hit once
   function strike(sw: Swing, origin: { x: number; y: number }) {
     sw.hit = true
     collectInSwing(sw, origin)
-    // the passaguá catches birds and souls first: what it catches is gone before the blow could hurt or push it
-    if ((sw.item as Owned | null)?.item === 'passagua') {
+    // the passaguá catches birds and souls first: what it catches is gone before the blow could hurt or push it.
+    // Without a Gaiola nothing can be kept: it only shoves the chicks and scares the birds off
+    if ((sw.item as Owned | null)?.item === 'passagua' && !cages.length) scareSweep(sw, origin)
+    else if ((sw.item as Owned | null)?.item === 'passagua') {
       const caught: { x: number; y: number; soul: Soul; wild: boolean }[] = []
+      // each one needs a place in one of her cages (the souls on their way and the ones asked of other browsers
+      // already have theirs); what does not fit stays where it is
+      let room = cageRoomLeft(), denied = false
+      const fits = () => { if (room > 0) { room--; return true } denied = true; return false }
       // Undead birds stay Targets while circling; the other undead phases are not capturable.
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
@@ -1255,7 +1366,7 @@ export function createCombat() {
         const u = t.data as UndeadState | undefined
         if (!u?.bird || (u.phase !== 'bird' && u.phase !== 'leave')) continue
         const x = t.x, y = t.y - t.h / 2
-        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35)) continue
+        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, x, y, Math.max(t.w, t.h) * 0.35) || !fits()) continue
         // the lobby owner's bird, on another browser: it is asked of the owner, and hides here until the answer
         if (t.mirror && reportHit && netAsks && t.net !== undefined) { targets.splice(i, 1); takenFoes.set(t.net, TAKE_WAIT); askFor({ k: 'f', id: t.net }, x, y); continue }
         if (u.perch && perchWorld) perchEnd(perchWorld, u.perch)
@@ -1264,39 +1375,42 @@ export function createCombat() {
       // Converted living birds fly as critters rather than targets and use the same capture sweep.
       for (let i = critters.length - 1; i >= 0; i--) {
         const c = critters[i]
-        if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16)) continue
+        if (c.kind !== 'bird' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, 16) || !fits()) continue
         if (c.perch && perchWorld) perchEnd(perchWorld, c.perch)
         critters.splice(i, 1); caught.push({ x: c.x, y: c.y, wild: true, soul: newSoul(nextId++, c.soul ?? originOf('horde', 'alive'), c.color, c.bird ?? null) })
       }
-      // souls flying free, whoever let them out: they change bags (or go back to their own)
+      // souls flying free, whoever let them out: they change cages (or go back to her own)
       for (let i = freed.length - 1; i >= 0; i--) {
         const f = freed[i]
-        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16)) continue
+        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, f.x, f.y, 16) || !fits()) continue
         letGo(f); freed.splice(i, 1); caught.push({ x: f.x, y: f.y, wild: false, soul: f.soul })
       }
       // online, a soul another browser flies: it is asked of that browser
       for (const m of soulMirrors) {
-        if (m.asked !== null || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, m.x, m.y, 16)) continue
+        if (m.asked !== null || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, m.x, m.y, 16) || !fits()) continue
         m.asked = 0; askFor({ k: 's', id: m.net, pid: m.pid }, m.x, m.y)
       }
-      // the chicks that follow her: caught like the birds, they count as souls too
+      // the chicks that follow her: caught like the birds, they are souls too (and still chicks: "almas pintinho")
       catchables = catchables.filter(c => {
-        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r)) return true
+        if (!inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, c.x, c.y, c.r) || !fits()) return true
         c.catch()
         // online, another browser's chick: it is asked of that browser
         if (c.net) askFor({ k: 'c', id: c.net.id, pid: c.net.pid }, c.x, c.y)
-        else caught.push({ x: c.x, y: c.y, wild: true, soul: newSoul(nextId++, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null) })
+        else caught.push({ x: c.x, y: c.y, wild: true, soul: { ...newSoul(nextId++, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null), ...(c.style !== undefined ? { chick: c.style } : {}) } })
         return false
       })
       if (caught.length) {
-        // each one leaves a little cloud and flies to this player's Bag of souls, where it counts (one after the other)
+        // each one leaves a little cloud and flies to the cage of this player's that takes it, where it counts (one
+        // after the other). A full cage in front gives its place to one with room
         caught.forEach(({ x, y, soul, wild }, i) => {
           puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
-          abductions.push({ soul, owner: active, x, y, t: -i * ABDUCT_GAP })
+          abductions.push({ soul, owner: active, x, y, t: -i * ABDUCT_GAP, cage: cageForCatch() })
           if (wild) soulNews.push({ soul, owner: active, x, y })
         })
         sound('puff', null)
       }
+      // nothing has room for what was left in the net: the cages shake their no
+      if (denied) denyCatch()
       // whatever it did not catch (aliens, zombies, dummies, undead on the ground) takes its damage and push below
     }
     const struck: Target[] = []
@@ -1539,7 +1653,7 @@ export function createCombat() {
   const hang = (f: FreeSoul, p: Pickup) => { p.x = f.x; p.y = f.y + SOUL_ACT.fetch.hang; p.resting = true; p.vy = 0; p.noPick = Math.max(p.noPick, 0.2) }
   const cloud = (x: number, y: number) => puffs.push({ x, y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#cceef0' })
   // online: this player's Passaguá went over something another browser decides. A little cloud now; the soul flies
-  // to their Bag of souls when that browser gives it
+  // to their Gaiola when that browser gives it
   function askFor(take: NetTake & { pid?: number }, x: number, y: number) {
     cloud(x, y); sound('puff', null)
     asked.set(take.k + take.id, { owner: active, x, y, t: 0 })
@@ -1580,7 +1694,7 @@ export function createCombat() {
     const hers = invOf(f.owner)
     let best: Pickup | null = null, near = f.act.range
     for (const p of pickups) {
-      if (!p.resting || p.noPick > 0 || Math.hypot(p.x - her.x, p.y - her.y) < SOUL_ACT.fetch.near * her.scale || racks.some(r => r.pickupId === p.id) || freed.some(o => o.job?.item === p)) continue
+      if (p.owned.cage || !p.resting || p.noPick > 0 || Math.hypot(p.x - her.x, p.y - her.y) < SOUL_ACT.fetch.near * her.scale || racks.some(r => r.pickupId === p.id) || freed.some(o => o.job?.item === p)) continue
       const has = hers.find(o => o.item === p.owned.item)
       if (has ? has.ammo >= (CONSUMABLE_LIMITS[has.item] ?? 0) : hers.length >= limit) continue
       const d = Math.hypot(p.x - f.x, p.y - f.y)
@@ -1686,6 +1800,15 @@ export function createCombat() {
     if (did) { actDone(f.clock, f.act); f.acts++ }
   }
 
+  // a soul out of a cage (or with no cage to go to): it flies free with `owner` from (x, y)
+  function flyFree(soul: Soul, owner: string, x: number, y: number) {
+    // how it flies and what it does are its entry's in the library (the class of its family, or a rare one's own)
+    const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry), brain = createSoulBrain(x, y, params)
+    // it pops out, down and to one side
+    brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
+    freed.push({ soul, owner, x, y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null })
+  }
+
   const env = (groundY: number, playerX: number, playerY: number, bounds?: { l: number; r: number }): EnemyEnv => ({
     playerX, playerY, groundY, viewL: bounds?.l ?? view.l, viewR: bounds?.r ?? view.r,
     // online: the other browsers' chickens count too (the nearest one is chased)
@@ -1714,13 +1837,25 @@ export function createCombat() {
     // first one in use is 'p1'. Every getter and step() below act on the current loadout.
     use(id: string) { useLoadout(id) },
     get player() { return active },
-    // this player's souls: how many are in the Bag of souls, the bag itself (the last one caught on top) and how much
-    // the Bag of souls swells now (1 right when one arrives, 0 at rest)
-    get capturedSouls() { return bag.length },
-    get bagOfSouls() { return bag as readonly Soul[] },
-    get soulPulse() { return (soulPulses.get(active) ?? 0) / SOUL_PULSE },
-    // every player's souls flying to their Bags of souls (lib/pigchicken/souls.ts)
+    // this player's Gaiolas (lib/pigchicken/cages.ts): the first one is in front. capturedSouls: the souls in all of
+    // them; bagOfSouls: the ones in the cage in front (the last one caught on top; none without a cage); cageDeny:
+    // how much of the shake of a catch that did not fit is left (1 right then, 0 at rest)
+    get cages() { return cages as readonly Owned[] },
+    cagesOf(id: string) { return cagesOf(id) as readonly Owned[] },
+    get capturedSouls() { return cageSouls(cages) },
+    get bagOfSouls() { return cages[0]?.cage?.souls ?? NO_SOULS },
+    get cageDeny() { return cageDeny / CAGE_DENY },
+    // the next cage comes to the front (the bind), or the one at `i` swaps places with the one in front (a press on it)
+    rotateCages(i?: number) {
+      const ok = i === undefined ? cycleCages(cages) : bringFront(cages, i)
+      if (ok) sound('equip', cages[0].item)
+      return ok
+    },
+    // every player's souls flying to their Gaiolas (lib/pigchicken/souls.ts), the birds a Passaguá without a Gaiola
+    // scared off, on their way, and the chicks let out of a cage, for the screen to take (splice) into the flock
     get abductions() { return abductions as readonly Abduction[] },
+    get scares() { return scares as readonly Scare[] },
+    chickReleases,
     // the souls caught from the wild, to be taken (spliced) by whoever keeps the library; (x, y): where, in world px
     soulNews,
     // the library's sheets changed: the souls flying free take the numbers their entries have now
@@ -1728,30 +1863,42 @@ export function createCombat() {
     // the souls out of the bags, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
     get freedSouls() { return freed as readonly FreeSoul[] },
     get looseSouls() { let n = 0; for (const f of freed) if (f.owner === active) n++; return n },
-    // lets the soul on top of this player's Bag of souls out at `from` (world px: where their Bag of souls is); it flies with them
+    // lets the soul on top of this player's cage in front out at `from` (world px: where that cage is); it flies with
+    // them. A chick ("alma pintinho") is a chick again: it goes to chickReleases, for the screen's flock
     releaseSoul(from: { x: number; y: number }) {
-      const soul = bag.pop()
-      if (!soul) return null
-      // how it flies and what it does are its entry's in the library (the class of its family, or a rare one's own)
-      const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry), brain = createSoulBrain(from.x, from.y, params)
-      // it pops out of the Bag of souls, down and to one side
-      brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
-      freed.push({ soul, owner: active, x: from.x, y: from.y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null })
-      lastRelease.set(active, soulClock); soulPulses.set(active, SOUL_PULSE)
+      const cage = cages[0]?.cage, soul = cage?.souls.pop()
+      if (!cage || !soul) return null
+      flashCage(cage, 'lose'); lastRelease.set(active, soulClock)
       sound('puff', null)
+      if (soul.species === 'chick') chickReleases.push({ soul, owner: active, x: from.x, y: from.y })
+      else flyFree(soul, active, from.x, from.y)
       return soul
     },
-    // Callback: every soul of this player's flying free goes back to the Bag of souls, one every CALLBACK_GAP, the one
-    // nearest to them first. Returns how many were called.
+    // Callback: the souls of this player's flying free go back to their Gaiolas (the one in front first), one every
+    // CALLBACK_GAP, the one nearest to them first; only as many as still fit. Returns how many were called.
     callSouls() {
       if (soulClock - (lastRelease.get(active) ?? -Infinity) < CALLBACK_GUARD) return 0
       const mine = freed.filter(f => f.owner === active && f.recallIn === null && f.away === null)
       const her = lastBody ? { x: lastBody.x, y: lastBody.y - 90 * lastBody.scale } : null
       if (her) mine.sort((a, b) => Math.hypot(a.x - her.x, a.y - her.y) - Math.hypot(b.x - her.x, b.y - her.y))
-      mine.forEach((f, i) => { f.recallIn = i * CALLBACK_GAP })
-      return mine.length
+      let room = cageRoomLeft()
+      for (const f of freed) if (f.owner === active && f.recallIn !== null) room--
+      const called = mine.slice(0, Math.max(0, room))
+      if (mine.length && !called.length) denyCatch()
+      called.forEach((f, i) => { f.recallIn = i * CALLBACK_GAP })
+      return called.length
     },
-    drop(id: string) { if (id !== active) { loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id); for (const f of freed) if (f.owner === id && f.away === null) { letGo(f); f.away = 0 } } },
+    // a local player left: their souls fly away and their Gaiolas fall where they were, with what is in them
+    drop(id: string) {
+      if (id === active) return
+      const l = loadouts.get(id)
+      if (l) for (const o of l.cages) {
+        o.cage!.enterT = Infinity
+        pickups.push({ id: nextId++, owned: o, x: (l.lastBody?.x ?? 0) + rand(-50, 50), y: (l.lastBody?.y ?? floorY) - 40, vy: -220, resting: false, noPick: 0.6 })
+      }
+      loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id)
+      for (const f of freed) if (f.owner === id && f.away === null) { letGo(f); f.away = 0 }
+    },
     // the slots shown (her items plus the empty one while there is room) and the one she holds
     get inventory() { return shown() },
     // each shown slot's group (the empty slot counts as the last group)
@@ -1794,7 +1941,7 @@ export function createCombat() {
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
-    get hoverSwaps() { return !room() && !inv.some(o => o.item === hover?.owned.item) },
+    get hoverSwaps() { return hover?.owned.cage ? cages.length >= CAGES_MAX : !room() && !inv.some(o => o.item === hover?.owned.item) },
     // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
     get heavyCharging() { return !!heavyItem && heavyItem === held() },
     get heavyCharge() { return heavyItem && heavyItem === held() ? Math.min(1, heavyT / staffCharge(def())) : 0 },
@@ -1850,6 +1997,8 @@ export function createCombat() {
     // creative mode / tests: put an item straight into the inventory (in its group's place) and hold it
     give(item: ItemId) {
       if (item === 'peck' || item === 'wing') return
+      // a Gaiola hangs with the others (not in the inventory)
+      if (isCage(item)) { if (cages.length < CAGES_MAX) { const o = fresh(item); o.cage!.enterT = 0; cages.push(o); sound('equip', item) } return }
       peck = null; peckPrep = 0
       const stack = inv.find(o => o.item === item)
       if (stack) { if (CONSUMABLE_LIMITS[item]) stack.ammo = Math.min(CONSUMABLE_LIMITS[item]!, stack.ammo + 1); return }
@@ -1949,7 +2098,7 @@ export function createCombat() {
         if (i < 0) return null
         const [c] = catchables.splice(i, 1)
         c.catch(); cloud(c.x, c.y); sound('puff', null)
-        return soulWho(newSoul(0, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null))
+        return soulWho({ ...newSoul(0, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null), ...(c.style !== undefined ? { chick: c.style } : {}) })
       }
       const i = targets.findIndex(t => t.net === take.id && !t.mirror && t.kind === 'undead' && t.deadT <= 0)
       const t = targets[i], u = t?.data as UndeadState | undefined
@@ -1959,13 +2108,13 @@ export function createCombat() {
       cloud(t.x, t.y - t.h / 2); sound('puff', null)
       return soulWho(newSoul(0, originOf(soulSpecies(u.look), 'dead', t.soul), u.eye, u.bird))
     },
-    // the answer: the soul flies from where it was caught to the Bag of souls of the player who caught it, and is new
+    // the answer: the soul flies from where it was caught to the Gaiola of the player who caught it, and is new
     // to this browser's library
     applyNetGive(g: NetGive) {
       const a = asked.get(g.k + g.id), soul = a ? soulFromWho(g.soul, nextId++) : null
       if (!a || !soul) return false
       asked.delete(g.k + g.id)
-      abductions.push({ soul, owner: a.owner, x: a.x, y: a.y, t: 0 })
+      abductions.push({ soul, owner: a.owner, x: a.x, y: a.y, t: 0, cage: cageFor(a.owner) })
       soulNews.push({ soul, owner: a.owner, x: a.x, y: a.y })
       return true
     },
@@ -1983,7 +2132,7 @@ export function createCombat() {
     clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
     // an item on its own in the world (a Pátio's "Item solto"): it falls to the floor there and never comes back
-    addPickup(x: number, item: ItemId, y: number) { const id = nextId++; pickups.push({ id, owned: fresh(item), x, y, vy: 0, resting: false, noPick: 0 }); return id },
+    addPickup(x: number, item: ItemId, y: number, cageSouls?: number) { const id = nextId++; pickups.push({ id, owned: fresh(item, cageSouls), x, y, vy: 0, resting: false, noPick: 0 }); return id },
     // online: the Baús opened here since the sync last asked
     chestOpens,
     // another browser opened this Baú `t` s ago: it opens here too, with its animation and sound when it is news (the
@@ -1999,7 +2148,9 @@ export function createCombat() {
     closeNetChest(id: string) { const c = chests.find(o => o.id === id); if (c?.open) { c.open = false; c.t = 0 } },
     // a Baú of the layout (x: its middle, y: its floor); the layout sync keeps its place and params up to date
     addChest(id: string, x: number, y: number, params: ChestParams): Chest { const c: Chest = { id, x, y, params, open: false, lid: 0, t: 0, shake: 0 }; chests.push(c); return c },
-    addRack(x: number, item: ItemId, y?: number, respawnDelay?: number) { racks.push({ x, item, t: 0, label: items[item].name.toUpperCase(), y, respawnDelay: rackRespawnDelay(item, respawnDelay) }) },
+    // cageSouls: a Gaiola's limit of souls on this rack (none: the item's own)
+    // (a Gaiola's rack waits longer between one cage and the next, but its first one is there from the start)
+    addRack(x: number, item: ItemId, y?: number, respawnDelay?: number, cageSouls?: number) { const delay = rackRespawnDelay(item, respawnDelay); racks.push({ x, item, t: isCage(item) ? delay : 0, label: items[item].name.toUpperCase(), y, respawnDelay: delay, cageSouls }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
       const d = def()
@@ -2014,6 +2165,7 @@ export function createCombat() {
     // world: false steps only the current player's loadout (another local player in the same frame)
     step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      floorY = groundY
       let peckStarted = false
       // what calls a strong blow's charge off without hitting: the interface, empty hands, a soul's peck
       const heavyCancel = !!input.cancelFire || !!input.deselect || locks.has(active)
@@ -2409,7 +2561,7 @@ export function createCombat() {
       const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       // an item offered at her body (to take or to equip) goes before a Baú
       const itemOffered = !!hover || !!hoverOwned
-      if (grabNow && hover && pickups.includes(hover) && (room() || (held() && !held()!.flying) || inv.some(o => o.item === hover!.owned.item))) {
+      if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.flying) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
         pickups.splice(at, 1)
         const picked = pickUp(g, !meleePickup)
@@ -2433,7 +2585,7 @@ export function createCombat() {
         if (!nearChest || Math.abs(c.x - body.x) < Math.abs(nearChest.x - body.x)) nearChest = c
       }
       // (an item offered at her feet hides its hint: Pegar takes the item first)
-      if (nearChest && !itemOffered) chestNear.set(active, { chest: nearChest, block: chestBlock(nearChest.params, { keys: keyCount(), souls: bag.length }) })
+      if (nearChest && !itemOffered) chestNear.set(active, { chest: nearChest, block: chestBlock(nearChest.params, { keys: keyCount(), souls: cageSouls(cages) }) })
       else chestNear.delete(active)
       if (nearChest && input.grab && !input.grabRun && !itemOffered) openChest(nearChest)
       if (!world) return
@@ -2464,7 +2616,7 @@ export function createCombat() {
         if (r.t + 1e-9 >= r.respawnDelay) {
           r.pickupId = nextId++
           r.spawnX = r.x; r.spawnY = r.y
-          pickups.push({ id: r.pickupId, owned: fresh(r.item), x: r.x, y: (r.y ?? groundY) - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0
+          pickups.push({ id: r.pickupId, owned: fresh(r.item, r.cageSouls), x: r.x, y: (r.y ?? groundY) - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0
         }
       })
 
@@ -2568,7 +2720,7 @@ export function createCombat() {
         const stay = c.bird ? BIRDS[c.bird].stay : 0
         if (c.t > stay && (c.y < -120 || c.t > 9 + stay || c.x < view.l - 500 || c.x > view.r + 500)) critters.splice(i, 1)
       }
-      // the souls flying free: each one flies with its owner; called back, it leaves for the Bag of souls in its turn
+      // the souls flying free: each one flies with its owner; called back, it leaves for their Gaiola in its turn
       soulClock += dt
       // what they do needs each owner's fall, the floors and the beat; what they did to a player wears off
       actGround = ctx
@@ -2589,7 +2741,10 @@ export function createCombat() {
         }
         if (f.recallIn !== null) {
           f.recallIn -= dt
-          if (f.recallIn <= 0) { letGo(f); freed.splice(i, 1); abductions.push({ soul: f.soul, owner: f.owner, x: f.x, y: f.y, t: 0 }); sound('puff', null); continue }
+          // its turn: it leaves for the cage that takes it; with none left (they filled up meanwhile) it stays out
+          const cage = f.recallIn <= 0 ? cageFor(f.owner) : null
+          if (f.recallIn <= 0 && !cage) f.recallIn = null
+          else if (cage) { letGo(f); freed.splice(i, 1); abductions.push({ soul: f.soul, owner: f.owner, x: f.x, y: f.y, t: 0, cage }); sound('puff', null); continue }
         }
         const her = bodyOf(f.owner)
         if (!her) continue
@@ -2604,13 +2759,21 @@ export function createCombat() {
       for (const m of soulMirrors) glideSoulMirror(m, dt)
       asked.forEach((a, key) => { if ((a.t += dt) > TAKE_WAIT * 2) asked.delete(key) })
       takenFoes.forEach((left, id) => { if (left > dt) takenFoes.set(id, left - dt); else takenFoes.delete(id) })
-      // souls on their way: each one counts in its owner's Bag of souls when it gets there
+      // souls on their way: each one counts in the cage that kept its place when it gets there (it glows blue). A cage
+      // that left its player meanwhile gives the place to another of theirs; with nowhere to go, the soul flies free
       for (const a of stepAbductions(abductions, dt)) {
-        const ownerBag = a.owner === active ? bag : loadouts.get(a.owner)?.bag
-        if (!ownerBag) continue
-        ownerBag.push(a.soul); soulPulses.set(a.owner, SOUL_PULSE)
+        const theirs = cagesOf(a.owner)
+        const cage = a.cage && a.cage.souls.length < a.cage.cap && theirs.some(o => o.cage === a.cage) ? a.cage : cageFor(a.owner)
+        if (cage) { cage.souls.push(a.soul); flashCage(cage, 'gain') }
+        else if (a.soul.species === 'chick') chickReleases.push({ soul: a.soul, owner: a.owner, x: a.x, y: a.y })
+        else flyFree(a.soul, a.owner, a.x, a.y)
       }
-      soulPulses.forEach((left, id) => { if (left > 0) soulPulses.set(id, Math.max(0, left - dt)) })
+      // the scared birds land where they were going
+      stepScares(scares, dt)
+      // every cage's glow and way in (the ones lying in the world keep still), and the shake of a catch that did not fit
+      cageDeny = Math.max(0, cageDeny - dt)
+      for (const o of cages) stepCage(o.cage!, dt)
+      loadouts.forEach((l, id) => { if (id === active) return; l.cageDeny = Math.max(0, l.cageDeny - dt); for (const o of l.cages) stepCage(o.cage!, dt) })
       for (let i = puffs.length - 1; i >= 0; i--) { puffs[i].t += dt; if (puffs[i].t >= puffs[i].life) puffs.splice(i, 1) }
       for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.life <= 0) sparks.splice(i, 1) }
       for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1) }

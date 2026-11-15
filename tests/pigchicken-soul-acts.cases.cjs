@@ -86,6 +86,7 @@ function world(item) {
   c.setMusicOut({ note: (voice, midi, at) => notes.push({ voice, midi, at }), hold: () => null, drum: () => {} })
   c.setView(-2000, 2000)
   const her = body()
+  c.give('cageFlight')
   if (item) { c.give(item); step(c, her, { slot: 1 }) }
   return { c, her, notes }
 }

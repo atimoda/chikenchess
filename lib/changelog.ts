@@ -7,8 +7,21 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida',
+    title: 'Gaiolas no Pátio: as almas ficam em gaiolas de seis modelos, até três por jogador; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida',
     groups: [
+      { title: 'Pátio: Gaiolas', items: [
+        'Nova categoria de item, Gaiolas, em seis modelos com arte própria: Gaiola básica (8 almas), de arame (12), Concorde (16), de madeira (20), Gaiolão arqueado (30) e Voadeira (50). O limite de almas de cada modelo é ajustável no painel Itens, e cada cavalete ou item solto do Modo editor pode ter o seu. Elas também entram na lista de itens do Baú.',
+        'As gaiolas substituem a Bag of souls. Ninguém começa com gaiola: o Pátio padrão tem uma Gaiola básica para pegar no chão, perto da entrada. Ela não ocupa o inventário.',
+        'Cada jogador leva até três gaiolas, cada uma com as suas almas. A sua fica pendurada no canto superior esquerdo da tela: uma grande na frente e até duas menores atrás, uma de cada lado. Elas balançam com o movimento da câmera, e uma gaiola recém-pegada entra balançando, vinda de fora da tela.',
+        'As almas capturadas vão para a gaiola da frente. Se ela está cheia, a primeira gaiola com vaga vem para a frente sozinha; se nenhuma tem vaga, as gaiolas tremem e o pássaro fica onde está.',
+        'Clicar ou tocar na gaiola da frente solta uma alma dela (só dela); clicar numa de trás troca essa gaiola de lugar com a da frente. Com a da frente vazia e almas soltas, ela vira o botão Callback, e voltam só as almas que cabem.',
+        'Com três gaiolas, Pegar uma gaiola do chão troca a sua gaiola da frente por ela. As almas continuam dentro de cada gaiola, também no chão: quem pega a gaiola leva as almas junto.',
+        'Dentro da gaiola as almas são desenhos parados: os pássaros espalhados pela gaiola e os pintinhos na base. Um pintinho capturado continua pintinho e, solto, volta para o bando como pintinho.',
+        'Sem gaiola, o Passaguá não captura: empurra os pintinhos e espanta os pássaros, que voam num instante até um fio de energia visível na tela e pousam nele (sem fio à vista, vão para um canto da tela longe de você).',
+        'Os contadores de almas agora são a silhueta de cada gaiola com o número dentro, e piscam azul quando a gaiola ganha uma alma e vermelho quando solta uma. O avatar dos outros jogadores aparece sobre o boneco deles com esses contadores; quando o boneco sai da tela, o avatar fica na borda, na direção onde ele está. No Pátio online todos veem os contadores de todos.',
+        'Binds novas: Soltar alma em H (teclado primário), End (secundário) e L3 (gamepad); Trocar de gaiola em Y e Home, ou segurando L3. No teclado secundário, Arremessar e Golpe ficam em \\ e [; no gamepad, a Roda do inventário deixa de ter botão. O painel Controles passa a listar também as binds fixas de zoom e movimento da câmera.',
+        'Limites desta primeira parte: no Pátio online as gaiolas do chão são de cada navegador, e os contadores dos outros jogadores só aparecem depois que o servidor de jogo for atualizado.',
+      ] },
       { title: 'Partida', items: [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
         'Preferências da partida ganhou “Match log”, com o botão Copy: copia o histórico completo da partida, uma linha por acontecimento, com cada lance (posição, lances possíveis, listas Best e Worst com os scores, classificação, sequência e ovos pagos), Freeze e Shield, Undo, Redo, Mulligan e cada vez que as setas foram abertas. Serve para colar numa conversa ao relatar um bug. Vale na campanha e no online.',

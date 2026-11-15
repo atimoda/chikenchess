@@ -17,6 +17,7 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
 export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key'
+  | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // each family's reticle shows what matters for it
@@ -162,6 +163,7 @@ export type ItemDef = {
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
   consumable: boolean
+  cageSouls: number // a Gaiola (lib/pigchicken/cages.ts): how many souls fit in it; 0: not a cage
   consumeKind: 'food' | 'liquid'
   effectTime: number // s the effect lasts
   effectSpeed: number // × her final speed (walk, run, in the air)
@@ -268,7 +270,7 @@ const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
-  consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
+  consumable: false, cageSouls: 0, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
   heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as SwingKind,
@@ -537,11 +539,21 @@ const KEY: ItemDef = {
   ...CONSUMABLE, id: 'key', name: 'Chave', family: 'Chaves',
 }
 
+// ---------- Gaiolas (lib/pigchicken/cages.ts): where the souls a Passaguá catches are kept. Not carried in the
+// inventory: a player hangs up to three of them. Each model has its own art (lib/pigchicken/cage-art.ts) and limit ----------
+const CAGE: ItemDef = { ...CONSUMABLE, consumable: false, id: 'cage', name: 'Gaiola básica', family: 'Gaiolas', mag: 0, cageSouls: 8 }
+const CAGE_WIRE: ItemDef = { ...CAGE, id: 'cageWire', name: 'Gaiola de arame', cageSouls: 12 }
+const CAGE_CONCORDE: ItemDef = { ...CAGE, id: 'cageConcorde', name: 'Gaiola Concorde', cageSouls: 16 }
+const CAGE_WOOD: ItemDef = { ...CAGE, id: 'cageWood', name: 'Gaiola de madeira', cageSouls: 20 }
+const CAGE_ARCH: ItemDef = { ...CAGE, id: 'cageArch', name: 'Gaiolão arqueado', cageSouls: 30 }
+const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: 'Voadeira', cageSouls: 50 }
+
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY,
+  cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
@@ -558,10 +570,14 @@ export const MAGIC_IDS: ItemId[] = ['mjolnir', 'odinstaff']
 // the keys: each one opens one Baú that asks for a key (lib/pigchicken/chests.ts)
 export const KEY_IDS: ItemId[] = ['key']
 export const isKey = (id: ItemId) => KEY_IDS.includes(id)
+// the Gaiolas, from the one found most (the basic dome) to the biggest
+export const CAGE_IDS: ItemId[] = ['cage', 'cageWire', 'cageConcorde', 'cageWood', 'cageArch', 'cageFlight']
+export const isCage = (id: ItemId) => CAGE_IDS.includes(id)
+export const CAGE_SOULS_MAX = 99
 export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 // the items a rack can hold
-export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, 'wing', 'peck']
+export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS]
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, 'wing', 'peck']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
@@ -711,6 +727,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'effectTime', label: 'Duração do efeito', min: 1, max: 120, step: 1, unit: 's', group: 'Efeito', hint: 'Doses acumulam: cada uma tem o seu tempo e os multiplicadores se multiplicam' },
   { key: 'effectSpeed', label: 'Velocidade final', min: 0.3, max: 2.5, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%; 0,78 = −22%' },
   { key: 'effectAccel', label: 'Aceleração', min: 0.3, max: 3, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%' },
+  { key: 'cageSouls', label: 'Limite de almas', min: 1, max: 99, step: 1, unit: 'almas', group: 'Gaiola', hint: 'Quantas almas cabem nesta gaiola; uma gaiola já no mundo guarda o limite com que nasceu' },
   { key: 'effectRamp', label: 'Tempo da arrancada', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Efeito', hint: 'Com curva ease: quanto leva até a velocidade final' },
 ]
 export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]

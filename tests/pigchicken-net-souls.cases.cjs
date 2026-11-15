@@ -22,17 +22,18 @@ function world(item) {
   c.setMusicOut({ note: () => {}, hold: () => null, drum: () => {} })
   c.setView(-1000, 1000)
   c.setNetOn(true)
+  c.give('cageFlight')
   if (item) { c.give(item); step(c, { slot: 1 }) }
   return c
 }
 const land = c => { for (let t = 0; t < S.ABDUCT_TIME + 0.4; t += 0.016) step(c) }
-// n chicks caught, one sweep each
+// n birds caught, one sweep each (a chick let out of a Gaiola is a chick again, not a soul flying free)
 function bagOf(c, n) {
   for (let k = 0; k < n; k++) {
-    c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
-    for (let i = 0; i < 50; i++) step(c, { melee: i === 0 })
+    const b = { kind: 'bird', x: 40, y: 0, vx: 0, vy: 0, t: 0, color: '#9be7ff', face: 1, groundY: 0, homeX: 40, homeY: 0 }
+    c.critters.push(b)
+    for (let i = 0; i < 50; i++) { if (c.critters.includes(b)) Object.assign(b, { x: 40, y: 0, vx: 0, vy: 0 }); step(c, { melee: i === 0 }) }
   }
-  c.setCatchables([])
   land(c)
 }
 const holdSoul = (f, x, y) => { Object.assign(f.brain, { x, y, ax: x, ay: y, vx: 0, vy: 0, mode: 'rest', settle: 0 }); f.x = x; f.y = y }
