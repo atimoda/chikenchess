@@ -124,7 +124,7 @@ export function squareMoveRewardDetails(
 }
 
 /** Destination squares that carry eggs for a shown group, one reward per square. */
-export function squareEggTargets(shown: ShownMoveSuggestions | null): { square: string; kind: 'best' | 'worst' }[] {
+export function squareEggTargets(shown: ShownMoveSuggestions | null): { square: string; kind: 'best' | 'worst'; comeback: boolean }[] {
   if (!shown) return []
   const snapshot = limitRankedLists(shown.analysis)
   const targets = new Map<string, 'best' | 'worst'>()
@@ -132,7 +132,8 @@ export function squareEggTargets(shown: ShownMoveSuggestions | null): { square: 
     const square = move.uci.slice(2, 4)
     if (!targets.has(square)) targets.set(square, shown.kind === 'best' && rankedMoveLabelTone(move.score, move.mate) !== 'worst' ? 'best' : 'worst')
   }
-  return [...targets].map(([square, kind]) => ({ square, kind }))
+  // A Best square paid as Worst is a comeback: Worst base, Best streak, never doubled.
+  return [...targets].map(([square, kind]) => ({ square, kind, comeback: shown.kind === 'best' && kind === 'worst' }))
 }
 
 interface EvaluationCallbacks {

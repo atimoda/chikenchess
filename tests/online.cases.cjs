@@ -329,3 +329,52 @@ test('A ranked streak pays at most 3 eggs when only one Best/Worst move is on of
   assert.equal(rankedRewardEggs(state, 'w', 'worst'), 6, 'without a move count the streak is unchanged')
   assert.equal(rankedRewardEggs({ ...state, actions: state.actions.map(a => a.color === 'w' ? { ...a, reward: 'best' } : a) }, 'w', 'best', 7), 2)
 })
+test('A Best move paid as Worst stays in the Best streak and is never doubled', () => {
+  const { rankedRewardEggs, rankedRewardTotal, rankedStreakCount } = loadTs('lib/online/domain.ts')
+  const comeback = { kind: 'move', color: 'w', reward: 'worst', comeback: true }
+  const reply = { kind: 'move', color: 'b', reward: null }
+  const losing = { eggs: { w: 1, b: 1 }, actions: [comeback, reply, comeback, reply] }
+  assert.equal(rankedRewardEggs(losing, 'w', 'worst', 20, true), 3, 'the third comeback in a row still pays the Worst base')
+  assert.equal(rankedStreakCount(losing, 'w', 'worst', true), 3, 'comebacks count in the Best streak')
+  assert.equal(rankedRewardTotal(losing, 'w', 'worst', 20), 3, 'a real Worst after comebacks starts its own streak')
+  assert.equal(rankedRewardTotal(losing, 'w', 'best', 20), 2, 'a plain Best continues the Best streak')
+  const worst = { kind: 'move', color: 'w', reward: 'worst' }
+  assert.equal(rankedRewardTotal({ actions: [worst, reply, worst, reply] }, 'w', 'worst', 20, true), 3, 'a comeback after two real Worst moves is not doubled')
+  // Played through the server rules: three Best-list moves below -1.00 pawn pay 3 each.
+  const play = (s, c, from, to, score) => command(s, c, { kind: 'move', from, to, analysis: { position: matchPosition(s), best: [{ uci: from + to, score }], worst: [{ uci: 'h2h4', score: -900 }] } })
+  let s = createMatchState()
+  for (const [from, to, reply] of [['a2', 'a3', ['a7', 'a6']], ['b2', 'b3', ['b7', 'b6']], ['c2', 'c3', ['c7', 'c6']]]) {
+    const before = s.eggs.w
+    s = play(s, 'w', from, to, -150)
+    assert.equal(s.eggs.w - before, 3)
+    assert.deepEqual([s.actions.at(-1).reward, s.actions.at(-1).comeback], ['worst', true])
+    s = command(s, 'b', { kind: 'move', from: reply[0], to: reply[1] })
+  }
+  assert.equal(s.eggs.w, 10)
+  s = play(s, 'w', 'd2', 'd3', 20)
+  assert.equal(s.eggs.w, 12, 'the fourth Best move in a row, with a good score, pays the doubled Best')
+  assert.equal(s.actions.at(-1).comeback, undefined)
+})
+test('The online match log rebuilds every action and records what each confirmed state paid', () => {
+  const { onlineActionLog, onlineStateLog } = loadTs('lib/online/match-log.ts')
+  const s0 = createMatchState()
+  const s1 = move(s0, 'w', 'e2', 'e4', 'best')
+  const s2 = command(s1, 'b', { kind: 'move', from: 'e7', to: 'e5' })
+  const s3 = move(s2, 'w', 'g1', 'f3', 'worst')
+  const actions = onlineActionLog(s3)
+  assert.deepEqual(actions.map(event => [event.t, event.ply, event.by, event.san, event.reward]), [
+    ['move', 1, 'w', 'e4', 'best'], ['move', 2, 'b', 'e5', null], ['move', 3, 'w', 'Nf3', 'worst'],
+  ])
+  assert.equal(actions[0].legal, 20)
+  assert.equal(actions[0].fen, 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+  assert.deepEqual([actions[0].streak, actions[0].x2, actions[0].eggs], ['bestx1', false, 1])
+  assert.deepEqual([actions[2].comeback, actions[2].streak, actions[2].x2, actions[2].eggs], [true, 'bestx2', false, 3])
+  assert.deepEqual(onlineStateLog(null, s1).map(event => [event.t, event.replayed]), [['move', true], ['joined', undefined]])
+  const [paid] = onlineStateLog(s2, s3)
+  assert.deepEqual([paid.t, paid.san, paid.paid, paid.historic, paid.eggsAfter], ['move', 'Nf3', 3, 0, { w: 5, b: 1 }])
+  const shown = command(s3, 'b', { kind: 'suggest', group: 'best', position: matchPosition(s3), moves: [{ uci: 'b8c6', score: 12 }] })
+  assert.deepEqual(onlineStateLog(s3, shown).map(event => [event.t, event.by, event.kind, event.moves]), [['view', 'b', 'best', 'b8c6 +0.12']])
+  assert.deepEqual(onlineStateLog(s3, s3), [])
+  const resigned = command(s3, 'b', { kind: 'resign' })
+  assert.deepEqual(onlineStateLog(s3, resigned).map(event => [event.t, event.winner, event.reason]), [['end', 'w', 'resign']])
+})

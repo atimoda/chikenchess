@@ -36,7 +36,9 @@ import { DEFAULT_EFFECTS, DEFAULT_GLOBAL_EFFECTS, type GlobalEffects } from "@/l
 import { Undo2, Redo2, Check, Snowflake, Shield, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { conquerCity, settleCityDraw, markRankedMoveNotice, rankedMoveEggReward, STARTING_MATCH_GOLDEN_EGGS, type RankedMoveReward } from "@/lib/game-progression"
-import { EGG_REWARDS, cappedMatchEggs, rankedMoveEggsForPosition, squareEggsExtraMs } from "@/lib/egg-rewards"
+import { RELEASE_LABEL } from "@/lib/release"
+import { analysisLogSummary, appendMatchLog, copyMatchLog, formatMatchLog, type MatchLogEvent } from "@/lib/match-log"
+import { EGG_REWARDS, cappedMatchEggs, rankedMoveEggsForPosition, rankedMoveStreakKind, rankedStreakDoubles, squareEggsExtraMs } from "@/lib/egg-rewards"
 import { MixerWidget } from "./mixer-widget"
 import { BoardMusicSelectors, type BoardDropdownId } from "./board-music-selectors"
 import { SpectrogramWidget } from "./spectrogram-widget"
@@ -275,6 +277,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   // Powers, Mulligan and Best/Worst have no trace in the move list, so the music keeps its own log.
   const [reactionLog, setReactionLog] = useState<Occurrence[]>([])
   const recordReaction = useCallback((trigger: Trigger, color: 'w' | 'b', ply: number) => setReactionLog(log => [...log, { trigger, color, ply }].slice(-128)), [])
+  // Diagnostic log copied from Preferences: every move with its egg reward state, powers, Undo/Redo and views.
+  const matchLogRef = useRef<MatchLogEvent[]>([])
+  const loggedGameOverFenRef = useRef<string | null>(null)
+  const logMatch = useCallback((event: MatchLogEvent) => appendMatchLog(matchLogRef.current, {
+    ...event,
+    eggsAfter: { w: playerEggBalanceRef.current, b: opponentEggBalanceRef.current },
+    ...(matchPowersRef.current.length ? { powers: matchPowersRef.current.map(power => `${power.kind} ${power.square} ${power.appliedBy ?? 'w'}`) } : {}),
+  }), [])
   const matchPowersRef = useRef<MatchPower[]>([])
   const playerHasActivePower = matchPowers.some(p => (p.appliedBy ?? 'w') === 'w')
   const powerButtonRefs = useRef<Record<MatchPowerKind, HTMLButtonElement | null>>({ freeze: null, shield: null })
@@ -774,6 +784,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             else playDrum('oh', 0.696)
             recordReaction(decision.powerAction.kind, 'b', gameRef.current.history().length)
             matchPowersRef.current = [...matchPowersRef.current, power]
+            logMatch({ t: 'power', by: 'b', kind: decision.powerAction.kind, square: decision.powerAction.square, cost: 3, ply: gameRef.current.history().length, fen: gameRef.current.fen() })
             setMatchPowers(matchPowersRef.current)
             setPoweredChessPowers(gameRef.current, matchPowersRef.current)
             powerTimelineRef.current[gameRef.current.history().length] = {
@@ -811,6 +822,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     const nextParams = getBotConfigParams(nextProfile)
     const nextBot = new ChessBot(nextProfile, nextParams)
     activeBotRef.current = nextBot
+    logMatch({ t: 'bot', name: nextBot.name, ply: gameRef.current.history().length })
     setSelectedBotId(nextProfile.id)
     setBotParams(nextParams)
     if (aiMoveTimerRef.current?.hasPending && gameRef.current.turn() === 'b') {
@@ -819,7 +831,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     } else {
       evaluationQueueRef.current?.setSkill(nextBot.skill)
     }
-  }, [botProfiles, requestEvaluation])
+  }, [botProfiles, requestEvaluation, logMatch])
 
   const handleBotParamsChange = useCallback((patch: Partial<BotConfigParams>) => {
     setBotParams(current => {
@@ -858,10 +870,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     if (analysisArrowTimeoutRef.current !== null) window.clearTimeout(analysisArrowTimeoutRef.current)
   }, [])
 
-  const squareEggs = useMemo(() => squareEggTargets(squareEggGroup).map(({ square, kind }) => {
+  const squareEggs = useMemo(() => squareEggTargets(squareEggGroup).map(({ square, kind, comeback }) => {
     const streak = rankedMoveStreakRef.current
-    const count = streak.kind === kind ? streak.count + 1 : 1
-    const eggs = rankedMoveEggsForPosition(rankedMoveEggReward(kind, count >= 3 ? 2 : 1), squareEggGroup?.analysis.legalMoves ?? Infinity)
+    const count = streak.kind === rankedMoveStreakKind(kind, comeback) ? streak.count + 1 : 1
+    const eggs = rankedMoveEggsForPosition(rankedMoveEggReward(kind, rankedStreakDoubles(count, comeback) ? 2 : 1), squareEggGroup?.analysis.legalMoves ?? Infinity)
     return { square: square as Square, kind, eggs }
   }).filter(target => target.eggs > 0), [squareEggGroup])
 
@@ -877,6 +889,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     if (awardAnimationsRef.current) void engineRef.current?.playAnalysisWhistle(kind === 'worst' ? 'down' : 'up')
     analysisArrowKindRef.current = kind
     pendingShownSuggestionsRef.current = kind === 'top' ? null : { kind, analysis: displayedAnalysis }
+    logMatch({ t: 'view', kind, ply: gameRef.current.history().length, cost: kind === 'top' ? 2 : 1, fen: displayedAnalysis.fen, analysis: analysisLogSummary(displayedAnalysis) })
     setAnalysisArrows(arrowsForAnalysis(displayedAnalysis, kind))
     analysisArrowTimeoutRef.current = window.setTimeout(() => {
       setAnalysisArrows([])
@@ -888,7 +901,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     squareEggTimeoutRef.current = kind === 'top' ? null : window.setTimeout(clearSquareEggs, 3000 + squareEggsExtraMs())
     if (kind !== 'top') setSquareEggFadeAt(Date.now() + 3000 + EGG_REWARDS.squareEggsHoldSeconds * 1000)
     if (kind === 'top') clearSquareEggs()
-  }, [displayedAnalysis, clearSquareEggs])
+  }, [displayedAnalysis, clearSquareEggs, logMatch])
 
   useEffect(() => {
     const kind = analysisArrowKindRef.current
@@ -965,6 +978,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       matchUsageRef.current[kind]++
       recordReaction(kind, 'w', gameRef.current.history().length)
       matchPowersRef.current = [...matchPowersRef.current, power]
+      logMatch({ t: 'power', by: 'w', kind, square, cost: 3, ply: gameRef.current.history().length, fen: gameRef.current.fen() })
       setMatchPowers(matchPowersRef.current)
       setPoweredChessPowers(gameRef.current, matchPowersRef.current)
       powerTimelineRef.current[gameRef.current.history().length] = {
@@ -998,7 +1012,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     debugEggClicksRef.current = 0
     playerEggBalanceRef.current += 10
     setVisibleEggs(playerEggBalanceRef.current)
-  }, [])
+    logMatch({ t: 'debugEggs', amount: 10 })
+  }, [logMatch])
 
   const settleCityVictory = useCallback((draw = false) => {
     if (victorySettledRef.current) return
@@ -1020,6 +1035,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     setVisibleOpponentEggs(eggs.b)
     const collected = historicMatchPointsRef.current
     const result = draw ? settleCityDraw(city.id, earnedEggs, collected) : conquerCity(city.id, earnedEggs, collected)
+    logMatch({ t: 'settle', result: draw ? 'draw' : 'win', ply: gameRef.current.history().length, fen: gameRef.current.fen(), toProfile: earnedEggs, historicPoints: collected })
     playerEggBalanceRef.current = 0
     opponentEggBalanceRef.current = 0
     victoryToastRef.current = toast.custom(id => <VictoryBasket result={result} collected={collected} sources={sources} draw={draw}
@@ -1030,7 +1046,25 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       onLand={amount => { if (!document.hidden && amount > 0) engineRef.current?.playEggLanding() }}
       onComplete={() => { setVisibleEggs(0); setVisibleOpponentEggs(0) }}
       onReturn={() => { toast.dismiss(id); onBack() }} />, { duration: Infinity })
-  }, [city.id, onBack])
+  }, [city.id, onBack, logMatch])
+
+  const copyMatchLogText = useCallback(() => copyMatchLog(formatMatchLog({
+    version: RELEASE_LABEL,
+    mode: 'campaign',
+    city: `${city.year} ${city.name}`,
+    bot: activeBotRef.current.name,
+    exportedAt: new Date().toISOString(),
+    ply: gameRef.current.history().length,
+    fen: gameRef.current.fen(),
+    moves: gameRef.current.history().join(' '),
+    eggs: { w: playerEggBalanceRef.current, b: opponentEggBalanceRef.current },
+    historicPoints: historicMatchPointsRef.current,
+    streak: rankedMoveStreakRef.current,
+    botStreak: botRankedMoveStreakRef.current,
+    usage: matchUsageRef.current,
+    rewards: EGG_REWARDS,
+    device: navigator.userAgent,
+  }, matchLogRef.current)), [city.name, city.year])
 
   const forceWin = useCallback(() => {
     setGameStatus("CHECKMATE - White wins!")
@@ -1117,6 +1151,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       }
     }
 
+    // The same final position reached again (Undo and replay) is one more ending in the log.
+    if (!game.isGameOver()) loggedGameOverFenRef.current = null
+    else if (loggedGameOverFenRef.current !== game.fen()) {
+      loggedGameOverFenRef.current = game.fen()
+      logMatch({ t: 'gameOver', result: game.isCheckmate() ? `checkmate by ${game.turn() === 'w' ? 'b' : 'w'}` : 'draw', ply: game.history().length, fen: game.fen() })
+    }
+
     // Update game status
     if (game.isCheckmate()) {
       const winner = game.turn() === "w" ? "Black" : "White"
@@ -1156,7 +1197,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "Bot thinking...")
     }
-  }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase, onBack])
+  }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase, onBack, logMatch])
 
   useEffect(() => {
     if (introPhase !== 3 || panelsFollowPlayerTurn) return
@@ -1262,17 +1303,23 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
               ? botPrePowerAnalysisRef.current
               : null
           botPrePowerAnalysisRef.current = null
+          let botRewardLog: Record<string, unknown> = {}
           if (activeBotRef.current.isChickenBot && botAnalysis) {
             const rewardDetails = rankedMoveRewardDetails(botAnalysis, move.before, uci, [], 'b')
             const rewardKind = rewardDetails?.kind ?? null
             const rewardKey = `${move.before}|${uci}`
+            // A Best move paid as Worst (bad score) stays in the Best streak and is never doubled.
+            const comeback = rewardDetails?.comeback ?? false
+            const streakKind = rewardKind ? rankedMoveStreakKind(rewardKind, comeback) : null
             const previousStreak = botRankedMoveStreakRef.current
-            const streakCount = rewardKind ? (previousStreak.kind === rewardKind ? previousStreak.count + 1 : 1) : 0
-            botRankedMoveStreakRef.current = { kind: rewardKind, count: streakCount }
+            const streakCount = streakKind ? (previousStreak.kind === streakKind ? previousStreak.count + 1 : 1) : 0
+            botRankedMoveStreakRef.current = { kind: streakKind, count: streakCount }
             if (rewardKind) recordReaction(rewardKind === 'best' ? 'playBest' : 'playWorst', 'b', gameCopy.history().length)
             if (rewardKind && !botRewardedMovesRef.current.has(rewardKey)) {
-              const streak = streakCount >= 3
-              const earnedEggs = cappedMatchEggs(opponentEggBalanceRef.current, rankedMoveEggsForPosition(rankedMoveEggReward(rewardKind, streak ? 2 : 1), botAnalysis.legalMoves))
+              const streak = rankedStreakDoubles(streakCount, comeback)
+              const fullReward = rankedMoveEggsForPosition(rankedMoveEggReward(rewardKind, streak ? 2 : 1), botAnalysis.legalMoves)
+              const earnedEggs = cappedMatchEggs(opponentEggBalanceRef.current, fullReward)
+              botRewardLog = { x2: streak, eggs: fullReward, earned: earnedEggs }
               // Only a move that actually paid is spent; one blocked by the cap can pay after an Undo.
               if (earnedEggs > 0) botRewardedMovesRef.current.add(rewardKey)
               opponentEggBalanceRef.current += earnedEggs
@@ -1286,7 +1333,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 sourceSquare: move.to,
               })
               if (awardAnimationsRef.current) void engineRef.current?.playRankedMoveWhistle(rewardKind)
-            }
+            } else if (rewardKind) botRewardLog = { repeat: true }
+            if (rewardKind) botRewardLog = { reward: rewardKind, comeback, streak: `${streakKind}x${streakCount}`, ...botRewardLog }
           }
 
           // A freshly chosen bot reply replaces any remaining historical redo branch.
@@ -1301,6 +1349,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             { game: clonePoweredChess(gameCopy, matchPowersRef.current), powers: matchPowersRef.current.map(power => ({ ...power })) },
           ]
           redoTimelineRef.current = []
+          logMatch({
+            t: 'move', ply: gameCopy.history().length, by: 'b', san: move.san, uci, fen: move.before, bot: activeBotRef.current.name,
+            ...botRewardLog,
+            ...(botAnalysis ? { analysis: analysisLogSummary(botAnalysis) } : {}),
+          })
           setGame(gameCopy)
           requestEvaluation(gameCopy)
           setMoveHistory((prev) => [...prev, move.san])
@@ -1315,7 +1368,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         console.warn("Failed to apply AI move:", moveStr, e)
       }
     },
-    [updateCapturedPieces, requestEvaluation, engineRef],
+    [updateCapturedPieces, requestEvaluation, engineRef, logMatch],
   )
 
   useEffect(() => { aiMoveCallbackRef.current = makeAIMove }, [makeAIMove])
@@ -1335,13 +1388,32 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       const rewardKind = rewardDetails?.kind ?? null
       const rewardKey = `${move.before}|${uci}`
       const seenMove = rankedMoveKindsRef.current.has(rewardKey)
-      const streakKind = rewardKind ?? (seenMove ? rankedMoveKindsRef.current.get(rewardKey) ?? null : null)
+      // A Best move paid as Worst (bad score) stays in the Best streak and is never doubled.
+      const comeback = rewardDetails?.comeback ?? false
+      const streakKind = rewardKind ? rankedMoveStreakKind(rewardKind, comeback) : (seenMove ? rankedMoveKindsRef.current.get(rewardKey) ?? null : null)
       rankedMoveKindsRef.current.set(rewardKey, streakKind)
       const previousStreak = rankedMoveStreakRef.current
       const streakCount = streakKind ? (previousStreak.kind === streakKind ? previousStreak.count + 1 : 1) : 0
       rankedMoveStreakRef.current = { kind: streakKind, count: streakCount }
+      const squareEggShown = squareEggGroupRef.current
+      const rewardLog: Record<string, unknown> = {
+        reward: rewardKind,
+        ...(streakKind ? { streak: `${streakKind}x${streakCount}` } : {}),
+        ...(rewardDetails ? {
+          comeback,
+          // Where the classification came from: eggs on the square, a suggestion seen, or the current ranking.
+          via: 'otherPiece' in rewardDetails ? 'square' : rankedMoveRewardDetails(null, move.before, uci, shownSuggestionsRef.current) ? 'seen' : 'ranking',
+          ...('otherPiece' in rewardDetails && rewardDetails.otherPiece ? { otherPiece: rewardDetails.otherPiece } : {}),
+        } : {}),
+        ...(rewardKind && rewardedMovesRef.current.has(rewardKey) ? { repeat: true } : {}),
+        ...(currentAnalysis?.fen === move.before ? { analysis: analysisLogSummary(currentAnalysis) } : {}),
+        ...(squareEggShown?.analysis.fen === move.before ? { squareEggs: { kind: squareEggShown.kind, analysis: analysisLogSummary(squareEggShown.analysis) } } : {}),
+        ...(shownSuggestionsRef.current.some(entry => entry.analysis.fen === move.before)
+          ? { seen: shownSuggestionsRef.current.filter(entry => entry.analysis.fen === move.before).map(entry => ({ kind: entry.kind, analysis: analysisLogSummary(entry.analysis) })) }
+          : {}),
+      }
       if (rewardKind && !rewardedMovesRef.current.has(rewardKey)) {
-        const streak = streakKind === rewardKind && streakCount >= 3
+        const streak = rankedStreakDoubles(streakCount, comeback)
         // With a single Best/Worst move on offer, the streak's x2 pays at most 3 eggs.
         const rewardLegalMoves = [currentAnalysis, squareEggGroupRef.current?.analysis, ...shownSuggestionsRef.current.map(entry => entry.analysis)]
           .find(analysis => analysis?.complete && analysis.fen === move.before)?.legalMoves ?? Infinity
@@ -1349,6 +1421,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         const earnedEggs = cappedMatchEggs(playerEggBalanceRef.current, fullReward)
         // Eggs past the full counter (12) do not enter the match balance: they become historic points.
         const overflowEggs = fullReward - earnedEggs
+        Object.assign(rewardLog, { x2: streak, legal: rewardLegalMoves, eggs: fullReward, earned: earnedEggs, historic: overflowEggs })
         rewardedMovesRef.current.add(rewardKey)
         const reward = {
           earnedEggs,
@@ -1361,7 +1434,6 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         const id = ++rewardSerialRef.current
         setRankedMoveMark({ square: move.to, kind: rewardKind, id })
         const legalMoveCount = currentAnalysis?.legalMoves ?? 0
-        const comeback = rewardDetails?.comeback ?? false
         const otherPiece = rewardDetails && 'otherPiece' in rewardDetails ? rewardDetails.otherPiece : null
         const headline = legalMoveCount === 1
           ? randomMessage(SINGLE_LEGAL_MOVE_MESSAGES)
@@ -1427,6 +1499,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         { game: clonePoweredChess(gameCopy, matchPowersRef.current), powers: matchPowersRef.current.map(power => ({ ...power })) },
       ]
       redoTimelineRef.current = []
+      logMatch({ t: 'move', ply: gameCopy.history().length, by: 'w', san: move.san, uci, fen: move.before, ...rewardLog })
       if (rewardKind) recordReaction(rewardKind === 'best' ? 'playBest' : 'playWorst', 'w', gameCopy.history().length)
       setGame(gameCopy)
       gameRef.current = gameCopy // Ensure ref is updated immediately to prevent race conditions with AI
@@ -1435,7 +1508,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
       requestEvaluation(gameCopy, activeBotRef.current.skill, activeBotRef.current.delayMs)
     },
-    [game, updateCapturedPieces, isPlaying, resumeAudio, requestEvaluation, engineRef],
+    [game, updateCapturedPieces, isPlaying, resumeAudio, requestEvaluation, engineRef, logMatch],
   )
 
   const undoMove = useCallback(() => {
@@ -1468,6 +1541,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     setMatchPowers(matchPowersRef.current)
     const newHistory = newGame.history()
     rankedMoveStreakRef.current = rankedStreakFromHistory(newGame.history({ verbose: true }), rankedMoveKindsRef.current)
+    logMatch({
+      t: 'undo', fromPly: currentHistory.length, ply: targetPly, fen: newGame.fen(), ...(undoingCheckmate ? { mulligan: true } : {}),
+      streak: rankedMoveStreakRef.current.kind ? `${rankedMoveStreakRef.current.kind}x${rankedMoveStreakRef.current.count}` : null,
+    })
     setRankedMoveAnnouncement(null)
     if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
     
@@ -1508,7 +1585,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     // Re-evaluate the reconstructed position with its repetition history.
     console.log("Undo to FEN:", newGame.fen())
     requestEvaluation(newGame)
-  }, [dismissDefeatToast, panelsFollowPlayerTurn, requestEvaluation, resumeAudio])
+  }, [dismissDefeatToast, panelsFollowPlayerTurn, requestEvaluation, resumeAudio, logMatch])
 
   const redoMove = useCallback(() => {
     const pendingRedo = redoStackRef.current
@@ -1532,6 +1609,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         setGame(gameCopy)
         setMoveHistory(nextHistory)
         rankedMoveStreakRef.current = rankedStreakFromHistory(gameCopy.history({ verbose: true }), rankedMoveKindsRef.current)
+        logMatch({
+          t: 'redo', ply: nextHistory.length, san: nextHistory.at(-1), fen: gameCopy.fen(),
+          streak: rankedMoveStreakRef.current.kind ? `${rankedMoveStreakRef.current.kind}x${rankedMoveStreakRef.current.count}` : null,
+        })
         setRankedMoveAnnouncement(null)
         if (rewardAnnouncementTimerRef.current !== null) window.clearTimeout(rewardAnnouncementTimerRef.current)
         setRedoStack(newRedoStack)
@@ -1541,7 +1622,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         if (skill !== undefined) setIsThinking(true)
         requestEvaluation(gameCopy, skill, skill !== undefined ? activeBotRef.current.delayMs : undefined)
     }
-  }, [requestEvaluation])
+  }, [requestEvaluation, logMatch])
 
   const toggleWidget = useCallback((id: string, setIsOn: React.Dispatch<React.SetStateAction<boolean>>) => {
     setIsOn(prev => {
@@ -2145,7 +2226,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onToggleCode={toggleCodeBackdrop}
                   musicOn={musicEngineOn}
                   onToggleMusic={handleToggleMusicEngine}
-                  preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} awardAnimations={awardAnimations} onAwardAnimationsChange={setAwardAnimations} className={MATCH_HEADER_BUTTON_CLASS} />}
+                  preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { powerTargeting.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} awardAnimations={awardAnimations} onAwardAnimationsChange={setAwardAnimations} onCopyMatchLog={copyMatchLogText} className={MATCH_HEADER_BUTTON_CLASS} />}
                 />
               </div>
             </div>

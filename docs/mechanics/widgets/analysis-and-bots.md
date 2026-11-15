@@ -5,7 +5,7 @@ Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAM
 **Bot level, PureChess Bot, ChickenBot e Bot control (`lib/chess-bots.ts`, `data/ui/bots.json`, `components/bot-control-widget.tsx`):**
 - O seletor no cabeçalho da partida contra IA chama-se **Bot level** (com default em Easy ChickenBot) e instancia a classe `ChessBot` com oito perfis divididos em duas famílias:
   - **PureChess Bot (`kind: 'pure'`)**: jogam apenas xadrez clássico, sem superpoderes, com contador de ovos dourados oculto e sem ganhar/animar ovos dourados: `Easy Pure Chess` (Skill 0, `U = 5s`), `Medium Pure Chess` (Skill 5, `U = 5s`), `Hard Pure Chess` (Skill 12, `U = 5s`), `Expert Pure Chess` (Skill 20, `U = 5s`) e `Jedi Pure Chess` (Skill 20, `alwaysBestMove: true` — escolhe sempre a melhor jogada #1 do ranking MultiPV completo, `U = 3s`).
-  - **Chicken Bot (`kind: 'chicken'`)**: exibem o contador de ovos dourados, ganham ovos dourados em jogadas ranqueadas (+1 Best, +3 Worst, dobrados em sequências de 3+) e usam superpoderes (custo de 3 ovos):
+  - **Chicken Bot (`kind: 'chicken'`)**: exibem o contador de ovos dourados, ganham ovos dourados em jogadas ranqueadas (+1 Best, +3 Worst, dobrados em sequências de 3+; um Best pago como Worst por score ruim não dobra, ver `progression.md`) e usam superpoderes (custo de 3 ovos):
     - `Easy ChickenBot`: Skill 0, `U: 5s, N: 50%, Y: 5, Z: 10, T: 5, R: 10, P: 0 (sem checagem nem Shield de avanço), Q: 0, W: +0,5, V: 2, O: 6, K: 2`.
     - `Expert ChickenBot`: Skill 20, `U: 4s, N: 100%, Y: 2, Z: 5, T: 3, R: 5, P: 1, Q: 3, W: +0,75, V: 1, O: 6, K: 3`.
     - `Jedi ChickenBot`: Skill 20 (`alwaysBestMove: true`), `U: 3s, N: 100%, Y: 1,5, Z: 3, T: 3, R: 3, P: 0,75, Q: 3, W: +0,5, V: 0,6, O: 9, K: 3`.

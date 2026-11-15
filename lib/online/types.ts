@@ -67,6 +67,8 @@ export type GameAction =
       promotion?: string;
       color: OnlineColor;
       reward: "best" | "worst" | null;
+      /** A Best-list move paid as Worst for its bad score: Best streak, never doubled. */
+      comeback?: boolean;
     }
   | {
       kind: "power";
