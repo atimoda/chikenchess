@@ -98,6 +98,28 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M98 -1.6 Q110 -3.6 122 -0.4" fill="none" stroke="#fff0c2" stroke-width="1.1" stroke-linecap="round" opacity="0.9"/>
     <rect x="92" y="-3.8" width="5" height="7.6" rx="1.5" fill="#f0b540"/>`,
   },
+  // Boomerang: a bent blade of light wood, darker at the edge, with two red bands near each tip. Held by one tip
+  boomerang: {
+    box: [-8, -37, 65, 45],
+    svg: `<path d="M-2 0 L26 0 Q36 0 40 -9 L50 -30" fill="none" stroke="#8a5a2b" stroke-width="10.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-2 0 L26 0 Q36 0 40 -9 L50 -30" fill="none" stroke="#d9a05b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0 -1.8 L26 -1.8 Q33.5 -1.8 37.4 -8.6" fill="none" stroke="#f3cf95" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
+    <path d="M5 -4 L5 4 M9.5 -4 L9.5 4" stroke="#c0392b" stroke-width="2.2"/>
+    <path d="M42.9 -24.3 L50.1 -20.9 M41.2 -20.7 L48.4 -17.3" stroke="#c0392b" stroke-width="2.2"/>`,
+  },
+  // Baralhos: three cards fanned out from the hand, their backs showing (red or blue, a diamond in the middle)
+  cardsRed: {
+    box: [-2, -23, 36, 46],
+    svg: `<g transform="rotate(-22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#d63a3a"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#8f1f1f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#d63a3a"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#8f1f1f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(0)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#d63a3a"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#8f1f1f" stroke-width="0.7" opacity="0.7"/></g>`,
+  },
+  cardsBlue: {
+    box: [-2, -23, 36, 46],
+    svg: `<g transform="rotate(-22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#2f6fde"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#173f8f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#2f6fde"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#173f8f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(0)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#2f6fde"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#173f8f" stroke-width="0.7" opacity="0.7"/></g>`,
+  },
   pistol: {
     box: [-6, -16, 64, 40],
     svg: `<g transform="scale(1.7)">

@@ -131,17 +131,19 @@ export function drawSkyFlash(ctx: Ctx, combat: Combat, camX: number, view: ViewR
   ctx.save(); ctx.fillStyle = `rgba(232,240,255,${Math.min(0.6, 0.6 * f)})`; ctx.fillRect(view.x - camX, view.y, view.w, view.h); ctx.restore()
 }
 
-// a staff thrown that comes back: it spins as it flies, with a faint streak of light behind it
+// a staff thrown that comes back (the hammer, the Boomerang): it spins as it flies, with a faint streak behind it
 export function drawFlights(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
   for (const f of combat.flights) {
     if (!intersectsView({ x: f.x - 60, y: f.y - 60, w: 120, h: 120 }, view, 40)) continue
     const x = f.x - camX, len = Math.hypot(f.vx, f.vy) || 1, ux = f.vx / len, uy = f.vy / len
     ctx.save()
-    ctx.lineCap = "round"; ctx.strokeStyle = "rgba(190,225,255,0.35)"; ctx.lineWidth = 10
+    // the hammer leaves a cold light behind it; the Boomerang only the air it cuts
+    const wood = f.owned.item === "boomerang"
+    ctx.lineCap = "round"; ctx.strokeStyle = wood ? "rgba(255,244,220,0.22)" : "rgba(190,225,255,0.35)"; ctx.lineWidth = wood ? 7 : 10
     ctx.beginPath(); ctx.moveTo(x - ux * 60, f.y - uy * 60); ctx.lineTo(x - ux * 14, f.y - uy * 14); ctx.stroke()
-    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 3
+    ctx.strokeStyle = wood ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.5)"; ctx.lineWidth = wood ? 2 : 3
     ctx.beginPath(); ctx.moveTo(x - ux * 44, f.y - uy * 44); ctx.lineTo(x - ux * 14, f.y - uy * 14); ctx.stroke()
-    ctx.translate(x, f.y); ctx.rotate(f.angle); drawItem(ctx, f.owned.item, 70, 38)
+    ctx.translate(x, f.y); ctx.rotate(f.angle); drawItem(ctx, f.owned.item, 70, wood ? 48 : 38)
     ctx.restore()
   }
 }

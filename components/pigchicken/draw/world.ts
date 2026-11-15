@@ -20,6 +20,7 @@ import { chestMarks, drawChest } from "./chests"
 import { CAGE_WORLD_SCALE, drawCageOnFloor } from "./cages"
 import { cageArt } from "@/lib/pigchicken/cage-art"
 import { drawBolts, drawFlights, drawShocked, drawSkyFlash } from "./shock"
+import { drawCards } from "./cards"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
 // gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the jukebox struck last (its ring)
@@ -96,6 +97,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
   })
   combat.critters.forEach(c => { if (!visible(c.x, c.y + 60)) return; if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
   drawFlights(ctx, combat, camX, view)
+  drawCards(ctx, combat, camX, view)
   const drawTarget = (ctx: Ctx, g: Combat["targets"][number], x: number) => {
     if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }
     if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }

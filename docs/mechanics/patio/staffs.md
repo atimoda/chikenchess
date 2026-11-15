@@ -6,7 +6,7 @@ Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAM
 
 Código: `isStaff` em `lib/pigchicken/items.ts` (hoje: todo item `meleeOnly`), `lib/pigchicken/staff-pose.ts` (pose, puro), `lib/pigchicken/held-pose.ts`, `lib/chicken/engine.ts` (`HeldStaff`, `wingReachTransform`), `lib/pigchicken/combat.ts` (`heavyItem`/`heavyT`, `melee(..., heavy)`), `components/pigchicken/staff-pose-editor.tsx`. Testes: `tests/pigchicken-staff.cases.cjs`.
 
-- **Itens:** Taco, Passaguá e, desde 13/11 (v2.10.0), Martelo de Thor e Cajado de Odin, que somam o choque, o especial e (no Martelo) o arremesso que volta no lugar do golpe forte: ver [Armas de raio](lightning.md). Um item novo marcado `meleeOnly` herda tudo desta página (pose, editor, golpe rápido e golpe forte).
+- **Itens:** Taco, Passaguá e, desde 13/11 (v2.10.0), Martelo de Thor e Cajado de Odin, que somam o choque, o especial e (no Martelo) o arremesso que volta no lugar do golpe forte: ver [Armas de raio](lightning.md). Desde 15/11 (v2.11.0) também Boomerang, Baralho vermelho e Baralho azul, em que Atirar arremessa (dois Boomerangs, ou as cartas do baralho) no lugar do golpe forte: ver [Boomerang e baralhos](boomerangs.md). Um item novo marcado `meleeOnly` herda tudo desta página (pose, editor, golpe rápido e golpe forte).
 - **Escopo:** Parquinho, Templo e Vila, local ou Pátio online, para cada player local e qualquer dispositivo (teclado, mouse, gamepad, toque).
 
 ## Pose no corpo

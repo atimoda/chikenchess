@@ -41,6 +41,7 @@
 | Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
 | Pátio: Martelo de Thor e Cajado de Odin: choque em cadeia, estado de choque (raio-x), especial com intervalo no slot, arremesso que volta | [Armas de raio](docs/mechanics/patio/lightning.md) |
+| Pátio: Boomerang (dois de uma vez) e baralhos de cartas explosivas (vermelho: dano físico; azul: nota guardada e harmonia): ordem, estacionar, estouro, cadeia, retorno | [Boomerang e baralhos](docs/mechanics/patio/boomerangs.md) |
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
@@ -92,7 +93,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: combate, mira, bicada e arremesso](docs/mechanics/patio/combat.md) | 24 KB |
 | [Pátio: golpe e combo](docs/mechanics/patio/melee.md) | 11 KB |
 | [Pátio: armas de bastão](docs/mechanics/patio/staffs.md) | 7 KB |
-| [Pátio: armas de raio e estado de choque](docs/mechanics/patio/lightning.md) | 7 KB |
+| [Pátio: armas de raio e estado de choque](docs/mechanics/patio/lightning.md) | 9 KB |
+| [Pátio: Boomerang e baralhos de cartas](docs/mechanics/patio/boomerangs.md) | 8 KB |
 | [Pátio: zumbis e hordas](docs/mechanics/patio/enemies.md) | 2 KB |
 | [Pátio: modo editor e layout](docs/mechanics/patio/editor.md) | 21 KB |
 | [Pátio: salvar/abrir, Playgrounds, Destaques](docs/mechanics/patio/lobbies.md) | 10 KB |
