@@ -308,6 +308,51 @@ test('suggestions are temporary copied snapshots scoped to a valid player positi
   assert.deepEqual(rememberMoveSuggestions(seen, { kind: 'best', analysis: { ...seen[0].analysis, complete: false } }), seen)
 })
 
+test('a Best move paid as Worst stays in the Best streak and is never doubled', () => {
+  const { rankedMoveStreakKind, rankedStreakDoubles } = loadTs('lib/egg-rewards.ts')
+  assert.equal(rankedMoveStreakKind('worst', true), 'best', 'a comeback is still a Best move for the streak')
+  assert.equal(rankedMoveStreakKind('worst', false), 'worst')
+  assert.equal(rankedMoveStreakKind('best', false), 'best')
+  assert.equal(rankedStreakDoubles(3, false), true)
+  assert.equal(rankedStreakDoubles(2, false), false)
+  assert.equal(rankedStreakDoubles(9, true), false, 'a losing position does not turn every Best move into 6 eggs')
+  // Losing by more than a pawn: every Best move is a comeback. Three in a row pay 3 each, not 3, 3, 6.
+  const losing = { fen: 'before', side: 'w', legalMoves: 20, complete: true, final: true,
+    best: [{ uci: 'e2e4', score: -180, mate: null }, { uci: 'd2d4', score: -200, mate: null }, { uci: 'g1f3', score: -100000, mate: -3 }],
+    worst: [{ uci: 'h2h4', score: -900, mate: null }] }
+  let streak = { kind: null, count: 0 }
+  const pay = uci => {
+    const details = rankedMoveRewardDetails(losing, 'before', uci)
+    const kind = rankedMoveStreakKind(details.kind, details.comeback)
+    streak = { kind, count: streak.kind === kind ? streak.count + 1 : 1 }
+    return (details.kind === 'best' ? 1 : 3) * (rankedStreakDoubles(streak.count, details.comeback) ? 2 : 1)
+  }
+  assert.deepEqual(['e2e4', 'd2d4', 'g1f3', 'e2e4'].map(pay), [3, 3, 3, 3])
+  assert.deepEqual(streak, { kind: 'best', count: 4 })
+  // Real Worst moves start their own streak and still double from the third.
+  assert.deepEqual(['h2h4', 'h2h4', 'h2h4'].map(pay), [3, 3, 6])
+  assert.equal(pay('e2e4'), 3, 'a comeback after a Worst streak is not doubled either')
+})
+
+test('the match log lists events one per line with the rewarded head of each list', () => {
+  const { formatMatchLog, analysisLogSummary, appendMatchLog, MATCH_LOG_LIMIT } = loadTs('lib/match-log.ts')
+  const analysis = { fen: 'before', side: 'w', legalMoves: 9, complete: true, final: false, depth: 12,
+    best: [{ uci: 'e2e4', score: 35, mate: null }, { uci: 'd2d4', score: -120, mate: null }, { uci: 'c2c4', score: 0, mate: null }],
+    worst: [{ uci: 'f2f3', score: -100000, mate: -2 }, { uci: 'g2g4', score: 100000, mate: 4 }] }
+  assert.deepEqual(analysisLogSummary(analysis), { legal: 9, depth: 12, complete: true, final: false, best: 'e2e4 +0.35, d2d4 -1.20', worst: 'f2f3 -M2, g2g4 +M4' })
+  assert.equal(analysisLogSummary(null), null)
+  const text = formatMatchLog({ version: 'v1.2.3', mode: 'campaign' }, [{ t: 'move', san: 'e4', eggs: 6 }, { t: 'undo', ply: 0 }])
+  const lines = text.split('\n')
+  assert.equal(lines.length, 3)
+  assert.deepEqual(JSON.parse(lines[0].replace('ChickenChess match log ', '')), { version: 'v1.2.3', mode: 'campaign', events: 2 })
+  assert.deepEqual(JSON.parse(lines[1].replace(/^1 /, '')), { t: 'move', san: 'e4', eggs: 6 })
+  assert.deepEqual(JSON.parse(lines[2].replace(/^2 /, '')), { t: 'undo', ply: 0 })
+  const log = []
+  for (let index = 0; index < MATCH_LOG_LIMIT + 5; index++) appendMatchLog(log, { t: 'move', index })
+  assert.equal(log.length, MATCH_LOG_LIMIT)
+  assert.equal(log.at(-1).index, MATCH_LOG_LIMIT + 4, 'a long match keeps its most recent events')
+})
+
 test('a single Best/Worst move on offer never pays more than 3 eggs', () => {
   const { rankedMoveEggsForPosition, SINGLE_RANKED_MOVE_MAX_EGGS } = loadTs('lib/egg-rewards.ts')
   assert.equal(SINGLE_RANKED_MOVE_MAX_EGGS, 3)
@@ -347,7 +392,8 @@ test('eggs on a shown destination square pay any piece that lands there', () => 
     best: [{ uci: 'g1f3', score: 30, mate: null }, { uci: 'e2e4', score: -150, mate: null }],
     worst: [{ uci: 'h2h4', score: -300, mate: null }] }
   const shown = { kind: 'best', analysis }
-  assert.deepEqual(squareEggTargets(shown), [{ square: 'f3', kind: 'best' }, { square: 'e4', kind: 'worst' }])
+  assert.deepEqual(squareEggTargets(shown), [{ square: 'f3', kind: 'best', comeback: false }, { square: 'e4', kind: 'worst', comeback: true }])
+  assert.deepEqual(squareEggTargets({ kind: 'worst', analysis }), [{ square: 'h4', kind: 'worst', comeback: false }])
   assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'g2f3'), { kind: 'best', comeback: false, otherPiece: 'best' }, 'another piece on f3 earns the Best eggs')
   assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'g1f3'), { kind: 'best', comeback: false, otherPiece: null }, 'the suggested move itself is not another piece')
   assert.deepEqual(squareMoveRewardDetails(shown, 'before', 'd3e4'), { kind: 'worst', comeback: true, otherPiece: 'best' })

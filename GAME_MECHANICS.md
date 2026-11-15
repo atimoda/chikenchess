@@ -50,6 +50,7 @@
 | Online 1v1: contas, perfil e amigos | [Contas](docs/mechanics/online/accounts.md) |
 | Online 1v1: partida, confirmação, análise e rede | [Partida online](docs/mechanics/online/match.md) |
 | Perfil, pontuação e ovos | [Progresso](docs/mechanics/progression.md) |
+| Copiar o histórico completo da partida para relatar bugs | [Match log](docs/mechanics/match-log.md) |
 | Páginas legais, links do login/globo e analytics | [Páginas públicas](docs/mechanics/public-pages.md) |
 | Freeze, Shield e casas especiais | [Poderes](docs/mechanics/powers.md) |
 | Processamento | [Gestos e custo](docs/mechanics/performance.md) |
@@ -80,6 +81,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Manutenção, ideias e histórico](docs/mechanics/maintenance.md) | 7 KB |
 | [Mapa, globo e popups das cidades](docs/mechanics/map.md) | 27 KB |
 | [Cabeçalho, barra de chance e abertura da partida](docs/mechanics/match-header-and-intro.md) | 5 KB |
+| [Histórico completo da partida (Match log)](docs/mechanics/match-log.md) | 5 KB |
 | [MIDI-only e persistência](docs/mechanics/midi-persistence.md) | 5 KB |
 | [Mixer DJ na partida](docs/mechanics/mixer.md) | 7 KB |
 | [Online 1v1: contas, perfil, amigos e nomes](docs/mechanics/online/accounts.md) | 9 KB |
@@ -107,7 +109,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: mundo, cenário, portais, Vila, árvores e trampolim](docs/mechanics/patio/world.md) | 25 KB |
 | [Gestos e custo de processamento](docs/mechanics/performance.md) | 21 KB |
 | [Poderes da partida](docs/mechanics/powers.md) | 25 KB |
-| [Progresso e ovos dourados](docs/mechanics/progression.md) | 27 KB |
+| [Progresso e ovos dourados](docs/mechanics/progression.md) | 28 KB |
 | [Páginas públicas, privacidade e analytics](docs/mechanics/public-pages.md) | 5 KB |
 | [Escopo, dados e kits](docs/mechanics/scope-and-data.md) | 18 KB |
 | [Estados e Eventos: editor no Criativo](docs/mechanics/states-and-events-editor.md) | 20 KB |

@@ -19,9 +19,12 @@ import { getCityById, cities } from "@/lib/cities-data";
 import { replayMatch, matchPosition, onlineActionEvents, powerUsedThisTurn, rankedRewardTotal, squareEggsUntil } from "@/lib/online/domain";
 import { launchEggFlight } from "@/lib/egg-flight";
 import { EGG_REWARDS, limitRankedLists } from "@/lib/egg-rewards";
+import { appendMatchLog, copyMatchLog, formatMatchLog, type MatchLogEvent } from "@/lib/match-log";
+import { onlineStateLog } from "@/lib/online/match-log";
+import { RELEASE_LABEL } from "@/lib/release";
 import type { Occurrence } from "@/lib/music/reactions";
 import { pendingMovePreview } from "@/lib/online/pending-move";
-import type { OnlineMatch, MatchCommand, RoomMember } from "@/lib/online/types";
+import type { OnlineMatch, MatchCommand, MatchState, RoomMember } from "@/lib/online/types";
 import { getOnlineClient } from "@/lib/online/client";
 import { defaultCityKit } from "@/lib/music/city-kits";
 import { combineOnlineKits } from "@/lib/music/online-kit";
@@ -632,12 +635,41 @@ export function OnlineMatchBoard({
     }
     setSquareEggs(
       [...targets]
-        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardTotal(match.state, color, kind, replay.game.moves().length) }))
+        // A Best square paid as Worst is a comeback: Worst base, Best streak, never doubled.
+        .map(([square, kind]) => ({ square: square as Square, kind, eggs: rankedRewardTotal(match.state, color, kind, replay.game.moves().length, shared.kind === "best" && kind === "worst") }))
         .filter((target) => target.eggs > 0),
     );
     const timer = setTimeout(() => setSquareEggs([]), Math.max(0, squareEggsUntil(shared) - Date.now()));
     return () => clearTimeout(timer);
   }, [match.state, position, color, replay]);
+  // Diagnostic log copied from Preferences: every confirmed state change of this match, in order.
+  const matchLogRef = useRef<{ matchId: string; state: MatchState | null; events: MatchLogEvent[] }>({ matchId: match.id, state: null, events: [] });
+  useEffect(() => {
+    if (matchLogRef.current.matchId !== match.id) matchLogRef.current = { matchId: match.id, state: null, events: [] };
+    const log = matchLogRef.current;
+    if (log.state === match.state) return;
+    for (const event of onlineStateLog(log.state, match.state)) appendMatchLog(log.events, event);
+    log.state = match.state;
+  }, [match.id, match.state]);
+  const copyMatchLogText = useCallback(() => copyMatchLog(formatMatchLog({
+    version: RELEASE_LABEL,
+    mode: "online",
+    color,
+    exportedAt: new Date().toISOString(),
+    stateVersion: match.version,
+    ply: replay.game.history().length,
+    fen: replay.game.fen(),
+    moves: replay.game.history().join(" "),
+    eggs: match.state.eggs,
+    historicPoints: match.state.collected,
+    usage: match.state.usage,
+    rewarded: match.state.rewarded,
+    seen: match.state.seen,
+    suggestions: match.state.suggestions,
+    result: match.state.result,
+    rewards: EGG_REWARDS,
+    device: navigator.userAgent,
+  }, matchLogRef.current.events)), [color, match.state, match.version, replay]);
   // Ranked-move eggs fly from the destination square to the earner's counter, as in the campaign.
   // The server computes the reward, so the flight is rebuilt from the confirmed state:
   // eggs that entered the counter plus those past the full counter (historic points, in a puff).
@@ -1462,7 +1494,7 @@ export function OnlineMatchBoard({
                 }}
                 musicOn={engineOn}
                 onToggleMusic={toggleEngine}
-                preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} awardAnimations={awardAnimations} onAwardAnimationsChange={setAwardAnimations} className={MATCH_HEADER_BUTTON_CLASS} />}
+                preferences={<GamePreferences display={powerDisplay} onDisplayChange={value => { gesture.cancel(); setPowerDisplay(value) }} chancePosition={chancePosition} onChancePositionChange={setChancePosition} spectrogramMode={spectrogramMode} onSpectrogramModeChange={setSpectrogramMode} crossfaderSync={crossfaderSync} onCrossfaderSyncChange={setCrossfaderSync} awardAnimations={awardAnimations} onAwardAnimationsChange={setAwardAnimations} onCopyMatchLog={copyMatchLogText} className={MATCH_HEADER_BUTTON_CLASS} />}
               />
             </div>
           </div>

@@ -39,6 +39,22 @@ export function rankedMoveEggsForPosition(eggs: number, legalMoves: number, conf
   return Math.min(eggs, SINGLE_RANKED_MOVE_MAX_EGGS)
 }
 
+/**
+ * Streak a ranked move belongs to. A "comeback" is a Best-list move paid as Worst because its own
+ * score is below -1.00 pawn (or mate against the mover): it is still a Best move for the streak.
+ */
+export function rankedMoveStreakKind(kind: 'best' | 'worst', comeback: boolean): 'best' | 'worst' {
+  return comeback ? 'best' : kind
+}
+
+/**
+ * The x2 from the third ranked move in a row. A comeback pays the Worst base and is never doubled:
+ * otherwise a losing position turns every Best move into a doubled Worst, 6 eggs a move.
+ */
+export function rankedStreakDoubles(streakCount: number, comeback: boolean): boolean {
+  return !comeback && streakCount >= 3
+}
+
 /** Keep only the rewarded head of each list: the best of Best and the worst of Worst. */
 export function limitRankedLists<T extends { legalMoves: number; best: unknown[]; worst: unknown[] }>(analysis: T, config: EggRewardsConfig = EGG_REWARDS): T {
   // Without a move count (older snapshots) the lists are kept as they are.
