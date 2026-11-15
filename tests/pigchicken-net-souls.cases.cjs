@@ -22,17 +22,18 @@ function world(item) {
   c.setMusicOut({ note: () => {}, hold: () => null, drum: () => {} })
   c.setView(-1000, 1000)
   c.setNetOn(true)
+  c.give('cageFlight')
   if (item) { c.give(item); step(c, { slot: 1 }) }
   return c
 }
 const land = c => { for (let t = 0; t < S.ABDUCT_TIME + 0.4; t += 0.016) step(c) }
-// n chicks caught, one sweep each
+// n birds caught, one sweep each (a chick let out of a Gaiola is a chick again, not a soul flying free)
 function bagOf(c, n) {
   for (let k = 0; k < n; k++) {
-    c.setCatchables([{ x: 40, y: 0, r: 20, catch: () => {} }])
-    for (let i = 0; i < 50; i++) step(c, { melee: i === 0 })
+    const b = { kind: 'bird', x: 40, y: 0, vx: 0, vy: 0, t: 0, color: '#9be7ff', face: 1, groundY: 0, homeX: 40, homeY: 0 }
+    c.critters.push(b)
+    for (let i = 0; i < 50; i++) { if (c.critters.includes(b)) Object.assign(b, { x: 40, y: 0, vx: 0, vy: 0 }); step(c, { melee: i === 0 }) }
   }
-  c.setCatchables([])
   land(c)
 }
 const holdSoul = (f, x, y) => { Object.assign(f.brain, { x, y, ax: x, ay: y, vx: 0, vy: 0, mode: 'rest', settle: 0 }); f.x = x; f.y = y }
@@ -396,8 +397,10 @@ test('a portal sucks in the souls flying free with their owner, and the other br
   assert.ok(Math.hypot(a.x - me.x, a.y - me.y) < 200)
 })
 
-test('another Pátio is another world: only inventories, Bags of souls and the souls flying free cross over', () => {
+test('another Pátio is another world: only inventories, the Gaiolas with their souls and the souls flying free cross over', () => {
   const old = world('passagua')
+  old.give('cage')
+  old.cages[1].cage.cap = 5
   bagOf(old, 3)
   old.give('pistol')
   old.releaseSoul({ x: 100, y: -100 })
@@ -407,13 +410,16 @@ test('another Pátio is another world: only inventories, Bags of souls and the s
   assert.ok(old.targets.some(t => t.kind === 'alien'))
   const carry = JSON.parse(JSON.stringify(old.exportCarry()))
   assert.deepEqual(Object.keys(carry), ['p1'])
-  assert.deepEqual([carry.p1.bag.length, carry.p1.loose.length], [2, 1])
+  assert.deepEqual(carry.p1.cages.map(k => [k.item, k.cap, k.souls.length]), [['cageFlight', 50, 2], ['cage', 5, 0]], 'her cages as they hang, each with its limit and souls')
+  assert.equal(carry.p1.loose.length, 1)
 
   const next = createCombat()
   next.setMusicOut({ note: () => {}, hold: () => null, drum: () => {} })
   next.importCarry(carry)
   assert.deepEqual(next.inventory.filter(Boolean).map(o => o.item).sort(), ['passagua', 'pistol'])
   assert.equal(next.capturedSouls, 2)
+  assert.deepEqual(next.cages.map(o => [o.item, o.cage.cap, o.cage.souls.length, o.cage.enterT]), [['cageFlight', 50, 2, Infinity], ['cage', 5, 0, Infinity]], 'the same cages, the same one in front')
+  assert.deepEqual(next.bagOfSouls.map(s => s.id), carry.p1.cages[0].souls.map(s => s.id))
   assert.deepEqual([next.targets.length, next.pickups.length, next.abductions.length], [0, 0, 0], 'nothing of the last world')
   // the one flying free waits unseen while she is still inside the portal, and comes out of it with her
   portals(next, { mode: 'enter', x: 0, y: 0, k: 1 }); step(next)
@@ -423,9 +429,29 @@ test('another Pátio is another world: only inventories, Bags of souls and the s
   assert.equal(f.k, undefined)
   assert.ok(Math.hypot(f.x - 300, f.y + 80) < 30)
   // new souls never take the id of one that crossed
-  const ids = new Set([...carry.p1.bag, ...carry.p1.loose].map(s => s.id))
+  const ids = new Set([...carry.p1.cages.flatMap(k => k.souls), ...carry.p1.loose].map(s => s.id))
   step(next, { slot: next.inventory.findIndex(o => o && o.item === 'passagua') + 1 })
   bagOf(next, 1)
   assert.equal(next.capturedSouls, 3)
   assert.ok(!ids.has(next.bagOfSouls[next.bagOfSouls.length - 1].id))
+})
+
+test('a soul on its way to a Gaiola crosses over inside it; with no room left it crosses flying free', () => {
+  const caught = () => {
+    const c = world('passagua')
+    const b = { kind: 'bird', x: 40, y: 0, vx: 0, vy: 0, t: 0, color: '#9be7ff', face: 1, groundY: 0, homeX: 40, homeY: 0 }
+    c.critters.push(b)
+    for (let i = 0; i < 50 && !c.abductions.length; i++) { Object.assign(b, { x: 40, y: 0, vx: 0, vy: 0 }); step(c, { melee: i === 0 }) }
+    assert.deepEqual([c.abductions.length, c.capturedSouls], [1, 0], 'still flying to the cage')
+    return c
+  }
+  const c = caught()
+  let carry = c.exportCarry().p1
+  assert.deepEqual([carry.cages[0].souls.length, carry.loose.length], [1, 0])
+  assert.equal(carry.cages[0].souls[0], c.abductions[0].soul)
+  // the cage that kept its place has none left (its limit changed meanwhile)
+  const d = caught()
+  d.cages[0].cage.cap = 0
+  carry = d.exportCarry().p1
+  assert.deepEqual([carry.cages[0].souls.length, carry.loose.length], [0, 1])
 })

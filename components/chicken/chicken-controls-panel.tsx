@@ -35,7 +35,16 @@ const DISPLAY_ACTIONS = (() => {
 const INPUT_ICONS: Record<ChickenInputType, LucideIcon> = { keys: Keyboard, keys2: Keyboard, pad: Gamepad2 }
 
 // The mouse buttons are fixed (not rebindable): shown as a read-only column beside the rebindable ones.
-const MOUSE_BINDS: Partial<Record<ChickenAction, string>> = { fire: "Botão esq.", melee: "Botão dir.", nextItem: "Roda ↓", prevItem: "Roda ↑" }
+const MOUSE_BINDS: Partial<Record<ChickenAction, string>> = { fire: "Botão esq.", melee: "Botão dir.", nextItem: "Roda ↑", prevItem: "Roda ↓" }
+
+// The Pátio's camera is fixed too (components/pigchicken/parquinho.tsx): shown read-only under the binds, one cell
+// per input type. pad: the standard buttons' numbers (Select 8, Start 9, R3 11), named after the connected gamepad.
+// keys: the camera key (the one left of 1, held) with what the mouse does meanwhile
+const CAMERA_BINDS: { label: string; pad: [number, string]; mouse: string }[] = [
+  { label: "Zoom da câmera", pad: [8, "RS ↑↓"], mouse: "roda" },
+  { label: "Mover a câmera", pad: [9, "RS"], mouse: "arrastar" },
+  { label: "Voltar a câmera", pad: [8, "R3"], mouse: "botão do meio" },
+]
 
 const TOUCH_MODES: { value: ChickenTouchMode; label: string }[] = [
   { value: "auto", label: "Automático" },
@@ -171,6 +180,22 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             <span style={{ gridColumn: mouseColumn }} title="Botões do mouse (fixos)" className="flex h-7 items-center justify-center truncate rounded border border-transparent px-1 font-mono text-[11px] text-[#8a9a8a] transition-colors hover:border-white/20">{MOUSE_BINDS[a.key] ?? "—"}</span>
           </div>
         ))}
+        <span style={{ gridColumn: `span ${COLUMNS.length + CHICKEN_INPUT_TYPES.length + 2}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Câmera do Pátio (fixos)</span>
+        {CAMERA_BINDS.map(b => {
+          const fixed = "flex h-7 items-center justify-center truncate rounded border border-transparent px-1 font-mono text-[11px] text-[#8a9a8a]"
+          const span = (type: ChickenInputType) => { const t = CHICKEN_INPUT_TYPES.find(x => x.id === type)!; return `${COLUMNS.find(c => c.type.id === type)!.column} / span ${t.slots}` }
+          const padText = `${chickenBindName(`Pad:b${b.pad[0]}`, padStyle)} + ${b.pad[1]}`
+          const named = chickenBindName("Key:Backquote"), camKey = named === "Backquote" ? "`" : named
+          return (
+            <div key={b.label} className="contents">
+              <span className="sticky left-0 z-[1] truncate bg-[#101713] pr-1 text-[#b9c7b9]" title={b.label}>{b.label}</span>
+              <span style={{ gridColumn: span("keys") }} className={fixed} title="Tecla fixa: segurar e usar o mouse">{`${camKey} + ${b.mouse}`}</span>
+              <span style={{ gridColumn: span("keys2") }} className={fixed}>—</span>
+              <span style={{ gridColumn: span("pad") }} className={fixed} title="Botões fixos">{padText}</span>
+              <span style={{ gridColumn: mouseColumn }} className={fixed}>—</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

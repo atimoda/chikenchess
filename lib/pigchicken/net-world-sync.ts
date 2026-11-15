@@ -3,12 +3,14 @@
 // The rules and the data are in lib/pigchicken/net-world.ts. It also sends the souls this browser's players let out,
 // shows the other browsers', and passes on what a Passaguá asks of another browser and what that browser gives
 // (lib/pigchicken/net-souls.ts), and the Baús opened in each browser (lib/pigchicken/net-chests.ts). ParquinhoPlay calls frame() once a frame, before the combat's step.
-import { getNetState, netCan, onNetWorld, remoteChicken, sendNetChests, sendNetFoes, sendNetGive, sendNetHits, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
+import { getNetState, netCan, onNetWorld, remoteChicken, sendNetCages, sendNetChests, sendNetFoes, sendNetGive, sendNetHits, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
 import type { Combat } from './combat'
 import { DEFAULT_ITEMS } from './items'
 import { cleanHit, cleanShot, cleanSpawn, exportFoes, importFoes, newFoeCache, type NetFormation, type NetHit, type NetShot, type NetSpawn } from './net-world'
 import { cleanGive, cleanTake, exportSouls, takeOwner } from './net-souls'
 import { applyNetChests, cleanNetChests, exportOpenChests } from './net-chests'
+import { cleanNetCages, exportCages, importCages, stepCageMirror, type CageMirror } from './cages'
+import { CAGE_IDS } from './items'
 
 const FOES_MS = 100 // the owner's enemies: 10 times a second
 const FULL_MS = 2000 // and everything about them (also right after someone joins)
@@ -17,7 +19,11 @@ const BATCH = 32
 
 export type NetRole = 'off' | 'owner' | 'follower'
 
-export function createNetWorldSync(combat: Combat) {
+const NO_CAGES: readonly CageMirror[] = []
+const NET_SLOTS = 4
+
+// localPlayers: this browser's players in their slots' order ('p1' first), as the combat knows them
+export function createNetWorldSync(combat: Combat, localPlayers: () => string[] = () => ['p1']) {
   let role: NetRole = 'off'
   const inbox: NetWorldMsg[] = []
   const off = onNetWorld(m => { inbox.push(m); if (inbox.length > 300) inbox.shift() })
@@ -33,6 +39,11 @@ export function createNetWorldSync(combat: Combat) {
   let lastChests = 0, chestsKey = ''
   const openedHere = new Map<string, number>()
   const CHEST_NEWS_MS = 3000
+  // the Gaiolas: what the other browsers' chickens carry (by pid and slot), as counters; what this browser last said
+  // of its own, and when
+  const cageMirrors = new Map<string, CageMirror[]>()
+  let cagesKey = '', lastCages = 0, lastFrame = 0
+  const CAGES_MS = 250
 
   function become(next: NetRole) {
     if (next === 'follower') { combat.yieldShared(); combat.setNetFollower(h => { if (hitsOut.length < 256) hitsOut.push(h) }) }
@@ -43,6 +54,7 @@ export function createNetWorldSync(combat: Combat) {
     cache = newFoeCache(); lastFull = 0; sentEmpty = true
     soulsTold.clear(); lastSoulsFull = 0; soulsEmpty = true
     lastChests = 0; chestsKey = ''; openedHere.clear()
+    cageMirrors.clear(); cagesKey = ''; lastCages = 0
   }
 
   return {
@@ -50,6 +62,8 @@ export function createNetWorldSync(combat: Combat) {
     get follower() { return role === 'follower' },
     /** asks the owner for a horde or a training enemy (only a follower needs to) */
     requestSpawn(spawn: NetSpawn) { sendNetSpawn(spawn) },
+    /** the Gaiolas another browser's chicken carries, as counters (none: it has none, or its browser never said) */
+    cagesOf(pid: number, slot: number): readonly CageMirror[] { return cageMirrors.get(`${pid}:${slot}`) ?? NO_CAGES },
     /** once a frame: returns the spawns other browsers asked of this one (only while it owns the lobby) */
     frame(now: number): NetSpawn[] {
       const s = getNetState()
@@ -91,6 +105,13 @@ export function createNetWorldSync(combat: Combat) {
           const c = cleanNetChests(m.chests)
           if (c && others.some(p => p.pid === m.pid)) applyNetChests(combat, c, m.pid === s.info!.ownerPid, id => now - (openedHere.get(id) ?? -Infinity) < CHEST_NEWS_MS)
         }
+        else if (m.type === 'cages') {
+          const c = others.some(p => p.pid === m.pid) ? cleanNetCages(m.list, CAGE_IDS) : null
+          if (c) for (let slot = 0; slot < NET_SLOTS; slot++) {
+            const key = `${m.pid}:${slot}`, next = c[slot]
+            if (next?.length) cageMirrors.set(key, importCages(cageMirrors.get(key), next)); else cageMirrors.delete(key)
+          }
+        }
         else if (m.type === 'shots') {
           const list = m.list.slice(0, BATCH).map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
           if (list.length) combat.addRemoteShots(list)
@@ -117,6 +138,16 @@ export function createNetWorldSync(combat: Combat) {
         const l = exportSouls(combat.freedSouls, s.myPid!, soulsTold, full)
         // none flying: one empty message clears the others' mirrors, then quiet
         if (l.length || !soulsEmpty) { sendNetSouls(l); soulsEmpty = !l.length }
+      }
+      // the Gaiolas this browser's players carry: when they change (at most 4 times a second) and every 2 s; the
+      // others' glows fade, and a browser that left takes its counters with it
+      const dtCages = lastFrame ? Math.min(0.1, (now - lastFrame) / 1000) : 0
+      lastFrame = now
+      cageMirrors.forEach((list, key) => { if (!others.some(p => key.startsWith(`${p.pid}:`))) cageMirrors.delete(key); else for (const c of list) stepCageMirror(c, dtCages) })
+      if (netCan('cages') && others.length && now - lastCages >= CAGES_MS) {
+        const mine = exportCages(localPlayers().map(id => combat.cagesOf(id)), CAGE_IDS)
+        const key = `${others.map(p => p.pid).join(',')}|${JSON.stringify(mine)}`
+        if (key !== cagesKey || now - lastCages >= FULL_MS) { cagesKey = key; lastCages = now; sendNetCages(mine) }
       }
       // the Baús opened here: everyone opens them too; the owner's list of open ones, every 2 s and when someone joins
       if (combat.chestOpens.length) {

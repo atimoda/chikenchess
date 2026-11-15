@@ -5,7 +5,7 @@
 // An element is a box (x, y = its top-left corner before turning; w, h) turned by `rot` degrees around its centre.
 // The game's things (dummy, rack, button) are drawn by the game itself (canvas) and never turn; for them the box's
 // bottom middle is where they stand.
-import { CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, type ItemId } from './items'
+import { CAGE_SOULS_MAX, CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, isCage, type ItemId } from './items'
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
 import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, templeScene, villageScene, worldScenes } from './world'
 import { DEFAULT_PATIO_SETTINGS, PATIO_LOWEST_TOP, normalizePatioSettings, type PatioSettings } from './patio-settings'
@@ -27,7 +27,7 @@ import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, nor
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
 // Vila's fixed ground (`terrain`) into a ground element. v6 seats the default portals on their starting platforms.
 // v7 puts the Hangdrum's rack at the end of the instruments' shelf of the default Pátio.
-export const LAYOUT_VERSION = 7
+export const LAYOUT_VERSION = 8
 // the widest world the Pátio offers (its width setting): the default layout covers it, a narrower world hides the rest
 export const LAYOUT_MAX_SCREENS = 8
 const FIRST_SCENE_PLATFORMS = SCENE_PLATFORMS[0]
@@ -62,6 +62,7 @@ export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: 'Solta
 export type ElementParams = {
   message?: string; maxHp?: number // dummy
   item?: ItemId; respawnDelay?: number // rack (and loose: its item), seconds after pickup
+  cageSouls?: number // rack and loose holding a Gaiola: how many souls fit in that one (none: the model's own)
   action?: HordeButton // button
   seed?: number; flip?: boolean // trees
   house?: HouseParams
@@ -147,7 +148,7 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   // a green chalkboard with a text in chalk; its ghost chicken shows a move while a player is near (chalkboard.ts)
   chalkboard: { label: 'Quadro de lousa', group: 'Treino', w: 420, h: 260, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 80 },
   jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
-  // a chest the players open with Pegar (lib/pigchicken/chests.ts): free, with a key or by merit (the Bag of souls)
+  // a chest the players open with Pegar (lib/pigchicken/chests.ts): free, with a key or by merit (the souls in their Gaiolas)
   chest: { label: 'Baú', group: 'Baús', ...CHEST_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: CHEST_BOX.w, minH: CHEST_BOX.h },
 }
 // the Gongo, the Jukebox and the Baú keep their art's size
@@ -330,6 +331,11 @@ function hangdrumRack(): LayoutElement {
   const d = ELEMENT_DEFS.rack, x = SHELF.x + SHELF.w - d.w - 4
   return { id: 'rack-hangdrum', kind: 'rack', x: r1(x), y: r1(SHELF_TOP - d.h), w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: { item: 'hangdrum', respawnDelay: rackRespawnDelay('hangdrum') } }
 }
+// the Gaiola básica's rack: on the floor of the first scene, before the weapons (nobody starts with a cage)
+function cageRack(): LayoutElement {
+  const d = ELEMENT_DEFS.rack, cx = SCENE_W * 0.0875
+  return { id: 'rack-cage', kind: 'rack', x: r1(cx - d.w / 2), y: r1(WORLD_GROUND_Y - d.h), w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: { item: 'cage', respawnDelay: rackRespawnDelay('cage') } }
+}
 function consumableRacks(): LayoutElement[] {
   const d = ELEMENT_DEFS.rack
   return CONSUMABLE_IDS.map((id, i) => {
@@ -378,7 +384,7 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   const rack = ELEMENT_DEFS.rack
   WEAPON_IDS.forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, G - rack.h, rack.w, rack.h, { item: id })) })
   INSTRUMENT_IDS.filter(id => id !== 'hangdrum').forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, SHELF_TOP - rack.h, rack.w, rack.h, { item: id })) })
-  out.push(hangdrumRack(), ...consumableRacks())
+  out.push(hangdrumRack(), ...consumableRacks(), cageRack())
   // the horde buttons on the second scene
   HORDE_BUTTONS.forEach((id, i) => { const cx = SCENE_W * (1.06 + i * 0.09); out.push(base('button', `btn-${id}`, cx - 20, G - 46 - 40, 40, 40, { action: id })) })
   // the training dummies, each with its own tip
@@ -407,9 +413,11 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.maxHp = Math.round(clamp(num(p.maxHp, DUMMY_DEFAULTS.maxHp), DUMMY_HP_RANGE.min, DUMMY_HP_RANGE.max))
   } else if (kind === 'loose') {
     params.item = RACK_ITEM_IDS.includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
+    if (isCage(params.item) && typeof p.cageSouls === 'number' && Number.isFinite(p.cageSouls)) params.cageSouls = Math.round(clamp(p.cageSouls, 1, CAGE_SOULS_MAX))
   } else if (kind === 'rack') {
     params.item = RACK_ITEM_IDS.includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
     params.respawnDelay = rackRespawnDelay(params.item, typeof p.respawnDelay === 'number' ? p.respawnDelay : undefined)
+    if (isCage(params.item) && typeof p.cageSouls === 'number' && Number.isFinite(p.cageSouls)) params.cageSouls = Math.round(clamp(p.cageSouls, 1, CAGE_SOULS_MAX))
   } else if (kind === 'button') {
     params.action = HORDE_BUTTONS.includes(p.action as HordeButton) ? (p.action as HordeButton) : 'aliens'
   } else if (kind === 'house') {
@@ -526,6 +534,12 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
   // the default Pátio saved before the Hangdrum (v7): its rack joins once, unless one already holds it
   if (isDefault && !(typeof v === 'number' && v >= 7) && !elements.some(e => e.kind === 'rack' && e.params.item === 'hangdrum') && elements.length < LAYOUT_MAX_ELEMENTS) {
     const rack = hangdrumRack()
+    if (seen.has(rack.id)) rack.id = newElementId('rack')
+    seen.add(rack.id); elements.push(rack)
+  }
+  // the default Pátio saved before the Gaiolas (v8): the Gaiola básica's rack joins once, unless a rack already holds one
+  if (isDefault && !(typeof v === 'number' && v >= 8) && !elements.some(e => e.kind === 'rack' && e.params.item === 'cage') && elements.length < LAYOUT_MAX_ELEMENTS) {
+    const rack = cageRack()
     if (seen.has(rack.id)) rack.id = newElementId('rack')
     seen.add(rack.id); elements.push(rack)
   }

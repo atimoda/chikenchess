@@ -7,11 +7,26 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira; Mute no painel Volume do Pátio; rajada só enquanto segura Atirar; rei não pode mais encostar numa peça congelada; Modo editor do Pátio sem travar ao arrastar elementos',
+    title: 'Gaiolas no Pátio: as almas ficam em gaiolas de seis modelos, até três por jogador; trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira; Mute no painel Volume do Pátio; rajada só enquanto segura Atirar; rei não pode mais encostar numa peça congelada; Modo editor do Pátio sem travar ao arrastar elementos',
     groups: [
+      { title: 'Pátio: Gaiolas', items: [
+        'Nova categoria de item, Gaiolas, em seis modelos com arte própria: Gaiola básica (8 almas), de arame (12), Concorde (16), de madeira (20), Gaiolão arqueado (30) e Voadeira (50). O limite de almas de cada modelo é ajustável no painel Itens, e cada cavalete ou item solto do Modo editor pode ter o seu. Elas também entram na lista de itens do Baú.',
+        'As gaiolas substituem a Bag of souls. Ninguém começa com gaiola: o Pátio padrão tem uma Gaiola básica para pegar no chão, perto da entrada. Ela não ocupa o inventário.',
+        'Cada jogador leva até três gaiolas, cada uma com as suas almas. A sua fica pendurada no canto superior esquerdo da tela: uma grande na frente e até duas menores atrás, uma de cada lado. Elas balançam com o movimento da câmera, e uma gaiola recém-pegada entra balançando, vinda de fora da tela.',
+        'As almas capturadas vão para a gaiola da frente. Se ela está cheia, a primeira gaiola com vaga vem para a frente sozinha; se nenhuma tem vaga, as gaiolas tremem e o pássaro fica onde está.',
+        'Clicar ou tocar na gaiola da frente solta uma alma dela (só dela); clicar numa de trás troca essa gaiola de lugar com a da frente. Com a da frente vazia e almas soltas, ela vira o botão Callback, e voltam só as almas que cabem.',
+        'Com três gaiolas, Pegar uma gaiola do chão troca a sua gaiola da frente por ela. As almas continuam dentro de cada gaiola, também no chão: quem pega a gaiola leva as almas junto.',
+        'Dentro da gaiola as almas são desenhos parados: os pássaros espalhados pela gaiola e os pintinhos na base. Um pintinho capturado continua pintinho e, solto, volta para o bando como pintinho.',
+        'Sem gaiola, o Passaguá não captura: empurra os pintinhos e espanta os pássaros, que voam num instante até um fio de energia visível na tela e pousam nele (sem fio à vista, vão para um canto da tela longe de você).',
+        'Os contadores de almas agora são a silhueta de cada gaiola com o número dentro, e piscam azul quando a gaiola ganha uma alma e vermelho quando solta uma. O avatar dos outros jogadores aparece sobre o boneco deles com esses contadores; quando o boneco sai da tela, o avatar fica na borda, na direção onde ele está. No Pátio online todos veem os contadores de todos.',
+        'Binds novas: Soltar alma em H (teclado primário), End (secundário) e L3 (gamepad); Trocar de gaiola em Y e Home, ou segurando L3. No teclado secundário, Arremessar e Golpe ficam em \\ e [; no gamepad, a Roda do inventário deixa de ter botão. O painel Controles passa a listar também as binds fixas de zoom e movimento da câmera.',
+        'Limites desta primeira parte: no Pátio online as gaiolas do chão são de cada navegador, e os contadores dos outros jogadores só aparecem depois que o servidor de jogo for atualizado.',
+      ] },
       { title: 'Pátio', items: [
+        'A rodinha do mouse inverteu: rolar para cima vai ao Próximo item e para baixo ao Item anterior.',
+        'Segurar Alt (o bind Edição) para abrir ou fechar o painel do Modo editor agora leva 0,75 s, metade do tempo de antes.',
         'Trocar de Pátio agora é uma mudança completa de mundo: o Pátio em que você estava é fechado e nada dele aparece no novo. Antes, aliens, zumbis, pássaros, tiros e outras coisas do Pátio anterior continuavam no Pátio aberto (um Pátio novo vazio aparecia com aliens). Vale no modo local e no online, por qualquer caminho: Playgrounds, Próximo / Anterior, Pátio novo, portal para outro Pátio.',
-        'Para o Pátio novo vão só os bonecos, o inventário de cada um e a Bag of souls. As almas que estavam soltas saem do portal junto com o dono.',
+        'Para o Pátio novo vão só os bonecos, o inventário de cada um e as gaiolas com as almas dentro. As almas que estavam soltas saem do portal junto com o dono.',
         'Ao entrar em qualquer portal, as almas soltas do boneco são sugadas junto com ele e saem com ele do outro lado.',
         'No online, você vê o boneco de outro player e as almas dele sendo sugados para o portal, e surgindo do portal de chegada.',
         'A animação de entrar e sair de um portal dura 0,2 s a mais (0,95 s).',

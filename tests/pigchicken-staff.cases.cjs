@@ -176,6 +176,7 @@ test('the Passaguá hurts and pushes what it does not catch, when it has damage'
 test('what the Passaguá catches is caught, never hurt or pushed', () => {
   const { c, d } = holding('passagua', p => { p.meleeDamage = 1; p.meleePush = 300 })
   c.setView(-1000, 1000)
+  c.give('cage')
   const bird = { kind: 'bird', x: 40, y: 0, vx: 0, vy: 0, homeX: 40, homeY: 0, color: '#c77dff', t: 0, bird: null }
   c.critters.push(bird)
   const t = alien(c, 60)

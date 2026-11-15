@@ -5,7 +5,7 @@
 // - each browser flies the souls its own players let out and sends them ~10 times a second ("souls"); the other
 //   browsers draw mirrors that glide to where they are and do nothing else;
 // - a Passaguá over a mirror asks the browser that flies it for the soul ("take"); that browser lets it go and
-//   answers with what it is ("give"), and only then does it count in the Bag of souls of whoever asked. A soul asked for
+//   answers with what it is ("give"), and only then does it count in the Gaiola of whoever asked. A soul asked for
 //   twice is given once: the second one finds nothing;
 // - the undead birds are the lobby owner's enemies: a browser that is not the owner asks the owner for them the
 //   same way;
@@ -15,7 +15,8 @@ import { netIdFor } from './net-world'
 import { newSoul, type Soul, type SoulNote, type SoulOrigin, type SoulShot, type SoulSpecies, type SoulWeapon } from './souls'
 
 // what a soul is, without its id: [species, state, shot, note, weapon, color, bird]
-export type NetSoulWho = [string, string, string | null, string | null, string | null, string, string | null]
+// (the last one: its bird; a chick's is its look, its place in CHICK_STYLES)
+export type NetSoulWho = [string, string, string | null, string | null, string | null, string, string | number | null]
 // a soul flying free: [id, x, y, face, who?, k?] (who: only until the others have it, and with everything now and
 // then; k: how big it is drawn while a portal sucks it in with its owner, 1 .. 0; missing: its own size)
 export type NetSoul = [number, number, number, number, (NetSoulWho | null)?, number?]
@@ -39,7 +40,7 @@ const PID = 10_000_000 // netIdFor: the browser's pid in front of its own id
 /** the browser a soul or a chick is asked of, from its id (an undead bird's is the lobby's owner, not in its id) */
 export const takeOwner = (id: number) => Math.floor(id / PID)
 
-export const soulWho = (s: Soul): NetSoulWho => [s.species, s.state, s.shot, s.note, s.weapon, s.color, s.bird]
+export const soulWho = (s: Soul): NetSoulWho => [s.species, s.state, s.shot, s.note, s.weapon, s.color, s.species === 'chick' ? s.chick ?? null : s.bird]
 
 /** a soul from what another browser says it is (null: not a soul); its rarity is worked out here */
 export function soulFromWho(who: unknown, id: number): Soul | null {
@@ -47,7 +48,8 @@ export function soulFromWho(who: unknown, id: number): Soul | null {
   const species = one(SPECIES, who[0]), state = who[1] === 'alive' || who[1] === 'dead' ? who[1] : null, color = who[5]
   if (!species || !state || typeof color !== 'string' || !/^[#a-z0-9(),.% -]{1,40}$/i.test(color)) return null
   const origin: SoulOrigin = { species, state, shot: one(SHOTS, who[2]), note: one(NOTES, who[3]), weapon: state === 'dead' ? one(WEAPONS, who[4]) ?? 'impact' : null }
-  return newSoul(id, origin, color, species === 'chick' ? null : one(BIRDS, who[6]) as BirdId | null)
+  if (species === 'chick') return { ...newSoul(id, origin, color, null), ...(Number.isInteger(who[6]) && who[6] >= 0 && who[6] < 256 ? { chick: who[6] as number } : {}) }
+  return newSoul(id, origin, color, one(BIRDS, who[6]) as BirdId | null)
 }
 
 // ---------- the browser that flies them ----------

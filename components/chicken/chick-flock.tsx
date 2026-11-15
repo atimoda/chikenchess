@@ -6,13 +6,15 @@
 // every Pátio. CHICK_START chicks in random realistic styles fall from the sky one after another right after her
 // (CHICK_DROP_DELAY, then CHICK_DROP_GAP apart); a new spawnKey (another Pátio) brings a new random flock, and null
 // waits (the Pátio still loading). In the Pátio, the Parquinho moves them with its camera and catches them with the
-// Passaguá (through `engines`, like the local players'). Online, each chick's look is kept beside its engine, so the
-// other browsers draw the same one (lib/chicken/net-chicks.ts).
+// Passaguá (through `engines`, like the local players'); one let out of a Gaiola comes back to the flock as the chick
+// it was (lib/chicken/chick-release.ts). Online, each chick's look is kept beside its engine, so the other browsers
+// draw the same one (lib/chicken/net-chicks.ts).
 import { useEffect, useRef } from "react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { createFollowBrain, followStep, type FollowActions, type FollowBrain } from "@/lib/chicken/chick-follow"
 import { CHICK_STYLES, chickArt, randomChickStyle } from "@/lib/chicken/chick-art"
 import { setChickStyle } from "@/lib/chicken/net-chicks"
+import { onChickRelease } from "@/lib/chicken/chick-release"
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 
 export const CHICK_START = 4
@@ -35,22 +37,26 @@ export function ChickFlock({ lead, groundHeight, engines, count = CHICK_START, f
     const brains = new Map<string, { brain: FollowBrain; actions: FollowActions }>()
     const timers: number[] = []
     const tag = `${spawnKey ?? "globe"}-${Date.now()}`
+    // a chick of this style joins the flock; place puts it where it starts
+    const hatch = (id: string, style: (typeof CHICK_STYLES)[number], place: (eng: ChickenEngine) => void) => {
+      const eng = createChickenEngine(host, { groundHeight: groundRef.current, fixedScale, species: "chick", art: chickArt(style) })
+      setChickStyle(eng, CHICK_STYLES.indexOf(style))
+      eng.setGame({ gameMode: true })
+      eng.setDevices([])
+      const entry = { brain: createFollowBrain(), actions: {} as FollowActions }
+      eng.setBot(() => entry.actions)
+      place(eng)
+      map.set(id, eng); brains.set(id, entry)
+    }
     for (let i = 0; i < count; i++) {
       timers.push(window.setTimeout(() => {
-        const id = `chick-${tag}-${i}`
-        const style = randomChickStyle("realista")
-        const eng = createChickenEngine(host, { groundHeight: groundRef.current, fixedScale, species: "chick", art: chickArt(style) })
-        setChickStyle(eng, CHICK_STYLES.indexOf(style))
-        eng.setGame({ gameMode: true })
-        eng.setDevices([])
-        const entry = { brain: createFollowBrain(), actions: {} as FollowActions }
-        eng.setBot(() => entry.actions)
         // just behind her, alternating sides, a little scattered
-        const at = lead.getMotionState()
-        eng.dropAt(at.x + (i % 2 ? -1 : 1) * (50 + 24 * Math.floor(i / 2) + Math.random() * 20))
-        map.set(id, eng); brains.set(id, entry)
+        hatch(`chick-${tag}-${i}`, randomChickStyle("realista"), eng => eng.dropAt(lead.getMotionState().x + (i % 2 ? -1 : 1) * (50 + 24 * Math.floor(i / 2) + Math.random() * 20)))
       }, CHICK_DROP_DELAY + i * CHICK_DROP_GAP))
     }
+    // a chick let out of a Gaiola (lib/chicken/chick-release.ts): the same chick again, falling from where its cage is
+    let released = 0
+    const offRelease = onChickRelease(r => hatch(`chick-${tag}-r${released++}`, CHICK_STYLES[r.style] ?? CHICK_STYLES[0], eng => eng.placeAt(r.x, r.y)))
     let last = performance.now(), raf = 0
     const tick = (now: number) => {
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now
@@ -68,6 +74,7 @@ export function ChickFlock({ lead, groundHeight, engines, count = CHICK_START, f
     }
     raf = requestGameFrame(tick)
     return () => {
+      offRelease()
       timers.forEach(t => window.clearTimeout(t))
       cancelGameFrame(raf)
       brains.forEach((_, id) => { map.get(id)?.destroy(); map.delete(id) })

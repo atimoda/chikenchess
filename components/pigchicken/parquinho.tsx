@@ -17,8 +17,11 @@ import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import { createCombat, lookDoses, type Box, type Catchable, type Combat, type Effect, type SoulPortal, type WorldCarry } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
-import { getNetState } from "@/lib/chicken/online-room"
-import { chickNumber } from "@/lib/chicken/net-chicks"
+import { getNetState, remoteChicken } from "@/lib/chicken/online-room"
+import { chickNumber, chickStyleOf } from "@/lib/chicken/net-chicks"
+import { releaseChick } from "@/lib/chicken/chick-release"
+import { CAGE_HOLD } from "@/lib/pigchicken/cages"
+import { cageCounterWidth, cageCounts, cageHudSpot, drawCageCounters, drawHangingCages, drawPlayerTag, newCageHud, stepCageHud } from "@/components/pigchicken/draw/cages"
 import type { NetChickMirror } from "@/components/chicken/online-chickens"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
@@ -71,8 +74,8 @@ import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/d
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
-import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, drawBagOfSouls, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
-import { drawAbductions, drawFreedSouls } from "@/components/pigchicken/draw/souls"
+import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
+import { drawAbductions, drawFreedSouls, drawScares } from "@/components/pigchicken/draw/souls"
 import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeSoulEntries } from "@/lib/pigchicken/soul-library"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { chestMarks } from "@/components/pigchicken/draw/chests"
@@ -236,7 +239,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, patioKey = null }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; patioKey?: string | null }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, patioKey = null }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; patioKey?: string | null }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -287,6 +290,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // each local player's lobby color (p1: the first one, the others by their id): their reticle's color
   const colorsRef = useRef(colors)
   colorsRef.current = colors
+  // each local player's look, for the avatar that says where they are when they leave the screen
+  const looksRef = useRef(looks)
+  looksRef.current = looks
   // where the page keeps the ground on the screen (raised above the touch controls on a phone held upright)
   const groundHRef = useRef(groundHeight)
   groundHRef.current = groundHeight
@@ -398,27 +404,33 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the pointer is over a UI control or panel (the same ones that keep the normal cursor): p1's mouse reticle hides
     const overUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, [role='dialog'], button, input, select, textarea, a, label, summary, [data-chicken-ignore]")
     let mouseOverUi = false
-    // the Bags of souls drawn this frame (screen px: middle and radius; on: a press does something now) and the
-    // presses waiting for the frame. A press on a Bag of souls lets the soul on top of it out or, with the bag
-    // empty, calls that player's souls back; it neither fires nor walks
-    const bagBoxes: { id: string; x: number; y: number; r: number; on: boolean }[] = []
-    const bagTaps: string[] = []
-    let bagHover: string | null = null
-    const bagBoxAt = (x: number, y: number) => bagBoxes.find(b => b.on && Math.hypot(x - b.x, y - b.y) <= b.r) ?? null
-    const hoverBag = (id: string | null) => { bagHover = id; document.body.classList.toggle("pigchicken-bag-hover", !!id) }
-    const onBagDown = (e: PointerEvent) => {
+    // the Gaiolas drawn this frame (screen px; id: whose; i: its place, 0 in front; (cx, cy): its middle; on: a press
+    // does something now) and the presses waiting for the frame. A press on the cage in front lets its last soul out
+    // or, with it empty, calls that player's souls back; a press on one behind brings it to the front. It neither
+    // fires nor walks. The first player's hang in the top left corner; the others' are the counters by their avatars
+    type CageHit = { id: string; i: number; x: number; y: number; w: number; h: number; cx: number; cy: number; on: boolean }
+    const cageBoxes: CageHit[] = []
+    const cageTaps: { id: string; i: number }[] = []
+    let cageHover: { id: string; i: number } | null = null
+    const cageHud = newCageHud()
+    let swayCamX: number | null = null
+    // each player's "Soltar alma" bind: s it has been held (-1: the hold already turned the cages)
+    const cageHolds = new Map<string, number>()
+    const cageBoxAt = (x: number, y: number) => cageBoxes.find(b => b.on && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) ?? null
+    const hoverCage = (hit: CageHit | null) => { cageHover = hit ? { id: hit.id, i: hit.i } : null; document.body.classList.toggle("pigchicken-bag-hover", !!hit) }
+    const onCageDown = (e: PointerEvent) => {
       if (e.button !== 0 || cameraKey || overUi(e.target)) return
-      const hit = bagBoxAt(e.clientX, e.clientY)
+      const hit = cageBoxAt(e.clientX, e.clientY)
       if (!hit) return
       e.preventDefault(); e.stopImmediatePropagation()
-      bagTaps.push(hit.id)
+      cageTaps.push({ id: hit.id, i: hit.i })
     }
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse" || noMouse()) return
       mouseOverUi = overUi(e.target)
-      // a Bag of souls that can be pressed is a button too: the normal cursor, no reticle
-      hoverBag(mouseOverUi || cameraKey ? null : bagBoxAt(e.clientX, e.clientY)?.id ?? null)
-      if (bagHover) mouseOverUi = true
+      // a Gaiola that can be pressed is a button too: the normal cursor, no reticle
+      hoverCage(mouseOverUi || cameraKey ? null : cageBoxAt(e.clientX, e.clientY))
+      if (cageHover) mouseOverUi = true
       if (cameraKey) {
         if (e.button === 1 && (e.buttons & 4)) resetView()
         if (panPointer === e.pointerId && (e.buttons & 1) && mouse) {
@@ -475,7 +487,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const onWheel = (e: WheelEvent) => {
       if (isUi(e.target) || noMouse()) return
       if (cameraKey) zoom = clampZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))
-      else wheel += Math.sign(e.deltaY)
+      // rolled up (away from her hand): the next item; down: the one before
+      else wheel -= Math.sign(e.deltaY)
     }
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
@@ -496,7 +509,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
     }
     window.addEventListener("pointerdown", onArpDown, true)
-    window.addEventListener("pointerdown", onBagDown, true)
+    window.addEventListener("pointerdown", onCageDown, true)
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerdown", onDown, true)
     window.addEventListener("pointerdown", onTouchDown, true)
@@ -555,7 +568,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     combat.setPerchWorld(perches)
     combat.setItems(loadItems())
     // online: the lobby's owner moves the enemies, the others mirror them; everyone's shots fly on every screen
-    const net = createNetWorldSync(combat)
+    const net = createNetWorldSync(combat, () => ["p1", ...(extras?.current?.keys() ?? [])])
     const soulPortals = new Map<string, SoulPortal>()
     // instruments, the enemies' answers and the zone's ambience play on PigChicKen's own synth
     combat.setMusicOut({
@@ -799,6 +812,25 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (Math.abs(st.groundY - (G + oy)) > 0.01) engine.setGroundHeight(st.height - G - oy)
       st = engine.getMotionState()
       const camY = oy
+      // the player in use lets the last soul of their cage in front out, where that cage is on the screen (in world
+      // px), or, with it empty, calls their souls back
+      const letSoulOut = (id: string) => {
+        if (!combat.bagOfSouls.length) { combat.callSouls(); return }
+        const at = cageBoxes.find(b => b.id === id && b.i === 0), scx = stageWidth() / 2, scy = window.innerHeight / 2
+        const eng = id === "p1" ? engine : extras?.current?.get(id), es = eng?.getMotionState()
+        combat.releaseSoul(at ? { x: (at.cx - scx) / zoom + scx + camX, y: (at.cy - scy) / zoom + scy - camY } : { x: (es?.x ?? 0) + camX, y: (es?.y ?? 0) - camY - 200 * (es?.scale ?? 1) })
+      }
+      // the Gaiolas' binds of the player in use: "Trocar de gaiola" brings the next one to the front; "Soltar alma"
+      // lets a soul out when it is let go, or, held for CAGE_HOLD with more than one cage, turns them instead
+      const cageBinds = (id: string, a: Partial<Record<ChickenAction, boolean>>, p: Partial<Record<ChickenAction, boolean>>) => {
+        if (a.cageSwap && !p.cageSwap) combat.rotateCages()
+        let held = cageHolds.get(id) ?? 0
+        if (a.cageRelease) {
+          if (!p.cageRelease && combat.cages.length < 2) { letSoulOut(id); held = -1 }
+          else if (held >= 0 && (held += dt) >= CAGE_HOLD) { combat.rotateCages(); held = -1 }
+        } else { if (held > 0) letSoulOut(id); held = 0 }
+        cageHolds.set(id, held)
+      }
       // the resting height the parallax depths slide from (the floor near the screen's bottom)
       setCameraRestY(yr.lo)
       lastPlayer = { x: st.x + camX, y: st.y - camY }; playerSeen = true
@@ -993,6 +1025,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         groupPick: wh.open ? null : groupPress(act, prev), move,
       }
       slotPick = 0; slotTap.current = 0
+      cageBinds("p1", act, prev)
       prev = { ...act, fire, melee }
       const boxes = worldBoxes
       const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: st.state, vx: st.vx }
@@ -1045,7 +1078,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // or its browser left) goes in a little cloud
       const catchables: Catchable[] = [...(chicks?.current?.entries() ?? [])].map(([id, eng]) => {
         const cs = eng.getMotionState()
-        return { x: cs.x + camX, y: cs.y - camY - 100 * cs.scale, r: 100 * cs.scale, id: chickNumber(eng), catch: () => { eng.destroy(); chicks?.current?.delete(id) } }
+        return { x: cs.x + camX, y: cs.y - camY - 100 * cs.scale, r: 100 * cs.scale, id: chickNumber(eng), style: chickStyleOf(eng), push: (vx: number, vy: number) => eng.impulse(vx, vy, true), catch: () => { eng.destroy(); chicks?.current?.delete(id) } }
       })
       const netSeen = new Map<string, { x: number; y: number }>()
       netChicks?.current?.forEach((m, key) => {
@@ -1065,15 +1098,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       inPortal("p1", engine)
       extras?.current?.forEach((eng, id) => inPortal(id, eng))
       combat.setSoulPortals(soulPortals)
-      // presses on the Bags of souls: the soul comes out where the bag is on the screen (in world px)
-      if (bagTaps.length) {
-        const scx = stageWidth() / 2, scy = window.innerHeight / 2
-        for (const id of bagTaps.splice(0)) {
-          const at = bagBoxes.find(b => b.id === id)
-          if (!at || (id !== "p1" && !extras?.current?.has(id))) continue
-          combat.use(id)
-          if (combat.capturedSouls) combat.releaseSoul({ x: (at.x - scx) / zoom + scx + camX, y: (at.y - scy) / zoom + scy - camY })
-          else combat.callSouls()
+      // presses on the Gaiolas: the one in front lets a soul out, one behind comes to the front
+      if (cageTaps.length) {
+        for (const tap of cageTaps.splice(0)) {
+          if (!cageBoxes.some(b => b.id === tap.id && b.i === tap.i) || (tap.id !== "p1" && !extras?.current?.has(tap.id))) continue
+          combat.use(tap.id)
+          if (tap.i > 0) combat.rotateCages(tap.i); else letSoulOut(tap.id)
         }
         combat.use("p1")
       }
@@ -1118,6 +1148,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabRun: eng.grabIsRun(),
           groupPick: groupPress(xa, xp),
         }
+        cageBinds(id, xa, xp)
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
@@ -1131,7 +1162,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         eng.setSwing(rigSwing(xsw))
         eng.setHeld(heldItemPose(combat, now, null, xbody.face))
       })
-      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraQuickSwitch.delete(id); extraAim.delete(id); combat.drop(id) } })
+      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraQuickSwitch.delete(id); extraAim.delete(id); cageHolds.delete(id); combat.drop(id) } })
       combat.use("p1")
 
       // ---------- the temple's mini-game ----------
@@ -1291,6 +1322,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const got = collectSoul(n.soul)
         if (got.first || got.trait) combat.addText(n.x, n.y - 44, got.first ? got.entry.name : "★", SOUL_RARITIES[got.entry.rarity].color, 15)
       }
+      // the chicks let out of a Gaiola are chicks again: each one falls from where its cage is and joins the flock
+      for (const r of combat.chickReleases.splice(0)) releaseChick({ style: r.soul.chick ?? 0, x: r.x - camX, y: r.y + camY })
       // aiming in (brood with an item): a soft sound on the weapons that have one
       if (aimLock && !wasLocked) playWeaponSound("aim", combat.inventory[combat.current]?.item ?? null)
       wasLocked = aimLock
@@ -1443,16 +1476,53 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const drag = barDrag.current?.active ? barDrag.current : null
       arpBoxes.length = 0
       arpBoxes.push(...drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
-      bagBoxes.length = 0
-      // with the on-screen controls (phones) the avatars and Bags of souls stay in the top right corner, wherever
-      // the inventory row was moved to
+      cageBoxes.length = 0
+      const cam = { x: camX, y: camY, zoom }
+      // the first player's Gaiolas hang in the top left corner, under the header, and swing with the camera
+      combat.use("p1")
+      stepCageHud(cageHud, swayCamX === null || dt <= 0 ? 0 : (camX - swayCamX) / dt, dt); swayCamX = camX
+      const callback = !combat.bagOfSouls.length && combat.looseSouls > 0, front = combat.bagOfSouls.length > 0 || callback
+      for (const b of drawHangingCages(ctx, cageHud, combat.cages, { top: viewTop, color: tints?.p1 ?? "#7bd88f", deny: combat.cageDeny, now, dt, callback, hover: cageHover?.id === "p1" ? cageHover.i : null })) cageBoxes.push({ id: "p1", ...b, on: b.i > 0 || front })
+      // the other local players' are counters left of their avatars (the one in front lit), and their inventory row
+      // starts left of those. With the on-screen controls (phones) the avatars and counters stay in the top right
+      // corner, wherever the inventory row was moved to
       const soulsAt = showTouchRef.current ? undefined : offsets.inventory
-      combat.use("p1"); bagBoxes.push({ id: "p1", ...drawBagOfSouls(ctx, combat, 0, tints?.p1 ?? "#7bd88f", soulsAt, bagHover === "p1") })
-      extraList.forEach(([id], i) => { combat.use(id); arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, offsets.inventory)); bagBoxes.push({ id, ...drawBagOfSouls(ctx, combat, i + 1, tints?.[id] ?? "#7bd88f", soulsAt, bagHover === id) }) })
-      // the Bag of souls under the pointer stopped being a button (its last soul left): the reticle comes back
-      if (bagHover && !bagBoxes.some(b => b.id === bagHover && b.on)) { hoverBag(null); mouseOverUi = false }
-      // the souls just caught, flying to the Bag of souls of whoever caught them
-      if (combat.abductions.length) drawAbductions(ctx, combat, new Map<string, number>([["p1", 0], ...extraList.map(([id], i): [string, number] => [id, i + 1])]), soulsAt, { x: camX, y: camY, zoom })
+      extraList.forEach(([id], i) => {
+        combat.use(id)
+        const counts = cageCounts(combat.cages), h = 24, color = tints?.[id] ?? "#7bd88f"
+        const rowW = counts.reduce((n, c) => n + cageCounterWidth(c.item, h) + 3, 0)
+        arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, { x: (offsets.inventory?.x ?? 0) - Math.max(0, rowW - INV_SIZE), y: offsets.inventory?.y ?? 0 }))
+        const on = (counts[0]?.n ?? 0) > 0 || combat.looseSouls > 0
+        const right = stageWidth() - INV_STACK.right - INV_SIZE - INV_STACK.avatarGap + (soulsAt?.x ?? 0), top = invRowY(i + 1) + (soulsAt?.y ?? 0) + (INV_SIZE - h) / 2
+        for (const b of drawCageCounters(ctx, counts, right, top, h, color, "right", 0)) cageBoxes.push({ id, ...b, cx: b.x + b.w / 2, cy: b.y + b.h / 2, on: b.i > 0 || on })
+      })
+      // the Gaiola under the pointer stopped being a button (its last soul left): the reticle comes back
+      if (cageHover && !cageBoxes.some(b => b.id === cageHover!.id && b.i === cageHover!.i && b.on)) { hoverCage(null); mouseOverUi = false }
+      // where the other players are: their avatar with their cages' counters, over them or, off the screen, at its
+      // edge on their side. The local ones only off the screen (their counters are by their avatars)
+      const tagBox = { l: 0, r: stageWidth(), t: viewTop, b: window.innerHeight }
+      const scx = stageWidth() / 2, scy = window.innerHeight / 2
+      extraList.forEach(([id, eng]) => {
+        const s = eng.getMotionState(), sx = scx + (s.x - scx) * zoom, sy = scy + (s.y - 100 * s.scale - scy) * zoom
+        if (sx >= tagBox.l && sx <= tagBox.r && sy >= tagBox.t && sy <= tagBox.b) return
+        drawPlayerTag(ctx, sx, sy, tagBox, tints?.[id] ?? "#7bd88f", looksRef.current?.[id], cageCounts(combat.cagesOf(id)))
+      })
+      const lobby = getNetState()
+      if (lobby.status === "online" && lobby.info) for (const p of lobby.info.players) {
+        if (p.pid === lobby.myPid) continue
+        for (let slot = 0; slot < p.chickens; slot++) {
+          const c = remoteChicken(p.pid, slot, now)
+          if (c) drawPlayerTag(ctx, scx + (c.x - camX - scx) * zoom, scy + (c.y + camY - 244 - scy) * zoom, tagBox, PLAYER_COLORS[p.color % PLAYER_COLORS.length], p.looks[slot], net.cagesOf(p.pid, slot))
+        }
+      }
+      // the souls just caught, flying to the cage of whoever caught them that takes each one; and the scared birds
+      if (combat.abductions.length) drawAbductions(ctx, combat, a => {
+        const mine = combat.cagesOf(a.owner)
+        if (a.owner === "p1") return cageHudSpot(cageHud, a.cage) ?? cageHudSpot(cageHud, mine[0]?.cage) ?? { x: 70, y: viewTop + 80 }
+        const at = cageBoxes.find(b => b.id === a.owner && mine[b.i]?.cage === a.cage) ?? cageBoxes.find(b => b.id === a.owner)
+        return at ? { x: at.cx, y: at.cy } : { x: stageWidth() - 60, y: viewTop + 40 }
+      }, cam)
+      if (combat.scares.length) drawScares(ctx, combat, cam)
       combat.use("p1")
       // over her: the front half of a horizontal blow, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []
@@ -1517,7 +1587,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       window.removeEventListener("pointercancel", cancelPeckInput)
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerdown", onArpDown, true)
-      window.removeEventListener("pointerdown", onBagDown, true)
+      window.removeEventListener("pointerdown", onCageDown, true)
       window.removeEventListener("pointerdown", onDown, true)
       window.removeEventListener("pointerdown", onTouchDown, true)
       window.removeEventListener("pointerup", onUp, true)
