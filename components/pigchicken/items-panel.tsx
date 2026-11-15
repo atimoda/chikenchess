@@ -10,7 +10,8 @@ import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
-import { COMBO_ARCS, COMBO_MAX, SWING_KINDS, type ComboStep, type SwingKind } from "@/lib/pigchicken/swing"
+import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
+import { AngleKnob, ComboWindowBar } from "./combo-controls"
 import { ChainEditor } from "./chain-editor"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
@@ -45,8 +46,20 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
 const HEAVY_SHOCK: (keyof ItemDef)[] = ["heavyShockRange", "heavyShockTime"]
 const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
 // the arc a combo blow of this kind starts with: another blow of the same kind, the code's, or 150°
-const comboArc = (combo: ComboStep[], base: ItemDef, kind: SwingKind) =>
+const comboArc = (combo: ComboStep[], base: ItemDef, kind: BlowKind) =>
   combo.find(c => c.kind === kind)?.arc ?? base.combo.find(c => c.kind === kind)?.arc ?? 150
+// a combo blow's lists take only the width of what they show (no arrow, and the chosen option's width where the browser can)
+const COMBO_BOX = "h-8 cursor-pointer appearance-none rounded-md border border-white/15 bg-[#0b110e] px-1 hover:border-primary"
+const COMBO_SELECT = `${COMBO_BOX} w-auto [field-sizing:content]`
+// the direction keeps one width, so the other controls of every blow line up
+const COMBO_KIND = `${COMBO_BOX} w-[144px] shrink-0`
+// the numbers of a combo blow that come as lists, as narrow as what they show: duration (× the item's), the block on
+// the next blow (s) and the reach (× the item's)
+const COMBO_LISTS: { key: "time" | "cooldown" | "reach"; name: string; hint: string; values: number[]; show: (v: number) => string }[] = [
+  { key: "time", name: "duração", hint: "Duração deste golpe, em vezes a Duração do giro do item: mais = golpe mais lento", values: COMBO_TIMES, show: v => `×${v}` },
+  { key: "cooldown", name: "cooldown", hint: "Cooldown: por quanto tempo, a partir do início deste golpe, o próximo fica bloqueado", values: COMBO_COOLDOWNS, show: v => `${v}s` },
+  { key: "reach", name: "alcance", hint: "Alcance deste golpe, em vezes o alcance do item", values: COMBO_REACHES, show: v => `×${v}` },
+]
 // a consumable's doses are the magazine's number
 const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", unit: "", group: "Efeito", hint: "Cada Atirar usa uma; 0 = nunca acaba" }
 
@@ -99,6 +112,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                       {FIRE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                   </label>
+                  {it.fireMode === "burst" && <label className="flex items-center justify-between gap-3" title="Soltar Atirar interrompe a rajada; desligado, um aperto dispara a rajada inteira"><span>Rajada só enquanto segura Atirar</span><input type="checkbox" checked={it.burstHold} onChange={e => { const v = e.target.checked; update(d => { d.burstHold = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
                   <label className="flex items-center justify-between gap-3">
                     <span>Caminho do projétil</span>
                     <select value={it.pathShow} onChange={e => { const v = e.target.value as PathShow; update(d => { d.pathShow = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
@@ -202,7 +216,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Golpe forte" && (
                 <label className="flex items-center justify-between gap-3" title="O golpe forte é sempre o mesmo movimento; segure Atirar para carregar e solte para bater">
                   <span>Movimento</span>
-                  <select value={it.heavyKind} onChange={e => { const v = e.target.value as SwingKind; update(d => { d.heavyKind = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                  <select value={it.heavyKind} onChange={e => { const v = e.target.value as BlowKind; update(d => { d.heavyKind = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
                     {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </label>
@@ -217,21 +231,24 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               {g === "Combo" && (
                 <div className="grid gap-1.5">
-                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com a direção e o ângulo que cobre">Ordem dos golpes</span>
+                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com direção, ângulo que cobre, duração, cooldown e alcance">Direção / Ângulo / Duração / Cooldown / Alcance</span>
                   {it.combo.map((c, i) => (
-                    <div key={i} className="flex items-center gap-field">
-                      <select aria-label={`Golpe ${i + 1} do combo: direção`} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { kind: v as SwingKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as SwingKind) : c.arc } }) }} className="h-8 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-1.5">
+                    <div key={i} className="flex flex-wrap items-center gap-1">
+                      <select aria-label={`Golpe ${i + 1} do combo: direção`} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { ...c, kind: v as BlowKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as BlowKind) : c.arc } }) }} className={COMBO_KIND}>
                         {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{i + 1}. {o.label}</option>)}
                         {it.combo.length > 1 && <option value="">remover</option>}
                       </select>
-                      <select aria-label={`Golpe ${i + 1} do combo: ângulo`} title="Ângulo que o golpe cobre" value={c.arc} disabled={c.kind === "spin"} onChange={e => { const v = Number(e.target.value); update(d => { d.combo[i] = { kind: c.kind, arc: v } }) }} className="h-8 w-24 rounded-md border border-white/15 bg-[#0b110e] px-1.5 disabled:opacity-60">
-                        {(COMBO_ARCS.includes(c.arc) ? COMBO_ARCS : [...COMBO_ARCS, c.arc].sort((a, b) => a - b)).map(a => <option key={a} value={a}>{a}°</option>)}
-                      </select>
+                      <AngleKnob label={`Golpe ${i + 1} do combo: ângulo`} value={c.arc} disabled={c.kind === "spin"} onChange={v => update(d => { d.combo[i] = { ...c, arc: v } })} />
+                      {COMBO_LISTS.map(l => (
+                        <select key={l.key} aria-label={`Golpe ${i + 1} do combo: ${l.name}`} title={l.hint} value={c[l.key]} onChange={e => { const v = Number(e.target.value); update(d => { d.combo[i] = { ...c, [l.key]: v } }) }} className={COMBO_SELECT}>
+                          {(l.values.includes(c[l.key]) ? l.values : [...l.values, c[l.key]].sort((x, y) => x - y)).map(v => <option key={v} value={v}>{l.show(v)}</option>)}
+                        </select>
+                      ))}
                     </div>
                   ))}
                   <div className="flex items-center gap-field">
                     {it.combo.length < COMBO_MAX && (
-                      <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push({ kind: "down", arc: comboArc(d.combo, base, "down") }) })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
+                      <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push(comboBlow("down", comboArc(d.combo, base, "down"))) })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
                     )}
                     {JSON.stringify(it.combo) !== JSON.stringify(base.combo) && (
                       <button type="button" title="Volta os golpes do código" onClick={() => update(d => { d.combo = structuredClone(base.combo) })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
@@ -255,16 +272,18 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 </label>
               )}
               <div className="grid gap-field">
-              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
                 const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? "golpes" : m.unit
                 const display = m.key === "durability" && v === 0 ? "0 (nunca quebra)" : m.key === "refillTime" && v === 0 ? "0 (desligada)" : `${v}${unit ? ` ${unit}` : ""}`
-                return <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
+                const range = <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
                   display={display} changed={changed} hint={m.hint}
                   onChange={n => update(d => { (d as Record<string, unknown>)[m.key] = n })}
                   onReset={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })} />
+                // under the combo window: its timer bar, listening to the blows only while this section is open
+                return m.key === "comboWindow" && open[g] ? <div key={m.key} className="grid gap-1">{range}<ComboWindowBar /></div> : range
               })}
               </div>
             </div>

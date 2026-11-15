@@ -361,3 +361,97 @@ test("a Passaguá over another browser's chick asks that browser for it; it leav
   land(a)
   assert.equal(a.capturedSouls, 1)
 })
+
+// ---------- portals and the change of Pátio ----------
+const portals = (c, t) => c.setSoulPortals(new Map(t ? [['p1', t]] : []))
+
+test('a portal sucks in the souls flying free with their owner, and the other browsers see it', () => {
+  const c = world('passagua')
+  bagOf(c, 2)
+  c.releaseSoul({ x: 100, y: -100 }); c.releaseSoul({ x: 140, y: -100 })
+  step(c)
+  const [a, b] = c.freedSouls
+  holdSoul(a, 100, -100); holdSoul(b, 140, -100)
+  portals(c, { mode: 'enter', x: 500, y: -300, k: 0.5 }); step(c)
+  assert.deepEqual([a.x, a.y, a.k], [300, -200, 0.5], 'half way from where it was to the portal, half its size')
+  assert.equal(c.callSouls(), 0, 'it is not called back meanwhile')
+  const told = N.exportSouls(c.freedSouls, A, new Set(), true)
+  assert.equal(told[0][5], 0.5, 'its size travels after what it is')
+  const quiet = N.exportSouls(c.freedSouls, A, new Set(told.map(e => e[0])), false)
+  assert.deepEqual(quiet[0].slice(4), [null, 0.5], 'and alone, with no "who" to repeat')
+  const mirrors = []
+  N.importSouls(mirrors, A, JSON.parse(JSON.stringify(told)))
+  assert.equal(mirrors[0].k, 0.5)
+  portals(c, { mode: 'enter', x: 500, y: -300, k: 1 }); step(c)
+  assert.deepEqual([b.x, b.y, b.k], [500, -300, 0], 'inside the portal nothing of it shows')
+  // a portal of a pair: they come out of the other one with her, small as when let out
+  portals(c, { mode: 'arrive', x: 2000, y: -80, k: 0 }); step(c)
+  assert.equal(a.k, undefined)
+  assert.ok(Math.hypot(a.x - 2000, a.y + 80) < 30 && a.t < 0.05, 'out of the portal she came out of')
+  N.importSouls(mirrors, A, JSON.parse(JSON.stringify(N.exportSouls(c.freedSouls, A, new Set(), false))))
+  assert.deepEqual([mirrors[0].k, mirrors[0].t], [undefined, 0], 'and the mirror grows again there')
+  // an entry that never left (the Pátio is gone): they pop back by her
+  portals(c, { mode: 'enter', x: 500, y: -300, k: 1 }); step(c)
+  portals(c, null); step(c)
+  assert.equal(a.k, undefined)
+  assert.ok(Math.hypot(a.x - me.x, a.y - me.y) < 200)
+})
+
+test('another Pátio is another world: only inventories, the Gaiolas with their souls and the souls flying free cross over', () => {
+  const old = world('passagua')
+  old.give('cage')
+  old.cages[1].cage.cap = 5
+  bagOf(old, 3)
+  old.give('pistol')
+  old.releaseSoul({ x: 100, y: -100 })
+  old.spawnAliens(40, 0)
+  old.addPickup(60, 'guitar', 0)
+  step(old)
+  assert.ok(old.targets.some(t => t.kind === 'alien'))
+  const carry = JSON.parse(JSON.stringify(old.exportCarry()))
+  assert.deepEqual(Object.keys(carry), ['p1'])
+  assert.deepEqual(carry.p1.cages.map(k => [k.item, k.cap, k.souls.length]), [['cageFlight', 50, 2], ['cage', 5, 0]], 'her cages as they hang, each with its limit and souls')
+  assert.equal(carry.p1.loose.length, 1)
+
+  const next = createCombat()
+  next.setMusicOut({ note: () => {}, hold: () => null, drum: () => {} })
+  next.importCarry(carry)
+  assert.deepEqual(next.inventory.filter(Boolean).map(o => o.item).sort(), ['passagua', 'pistol'])
+  assert.equal(next.capturedSouls, 2)
+  assert.deepEqual(next.cages.map(o => [o.item, o.cage.cap, o.cage.souls.length, o.cage.enterT]), [['cageFlight', 50, 2, Infinity], ['cage', 5, 0, Infinity]], 'the same cages, the same one in front')
+  assert.deepEqual(next.bagOfSouls.map(s => s.id), carry.p1.cages[0].souls.map(s => s.id))
+  assert.deepEqual([next.targets.length, next.pickups.length, next.abductions.length], [0, 0, 0], 'nothing of the last world')
+  // the one flying free waits unseen while she is still inside the portal, and comes out of it with her
+  portals(next, { mode: 'enter', x: 0, y: 0, k: 1 }); step(next)
+  assert.equal(next.freedSouls[0].k, 0)
+  portals(next, { mode: 'arrive', x: 300, y: -80, k: 0 }); step(next)
+  const f = next.freedSouls[0]
+  assert.equal(f.k, undefined)
+  assert.ok(Math.hypot(f.x - 300, f.y + 80) < 30)
+  // new souls never take the id of one that crossed
+  const ids = new Set([...carry.p1.cages.flatMap(k => k.souls), ...carry.p1.loose].map(s => s.id))
+  step(next, { slot: next.inventory.findIndex(o => o && o.item === 'passagua') + 1 })
+  bagOf(next, 1)
+  assert.equal(next.capturedSouls, 3)
+  assert.ok(!ids.has(next.bagOfSouls[next.bagOfSouls.length - 1].id))
+})
+
+test('a soul on its way to a Gaiola crosses over inside it; with no room left it crosses flying free', () => {
+  const caught = () => {
+    const c = world('passagua')
+    const b = { kind: 'bird', x: 40, y: 0, vx: 0, vy: 0, t: 0, color: '#9be7ff', face: 1, groundY: 0, homeX: 40, homeY: 0 }
+    c.critters.push(b)
+    for (let i = 0; i < 50 && !c.abductions.length; i++) { Object.assign(b, { x: 40, y: 0, vx: 0, vy: 0 }); step(c, { melee: i === 0 }) }
+    assert.deepEqual([c.abductions.length, c.capturedSouls], [1, 0], 'still flying to the cage')
+    return c
+  }
+  const c = caught()
+  let carry = c.exportCarry().p1
+  assert.deepEqual([carry.cages[0].souls.length, carry.loose.length], [1, 0])
+  assert.equal(carry.cages[0].souls[0], c.abductions[0].soul)
+  // the cage that kept its place has none left (its limit changed meanwhile)
+  const d = caught()
+  d.cages[0].cage.cap = 0
+  carry = d.exportCarry().p1
+  assert.deepEqual([carry.cages[0].souls.length, carry.loose.length], [0, 1])
+})

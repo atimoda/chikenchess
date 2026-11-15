@@ -35,7 +35,7 @@ const DISPLAY_ACTIONS = (() => {
 const INPUT_ICONS: Record<ChickenInputType, LucideIcon> = { keys: Keyboard, keys2: Keyboard, pad: Gamepad2 }
 
 // The mouse buttons are fixed (not rebindable): shown as a read-only column beside the rebindable ones.
-const MOUSE_BINDS: Partial<Record<ChickenAction, string>> = { fire: "Botão esq.", melee: "Botão dir.", nextItem: "Roda ↓", prevItem: "Roda ↑" }
+const MOUSE_BINDS: Partial<Record<ChickenAction, string>> = { fire: "Botão esq.", melee: "Botão dir.", nextItem: "Roda ↑", prevItem: "Roda ↓" }
 
 // The Pátio's camera is fixed too (components/pigchicken/parquinho.tsx): shown read-only under the binds, one cell
 // per input type. pad: the standard buttons' numbers (Select 8, Start 9, R3 11), named after the connected gamepad.

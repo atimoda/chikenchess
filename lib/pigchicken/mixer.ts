@@ -1,5 +1,6 @@
 // The Pátio's volume mixer: a master volume over one volume per sound layer, saved in this browser.
 // Every sound source asks `mixGain(layer)` (master × layer) when it plays, so a change is heard at once.
+// Mute silences every layer without touching the volumes: they come back as they were when it is turned off.
 // The defaults are the code's with data/pigchicken/default-patio.json over them (its `volume`, which the Volume
 // panel writes with "Salvar no game"): they apply to who never moved a slider here and to Padrão.
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
@@ -21,7 +22,10 @@ const STORE = 'pigchicken-mixer-v1'
 // before the mixer, three of these volumes lived in the Parquinho settings
 const OLD_STORE = 'pigchicken-parquinho-v1'
 
+const MUTE_STORE = 'pigchicken-mixer-muted-v1'
+
 let mix: Mix | null = null
+let muted: boolean | null = null
 const listeners = new Set<() => void>()
 
 const clamp = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null)
@@ -70,8 +74,23 @@ export function subscribeMix(fn: () => void) {
   return () => { listeners.delete(fn) }
 }
 
-// the volume a layer really plays at: master × layer
+export function isMuted(): boolean {
+  if (muted === null) {
+    muted = false
+    try { muted = window.localStorage.getItem(MUTE_STORE) === '1' } catch { /* no window or storage */ }
+  }
+  return muted
+}
+
+export function setMuted(on: boolean) {
+  muted = on
+  try { window.localStorage.setItem(MUTE_STORE, on ? '1' : '0') } catch { /* ignore */ }
+  listeners.forEach(fn => fn())
+}
+
+// the volume a layer really plays at: master × layer (nothing while muted)
 export function mixGain(layer: MixLayer) {
+  if (isMuted()) return 0
   const m = getMix()
   return m.master * m[layer]
 }

@@ -305,7 +305,9 @@ test('grenade-family items rest at the hand and proportional Fire uses Throw pul
     assert.equal(rest.atHand, item === 'grenade' || item === 'tambourine')
     for (let i = 0; i < 15; i++) step(c, { fire: true, firePressed: i === 0 })
     const charging = heldItemPose(c, 0)
-    assert.ok(charging.kick > rest.kick + 6, item)
+    // the bow ("Arco e Flecha") draws its arrow instead: the item stays, the nock goes back
+    if (item === 'bow') { assert.equal(charging.kick, rest.kick); assert.ok(charging.archery.x < rest.archery.x - 6) }
+    else assert.ok(charging.kick > rest.kick + 6, item)
     assert.ok(c.fireCharge > 0, item)
   }
   const c = createCombat(); c.give('grenade')

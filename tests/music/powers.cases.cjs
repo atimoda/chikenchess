@@ -500,6 +500,36 @@ test('A frozen attacker cannot check the king or be captured', () => {
   assert.equal(exposedKing.moves({ square: 'e1', verbose: true }).some(move => move.to === 'e2'), true)
 })
 
+test('A king cannot step into the reach of a frozen enemy piece, including a frozen king', () => {
+  // Bot position: black froze the white king, then tried Kd3 beside it.
+  const game = makePoweredChess(new Chess('8/8/1P4R1/8/P2k4/6P1/2KB2r1/8 b - - 0 40'))
+  const powers = [createMatchPower('freeze', 'c2', game, 1)]
+  setPoweredChessPowers(game, powers)
+  const kingMoves = game.moves({ square: 'd4', verbose: true }).map(move => move.to)
+  assert.equal(kingMoves.includes('d3'), false)
+  assert.deepEqual(kingMoves.sort(), ['c4', 'c5', 'd5', 'e4', 'e5'])
+  assert.throws(() => game.move('Kd3'), /Invalid move/)
+  assert.equal(clonePoweredChess(game, []).moves({ square: 'd4', verbose: true }).some(move => move.to === 'd3'), false)
+
+  // Same rule for white against a frozen black rook, and for discovered exposure.
+  const rook = makePoweredChess(new Chess('k3r3/8/8/8/8/8/8/3K4 w - - 0 1'))
+  setPoweredChessPowers(rook, [createMatchPower('freeze', 'e8', rook, 1)])
+  assert.equal(rook.moves({ square: 'd1', verbose: true }).some(move => move.to.startsWith('e')), false)
+  const pinned = makePoweredChess(new Chess('k3r3/8/8/8/4B3/8/8/4K3 w - - 0 1'))
+  setPoweredChessPowers(pinned, [createMatchPower('freeze', 'e8', pinned, 1)])
+  assert.equal(pinned.moves({ square: 'e4' }).length, 0)
+  assert.ok(pinned.moves({ square: 'e1' }).length > 0)
+})
+
+test('A king already reached by a frozen checker keeps the freeze-the-checker play', () => {
+  const game = makePoweredChess(new Chess('k3r3/8/8/8/8/8/8/3QK3 w - - 0 1'))
+  setPoweredChessPowers(game, [createMatchPower('freeze', 'e8', game, 1)])
+  assert.equal(game.isCheck(), false)
+  assert.ok(game.moves({ square: 'd1' }).includes('Qd2'))
+  assert.ok(game.moves({ square: 'e1' }).includes('Ke2'))
+  assert.equal(game.moves({ square: 'e1', verbose: true }).some(move => move.to === 'd2'), true)
+})
+
 test('Freeze also blocks en passant capture of its piece', () => {
   const powers = [{ id: 1, kind: 'freeze', square: 'e5', frozenColor: 'b', blocksOnPly: 3 }]
   assert.equal(permitsPowerMove({ from: 'd5', to: 'e6', color: 'w', flags: 'e', captured: 'p' }, powers, 3), false)

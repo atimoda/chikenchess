@@ -56,9 +56,10 @@ const RELEASE_GROW = 0.35
 // colour. tints: each local player's colour, given only when more than one plays here; a ring says whose it is.
 // Online, the other browsers' souls fly here too (combat.netSouls), each with a ring in its browser's colour (netTint).
 export function drawFreedSouls(ctx: Ctx, combat: Combat, camX: number, view: ViewRect, tints?: Readonly<Record<string, string>> | null, netTint?: (pid: number) => string | undefined) {
-  const one = (f: { x: number; y: number; face: number; t: number; soul: Soul }, tint: string | undefined) => {
-    if (!intersectsView({ x: f.x - 40, y: f.y - 40, w: 80, h: 80 }, view, 32)) return
-    const grow = Math.min(1, 0.3 + (f.t / RELEASE_GROW) * 0.7)
+  const one = (f: { x: number; y: number; face: number; t: number; soul: Soul; k?: number }, tint: string | undefined) => {
+    // k: a portal sucks it in with its owner (nothing shows once inside)
+    if ((f.k ?? 1) <= 0.01 || !intersectsView({ x: f.x - 40, y: f.y - 40, w: 80, h: 80 }, view, 32)) return
+    const grow = Math.min(1, 0.3 + (f.t / RELEASE_GROW) * 0.7) * (f.k ?? 1)
     ctx.save()
     ctx.translate(f.x - camX, f.y); ctx.scale(grow, grow)
     ctx.globalAlpha = 0.2; ctx.fillStyle = f.soul.color

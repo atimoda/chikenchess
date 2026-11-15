@@ -83,6 +83,15 @@ Classes (`SOUL_CLASSES`). A alma voa na classe da sua entrada da biblioteca: a d
 | Preguiçosa | Rebate | 300 | 0,6 | 1100 | 200 | Parada; demora 1,2 s para notar |
 | Pintinho | Espécie Pintinho | 80 | 0,08 | 160 | 300 | Vai e vem curto, inquieta |
 
+## Portais (15/11, v2.11.0)
+
+- **Gatilho:** o dono entra em qualquer portal (par de portais, portal para outro Pátio, portal de entrada numa troca de Pátio, volta ao globo). O Parquinho informa a cada quadro quem está num portal (`engine.getPortalTransit` → `combat.setSoulPortals`).
+- **Efeito:** as almas soltas dele (não as que estão nas gaiolas) largam o que faziam, deixam de estar chamadas de volta e são sugadas junto: cada uma voa de onde estava até o centro do portal e encolhe até sumir, no mesmo tempo e curva do boneco (950 ms). Lá dentro não aparecem, não agem, não podem ser capturadas nem chamadas.
+- **Saída:** quando o dono surge de um portal, elas saem do centro dele, pequenas como ao sair da gaiola, e voltam a segui-lo. Num par de portais é o outro portal; numa troca de Pátio é o portal de entrada do Pátio novo (elas atravessam como almas soltas, não entram na Bag of souls).
+- **Cancelamento:** se a entrada é desfeita sem chegada (o Pátio de destino não existe mais), reaparecem junto do dono.
+- **Online:** os outros navegadores veem o boneco sendo sugado para o portal (`components/chicken/online-chickens.tsx`: no estado `portal` o navegador dele envia a posição do portal e os outros tocam a mesma animação; em `portalArrival`, a de chegada; o nome some enquanto ele está dentro) e as almas dele encolhendo até o portal: o tamanho viaja como sexto valor de cada alma em `souls` (`[id, x, y, face, who?, k?]`, `lib/pigchicken/net-souls.ts`), só enquanto é menor que 1. Uma cópia que some já encolhida não solta a nuvenzinha.
+- **Escopo:** Pátio e Templo, local e online, todos os players locais.
+
 ## Callback (10/11, v2.7.0)
 
 - **Gatilho:** com a gaiola da frente vazia e ao menos uma alma do player solta, ela mostra “Callback” preenchido na cor do player. Um clique ou toque nela, ou a bind “Soltar alma”, chama as almas (`combat.callSouls`).

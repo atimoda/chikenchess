@@ -17,8 +17,9 @@ import { newSoul, type Soul, type SoulNote, type SoulOrigin, type SoulShot, type
 // what a soul is, without its id: [species, state, shot, note, weapon, color, bird]
 // (the last one: its bird; a chick's is its look, its place in CHICK_STYLES)
 export type NetSoulWho = [string, string, string | null, string | null, string | null, string, string | number | null]
-// a soul flying free: [id, x, y, face, who?] (who: only until the others have it, and with everything now and then)
-export type NetSoul = [number, number, number, number, NetSoulWho?]
+// a soul flying free: [id, x, y, face, who?, k?] (who: only until the others have it, and with everything now and
+// then; k: how big it is drawn while a portal sucks it in with its owner, 1 .. 0; missing: its own size)
+export type NetSoul = [number, number, number, number, (NetSoulWho | null)?, number?]
 // s: a soul flying free (id: its id in the lobby); f: an undead bird of the lobby owner's (id: the enemy's);
 // c: a chick of another browser's (id: its number there behind that browser's pid, like a soul's)
 export type NetTake = { k: 's' | 'f' | 'c'; id: number }
@@ -54,7 +55,7 @@ export function soulFromWho(who: unknown, id: number): Soul | null {
 // ---------- the browser that flies them ----------
 /** what to send: every soul flying free here, with what it is while the others may not have it yet (cache: the ones
  * already told; full: tell everything again, someone joined or it is time) */
-export function exportSouls(freed: readonly { soul: Soul; x: number; y: number; face: number }[], pid: number, cache: Set<number>, full: boolean): NetSoul[] {
+export function exportSouls(freed: readonly { soul: Soul; x: number; y: number; face: number; k?: number }[], pid: number, cache: Set<number>, full: boolean): NetSoul[] {
   const live = new Set<number>(), l: NetSoul[] = []
   for (const f of freed) {
     if (l.length >= NET_SOULS_MAX) break
@@ -62,6 +63,7 @@ export function exportSouls(freed: readonly { soul: Soul; x: number; y: number; 
     live.add(id)
     const e: NetSoul = [id, r1(f.x), r1(f.y), f.face < 0 ? -1 : 1]
     if (full || !cache.has(id)) { e.push(soulWho(f.soul)); cache.add(id) }
+    if (f.k !== undefined && f.k < 1) { if (e.length < 5) e.push(null); e.push(Math.round(Math.max(0, f.k) * 100) / 100) }
     l.push(e)
   }
   for (const id of [...cache]) if (!live.has(id)) cache.delete(id)
@@ -70,7 +72,8 @@ export function exportSouls(freed: readonly { soul: Soul; x: number; y: number; 
 
 // ---------- the browsers that watch ----------
 // a soul another browser flies, drawn here: asked: s since this browser asked for it (it hides meanwhile); null: no
-export type SoulMirror = { net: number; pid: number; soul: Soul; x: number; y: number; face: number; t: number; netX: number; netY: number; asked: number | null }
+// k: how big it is drawn while a portal sucks it in with its owner (missing: its own size)
+export type SoulMirror = { net: number; pid: number; soul: Soul; x: number; y: number; face: number; t: number; netX: number; netY: number; asked: number | null; k?: number }
 
 /** a browser's souls become mirrors here (by their id in the lobby): new ones appear, the ones it no longer sends
  * leave. Returns the ones that left, for the little cloud. A soul whose `who` has not come yet waits for it. */
@@ -82,7 +85,7 @@ export function importSouls(mirrors: SoulMirror[], pid: number, list: unknown): 
   const seen = new Set<number>()
   for (const e of list.slice(0, NET_SOULS_MAX)) {
     if (!Array.isArray(e)) continue
-    const [id, x, y, face, who] = e as unknown[]
+    const [id, x, y, face, who, k] = e as unknown[]
     // only its own: the id carries the pid of the browser that flies it
     if (!num(id) || !num(x) || !num(y) || Math.abs(x) > LIMIT || Math.abs(y) > LIMIT || Math.floor(id / PID) !== pid) continue
     let m = known.get(id)
@@ -93,6 +96,10 @@ export function importSouls(mirrors: SoulMirror[], pid: number, list: unknown): 
       mirrors.push(m); known.set(id, m)
     }
     m.netX = x; m.netY = y; m.face = num(face) && face < 0 ? -1 : 1
+    // out of a portal: it grows again as when let out
+    const size = num(k) ? Math.max(0, Math.min(1, k)) : undefined
+    if (m.k !== undefined && size === undefined) m.t = 0
+    m.k = size
     // far away (a portal): straight there
     if (Math.hypot(m.x - x, m.y - y) > 400) { m.x = x; m.y = y }
     seen.add(id)

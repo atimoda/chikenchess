@@ -15,7 +15,7 @@ import { createMouseOwner, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, 
 import { cameraBounds, cameraStep, cameraXRange, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
-import { createCombat, lookDoses, type Box, type Catchable, type Combat, type Effect } from "@/lib/pigchicken/combat"
+import { createCombat, lookDoses, type Box, type Catchable, type Combat, type Effect, type SoulPortal, type WorldCarry } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import { getNetState, remoteChicken } from "@/lib/chicken/online-room"
 import { chickNumber, chickStyleOf } from "@/lib/chicken/net-chicks"
@@ -42,7 +42,7 @@ import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cam
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
 import { groundZones, placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
-import { hitZone, liveZones, zoneWallHit } from "@/lib/pigchicken/zone-life"
+import { hitZone, liveZones, resetZoneLife, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { drawScaleFan, SCALE_FAN_R } from "@/components/pigchicken/draw/scale-fan"
 import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
@@ -243,9 +243,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
-  // the Pátio open (its id): another one clears the last one's things and items lying in the world
-  const patioKeyRef = useRef(patioKey)
-  patioKeyRef.current = patioKey
+  // the Pátio open (its id): another one is another world. This one closes whole (the loop below ends and starts
+  // again from nothing) and only what the players take along crosses over: inventories, Bags of souls and the souls
+  // flying free with them (and the camera's zoom, which is the screen's)
+  const carryRef = useRef<{ carry: WorldCarry; zoom: number } | null>(null)
   // where she starts (by the entry portal): read on the first frame, so a moved portal never restarts the loop
   const spawnXRef = useRef(spawnX)
   spawnXRef.current = spawnX
@@ -486,7 +487,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const onWheel = (e: WheelEvent) => {
       if (isUi(e.target) || noMouse()) return
       if (cameraKey) zoom = clampZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))
-      else wheel += Math.sign(e.deltaY)
+      // rolled up (away from her hand): the next item; down: the one before
+      else wheel -= Math.sign(e.deltaY)
     }
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
@@ -523,7 +525,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
     // camX: world x at the screen's left edge; oy: screen y of world y = 0 (null until the first frame)
     let camX = 0, oy: number | null = null, last = performance.now(), raf = 0
-    let zoom = 1, forceFollow = false, panParked = false, panInterrupted = false, wasPanHeld = false, lastPlayer = { x: 0, y: 0 }, playerSeen = false
+    let zoom = carryRef.current?.zoom ?? 1, forceFollow = false, panParked = false, panInterrupted = false, wasPanHeld = false, lastPlayer = { x: 0, y: 0 }, playerSeen = false
     let reloadPendingAt = 0, reloadPending = false, reloadFired = false
     const clampZoom = (z: number) => Math.max(0.5, Math.min(2.5, z))
     let prev: Partial<Record<ChickenAction, boolean>> = {}
@@ -557,6 +559,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
     const combat = createCombat()
+    if (carryRef.current) combat.importCarry(carryRef.current.carry)
+    carryRef.current = null
     // online, the other browsers' chicks the Passaguá could reach last frame, and where they were
     let netChicksSeen = new Map<string, { x: number; y: number }>()
     // the wires the birds rest on (Postes and Torres), with the camera and the players each frame
@@ -565,6 +569,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     combat.setItems(loadItems())
     // online: the lobby's owner moves the enemies, the others mirror them; everyone's shots fly on every screen
     const net = createNetWorldSync(combat, () => ["p1", ...(extras?.current?.keys() ?? [])])
+    const soulPortals = new Map<string, SoulPortal>()
     // instruments, the enemies' answers and the zone's ambience play on PigChicKen's own synth
     combat.setMusicOut({
       note: (voice, midi, at, dur, vel, fade, vib) => { playNote(voice, midi, { at, dur, vel, fade, vib }) },
@@ -621,7 +626,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const G = WORLD_GROUND_Y
     // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
     const layoutSync = createLayoutSync(combat)
-    let syncedElements: LayoutElement[] | null = null, syncedScreens = -1, syncedPatio: string | null | undefined = undefined
+    let syncedElements: LayoutElement[] | null = null, syncedScreens = -1
     // the Quadros de lousa's ghosts (training-ghosts.ts), in world units like the layout they come from
     const ghosts = ghostHostRef.current ? createTrainingGhosts(ghostHostRef.current) : null
     let ghostElements: LayoutElement[] = []
@@ -703,14 +708,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (!placed) {
         place()
         // she starts by the entrance portal (world x), not in the middle of the screen
+        // (coming through a portal from another Pátio, she is put at this one's entry portal as she arrives)
         const spawnX = spawnXRef.current
-        if (spawnX !== undefined) { engine.shift(spawnX - camX - st.x); st = engine.getMotionState() }
+        if (spawnX !== undefined && !engine.getPortalTransit()) { engine.shift(spawnX - camX - st.x); st = engine.getMotionState() }
       }
       if (templeFor !== `${S.screens}:${templeRef.current}`) placeTemple(S.screens, templeRef.current)
-      if (syncedPatio !== patioKeyRef.current) {
-        if (syncedPatio !== undefined) layoutSync.reset()
-        syncedPatio = patioKeyRef.current; syncedElements = null
-      }
       if (syncedElements !== elementsRef.current || syncedScreens !== S.screens) {
         syncedElements = elementsRef.current; syncedScreens = S.screens
         const shown = elementsInWorld({ v: 1, elements: syncedElements }, S.screens)
@@ -1090,6 +1092,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.setCatchables(catchables)
       // the air the souls flying free keep inside: the world's walls and the top of what the camera shows
       combat.setSoulAir({ l: walls.lo + camX, r: walls.hi + camX, top: Math.max(walls.top, zoomedView(viewW, st.height, zoom, viewTop).y) - camY })
+      // the players in a portal: their souls flying free are sucked in and come out with them
+      soulPortals.clear()
+      const inPortal = (id: string, eng: ChickenEngine) => { const t = eng.getPortalTransit(); if (t) soulPortals.set(id, { mode: t.mode, x: t.x + camX, y: t.y - camY, k: t.k }) }
+      inPortal("p1", engine)
+      extras?.current?.forEach((eng, id) => inPortal(id, eng))
+      combat.setSoulPortals(soulPortals)
       // presses on the Gaiolas: the one in front lets a soul out, one behind comes to the front
       if (cageTaps.length) {
         for (const tap of cageTaps.splice(0)) {
@@ -1559,6 +1567,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     raf = requestGameFrame(frame)
     return () => {
+      // what crosses to the next world, if this one closes for another Pátio
+      carryRef.current = { carry: combat.exportCarry(), zoom }
+      resetZoneLife()
+      templeDraw.gongs.clear()
       headerObserver.disconnect()
       cancelGameFrame(raf)
       ghosts?.dispose()
@@ -1605,7 +1617,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (worldRef.current) { worldRef.current.style.transform = ""; setPlatformWorldOffset(worldRef.current, 0, 0) }
       moveLiveCamera(0, 0, 1)
     }
-  }, [engine, worldRef, fgRef])
+  }, [engine, worldRef, fgRef, patioKey])
 
   return (
     <>

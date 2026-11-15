@@ -79,3 +79,25 @@ test('items saved before v6 take the new defaults unless they were tuned', () =>
     assert.equal(now.pistol.durability, 40); assert.equal(now.bat.mag, 0)
   } finally { globalThis.window = previous }
 })
+
+test('a burst only goes on while Atirar is held; with the option off one press fires it whole', () => {
+  const fired = (hold, frames) => {
+    const items = structuredClone(DEFAULT_ITEMS)
+    items.trumpet.burstHold = hold
+    const c = createCombat(); c.setItems(items); c.give('trumpet')
+    const h = c.inventory[c.current], full = h.ammo
+    let low = full // the notes come back on their own after a rest: count by the lowest it got
+    const go = over => { step(c, over); low = Math.min(low, h.ammo) }
+    go({ fire: true, firePressed: true })
+    for (let i = 1; i < frames; i++) go({ fire: true })
+    for (let i = 0; i < 60; i++) go({})
+    return full - low
+  }
+  for (const id of [...WEAPON_IDS, ...INSTRUMENT_IDS]) assert.equal(DEFAULT_ITEMS[id].burstHold, true, id)
+  assert.equal(DEFAULT_ITEMS.trumpet.fireMode, 'burst')
+  assert.equal(fired(true, 1), 1) // a tap: one note
+  assert.equal(fired(true, 12), 2) // let go in the middle: the rest stays in
+  assert.equal(fired(true, 120), DEFAULT_ITEMS.trumpet.burst) // held to the end: the whole burst, and no second one
+  assert.equal(fired(false, 1), DEFAULT_ITEMS.trumpet.burst) // option off: one press, the whole burst
+  assert.equal(loadItems().trumpet.burstHold, true)
+})

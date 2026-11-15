@@ -42,6 +42,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 5,
     "gripY": 0,
     "staffX": 38,
@@ -130,6 +131,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -143,6 +145,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -153,19 +156,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 200
+        "arc": 200,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -227,6 +242,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 6,
     "gripY": 0,
     "staffX": 38,
@@ -315,6 +331,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -328,6 +345,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -338,19 +356,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 190
+        "arc": 190,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -405,6 +435,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -493,6 +524,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -506,6 +538,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -516,19 +549,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -590,6 +635,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -678,6 +724,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -691,6 +738,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -701,19 +749,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -775,6 +835,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -863,6 +924,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -876,6 +938,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -886,19 +949,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -960,6 +1035,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -1048,6 +1124,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": true,
     "hitscan": false,
@@ -1061,6 +1138,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -1071,19 +1149,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1145,6 +1235,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -1233,6 +1324,7 @@
     "pathShow": "holdAim",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": true,
@@ -1246,6 +1338,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -1256,19 +1349,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1336,6 +1441,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -1424,6 +1530,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -1437,6 +1544,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -1447,19 +1555,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1521,6 +1641,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -1609,6 +1730,7 @@
     "pathShow": "hold",
     "landShow": "hold",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -1622,6 +1744,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -1632,19 +1755,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1700,12 +1835,13 @@
     "muzzleX": 28,
     "muzzleY": 0,
     "length": 40,
-    "pivotX": 0,
+    "pivotX": -74,
     "pivotY": 0,
-    "handX": 0,
+    "handX": -12,
     "handY": 0,
-    "backX": 0,
+    "backX": 1,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -1794,6 +1930,7 @@
     "pathShow": "hold",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -1804,9 +1941,10 @@
     "meleeInterrupt": true,
     "rebateTok": false,
     "pivotAt": "shoulder",
-    "handOn": false,
-    "backOn": false,
+    "handOn": true,
+    "backOn": true,
     "wingFlip": false,
+    "archery": true,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -1817,19 +1955,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -1891,6 +2041,7 @@
     "handY": 0,
     "backX": -22,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -1979,6 +2130,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -1992,6 +2144,7 @@
     "handOn": true,
     "backOn": true,
     "wingFlip": true,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 0.45,
@@ -2002,19 +2155,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2080,6 +2245,7 @@
     "handY": 12,
     "backX": 2,
     "backY": -15,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -2168,6 +2334,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -2181,6 +2348,7 @@
     "handOn": true,
     "backOn": true,
     "wingFlip": true,
+    "archery": false,
     "arp": "updown",
     "pitchSet": "chord",
     "volMin": 0.5,
@@ -2191,19 +2359,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2269,6 +2449,7 @@
     "handY": -12,
     "backX": -23,
     "backY": 7,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -2357,6 +2538,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -2370,6 +2552,7 @@
     "handOn": true,
     "backOn": true,
     "wingFlip": true,
+    "archery": false,
     "arp": "phrase",
     "pitchSet": "scale",
     "volMin": 0.55,
@@ -2380,19 +2563,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2458,6 +2653,7 @@
     "handY": 0,
     "backX": -10,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -2546,6 +2742,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": true,
     "hitscan": false,
@@ -2559,6 +2756,7 @@
     "handOn": true,
     "backOn": true,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 0.5,
@@ -2569,19 +2767,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2653,6 +2863,7 @@
     "handY": 0,
     "backX": -23,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -2741,6 +2952,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -2754,6 +2966,7 @@
     "handOn": true,
     "backOn": true,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 0.3,
@@ -2764,19 +2977,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -2848,6 +3073,7 @@
     "handY": -15,
     "backX": -30,
     "backY": -15,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -2936,6 +3162,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": true,
@@ -2949,6 +3176,7 @@
     "handOn": true,
     "backOn": true,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 0.6,
@@ -2959,19 +3187,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3037,6 +3277,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -3125,6 +3366,7 @@
     "pathShow": "hold",
     "landShow": "hold",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -3138,6 +3380,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 0.7,
@@ -3148,19 +3391,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3232,6 +3487,7 @@
     "handY": -25,
     "backX": -7,
     "backY": -17,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -3320,6 +3576,7 @@
     "pathShow": "hold",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -3333,6 +3590,7 @@
     "handOn": true,
     "backOn": true,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "scale",
     "volMin": 0.5,
@@ -3343,19 +3601,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3427,6 +3697,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -3515,6 +3786,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -3528,6 +3800,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "scale",
     "volMin": 0.8,
@@ -3538,19 +3811,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 110
+        "arc": 110,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3612,6 +3897,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -3700,6 +3986,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -3713,6 +4000,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -3723,19 +4011,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3790,6 +4090,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -3878,6 +4179,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -3891,6 +4193,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -3901,19 +4204,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -3968,6 +4283,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 6,
     "gripY": 0,
     "staffX": 36,
@@ -4056,6 +4372,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -4069,6 +4386,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -4079,19 +4397,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 200
+        "arc": 200,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4153,6 +4483,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 34,
     "gripY": 0,
     "staffX": 34,
@@ -4241,6 +4572,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -4254,6 +4586,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -4264,19 +4597,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 150
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 200
+        "arc": 200,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4338,6 +4683,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -4426,6 +4772,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -4439,6 +4786,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -4449,19 +4797,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4516,6 +4876,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -4604,6 +4965,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -4617,6 +4979,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -4627,19 +4990,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4694,6 +5069,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -4782,6 +5158,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -4795,6 +5172,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -4805,19 +5183,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -4872,6 +5262,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -4960,6 +5351,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -4973,6 +5365,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -4983,19 +5376,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -5050,6 +5455,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -5138,6 +5544,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -5151,6 +5558,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -5161,19 +5569,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -5228,6 +5648,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -5316,6 +5737,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -5329,6 +5751,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -5339,19 +5762,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -5406,6 +5841,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -5494,6 +5930,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": false,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -5507,6 +5944,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -5517,19 +5955,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -5584,6 +6034,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -5672,6 +6123,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -5685,6 +6137,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -5695,19 +6148,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
@@ -5769,6 +6234,7 @@
     "handY": 0,
     "backX": 0,
     "backY": 0,
+    "drawLen": 30,
     "gripX": 0,
     "gripY": 0,
     "staffX": 38,
@@ -5857,6 +6323,7 @@
     "pathShow": "off",
     "landShow": "always",
     "autoReload": true,
+    "burstHold": true,
     "slideFire": true,
     "shellReload": false,
     "hitscan": false,
@@ -5870,6 +6337,7 @@
     "handOn": false,
     "backOn": false,
     "wingFlip": false,
+    "archery": false,
     "arp": "off",
     "pitchSet": "chord",
     "volMin": 1,
@@ -5880,19 +6348,31 @@
     "combo": [
       {
         "kind": "down",
-        "arc": 160
+        "arc": 160,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "up",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "flat",
-        "arc": 120
+        "arc": 120,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       },
       {
         "kind": "spin",
-        "arc": 360
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
       }
     ],
     "heavyKind": "down",
