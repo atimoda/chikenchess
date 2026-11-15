@@ -2305,6 +2305,8 @@ export function createCombat() {
           }
         } else {
           if (input.firePressed && burstLeft <= 0 && cooldown <= 0) burstLeft = d.burst
+          // only while Atirar is held: letting go keeps the rest of the burst in (the press's own shot always leaves)
+          else if (d.burstHold && !input.fire) burstLeft = 0
           if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) {
             shoot(muzzle, spreadDeg, onRecoil, 1, ctx); burstLeft--
             if (burstLeft <= 0) cooldown = 3 / d.rate

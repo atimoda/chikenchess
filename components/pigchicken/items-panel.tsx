@@ -111,6 +111,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                       {FIRE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                   </label>
+                  {it.fireMode === "burst" && <label className="flex items-center justify-between gap-3" title="Soltar Atirar interrompe a rajada; desligado, um aperto dispara a rajada inteira"><span>Rajada só enquanto segura Atirar</span><input type="checkbox" checked={it.burstHold} onChange={e => { const v = e.target.checked; update(d => { d.burstHold = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
                   <label className="flex items-center justify-between gap-3">
                     <span>Caminho do projétil</span>
                     <select value={it.pathShow} onChange={e => { const v = e.target.value as PathShow; update(d => { d.pathShow = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
