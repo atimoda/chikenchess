@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Gaiolas no Pátio: as almas ficam em gaiolas de seis modelos, até três por jogador; trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira; Mute no painel Volume do Pátio; rajada só enquanto segura Atirar; rei não pode mais encostar numa peça congelada; Modo editor do Pátio sem travar ao arrastar elementos',
+    title: 'Gaiolas no Pátio: as almas ficam em gaiolas de seis modelos, até três por jogador; almas e pássaros exploram o mapa, pousam em árvores, plataformas e objetos, e algumas aves cagam; trocar de Pátio agora troca o mundo inteiro; Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; arco e flecha puxado como de verdade no Pátio; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira; Mute no painel Volume do Pátio; rajada só enquanto segura Atirar; rei não pode mais encostar numa peça congelada; Modo editor do Pátio sem travar ao arrastar elementos',
     groups: [
       { title: 'Pátio: Gaiolas', items: [
         'Nova categoria de item, Gaiolas, em seis modelos com arte própria: Gaiola básica (8 almas), de arame (12), Concorde (16), de madeira (20), Gaiolão arqueado (30) e Voadeira (50). O limite de almas de cada modelo é ajustável no painel Itens, e cada cavalete ou item solto do Modo editor pode ter o seu. Elas também entram na lista de itens do Baú.',
@@ -20,7 +20,16 @@ const RECENT = [
         'Sem gaiola, o Passaguá não captura: empurra os pintinhos e espanta os pássaros, que voam num instante até um fio de energia visível na tela e pousam nele (sem fio à vista, vão para um canto da tela longe de você).',
         'Os contadores de almas agora são a silhueta de cada gaiola com o número dentro, e piscam azul quando a gaiola ganha uma alma e vermelho quando solta uma. O avatar dos outros jogadores aparece sobre o boneco deles com esses contadores; quando o boneco sai da tela, o avatar fica na borda, na direção onde ele está. No Pátio online todos veem os contadores de todos.',
         'Binds novas: Soltar alma em H (teclado primário), End (secundário) e L3 (gamepad); Trocar de gaiola em Y e Home, ou segurando L3. No teclado secundário, Arremessar e Golpe ficam em \\ e [; no gamepad, a Roda do inventário deixa de ter botão. O painel Controles passa a listar também as binds fixas de zoom e movimento da câmera.',
-        'Limites desta primeira parte: no Pátio online as gaiolas do chão são de cada navegador, e os contadores dos outros jogadores só aparecem depois que o servidor de jogo for atualizado.',
+        'No Pátio online as gaiolas do chão são de cada navegador, e os contadores dos outros jogadores só aparecem depois que o servidor de jogo for atualizado.',
+      ] },
+      { title: 'Pátio: pássaros e almas que exploram', items: [
+        'As almas soltas não ficam mais o tempo todo em volta do dono: depois de um descanso, saem para pousar num fio de energia, numa árvore, numa plataforma, num telhado ou em cima de um objeto por perto, ficam um tempo ali de asas fechadas, olhando para o dono, e voltam (ou emendam outro lugar). Se o dono se afasta muito, elas voltam na hora.',
+        'Cada classe de alma explora do seu jeito: a Preguiçosa sai muito e fica bastante tempo pousada, a Patrulheira vai longe e troca logo de lugar, a Escolta quase não larga o dono e a alma pintinho não sai.',
+        'Os pássaros vivos também pousam em árvores, plataformas, telhados e objetos, não só nos fios. Cada tipo tem o seu gosto: o Pardal gosta de plataformas e objetos, o Sabiá e a Coruja preferem árvores.',
+        'Novo poder de algumas aves: cagar. Têm o poder as almas das espécies mini, gêmeos e tambor, e os pássaros Pardal e Bem-te-vi. O pássaro só solta quando há um boneco embaixo dele. Em inimigos e no Alvo de treino o cagado tira vida (pouca: de 1 a 4). Como as galinhas não têm vida no Pátio, nelas ele dá um tranco pequeno e deixa uma mancha nas costas por alguns segundos.',
+        'As almas vivas poupam o dono; as almas mortas cagam também nele. Os outros jogadores nunca são poupados.',
+        'Editor de fichas da Biblioteca de almas (admin): novo grupo Exploração (Explorar, Alcance, Tempo pousada e o gosto por Fios, Árvores, Plataformas e Objetos) e, em Ações, Cagar a cada, Dano do cagado e Poupar o dono.',
+        'No Pátio online, cagados, manchas e almas de asas fechadas aparecem só no navegador de quem os vê acontecer; o dano em inimigos é compartilhado.',
       ] },
       { title: 'Pátio', items: [
         'A rodinha do mouse inverteu: rolar para cima vai ao Próximo item e para baixo ao Item anterior.',

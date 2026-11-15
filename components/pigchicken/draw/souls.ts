@@ -4,6 +4,8 @@
 // their owners in the world. Each one is drawn as its entry in the library (./soul-art.ts).
 import { ABDUCT_TIME, abductPoint, type Abduction, type Soul } from "@/lib/pigchicken/souls"
 import { type Combat } from "@/lib/pigchicken/combat"
+import { POOP } from "@/lib/pigchicken/poop"
+import { soulPerched } from "@/lib/pigchicken/soul-roam"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { stageWidth } from "@/lib/stage-size"
 import { type Ctx } from "./shared"
@@ -56,7 +58,8 @@ const RELEASE_GROW = 0.35
 // colour. tints: each local player's colour, given only when more than one plays here; a ring says whose it is.
 // Online, the other browsers' souls fly here too (combat.netSouls), each with a ring in its browser's colour (netTint).
 export function drawFreedSouls(ctx: Ctx, combat: Combat, camX: number, view: ViewRect, tints?: Readonly<Record<string, string>> | null, netTint?: (pid: number) => string | undefined) {
-  const one = (f: { x: number; y: number; face: number; t: number; soul: Soul; k?: number }, tint: string | undefined) => {
+  // still: resting somewhere, its wings folded
+  const one = (f: { x: number; y: number; face: number; t: number; soul: Soul; k?: number }, tint: string | undefined, still = false) => {
     // k: a portal sucks it in with its owner (nothing shows once inside)
     if ((f.k ?? 1) <= 0.01 || !intersectsView({ x: f.x - 40, y: f.y - 40, w: 80, h: 80 }, view, 32)) return
     const grow = Math.min(1, 0.3 + (f.t / RELEASE_GROW) * 0.7) * (f.k ?? 1)
@@ -66,10 +69,52 @@ export function drawFreedSouls(ctx: Ctx, combat: Combat, camX: number, view: Vie
     ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill()
     if (tint) { ctx.globalAlpha = 0.75; ctx.strokeStyle = tint; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.stroke() }
     ctx.globalAlpha = 1
-    drawSoulArt(ctx, 0, 0, f.face, f.t + f.soul.id * 0.37, soulLook(f.soul))
+    drawSoulArt(ctx, 0, 0, f.face, f.t + f.soul.id * 0.37, soulLook(f.soul), false, still)
     ctx.restore()
   }
-  for (const f of combat.freedSouls) one(f, tints?.[f.owner])
+  for (const f of combat.freedSouls) one(f, tints?.[f.owner], soulPerched(f.roam))
   // one this browser asked for is on its way out: the little cloud is all that shows
   for (const m of combat.netSouls) if (m.asked === null) one(m, netTint?.(m.pid))
+}
+
+// The birds' droppings (lib/pigchicken/poop.ts), in world px: the ones falling, the marks they left on the floor and
+// the stains on the chickens they hit (each goes with its chicken and fades)
+const POOP_COLOR = "#f4f1e6", POOP_SHADE = "#b9b29a"
+export function drawPoops(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
+  if (!combat.poops.length && !combat.poopMarks.length) return
+  const seen = (x: number, y: number) => intersectsView({ x: x - 16, y: y - 16, w: 32, h: 32 }, view, 16)
+  ctx.save()
+  for (const m of combat.poopMarks) {
+    if (!seen(m.x, m.y)) continue
+    ctx.globalAlpha = Math.min(1, m.left / (POOP.mark * 0.4)) * 0.9; ctx.fillStyle = POOP_COLOR
+    ctx.beginPath(); ctx.ellipse(m.x - camX, m.y - 1.5, 9, 2.5, 0, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.globalAlpha = 1
+  for (const p of combat.poops) {
+    if (!seen(p.x, p.y)) continue
+    // a drop, longer the faster it falls
+    const x = p.x - camX, len = Math.min(10, p.vy * 0.012)
+    ctx.fillStyle = POOP_COLOR
+    ctx.beginPath(); ctx.ellipse(x, p.y - len / 2, POOP.r * 0.7, POOP.r * 0.7 + len / 2, 0, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = POOP_SHADE
+    ctx.beginPath(); ctx.arc(x, p.y + 1, POOP.r * 0.45, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.restore()
+}
+
+/** The stains the droppings left on the chickens: over them (the canvas in front of the players). */
+export function drawPoopStains(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
+  const seen = (x: number, y: number) => intersectsView({ x: x - 16, y: y - 16, w: 32, h: 32 }, view, 16)
+  ctx.save()
+  for (const s of combat.poopStains) {
+    if (!seen(s.x, s.y)) continue
+    const x = s.x - camX
+    ctx.globalAlpha = Math.min(1, s.left / (POOP.stain * 0.3)); ctx.fillStyle = POOP_COLOR
+    ctx.beginPath(); ctx.ellipse(x, s.y, 8, 5, 0, 0, Math.PI * 2); ctx.fill()
+    // it runs down a little
+    ctx.beginPath(); ctx.ellipse(x + 3, s.y + 7, 2.5, 5, 0, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = POOP_SHADE
+    ctx.beginPath(); ctx.arc(x - 2, s.y - 1, 2, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.restore()
 }

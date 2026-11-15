@@ -55,11 +55,11 @@ test('the clock: it comes round every `every` seconds, hinders by chance, and is
 
 test("an entry's acts are its class's with its own over them; the sheets keep only what is known", () => {
   const e = L.SOUL_ENTRIES.find(o => o.id === 'jelly.dead.strings')
-  assert.deepEqual(L.entryActParams(e), { ...A.SOUL_ACT_DEFAULTS, ...A.SOUL_CLASS_ACTS.patrol, chance: A.SOUL_HINDER_CHANCE[e.rarity] })
+  assert.deepEqual(L.entryActParams(e), { ...A.SOUL_ACT_DEFAULTS, ...A.SOUL_CLASS_ACTS.patrol, chance: A.SOUL_HINDER_CHANCE[e.rarity], poopSpare: false })
   const next = L.changeEntry(L.SOUL_ENTRIES, e.id, o => ({ ...o, act: { help: 'fetch', every: 99, range: 5, power: 0.25, hinder: 'aim', chance: 2, force: -1, nope: 1 } }))
   const got = next.find(o => o.id === e.id)
   assert.deepEqual(got.act, { every: 30, range: 50, power: 0.25, chance: 1, force: 0, help: 'fetch', hinder: 'aim' }, 'inside the limits, the unknown dropped')
-  assert.deepEqual(L.entryActParams(got), { help: 'fetch', every: 30, range: 50, power: 0.25, hinder: 'aim', chance: 1, force: 0 })
+  assert.deepEqual(L.entryActParams(got), { help: 'fetch', every: 30, range: 50, power: 0.25, hinder: 'aim', chance: 1, force: 0, poopEvery: 0, poopDamage: 2, poopSpare: false })
   const file = L.soulsFile(next)
   assert.deepEqual(file, { sheets: { [e.id]: { act: got.act } } })
   assert.equal(L.soulsFileProblem(file), null)

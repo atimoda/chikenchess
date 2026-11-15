@@ -37,8 +37,9 @@ export const BIRD_FRAMES = [
   ],
 ]
 // a bird of a type (or the old one in its alien's colour), undead ones grey with eyes in their note's colour
-export function drawBirdArt(ctx: Ctx, x: number, y: number, face: number, t: number, type: BirdType | null, color: string, undead = false, eye = UNDEAD_EYE, flash = 0) {
-  const f = BIRD_FRAMES[Math.floor(t * (type?.flap ?? 8.3)) % 2], p = type?.pixel ?? 4
+// still: its wings folded (sitting on a wire, a tree, a platform or an object)
+export function drawBirdArt(ctx: Ctx, x: number, y: number, face: number, t: number, type: BirdType | null, color: string, undead = false, eye = UNDEAD_EYE, flash = 0, still = false) {
+  const f = BIRD_FRAMES[still ? 1 : Math.floor(t * (type?.flap ?? 8.3)) % 2], p = type?.pixel ?? 4
   const c = type ? birdColors(type, undead) : { body: color, wing: color, belly: color, beak: "#ffb347" }
   ctx.save(); ctx.translate(x, y); ctx.scale(face < 0 ? -1 : 1, 1)
   const key = flash > 0 ? "flash" : `${undead ? eye : "#101018"}|${c.beak}|${c.wing}|${c.belly}|${c.body}`
@@ -50,7 +51,7 @@ export function drawBirdArt(ctx: Ctx, x: number, y: number, face: number, t: num
   ctx.restore()
 }
 export function drawBird(ctx: Ctx, c: Combat["critters"][number], x: number) {
-  drawBirdArt(ctx, x, c.y, c.face, c.t, c.bird ? BIRDS[c.bird] : null, c.color)
+  drawBirdArt(ctx, x, c.y, c.face, c.t, c.bird ? BIRDS[c.bird] : null, c.color, false, UNDEAD_EYE, 0, c.perch?.phase === 'sit')
 }
 
 // an undead: the alien it was, grey, stiff and turned as it fell, with red eyes; once resurrected, a grey bird
@@ -58,7 +59,7 @@ export function drawUndead(ctx: Ctx, g: Combat["targets"][number], x: number, be
   const u = g.data as UndeadState
   if (u.bird) {
     ctx.save(); if (g.deadT > 0) ctx.globalAlpha = Math.max(0, g.deadT / 0.3)
-    drawBirdArt(ctx, x, g.y - g.h / 2, g.face, g.animT, BIRDS[u.bird], "#8d9096", true, u.eye, g.flash)
+    drawBirdArt(ctx, x, g.y - g.h / 2, g.face, g.animT, BIRDS[u.bird], "#8d9096", true, u.eye, g.flash, u.perch?.phase === 'sit')
     ctx.restore()
     return
   }

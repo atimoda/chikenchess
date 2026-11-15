@@ -136,9 +136,9 @@ const BLACK_KEY = "#14141c"
 export const SOUL_SHADOW = "#000000"
 
 // A soul centred at (x, y), facing `face`, at the moment t (s) of its wing beat. shadow: only its outline, in black
-// (one never caught, in the library).
-export function drawSoulArt(ctx: Ctx, x: number, y: number, face: number, t: number, look: SoulLook, shadow = false) {
-  const up = Math.floor(t * SOUL_SHAPES[look.shape].flap) % 2 === 0
+// (one never caught, in the library). still: its wings folded (resting on a wire, a tree, a platform or an object).
+export function drawSoulArt(ctx: Ctx, x: number, y: number, face: number, t: number, look: SoulLook, shadow = false, still = false) {
+  const up = !still && Math.floor(t * SOUL_SHAPES[look.shape].flap) % 2 === 0
   const rows = SOUL_FRAMES[look.shape][up ? 0 : 1], p = look.pixel
   ctx.save(); ctx.translate(x, y); ctx.scale(face < 0 ? -1 : 1, 1)
   const sprite = pixelSprite(rows, shadow ? "shadow" : `${look.eye}|${look.beak}|${look.wing}|${look.belly}|${look.body}`, () => shadow

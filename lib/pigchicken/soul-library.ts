@@ -122,6 +122,7 @@ function cleanAct(raw: unknown): Partial<SoulActParams> | undefined {
   }
   if (has(SOUL_HELPS, r.help)) out.help = r.help
   if (has(SOUL_HINDERS, r.hinder)) out.hinder = r.hinder
+  if (typeof r.poopSpare === 'boolean') out.poopSpare = r.poopSpare
   return Object.keys(out).length ? out : undefined
 }
 function some<T extends string>(raw: unknown, order: readonly T[]): T[] | undefined {
@@ -303,7 +304,7 @@ export function entryLookFor(e: SoulEntry, color: string): SoulLook {
 // how it flies when let out: its class's numbers, with its own over them
 export const entryFollowParams = (e: SoulEntry): SoulFollowParams => ({ ...SOUL_FOLLOW_DEFAULTS, ...SOUL_CLASSES[e.cls].params, ...e.follow })
 // what it does then, for her and against her: its class's and its state's numbers (soulActBase), with its own over them
-export const entryActBase = (e: SoulEntry): SoulActParams => soulActBase(e.cls, e.state, e.rarity)
+export const entryActBase = (e: SoulEntry): SoulActParams => soulActBase(e.cls, e.state, e.rarity, e.species)
 export const entryActParams = (e: SoulEntry): SoulActParams => ({ ...entryActBase(e), ...e.act })
 
 // ---------- traits: the notes and the weapons an entry can be found with ----------

@@ -8,6 +8,8 @@ import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type
 import { birdPerchParams, perchEnd, perchSeekIn, perchSit, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
 import { ABDUCT_GAP, CHICK_SOUL_COLOR, farSpot, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, stepScares, weaponClass, type Abduction, type Scare, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
 import { SOUL_FLIGHT, createSoulBrain, soulErrandStep, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
+import { newSoulRoam, roamLift, soulRoamStep, type SoulRoam } from './soul-roam'
+import { POOP, newPoop, poopFall, poopHits, poopKnock, poopUnder, poopWait, type Poop } from './poop'
 import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
 import { entryActParams, entryFollowParams, entryOf } from './soul-library'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
@@ -62,14 +64,18 @@ export type Critter = {
   bird?: BirdId; homeX?: number; homeY?: number; whistleIn?: number
   soul?: SoulOrigin // a bird: the alien it was and how it became one (lib/pigchicken/souls.ts)
   perch?: PerchState | null // resting on a wire (lib/pigchicken/bird-perch.ts); null: it already tried
+  poopIn?: number // a bird whose type has the power: s until its next dropping (lib/pigchicken/poop.ts)
 }
 // a soul let out of its owner's Gaiola: it flies with them as a friend (lib/pigchicken/soul-follow.ts) until it is
 // called back (recallIn: s until it leaves for their Gaiola) or a Passaguá catches it. away: s since its owner left
 // the game (it flies off); null while it has one. act, clock: what it does for and against its owner, and when
 // (lib/pigchicken/soul-acts.ts); job: what it is off doing right now; acts: how many helps it has done; warned: the
-// enemy it last warned of
+// enemy it last warned of. roam: its outings to the wires, trees, platforms and objects around its owner
+// (lib/pigchicken/soul-roam.ts)
 export type FreeSoul = {
   soul: Soul; owner: string; x: number; y: number; face: number; t: number; brain: SoulBrain; params: SoulFollowParams; recallIn: number | null; away: number | null
+  roam: SoulRoam
+  poopIn: number // s until it may let a dropping fall (its entry's poopEvery; lib/pigchicken/poop.ts)
   act: SoulActParams; clock: SoulActClock; job: SoulJob | null; acts: number; warned: { id: number; at: number } | null
   // in a portal with its owner: where it was when she went in (it flies from there to the portal's centre) and how big
   // it is drawn meanwhile (1 .. 0 inside; missing: its own size)
@@ -1683,6 +1689,69 @@ export function createCombat() {
     f.job = null
   }
 
+  // ---------- "cagar" (lib/pigchicken/poop.ts) ----------
+  const poops: Poop[] = []
+  // what a dropping left: on a chicken (it goes with her; dx, dy from the top of her box) and on the floor
+  const poopStains: { id: string; dx: number; dy: number; x: number; y: number; left: number }[] = []
+  const poopMarks: { x: number; y: number; left: number }[] = []
+  const poopable = (t: Target) => alive(t) && !t.blast && (t.kind === 'alien' || t.kind === 'zombie' || !!t.dummy || (t.kind === 'undead' && !(t.data as UndeadState).bird))
+  const targetBox = (t: Target): BlastBox => ({ l: t.x - t.w / 2, r: t.x + t.w / 2, t: t.y - t.h, b: t.y })
+  // a bird at (x, y) with the power: its clock, and a dropping as soon as a boneco is under it. by: the player whose
+  // soul it is (null: a wild bird); spare: it never counts that player; foes: the enemies and dummies count
+  function birdPoops(at: { x: number; y: number; poopIn?: number }, every: number, damage: number, vx: number, by: string | null, spare: boolean, foes: boolean, dt: number) {
+    if (every <= 0) return
+    if (at.poopIn === undefined) at.poopIn = poopWait(every, Math.random, true)
+    at.poopIn -= dt
+    if (at.poopIn > 0) return
+    const bodies: BlastBox[] = []
+    for (const a of blastActors) if (a.id && !(spare && a.id === by)) bodies.push(a.box)
+    if (foes) for (const t of targets) if (poopable(t)) bodies.push(targetBox(t))
+    const floors = actGround.boxes.filter(b => b.solid !== false)
+    // nobody there: it looks again in a moment
+    if (!poopUnder(at.x, at.y, bodies, floors)) { at.poopIn = POOP.look; return }
+    poops.push(newPoop(at.x, at.y + 8, vx, damage, by, spare, foes))
+    at.poopIn = poopWait(every)
+  }
+  // an undead bird: an enemy itself, it only lets them fall on the chickens
+  function undeadPoops(t: Target, u: UndeadState, p: { every: number; damage: number }, dt: number) {
+    const at = { x: t.x, y: t.y - t.h / 2, poopIn: u.poopIn }
+    birdPoops(at, p.every, p.damage, 0, null, false, false, dt)
+    u.poopIn = at.poopIn
+  }
+  // the droppings fall: on an enemy or a dummy they hurt; on a chicken they knock her a little and leave a stain; on
+  // a floor they leave a mark
+  function stepPoops(dt: number) {
+    const splat = (x: number, y: number) => { burst(x, y, 6, '#f4f1e6', 110, 2); sound('splat', null) }
+    for (let i = poops.length - 1; i >= 0; i--) {
+      const p = poops[i], py = p.y
+      let gone = !poopFall(p, dt)
+      if (!gone) {
+        const who = blastActors.find(a => a.id && !(p.spare && a.id === p.by) && poopHits(p, a.box))
+        const foe = !who && p.foes ? targets.find(t => poopable(t) && poopHits(p, targetBox(t))) : undefined
+        if (who) {
+          const k = poopKnock(p.damage), dir = p.vx > 0 ? 1 : p.vx < 0 ? -1 : Math.random() < 0.5 ? -1 : 1
+          who.push(dir * k, -k * POOP.knock.up)
+          // on her back: nearer the middle of her box than where it fell, and below her head
+          poopStains.push({ id: who.id!, dx: (p.x - (who.box.l + who.box.r) / 2) * POOP.stainIn, dy: (who.box.b - who.box.t) * POOP.stainAt, x: p.x, y: p.y, left: POOP.stain })
+          splat(p.x, p.y); gone = true
+        } else if (foe) {
+          hitTarget(foe, p.damage, 0, p.x, p.y, 'impact'); splat(p.x, p.y); gone = true
+        } else {
+          const floor = floorUnder(actGround, p.x, py)
+          if (p.y >= floor) { poopMarks.push({ x: p.x, y: floor, left: POOP.mark }); splat(p.x, floor); gone = true }
+        }
+      }
+      if (gone) poops.splice(i, 1)
+    }
+    for (let i = poopStains.length - 1; i >= 0; i--) {
+      const st = poopStains[i], a = actorOf(st.id)
+      st.left -= dt
+      if (!a || st.left <= 0) { poopStains.splice(i, 1); continue }
+      st.x = (a.box.l + a.box.r) / 2 + st.dx; st.y = a.box.t + st.dy
+    }
+    for (let i = poopMarks.length - 1; i >= 0; i--) if ((poopMarks[i].left -= dt) <= 0) poopMarks.splice(i, 1)
+  }
+
   // a note of the chord to the nearest enemy it reaches: it fills its harmony a little
   function soulSings(f: FreeSoul, onBeat: boolean) {
     let best: Target | null = null, near = f.act.range
@@ -1823,7 +1892,7 @@ export function createCombat() {
     const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry), brain = createSoulBrain(x, y, params)
     // it pops out, down and to one side
     brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
-    freed.push({ soul, owner, x, y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null })
+    freed.push({ soul, owner, x, y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, roam: newSoulRoam(params), poopIn: poopWait(act.poopEvery, Math.random, true), recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null })
   }
 
   const env = (groundY: number, playerX: number, playerY: number, bounds?: { l: number; r: number }): EnemyEnv => ({
@@ -1879,6 +1948,10 @@ export function createCombat() {
     refreshSouls() { for (const f of freed) { const e = entryOf(f.soul); f.params = entryFollowParams(e); f.act = entryActParams(e) } },
     // the souls out of the bags, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
     get freedSouls() { return freed as readonly FreeSoul[] },
+    // the droppings falling, the stains they left on the chickens and the marks on the floor (lib/pigchicken/poop.ts)
+    get poops() { return poops as readonly Poop[] },
+    get poopStains() { return poopStains as readonly { x: number; y: number; left: number }[] },
+    get poopMarks() { return poopMarks as readonly { x: number; y: number; left: number }[] },
     get looseSouls() { let n = 0; for (const f of freed) if (f.owner === active) n++; return n },
     // lets the soul on top of this player's cage in front out at `from` (world px: where that cage is); it flies with
     // them. A chick ("alma pintinho") is a chick again: it goes to chickReleases, for the screen's flock
@@ -1951,7 +2024,7 @@ export function createCombat() {
         for (const soul of [...c.cages.flatMap(k => k.souls), ...c.loose]) nextId = Math.max(nextId, soul.id + 1)
         for (const soul of c.loose) {
           const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry)
-          freed.push({ soul, owner: id, x: 0, y: 0, face: 1, t: 0, brain: createSoulBrain(0, 0, params), params, recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null, portal: { x: 0, y: 0 }, k: 0 })
+          freed.push({ soul, owner: id, x: 0, y: 0, face: 1, t: 0, brain: createSoulBrain(0, 0, params), params, roam: newSoulRoam(params), poopIn: poopWait(act.poopEvery, Math.random, true), recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null, portal: { x: 0, y: 0 }, k: 0 })
         }
       }
     },
@@ -2708,14 +2781,17 @@ export function createCombat() {
               t.x = pos.x; t.y = pos.y + t.h / 2; t.face = pos.face; t.animT += dt
               u.whistleIn -= dt
               if (u.whistleIn <= 0) { u.whistleIn = whistleTime(type); whistle(t.x, t.y - t.h / 2, type, u.params.mode) }
+              if (type.poop) undeadPoops(t, u, type.poop, dt)
               continue
             }
           }
         }
         if (!stepUndead(t, u, dt, { boxes, groundY, viewL: view.l, viewR: view.r, playing, rand: Math.random })) { targets.splice(i, 1); continue }
         if (u.bird && u.phase === 'bird' && t.deadT <= 0) {
+          const type = BIRDS[u.bird]
           u.whistleIn -= dt
-          if (u.whistleIn <= 0) { const type = BIRDS[u.bird]; u.whistleIn = whistleTime(type); whistle(t.x, t.y - t.h / 2, type, u.params.mode) }
+          if (u.whistleIn <= 0) { u.whistleIn = whistleTime(type); whistle(t.x, t.y - t.h / 2, type, u.params.mode) }
+          if (type.poop) undeadPoops(t, u, type.poop, dt)
         }
       }
       targets.forEach(t => {
@@ -2744,6 +2820,8 @@ export function createCombat() {
         const c = critters[i]
         c.t += dt
         const type = c.kind === 'bird' && c.bird ? BIRDS[c.bird] : null
+        // a wild bird of a type with the power lets its droppings fall on any boneco under it
+        if (type?.poop) birdPoops(c, type.poop.every, type.poop.damage, c.perch ? 0 : c.vx, null, false, true, dt)
         // when it would leave, it may rest on a wire of the Postes and Torres instead (and run from whoever comes near)
         if (type && c.perch === undefined && perchWorld?.spans.length && c.t >= (type.flight === 'leave' ? 0.6 : type.stay)) {
           const pp = birdPerchParams(type.perch)
@@ -2812,7 +2890,7 @@ export function createCombat() {
           const at = transit ?? (owner ? { x: owner.x, y: owner.y - 90 * owner.scale } : null)
           if (!at) continue
           f.portal = null; f.k = undefined
-          f.x = at.x; f.y = at.y; f.t = 0; f.brain = createSoulBrain(at.x, at.y, f.params); f.clock = newActClock(f.act)
+          f.x = at.x; f.y = at.y; f.t = 0; f.brain = createSoulBrain(at.x, at.y, f.params); f.roam = newSoulRoam(f.params); f.clock = newActClock(f.act)
         }
         if (f.recallIn !== null) {
           f.recallIn -= dt
@@ -2825,11 +2903,16 @@ export function createCombat() {
         if (!her) continue
         // called back, it drops everything; off doing something, it does not follow
         if (f.job && (f.recallIn !== null || !soulJobStep(f, her, dt))) letGo(f)
-        if (f.job) continue
-        soulFollowStep(f.brain, f, her, f.params, { beat: beatNow, air: soulAir }, dt)
-        if (f.recallIn === null) soulActs(f, her, dt, onBeat)
+        if (f.job) { roamLift(f.roam); continue }
+        // out exploring (on its way to a wire, a tree, a platform or an object, or resting there), it does not follow
+        if (!soulRoamStep(f.roam, f.brain, f, her, f.params, perchWorld, dt)) soulFollowStep(f.brain, f, her, f.params, { beat: beatNow, air: soulAir }, dt)
+        if (f.recallIn === null) {
+          soulActs(f, her, dt, onBeat)
+          birdPoops(f, f.act.poopEvery, f.act.poopDamage, f.brain.vx, f.owner, f.act.poopSpare, true, dt)
+        }
       }
       spreadSouls(freed, dt)
+      stepPoops(dt)
       // online: the other browsers' souls glide to where they are; what was asked and never answered is forgotten
       for (const m of soulMirrors) glideSoulMirror(m, dt)
       asked.forEach((a, key) => { if ((a.t += dt) > TAKE_WAIT * 2) asked.delete(key) })

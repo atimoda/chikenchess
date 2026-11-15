@@ -70,6 +70,16 @@ const FOLLOW_NUMBERS: { key: FollowNumber; label: string; unit?: string; hint: s
   { key: "loopEvery", label: "Voltinha a cada", unit: "s", hint: "Intervalo das voltinhas no descanso (0: nunca)." },
   { key: "restless", label: "Inquietação", hint: "Quanto vagueia em volta do lugar." },
 ]
+// exploring the map: how keen it is, how far it goes, how long it rests and where it likes to land
+const ROAM_NUMBERS: { key: FollowNumber; label: string; unit?: string; hint: string }[] = [
+  { key: "roam", label: "Explorar", hint: "Vontade de sair de perto do dono para pousar pelo mapa. 0: nunca sai." },
+  { key: "roamRange", label: "Alcance", unit: "px", hint: "Até que distância do dono ficam os lugares que ela visita." },
+  { key: "perchTime", label: "Tempo pousada", unit: "s", hint: "Quanto descansa em cada lugar." },
+  { key: "wires", label: "Fios", hint: "Quanto gosta de pousar nos fios de energia. 0: nunca." },
+  { key: "trees", label: "Árvores", hint: "Quanto gosta de pousar em galhos e copas. 0: nunca." },
+  { key: "platforms", label: "Plataformas", hint: "Quanto gosta de pousar em plataformas e telhados. 0: nunca." },
+  { key: "objects", label: "Objetos", hint: "Quanto gosta de pousar em postes, torres, Baús, Gongo, Jukebox, lousas e alvos. 0: nunca." },
+]
 type ActNumber = keyof typeof SOUL_ACT_RANGES
 const ACT_NUMBERS: Record<ActNumber, { label: string; unit?: string; hint: string }> = {
   every: { label: "A cada", unit: "s", hint: "Intervalo das ações. A cada volta ela pode atrapalhar; se não, fica pronta para ajudar assim que houver o que fazer." },
@@ -77,11 +87,13 @@ const ACT_NUMBERS: Record<ActNumber, { label: string; unit?: string; hint: strin
   power: { label: "Força da ajuda", hint: "Quanto de harmonia a nota dá, ou a altura do degrau." },
   chance: { label: "Chance de atrapalhar", hint: "A cada volta do intervalo. Alma de nota fora da escala soma 15%." },
   force: { label: "Força do atrapalho", hint: "Tamanho do empurrão, do quique, do desvio da mira, da bicada, ou o tempo desafinada." },
+  poopEvery: { label: "Cagar a cada", unit: "s", hint: "Intervalo entre dois cagados; ela só solta com um boneco embaixo. 0: não tem esse poder." },
+  poopDamage: { label: "Dano do cagado", hint: "Vida que tira de inimigo ou alvo de treino; numa galinha, a força do tranco." },
 }
 // what a soul of this entry does against its owner, for the card
 const hinderName = (e: SoulEntry, p: SoulActParams) => (p.hinder !== "own" ? SOUL_HINDERS[p.hinder] : e.state === "dead" ? "Pela arma que a matou" : "Desafinar")
 const COLOUR_LABELS: Record<(typeof SOUL_LOOK_COLOURS)[number], string> = { body: "Corpo", wing: "Asa", belly: "Barriga", beak: "Bico", eye: "Olho" }
-const GROUPS = ["Ficha", "Aparência", "Voo", "Ações", "Receita"] as const
+const GROUPS = ["Ficha", "Aparência", "Voo", "Exploração", "Ações", "Receita"] as const
 const field = "h-8 w-44 min-w-0 rounded-md border border-white/15 bg-[#0b110e] px-2"
 const small = "inline-flex h-8 items-center gap-1.5 rounded-md border border-white/20 px-2 hover:border-primary disabled:opacity-40"
 
@@ -96,7 +108,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
   const [entries, setEntries] = useState<readonly SoulEntry[]>(() => loadSoulEntries())
   const [sel, setSel] = useState<string | null>(null)
   const [edit, setEdit] = useState(false)
-  const [open, setOpen] = useState<Record<string, boolean>>({ Ficha: true, Aparência: true, Voo: false, Ações: false, Receita: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Ficha: true, Aparência: true, Voo: false, Exploração: false, Ações: false, Receita: true })
   const admin = useIsAdmin(), editing = admin && edit
   const cards = useRef(new Map<string, HTMLCanvasElement>())
   const preview = useRef<HTMLCanvasElement | null>(null)
@@ -294,6 +306,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                   <div className={row}><span>Voo</span><span className="text-white">{entryClassName(v)}</span></div>
                   {acts.help !== "none" && <div className={row}><span>Ajuda</span><span className="text-white">{SOUL_HELPS[acts.help]}</span></div>}
                   {acts.hinder !== "none" && acts.chance > 0 && <div className={row}><span>Atrapalho</span><span className="text-white">{hinderName(v, acts)}</span></div>}
+                  {acts.poopEvery > 0 && <div className={row}><span>Caga</span><span className="text-white">{acts.poopSpare ? "Poupa o dono" : "Até no dono"}</span></div>}
                   {got && <div className={row}><span>Capturadas</span><span className="text-white">{got.n}</span></div>}
                   {got && got.at > 0 && <div className={row}><span>Primeira captura</span><span className="text-white">{new Date(got.at).toLocaleDateString("pt-BR")}</span></div>}
                 </div>
@@ -370,6 +383,15 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                       </div>
                     </>
                   )}
+                  {g === "Exploração" && (
+                    <div className="grid gap-field">
+                      {(flight.roam > 0 ? ROAM_NUMBERS : ROAM_NUMBERS.slice(0, 1)).map(m => {
+                        const n = flight[m.key], r = SOUL_FOLLOW_RANGES[m.key]
+                        return <PatioRange key={m.key} label={m.label} min={r.min} max={r.max} step={r.step} value={n} display={`${Math.round(n * 100) / 100}${m.unit ? ` ${m.unit}` : ""}`}
+                          changed={n !== ofClass[m.key]} hint={m.hint} onChange={x => setFollow(m.key, x)} onReset={() => setFollow(m.key, ofClass[m.key])} />
+                      })}
+                    </div>
+                  )}
                   {g === "Ações" && (
                     <>
                       <label className={row}><span>Ajuda</span>
@@ -384,6 +406,12 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                         </select>
                       </label>
                       <div className="grid gap-field">{(["chance", "force"] as const).map(actRange)}</div>
+                      <div className="grid gap-field">{(acts.poopEvery > 0 ? ["poopEvery", "poopDamage"] as const : ["poopEvery"] as const).map(actRange)}</div>
+                      {acts.poopEvery > 0 && (
+                        <label className={row} title="Ligado, ela nunca caga no próprio dono; desligado, o dono é um boneco como os outros"><span>Poupar o dono</span>
+                          <input type="checkbox" checked={acts.poopSpare} onChange={e => setAct("poopSpare", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
+                        </label>
+                      )}
                     </>
                   )}
                   {g === "Receita" && v.recipe && (
