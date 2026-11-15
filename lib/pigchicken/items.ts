@@ -46,6 +46,7 @@ export type ItemDef = {
   fireMode: FireMode
   rate: number // shots per second
   burst: number // shots per press in burst mode
+  burstHold: boolean // burst mode: the burst only goes on while Atirar is held (letting go stops it)
   mag: number // shots per magazine (0 = no ammo, never reloads)
   reloadTime: number // s
   autoReload: boolean
@@ -285,7 +286,7 @@ function chain(...steps: [TransformKind, string?, number?][]): Transform[] {
 
 const PISTOL: ItemDef = {
   id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off', landShow: 'always',
-  fireMode: 'semi', rate: 6, burst: 3, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0.1, chargeMin: 0.3,
+  fireMode: 'semi', rate: 6, burst: 3, burstHold: true, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0.1, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
@@ -753,7 +754,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
   if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
   ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
@@ -785,7 +786,7 @@ const V7_TURN_RATE: Partial<Record<ItemId, number>> = { sax: 120, violin: 420, k
 const ITEMS_VERSION = 10
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
-  ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
+  ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
   'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {

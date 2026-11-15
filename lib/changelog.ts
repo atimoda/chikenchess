@@ -7,8 +7,11 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida',
+    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; rajada só enquanto segura Atirar',
     groups: [
+      { title: 'Pátio', items: [
+        'Armas e instrumentos de rajada (como o Trompete) agora disparam só enquanto Atirar está segurado: soltar no meio interrompe a rajada, então você escolhe quantos tiros ou notas saem. Um toque rápido solta um só. Segurar até o fim dispara a rajada inteira, como antes. No painel Itens, em Disparo, a opção “Rajada só enquanto segura Atirar” aparece nos itens em modo Rajada e vem ligada; desligada, um aperto volta a disparar a rajada inteira. Vale no Parquinho, no Templo e na Vila, local ou online.',
+      ] },
       { title: 'Partida', items: [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
         'Preferências da partida ganhou “Match log”, com o botão Copy: copia o histórico completo da partida, uma linha por acontecimento, com cada lance (posição, lances possíveis, listas Best e Worst com os scores, classificação, sequência e ovos pagos), Freeze e Shield, Undo, Redo, Mulligan e cada vez que as setas foram abertas. Serve para colar numa conversa ao relatar um bug. Vale na campanha e no online.',
