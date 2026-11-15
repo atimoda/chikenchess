@@ -32,7 +32,7 @@ export function AngleKnob({ value, label, disabled, onChange }: { value: number;
           ? <circle cx={c} cy={c} r={r} fill="var(--primary)" />
           : <path d={`M${c} ${c} L${x.toFixed(2)} ${(c - y).toFixed(2)} A${r} ${r} 0 ${value > 180 ? 1 : 0} 1 ${x.toFixed(2)} ${(c + y).toFixed(2)} Z`} fill="var(--primary)" />}
       </svg>
-      <span className="text-[10px] tabular-nums text-white/60">{value}°</span>
+      <span className="w-6 text-[10px] tabular-nums text-white/60">{value}°</span>
     </span>
   )
 }

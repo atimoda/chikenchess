@@ -49,7 +49,10 @@ const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "staffX", "staffY", "
 const comboArc = (combo: ComboStep[], base: ItemDef, kind: BlowKind) =>
   combo.find(c => c.kind === kind)?.arc ?? base.combo.find(c => c.kind === kind)?.arc ?? 150
 // a combo blow's lists take only the width of what they show (no arrow, and the chosen option's width where the browser can)
-const COMBO_SELECT = "h-8 w-auto cursor-pointer appearance-none rounded-md border border-white/15 bg-[#0b110e] px-1 [field-sizing:content] hover:border-primary"
+const COMBO_BOX = "h-8 cursor-pointer appearance-none rounded-md border border-white/15 bg-[#0b110e] px-1 hover:border-primary"
+const COMBO_SELECT = `${COMBO_BOX} w-auto [field-sizing:content]`
+// the direction keeps one width, so the other controls of every blow line up
+const COMBO_KIND = `${COMBO_BOX} w-[144px] shrink-0`
 // the numbers of a combo blow that come as lists, as narrow as what they show: duration (× the item's), the block on
 // the next blow (s) and the reach (× the item's)
 const COMBO_LISTS: { key: "time" | "cooldown" | "reach"; name: string; hint: string; values: number[]; show: (v: number) => string }[] = [
@@ -229,7 +232,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com direção, ângulo que cobre, duração, cooldown e alcance">Direção / Ângulo / Duração / Cooldown / Alcance</span>
                   {it.combo.map((c, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-1">
-                      <select aria-label={`Golpe ${i + 1} do combo: direção`} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { ...c, kind: v as BlowKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as BlowKind) : c.arc } }) }} className={COMBO_SELECT}>
+                      <select aria-label={`Golpe ${i + 1} do combo: direção`} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { ...c, kind: v as BlowKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as BlowKind) : c.arc } }) }} className={COMBO_KIND}>
                         {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{i + 1}. {o.label}</option>)}
                         {it.combo.length > 1 && <option value="">remover</option>}
                       </select>
