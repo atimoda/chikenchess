@@ -4,7 +4,20 @@
 // with its poles' parallax), slides it along the wire away from a player and, sometimes, takes it to another spot.
 // The parameters are per bird type (BirdType.perch), so the soul classes can tune them; fleeFrom is the bare escape
 // step, for any bird that is not on a wire.
+// Besides the wires, the world holds the other places to land (lib/pigchicken/perch-places.ts): branches and crowns
+// of trees, the top of platforms and of some objects, each one a straight line treated like a wire. How much a bird
+// likes each kind of place is a parameter too (0: it never lands there). The souls flying free use the same world to
+// explore (perchPick, perchHold, perchPoint: lib/pigchicken/soul-roam.ts).
 import { spanCurve, spanPoint, type Span } from './power-lines'
+
+export type PerchPlace = 'wire' | 'tree' | 'platform' | 'object'
+export const PERCH_PLACES: Record<PerchPlace, string> = { wire: 'Fios', tree: 'Árvores', platform: 'Plataformas', object: 'Objetos' }
+// a line a bird can sit on: a wire (no place given) or another place to land
+export type PerchLine = Span & { place?: PerchPlace }
+// how much each kind of place is liked (0 to 1)
+export type PerchLikes = { wires: number; trees: number; platforms: number; objects: number }
+const LIKE_KEY: Record<PerchPlace, keyof PerchLikes> = { wire: 'wires', tree: 'trees', platform: 'platforms', object: 'objects' }
+export const perchLike = (p: PerchLikes, line: PerchLine) => p[LIKE_KEY[line.place ?? 'wire']]
 
 export type BirdPerchParams = {
   alert: number // px: a player closer than this makes it uneasy (it slides away along the wire)
@@ -15,12 +28,15 @@ export type BirdPerchParams = {
   perchTime: number // s it stays on the wires (all its flights together) before leaving
   spacing: number // px from the next bird on the same wire
   range: number // px: how far it looks for a wire
+  // 0 to 1: how much it likes the wires, the trees, the top of the platforms and of the objects (0: never lands there)
+  wires: number; trees: number; platforms: number; objects: number
 }
-export const BIRD_PERCH_DEFAULTS: BirdPerchParams = { alert: 140, flee: 0.4, fleeSpeed: 0.6, cooldown: 1.5, perchChance: 0.3, perchTime: 10, spacing: 34, range: 1800 }
+export const BIRD_PERCH_DEFAULTS: BirdPerchParams = { alert: 140, flee: 0.4, fleeSpeed: 0.6, cooldown: 1.5, perchChance: 0.3, perchTime: 10, spacing: 34, range: 1800, wires: 1, trees: 0.8, platforms: 0.3, objects: 0.3 }
 export const BIRD_PERCH_RANGES: Record<keyof BirdPerchParams, { min: number; max: number; step: number }> = {
   alert: { min: 0, max: 400, step: 5 }, flee: { min: 0, max: 1, step: 0.05 }, fleeSpeed: { min: 0, max: 1, step: 0.05 },
   cooldown: { min: 0, max: 5, step: 0.1 }, perchChance: { min: 0, max: 1, step: 0.05 }, perchTime: { min: 1, max: 60, step: 1 },
   spacing: { min: 16, max: 120, step: 2 }, range: { min: 200, max: 4000, step: 50 },
+  wires: { min: 0, max: 1, step: 0.05 }, trees: { min: 0, max: 1, step: 0.05 }, platforms: { min: 0, max: 1, step: 0.05 }, objects: { min: 0, max: 1, step: 0.05 },
 }
 export const birdPerchParams = (own?: Partial<BirdPerchParams>): BirdPerchParams => ({ ...BIRD_PERCH_DEFAULTS, ...own })
 // the chicken's run in px/s (walkSpeed × runMultiplier of the default params): fleeSpeed is a fraction of it
@@ -29,13 +45,21 @@ export const CHICKEN_RUN = 510
 // the wires and the camera this frame, the players' middles in world px, and the birds on the wires
 // time: s, advanced by the owner each frame (a bird not stepped for a second no longer holds its spot)
 // camY: the camera's y from its resting height restY (wires pinned to a backdrop layer slide from the camera at 0)
-export type PerchWorld = { spans: Span[]; byId: Map<string, Span>; camX: number; camY: number; restY: number; players: { x: number; y: number }[]; birds: Set<PerchState>; time: number }
+export type PerchWorld = { spans: PerchLine[]; byId: Map<string, PerchLine>; camX: number; camY: number; restY: number; players: { x: number; y: number }[]; birds: Set<PerchState>; time: number }
 export function createPerchWorld(): PerchWorld {
   return { spans: [], byId: new Map(), camX: 0, camY: 0, restY: 0, players: [], birds: new Set(), time: 0 }
 }
-export function setPerchSpans(w: PerchWorld, spans: Span[]) {
-  w.spans = spans; w.byId = new Map(spans.map(s => [s.id, s]))
+// spans: the wires; places: the other places to land (perchLines)
+export function setPerchSpans(w: PerchWorld, spans: Span[], places: PerchLine[] = []) {
+  w.spans = [...spans, ...places]; w.byId = new Map(w.spans.map(s => [s.id, s]))
   // a bird whose wire is gone leaves on its next step
+}
+// where along a line the birds may sit: a wire keeps its ends free; a short place (a tuft of a tree, the top of a
+// chest) holds one bird in its middle
+function slotsOf(line: PerchLine, len: number, spacing: number): number[] {
+  if (len < spacing * 2) return line.place && line.place !== 'wire' && len >= 12 ? [0.5] : []
+  const n = Math.min(60, Math.floor(len / spacing))
+  return Array.from({ length: n - 1 }, (_, k) => (k + 1) / n)
 }
 
 export type PerchState = {
@@ -67,21 +91,22 @@ function free(w: PerchWorld, self: PerchState | null, span: Span, t: number, len
   return true
 }
 
-// a spot on a wire near (x, y): free, inside `range`, and (when running) far from `avoid`. null: none.
+// a spot on a wire (or another place it likes) near (x, y): free, inside `range`, and (when running) far from
+// `avoid`. null: none.
 export function perchSeek(w: PerchWorld, x: number, y: number, p: BirdPerchParams, rand: () => number = Math.random, avoid?: { x: number; y: number }, self: PerchState | null = null): { span: string; t: number } | null {
   const found: { span: string; t: number; d: number }[] = []
   for (const s of w.spans) {
+    const like = perchLike(p, s)
+    if (like <= 0) continue
     const { len } = spanCurve(s, w.camX, w.camY, w.restY)
-    if (len < p.spacing * 2) continue
-    const slots = Math.min(60, Math.floor(len / p.spacing))
-    for (let k = 1; k < slots; k++) {
-      const t = k / slots
+    for (const t of slotsOf(s, len, p.spacing)) {
       const at = spanPoint(s, t, w.camX, w.camY, w.restY)
       const d = Math.hypot(at.x - x, at.y - y)
       if (d > p.range) continue
       if (avoid && Math.hypot(at.x - avoid.x, at.y - avoid.y) < p.alert * 1.6) continue
       if (!free(w, self, s, t, len, p.spacing)) continue
-      found.push({ span: s.id, t, d })
+      // a place it likes less counts as farther
+      found.push({ span: s.id, t, d: d / like })
     }
   }
   if (!found.length) return null
@@ -92,15 +117,14 @@ export function perchSeek(w: PerchWorld, x: number, y: number, p: BirdPerchParam
 }
 
 // a free spot on a wire inside a box of the world (what the screen shows), away from `avoid`: for a bird scared off
-// that goes straight to a wire in sight. null: no wire there has room
+// that goes straight to a wire in sight (only the wires: the other places are not where a scared bird goes). null:
+// no wire there has room
 export function perchSeekIn(w: PerchWorld, box: { l: number; r: number; t: number; b: number }, p: BirdPerchParams, rand: () => number = Math.random, avoid?: { x: number; y: number }): { span: string; t: number; x: number; y: number } | null {
   const found: { span: string; t: number; x: number; y: number }[] = []
   for (const s of w.spans) {
+    if (s.place && s.place !== 'wire') continue
     const { len } = spanCurve(s, w.camX, w.camY, w.restY)
-    if (len < p.spacing * 2) continue
-    const slots = Math.min(60, Math.floor(len / p.spacing))
-    for (let k = 1; k < slots; k++) {
-      const t = k / slots
+    for (const t of slotsOf(s, len, p.spacing)) {
       const at = spanPoint(s, t, w.camX, w.camY, w.restY)
       if (at.x < box.l || at.x > box.r || at.y < box.t || at.y > box.b) continue
       if (avoid && Math.hypot(at.x - avoid.x, at.y - avoid.y) < p.alert * 1.6) continue
@@ -109,6 +133,48 @@ export function perchSeekIn(w: PerchWorld, box: { l: number; r: number; t: numbe
     }
   }
   return found.length ? found[Math.min(found.length - 1, Math.floor(rand() * found.length))] : null
+}
+
+// ---------- for the souls that explore (lib/pigchicken/soul-roam.ts) ----------
+// a free spot within `range` of (x, y), any of them, the liked places more often; `not`: the line it is leaving. null:
+// nowhere to land there
+export function perchPick(w: PerchWorld, x: number, y: number, range: number, likes: PerchLikes, spacing: number, rand: () => number = Math.random, not?: string): { span: string; t: number } | null {
+  const found: { span: string; t: number; k: number }[] = []
+  let total = 0
+  for (const s of w.spans) {
+    const like = perchLike(likes, s)
+    if (like <= 0 || s.id === not) continue
+    const { a, b, len } = spanCurve(s, w.camX, w.camY, w.restY)
+    // the whole line is out of reach
+    if (Math.min(a.x, b.x) - x > range || x - Math.max(a.x, b.x) > range) continue
+    const slots = slotsOf(s, len, spacing)
+    for (const t of slots) {
+      const at = spanPoint(s, t, w.camX, w.camY, w.restY)
+      if (Math.hypot(at.x - x, at.y - y) > range || !free(w, null, s, t, len, spacing)) continue
+      // a long wire has many spots and a tuft has one: each line weighs about the same
+      const k = like / Math.sqrt(slots.length)
+      found.push({ span: s.id, t, k }); total += k
+    }
+  }
+  if (!found.length) return null
+  let at = rand() * total
+  for (const f of found) { at -= f.k; if (at <= 0) return { span: f.span, t: f.t } }
+  const last = found[found.length - 1]
+  return { span: last.span, t: last.t }
+}
+// keeps a spot for something that is not stepped by perchStep (a soul): call perchTouch every frame while it holds it
+export function perchHold(w: PerchWorld, spot: { span: string; t: number }): PerchState {
+  const st: PerchState = { span: spot.span, t: spot.t, phase: 'fly', speed: 0, left: Infinity, cool: 0, uneasy: 0, rolled: false, flights: 0, seen: w.time }
+  w.birds.add(st)
+  return st
+}
+export const perchTouch = (w: PerchWorld, st: PerchState) => { st.seen = w.time; w.birds.add(st) }
+// where a held spot is now (the middle of a bird sitting there); null: its line is gone
+export function perchPoint(w: PerchWorld, st: { span: string; t: number }): { x: number; y: number } | null {
+  const span = w.byId.get(st.span)
+  if (!span) return null
+  const at = spanPoint(span, st.t, w.camX, w.camY, w.restY)
+  return { x: at.x, y: at.y - PERCH_LIFT }
 }
 // a bird put straight on a wire (it flew there some other way): it sits from now on
 export function perchSit(w: PerchWorld, spot: { span: string; t: number }, p: BirdPerchParams, rand: () => number = Math.random): PerchState {

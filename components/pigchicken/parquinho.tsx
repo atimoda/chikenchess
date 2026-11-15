@@ -68,6 +68,7 @@ import type { SnowfallParams } from "@/lib/pigchicken/snowfall"
 import type { AuroraParams } from "@/lib/pigchicken/aurora"
 import { skyLook, type SkyLook, type SkyParams } from "@/lib/pigchicken/sky"
 import { createPerchWorld, setPerchSpans } from "@/lib/pigchicken/bird-perch"
+import { perchLines } from "@/lib/pigchicken/perch-places"
 import { powerSpans } from "@/lib/pigchicken/power-lines"
 import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
@@ -75,7 +76,7 @@ import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/com
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
-import { drawAbductions, drawFreedSouls, drawScares } from "@/components/pigchicken/draw/souls"
+import { drawAbductions, drawFreedSouls, drawPoops, drawPoopStains, drawScares } from "@/components/pigchicken/draw/souls"
 import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeSoulEntries } from "@/lib/pigchicken/soul-library"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { chestMarks } from "@/components/pigchicken/draw/chests"
@@ -730,7 +731,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         worldBoxes = nextBoxes
         worldMusic = layoutMusic(shown)
         ghostElements = shown
-        setPerchSpans(perches, powerSpans(shown.filter(e => !e.hidden)))
+        setPerchSpans(perches, powerSpans(shown.filter(e => !e.hidden)), perchLines(shown))
         playZones = allZones()
       }
       // the button stays while Pegar is held, so holding it while walking keeps taking items
@@ -1348,6 +1349,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // online, the other browsers' souls wear a ring in their browser's colour
       const netPlayers = combat.netSouls.length ? getNetState().info?.players : null
       drawFreedSouls(ctx, combat, camX, view, extraList.length ? colorsRef.current : null, netPlayers ? pid => { const p = netPlayers.find(q => q.pid === pid); return p ? PLAYER_COLORS[p.color % PLAYER_COLORS.length] : undefined } : undefined)
+      drawPoops(ctx, combat, camX, view)
       drawTempleShots(ctx, temple, camX, view)
       drawStageFan(ctx, stage, combat.noteShots, camX, combat.music.time, combat.music.beatPhase)
       drawNoteShots(ctx, combat.noteShots, camX, view)
@@ -1524,12 +1526,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }, cam)
       if (combat.scares.length) drawScares(ctx, combat, cam)
       combat.use("p1")
-      // over her: the front half of a horizontal blow, and the item wheel
+      // over her: the front half of a horizontal blow, the stain of a dropping, and the item wheel
       const fronts: [string, { x: number; y: number }][] = []
       if (combat.swing?.kind === "flat") fronts.push(["p1", origin])
       extraList.forEach(([id, eng]) => { combat.use(id); if (combat.swing?.kind === "flat") fronts.push([id, eng.getState().shoulder]) })
       combat.use("p1")
-      if (wh.open || fronts.length) {
+      const stained = combat.poopStains.length > 0
+      if (wh.open || fronts.length || stained) {
         if (wheelCanvas.width !== canvas.width || wheelCanvas.height !== canvas.height) {
           wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
           const dpr = canvas.width / stageWidth()
@@ -1540,6 +1543,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         wctx.save()
         if (zoom !== 1) { wctx.translate(stageWidth() / 2, window.innerHeight / 2); wctx.scale(zoom, zoom); wctx.translate(-stageWidth() / 2, -window.innerHeight / 2) }
         fronts.forEach(([id, at]) => { combat.use(id); drawSwing(wctx, combat, at, "front", screenView) })
+        // what a dropping left on a chicken, on her
+        if (stained) { wctx.save(); wctx.translate(jx, camY + jy); drawPoopStains(wctx, combat, camX, view); wctx.restore() }
         wctx.restore()
         combat.use("p1")
         if (wh.open) drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110))

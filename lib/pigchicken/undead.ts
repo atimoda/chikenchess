@@ -76,6 +76,7 @@ export type UndeadState = {
   leaveIn: number | null // s until it leaves (null: the music is still playing)
   whistleIn: number // a bird's next whistle (s)
   perch?: PerchState | null // resting on a wire (lib/pigchicken/bird-perch.ts); null: it already tried
+  poopIn?: number // a bird whose type has the power: s until its next dropping (lib/pigchicken/poop.ts)
   params: UndeadParams
   born: number // order of arrival (the oldest leaves first)
 }

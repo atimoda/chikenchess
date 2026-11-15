@@ -8,9 +8,11 @@
 // - A hinder is what its death left it: a dead soul pushes (killed by a blast), makes her hop (a bullet), shakes her
 //   aim (an arrow) or pecks her (a blow). One whose note was outside the key sings out of tune. How often: a chance
 //   each time its clock comes round, higher the rarer it is.
+// - "Cagar" (lib/pigchicken/poop.ts): the souls of some species let a dropping fall on whoever is under them. It
+//   hurts enemies a little; a living soul spares its owner, a dead one does not.
 // Every number is a parameter (SoulActParams): its class's and its state's first, its own entry's over them.
 import type { SoulClassId } from './soul-follow'
-import type { Soul, SoulRarity, SoulState, SoulWeapon } from './souls'
+import type { Soul, SoulRarity, SoulSpecies, SoulState, SoulWeapon } from './souls'
 
 export type SoulHelp = 'none' | 'sing' | 'beat' | 'fetch' | 'warn' | 'step'
 // own: what the soul itself is says it (the weapon that killed it; out of tune for one outside the key; else nothing)
@@ -23,12 +25,16 @@ export type SoulActParams = {
   hinder: SoulHinder // what it does against her
   chance: number // 0 to 1: each time its clock comes round, the chance it hinders
   force: number // 0 to 1: how strong that is
+  poopEvery: number // s between two droppings (0: it has no such power)
+  poopDamage: number // what a dropping takes from an enemy (and how hard it knocks a chicken)
+  poopSpare: boolean // it never lets one fall on its owner
 }
-export const SOUL_ACT_DEFAULTS: SoulActParams = { help: 'sing', every: 6, range: 300, power: 0.5, hinder: 'own', chance: 0, force: 0.3 }
-type Numeric = Exclude<keyof SoulActParams, 'help' | 'hinder'>
+export const SOUL_ACT_DEFAULTS: SoulActParams = { help: 'sing', every: 6, range: 300, power: 0.5, hinder: 'own', chance: 0, force: 0.3, poopEvery: 0, poopDamage: 2, poopSpare: true }
+type Numeric = Exclude<keyof SoulActParams, 'help' | 'hinder' | 'poopSpare'>
 export const SOUL_ACT_RANGES: Record<Numeric, { min: number; max: number; step: number }> = {
   every: { min: 1, max: 30, step: 0.5 }, range: { min: 50, max: 800, step: 10 }, power: { min: 0, max: 1, step: 0.05 },
   chance: { min: 0, max: 1, step: 0.05 }, force: { min: 0, max: 1, step: 0.05 },
+  poopEvery: { min: 0, max: 60, step: 1 }, poopDamage: { min: 0, max: 20, step: 0.5 },
 }
 export const SOUL_HELPS: Record<SoulHelp, string> = { none: 'Nenhuma', sing: 'Cantar nas harmonias', beat: 'Cantar no tempo', fetch: 'Buscar item', warn: 'Avisar perigo', step: 'Degrau no ar' }
 export const SOUL_HINDERS: Record<SoulHinder, string> = { own: 'O da própria alma', none: 'Nenhum', push: 'Empurrar', bounce: 'Quicar', aim: 'Desviar a mira', peck: 'Bicar', detune: 'Desafinar' }
@@ -41,6 +47,10 @@ export const SOUL_CLASS_ACTS: Record<SoulClassId, Partial<SoulActParams>> = {
   rhythm: { help: 'beat', every: 3, range: 450, power: 0.35 },
   lazy: { help: 'fetch', every: 10, range: 600 },
   chick: { help: 'none' },
+}
+// the species that have the power, how often and how much it hurts
+export const SPECIES_POOP: Partial<Record<SoulSpecies, Pick<SoulActParams, 'poopEvery' | 'poopDamage'>>> = {
+  mini: { poopEvery: 8, poopDamage: 1 }, twin: { poopEvery: 10, poopDamage: 2 }, drum: { poopEvery: 14, poopDamage: 4 },
 }
 // a dead soul still helps, with a chance of hindering that grows with how rare it is
 export const SOUL_HINDER_CHANCE: Record<SoulRarity, number> = { common: 0.1, uncommon: 0.2, rare: 0.3, legendary: 0.45 }
@@ -71,8 +81,9 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 export const actLerp = ([a, b]: readonly [number, number], k: number) => a + (b - a) * clamp01(k)
 
 // an entry's numbers before its own: its class's, and a dead one's chance of hindering by its rarity
-export const soulActBase = (cls: SoulClassId, state: SoulState, rarity: SoulRarity): SoulActParams =>
-  ({ ...SOUL_ACT_DEFAULTS, ...SOUL_CLASS_ACTS[cls], ...(state === 'dead' ? { chance: SOUL_HINDER_CHANCE[rarity] } : {}) })
+// (and by its species: the power to let droppings fall; a dead one does not spare its owner)
+export const soulActBase = (cls: SoulClassId, state: SoulState, rarity: SoulRarity, species?: SoulSpecies | null): SoulActParams =>
+  ({ ...SOUL_ACT_DEFAULTS, ...SOUL_CLASS_ACTS[cls], ...(species ? SPECIES_POOP[species] : {}), ...(state === 'dead' ? { chance: SOUL_HINDER_CHANCE[rarity], poopSpare: false } : {}) })
 
 type Origin = Pick<Soul, 'state' | 'weapon' | 'note'>
 // what this soul does against her

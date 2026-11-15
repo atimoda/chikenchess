@@ -88,4 +88,4 @@ Detalhes e migração em [../chicken/controls.md](../chicken/controls.md).
 
 ## Escopo
 
-Pátio e Templo, todos os players locais e o Pátio online. Entrega 1 de 2: os pássaros e almas que exploram o mapa e pousam em árvores e plataformas, e o poder de algumas aves, ainda não existem.
+Pátio e Templo, todos os players locais e o Pátio online. A segunda parte (pássaros e almas que exploram o mapa e pousam em árvores, plataformas e objetos, e o poder de cagar) está em [Pássaros e almas que exploram](birds-explore.md).

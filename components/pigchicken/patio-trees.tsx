@@ -6,23 +6,12 @@
 import { memo } from "react"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { defaultTrees } from "@/lib/pigchicken/layout"
+// the shapes (where the pads and the clouds of flowers are) are shared with the birds that land on them; the two
+// colours picked first here are the OLD_TREE_COLOUR_DRAWS it skips
+import { OLD_TREE_BOX, between, blossomCrown, oldTreeRandom as rng, pineCanopy, q, type Rand } from "@/lib/pigchicken/old-trees"
 import { SceneryWindBend } from "./scenery-wind-bend"
 
-type Rand = () => number
-function rng(seed: number): Rand {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
 const pick = <T,>(r: Rand, list: T[]) => list[Math.floor(r() * list.length)]
-// rounded to a tenth: the same text on the server and in the browser
-const q = (v: number) => Math.round(v * 10) / 10
-const between = (r: Rand, a: number, b: number) => q(a + r() * (b - a))
 
 // the temple's muted look (its tp-muted filter: less saturation, a little darker), baked into the colours
 function mute(hex: string) {
@@ -46,15 +35,7 @@ export type Tree = { kind: "pine" | "blossom"; x: number; h: number; flip: boole
 function Pine({ seed }: { seed: number }) {
   const r = rng(seed)
   const [dark, mid, light] = pick(r, PINE_GREENS), trunk = pick(r, TRUNKS)
-  const top = between(r, 330, 420), lean = between(r, -26, 26)
-  const n = 4 + Math.floor(r() * 3)
-  const pads = Array.from({ length: n }, (_, i) => {
-    const t = (i + 1) / (n + 0.4)
-    const side = i % 2 === 0 ? -1 : 1
-    const rad = between(r, 0.85, 1.15) * (80 - 40 * t)
-    return { x: q(lean * t + side * between(r, 20, 70) * (1 - t * 0.6)), y: q(-top * t - 40 + between(r, -10, 10)), r: q(rad) }
-  })
-  pads.push({ x: lean, y: -top - 6, r: between(r, 36, 50) })
+  const { top, lean, pads } = pineCanopy(r)
   const w = between(r, 9, 13)
   const branches = pads.slice(0, -1).map(p => `M ${lean * (-p.y / top)} ${p.y} Q ${(lean * (-p.y / top) + p.x) / 2} ${p.y - between(r, 2, 14)} ${p.x * 0.85} ${p.y}`).join(" ")
   return (
@@ -76,19 +57,7 @@ function Pine({ seed }: { seed: number }) {
 function Blossom({ seed }: { seed: number }) {
   const r = rng(seed)
   const [deep, petal, light] = pick(r, BLOSSOMS), trunk = pick(r, BLOSSOM_TRUNKS)
-  const top = between(r, 230, 300)
-  const nb = 3 + Math.floor(r() * 2)
-  const branches = Array.from({ length: nb }, (_, i) => {
-    const a = -Math.PI / 2 + (i - (nb - 1) / 2) * between(r, 0.45, 0.7)
-    const len = between(r, 0.7, 1) * top
-    const from = between(r, 40, 110)
-    return { x0: between(r, -6, 6), y0: -from, x: q(Math.cos(a) * len * 0.6), y: q(-from + Math.sin(a) * (len - from * 0.4)), c: between(r, -40, 40) }
-  })
-  const n = 6 + Math.floor(r() * 5)
-  const puffs = Array.from({ length: n }, (_, i) => {
-    const b = branches[i % nb]
-    return { x: b.x + between(r, -40, 40), y: b.y + between(r, -20, 40), r: between(r, 30, 60) }
-  })
+  const { top, branches, n, puffs } = blossomCrown(r)
   return (
     <>
       <path d={`M -9 0 C -10 -40 -4 -80 0 -${top * 0.4} L 8 -${top * 0.4} C 10 -80 12 -40 11 0 Z`} fill={trunk} />
@@ -109,7 +78,7 @@ function Blossom({ seed }: { seed: number }) {
 export function treesFor(screens: number): Tree[] { return defaultTrees(screens) }
 
 // the box each tree's SVG gets (tree units, base at 0 in the middle of the bottom)
-export const TREE_BOX_W = 420, TREE_BOX_H = 480
+export const TREE_BOX_W = OLD_TREE_BOX.w, TREE_BOX_H = OLD_TREE_BOX.h
 const BOX_W = TREE_BOX_W, BOX_H = TREE_BOX_H
 
 // one tree's art filling its box (w x h, base in the middle of the bottom); the Pátio's layout places it

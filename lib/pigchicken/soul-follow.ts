@@ -11,6 +11,9 @@
 //   the soul flies to it at its own speed; it rests again when it gets there. Left behind it hurries (up to 3 times
 //   its speed); lost (a portal), it comes in from beside the screen.
 // Every number is a parameter (SoulFollowParams); a class is a set of them, picked from what the soul is.
+// - Exploring (lib/pigchicken/soul-roam.ts): after a while at its spot it leaves for a wire, a tree, a platform or an
+//   object near her, rests there and comes back (or goes on to another place). How keen it is (roam), how far it goes
+//   (roamRange), how long it rests (perchTime) and which places it likes are parameters too.
 // - An errand (soulErrandStep): what it does for or against her (lib/pigchicken/soul-acts.ts) may take it off its
 //   spot for a moment, straight to a point; then it flies back.
 import type { Soul, SoulShot } from './souls'
@@ -30,14 +33,21 @@ export type SoulFollowParams = {
   patternTime: number // s: one turn of the pattern
   loopEvery: number // s between two little loops while it rests (0: never)
   restless: number // 0 to 1: how much it wanders around the spot
+  roam: number // 0 to 1: how keen it is to leave her and explore the map (0: it never leaves her side)
+  roamRange: number // px from her: how far the places it explores may be
+  perchTime: number // s it rests on each place
+  // 0 to 1: how much it likes the wires, the trees, the top of the platforms and of the objects (0: never lands there)
+  wires: number; trees: number; platforms: number; objects: number
 }
-export const SOUL_FOLLOW_DEFAULTS: SoulFollowParams = { dist: 220, height: 0.7, leash: 450, speed: 240, accel: 3, react: 0.4, side: 'any', pattern: 'still', patternSize: 60, patternTime: 4, loopEvery: 8, restless: 0.2 }
+export const SOUL_FOLLOW_DEFAULTS: SoulFollowParams = { dist: 220, height: 0.7, leash: 450, speed: 240, accel: 3, react: 0.4, side: 'any', pattern: 'still', patternSize: 60, patternTime: 4, loopEvery: 8, restless: 0.2, roam: 0.5, roamRange: 900, perchTime: 8, wires: 1, trees: 1, platforms: 0.4, objects: 0.4 }
 type Numeric = Exclude<keyof SoulFollowParams, 'side' | 'pattern'>
 export const SOUL_FOLLOW_RANGES: Record<Numeric, { min: number; max: number; step: number }> = {
   dist: { min: 20, max: 600, step: 10 }, height: { min: 0, max: 1, step: 0.05 }, leash: { min: 0, max: 1500, step: 10 },
   speed: { min: 60, max: 600, step: 10 }, accel: { min: 0.5, max: 10, step: 0.5 }, react: { min: 0, max: 2, step: 0.1 },
   patternSize: { min: 0, max: 300, step: 5 }, patternTime: { min: 0.5, max: 12, step: 0.1 }, loopEvery: { min: 0, max: 30, step: 1 },
   restless: { min: 0, max: 1, step: 0.05 },
+  roam: { min: 0, max: 1, step: 0.05 }, roamRange: { min: 200, max: 3000, step: 50 }, perchTime: { min: 1, max: 60, step: 1 },
+  wires: { min: 0, max: 1, step: 0.05 }, trees: { min: 0, max: 1, step: 0.05 }, platforms: { min: 0, max: 1, step: 0.05 }, objects: { min: 0, max: 1, step: 0.05 },
 }
 export const SOUL_SIDES: Record<SoulSide, string> = { behind: 'Atrás', front: 'Na frente', any: 'Qualquer' }
 export const SOUL_PATTERNS: Record<SoulPattern, string> = { still: 'Parada', circle: 'Círculo', eight: 'Oito', sway: 'Vai e vem', zigzag: 'Zigue-zague', orbit: 'Órbita no dono', hop: 'Saltos na batida' }
@@ -45,18 +55,18 @@ export const SOUL_PATTERNS: Record<SoulPattern, string> = { still: 'Parada', cir
 // the classes: one for each family of instrument that made the soul, and the chick's
 export type SoulClassId = 'sentinel' | 'patrol' | 'escort' | 'rhythm' | 'lazy' | 'chick'
 export const SOUL_CLASSES: Record<SoulClassId, { name: string; params: Partial<SoulFollowParams> }> = {
-  // watches from far and high; a little loop now and then
-  sentinel: { name: 'Sentinela', params: { dist: 220, height: 0.7, leash: 450, speed: 260, pattern: 'still', loopEvery: 8 } },
-  // patrols in an eight at mid height
-  patrol: { name: 'Patrulheira', params: { dist: 160, height: 0.5, leash: 300, speed: 300, pattern: 'eight', patternSize: 110, patternTime: 5, loopEvery: 0, restless: 0.1 } },
-  // goes round her, close, and never lets her go
-  escort: { name: 'Escolta', params: { dist: 70, height: 0.05, leash: 80, speed: 420, accel: 6, react: 0.1, pattern: 'orbit', patternTime: 2.6, loopEvery: 0, restless: 0 } },
-  // hops from side to side on the beat
-  rhythm: { name: 'Ritmada', params: { dist: 180, height: 0.5, leash: 250, speed: 320, accel: 5, pattern: 'hop', patternSize: 70, loopEvery: 0 } },
-  // lets her go a long way before it bothers
-  lazy: { name: 'Preguiçosa', params: { dist: 300, height: 0.6, leash: 1100, speed: 200, accel: 1.5, react: 1.2, pattern: 'still', loopEvery: 0, restless: 0.05 } },
-  // a chick's soul: low and close, swaying
-  chick: { name: 'Pintinho', params: { dist: 80, height: 0.08, leash: 160, speed: 300, pattern: 'sway', patternSize: 30, patternTime: 2, loopEvery: 0, restless: 0.5 } },
+  // watches from far and high; a little loop now and then. It keeps watch from the wires
+  sentinel: { name: 'Sentinela', params: { dist: 220, height: 0.7, leash: 450, speed: 260, pattern: 'still', loopEvery: 8, roam: 0.6, perchTime: 12, trees: 0.6, platforms: 0.2, objects: 0.2 } },
+  // patrols in an eight at mid height; out exploring it goes far and does not stay long anywhere
+  patrol: { name: 'Patrulheira', params: { dist: 160, height: 0.5, leash: 300, speed: 300, pattern: 'eight', patternSize: 110, patternTime: 5, loopEvery: 0, restless: 0.1, roam: 0.7, roamRange: 1300, perchTime: 5, wires: 0.7, trees: 0.7, platforms: 0.7, objects: 0.7 } },
+  // goes round her, close, and never lets her go: it hardly ever leaves
+  escort: { name: 'Escolta', params: { dist: 70, height: 0.05, leash: 80, speed: 420, accel: 6, react: 0.1, pattern: 'orbit', patternTime: 2.6, loopEvery: 0, restless: 0, roam: 0.15, roamRange: 450, perchTime: 4 } },
+  // hops from side to side on the beat; it likes the top of things
+  rhythm: { name: 'Ritmada', params: { dist: 180, height: 0.5, leash: 250, speed: 320, accel: 5, pattern: 'hop', patternSize: 70, loopEvery: 0, roam: 0.5, perchTime: 6, wires: 0.5, trees: 0.5, platforms: 1, objects: 1 } },
+  // lets her go a long way before it bothers; it would rather sleep in a tree
+  lazy: { name: 'Preguiçosa', params: { dist: 300, height: 0.6, leash: 1100, speed: 200, accel: 1.5, react: 1.2, pattern: 'still', loopEvery: 0, restless: 0.05, roam: 0.85, perchTime: 25, wires: 0.5, platforms: 0.2, objects: 0.2 } },
+  // a chick's soul: low and close, swaying; it never leaves
+  chick: { name: 'Pintinho', params: { dist: 80, height: 0.08, leash: 160, speed: 300, pattern: 'sway', patternSize: 30, patternTime: 2, loopEvery: 0, restless: 0.5, roam: 0 } },
 }
 const SHOT_CLASS: Record<SoulShot, SoulClassId> = { wind: 'sentinel', strings: 'patrol', keys: 'escort', percussion: 'rhythm', rebate: 'lazy' }
 export const soulClassOf = (s: Pick<Soul, 'species' | 'shot'>): SoulClassId => (s.species === 'chick' ? 'chick' : s.shot ? SHOT_CLASS[s.shot] : 'sentinel')
