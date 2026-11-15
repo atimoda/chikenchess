@@ -1,7 +1,7 @@
 // Portal interaction is per character and per entrance, independent of render rate.
 export type PortalBody = { x: number; y: number; scale: number; state: string }
 export type PortalCircle = { x: number; y: number; r: number }
-export const PORTAL_TRANSITION_MS = 750
+export const PORTAL_TRANSITION_MS = 950
 const ARRIVAL_KEY = 'chickenchess:portal-arrival'
 
 export function overlapsPortal(body: PortalBody, portal: PortalCircle) {
