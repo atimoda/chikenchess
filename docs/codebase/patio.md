@@ -39,6 +39,8 @@ Troca rápida invertida por Shift e repetição configurável enquanto segura: `
 
 Zoom e panorama manual do Pátio: gestos e retenção do panorama em `components/pigchicken/parquinho.tsx`, limites horizontais com zoom em `lib/pigchicken/camera.ts`, recorte e descarte por enquadramento inverso compartilhado (`zoomedView`) em `lib/pigchicken/viewport.ts`, zoom do engine e consumo de Select + R3 em `lib/chicken/engine.ts`, transformações/followers em `lib/pigchicken/live-camera.ts`; posição visual e acertos dos portais seguem a câmera em `components/chicken/chicken-portal.tsx`.
 
+Combo do golpe: regras, tipos e o aviso de golpe para a barra da janela em `lib/pigchicken/swing.ts`; o knob de ângulo e a barra em `components/pigchicken/combo-controls.tsx`, usados por `items-panel.tsx`.
+
 Bicada sem item: `lib/pigchicken/peck.ts` compartilha o tempo/pose; `combat.ts` mantém preparação, cancelamento e acerto por player; `items.ts`/`items-panel.tsx` oferecem a ficha virtual Bicada em Armas (fora dos racks/inventário). `ChickenEngine.setPeck` anima pescoço/cabeça e `rigPoint("neck")` fornece a origem; `ParquinhoPlay` integra todos os players. Testes: `tests/pigchicken-peck.cases.cjs`.
 
 Item solto (`loose`): o suporte apagado vira `looseFromRack` em `layout.ts` (mesmo id); `layout-sync.ts` põe o item uma vez (`combat.addPickup`), adota o item do suporte e limpa tudo na troca de Pátio (`reset`, pela prop `patioKey` de `ParquinhoPlay`). Testes em `tests/pigchicken-racks.cases.cjs`.

@@ -1,7 +1,7 @@
 // PigChicKen items: weapons and instruments share one sheet of numbers. An instrument is its weapon family's
 // sheet with a music block: the projectile is a note, and notes convert (fill the harmony bar) instead of
 // destroying. The Parquinho's item popup edits these sheets; they are saved in this browser for now.
-import { COMBO_WINDOW, cleanCombo, isSwingKind, swingCombo, type ComboStep, type SwingKind } from './swing'
+import { COMBO_WINDOW, cleanCombo, isSwingKind, swingCombo, type BlowKind, type ComboStep } from './swing'
 import type { PitchSet } from './music'
 import { cleanScales, type InstrumentScaleId } from './instrument-scales'
 import type { VoiceId } from './synth'
@@ -204,7 +204,7 @@ export type ItemDef = {
   heavyCooldown: number // s
   heavyTime: number // s the whole move takes
   heavyPush: number // knockback px/s
-  heavyKind: SwingKind
+  heavyKind: BlowKind
   heavyCharge: number
   heavyReachMax: number
   heavySizeMax: number
@@ -271,7 +271,7 @@ const NO_MUSIC = {
   consumable: false, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false,
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
-  heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as SwingKind,
+  heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as BlowKind,
   heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
   shockRange: 0, shockJumps: 3, shockTime: 0.35, shockDamage: 0, shockDrain: 0, heavyShockRange: 0, heavyShockTime: 0.6,
   specialCooldown: 0, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 20, specialKind: 'thunder' as SpecialKind,
@@ -763,8 +763,8 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (isSwingKind(s.heavyKind)) out[id].heavyKind = s.heavyKind
   if (SPECIAL_KINDS.some(k => k.value === s.specialKind)) out[id].specialKind = s.specialKind
   { // saved before each blow had its own arc (v10): the kinds only, with the arcs of down (meleeArc), up and horizontal
-    const old: Partial<Record<SwingKind, unknown>> = v >= 10 ? {} : { down: s.meleeArc, up: s.meleeArcUp, flat: s.meleeArcFlat }
-    const arcOf = (kind: SwingKind) => { const a = old[kind]; return typeof a === 'number' && Number.isFinite(a) ? a : out[id].combo.find(c => c.kind === kind)?.arc ?? out[id].meleeArc }
+    const old: Partial<Record<BlowKind, unknown>> = v >= 10 ? {} : { down: s.meleeArc, up: s.meleeArcUp, flat: s.meleeArcFlat }
+    const arcOf = (kind: BlowKind) => { const a = old[kind]; return typeof a === 'number' && Number.isFinite(a) ? a : out[id].combo.find(c => c.kind === kind)?.arc ?? out[id].meleeArc }
     const combo = cleanCombo(s.combo, arcOf) ?? (v >= 10 ? null : cleanCombo(out[id].combo.map(c => c.kind), arcOf))
     if (combo) out[id].combo = combo
   }

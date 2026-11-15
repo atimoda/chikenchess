@@ -7,8 +7,14 @@ const RECENT = [
   {
     version: '2.11.0',
     date: '15/11/2026',
-    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida',
+    title: 'Best em posição ruim não dobra mais para 6 ovos; botão para copiar o histórico completo da partida; combos do Pátio com duração, cooldown e alcance por golpe e golpe relativo à mira',
     groups: [
+      { title: 'Pátio', items: [
+        'Itens → Combo: cada golpe do combo ganhou três ajustes, além da direção e do ângulo: duração (em vezes a Duração do giro do item, para golpes mais lentos ou mais rápidos), cooldown (tempo em que o próximo golpe fica bloqueado, para não dar golpes sem parar) e alcance (em vezes o alcance do item). Os cinco controles ficam numa linha só quando cabem e quebram a linha sozinhos quando o painel é estreito.',
+        'O ângulo de cada golpe do combo agora é uma bolinha que mostra a fatia coberta: clique e arraste para os lados ou para cima e para baixo para mudar, como um knob. O número aparece pequeno ao lado.',
+        'Abaixo de “Janela do combo” há uma barra fina que enche a cada golpe e esvazia durante a janela, para ver o tempo que resta para continuar a sequência. Ela só funciona com o painel Itens aberto.',
+        'Nova direção de golpe “Relativo à mira”, nos golpes do combo e no Movimento do golpe forte: com a mira acima do horizonte o golpe sai para cima, e com a mira abaixo, para baixo.',
+      ] },
       { title: 'Partida', items: [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
         'Preferências da partida ganhou “Match log”, com o botão Copy: copia o histórico completo da partida, uma linha por acontecimento, com cada lance (posição, lances possíveis, listas Best e Worst com os scores, classificação, sequência e ovos pagos), Freeze e Shield, Undo, Redo, Mulligan e cada vez que as setas foram abertas. Serve para colar numa conversa ao relatar um bug. Vale na campanha e no online.',
