@@ -68,6 +68,9 @@ const RECENT = [
         'Ao estreitar o Pátio, o que estava no fim do Parquinho passa a aparecer nas cenas do Templo e da Vila, em vez de sumir já no fim do Parquinho.',
         'Os Pátios salvos antes abrem com tudo no mesmo lugar em que estava; o que a largura escondia continua escondido.',
       ] },
+      { title: 'Servidor', items: [
+        'Um salvamento em conflito (alguém salvou outra versão antes) não fica mais sendo repetido sem parar no servidor: o aviso de conflito chega na hora e o servidor não sobrecarrega. Vale para Pátios, perfil, músicas, configuração da galinha e lances das partidas online.',
+      ] },
       { title: 'Pátio: Modo editor', items: [
         'O Modo editor se desliga sozinho depois de 5 minutos sem nenhuma edição no mapa, com um aviso curto. As mudanças pendentes continuam indo para o servidor pelo salvamento automático.',
       ] },
