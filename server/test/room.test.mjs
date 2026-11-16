@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [], chests: [], cages: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [], houses: [], chests: [], cages: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,7 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
-  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks', 'chests', 'cages']) room.onMessage(type, m => seen[type].push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks', 'chests', 'cages', 'houses']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -254,5 +254,21 @@ test("cages: the Gaiolas a browser's chickens carry go to everyone else", async 
   b.room.send('cages', { l: 'x' })
   await wait(150)
   assert.equal(a.seen.cages.length, 1); assert.equal(b.seen.cages.length, 0)
+  for (const x of [a, b]) await x.room.leave()
+})
+
+test("houses: the house each of a browser's chickens is inside of goes to everyone else", async () => {
+  const patioId = '0f000000-0000-4000-8000-00000000000a'
+  const a = await browser({ patioId, name: 'Ana' })
+  const b = await browser({ patioId, name: 'Bia' })
+  assert.equal(a.seen.hello.caps.houses, 1, 'the server says it relays them')
+  const pb = b.seen.hello.pid
+  b.room.send('houses', { l: ['house-3', ''] })
+  assert.deepEqual(await until(() => a.seen.houses[0]), { pid: pb, l: ['house-3', ''] })
+  // more chickens than a browser has, not a list: dropped; the sender hears nothing of its own
+  b.room.send('houses', { l: ['', '', '', '', ''] })
+  b.room.send('houses', { l: 'x' })
+  await wait(150)
+  assert.equal(a.seen.houses.length, 1); assert.equal(b.seen.houses.length, 0)
   for (const x of [a, b]) await x.room.leave()
 })

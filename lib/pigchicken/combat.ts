@@ -116,7 +116,10 @@ export type Bullet = {
   ghost?: boolean // goes through walls and floating platforms (instruments' notes)
   bounces?: number // times it bounced off a "Rebate notas" surface
   remote?: boolean // another browser's shot (online): it flies and shows, never damages
+  room?: ShotRoom // fired inside a house: it stops at that room's walls and touches nothing outside
 }
+// the room of a house for what is fired inside it (lib/pigchicken/house-rooms.ts): its walls and its floor
+export type ShotRoom = { id: string; boxes: Box[]; groundY: number }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
 export type Tracer = { x1: number; y1: number; x2: number; y2: number; life: number }
 // a bolt of a shock, from one point to another: t counts up from before 0 (it shows a moment after the bolt it comes
@@ -132,7 +135,7 @@ export type Flight = {
   // over a leg, with the side's sign; it follows the aim softly); far: how far it was when it turned back
   dir: number; launch: number; reach: number; aim?: number; side: number; bend: number; far?: number
 }
-export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean }
+export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean; room?: ShotRoom }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 // undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
 export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button' | 'undead'
@@ -291,6 +294,8 @@ export function createCombat() {
   // note shots (tiros-nota) in flight, what happened to them this frame (the song reads it), and the rule that
   // says which note a rebate plays (the song's fan; by default the note sequenced)
   const noteShots: NoteShot[] = []
+  // the players inside a house, by player: what they fire and throw stays in that room
+  const shotRooms = new Map<string, ShotRoom>()
   const noteEvents: NoteShotEvent[] = []
   let noteEnv: NoteEnvFn | null = null
   let placeEnv: PlaceEnvFn | null = null
@@ -991,6 +996,7 @@ export function createCombat() {
       const b: Bullet = {
         x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage: damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
         item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
+        room: shotRooms.get(active),
       }
       if (d.instrument) {
         const m = notes[Math.min(notes.length - 1, n === 1 ? 0 : n - 1 - i)]
@@ -1024,12 +1030,16 @@ export function createCombat() {
     ...(b.note ? { n: { m: b.note.midi, c: b.note.color, s: b.note.sym, w: b.note.wave, v: b.note.voice } } : {}), ...(b.ring ? { rn: b.ring } : {}), ...(b.ghost ? { gh: true } : {}),
   })
   // another browser's shots: they fly here too, only to be seen (and heard when they are in this scene)
-  function addRemoteShots(list: readonly NetShot[]) {
+  // roomAt: the room a shot of that browser begins in ('hidden': a house closed on this screen, nothing shows)
+  function addRemoteShots(list: readonly NetShot[], roomAt?: (x: number, y: number) => ShotRoom | 'hidden' | null) {
     let heard = 0
     for (const s of list) {
       const d = items[s.i]
       if (!d) continue
       const x = s.k === 't' ? s.x1 : s.k === 'z' ? s.p[0] ?? 0 : s.x
+      const where = roomAt?.(x, s.k === 't' ? s.y1 : s.k === 'z' ? s.p[1] ?? 0 : s.y) ?? null
+      if (where === 'hidden') continue
+      const room = where ?? undefined
       const near = x > view.l - 200 && x < view.r + 200
       if (s.k === 'z') {
         // another browser's shock: its bolts (and the light of its special), only to be seen
@@ -1046,12 +1056,12 @@ export function createCombat() {
       }
       if (s.k === 't') { tracers.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, life: 0.12 }); burst(s.x2, s.y2, 4, '#fff3b0', 120, 2) }
       else if (s.k === 'th') {
-        thrown.push({ x: s.x, y: s.y, vx: s.vx, vy: s.vy, spin: s.sp, angle: s.a, owned: fresh(s.i), damage: 0, hit: false, remote: true })
+        thrown.push({ x: s.x, y: s.y, vx: s.vx, vy: s.vy, spin: s.sp, angle: s.a, owned: fresh(s.i), damage: 0, hit: false, remote: true, room })
       } else {
         const note = s.n ? { midi: s.n.m, color: s.n.c, sym: s.n.s, wave: s.n.w, phase: rand(0, Math.PI * 2), voice: s.n.v as VoiceId } : undefined
         bullets.push({
           x: s.x, y: s.y, vx: s.vx, vy: s.vy, dist: 0, damage: 0, pierce: s.pi, hits: new Set(), size: s.sz, drop: s.dr, range: s.rg, item: s.i, t: 0,
-          explode: s.ex, explodeDamage: 0, explodePush: s.ep, fuse: s.fu, bounce: s.bo, note, ring: s.rn, ghost: s.gh, remote: true,
+          explode: s.ex, explodeDamage: 0, explodePush: s.ep, fuse: s.fu, bounce: s.bo, note, ring: s.rn, ghost: s.gh, remote: true, room,
         })
         // its note, softer than one's own
         if (note && near && heard < 4) out.note(note.voice, note.midi, 0, d.noteLen, 0.4)
@@ -1066,7 +1076,8 @@ export function createCombat() {
       const push = explosionImpulse(x, y, r, strength, actor.box)
       if (push) actor.push(push.x, push.y)
     })
-    targets.forEach(t => {
+    // inside a house the blast stays in the room: the enemies are all outside
+    if (!b?.room) targets.forEach(t => {
       if (t.kind === 'button' || t.deadT > 0 || (t.mirror && reportHit)) return
       const push = explosionImpulse(x, y, r, strength, { l: t.x - t.w / 2, r: t.x + t.w / 2, t: t.y - t.h, b: t.y })
       if (!push) return
@@ -1077,7 +1088,7 @@ export function createCombat() {
     booms.push({ x, y, r, life: 0.35 })
     sound('explode', null)
     burst(x, y, 26, '#ffb347', 380, 4); burst(x, y, 14, '#fff3b0', 220, 3)
-    if (b?.remote) return
+    if (b?.remote || b?.room) return
     targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
@@ -1094,7 +1105,7 @@ export function createCombat() {
     const chord = music.chord(true).map(m => m + 12 * Math.round((note.midi - 60) / 12))
     if (b.item === 'tambourine') out.drum('jingle', 0)
     chord.forEach((m, i) => out.note(note.voice, m, i * 0.03, 0.5, b.remote ? 0.35 : 0.6))
-    if (!b.remote) targets.forEach(t => {
+    if (!b.remote && !b.room) targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
       const dist = Math.hypot(cx - x, cy - y)
@@ -1107,7 +1118,7 @@ export function createCombat() {
       bullets.push({
         x, y: y - 6, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, dist: 0, damage: Math.max(5, amount * 0.35), pierce: 0, hits: new Set(), size: 9, drop: 0, range: r * 1.6,
         item: b.item, t: 0, explode: 0, explodeDamage: 0, fuse: 0, bounce: 0,
-        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true, remote: b.remote,
+        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true, remote: b.remote, room: b.room,
       })
     }
   }
@@ -1116,7 +1127,9 @@ export function createCombat() {
   const boxAt = (boxes: Box[], x: number, y: number, note = false) => boxes.find(b => (note ? b.notes === true : b.shots !== false) && boxContains(b, x, y))
   const solidAt = (boxes: Box[], x: number, y: number) => boxes.find(b => b.solid !== false && boxContains(b, x, y))
   // moves a projectile one step; true when it is gone
-  function stepBullet(b: Bullet, dt: number, { boxes, groundY }: StepCtx, dry = false): boolean {
+  function stepBullet(b: Bullet, dt: number, ctx: StepCtx, dry = false): boolean {
+    // fired inside a house: its world is that room
+    const { boxes, groundY } = b.room ?? ctx
     const px = b.x, py = b.y
     b.t += dt
     b.vy += b.drop * dt
@@ -1127,7 +1140,7 @@ export function createCombat() {
     if (b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
     // swept test against targets: points along the step's segment inside the target's box
-    for (const t of targets) {
+    for (const t of b.room ? [] : targets) {
       if (t.deadT > 0 || b.hits.has(t.id)) continue
       const l = t.x - t.w / 2, r = t.x + t.w / 2, top = t.y - t.h, bot = t.y
       for (let k = 1; k <= steps; k++) {
@@ -1205,7 +1218,7 @@ export function createCombat() {
     const d = def()
     const b: Bullet = {
       x: from.x, y: from.y, vx: Math.cos(angle) * d.speed * power, vy: Math.sin(angle) * d.speed * power, dist: 0, damage: 0, pierce: d.explodeRadius > 0 ? 0 : d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
-      item: d.id, t: 0, explode: 0, explodeDamage: 0, fuse: d.fuse, bounce: d.bounce, ghost: d.instrument,
+      item: d.id, t: 0, explode: 0, explodeDamage: 0, fuse: d.fuse, bounce: d.bounce, ghost: d.instrument, room: shotRooms.get(active),
     }
     // a dry run: it stops at the first target and changes nothing
     const points: { x: number; y: number }[] = [{ x: b.x, y: b.y }]
@@ -1979,6 +1992,8 @@ export function createCombat() {
       return called.length
     },
     // a local player left: their souls fly away and their Gaiolas fall where they were, with what is in them
+    /** the house that player is inside of (null: outside): what she fires and throws stays in its room */
+    setPlayerRoom(id: string, room: ShotRoom | null) { if (room) shotRooms.set(id, room); else shotRooms.delete(id) },
     drop(id: string) {
       if (id === active) return
       const l = loadouts.get(id)
@@ -1986,7 +2001,7 @@ export function createCombat() {
         o.cage!.enterT = Infinity
         pickups.push({ id: nextId++, owned: o, x: (l.lastBody?.x ?? 0) + rand(-50, 50), y: (l.lastBody?.y ?? floorY) - 40, vy: -220, resting: false, noPick: 0.6 })
       }
-      loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id)
+      loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id); shotRooms.delete(id)
       for (const f of freed) if (f.owner === id && f.away === null) { letGo(f); f.away = 0 }
     },
     // the players in a portal this frame (by player; world px), for their souls flying free
@@ -2568,7 +2583,7 @@ export function createCombat() {
           sound('throw', null)
           const throwFrom = opts.throwOrigin ?? origin
           const spin = (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p)
-          thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin, angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false })
+          thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin, angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false, room: shotRooms.get(active) })
           if (netOn) netShots.push({ k: 'th', i: t.item, x: throwFrom.x, y: throwFrom.y, vx, vy, sp: spin, a: throwAngle })
           const thrownAt = cur
           removeHeld(); reloadT = 0
@@ -2593,17 +2608,19 @@ export function createCombat() {
         const t = thrown[i]
         const py = t.y
         t.vy += THROW_GRAVITY * dt; t.x += t.vx * dt; t.y += t.vy * dt; t.angle += t.spin * dt
-        if (!t.hit) for (const g of targets) {
+        // thrown inside a house: it stays in that room
+        const tBoxes = t.room?.boxes ?? boxes, tGround = t.room?.groundY ?? groundY
+        if (!t.hit && !t.room) for (const g of targets) {
           if (g.deadT > 0) continue
           if (Math.abs(t.x - g.x) < g.w / 2 + 10 && t.y > g.y - g.h && t.y < g.y) {
             if (!t.remote) { hitTarget(g, t.damage, Math.sign(t.vx) * 220, t.x, t.y, 'impact'); zap({ x: t.x, y: t.y }, [g], items[t.owned.item], false, t.owned) }
             t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
-        const top = boxes.find(b => b.solid !== false && crossesBoxTop(b, t.x, py, t.y))
-        const side = !top && inBox(t.x, t.y)
+        const top = tBoxes.find(b => b.solid !== false && crossesBoxTop(b, t.x, py, t.y))
+        const side = !top && solidAt(tBoxes, t.x, t.y)
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
-        const floor = top ? top.t : t.y >= groundY ? groundY : null
+        const floor = top ? top.t : t.y >= tGround ? tGround : null
         if (floor !== null && t.vy > 0) {
           // another browser's throw: the item lands on that browser's floor, not here
           if (!t.remote) pickups.push({ id: nextId++, owned: t.owned, x: t.x, y: floor, vy: 0, resting: true, noPick: 0.5 })

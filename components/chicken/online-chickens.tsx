@@ -19,6 +19,7 @@ import { chickAt, chickNumber, chickStyleOf, exportChicks } from "@/lib/chicken/
 import { netIdFor } from "@/lib/pigchicken/net-world"
 import { TAKE_WAIT } from "@/lib/pigchicken/net-souls"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
+import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
 import { DEFAULT_ITEMS, isStaff, itemRig, type ItemId } from "@/lib/pigchicken/items"
@@ -41,7 +42,8 @@ export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getN
 
 // aim: the angle she is drawn pointing at, eased toward the latest one (the packets come 20 times a second)
 // portal: the portal animation she is in on this screen (as her browser says), and the camera it was last drawn with
-type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number }
+// housed: out of sight, inside a house that is closed on this screen
+type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; housed: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number }
 // another browser's chick drawn here (id: its id in the lobby; hidden: asked of its browser, out of sight meanwhile)
 export type NetChickMirror = { engine: ChickenEngine; wrap: HTMLDivElement; pid: number; id: number; hidden: boolean; hide: () => void }
 // the shortest turn from a to b
@@ -123,7 +125,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const tag = document.createElement("div")
         tag.className = "pointer-events-none fixed left-0 top-0 z-[203] whitespace-nowrap rounded-full border-2 bg-black/60 px-2 py-0.5 font-mono text-[11px] font-bold text-white"
         host.appendChild(tag)
-        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0 }
+        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, housed: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0 }
         engine.setRemote(() => {
           const c = remoteChicken(entry.pid, entry.slot)
           if (!c) return null
@@ -205,6 +207,9 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
       })
       remotes.current.forEach(r => {
         if (!r.seen) return
+        // inside a house no one of this screen is in: the façade hides her and her name
+        const housed = houseRoomsStore.netHidden(r.pid, r.slot)
+        if (housed !== r.housed) { r.housed = housed; r.wrap.style.visibility = r.tag.style.visibility = housed ? "hidden" : "visible" }
         r.engine.setCameraZoom(liveCamera.zoom)
         const s = r.engine.getMotionState()
         const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2

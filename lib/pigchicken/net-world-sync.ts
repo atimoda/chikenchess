@@ -3,8 +3,10 @@
 // The rules and the data are in lib/pigchicken/net-world.ts. It also sends the souls this browser's players let out,
 // shows the other browsers', and passes on what a Passaguá asks of another browser and what that browser gives
 // (lib/pigchicken/net-souls.ts), and the Baús opened in each browser (lib/pigchicken/net-chests.ts). ParquinhoPlay calls frame() once a frame, before the combat's step.
-import { getNetState, netCan, onNetWorld, remoteChicken, sendNetCages, sendNetChests, sendNetFoes, sendNetGive, sendNetHits, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
-import type { Combat } from './combat'
+import { getNetState, netCan, onNetWorld, remoteChicken, sendNetCages, sendNetChests, sendNetFoes, sendNetGive, sendNetHits, sendNetHouses, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
+import type { Combat, ShotRoom } from './combat'
+import { cleanNetHouses } from './house-rooms'
+import { clearNetHouseRooms, houseRoomsStore, setNetHouseRooms } from './house-rooms-store'
 import { DEFAULT_ITEMS } from './items'
 import { cleanHit, cleanShot, cleanSpawn, exportFoes, importFoes, newFoeCache, type NetFormation, type NetHit, type NetShot, type NetSpawn } from './net-world'
 import { cleanGive, cleanTake, exportSouls, takeOwner } from './net-souls'
@@ -23,7 +25,8 @@ const NO_CAGES: readonly CageMirror[] = []
 const NET_SLOTS = 4
 
 // localPlayers: this browser's players in their slots' order ('p1' first), as the combat knows them
-export function createNetWorldSync(combat: Combat, localPlayers: () => string[] = () => ['p1']) {
+// shotRoom: the room of a house a shot of another browser begins in ('hidden': inside a house closed on this screen)
+export function createNetWorldSync(combat: Combat, localPlayers: () => string[] = () => ['p1'], opts: { shotRoom?: (pid: number, x: number, y: number) => ShotRoom | 'hidden' | null } = {}) {
   let role: NetRole = 'off'
   const inbox: NetWorldMsg[] = []
   const off = onNetWorld(m => { inbox.push(m); if (inbox.length > 300) inbox.shift() })
@@ -44,6 +47,9 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
   const cageMirrors = new Map<string, CageMirror[]>()
   let cagesKey = '', lastCages = 0, lastFrame = 0
   const CAGES_MS = 250
+  // the houses: the browsers that said one of their players is inside one; what this browser last said of its own
+  const housePids = new Set<number>()
+  let housesKey = '', lastHouses = 0
 
   function become(next: NetRole) {
     if (next === 'follower') { combat.yieldShared(); combat.setNetFollower(h => { if (hitsOut.length < 256) hitsOut.push(h) }) }
@@ -55,6 +61,7 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
     soulsTold.clear(); lastSoulsFull = 0; soulsEmpty = true
     lastChests = 0; chestsKey = ''; openedHere.clear()
     cageMirrors.clear(); cagesKey = ''; lastCages = 0
+    housePids.clear(); clearNetHouseRooms(); housesKey = ''; lastHouses = 0
   }
 
   return {
@@ -112,9 +119,14 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
             if (next?.length) cageMirrors.set(key, importCages(cageMirrors.get(key), next)); else cageMirrors.delete(key)
           }
         }
+        else if (m.type === 'houses') {
+          const c = others.some(p => p.pid === m.pid) ? cleanNetHouses(m.list) : null
+          if (c) { housePids.add(m.pid); setNetHouseRooms(m.pid, c) }
+        }
         else if (m.type === 'shots') {
           const list = m.list.slice(0, BATCH).map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
-          if (list.length) combat.addRemoteShots(list)
+          const pid = m.pid, shotRoom = opts.shotRoom
+          if (list.length) combat.addRemoteShots(list, shotRoom && ((x, y) => shotRoom(pid, x, y)))
         }
       }
 
@@ -148,6 +160,14 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
         const mine = exportCages(localPlayers().map(id => combat.cagesOf(id)), CAGE_IDS)
         const key = `${others.map(p => p.pid).join(',')}|${JSON.stringify(mine)}`
         if (key !== cagesKey || now - lastCages >= FULL_MS) { cagesKey = key; lastCages = now; sendNetCages(mine) }
+      }
+      // the house each of this browser's players is inside of: when it changes (at most 4 times a second) and every
+      // 2 s; a browser that left takes its players out of the houses
+      for (const pid of housePids) if (!others.some(p => p.pid === pid)) { housePids.delete(pid); setNetHouseRooms(pid, null) }
+      if (netCan('houses') && others.length && now - lastHouses >= CAGES_MS) {
+        const mine = localPlayers().map(id => houseRoomsStore.roomOf(id) ?? '')
+        const key = `${others.map(p => p.pid).join(',')}|${mine.join(',')}`
+        if (key !== housesKey || now - lastHouses >= FULL_MS) { housesKey = key; lastHouses = now; sendNetHouses(mine) }
       }
       // the Baús opened here: everyone opens them too; the owner's list of open ones, every 2 s and when someone joins
       if (combat.chestOpens.length) {

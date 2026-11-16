@@ -1,9 +1,11 @@
 "use client"
 
-import { memo, useId } from 'react'
+import { memo, useId, useSyncExternalStore } from 'react'
 import {
   HOUSE_BASE, houseOpenings, houseRandom, houseRoof, houseWallPolygon, houseWallTexture, openingGeometry, type HouseParams,
 } from '@/lib/pigchicken/houses'
+import { houseInterior } from '@/lib/pigchicken/house-rooms'
+import { houseRoomsStore } from '@/lib/pigchicken/house-rooms-store'
 
 type Tile = { w: number; h: number; dark: string; light?: string; stroke?: number }
 
@@ -90,7 +92,56 @@ function OpeningArt({ o, house }: { o: Opening; house: HouseParams }) {
 type Point = [number, number]
 const pointList = (points: Point[]) => points.map(point => point.join(',')).join(' ')
 
-function CubistHouseArt({ house, id }: { house: HouseParams; id: string }) {
+// The inside of the house, in the place of its wall and openings (lib/pigchicken/house-rooms.ts): the room between
+// the walls, under the lowest point of the roof, a floor for each storey, and the windows and the door as the light
+// that comes in. Above the ceiling the wall's own shape stays dark.
+function InteriorArt({ house, wall, clip }: { house: HouseParams; wall: string; clip: string }) {
+  const inside = houseInterior(house)
+  if (!inside) return null
+  const { room, floors } = inside
+  const back = shade(house.wall, '#1b1826', .58), dark = shade(house.wall, '#0e0c16', .8)
+  const wood = shade(house.doorColor, '#4a3528', .55), beam = shade(house.doorColor, '#1c1620', .6)
+  const light = { dark: '#aebfd0', warm: '#ffd9a0', blue: '#b5d6e8' }[house.glass]
+  const frame = shade(house.trim, house.wall, .28)
+  const storeys = [...floors, room.b]
+  return <g>
+    <polygon points={wall} fill={dark} />
+    <g clipPath={`url(#${clip})`}>
+      <path d={`M${room.l} ${room.t}H${room.r}V${room.b}H${room.l}Z`} fill={back} />
+      <path d={`M${room.l} ${room.t}h4V${room.b}h-4Z`} fill="#fff0d6" opacity=".06" />
+      <path d={`M${room.r - 6} ${room.t}h6V${room.b}h-6Z`} fill="#0b0a12" opacity=".2" />
+      {houseOpenings(house).map((opening, i) => {
+        const o = openingGeometry(house, opening), door = o.kind === 'door', bottom = o.y + o.h
+        const arch = Math.min(o.w * .46, o.h * .44)
+        const path = o.shape === 'arch'
+          ? `M${o.left} ${bottom}V${o.y + arch}Q${o.left} ${o.y} ${o.x} ${o.y}Q${o.right} ${o.y} ${o.right} ${o.y + arch}V${bottom}Z`
+          : `M${o.left} ${o.y}H${o.right}V${bottom}H${o.left}Z`
+        return <g key={i}>
+          {o.shape === 'round'
+            ? <ellipse cx={o.x} cy={o.y + o.h / 2} rx={o.w / 2} ry={o.h / 2} fill={light} opacity={door ? .5 : .8} stroke={frame} strokeWidth="1" />
+            : <path d={path} fill={light} opacity={door ? .5 : .8} stroke={frame} strokeWidth="1" />}
+          {!door && house.panes && <path d={`M${o.x} ${o.y + 1}V${bottom - 1}M${o.left + 1} ${o.y + o.h / 2}H${o.right - 1}`} fill="none" stroke={frame} strokeWidth=".8" opacity=".8" />}
+          {/* the light it throws on the floor below */}
+          {!door && <path d={`M${o.left} ${bottom}H${o.right}L${o.right + 3} ${bottom + 7}H${o.left - 3}Z`} fill={light} opacity=".08" />}
+        </g>
+      })}
+      {storeys.map((y, i) => <g key={i}>
+        <path d={`M${room.l} ${y}H${room.r}v${i === storeys.length - 1 ? -1.6 : 1.6}H${room.l}Z`} fill={wood} />
+      </g>)}
+      <path d={`M${room.l} ${room.t - 1.4}H${room.r}v1.4H${room.l}Z`} fill={beam} />
+    </g>
+    {storeys.map((y, i) => <path key={i} d={`M${room.l} ${y}H${room.r}`} fill="none" stroke="#ffe4b0" strokeWidth="1.3" opacity=".8" vectorEffect="non-scaling-stroke" />)}
+  </g>
+}
+
+// the door a player stands at (to go in or out with Usar): its outline lights up
+function DoorMark({ house }: { house: HouseParams }) {
+  const door = houseInterior(house)?.door
+  if (!door) return null
+  return <path d={`M${door.l - 1} ${door.b}V${door.t - 1}H${door.r + 1}V${door.b}`} fill="none" stroke="#fff3c4" strokeWidth="2.2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+}
+
+function CubistHouseArt({ house, id, open, hot }: { house: HouseParams; id: string; open: boolean; hot: boolean }) {
   const outline = houseRoof(house)
   const parapet = house.roof === 'parapet'
   const top = parapet ? [outline[0], outline[3], outline[2]] : outline
@@ -111,14 +162,16 @@ function CubistHouseArt({ house, id }: { house: HouseParams; id: string }) {
       {texture !== 'smooth' && <Pattern id={`${id}-wall`} tile={WALL_TILES[texture]} offset={house.seed % 23} />}
       {tile && <Pattern id={`${id}-roof`} tile={tile} offset={house.seed % 5} />}
     </defs>
-    <polygon points={wall} fill={house.wall} />
-    <g clipPath={`url(#${id}-wall-clip)`}>
-      <polygon points={pointList([top[0], [26, 0], [32, 100], baseLeft])} fill={shade(house.wall, '#ffe0ab', .24)} />
-      <polygon points={pointList([seam, top.at(-1)!, baseRight, [seam[0] - 9, 100]])} fill={shade(house.wall, '#45302f', .32)} />
-      {texture !== 'smooth' && <polygon points={wall} fill={`url(#${id}-wall)`} opacity={.16 + house.wear * .003} />}
-      <path d={stains} fill="#f5c28b" opacity={house.wear * .003} />
-      <path d={marks} fill="none" stroke="#613b36" strokeWidth=".48" opacity={house.wear * .003} />
-    </g>
+    {open ? <InteriorArt house={house} wall={wall} clip={`${id}-wall-clip`} /> : <>
+      <polygon points={wall} fill={house.wall} />
+      <g clipPath={`url(#${id}-wall-clip)`}>
+        <polygon points={pointList([top[0], [26, 0], [32, 100], baseLeft])} fill={shade(house.wall, '#ffe0ab', .24)} />
+        <polygon points={pointList([seam, top.at(-1)!, baseRight, [seam[0] - 9, 100]])} fill={shade(house.wall, '#45302f', .32)} />
+        {texture !== 'smooth' && <polygon points={wall} fill={`url(#${id}-wall)`} opacity={.16 + house.wear * .003} />}
+        <path d={stains} fill="#f5c28b" opacity={house.wear * .003} />
+        <path d={marks} fill="none" stroke="#613b36" strokeWidth=".48" opacity={house.wear * .003} />
+      </g>
+    </>}
     {parapet
       ? <CubistTerrace outline={outline} house={house} pattern={tile && `url(#${id}-roof)`} />
       : <>
@@ -127,15 +180,16 @@ function CubistHouseArt({ house, id }: { house: HouseParams; id: string }) {
         <path d="M0 0h3l-1.5 2zM5 1h3L6.5 3zM10 0h3l-1.5 2zM15 1h3l-1.5 2zM20 0h3l-1.5 2z"
           transform={`translate(33 ${house.pitch + 3})`} fill={shade(house.roofColor, '#423030', .54)} />
       </>}
-    <path d={`M${seam[0] + 5} ${seam[1] + 8}l8-1m-7 5 8-1m-7 5 8-1`} stroke="#614032" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-    {awning && <g transform={`translate(${awning.x} ${awning.y})`}>
+    {!open && <path d={`M${seam[0] + 5} ${seam[1] + 8}l8-1m-7 5 8-1m-7 5 8-1`} stroke="#614032" strokeWidth="1.2" fill="none" strokeLinecap="round" />}
+    {!open && awning && <g transform={`translate(${awning.x} ${awning.y})`}>
       <path d="M-10 -11L11 -13 16 -4Q1 0 -16 -3Z" fill={shade(house.roofColor, '#413135', .49)} />
       <path d="M-12 -8Q1 -6 13 -9M-14 -5Q1 -3 15 -6" fill="none" stroke={house.trim} strokeWidth="1.1" opacity=".36" />
       <path d="M-15 -3l3 5m14-7-1 6" fill="none" stroke="#624336" strokeWidth=".6" />
     </g>}
-    {openings.map((o, i) => <OpeningArt key={i} o={o} house={house} />)}
+    {!open && openings.map((o, i) => <OpeningArt key={i} o={o} house={house} />)}
     <path d={contactPath} fill="none" stroke="#453536" strokeWidth="3.2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     <path d={contactPath} fill="none" stroke="#ffe4b0" strokeWidth="1.6" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    {hot && <DoorMark house={house} />}
   </svg>
 }
 
@@ -164,9 +218,10 @@ function CubistTerrace({ outline, house, pattern }: { outline: Point[]; house: H
   </g>
 }
 
-export const HouseArt = memo(function HouseArt({ house }: { house: HouseParams }) {
+// open: seen from inside (someone of this screen is in it); hot: a player stands at its door
+export const HouseArt = memo(function HouseArt({ house, open = false, hot = false }: { house: HouseParams; open?: boolean; hot?: boolean }) {
   const id = useId()
-  if (house.style === 'cubist' || house.roof === 'parapet') return <CubistHouseArt house={house} id={id} />
+  if (house.style === 'cubist' || house.roof === 'parapet') return <CubistHouseArt house={house} id={id} open={open} hot={hot} />
   const roof = houseRoof(house)
   const outline = roof.map(([x, y]) => `${x},${y}`).join(' ')
   const paper = house.style === 'paper'
@@ -185,29 +240,39 @@ export const HouseArt = memo(function HouseArt({ house }: { house: HouseParams }
       {texture !== 'smooth' && <Pattern id={`${id}-wall`} tile={WALL_TILES[texture]} offset={shift} />}
       {house.roofTexture !== 'plain' && <Pattern id={`${id}-roof`} tile={ROOF_TILES[house.roofTexture]} offset={shift % 5} />}
     </defs>
-    <polygon points={wall} fill={house.wall} stroke={paper ? undefined : shade(house.wall, '#262737', .40)} strokeWidth="1" />
-    <g clipPath={`url(#${id}-wall-clip)`}>
-      {!paper && <>
-        <path d="M7 26H17L14 100H7Z" fill="#f3d8ae" opacity=".17" />
-        <path d="M83 7H100V100H80Z" fill="#28293d" opacity=".22" />
-      </>}
-      {texture !== 'smooth' && <path d="M0 0H100V100H0Z" fill={`url(#${id}-wall)`} opacity={texture === 'paper' ? .26 + house.wear * .004 : .17 + house.wear * .003} />}
-      {stains && <>
-        <path d={stains.stains} fill="#f6dec2" opacity={house.wear * .0033} />
-        <path d={stains.marks} fill="none" stroke="#352638" strokeWidth=".53" opacity={house.wear * .004} />
-        <path d="M7 90l14 2 12-2 21 5 12-3 18 3 9-2v7H7Z" fill="#3e3041" opacity={house.wear * .0022} />
-      </>}
-      {!paper && <>
-        {house.floors > 1 && <path d="M7 60H93M7 61H93" stroke="#352f3b" strokeWidth=".4" opacity=".15" />}
-        <path d="M7 98H93V100H7Z" fill="#332c40" opacity=".36" />
-      </>}
-    </g>
+    {open ? <InteriorArt house={house} wall={wall} clip={`${id}-wall-clip`} /> : <>
+      <polygon points={wall} fill={house.wall} stroke={paper ? undefined : shade(house.wall, '#262737', .40)} strokeWidth="1" />
+      <g clipPath={`url(#${id}-wall-clip)`}>
+        {!paper && <>
+          <path d="M7 26H17L14 100H7Z" fill="#f3d8ae" opacity=".17" />
+          <path d="M83 7H100V100H80Z" fill="#28293d" opacity=".22" />
+        </>}
+        {texture !== 'smooth' && <path d="M0 0H100V100H0Z" fill={`url(#${id}-wall)`} opacity={texture === 'paper' ? .26 + house.wear * .004 : .17 + house.wear * .003} />}
+        {stains && <>
+          <path d={stains.stains} fill="#f6dec2" opacity={house.wear * .0033} />
+          <path d={stains.marks} fill="none" stroke="#352638" strokeWidth=".53" opacity={house.wear * .004} />
+          <path d="M7 90l14 2 12-2 21 5 12-3 18 3 9-2v7H7Z" fill="#3e3041" opacity={house.wear * .0022} />
+        </>}
+        {!paper && <>
+          {house.floors > 1 && <path d="M7 60H93M7 61H93" stroke="#352f3b" strokeWidth=".4" opacity=".15" />}
+          <path d="M7 98H93V100H7Z" fill="#332c40" opacity=".36" />
+        </>}
+      </g>
+    </>}
     <polygon points={roofBand} fill={house.roofColor} stroke={paper ? undefined : shade(house.roofColor, '#272636', .45)} strokeWidth="1.2" />
     {house.roofTexture !== 'plain' && <polygon points={roofBand} fill={`url(#${id}-roof)`} opacity={house.roofTexture === 'paper' ? .26 + house.wear * .004 : .58} />}
     <polyline points={outline} fill="none" stroke="#34303c" strokeWidth={paper ? 2.6 : 3.1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     <polyline points={outline} fill="none" stroke={contactColor} strokeWidth={paper ? 1.25 : 1.6} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     <polyline points={HOUSE_BASE.map(point => point.join(',')).join(' ')} fill="none" stroke="#34303c" strokeWidth={paper ? 2.6 : 4} vectorEffect="non-scaling-stroke" />
     <polyline points={HOUSE_BASE.map(point => point.join(',')).join(' ')} fill="none" stroke={contactColor} strokeWidth={paper ? 1.25 : 1.6} vectorEffect="non-scaling-stroke" />
-    {houseOpenings(house).map((opening, i) => <OpeningArt key={i} o={openingGeometry(house, opening)} house={house} />)}
+    {!open && houseOpenings(house).map((opening, i) => <OpeningArt key={i} o={openingGeometry(house, opening)} house={house} />)}
+    {hot && <DoorMark house={house} />}
   </svg>
 })
+
+// a house of the Pátio's layout: open while someone of this screen is inside, its door lit while one stands at it
+export function PlacedHouseArt({ id, house }: { id: string; house: HouseParams }) {
+  const open = useSyncExternalStore(houseRoomsStore.subscribe, () => houseRoomsStore.isOpen(id), () => false)
+  const hot = useSyncExternalStore(houseRoomsStore.subscribe, () => houseRoomsStore.atDoor(id), () => false)
+  return <HouseArt house={house} open={open} hot={hot} />
+}

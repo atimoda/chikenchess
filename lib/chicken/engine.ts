@@ -58,6 +58,9 @@ export type ChickenEngine = {
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
   peekActions: () => Record<ChickenAction, boolean>
   peekUse: (now: number) => boolean
+  // Inside a house (lib/pigchicken/house-rooms.ts): only the colliders of that room (`data-chicken-room`) are hers,
+  // and outside (null) none of any room is.
+  setRoom: (id: string | null) => void
   canPointAndClick: () => boolean
   // Clicking a portal's button may walk her there in every mode (the Pátio's game mode included).
   canWalkToPortal: () => boolean
@@ -816,6 +819,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let SEGS: Seg[] = []
   // the hard outlines near her (screen units), to lift her out when one ends up over her feet
   let HARD_SHAPES: { id: string; poly: number[][] }[] = []
+  // the house she is inside of (setRoom)
+  let room: string | null = null
   function buildSegs() {
     const out: Seg[] = []
     const hardShapes: typeof HARD_SHAPES = []
@@ -846,6 +851,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       source = e; mask = occlusion
       const node = e as HTMLElement
       if (r.width < 8 || r.height < 8) return
+      if ((node.dataset.chickenRoom ?? null) !== room) return
       // A local player can be outside the main camera. Cull shaped surfaces relative to this actor.
       if (node.dataset.chickenNearby !== undefined) {
         if (!S.cl && (r.right < S.x - 300 || r.left > S.x + 300 || r.bottom < S.y - 300 || r.top > S.y + 300)) return
@@ -2067,6 +2073,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && input(a.key) })
       return out
     },
+    setRoom(id) { room = id },
     peekUse(now) {
       if (portalEntry || isChickenControlsListening()) return false
       if (useSampleAt !== now) {

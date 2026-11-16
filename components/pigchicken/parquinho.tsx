@@ -15,7 +15,7 @@ import { createMouseOwner, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, 
 import { cameraBounds, cameraStep, cameraXRange, leadStep } from "@/lib/pigchicken/camera"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
-import { createCombat, lookDoses, type Box, type Catchable, type Combat, type Effect, type SoulPortal, type WorldCarry } from "@/lib/pigchicken/combat"
+import { createCombat, lookDoses, type Box, type Catchable, type Combat, type Effect, type ShotRoom, type SoulPortal, type WorldCarry } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import { getNetState, remoteChicken } from "@/lib/chicken/online-room"
 import { chickNumber, chickStyleOf } from "@/lib/chicken/net-chicks"
@@ -53,6 +53,8 @@ import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken
 import { needsTrajectory, patioPixelRatio, trajectoryVisible, zoomedView } from "@/lib/pigchicken/viewport"
 import { moveLiveCamera, setCameraRestY } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
+import { houseRooms, roomShotWalls, type RoomRect } from "@/lib/pigchicken/house-rooms"
+import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { DISC_X, GONG_X, RESET_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { accuracy, createNoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
@@ -569,7 +571,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     combat.setPerchWorld(perches)
     combat.setItems(loadItems())
     // online: the lobby's owner moves the enemies, the others mirror them; everyone's shots fly on every screen
-    const net = createNetWorldSync(combat, () => ["p1", ...(extras?.current?.keys() ?? [])])
+    // the rooms of the houses (lib/pigchicken/house-rooms.ts): what is fired inside one stays in it
+    let shotRooms = new Map<string, ShotRoom & { rect: RoomRect }>()
+    const net = createNetWorldSync(combat, () => ["p1", ...(extras?.current?.keys() ?? [])], {
+      // another browser's shot that begins in the room one of its players is in: seen only when that house is open here
+      shotRoom: (pid, x, y) => {
+        for (let slot = 0; slot < 4; slot++) {
+          const house = houseRoomsStore.netRoom(pid, slot), room = house ? shotRooms.get(house) : undefined
+          if (room && x >= room.rect.l - 40 && x <= room.rect.r + 40 && y >= room.rect.t - 40 && y <= room.rect.b + 40) return houseRoomsStore.isOpen(room.id) ? room : "hidden"
+        }
+        return null
+      },
+    })
     const soulPortals = new Map<string, SoulPortal>()
     // instruments, the enemies' answers and the zone's ambience play on PigChicKen's own synth
     combat.setMusicOut({
@@ -722,6 +735,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         for (const el of syncedElements) if (el.kind === "gong" && el.params.gong) gongSet.set(el.id, el.params.gong)
         for (const id of [...gongRuns.keys()]) if (!gongSet.has(id)) { gongRuns.delete(id); templeDraw.gongs.delete(`gong:${id}`) }
         const nextBoxes = layoutBoxes(shown)
+        shotRooms = new Map(houseRooms(shown).map(room => [room.id, { id: room.id, ...roomShotWalls(room), rect: room.room }]))
         for (const pickup of combat.pickups) {
           if (!pickup.resting || pickup.y >= G) continue
           const supports = (box: Box) => box.solid !== false && pickup.y === box.t && pickup.x >= box.l && pickup.x <= box.r
@@ -802,6 +816,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         nextOy = Math.max(yr.lo, Math.min(yr.hi, (oy ?? yr.lo) + dy + (padPan && rightStick ? rightStick.y * speed : 0)))
         panDeltaX = 0; panDeltaY = 0
       }
+      for (const id of ["p1", ...(extras?.current?.keys() ?? [])]) combat.setPlayerRoom(id, shotRooms.get(houseRoomsStore.roomOf(id) ?? "") ?? null)
       // the other local players' chickens and the chicks that follow her live in the same camera
       const others = [...(extras?.current?.values() ?? []), ...(chicks?.current?.values() ?? []), ...(ghosts?.engines() ?? [])]
       if (next !== camX || nextOy !== oy) {
@@ -838,12 +853,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the limits: walls and ceiling at the inner edge of the black frame (WorldLimits)
       const edges = cameraBounds(camX, { mode: manualView || forceFollow || zoom > 1 ? 'follow' : S.camera, viewW, worldW })
       const walls = { lo: edges.lo + LIMIT_BORDER, hi: edges.hi - LIMIT_BORDER, top: worldTop + LIMIT_BORDER + camY }
-      engine.setBounds(walls)
+      // inside a house, its walls and its ceiling are hers
+      const wallsOf = (id: string) => {
+        const room = shotRooms.get(houseRoomsStore.roomOf(id) ?? "")
+        return room ? { lo: room.rect.l - camX, hi: room.rect.r - camX, top: room.rect.t + camY } : walls
+      }
+      engine.setBounds(wallsOf("p1"))
       others.forEach(o => {
         const os = o.getMotionState()
         if (Math.abs(os.groundY - (G + camY)) > 0.01) o.setGroundHeight(os.height - G - camY)
         o.setBounds(walls)
       })
+      extras?.current?.forEach((o, id) => { if (houseRoomsStore.roomOf(id)) o.setBounds(wallsOf(id)) })
       ghosts?.frame({
         elements: ghostElements, camX, camY, zoom, dt, walls,
         players: [st, ...[...(extras?.current?.values() ?? [])].map(o => o.getMotionState())].map(os => ({ x: os.x + camX, y: os.y - camY })),
