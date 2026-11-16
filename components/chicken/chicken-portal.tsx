@@ -225,7 +225,7 @@ export function chickenPortalAvoid(vw: number): [number, number][] {
 // a portal standing in a moving world (the Pátio): its centre x and the ground's y in the world element's units
 export type ChickenPortalWorld = { host: React.RefObject<HTMLElement | null>; x: number; groundY: number; d: number }
 
-export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", modeSwitch = false, id, actors, onEnter, enabled = true, instructionMode = 'hover' }: {
+export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", modeSwitch = false, id, actors, onEnter, enabled = true, instructionMode = 'hover', birth }: {
   engine: ChickenEngine | null
   href?: string
   visible?: boolean
@@ -237,14 +237,17 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   onEnter?: (actor: ChickenEngine) => boolean
   enabled?: boolean
   instructionMode?: 'always' | 'hover'
+  // asked once per engine, when the world is ready: true brings her out of this portal even without coming from
+  // another one (a Pátio's Portal de nascimento)
+  birth?: () => boolean
   // under the button, an online / local switch: how the Pátio's lobby starts (local by default)
   modeSwitch?: boolean
 }) {
   const router = useRouter()
   const local = !!onEnter
   const portalId = id ?? (world ? 'patio' : 'globe')
-  const runtimeRef = useRef({ actors, onEnter, enabled, instructionMode })
-  runtimeRef.current = { actors, onEnter, enabled, instructionMode }
+  const runtimeRef = useRef({ actors, onEnter, enabled, instructionMode, birth })
+  runtimeRef.current = { actors, onEnter, enabled, instructionMode, birth }
   const candidateRef = useRef<ChickenEngine | null>(null)
   const arrivalReady = useRef<ChickenEngine | null>(null)
   const arrivalChecked = useRef(new WeakSet<ChickenEngine>())
@@ -422,7 +425,8 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         if (arrivalReady.current !== eng) arrivalReady.current = eng
         else if (!arrivalChecked.current.has(eng)) {
           arrivalChecked.current.add(eng)
-          if (takePortalArrival(portalId)) {
+          const arrived = takePortalArrival(portalId), born = runtime.birth?.() ?? false
+          if (arrived || born) {
             portalGate(eng, portalId).block()
             eng.arriveAtPortal({ x: pcx, y: pcy, durationMs: ENTER_MS })
             playPortalSound('arrive')

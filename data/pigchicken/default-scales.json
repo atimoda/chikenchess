@@ -39,5 +39,21 @@
     "fadeTime": 1.5,
     "standbyVis": 0,
     "aimedVis": 33
+  },
+  "strings": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33,
+    "strings": 22,
+    "stringStart": 0.25,
+    "stringEnd": 0.85,
+    "harmonicWidth": 0.08
+  },
+  "drums": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33
   }
 }

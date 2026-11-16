@@ -30,6 +30,12 @@ export type NetShot =
   // a special) and a staff thrown that comes back ('hm': from where, its angle, speed and how far it goes)
   | { k: 'z'; i: ItemId; p: number[]; s: number }
   | { k: 'hm'; i: ItemId; x: number; y: number; a: number; sp: number; rg: number }
+  // a deck's card (lib/pigchicken/cards.ts; c: its id in the browser that threw it): thrown ('cd': its rank, from
+  // where, to where, its speed and, for a music deck, its note's colour), on its way back to its owner ('cb') and
+  // burst ('cx': where, the burst's radius and, for a music deck, the note it plays, its colour and voice)
+  | { k: 'cd'; i: ItemId; c: number; r: number; x: number; y: number; tx: number; ty: number; sp: number; col?: string }
+  | { k: 'cb'; i: ItemId; c: number }
+  | { k: 'cx'; i: ItemId; c: number; x: number; y: number; rd: number; n?: { m: number; c: string; v: string } }
 
 // what spawns are asked of the owner (the horde buttons and the editor's training enemies), with the scene they are
 // for: the horde moves inside it whoever is watching
@@ -223,6 +229,12 @@ export function cleanShot(s: unknown, items: Record<string, unknown>): NetShot |
   if (o.k === 't' && all('x1', 'y1', 'x2', 'y2')) return o as NetShot
   if (o.k === 'th' && all('x', 'y', 'vx', 'vy', 'sp', 'a')) return o as NetShot
   if (o.k === 'z' && Array.isArray(o.p) && o.p.length >= 5 && o.p.length <= 5 * 48 && o.p.length % 5 === 0 && o.p.every(v => num(v) && Math.abs(v as number) < LIMIT)) return { k: 'z', i: o.i as ItemId, p: o.p as number[], s: o.s ? 1 : 0 }
+  if (o.k === 'cd' && all('c', 'r', 'x', 'y', 'tx', 'ty', 'sp')) return { k: 'cd', i: o.i as ItemId, c: o.c as number, r: Math.max(0, Math.min(13, Math.round(o.r as number))), x: o.x as number, y: o.y as number, tx: o.tx as number, ty: o.ty as number, sp: Math.max(100, Math.min(4000, o.sp as number)), ...(typeof o.col === 'string' && /^#[0-9a-f]{3,8}$/i.test(o.col) ? { col: o.col } : {}) }
+  if (o.k === 'cb' && num(o.c)) return { k: 'cb', i: o.i as ItemId, c: o.c as number }
+  if (o.k === 'cx' && all('c', 'x', 'y', 'rd')) {
+    const n = o.n as { m?: unknown; c?: unknown; v?: unknown } | undefined
+    return { k: 'cx', i: o.i as ItemId, c: o.c as number, x: o.x as number, y: o.y as number, rd: Math.max(0, Math.min(1000, o.rd as number)), ...(n && typeof n === 'object' && num(n.m) && typeof n.c === 'string' && typeof n.v === 'string' ? { n: { m: n.m as number, c: n.c, v: n.v } } : {}) }
+  }
   if (o.k === 'hm' && all('x', 'y', 'a', 'sp', 'rg')) return { k: 'hm', i: o.i as ItemId, x: o.x as number, y: o.y as number, a: o.a as number, sp: Math.max(100, Math.min(4000, o.sp as number)), rg: Math.max(0, Math.min(6000, o.rg as number)) }
   return null
 }

@@ -31,6 +31,9 @@ export function chickenPlatformElements(now: number) {
   return elements
 }
 
+// colliders came or went just now (a room she walked into): the next frame looks for them again
+export function refreshChickenPlatforms() { queriedAt = -Infinity }
+
 export function chickenPlatformRects(now: number) {
   const found = chickenPlatformElements(now)
   if (now === measuredAt) return measured

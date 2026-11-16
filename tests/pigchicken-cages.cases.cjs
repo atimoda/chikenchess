@@ -10,7 +10,10 @@ const { createCombat } = loadTs('lib/pigchicken/combat.ts')
 
 // ---------- the cages by themselves ----------
 test('six models, each with its own limit and art; a cage is not an inventory item', () => {
-  assert.deepEqual(I.CAGE_IDS.map(id => [id, I.DEFAULT_ITEMS[id].cageSouls]), [['cage', 8], ['cageWire', 12], ['cageConcorde', 16], ['cageWood', 20], ['cageArch', 30], ['cageFlight', 50]])
+  assert.deepEqual(I.CAGE_IDS, ['cage', 'cageWire', 'cageConcorde', 'cageWood', 'cageArch', 'cageFlight'])
+  // the limits are the game's defaults (data/pigchicken/default-items.json): whole, within bounds, never smaller in a bigger model
+  const caps = I.CAGE_IDS.map(id => I.DEFAULT_ITEMS[id].cageSouls)
+  caps.forEach((n, i) => assert.ok(Number.isInteger(n) && n >= 1 && n <= G.CAGE_CAP_MAX && (i === 0 || n >= caps[i - 1]), `${I.CAGE_IDS[i]}: ${n}`))
   for (const id of I.CAGE_IDS) {
     assert.ok(I.isCage(id) && I.RACK_ITEM_IDS.includes(id), id)
     const a = cageArt(id)
@@ -72,11 +75,27 @@ test('each soul has its own spot in the cage, whoever else is in it', () => {
 test('the hanging cage lags behind the camera and comes to rest', () => {
   const s = G.newSway()
   for (let i = 0; i < 20; i++) G.swayStep(s, 4000, 0.016)
-  assert.ok(s.a < -0.02, 'the camera speeds up to the right: the cage hangs back')
+  assert.ok(s.a > 0.02, 'the camera speeds up to the right: the cage hangs back, to the left')
+  const t = G.newSway()
+  for (let i = 0; i < 20; i++) G.swayStep(t, -4000, 0.016)
+  assert.ok(t.a < -0.02, 'to the left: it hangs back, to the right')
   for (let i = 0; i < 20; i++) G.swayStep(s, 1e7, 0.016)
   assert.ok(Math.abs(s.a) <= G.SWAY.max + 1e-9, 'never past its limit')
   for (let i = 0; i < 600; i++) G.swayStep(s, 0, 0.016)
   assert.ok(Math.abs(s.a) < 0.002 && Math.abs(s.v) < 0.02, 'still again')
+})
+
+test('the Itens panel shows a cage as full as its limit: souls 1 to n, birds of many species and a few chicks, always the same', () => {
+  const souls = G.sampleSouls(50)
+  assert.deepEqual(souls.map(s => s.id), [...Array(50).keys()].map(i => i + 1))
+  const chicks = souls.filter(s => s.species === 'chick')
+  assert.ok(chicks.length >= 2 && chicks.length < 10 && chicks.every(s => s.bird === null && Number.isInteger(s.chick)))
+  assert.ok(new Set(souls.filter(s => s.species !== 'chick').map(s => s.species)).size >= 6)
+  assert.ok(souls.some(s => s.state === 'dead'))
+  assert.deepEqual(G.sampleSouls(50), souls)
+  assert.deepEqual(G.sampleSouls(8), souls.slice(0, 8), 'a soul stays where it is when the limit grows')
+  assert.equal(G.sampleSouls(0).length, 0)
+  assert.equal(G.sampleSouls(500).length, G.CAGE_CAP_MAX)
 })
 
 test("online: a browser tells its players' cages as counters; junk is dropped and a change of count glows", () => {
@@ -144,7 +163,7 @@ test('nobody starts with a cage; up to three hang with her, outside the inventor
   assert.equal(c.cages[0].cage.enterT, 0, 'it comes in swinging')
   c.give('cageWood'); c.give('cageFlight'); c.give('cageWire')
   assert.deepEqual(names(c), ['cage', 'cageWood', 'cageFlight'], 'a new one hangs behind; the fourth does not fit')
-  assert.deepEqual(c.cages.map(o => o.cage.cap), [8, 20, 50])
+  assert.deepEqual(c.cages.map(o => o.cage.cap), ['cage', 'cageWood', 'cageFlight'].map(id => I.DEFAULT_ITEMS[id].cageSouls))
   assert.ok(!c.inventory.some(o => o && I.isCage(o.item)))
   assert.equal(c.rotateCages(2), true); assert.deepEqual(names(c), ['cageFlight', 'cageWood', 'cage'], 'a press on one behind: it swaps with the one in front')
   assert.equal(c.rotateCages(), true); assert.deepEqual(names(c), ['cageWood', 'cage', 'cageFlight'], 'the bind: the next one')
@@ -254,7 +273,7 @@ test('a cage on the floor keeps its souls: whoever takes it takes them; with thr
   // one lying in the world with a limit of its own, taken with Pegar: it hangs behind
   c.addPickup(0, 'cageWood', 0, 5)
   step(c); step(c, { grab: true })
-  assert.deepEqual([names(c), c.cages.map(o => o.cage.cap)], [['cage', 'cageWood'], [8, 5]], 'the one she had stays in front')
+  assert.deepEqual([names(c), c.cages.map(o => o.cage.cap)], [['cage', 'cageWood'], [I.DEFAULT_ITEMS.cage.cageSouls, 5]], 'the one she had stays in front')
   assert.equal(c.cages[1].cage.enterT < G.CAGE_ENTER, true, 'swinging in')
   assert.equal(c.hoverSwaps, false)
   c.addPickup(0, 'cageArch', 0)
@@ -307,7 +326,7 @@ test('a rack or a loose cage saves its own limit; the Pátio padrão has one Gai
   assert.equal(keep('rack', 'cage', 'many'), undefined)
 
   // a Pátio padrão saved before the cages gets its rack once; any other Pátio does not
-  const old = { v: L.LAYOUT_VERSION - 1, elements: L.defaultLayout().elements.filter(e => e.id !== 'rack-cage') }
+  const old = { v: 7, elements: L.defaultLayout().elements.filter(e => e.id !== 'rack-cage') }
   const had = n => n.elements.filter(e => e.kind === 'rack' && e.params.item === 'cage').length
   assert.equal(had(L.normalizeLayout(JSON.parse(JSON.stringify(old)), true)), 1)
   assert.equal(had(L.normalizeLayout(JSON.parse(JSON.stringify(old)), false)), 0)

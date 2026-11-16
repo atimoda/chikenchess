@@ -21,7 +21,7 @@ import { shockingAirLegPose } from './shocking-pose'
 import { magnetVector } from './analog-magnet'
 import { createThrowTransition } from './throw-transition'
 import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce, chickenPlatformShape, chickenPlatformHard, type PlatformOcclusion } from './platform-geometry'
-import { blockHardWalls, clipAboveGround, polygonContains, shapeEdges } from './hard-shapes'
+import { blockHardWalls, clipAboveGround, crossesFused, fuseFaces, polygonContains, shapeEdges, type FusedBox, type JoinedShape } from './hard-shapes'
 import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampoline'
 import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
 import { mixGain } from '../pigchicken/mixer'
@@ -33,7 +33,11 @@ export type ChickenState = { x: number; y: number; angle: number; shoulder: { x:
 // accelMult scales her acceleration; accelPower > 1 eases each start (1 linear, 3 "ease-super-in": slow, then fast),
 // reaching full speed in accelRamp seconds; buddha / fizz are how many doses of each consumable look she has
 // (the Pátio): they stack up (more glow, more bubbles) and show together
-export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; buddha?: number; fizz?: number }
+export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; buddha?: number; fizz?: number; seat?: ChickenSeat | null }
+// Sitting at a fixed instrument (the Pátio's Harpa: lib/pigchicken/fixed-instruments.ts): her feet stay at (x, y) on
+// the screen, she faces `face` and no movement input counts, in the seated pose. Pular, a blast or being dragged
+// gets her up: takeSeatLeft() says so once, for the game to free the seat
+export type ChickenSeat = { x: number; y: number; face: number }
 // A chicken driven from outside (an online player's, from the network): where she is on this screen and what she
 // is doing. She follows it smoothly, animates by its state and ignores input, physics and the pointer.
 // cling: the angle (radians) of the surface she holds, turned like hers (null: not clinging); then x/y is the
@@ -41,6 +45,8 @@ export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwChargi
 export type ChickenRemote = { x: number; y: number; vx: number; vy: number; face: number; state: string; cling?: number | null }
 // the states a remote chicken animates; anything else (portal, the shocking jump's wind-up) looks like the nearest
 // one (cling without a surface angle, from an older browser, as a jump)
+// how far her body comes down while she sits on a stool (px at size 1)
+const SEAT_SINK = 16
 const REMOTE_STATE: Record<string, string> = { cling: 'jump', shockingPrepare: 'brood', portal: 'idle', portalArrival: 'idle' }
 const REMOTE_SNAP = 400
 const WALK_ACTIONS: ChickenAction[] = ['left', 'right', 'up', 'down', 'crouch', 'jump', 'run']
@@ -58,6 +64,9 @@ export type ChickenEngine = {
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
   peekActions: () => Record<ChickenAction, boolean>
   peekUse: (now: number) => boolean
+  // Inside a house (lib/pigchicken/house-rooms.ts): only the colliders of that room (`data-chicken-room`) are hers,
+  // and outside (null) none of any room is.
+  setRoom: (id: string | null) => void
   canPointAndClick: () => boolean
   // Clicking a portal's button may walk her there in every mode (the Pátio's game mode included).
   canWalkToPortal: () => boolean
@@ -85,6 +94,7 @@ export type ChickenEngine = {
   // the Pátio's point-and-click: walk to this spot (screen pixels as clicked, before the camera's zoom)
   walkTo: (point: { x: number; y: number }) => void
   setGame: (game: ChickenGame) => void
+  takeSeatLeft: () => boolean
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
   // The wing turns with it: its tip follows the aim.
@@ -99,7 +109,10 @@ export type ChickenEngine = {
   // `staff`: a staff carried in its own pose (lib/pigchicken/staff-pose.ts), in her body's frame: the wing's hand at
   // (x, y) from her shoulder holding the drawing's point (gripX, gripY), the staff turned to `angle` (degrees, 0 = to
   // her front, -90 = up). A swing leaves from this pose and comes back to it
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null } | null) => void
+  // `off`: with a staff, one of it in the back wing's hand, carried in this pose (the two Boomerangs)
+  // `back`: the back wing holds the item (the second Boomerang): with `off`, carried there, and the item itself is not
+  // shown; without, the back wing moves as the front wing would. The front wing rests
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: HeldStaff | null; back?: boolean } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in. `size`: how much bigger
   // the item is drawn at the height of the blow (×, a charged strong blow)
@@ -117,6 +130,8 @@ export type ChickenEngine = {
   getDevices: () => InputDeviceId[] | null
   // her look, apart from the central configuration's (another local player's chicken); null follows the configuration
   setLook: (look: ChickenLook | null) => void
+  /** Her species from now on (lib/chicken/species.ts): the tuning of her body and movement; her art is setArt's. */
+  setSpecies: (species: BirdSpecies | undefined) => void
   // a whole set of parts of her own (a chick's style), over the look; null goes back to the look
   setArt: (art: ChickenArtSet | null) => void
   // driven by a bot (the chicks' follow brain): read once per step, it replaces every input (keys, gamepad, touch);
@@ -127,6 +142,9 @@ export type ChickenEngine = {
   // puts her at (x, y) (screen px, her feet) facing `face`, still, in the air: she falls onto the floor below
   // (the Quadro de lousa's ghost starting its move again)
   placeAt: (x: number, y: number, face?: 1 | -1) => void
+  // the key she carries for the hard walls that lead to another room (`data-chicken-cross="<key>,<far>,<fit>"`, the
+  // Grade de blocos): Brood + Jump on one of them takes her through only while the keys match
+  setCrossKey: (key: string | null) => void
   destroy: () => void
 }
 
@@ -138,7 +156,10 @@ export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: {
 // hardN: the outside of an "Objeto duro" edge (its walls stop her, its floors catch her feet)
 // side: a piece of a thin line with two sides (a power wire, `data-chicken-wire`): `top` the floor she walks on,
 // otherwise the ceiling under it she hangs from; `base` names the line, so she can switch to its other side
-type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams; ceil?: boolean; hardN?: number[]; side?: { base: string; top: boolean } }
+type Seg = { id: string; ax: number; ay: number; bx: number; by: number; anchorX: number; clipOffset?: number; topEdge: boolean; len: number; ang: number; wall: boolean; solid: boolean; bounce?: TrampolineParams; ceil?: boolean; hardN?: number[]; side?: { base: string; top: boolean }; cross?: SegCross; fused?: string; join?: string }
+// a hard wall with a room behind it (`data-chicken-cross="<key>,<reach>"`): who it lets through and how far behind
+// it the surface she comes out on can be
+type SegCross = { key: string; reach: number }
 
 const NS = 'http://www.w3.org/2000/svg'
 const DEG = 180 / Math.PI
@@ -224,7 +245,7 @@ const SVG_MARKUP = `
     ${AURA_MARKUP}
     ${legMarkup('Back', -26)}${legMarkup('Front', -14)}
     <g data-part="body">
-      <g data-part="wingBack"><g data-part="artWingBack"></g></g>
+      <g data-part="wingBack"><g data-part="artWingBack"></g><g data-part="heldOff" style="display:none"></g></g>
       <g data-part="tail"><g data-part="artTail"></g></g>
       <g data-part="artTorso"></g>
       <g data-part="neck"><g data-part="artNeck"></g>
@@ -281,7 +302,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -329,7 +350,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   paintLook(ownLook ?? config.look)
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
-  const R = speciesParams(opts.species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+  let species = opts.species
+  const R = speciesParams(species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
   let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     rigMatrices.clear()
@@ -337,7 +359,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
-    const P = speciesParams(opts.species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+    const P = speciesParams(species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
     Object.assign(R, P)
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
     R.scale = P.scale * vf
@@ -435,7 +457,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   // ---------- game hooks ----------
-  let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = '', heldArrowSvg = ''
+  let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = '', heldArrowSvg = '', heldOffSvg = '', heldOffOn = false
   const throwTransition = createThrowTransition()
   let peckNow: PeckPose | null = null
   let swingNow: { angle: number; reach: number; t: number; size?: number } | null = null
@@ -448,7 +470,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   const handAimAngle = (angle: number) => heldItem?.consumable && !swingNow && !(heldItem.pull && heldItem.pull > 0) ? clamp(angle, -CONSUMABLE_WING_AIM_LIMIT, CONSUMABLE_WING_AIM_LIMIT) : angle
   let bounds: { lo: number; hi: number; top?: number } | null = null
-  const game: Required<ChickenGame> = { gameMode: false, throwHeld: false, throwCharging: false, aimFace: null, lookAngle: null, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, buddha: 0, fizz: 0 }
+  const game: Required<ChickenGame> = { gameMode: false, throwHeld: false, throwCharging: false, aimFace: null, lookAngle: null, speedMult: 1, accelMult: 1, accelPower: 1, accelRamp: 0.5, buddha: 0, fizz: 0, seat: null }
   let auraShown = ''
   function showAura() {
     const buddha = clamp(Math.floor(game.buddha) || 0, 0, BUDDHA_LAYERS), bubbles = clamp((Math.floor(game.fizz) || 0) * FIZZ_PER_DOSE, 0, FIZZ_BUBBLES.length)
@@ -498,6 +520,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const crouchPressed = tapped('crouch') || (C && !S.prevCrouch)
     const downPressed = (Dk && !S.prevD) || tapped('down')
     prevJump = J; S.prevCrouch = C; pressed.clear(); virtTapped.clear()
+    if (game.seat && !S.held) { seatStep(dt, jumpPressed); return }
     // Releasing Brood at rest latches it. Chickens keep this pose until Brood again, Jump or Run with a direction;
     // other bird profiles can opt into the previous automatic stand-up behavior.
     const others = Lh || Rh || U || C || J || RUN
@@ -526,7 +549,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // flips her under it (no shocking prep); Down + Brood + Jump still drops through, Up + Brood + Jump goes up
     const flipPlat = S.grounded && S.plat && !S.held && !S.cl ? segById(S.plat) : null
     const flipUnder = jumpPressed && Dk && !C && !U && !!flipPlat && !flipPlat.solid && canHangUnder(flipPlat)
-    if (jumpPressed && D && !S.cl && !S.held && !flipUnder) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
+    // ...and on the floor of a room over another room (a wall that leads through, see crossWall) the same gesture
+    // takes her down through it
+    const crossUnder = jumpPressed && Dk && !C && !U && !!flipPlat?.cross && flipPlat.cross.key === crossKey
+    if (jumpPressed && D && !S.cl && !S.held && !flipUnder && !crossUnder) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
     if (S.shocking && !J) {
       if (Dk && !S.grounded && !S.shockFromGround) { airShockReleased = true; airChargeMultiplier = shockingAirMultiplier(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirMaxMultiplier) }
       S.shocking = false; jumpPressed = Dk
@@ -564,13 +590,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (S.grounded && S.plat) {
       let sg = segById(S.plat), fy = sg ? floorY(sg, S.x) : null
       // walking off one piece of a shaped floor onto the next one (they share the element's id)
+      // (the fused boxes and what is joined to them are one solid: its floors go on from one to the next as well)
       if (sg && fy === null && sg.id.includes(':l')) {
-        const base = sg.id.slice(0, sg.id.lastIndexOf(':l'))
-        const next = SEGS.find(o => o !== sg && !o.wall && o.id.startsWith(base + ':l') && (() => { const y = floorY(o, S.x); return y !== null && Math.abs(y - S.y) < 10 })())
+        const base = sg.id.slice(0, sg.id.lastIndexOf(':l')), solid = !!(sg.fused || sg.join)
+        const next = SEGS.find(o => o !== sg && !o.wall && (o.id.startsWith(base + ':l') || (solid && !!(o.fused || o.join))) && (() => { const y = floorY(o, S.x); return y !== null && Math.abs(y - S.y) < 10 && (o.id.startsWith(base + ':l') || !crossesFused(FUSED, S.x, S.y - 1, S.x, y - 1)) })())
         if (next) { sg = next; fy = floorY(next, S.x); S.plat = next.id; S.platAx = next.anchorX }
       }
-      // crouched, walking off a floating edge grabs the side below it instead of falling
-      if (sg && fy === null && C && dir !== 0 && !sg.solid && grabEdgeSide(sg, dir, (U ? 1 : 0) - (D || C ? 1 : 0))) { clingPose(dt, U, D || C); return }
+      // crouched, walking off a floating edge (or off the end of a hard outline's floor) grabs the side below it
+      // instead of falling
+      if (sg && fy === null && C && dir !== 0 && (!sg.solid || sg.hardN) && grabEdgeSide(sg, dir, (U ? 1 : 0) - (D || C ? 1 : 0))) { clingPose(dt, U, D || C); return }
       if (!sg || fy === null) { S.grounded = false; S.plat = null; S.vy = 0; S.jumpIndex = 0 }
       else {
         const dx = sg.anchorX - S.platAx, dy = fy - S.y; S.platAx = sg.anchorX
@@ -666,6 +694,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // ...but on a floating box, Brood + Jump without Up or Down flips her under it, upside down (see flipUnder)
     if (flipUnder && jumpPressed && plat && !plat.solid && hangUnder(plat, S.face)) {
       clingPose(dt, U, false); return
+    } else if (crossUnder && jumpPressed && plat && crossWall(plat, [0, -1], S.x, S.y)) {
+      clingPose(dt, U, false); return
     } else if (jumpPressed && plat && !plat.solid && !U && (D ? dir !== 0 || C : C && dir === 0)) {
       S.dropId = plat.id; S.dropT = 0.3; S.grounded = false; S.plat = null; S.sliding = false
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
@@ -727,7 +757,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         let best: { sg: Seg; y: number } | null = null
         SEGS.forEach(sg => {
           if (sg.wall || (S.dropT > 0 && sg.id === S.dropId) || (!sg.solid && (D || C) && !S.shockFromGround)) return
-          const fy = floorY(sg, S.x)
+          const fy = floorAt(sg, S.x)
           if (fy !== null && fy < groundY && prevY <= fy + 0.5 && S.y >= fy && (!best || fy < best.y)) best = { sg, y: fy }
         })
         if (best) land((best as { sg: Seg; y: number }).y, (best as { sg: Seg; y: number }).sg)
@@ -760,6 +790,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.state = S.shocking ? 'shockingPrepare' : st
     updateFeet(dt, st, speed)
     animate(dt, st, U, speed)
+  }
+
+  // sitting at a fixed instrument: held where the seat is, no physics and no movement; Pular gets her up
+  let seatLeft = false
+  function leaveSeat() { if (game.seat) { game.seat = null; seatLeft = true } }
+  function seatStep(dt: number, jumpPressed: boolean) {
+    const s = game.seat!
+    if (jumpPressed) { leaveSeat(); S.prevD = false; return }
+    if (S.cl) { S.cl = null; startTurn() }
+    S.x = s.x; S.y = s.y; S.vx = 0; S.vy = 0; S.grounded = true; S.jumpIndex = 0; S.airBoost = 0
+    S.face = s.face < 0 ? -1 : 1
+    S.broodLatch = false; S.broodOff = false; S.sliding = false; S.shocking = false; S.prevD = false; goal = null
+    if (S.prevState !== 'seat') { plantFeet(); headAnchor.x = null }
+    S.prevState = 'seat'; S.state = 'seat'
+    animate(dt, 'seat', false, 0)
   }
 
   // feet stay planted in the world; a foot steps when the hip runs ahead of it
@@ -814,20 +859,28 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- colliders ----------
   let SEGS: Seg[] = []
+  // the fused boxes near her (screen units): in one go she never gets from one side of them to the other
+  let FUSED: FusedBox[] = []
+  // the key she carries for the walls that lead to another room (setCrossKey)
+  let crossKey: string | null = null
   // the hard outlines near her (screen units), to lift her out when one ends up over her feet
   let HARD_SHAPES: { id: string; poly: number[][] }[] = []
+  // the house she is inside of (setRoom)
+  let room: string | null = null
   function buildSegs() {
     const out: Seg[] = []
     const hardShapes: typeof HARD_SHAPES = []
+    const fusedBoxes: FusedBox[] = []
+    const joins: JoinedShape[] = []
     let source: Element | undefined, mask: PlatformOcclusion | undefined
-    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams, ceil = false, top = false, hardN?: number[], side?: Seg['side']) => {
+    const add = (id: string, ax: number, ay: number, bx: number, by: number, solid = false, floor = false, climbable = false, bounce?: TrampolineParams, ceil = false, top = false, hardN?: number[], side?: Seg['side'], cross?: SegCross) => {
       const len = Math.hypot(bx - ax, by - ay); if (len < 4) return
       const a = ((Math.atan2(by - ay, bx - ax) * DEG) % 180 + 180) % 180
       const wall = climbable || ceil || (!floor && Math.min(a, 180 - a) > 45)
       const topEdge = top || id.endsWith(':top')
       const visible = mask && source && mask.clip(source, id, mask.depth, ax - mask.x, ay - mask.y, bx - mask.x, by - mask.y)
       if (!visible) {
-        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce, ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}), ...(side ? { side } : {}) })
+        out.push({ id, ax, ay, bx, by, anchorX: ax, topEdge, len, ang: a, wall, solid, bounce, ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}), ...(side ? { side } : {}), ...(cross ? { cross } : {}) })
         return
       }
       const dx = bx - ax, dy = by - ay
@@ -837,7 +890,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         out.push({
           id: i === 0 ? id : `${id}~${i}`, ax: ax + dx * from, ay: ay + dy * from,
           bx: ax + dx * to, by: ay + dy * to, anchorX: ax, clipOffset: from * len, topEdge, len: partLen, ang: a, wall, solid, bounce,
-          ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}), ...(side ? { side } : {}),
+          ...(ceil ? { ceil } : {}), ...(hardN ? { hardN } : {}), ...(side ? { side } : {}), ...(cross ? { cross } : {}),
         })
       })
     }
@@ -846,10 +899,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       source = e; mask = occlusion
       const node = e as HTMLElement
       if (r.width < 8 || r.height < 8) return
+      if ((node.dataset.chickenRoom ?? null) !== room) return
       // A local player can be outside the main camera. Cull shaped surfaces relative to this actor.
       if (node.dataset.chickenNearby !== undefined) {
         if (!S.cl && (r.right < S.x - 300 || r.left > S.x + 300 || r.bottom < S.y - 300 || r.top > S.y + 300)) return
       } else if (r.bottom < 0 || r.top > H) return
+      // a narrow passage's plug (`data-chicken-fit="<size>"`): there only for a body that does not fit in the passage
+      if (node.dataset.chickenFit !== undefined && HEAD_TOP * R.scale <= Number(node.dataset.chickenFit)) return
       const id = node.dataset.chickenId || node.id || `box${n++}`
       const bounce = chickenPlatformBounce(e)
       if (bounce) {
@@ -862,20 +918,33 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (shape) {
         const hard = chickenPlatformHard(e)
         if (hard) hardShapes.push({ id, poly: shape.map(([x, y]) => [r.left + x, r.top + y]) })
+        // a wall between two rooms: its two long faces lead through it
+        const [key, reach] = (hard && node.dataset.chickenCross || '').split(',')
+        const through: SegCross | undefined = key ? { key, reach: Number(reach) } : undefined
+        // hard boxes built side by side as one solid (`data-chicken-fused="<group>"`): fuseFaces, after the loop
+        const fused = hard && node.dataset.chickenFused !== undefined, first = out.length
+        if (fused) fusedBoxes.push({ id, group: node.dataset.chickenFused || id, left: r.left, top: r.top, right: r.right, bottom: r.bottom })
         shapeEdges(shape).forEach(({ i, a, b, kind, n }) => {
           const hn = hard ? n : undefined
           const ax = r.left + a[0], ay = r.top + a[1], bx = r.left + b[0], by = r.top + b[1]
           if (Math.min(ay, by) >= groundY - 4) return
-          if (kind === 'floor') add(`${id}:l${i}`, ax, ay, bx, by, hard, true, false, undefined, false, true, hn)
+          const cross = through && (kind === 'wall') === (r.height > r.width) ? through : undefined
+          if (kind === 'floor') add(`${id}:l${i}`, ax, ay, bx, by, hard, true, false, undefined, false, true, hn, undefined, cross)
           else if (kind === 'ceil') {
-            add(`${id}:u${i}`, ax, ay, bx, by, hard, false, false, undefined, true, false, hn)
+            add(`${id}:u${i}`, ax, ay, bx, by, hard, false, false, undefined, true, false, hn, undefined, cross)
             // seen from inside, a floating box's bottom is a floor too
             if (!hard) add(`${id}:b${i}`, ax, ay, bx, by, false, true)
           } else {
             const part = clipAboveGround([ax, ay], [bx, by], groundY)
-            if (part) add(`${id}:w${i}`, part[0][0], part[0][1], part[1][0], part[1][1], hard, false, true, undefined, false, false, hn)
+            if (part) add(`${id}:w${i}`, part[0][0], part[0][1], part[1][0], part[1][1], hard, false, true, undefined, false, false, hn, undefined, cross)
           }
         })
+        if (fused) for (let k = first; k < out.length; k++) out[k].fused = id
+        // a hard outline of any shape built as one solid with them (`data-chicken-join`)
+        else if (hard && node.dataset.chickenJoin !== undefined) {
+          joins.push({ id, poly: shape.map(([x, y]) => [r.left + x, r.top + y]), left: r.left, top: r.top, right: r.right, bottom: r.bottom })
+          for (let k = first; k < out.length; k++) out[k].join = id
+        }
         return
       }
       // a shaped floor (curved or sloped roofs): `data-chicken-line="x,y x,y …"` in the element's own pixels,
@@ -928,7 +997,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const top = Math.min(wallTop(), groundY - 8)
     add('screen:left', wallLo(), top, wallLo(), groundY, true); add('screen:right', wallHi(), top, wallHi(), groundY, true)
     add('screen:top', wallLo(), top, wallHi(), top, true, false, false, undefined, true)
-    SEGS = out
+    // fused boxes are one solid: what one of them covers of another's face is no surface (hard-shapes.ts)
+    SEGS = fuseFaces(out, fusedBoxes, joins)
+    FUSED = fusedBoxes
     HARD_SHAPES = hardShapes
   }
   // elements without an id get one, so standing on a box survives re-ordering of the DOM
@@ -944,6 +1015,14 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const x0 = Math.min(sg.ax, sg.bx), x1 = Math.max(sg.ax, sg.bx)
     if (x < x0 || x > x1) return null
     return sg.bx === sg.ax ? Math.min(sg.ay, sg.by) : sg.ay + (sg.by - sg.ay) * (x - sg.ax) / (sg.bx - sg.ax)
+  }
+  // falling: a fused box's floor also catches her on the half pixel a hard wall lets her stand past its line, where
+  // the floor ends and the wall begins (or she would go down inside the wall)
+  function floorAt(sg: Seg, x: number) {
+    const fy = floorY(sg, x)
+    if (fy !== null || !sg.fused) return fy
+    const lo = Math.min(sg.ax, sg.bx), hi = Math.max(sg.ax, sg.bx)
+    return x > lo - 1 && x < hi + 1 ? floorY(sg, clamp(x, lo, hi)) : null
   }
   function floorBelow(x: number, y: number) {
     let best = groundY
@@ -991,6 +1070,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const wx = sg.ax + (sg.bx - sg.ax) * (py - sg.ay) / ((sg.by - sg.ay) || 1e-6)
       const dx = wx - S.x
       if (Math.abs(dx) > reach) continue
+      // a hard wall is grabbed from its front only, and nothing through another one: behind a thin wall (a room's)
+      // its other face and whatever stands right after it are as near as the wall itself
+      if (sg.hardN && sg.hardN[0] * dx > 0) continue
+      if (blockHardWalls(SEGS, S.x, wx, py - 1, py + 1, 0) !== null || crossesFused(FUSED, S.x, py, wx - Math.sign(dx), py)) continue
       const toward = Math.sign(dx) || 1
       if (sg.solid && !climbFromGround && !(dir === toward || (!S.grounded && S.vx * toward > 60))) continue
       attach(sg, wx, py)
@@ -1015,6 +1098,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const ux = (sg.bx - sg.ax) / sg.len, uy = (sg.by - sg.ay) / sg.len
     let n = [-uy, ux]
     if (n[0] * (S.x - px) + n[1] * (S.y - 40 * R.scale - py) < 0) n = [uy, -ux]
+    // a hard surface has one side only (right on its line, her place says nothing)
+    if (sg.hardN) n = [sg.hardN[0], sg.hardN[1]]
     clingFrame(sg, n, px, py); sfx('grab')
     S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5
   }
@@ -1024,10 +1109,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const reach = HEAD_TOP * R.scale, was = prevY - reach, now = S.y - reach
     let hit: Seg | null = null, hitY = -Infinity
     for (const sg of SEGS) {
-      if (!sg.ceil || S.x < Math.min(sg.ax, sg.bx) || S.x > Math.max(sg.ax, sg.bx)) continue
+      // (a fused box's ceiling reaches the half pixel a hard wall lets her stand past its line, like its floor)
+      const pad = sg.fused ? 1 : 0
+      if (!sg.ceil || S.x < Math.min(sg.ax, sg.bx) - pad || S.x > Math.max(sg.ax, sg.bx) + pad) continue
       const cy = sg.ay + (sg.by - sg.ay) * (S.x - sg.ax) / ((sg.bx - sg.ax) || 1e-6)
       // the first one her head meets on the way up
-      if (was >= cy - 0.5 && now < cy && cy > hitY) { hit = sg; hitY = cy }
+      if (was >= cy - 0.5 && now < cy && cy > hitY && !crossesFused(FUSED, S.x, S.y - 1, S.x, cy + 1)) { hit = sg; hitY = cy }
+      // a fused box's ceiling already across her body (she let go of a wall right under it, her head past it): she
+      // rises no further, or her feet would follow her head into the room above
+      else if (sg.fused && was < cy - 0.5 && prevY > cy && prevY > S.y) { S.y = prevY; S.vy = 0 }
     }
     if (!hit) return false
     if (up && !(S.clCool > 0 && hit.id === S.clLast)) {
@@ -1040,10 +1130,23 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (hit.solid) { S.y = hitY + reach; S.vy = 0 }
     return false
   }
+  // stepping off a surface sideways, `d` rig units from (px, y) along `nx`: never through a hard wall standing
+  // right there (a room's thin wall beside the one she clings to)
+  function stepOff(px: number, nx: number, d: number, y: number) {
+    const x = px + nx * d * R.scale
+    return blockHardWalls(SEGS, px, x, y - HEAD_TOP * R.scale, y - 1, 0) ?? x
+  }
   // letting go of a surface: off a wall she drops beside it, off a ceiling she turns upright just below it
   function letGo(vx: number, vy: number) {
     const c = S.cl, hanging = c.n[1] > 0.7
-    fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + (hanging ? HEAD_TOP : 30) * R.scale), vx, vy)
+    let y = Math.min(groundY, c.py + (hanging ? HEAD_TOP : 30) * R.scale)
+    // under a ceiling lower than her height, a hard floor comes first (never past it, into what is under the room)
+    if (hanging) for (const f of SEGS) {
+      if (f.wall || !f.hardN) continue
+      const fy = floorY(f, c.px)
+      if (fy !== null && fy > c.py + 1 && fy < y) y = fy
+    }
+    fallFrom(stepOff(c.px, c.n[0], 40, y), y, vx, vy)
   }
   // Going round a corner: at the end of the surface she clings to, another climbable surface (wall or ceiling)
   // that starts there takes her on, outside corners (a box's bottom corners) and inside ones (the limits' top
@@ -1119,19 +1222,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5; sfx('grab')
     return true
   }
-  // walking off the end of a floating floor crouched: the wall that starts at that end takes her, going down
+  // walking off the end of a floating floor crouched: the wall that starts at that end takes her, going down.
+  // A hard outline's floor ("Objeto duro") does the same with the outline's own walls, on their outside; the other
+  // solid walls (the limits) never take her this way.
   function grabEdgeSide(sg: Seg, dir: number, vup: number) {
     const ex = dir > 0 ? Math.max(sg.ax, sg.bx) : Math.min(sg.ax, sg.bx), ey = floorY(sg, ex)
     if (ey === null) return false
     for (const w of SEGS) {
-      if (!w.wall || w.ceil || w.bounce || w.solid) continue
+      if (!w.wall || w.ceil || w.bounce || (w.solid ? !(sg.hardN && w.hardN) : !!sg.hardN)) continue
       const atA = Math.hypot(w.ax - ex, w.ay - ey) < 3, atB = !atA && Math.hypot(w.bx - ex, w.by - ey) < 3
       if (!atA && !atB) continue
       const far = atA ? [w.bx, w.by] : [w.ax, w.ay]
       if (far[1] <= ey + 1) continue
       const u2 = [(far[0] - ex) / w.len, (far[1] - ey) / w.len]
       const speed = Math.abs(S.vx)
-      clingFrame(w, cornerNormal([0, -1], [dir, 0], u2), ex, ey)
+      clingFrame(w, w.hardN ?? cornerNormal([0, -1], [dir, 0], u2), ex, ey)
       const sign = atA ? 1 : -1
       S.cl.carry = { key: `${dir},${vup}`, sign }
       S.vx = sign * S.cl.sigma * speed
@@ -1139,6 +1244,32 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       return true
     }
     return false
+  }
+  // Brood + Jump on a hard wall that leads to another room (`cross`), standing on it, hanging from it or clinging to
+  // it at (px, py) with `n` pointing out of it: she comes out on the surface facing the other way, straight through.
+  // That is the wall's own other face when her body fits in the passage behind it, else the next room's wall (the
+  // passage is plugged for her, `data-chicken-fit`, and what the plug covers is no surface). Only with the wall's key
+  // (setCrossKey), and only when such a surface is there.
+  function crossWall(sg: Seg, n: number[], px: number, py: number) {
+    const k = sg.cross
+    if (!k || k.key !== crossKey || S.held) return false
+    // the nearest surface behind the wall that faces the other way
+    let to: Seg | null = null, d = k.reach + 1
+    for (const o of SEGS) {
+      if (!o.hardN || o.hardN[0] * n[0] + o.hardN[1] * n[1] > -0.9) continue
+      const ux = (o.bx - o.ax) / o.len, uy = (o.by - o.ay) / o.len, along = (px - o.ax) * ux + (py - o.ay) * uy
+      const behind = (o.ax - px) * -n[0] + (o.ay - py) * -n[1]
+      if (along >= -0.5 && along <= o.len + 0.5 && behind > 1 && behind < d) { to = o; d = behind }
+    }
+    if (!to) return false
+    const qx = px - n[0] * d, qy = py - n[1] * d
+    const look = screenFace()
+    if (n[1] > 0.7) { standAt(qx, qy, to, look); return true }
+    clingFrame(to, [-n[0], -n[1]], qx, qy)
+    // under the floor she stood on: upside down, looking the same way on the screen
+    if (n[1] < -0.7) S.face = -look
+    S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5; sfx('grab')
+    return true
   }
   // Jump against her look on a floating (not hard) collider: the other side of the same collider. Under a box she
   // climbs onto its top; on a box's outer side she moves to its opposite side; elsewhere she crosses the line.
@@ -1183,7 +1314,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const hanging = c.n[1] > 0.7
     // Jump against her look (or into the collider: Up under a ceiling, toward a wall) on a floating collider
     // switches her to its other side; hanging, Brood + Jump (without Up or Down) does too
-    if (jumpPressed && (hanging ? against || U || broodFlip : dir !== 0 && dir * c.n[0] < 0) && switchSide(sg)) {
+    if (jumpPressed && ((broodFlip && crossWall(sg, c.n, c.px, c.py)) || ((hanging ? against || U || broodFlip : dir !== 0 && dir * c.n[0] < 0) && switchSide(sg)))) {
       if (S.cl) clingPose(dt, U, Dn)
       else { S.state = 'idle'; animate(dt, 'idle', false, 0) }
       return
@@ -1196,7 +1327,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     if (jumpPressed) {
       // wall jump: away from the surface
-      fallFrom(c.px + c.n[0] * 40 * R.scale, Math.min(groundY, c.py + 30 * R.scale), c.n[0] * (R.jumpPush + 220) * R.wallJump, -jumpVelocity(0) * R.wallJump)
+      const jy = Math.min(groundY, c.py + 30 * R.scale)
+      fallFrom(stepOff(c.px, c.n[0], 40, jy), jy, c.n[0] * (R.jumpPush + 220) * R.wallJump, -jumpVelocity(0) * R.wallJump)
       if (Math.abs(S.vx) > 1) S.face = Math.sign(S.vx)
       S.burst = R.jumpFlaps / Math.max(1, R.jumpFlapRate); sfx('wallJump')
       S.state = 'jump'; animate(dt, 'jump', false, Math.abs(S.vx)); return
@@ -1232,8 +1364,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const wallTop = Math.min(sg.ay, sg.by) + 2
       for (const f of SEGS) {
         if (f.wall) continue
-        const ix = c.px + c.n[0] * 30 * R.scale, fy = floorY(f, ix)
-        if (fy !== null && fy > wallTop && prevPy < fy && c.py >= fy && fy <= groundY) { standAt(ix, fy, fy < groundY ? f : null, Math.sign(c.n[0]) || 1); return }
+        const ix = stepOff(c.px, c.n[0], 30, c.py), fy = floorY(f, ix)
+        if (fy !== null && fy > wallTop && prevPy < fy && c.py >= fy && fy <= groundY && !crossesFused(FUSED, c.px + c.n[0], c.py, ix, fy - 1)) { standAt(ix, fy, fy < groundY ? f : null, Math.sign(c.n[0]) || 1); return }
       }
     }
     if (s < 0 || s > sg.len) {
@@ -1243,7 +1375,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (upper) {
         // top end: climb over onto the floor behind it (a box's top edge), if there is one
         const ix = end[0] - c.n[0] * 26 * R.scale
-        let f = SEGS.find(f => !f.wall && floorY(f, ix) !== null && Math.abs((floorY(f, ix) as number) - end[1]) < 4)
+        let f = SEGS.find(f => !f.wall && floorY(f, ix) !== null && Math.abs((floorY(f, ix) as number) - end[1]) < 4 && !crossesFused(FUSED, end[0] + c.n[0], end[1], ix, (floorY(f, ix) as number) - 1))
         // the wall's top can be hidden a little below its box's top (an object in front): its own top still counts
         const bp = f ? null : boxPart(sg.id)
         if (bp) {
@@ -1251,14 +1383,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
           if (top && ty !== null && ty <= end[1] + 4 && ty >= end[1] - 60 * R.scale) f = top
         }
         if (f) { standAt(ix, floorY(f, ix) as number, f, -Math.sign(c.n[0]) || 1); return }
+        // a hard slope that starts at the wall's top (a cut corner): she walks on up it
+        if (sg.hardN) for (const o of SEGS) {
+          if (o.wall || !o.hardN || (Math.hypot(o.ax - end[0], o.ay - end[1]) >= 3 && Math.hypot(o.bx - end[0], o.by - end[1]) >= 3)) continue
+          const jx = end[0] - c.n[0] * Math.min(8 * R.scale, Math.abs(o.bx - o.ax) / 2), jy = floorY(o, jx)
+          if (jy !== null && jy <= end[1] + 1) { standAt(jx, jy, o, -Math.sign(c.n[0]) || 1); return }
+        }
       }
       if (end[1] < groundY - 3 && wrapCorner(sg, end, other, inKey)) { clingPose(dt, U, Dn); return }
       if (upper) {
         s = clamp(s, 0, sg.len); S.x = (s + offset) * c.sigma; S.vx = 0; c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
       } else if (end[1] >= groundY - 3) {
-        standAt(end[0] + c.n[0] * 30 * R.scale, groundY, null, Math.sign(c.n[0]) || 1); return
+        standAt(stepOff(end[0], c.n[0], 30, groundY), groundY, null, Math.sign(c.n[0]) || 1); return
       } else if (c.n[1] > 0.7) { c.px = end[0]; c.py = end[1]; letGo(0, 0); return }
-      else { fallFrom(end[0] + c.n[0] * 30 * R.scale, end[1], 0, 0); return }
+      else { fallFrom(stepOff(end[0], c.n[0], 30, end[1]), end[1], 0, 0); return }
     }
     clingPose(dt, U, Dn)
   }
@@ -1282,8 +1420,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // floor up to knee height above her feet (a slope's foot, a low step, a corner she slid into) puts her on it.
   function hardStep(prevX: number) {
     const s = R.scale
-    const x = blockHardWalls(SEGS, prevX, S.x, S.y - HEAD_TOP * s, S.y - STEP_UP * s, 16 * s)
+    const x = blockHardWalls(SEGS, prevX, S.x, S.y - HEAD_TOP * s, S.y - STEP_UP * s, 16 * s, S.y - 2)
     if (x !== null) { S.x = x; S.vx = 0 }
+    // a joined solid's slanted ceiling (a cut corner over the floor she walks on) coming down on her: she stops
+    // where her body no longer fits under it
+    if (S.grounded && S.x !== prevX) for (const sg of SEGS) {
+      if (!sg.ceil || !sg.join || sg.ay === sg.by || sg.ax === sg.bx) continue
+      if (S.x < Math.min(sg.ax, sg.bx) || S.x > Math.max(sg.ax, sg.bx)) continue
+      const slope = (sg.by - sg.ay) / (sg.bx - sg.ax), cy = sg.ay + slope * (S.x - sg.ax)
+      if (cy < S.y && cy > S.y - LOW_CEILING * s && slope * (S.x - prevX) > 0) { S.x = prevX; S.vx = 0; break }
+    }
     // an outline placed over her (the editor, a moved object): she climbs out onto its nearest floor above her feet
     const feetY = S.y - 2
     for (const { id, poly } of HARD_SHAPES) {
@@ -1305,6 +1451,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const fy = floorY(sg, S.x)
       if (fy === null || fy > S.y + 0.5 || fy < S.y - STEP_UP * s || fy >= groundY) continue
       if (S.grounded && (sg.id === S.plat || fy >= S.y - 0.5)) continue
+      // a room's floor is no step for whoever is under it
+      if (crossesFused(FUSED, S.x, S.y - 1, S.x, fy - 1)) continue
       if (fy < bestY) { best = sg; bestY = fy }
     }
     if (!best) return
@@ -1315,6 +1463,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // ---------- step up: a platform edge touching her shin or foot while walking lifts her onto it ----------
   // knee height above the ground (hip minus most of the thigh), in rig units
   const STEP_UP = -HIP_Y - LF * 0.85
+  // her body with her neck down, in rig units: under a ceiling lower than this she does not walk
+  const LOW_CEILING = 140
   function stepUp() {
     const s = R.scale, xs = [S.x, feet.F.x ?? S.x, feet.B.x ?? S.x]
     // the legs plus the toes reaching forward
@@ -1330,6 +1480,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       // the highest point of it within her reach (a sloped piece is not as high everywhere)
       const fy = Math.min(floorY(sg, lo) as number, floorY(sg, hi) as number)
       if (fy >= S.y - 2 || fy < S.y - STEP_UP * s) return
+      // never through a hard wall onto a floor right behind it (a room's floor, seen from outside)
+      const tx = clamp(S.x, Math.min(sg.ax, sg.bx) + 4 * s, Math.max(sg.ax, sg.bx) - 4 * s)
+      if (tx !== S.x && blockHardWalls(SEGS, S.x, tx, S.y - HEAD_TOP * s, S.y - STEP_UP * s, 0, S.y - 2) !== null) return
+      if (crossesFused(FUSED, S.x, S.y - 1, tx, fy - 1)) return
       if (fy < bestY) { best = sg; bestY = fy }
     })
     if (!best) return
@@ -1398,7 +1552,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
   const onRootDown = (e: PointerEvent) => {
     // the Pátio (game mode) can pick her up too; a remote chicken (online) is not ours to move
-    if (portalEntry || e.button !== 0 || remote || opts.ghost) return
+    // (sitting at a fixed instrument she stays put: a press on her is a press on its strings)
+    if (portalEntry || e.button !== 0 || remote || opts.ghost || game.seat) return
     goal = null
     e.preventDefault(); e.stopPropagation(); ensureAudio()
     const p = local(e.clientX, e.clientY)
@@ -1523,6 +1678,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       t.body = -8; t.neck = -6; t.head = 10; t.tail = -16; t.wing = 22; t.wingBack = 18
       t.tgtF = [LEG.F.hx + 40, -10]; t.tgtB = [LEG.B.hx - 22, -22]
       k = 20
+    } else if (st === 'seat') {
+      // on a stool: the body a little lower and upright, the legs bent forward with the feet near the floor
+      t.sink = SEAT_SINK; t.legSink = SEAT_SINK; t.ik = 0
+      t.tgtF = [LEG.F.hx + 30, -3]; t.tgtB = [LEG.B.hx + 24, -3]
+      t.body = -4; t.neck = 3; t.head = -3; t.tail = 10; t.wing = 12; t.wingBack = 8
+      k = 12
     } else if (st === 'brood') {
       // the body settles over the legs, which fold up under it
       t.sink = R.broodDepth; t.legSink = R.broodDepth; t.puff = 1.07; t.wing = 8; t.wingBack = 6; t.tail = 6; t.neck = 6; t.head = -6
@@ -1728,6 +1889,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const pivX = rig?.x ?? 0, pivY = rig?.y ?? 0
     // an instrument in her mouth: her head comes in front of the wing that holds it (the beak on the mouthpiece)
     const headFront = rig?.at === 'mouth'
+    // held by the back wing and moving (the second Boomerang winding, hitting): the item is drawn behind her body
+    const back = !!heldItem?.back && !heldItem.off
+    if (back !== (el.heldPivot.nextElementSibling === el.tail)) el.body.insertBefore(el.heldPivot, back ? el.tail : el.wing.nextSibling)
     if (headFront !== (el.neck.nextElementSibling === el.heldPivot)) el.body.insertBefore(el.neck, headFront ? el.heldPivot : el.wing)
     // a point of the item's drawing in the held pivot's frame (from the shoulder), as drawn this frame
     const onItem = (x: number, y: number) => {
@@ -1830,6 +1994,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     if (rig?.back) { const h = onItem(rig.back.x, rig.back.y); wingTo(el.wingBack, h.x, h.y) }
     else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
+    // the back wing holds it: moving, it takes the pose the front wing got (the item went behind her body above);
+    // carried, the item is the one in the back wing's hand below. The front wing rests
+    if (heldItem?.back) {
+      if (back) el.wingBack.setAttribute('transform', el.wing.getAttribute('transform') ?? '')
+      else el.held.style.opacity = '0'
+      el.wing.setAttribute('transform', rot('wing', pose.wing))
+    }
+    // a second one of the staff in the back wing's hand, carried like the first
+    const off = staff && heldItem?.off ? heldItem.off : null
+    if (!!off !== heldOffOn) { heldOffOn = !!off; el.heldOff.style.display = off ? '' : 'none' }
+    if (off) {
+      if (heldOffSvg !== heldSvg) { heldOffSvg = heldSvg; el.heldOff.innerHTML = heldSvg }
+      el.heldOff.setAttribute('transform', `translate(${CHICKEN_HAND.x} ${CHICKEN_HAND.y}) rotate(${off.angle.toFixed(1)}) translate(${(-off.gripX).toFixed(2)} ${(-off.gripY).toFixed(2)})`)
+    }
     el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
     const legShift = `translate(0 ${(pose.shiftY || 0).toFixed(2)})`
     el.wrapF.setAttribute('transform', legShift); el.wrapB.setAttribute('transform', legShift)
@@ -2023,7 +2201,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       opts.groundHeight = h; groundY = H - h
       if (S.grounded && !S.plat && !S.cl) S.y = groundY
     },
-    setCameraZoom(zoom) { camZoom = Math.max(0.5, Math.min(2.5, zoom)); svg.style.transform = zoom === 1 ? '' : `scale(${Math.max(0.5, Math.min(2.5, zoom))})` },
+    setCameraZoom(zoom) { camZoom = Math.max(0.02, Math.min(8, zoom)); svg.style.transform = zoom === 1 ? '' : `scale(${camZoom})` },
     setVirtual(action, on) {
       if (on && WALK_ACTIONS.includes(action)) goal = null
       ensureAudio()
@@ -2067,6 +2245,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && input(a.key) })
       return out
     },
+    setRoom(id) { room = id },
     peekUse(now) {
       if (portalEntry || isChickenControlsListening()) return false
       if (useSampleAt !== now) {
@@ -2100,6 +2279,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     setBounds(next) { bounds = next },
     // entering game mode drops a globe walk; the Pátio's own point-and-click (walkTo) survives the per-frame updates
     setGame(next) { Object.assign(game, next); if (next.gameMode) goal = null; showAura() },
+    takeSeatLeft() { const left = seatLeft; seatLeft = false; return left },
     walkTo(point) {
       if (remote || portalEntry || S.held || S.cl) return
       const p = local(point.x, point.y), m = 40 * R.scale
@@ -2126,7 +2306,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       return { x: p.x + k * (x * c - yy * sn), y: p.y + k * (x * sn + yy * c) }
     },
     rigPoint(point) {
-      const node = point === 'neck' ? el.body : point === 'hand' ? el.wing : el.head
+      const node = point === 'neck' ? el.body : point === 'hand' ? (heldItem?.back ? el.wingBack : el.wing) : el.head
       const at = point === 'neck' ? { x: PIV.neck[0], y: PIV.neck[1] } : point === 'hand' ? CHICKEN_HAND : CHICKEN_MOUTH
       const m = rigMatrix(node)
       const p = m ? new DOMPoint(at.x, at.y).matrixTransform(m) : shoulder()
@@ -2139,7 +2319,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (changed || !next?.throwing || swingNow || next?.consumable?.progress !== undefined) throwTransition.reset()
       else if (next.throwing && !heldItem?.throwing && heldItem) {
         const m = el.held.transform.baseVal.consolidate()?.matrix
-        const wing = el.wing.getCTM(), pivot = el.heldPivot.getCTM()
+        const wing = (heldItem?.back ? el.wingBack : el.wing).getCTM(), pivot = el.heldPivot.getCTM()
         if (m && wing && pivot) {
           const hand = new DOMPoint(CHICKEN_HAND.x, CHICKEN_HAND.y).matrixTransform(wing).matrixTransform(pivot.inverse())
           throwTransition.start({ x: m.e, y: m.f, angle: Math.atan2(m.b, m.a) * DEG, handX: hand.x, handY: hand.y }, performance.now())
@@ -2158,6 +2338,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     impulse(vx, vy, blast = false) {
       if (portalEntry || S.held) return
       if (blast) {
+        leaveSeat()
         const state = { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y }
         fallFrom(state.x, state.y, S.vx + vx, S.vy + vy)
         S.broodLatch = false; S.sliding = false; S.clCool = 0.3
@@ -2181,6 +2362,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       paintLook(ownLook ?? config.look)
     },
     setBot(read) { bot = read; botNow = {}; held.clear(); pressed.clear(); goal = null },
+    setSpecies(next) {
+      if ((next ?? 'chicken') === (species ?? 'chicken')) return
+      species = next
+      resize()
+    },
     setLook(next) {
       if (JSON.stringify(next) === JSON.stringify(ownLook)) return
       ownLook = next
@@ -2193,6 +2379,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       fallFrom(x, y, 0, 0)
       if (face) S.face = face
     },
+    setCrossKey(key) { crossKey = key },
     destroy() {
       throwTransition.reset()
       cancelGameFrame(raf)

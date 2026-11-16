@@ -98,6 +98,28 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M98 -1.6 Q110 -3.6 122 -0.4" fill="none" stroke="#fff0c2" stroke-width="1.1" stroke-linecap="round" opacity="0.9"/>
     <rect x="92" y="-3.8" width="5" height="7.6" rx="1.5" fill="#f0b540"/>`,
   },
+  // Boomerang: a bent blade of light wood, darker at the edge, with two red bands near each tip. Held by one tip
+  boomerang: {
+    box: [-8, -37, 65, 45],
+    svg: `<path d="M-2 0 L26 0 Q36 0 40 -9 L50 -30" fill="none" stroke="#8a5a2b" stroke-width="10.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-2 0 L26 0 Q36 0 40 -9 L50 -30" fill="none" stroke="#d9a05b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M0 -1.8 L26 -1.8 Q33.5 -1.8 37.4 -8.6" fill="none" stroke="#f3cf95" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
+    <path d="M5 -4 L5 4 M9.5 -4 L9.5 4" stroke="#c0392b" stroke-width="2.2"/>
+    <path d="M42.9 -24.3 L50.1 -20.9 M41.2 -20.7 L48.4 -17.3" stroke="#c0392b" stroke-width="2.2"/>`,
+  },
+  // Baralhos: three cards fanned out from the hand, their backs showing (red or blue, a diamond in the middle)
+  cardsRed: {
+    box: [-2, -23, 36, 46],
+    svg: `<g transform="rotate(-22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#d63a3a"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#8f1f1f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#d63a3a"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#8f1f1f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(0)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#d63a3a"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#8f1f1f" stroke-width="0.7" opacity="0.7"/></g>`,
+  },
+  cardsBlue: {
+    box: [-2, -23, 36, 46],
+    svg: `<g transform="rotate(-22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#2f6fde"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#173f8f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(22)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#2f6fde"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#173f8f" stroke-width="0.7" opacity="0.7"/></g>
+    <g transform="rotate(0)"><rect x="2" y="-9.5" width="29" height="19" rx="2.6" fill="#fbfbf6" stroke="#8d8d86" stroke-width="0.7"/><rect x="4.4" y="-7.1" width="24.2" height="14.2" rx="1.6" fill="#2f6fde"/><path d="M16.5 -5 L22 0 L16.5 5 L11 0 Z" fill="none" stroke="#fbfbf6" stroke-width="1.1"/><path d="M16.5 -2 L18.7 0 L16.5 2 L14.3 0 Z" fill="#fbfbf6"/><path d="M6.4 -5.1 L26.6 -5.1 M6.4 5.1 L26.6 5.1" stroke="#173f8f" stroke-width="0.7" opacity="0.7"/></g>`,
+  },
   pistol: {
     box: [-6, -16, 64, 40],
     svg: `<g transform="scale(1.7)">
@@ -209,6 +231,23 @@ const ART: Partial<Record<ItemId, Art>> = {
     <rect x="5" y="-2.2" width="30" height="4.4" rx="1.2" fill="#e7b43a" stroke="#8a5a12" stroke-width="1.2"/>
     <path d="M25 2 L25 8 L29 8 L29 2 M31 2 L31 6 L34 6 L34 2" fill="#e7b43a" stroke="#8a5a12" stroke-width="1.2"/>
     <path d="M-8 -5 Q-4 -8 0 -6.5 M8 -1 L32 -1" stroke="#fff3c4" stroke-width="1" fill="none" opacity="0.8"/>`,
+  },
+  // Chave dourada (Grade de blocos): a bright key with a red stone in its bow and three teeth
+  goldkey: {
+    box: [-16, -13, 56, 26],
+    svg: `<circle cx="-4" cy="0" r="10.5" fill="#ffd34a" stroke="#9a6a10" stroke-width="1.6"/>
+    <circle cx="-4" cy="0" r="4.2" fill="#e0453a" stroke="#7a1a14" stroke-width="1"/>
+    <rect x="6" y="-2.6" width="31" height="5.2" rx="1.4" fill="#ffd34a" stroke="#9a6a10" stroke-width="1.2"/>
+    <path d="M22 2.4 L22 8.5 L26 8.5 L26 2.4 M28 2.4 L28 6.5 L31 6.5 L31 2.4 M33 2.4 L33 9 L36.5 9 L36.5 2.4" fill="#ffd34a" stroke="#9a6a10" stroke-width="1.2"/>
+    <path d="M-10 -6 Q-5 -10 1 -7.5 M9 -1.2 L34 -1.2" stroke="#fff8d6" stroke-width="1.1" fill="none" opacity="0.9"/>`,
+  },
+  // Bomba (Grade de blocos): a disarmed one, a dark ball with its cap and a cut fuse
+  minebomb: {
+    box: [-16, -20, 32, 36],
+    svg: `<circle cx="0" cy="2" r="13" fill="#23272d" stroke="#0c0e11" stroke-width="1.6"/>
+    <rect x="-4.5" y="-15" width="9" height="6" rx="1.5" fill="#5b6470" stroke="#0c0e11" stroke-width="1.2"/>
+    <path d="M0 -15 Q2 -19 5 -18" stroke="#c9a56a" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M-8 -4 Q-4 -9 2 -8" stroke="#7d8794" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8"/>`,
   },
   // Hangdrum: the hang seen from the side, two steel domes joined at the rim, the ding on top and dents of notes
   hangdrum: {

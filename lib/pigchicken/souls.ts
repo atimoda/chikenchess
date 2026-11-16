@@ -37,10 +37,10 @@ export function soulSpecies(data: unknown): SoulSpecies {
 }
 
 const ITEM_SHOT: Record<string, SoulShot> = {
-  flute: 'wind', sax: 'wind', trumpet: 'wind', guitar: 'strings', violin: 'strings', harp: 'strings', keys: 'keys', tambourine: 'percussion', hangdrum: 'percussion', rebate: 'rebate',
+  flute: 'wind', sax: 'wind', trumpet: 'wind', guitar: 'strings', violin: 'strings', harp: 'strings', pedalharp: 'strings', keys: 'keys', tambourine: 'percussion', hangdrum: 'percussion', drumkit: 'percussion', rebate: 'rebate',
 }
 const VOICE_SHOT: Record<string, SoulShot> = {
-  flute: 'wind', sax: 'wind', trumpet: 'wind', guitar: 'strings', violin: 'strings', pizz: 'strings', harp: 'strings', guzheng: 'strings', keys: 'keys', bells: 'percussion', hang: 'percussion', handpan: 'percussion', hangSteel: 'percussion', hangSlap: 'percussion',
+  flute: 'wind', sax: 'wind', trumpet: 'wind', guitar: 'strings', violin: 'strings', pizz: 'strings', harp: 'strings', pedalHarp: 'strings', harpHarmonic: 'strings', guzheng: 'strings', keys: 'keys', bells: 'percussion', hang: 'percussion', handpan: 'percussion', hangSteel: 'percussion', hangSlap: 'percussion', kit: 'percussion',
 }
 // by the item that played the note ('rebate': a note sent back); without it, by the note's voice
 export function shotClass(by: string | null | undefined, voice?: string | null): SoulShot | null {

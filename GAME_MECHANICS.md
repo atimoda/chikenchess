@@ -22,10 +22,15 @@
 | Galinha: controles, teclado, gamepad e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
 | Galinha: controles de toque no celular (posição dos botões, deslizar entre botões, Correr com analógico, Throw ao soltar, avatar no canto) | [Controles de toque](docs/mechanics/chicken/touch.md) |
 | Pintinhos: espécie de ave menor, estilos de cor, bots que seguem a galinha, captura como almas e Pátio online | [Pintinhos](docs/mechanics/chicken/chicks.md) |
-| Pátio: mundo, limites e botão Sol, parallax, portais, Vila, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
+| Pátio: mundo, limites e botão Sol, parallax, portais, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
+| Pátio: Vila dos Telhados, criador de casas, pisos das fachadas, entrar nas casas pela porta (cômodo, andares, fachada que esconde quem está dentro, tiros que ficam no cômodo) | [Vila e casas](docs/mechanics/patio/houses.md) |
 | Pátio: espaço abaixo do chão, Salvar no game (Configurações do Pátio, Camadas, Câmera de Mira, Volume, Ajustes) e ícones do cabeçalho dos painéis | [Padrões do jogo](docs/mechanics/patio/game-defaults.md) |
 | Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, Item solto | [Editor do Pátio](docs/mechanics/patio/editor.md) |
+| Pátio: Portais de nascimento (vários lugares para nascer, chance de cada um, sorteio ao entrar) | [Portais de nascimento](docs/mechanics/patio/spawn-portals.md) |
+| Pátio: Grade de blocos do Campo minado (blocos fechados e abertos, bombas, vão, paredes, lado aberto e fechado, trocar de bloco) | [Grade de blocos](docs/mechanics/patio/mine-grid.md) |
+| Pátio: rodada do Campo minado (gangorra de música e dano, bandeira, dúvida, bombas, Chave dourada, detonador, instalar bomba, Filhote, fim da rodada e títulos, rodada no online, Pátio de exemplo Campo minado) | [Rodada do Campo minado](docs/mechanics/patio/mine-round.md) |
 | Pátio: salvar/abrir, Playgrounds, Destaques, Pátios de exemplo | [Lobbies do Pátio](docs/mechanics/patio/lobbies.md) |
+| Pátio: instrumentos fixos (Harpa de pedais: sentar, tocar parada, duas mãos, dedos na tela, levantar; Bateria: peças, baquetas, atalhos, pedal do chimbal, rufo, editor do kit) | [Instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) |
 | Pátio: Baú do Modo editor (abrir por chave ou merecimento, itens com chance, raridade, Pátio online) e item Chave | [Baú e Chave](docs/mechanics/patio/chests.md) |
 | Pátio: Quadro de lousa, fantasma de treino e o Pátio Training room | [Treino](docs/mechanics/patio/training.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, presos às camadas do fundo, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
@@ -37,11 +42,12 @@
 | Pátio: pássaros e almas que exploram o mapa, lugares de pouso (árvores, plataformas, telhados, objetos), poder de cagar | [Pássaros e almas que exploram](docs/mechanics/patio/birds-explore.md) |
 | Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel e editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
-| Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
+| Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução, Cordas soltas da harpa), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
 | Pátio: Martelo de Thor e Cajado de Odin: choque em cadeia, estado de choque (raio-x), especial com intervalo no slot, arremesso que volta | [Armas de raio](docs/mechanics/patio/lightning.md) |
+| Pátio: Boomerang (dois de uma vez) e baralhos de cartas explosivas (vermelho: dano físico; azul: nota guardada e harmonia): ordem, estacionar, estouro, cadeia, retorno | [Boomerang e baralhos](docs/mechanics/patio/boomerangs.md) |
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
@@ -69,7 +75,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 26 KB |
 | [Galinha: controles de toque](docs/mechanics/chicken/touch.md) | 7 KB |
 | [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 26 KB |
-| [Galinha: paredes, teto, plataformas por baixo e fios](docs/mechanics/chicken/climbing.md) | 8 KB |
+| [Galinha: paredes, teto, plataformas por baixo e fios](docs/mechanics/chicken/climbing.md) | 10 KB |
 | [Pintinhos: espécie, estilos, IA de seguir, captura e online](docs/mechanics/chicken/chicks.md) | 6 KB |
 | [Criativo e persistência](docs/mechanics/creative.md) | 14 KB |
 | [Editor de variações](docs/mechanics/editor.md) | 15 KB |
@@ -93,11 +99,16 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: combate, mira, bicada e arremesso](docs/mechanics/patio/combat.md) | 24 KB |
 | [Pátio: golpe e combo](docs/mechanics/patio/melee.md) | 11 KB |
 | [Pátio: armas de bastão](docs/mechanics/patio/staffs.md) | 7 KB |
-| [Pátio: armas de raio e estado de choque](docs/mechanics/patio/lightning.md) | 7 KB |
+| [Pátio: armas de raio e estado de choque](docs/mechanics/patio/lightning.md) | 9 KB |
+| [Pátio: Boomerang e baralhos de cartas](docs/mechanics/patio/boomerangs.md) | 8 KB |
 | [Pátio: zumbis e hordas](docs/mechanics/patio/enemies.md) | 2 KB |
 | [Pátio: modo editor e layout](docs/mechanics/patio/editor.md) | 21 KB |
+| [Pátio: Portais de nascimento](docs/mechanics/patio/spawn-portals.md) | 4 KB |
+| [Pátio: Grade de blocos](docs/mechanics/patio/mine-grid.md) | 7 KB |
+| [Pátio: Rodada do Campo minado](docs/mechanics/patio/mine-round.md) | 11 KB |
 | [Pátio: salvar/abrir, Playgrounds, Destaques](docs/mechanics/patio/lobbies.md) | 10 KB |
 | [Pátio: Baú e Chave](docs/mechanics/patio/chests.md) | 6 KB |
+| [Pátio: instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) | 14 KB |
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 4 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
@@ -105,12 +116,13 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: Gaiolas](docs/mechanics/patio/cages.md) | 9 KB |
 | [Pátio: pássaros e almas que exploram, cagar](docs/mechanics/patio/birds-explore.md) | 7 KB |
 | [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 13 KB |
-| [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 18 KB |
+| [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 23 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |
 | [Pátio: zonas sonoras, camadas e música ambiente](docs/mechanics/patio/zones.md) | 10 KB |
 | [Pátio: Templo do Gongo, fase de notas, mortes e catálogo de aliens](docs/mechanics/patio/temple.md) | 17 KB |
-| [Pátio: mundo, cenário, portais, Vila, árvores e trampolim](docs/mechanics/patio/world.md) | 25 KB |
+| [Pátio: mundo, cenário, portais, árvores e trampolim](docs/mechanics/patio/world.md) | 24 KB |
+| [Pátio: Vila dos Telhados, casas e interior](docs/mechanics/patio/houses.md) | 14 KB |
 | [Gestos e custo de processamento](docs/mechanics/performance.md) | 21 KB |
 | [Poderes da partida](docs/mechanics/powers.md) | 25 KB |
 | [Progresso e ovos dourados](docs/mechanics/progression.md) | 28 KB |

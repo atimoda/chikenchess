@@ -17,9 +17,12 @@ import { lookTargets, drawBird, drawUndead, drawPerson, drawButton, drawAlien, d
 import { drawNote, drawPuff } from "./effects"
 import { drawItem, type Ctx } from "./shared"
 import { chestMarks, drawChest } from "./chests"
+import { drawHarp, seatMarks } from "./harp"
+import { drawDrumKit } from "./drumkit"
 import { CAGE_WORLD_SCALE, drawCageOnFloor } from "./cages"
 import { cageArt } from "@/lib/pigchicken/cage-art"
 import { drawBolts, drawFlights, drawShocked, drawSkyFlash } from "./shock"
+import { drawCards } from "./cards"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
 // gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the jukebox struck last (its ring)
@@ -33,6 +36,8 @@ export function markHover(combat: Combat, key: string) {
   at(combat.hoverOwned, "#9aa0a8", "equipar")
   const near = combat.chestNear
   if (near && !chestMarks.has(near.chest)) chestMarks.set(near.chest, { key, block: near.block, souls: combat.capturedSouls })
+  const seat = combat.seatNear
+  if (seat && !seatMarks.has(seat)) seatMarks.set(seat, { key })
 }
 // the grab bind a player sees: from the keyboard they hold (primary first), else from their gamepad
 // the name of an action's first bind on a player's inputs: their keyboard's, else their gamepad's ("" when unbound)
@@ -61,6 +66,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
   })
   combat.chests.forEach(c => { if (visible(c.x, c.y + 40, 320, 520)) drawChest(ctx, c, X(c.x), t) })
+  combat.seats.forEach(s => { if (!visible(s.x, s.y + 40, 320, 520)) return; if (s.kind === 'drumkit') drawDrumKit(ctx, s, X(s.x), p => combat.seatPulse(s, p)); else drawHarp(ctx, s, X(s.x)) })
   combat.pickups.forEach(p => {
     if (!visible(p.x, p.y + 40)) return
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3
@@ -96,6 +102,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
   })
   combat.critters.forEach(c => { if (!visible(c.x, c.y + 60)) return; if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
   drawFlights(ctx, combat, camX, view)
+  drawCards(ctx, combat, camX, view)
   const drawTarget = (ctx: Ctx, g: Combat["targets"][number], x: number) => {
     if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }
     if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }

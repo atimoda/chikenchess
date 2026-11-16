@@ -6,6 +6,7 @@ import { LAYOUT_VERSION, entryPortalElement, normalizeElement, storeElementPosit
 import { TRAINING_DEMOS, defaultChalkboard, type DemoId } from './chalkboard'
 import { defaultSoundZone } from './sound-zones'
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from './world'
+import { HARP_BOX } from './fixed-instruments'
 import { SKY_DEFAULT, hourStops, type SkyParams } from './sky'
 import { MOUNTAINS_DEFAULT } from './mountains'
 import type { SurfacePoint } from './surfaces'
@@ -129,6 +130,8 @@ export function trainingLayout(): PatioLayout {
   // the end: a portal back to the first station (its pair waits just before it)
   const end = TRAINING_START + TRAINING_STATIONS.length * STATION_W
   board(end + 220, 330, 'PRONTO!\nvolte pelo portal\npara treinar de novo')
+  // and a Harpa to sit at and play (lib/pigchicken/fixed-instruments.ts), on the floor under that board
+  add('pedalharp', { x: end + 150 - HARP_BOX.w / 2, y: G - HARP_BOX.h })
   const back = add('portal', { x: end + 460, y: G - 144, params: { portalLabel: 'Voltar ao início?', portalInstruction: 'always' } })
   back.params.portalPairId = back.id
   add('portal', { x: TRAINING_START - 180, y: G - 144, params: { portalPairId: back.id, portalLabel: 'Ir para o fim?', portalInstruction: 'hover' } })

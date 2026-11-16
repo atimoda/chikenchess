@@ -53,8 +53,9 @@ test('a shock over another keeps the longer time and the stronger of the two, an
 })
 
 test('the hammer and the staff are staffs of the utility group, on racks, and the defaults file knows their fields', () => {
-  assert.deepEqual(MAGIC_IDS, ['mjolnir', 'odinstaff'])
-  for (const id of MAGIC_IDS) {
+  // (the decks of cards are magic too, with no shock: tests/pigchicken-boomerang.cases.cjs)
+  assert.deepEqual(MAGIC_IDS.slice(0, 2), ['mjolnir', 'odinstaff'])
+  for (const id of ['mjolnir', 'odinstaff']) {
     const d = DEFAULT_ITEMS[id]
     assert.ok(isStaff(d), id)
     assert.equal(itemGroup(id, false), 2, 'utility')

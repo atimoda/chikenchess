@@ -48,6 +48,8 @@ export function setPatioInfo(next: PatioInfo) { info = next; update() }
 export function setPatioEditAccess(next: { lobbyId: string | null; mode: PatioLobbyMode; canEdit: boolean } | null) { external = next; update() }
 
 export const getPatioEditAccess = () => current
+// whoever plays here is the admin (what only the admin sees: the Grade de blocos's debug)
+export const patioIsAdmin = () => info.isAdmin
 export function subscribePatioEditAccess(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn) } }
 export const usePatioEditAccess = () => useSyncExternalStore(subscribePatioEditAccess, getPatioEditAccess, getPatioEditAccess)
 export const usePatioCanEdit = () => usePatioEditAccess().canEdit
