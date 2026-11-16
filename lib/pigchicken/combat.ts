@@ -12,12 +12,13 @@ import { newSoulRoam, roamLift, soulRoamStep, type SoulRoam } from './soul-roam'
 import { POOP, newPoop, poopFall, poopHits, poopKnock, poopUnder, poopWait, type Poop } from './poop'
 import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
 import { entryActParams, entryFollowParams, entryOf } from './soul-library'
+import { crossedTop, landing } from './box-tops'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
 import { NOTE_GOOD, NOTE_LATE, REBATE_HARMONY, REBATE_LIFE, REBATE_SPEED, inSector, judgeNote, type NoteShot, type NoteShotEvent } from './note-shots'
 import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } from './explosion'
 import { chestBlock, rollLoot, type ChestParams } from './chests'
 import { CAGES_MAX, CAGE_DENY, bringFront, cageCap, cageRoom, cageSouls, cageWithRoom, cycleCages, flashCage, newCage, stepCage, type CageState } from './cages'
-import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isCage, isKey, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
+import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isCage, isKey, isMineItem, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRespawnDelay } from './racks'
@@ -28,17 +29,47 @@ import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
 import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
 import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
-import { scaleAt, type InstrumentScale } from './instrument-scales'
+import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
+import { STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
+import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, type FixedKind, type Seat } from './fixed-instruments'
+import { drumKit, drumPiece, hatRing, newDrumState, padOf, stepDrums, type DrumHit, type DrumInput, type DrumKnock, type DrumPiece, type DrumState } from './drum-kit'
+import { SWEEP_GAP, newStringHand, stepStringHand, stringAlong, stringSlide, type StringHand } from './strings-play'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES, type PitchSet } from './music'
 import type { Drum, Held, Vibrato, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
+
+export type AimKind = 'point' | 'stick' | 'none'
+// a string sounding on the Cordas soltas: its sound and its note in flight, the string's own note with the octave
+// of a harmonic in it (`base`), what the place of the pluck added (`from`: -1, 0, 1) and where it was (`r0`)
+type StringNote = { held: Held | null; bullet: Bullet | null; base: number; from: number; r0: number; bend: number }
+// `late`: the plucks that wait their time (the front hand's, after the back hand's: "Atraso entre as mãos")
+type HarpState = { hands: StringHand[]; notes: Map<number, StringNote>; plucked: Map<number, number>; late: { index: number; r: number; due: number; bonus: number }[]; t: number }
+const newHarp = (): HarpState => ({ hands: [newStringHand(), newStringHand()], notes: new Map(), plucked: new Map(), late: [], t: 0 })
+/**
+ * One hand over the Cordas soltas this frame (null: that hand is off the strings). `angle`: where it points from her
+ * shoulder; `reach` and `kind`: like the aim's (setAimReach); `sharp`: Correr held, a stick or the keys pluck past
+ * the strings' end (the sustenido); `fire` / `pressed`: this hand's own Atirar (a finger on the screen), when it is
+ * not the player's.
+ */
+export type StringAim = { angle: number; reach: number; kind: AimKind; sharp?: boolean; fire?: boolean; pressed?: boolean }
+// the Bateria (lib/pigchicken/drum-kit.ts): the kit's own state, the open Chimbal ringing now (to damp and stop it),
+// when and how hard each piece was last hit (s of `t`, for the drawing) and what the page said this frame
+// knocks: the last knocks on the hardware (a click between the pieces): where on the chart and when
+type KitState = { st: DrumState; hat: Held | null; struck: Map<DrumPiece, { at: number; vel: number }>; knocks: { x: number; y: number; at: number }[]; t: number; input: DrumInput | null }
+const newKit = (): KitState => ({ st: newDrumState(), hat: null, struck: new Map(), knocks: [], t: 0, input: null })
 
 // where the instruments' sound goes (the Parquinho plugs the synth in)
 export type MusicOut = {
   // vib: the item's "Vibrato natural" (the note's whole vibrato; missing = the voice's own)
   note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, fade?: number, vib?: Vibrato) => void
   hold: (voice: VoiceId, midi: number, vib?: Vibrato) => Held | null
+  // a note that can still be slid or cut short after it starts (the Cordas soltas' strings); without it, `note`
+  pluck?: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, vib?: Vibrato) => Held | null
   drum: (kind: Drum, at: number, vel?: number) => void
+  // a hit of the Bateria (open: the Chimbal's pedal; light: a stroke of a roll); without it, `note` on the voice `kit`
+  kit?: (piece: DrumPiece, at: number, vel: number, open?: number, light?: boolean) => Held | null
+  // a knock on the Bateria's hardware (a click between its pieces); without it, the ambience's woodblock
+  knock?: (kind: DrumKnock, vel: number) => void
 }
 const vibOf = (d: ItemDef): Vibrato => ({ depth: d.vibratoDepth, rate: d.vibratoRate, delay: d.vibratoDelay })
 // the ambience where a note is rebated (the song tells it): what it forces, the scale it fits, whose rule counts
@@ -48,6 +79,18 @@ export type PlaceEnvFn = (x: number, y: number) => PlaceEnv | null
 // a note going from (px, py) to (x, y) through the wall of a zone with life: which way it bounces, the zone's colour
 // and whether that hit made it change (count: false only replays what another browser already counted)
 export type ZoneWallsFn = (px: number, py: number, x: number, y: number, count: boolean) => { flipX: boolean; color: string; died: boolean } | null
+// the Grade de blocos (lib/pigchicken/mine-round.ts), for what flies here. by: the local player it counts for (null:
+// a preview or another browser's, which only meets the wall). note, shot: something going from (px, py) to (x, y)
+// meets the wall of a closed block (null: no wall there); a note bounces off it or goes on (bounce), a shot stops
+// and leaves its damage. blast: an explosion's damage on the blocks around. shock: a lightning weapon's blow along
+// that line. blow: a Golpe from (x, y) over `arc` around `angle`, as far as `reach` (music: with an instrument).
+export type MineHooks = {
+  note: (px: number, py: number, x: number, y: number, by: string | null) => { flipX: boolean; bounce: boolean; color: string } | null
+  shot: (px: number, py: number, x: number, y: number, damage: number, by: string | null) => { flipX: boolean } | null
+  blast: (x: number, y: number, r: number, damage: number, by: string) => void
+  shock: (x1: number, y1: number, x2: number, y2: number) => void
+  blow: (x: number, y: number, angle: number, arc: number, reach: number, damage: number, music: boolean, by: string) => void
+}
 const SILENT: MusicOut = { note: () => {}, hold: () => null, drum: () => {} }
 // a note in flight: its pitch, colour and how it sways
 export type NoteInfo = { midi: number; color: string; sym: string; wave: number; phase: number; voice: VoiceId }
@@ -96,18 +139,19 @@ export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on t
 // a platform's box. solid: she and the items lying around stand on it (default yes); shots: bullets, grenades and the
 // beam stop at it (default yes); notes: the instruments' notes stop at it (default no, they go through); rebate: the
 // notes (rebated ones and the instruments') bounce off it and play
-export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean; rebate?: SurfaceRebate; occludedAt?: (x: number, y: number) => boolean }
+// topsAt: a shaped one's tops at x (the lines of its outline that face up), where the falling things land (box-tops.ts)
+export type Box = { l: number; t: number; r: number; b: number; solid?: boolean; shots?: boolean; notes?: boolean; rebate?: SurfaceRebate; occludedAt?: (x: number, y: number) => boolean; topsAt?: (x: number) => number[] }
 export const boxContains = (box: Box, x: number, y: number) =>
   x >= box.l && x <= box.r && y >= box.t && y <= box.b && !box.occludedAt?.(x, y)
-const crossesBoxTop = (box: Box, x: number, prevY: number, y: number) =>
-  x >= box.l && x <= box.r && prevY <= box.t && y >= box.t && !box.occludedAt?.(x, box.t)
 // refill: seconds the gradual auto reload has counted toward the next shots coming back (reset whenever it is used).
 // group: the inventory group it sits in (its own when taken; dragging it on the bar may change it)
 // scale: the index in its item's `scales` it plays now (instruments with more than one scale)
-// flying: thrown and on its way back to her wing (a staff that comes back); specialAt: when its special is ready
-// again, on the world's clock (missing: ready)
+// out: how many of it are away now (a staff that comes back, thrown; a deck's cards); flying: all of them are, and
+// her wing is empty until one is back; specialAt: when its special is ready again, on the world's clock (missing: ready)
+// next: a deck's card of the order that its next throw starts looking from (lib/pigchicken/cards.ts)
+// back: of two (the Boomerangs), the one in hand is in the back wing (the front one went first)
 // cage: a Gaiola's limit and the souls in it (lib/pigchicken/cages.ts); it goes with the item wherever it is
-export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number; flying?: boolean; specialAt?: number; cage?: CageState }
+export type Owned = { item: ItemId; ammo: number; durability: number; refill?: number; group?: ItemGroup; scale?: number; out?: number; flying?: boolean; back?: boolean; next?: number; specialAt?: number; cage?: CageState }
 export type Bullet = {
   x: number; y: number; vx: number; vy: number; dist: number; damage: number; pierce: number; hits: Set<number>; size: number; drop: number; range: number
   item: ItemId; t: number; explode: number; explodeDamage: number; fuse: number; bounce: number
@@ -116,6 +160,7 @@ export type Bullet = {
   ghost?: boolean // goes through walls and floating platforms (instruments' notes)
   bounces?: number // times it bounced off a "Rebate notas" surface
   remote?: boolean // another browser's shot (online): it flies and shows, never damages
+  by?: string // the local player who fired it (the Grade de blocos counts whose note or shot it was)
   room?: ShotRoom // fired inside a house: it stops at that room's walls and touches nothing outside
 }
 // the room of a house for what is fired inside it (lib/pigchicken/house-rooms.ts): its walls and its floor
@@ -134,6 +179,14 @@ export type Flight = {
   // the way out is; aim: where its owner aims now; side: the side it bends to; bend: how much it bends now (radians
   // over a leg, with the side's sign; it follows the aim softly); far: how far it was when it turned back
   dir: number; launch: number; reach: number; aim?: number; side: number; bend: number; far?: number
+}
+// a card of a deck (lib/pigchicken/cards.ts): thrown to (tx, ty), it floats there until someone touches it and it
+// bursts, or its owner goes too far and it flies back. rank: which card of the deck; t: s in this phase; seed: its
+// own sway and tilt; fuse: s until it bursts because another burst reached it; note: what a music deck's card keeps
+// to play when it bursts; remote: another browser's (it only shows; net: its id there; home: where it left from)
+export type Card = {
+  id: number; rank: number; x: number; y: number; tx: number; ty: number; phase: CardPhase; t: number; seed: number; speed: number; angle: number
+  item: ItemId; owned: Owned; owner: string; fuse?: number; note?: NoteInfo; remote?: boolean; net: number; home?: { x: number; y: number }
 }
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean; room?: ShotRoom }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
@@ -206,6 +259,10 @@ export const SLOTS = INVENTORY_MAX
 const NO_SWITCH = { pick: 0, slot: 0, groupPick: null }
 const THROW_GRAVITY = 1500
 const ITEM_GRAVITY = 1800
+// a card of a deck: half its size (px), for the bursts that reach it; s another browser's card floats here at most
+// (its burst or its way back may never arrive: the shots' queue drops the oldest when it is full)
+const CARD_HALF = 14
+const REMOTE_CARD_LIFE = 90
 // an item on the floor, as a circle for the blows' hit areas (Golpe and Bicada): radius (px), centred this far above
 // where it rests
 export const PICKUP_HIT_R = 14
@@ -261,6 +318,7 @@ export function createCombat() {
     if (d?.instrument) {
       const root = music.noteFor(-Math.PI / 2, 'chord', d.octave, 0.5)
       // equipping: a very soft two-note sigh (low velocity, slow fade-in), well under the played notes
+      if (d.voice === 'kit') { if (kind === 'equip') out.note('kit', 42, 0, 0.1, 0.2); return }
       if (kind === 'equip') { out.note(d.voice, root, 0, 0.14, 0.12, 0.06); out.note(d.voice, music.walk(root, 2, 'chord'), 0.1, 0.2, 0.1, 0.08) }
       else if (kind === 'reloadDone' || kind === 'shell') out.note(d.voice, music.walk(root, 1, 'chord'), 0, 0.1, 0.35)
       else if (kind === 'dry') out.note('chip', root - 24, 0, 0.05, 0.25)
@@ -279,12 +337,17 @@ export function createCombat() {
   // the lightning weapons: the bolts showing, the staffs thrown that are coming back, the world's clock (the
   // specials' cooldowns count on it) and how bright the sky still is from a special (1 right at the thunder)
   const bolts: Bolt[] = [], flights: Flight[] = []
+  // the cards of the decks out in the world: flying, floating where they were thrown to, or on their way back
+  const cards: Card[] = []
   let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; cageSouls?: number }[] = []
   // the Baús of the layout (the layout sync adds, moves and removes them) and the one each local player is next to
   const chests: Chest[] = []
   const chestNear = new Map<string, ChestNear>()
+  // the fixed instruments of the layout (lib/pigchicken/fixed-instruments.ts) and the free one each player is next to
+  const seats: Seat[] = []
+  const seatNear = new Map<string, Seat>()
   // online: the Baús opened here this frame, for the sync to tell the other browsers (lib/pigchicken/net-chests.ts)
   const chestOpens: string[] = []
   let swing: Swing | null = null
@@ -301,6 +364,8 @@ export function createCombat() {
   let placeEnv: PlaceEnvFn | null = null
   // the walls of the Zonas sonoras with life: a note crossing one bounces (count: it takes a point of the zone's life)
   let zoneWalls: ZoneWallsFn | null = null
+  // mineQuiet: the blast being made is a block's own bomb, which does not hurt the blocks around
+  let mine: MineHooks | null = null, mineQuiet = false
   // a peck defending at (x, y) cancels what is there, in a little cloud (parriedBy: the player who did it)
   let parriedBy = ''
   function parryAt(x: number, y: number, r: number, color: string) {
@@ -327,13 +392,39 @@ export function createCombat() {
   let beamHeld: Held | null = null, beamMidi = 0
   // the aim's tremolo (lib/pigchicken/tremolo.ts): semitones the held instrument's notes bend right now
   let trem: TremoloState = newTremolo(), tremBend = 0
+  // "Tremolo: reage a" the movement along the string: the aim's reach when the note started (null: nothing playing)
+  let tremReach: number | null = null
   // how far the aim reaches (0 at her … 1 far; lib/pigchicken/aim-volume.ts): the instrument's notes get louder with it
   let aimReach = 1
+  // what that reach is: the pointer's own place ('point'), how far a stick is pushed ('stick') or nothing ('none': keys)
+  let aimKind: AimKind = 'none'
+  // the Cordas soltas (lib/pigchicken/strings-play.ts): her hands on the strings, the note each string sounds now
+  // (to slide it, and to cut it when the string is plucked again) and when each one was last plucked (s of `t`)
+  let harp: HarpState = newHarp()
+  // her hands over the strings as the page gave them ([front, back]); null: one hand, the aim itself
+  let stringAims: (StringAim | null)[] | null = null
+  // the Bateria she sits at
+  let kit: KitState = newKit()
+  // where the reticle is, in world px (null: unknown, only the aim's angle): a deck's card flies there
+  let aimPoint: { x: number; y: number } | null = null
   const noteVol = (d: ItemDef) => aimVolume(d.volMin, d.volMax, aimReach)
   // the held instrument's scale (lib/pigchicken/instrument-scales.ts) and its notes for the aim right now
   const scaleOf = (h: Owned | null | undefined, d: ItemDef): InstrumentScale => scaleAt(d.instrument ? d.scales : undefined, h?.scale)
+  // where along the Cordas soltas the aim is, in the aim's reach: the pointer's own place; a stick's push, from her
+  // to the strings' end (all the way is still the plain note); the keys have no distance: a plain note
+  // (with Correr held, a stick or the keys are past the strings' end: the sustenido)
+  function stringReachOf(kind: AimKind, reach: number, sharp = false) {
+    const sh = STRINGS_SCALE.shape
+    if (kind === 'point') return reach
+    if (sharp) return 1
+    if (kind === 'stick') return reach * (sh.stringEnd - 0.005)
+    return sh.stringStart + (sh.stringEnd - sh.stringStart) * 0.8
+  }
+  const stringReach = () => stringReachOf(aimKind, aimReach)
+  // her hands over the strings now ([front, back]; null: that hand is off them)
+  const handAims = (): (StringAim | null)[] => stringAims ?? [{ angle: aimAngle, reach: aimReach, kind: aimKind }, null]
   function tones(d: ItemDef) {
-    const sc = scaleOf(held(), d), angle = aimAngle, reach = aimReach
+    const sc = scaleOf(held(), d), angle = aimAngle, reach = sc.id === 'strings' ? stringReach() : aimReach
     const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending, hang: hangOf(d) }
     return {
       scale: sc,
@@ -361,7 +452,9 @@ export function createCombat() {
   // the other browsers' chickens (world units): the zombies go for the nearest chicken, local or not
   let netBodies: { x: number; y: number }[] = []
 
-  const held = (): Owned | null => inv[cur] ?? null
+  // sitting at a fixed instrument: it is what she holds (never in the inventory), until she gets up
+  let seated: { seat: Seat; owned: Owned } | null = null
+  const held = (): Owned | null => seated?.owned ?? inv[cur] ?? null
   const ownGroup = (item: ItemId) => itemGroup(item, !!items[item]?.instrument)
   const groupOf = (o: Owned) => o.group ?? ownGroup(o.item)
   // an item taken goes to the end of its own group (even one dragged to another group before it was dropped)
@@ -373,12 +466,15 @@ export function createCombat() {
   const removeHeld = () => { inv.splice(cur, 1); cur = inv.length }
   // the keys (Chave) in her inventory, and using one up (the stack goes when it is the last)
   const keyCount = () => inv.reduce((n, o) => n + (isKey(o.item) ? o.ammo : 0), 0)
-  const useKey = () => {
-    const i = inv.findIndex(o => isKey(o.item) && o.ammo > 0)
-    if (i < 0) return
-    if (--inv[i].ammo > 0) return
+  // one less of a stack (a key, a Chave dourada, a Bomba); the last one takes the item away
+  const spend = (fits: (item: ItemId) => boolean) => {
+    const i = inv.findIndex(o => fits(o.item) && o.ammo > 0)
+    if (i < 0) return false
+    if (--inv[i].ammo > 0) return true
     if (i === cur) removeHeld(); else { inv.splice(i, 1); if (i < cur) cur-- }
+    return true
   }
+  const useKey = () => { spend(isKey) }
   const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
   // a Gaiola is born empty with its model's limit (cap: this one's own, a rack's or a loose item's)
   const fresh = (item: ItemId, cap?: number): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability, ...(items[item].cageSouls > 0 ? { cage: newCage(cageCap(cap, items[item].cageSouls)) } : {}) })
@@ -474,7 +570,14 @@ export function createCombat() {
     sound(special ? d.specialKind : 'zap', null)
     if (netOn) netShots.push({ k: 'z', i: d.id, p: sent, s: special ? 1 : 0 })
   }
-  // a staff that comes back (the Martelo de Thor) leaves her wing: straight where she aims, further with the charge
+  // how many of an item that comes back can be away at once, and one more of them leaving / arriving: her wing is
+  // empty only while all of them are away
+  const awayMax = (d: ItemDef) => Math.max(1, Math.min(d.deck ? DECK_SIZE : 14, Math.round(d.returnCount)))
+  // two of it (the Boomerangs): the first goes from the front wing and the one left is in the back wing, which throws
+  // it next; one coming back goes to the front wing
+  const leaves = (h: Owned, d: ItemDef) => { h.out = (h.out ?? 0) + 1; h.flying = h.out >= awayMax(d); h.back = h.out === 1 && awayMax(d) === 2 }
+  const arrives = (h: Owned) => { h.out = Math.max(0, (h.out ?? 1) - 1); h.flying = false; h.back = false }
+  // a staff that comes back (the Martelo de Thor, the Boomerang) leaves her wing: where she aims, further with the charge
   function launch(h: Owned, d: ItemDef, from: { x: number; y: number }, charge: number) {
     const reach = d.returnRange * (d.returnMin + (1 - d.returnMin) * charge)
     const face = Math.cos(aimAngle) >= 0 ? 1 : -1
@@ -483,7 +586,7 @@ export function createCombat() {
       back: false, left: reach, speed: d.returnSpeed, damage: d.returnDamage * (0.5 + 0.5 * charge), push: d.returnPush, hits: new Set(),
       dir: launchDir(aimAngle, d.returnCurveMin), launch: aimAngle, reach, aim: aimAngle, side: curveSide(aimAngle), bend: curveSide(aimAngle) * Math.max(0, d.returnCurveMin) * DEG,
     })
-    h.flying = true
+    leaves(h, d)
     sound('throw', null)
     if (netOn) netShots.push({ k: 'hm', i: h.item, x: Math.round(from.x), y: Math.round(from.y), a: aimAngle, sp: d.returnSpeed, rg: Math.round(reach) })
   }
@@ -491,7 +594,7 @@ export function createCombat() {
   // least bend of its curve, cut short by walls and the floor (null: the item in her wing is not being charged for that)
   function predictReturn(from: { x: number; y: number }, ctx: StepCtx) {
     const d = def()
-    if (!d.returnThrow || !heavyItem || heavyItem !== held()) return null
+    if (!d.returnThrow || d.deck || !heavyItem || heavyItem !== held()) return null
     const charge = Math.min(1, heavyT / Math.max(0.05, d.returnCharge))
     const reach = d.returnRange * (d.returnMin + (1 - d.returnMin) * charge)
     const path = outPath(from.x, from.y, aimAngle, reach, d.returnCurveMin)
@@ -732,7 +835,7 @@ export function createCombat() {
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number
-    trem: TremoloState; tremBend: number; aimReach: number
+    trem: TremoloState; tremBend: number; tremReach: number | null; aimReach: number; aimKind: AimKind; harp: HarpState; stringAims: (StringAim | null)[] | null; kit: KitState; seated: { seat: Seat; owned: Owned } | null; aimPoint: { x: number; y: number } | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
@@ -775,18 +878,18 @@ export function createCombat() {
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, trem: newTremolo(), tremBend: 0, aimReach: 1,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, trem: newTremolo(), tremBend: 0, tremReach: null, aimReach: 1, aimKind: 'none', harp: newHarp(), stringAims: null, kit: newKit(), seated: null, aimPoint: null,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, aimReach } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint } = l)
     active = id
   }
 
@@ -967,6 +1070,165 @@ export function createCombat() {
     return [t.walk(base, off, d.arp === 'off' ? d.pitchSet : 'chord')]
   }
 
+  // ---------- fixed instruments (lib/pigchicken/fixed-instruments.ts) ----------
+  // she sits at it: whatever she was doing with her item stops, and the instrument is what she holds
+  function sit(seat: Seat) {
+    if (seated || seat.by !== null || seat.net) return
+    stopBeam(); peck = null; peckPrep = 0; swing = null; heavyItem = null; heavyT = 0
+    reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0; throwT = 0; throwItem = null
+    const item = FIXED_INSTRUMENTS[seat.kind].item
+    seated = { seat, owned: { item, ammo: 0, durability: items[item].durability } }
+    seat.by = active
+    harp = newHarp()
+    kit = newKit()
+    sound('equip', item)
+  }
+  // she gets up (Pegar, Pular, a blast, being dragged, a portal, the editor, the instrument gone): her own item again
+  function standUp() {
+    if (!seated) return
+    if (seated.seat.by === active) seated.seat.by = null
+    seated = null
+    harp.hands.forEach(h => { h.on = -1 })
+    harp.late = []
+    stringAims = null
+    kit.hat?.stop(0.05)
+    kit = newKit()
+  }
+
+  // ---------- Bateria: the kit (lib/pigchicken/drum-kit.ts) ----------
+  // one hit: its sound, the piece's pulse on the chart and (a roll's strokes aside) its batida flying off toward
+  // where the piece sits around her
+  function drumHit(h: Owned, d: ItemDef, hit: DrumHit, muzzle: { x: number; y: number }, bonus: number) {
+    // between the pieces: only a little noise of the hardware, and its mark where it landed (no piece, no batida)
+    if (hit.knock) {
+      if (out.knock) out.knock(hit.knock, hit.vel); else out.drum('wood', 0, hit.vel)
+      kit.knocks.push({ x: hit.x, y: hit.y, at: kit.t })
+      if (kit.knocks.length > 8) kit.knocks.shift()
+      return
+    }
+    const open = hit.piece === 'hat' && hit.open !== undefined, piece: DrumPiece = open ? 'hatOpen' : hit.piece
+    const info = drumPiece(piece), vel = Math.max(0.05, Math.min(1, hit.vel))
+    // (a Chimbal hit, open or closed, stops the open one still ringing)
+    if (hit.piece === 'hat') { kit.hat?.stop(0.02); kit.hat = null }
+    const sound = out.kit ? out.kit(piece, 0, vel, open ? hit.open : undefined, hit.roll) : (out.note('kit', info.gm, 0, d.noteLen, vel), null)
+    if (open && sound) { kit.hat = sound; sound.setVolume?.(hatRing(hit.open!)) }
+    kit.struck.set(hit.piece, { at: kit.t, vel })
+    if (hit.roll) return
+    const at = padOf(drumKit(), hit.piece), angle = at ? Math.atan2(at.y, at.x) : aimAngle
+    const b: Bullet = {
+      x: muzzle.x, y: muzzle.y, vx: Math.cos(angle) * d.speed, vy: Math.sin(angle) * d.speed, dist: 0, damage: d.damage * bonus * (0.4 + 0.6 * vel), pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
+      note: { midi: info.gm, color: info.color, sym: info.cymbal ? '✶' : '●', wave: d.wave, phase: rand(0, Math.PI * 2), voice: 'kit' }, ring: d.ringNotes, ghost: true,
+    }
+    b.by = active
+    bullets.push(b)
+    if (netOn) netShots.push(shotOf(b))
+    burst(muzzle.x, muzzle.y, 2, info.color, 110, 3)
+  }
+  // one frame of the kit: what the page read (the sticks, the clicks, each piece's shortcuts) becomes hits; the
+  // Chimbal's pedal damps the open one as it closes and stops it when it shuts
+  function stepKit(h: Owned, d: ItemDef, muzzle: { x: number; y: number }, dt: number) {
+    kit.t += dt
+    const r = stepDrums(kit.st, drumKit(), kit.input ?? { sticks: [], taps: [], binds: {} }, dt)
+    if (kit.input) kit.input = { ...kit.input, taps: [] }
+    if (r.hits.length) {
+      let bonus = 1
+      if (music.offBeat() < 0.07) {
+        bonus = d.beatBonus
+        if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+      }
+      r.hits.forEach(hit => drumHit(h, d, hit, muzzle, bonus))
+    }
+    if (kit.hat) {
+      if (r.choke) { kit.hat.stop(0.03); kit.hat = null }
+      else kit.hat.setVolume?.(hatRing(r.open))
+    }
+  }
+
+  // ---------- Cordas soltas: the strings (lib/pigchicken/strings-play.ts) ----------
+  // plucks string `index` at `r` along the radius, `at` s from now: its note sounds from nothing (whatever that
+  // string was sounding stops and its note in flight goes away) and flies off along the string
+  function pluckString(h: Owned, d: ItemDef, index: number, r: number, at: number, muzzle: { x: number; y: number }, bonus: number) {
+    const sc = STRINGS_SCALE, sh = sc.shape
+    const str = sc.layout(music, { octave: d.octave })[index]
+    if (!str) return
+    const zone = sc.touch(str.angle, r).zone
+    const from = zone === 'flat' ? -1 : zone === 'sharp' ? 1 : 0, base = str.midi + (zone === 'harmonic' ? stringShift(zone) : 0)
+    const old = harp.notes.get(index)
+    if (old) {
+      old.held?.stop(0.04)
+      if (old.bullet) { const i = bullets.indexOf(old.bullet); if (i >= 0) bullets.splice(i, 1) }
+    }
+    const midi = base + from + detuneNow(), voice: VoiceId = zone === 'harmonic' ? 'harpHarmonic' : d.voice
+    const vel = 0.75 * aimVolume(d.volMin, d.volMax, stringAlong(r, sh.stringStart, sh.stringEnd))
+    let sound: Held | null = null
+    if (out.pluck) sound = out.pluck(voice, midi, at, d.noteLen, vel, vibOf(d))
+    else out.note(voice, midi, at, d.noteLen, vel, undefined, vibOf(d))
+    const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    const b: Bullet = {
+      x: muzzle.x, y: muzzle.y, vx: Math.cos(str.angle) * d.speed, vy: Math.sin(str.angle) * d.speed, dist: 0, damage: d.damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
+      note: { midi, color, sym: NOTE_SYMBOLS[index % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice }, ring: d.ringNotes, ghost: true,
+    }
+    b.by = active
+    bullets.push(b)
+    if (netOn) netShots.push(shotOf(b))
+    burst(muzzle.x, muzzle.y, 3, color, 110, 3)
+    harp.notes.set(index, { held: sound, bullet: b, base, from, r0: r, bend: 0 })
+    harp.plucked.set(index, harp.t + at)
+  }
+  // one frame of the strings, for each hand: the press plucks the string under it, the hand dragged with Atirar held
+  // plucks every string it goes into, and moving along the string just plucked slides its note (the glissando).
+  // The back hand goes first: pressed together, the front hand's string sounds "Atraso entre as mãos" later; the
+  // two on the same string pluck it once
+  function stepStrings(h: Owned, d: ItemDef, input: FrameInput, muzzle: { x: number; y: number }) {
+    const sc = STRINGS_SCALE, sh = sc.shape, aims = handAims()
+    // the plucks whose time has come
+    if (harp.late.length) {
+      const due = harp.late.filter(l => l.due <= harp.t + 1 / 60)
+      if (due.length) {
+        harp.late = harp.late.filter(l => !due.includes(l))
+        due.forEach(l => pluckString(h, d, l.index, l.r, Math.max(0, l.due - harp.t), muzzle, l.bonus))
+      }
+    }
+    const done = new Set<number>()
+    let backPressed = false
+    for (const k of [1, 0]) {
+      const hand = harp.hands[k], aim = aims[k] ?? null
+      if (!aim) { hand.on = -1; continue }
+      const fire = aim.fire ?? input.fire, pressed = aim.pressed ?? input.firePressed
+      const r = stringReachOf(aim.kind, aim.reach, aim.sharp), was = hand.on
+      const plucks = stepStringHand(hand, sc.stringAt(aim.angle), fire, pressed, sc.count).filter(i => !done.has(i))
+      if (plucks.length) {
+        let bonus = 1
+        if (music.offBeat() < 0.07) {
+          bonus = d.beatBonus
+          if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+        }
+        // only the press waits for the grid (a sweep keeps the hand's own time)
+        const g = music.toGrid(), grid = pressed && d.quantize && quantizeAll && g * 1000 <= d.quantWindow ? g : 0
+        const wait = pressed && k === 0 && backPressed ? d.handDelay * music.secondsPerBeat() : 0
+        plucks.forEach((index, n) => {
+          done.add(index)
+          const at = grid + wait + n * SWEEP_GAP
+          // (a pluck far ahead waits here, so the note it cuts and the one that flies keep its time)
+          if (at > 0.05) harp.late.push({ index, r, due: harp.t + at, bonus })
+          else pluckString(h, d, index, r, at, muzzle, bonus)
+        })
+        if (pressed && k === 1) backPressed = true
+      } else if (fire && hand.on >= 0 && hand.on === was && !(k === 0 && harp.hands[1].on === hand.on) && !harp.late.some(l => l.index === hand.on)) {
+        // the glissando ("Tremolo: reage a" the movement along the string gives its amount and limit; otherwise whole)
+        const n = harp.notes.get(hand.on)
+        if (n?.held) {
+          const along = d.tremoloAxis === 'along'
+          const slide = stringSlide(n.from, n.r0, r, sh.stringStart, sh.stringEnd) - n.from
+          const bend = along ? Math.max(-d.tremoloRange, Math.min(d.tremoloRange, slide * d.tremolo)) : slide
+          if (Math.abs(bend - n.bend) > 0.003) { n.bend = bend; n.held.setPitch(n.base + n.from + bend + detuneNow()) }
+        }
+      }
+    }
+  }
+
   function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void, power = 1, ctx?: StepCtx) {
     const h = held()!, d = items[h.item]
     const mx = muzzle.x, my = muzzle.y
@@ -1004,6 +1266,7 @@ export function createCombat() {
         b.note = { midi: m + detuneNow(), color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice }
         b.ring = d.ringNotes; b.ghost = true
       }
+      b.by = active
       // instant shots travel their whole way now and leave a tracer
       if (d.hitscan && ctx) {
         let guard = 0
@@ -1036,8 +1299,8 @@ export function createCombat() {
     for (const s of list) {
       const d = items[s.i]
       if (!d) continue
-      const x = s.k === 't' ? s.x1 : s.k === 'z' ? s.p[0] ?? 0 : s.x
-      const where = roomAt?.(x, s.k === 't' ? s.y1 : s.k === 'z' ? s.p[1] ?? 0 : s.y) ?? null
+      const x = s.k === 't' ? s.x1 : s.k === 'z' ? s.p[0] ?? 0 : s.k === 'cb' ? 0 : s.x
+      const where = s.k === 'cb' ? null : roomAt?.(x, s.k === 't' ? s.y1 : s.k === 'z' ? s.p[1] ?? 0 : s.y) ?? null
       if (where === 'hidden') continue
       const room = where ?? undefined
       const near = x > view.l - 200 && x < view.r + 200
@@ -1047,6 +1310,25 @@ export function createCombat() {
         for (let n = 0; n + 4 < s.p.length; n += 5) bolts.push({ x1: s.p[n], y1: s.p[n + 1], x2: s.p[n + 2], y2: s.p[n + 3], t: -Math.max(0, s.p[n + 4]) * BOLT_HOP, life: special ? BOLT_LIFE_SPECIAL : BOLT_LIFE, seed: Math.random() * 1000, special, sky: s.p[n + 4] < 0 })
         if (special && near) skyFlash = Math.max(skyFlash, d.specialKind === 'thunder' ? 1 : 0.45)
         if (near && heard++ < 4) sounds.push({ kind: special ? d.specialKind : 'zap', item: null })
+        continue
+      }
+      if (s.k === 'cd') {
+        // another browser's card: it flies to its place and floats there, only to be seen
+        cards.push({ id: nextId++, rank: s.r, x: s.x, y: s.y, tx: s.tx, ty: s.ty, phase: 'out', t: 0, seed: Math.random(), speed: s.sp, angle: Math.atan2(s.ty - s.y, s.tx - s.x), item: s.i, owned: fresh(s.i), owner: '', remote: true, net: s.c, home: { x: s.x, y: s.y }, ...(s.col ? { note: { midi: 60, color: s.col, sym: NOTE_SYMBOLS[s.r % NOTE_SYMBOLS.length], wave: 0, phase: 0, voice: d.voice } } : {}) })
+        if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
+        continue
+      }
+      if (s.k === 'cb') { const c = cards.find(o => o.remote && o.net === s.c); if (c) { c.phase = 'back'; c.t = 0 } continue }
+      if (s.k === 'cx') {
+        // it burst over there: it is gone here, with its burst (which pushes the players here and sets off the
+        // cards of this browser it reaches); the damage is the other browser's
+        const at = cards.findIndex(o => o.remote && o.net === s.c)
+        if (at >= 0) cards.splice(at, 1)
+        blastPush(s.x, s.y, s.rd, d.explodePush)
+        booms.push({ x: s.x, y: s.y, r: s.rd, life: s.n ? 0.5 : 0.35, ...(s.n ? { color: s.n.c } : {}) })
+        burst(s.x, s.y, 16, s.n ? s.n.c : '#ff6b5b', 300, 3)
+        if (near && heard++ < 4) { if (s.n) out.note(s.n.v as VoiceId, s.n.m, 0, d.noteLen, 0.4); else sounds.push({ kind: 'explode', item: null }) }
+        chainCards(s.x, s.y, s.rd)
         continue
       }
       if (s.k === 'hm') {
@@ -1070,25 +1352,29 @@ export function createCombat() {
     }
   }
 
-  function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
-    const strength = b ? b.explodePush ?? items[b.item].explodePush : 0
+  // a burst pushes away whoever is in its radius: the players (the one who made it too) and the enemies
+  function blastPush(x: number, y: number, r: number, strength: number, housed = false) {
     blastActors.forEach(actor => {
       const push = explosionImpulse(x, y, r, strength, actor.box)
       if (push) actor.push(push.x, push.y)
     })
     // inside a house the blast stays in the room: the enemies are all outside
-    if (!b?.room) targets.forEach(t => {
+    if (!housed) targets.forEach(t => {
       if (t.kind === 'button' || t.deadT > 0 || (t.mirror && reportHit)) return
       const push = explosionImpulse(x, y, r, strength, { l: t.x - t.w / 2, r: t.x + t.w / 2, t: t.y - t.h, b: t.y })
       if (!push) return
       const m = t.blast ??= { x: 0, y: 0, vx: 0, vy: 0 }
       m.vx += push.x; m.vy += push.y
     })
+  }
+  function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
+    blastPush(x, y, r, b ? b.explodePush ?? items[b.item].explodePush : 0, !!b?.room)
     if (b?.note) { musicBurst(x, y, r, damage, b); return }
     booms.push({ x, y, r, life: 0.35 })
     sound('explode', null)
     burst(x, y, 26, '#ffb347', 380, 4); burst(x, y, 14, '#fff3b0', 220, 3)
     if (b?.remote || b?.room) return
+    if (!mineQuiet) mine?.blast(x, y, r, damage, b?.by ?? active)
     targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = Math.max(t.x - t.w / 2, Math.min(x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(y, t.y))
@@ -1118,8 +1404,134 @@ export function createCombat() {
       bullets.push({
         x, y: y - 6, vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, dist: 0, damage: Math.max(5, amount * 0.35), pierce: 0, hits: new Set(), size: 9, drop: 0, range: r * 1.6,
         item: b.item, t: 0, explode: 0, explodeDamage: 0, fuse: 0, bounce: 0,
-        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true, remote: b.remote, room: b.room,
+        note: { midi: m, color: DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length], sym: NOTE_SYMBOLS[i % 4], wave: 3, phase: rand(0, 6), voice: note.voice }, ring: 0, ghost: true, remote: b.remote, by: b.by, room: b.room,
       })
+    }
+  }
+
+  // ---------- the decks of cards (lib/pigchicken/cards.ts) ----------
+  // Atirar with a deck: its next card still in it flies to the reticle (no further than the deck reaches) and stays
+  // there. A music deck's card keeps the note of the scale she aims at, to play when it bursts
+  // the card a deck throws next (null: as many as it may have away already are)
+  function deckNext(h: Owned, d: ItemDef) {
+    const away = cards.filter(c => c.owned === h).map(c => c.rank)
+    return away.length >= awayMax(d) ? null : nextCard(h.next ?? 0, away)
+  }
+  function throwCard(h: Owned, d: ItemDef, from: { x: number; y: number }) {
+    const rank = deckNext(h, d)
+    if (rank === null) return false
+    const angle = aimPoint ? Math.atan2(aimPoint.y - from.y, aimPoint.x - from.x) : aimAngle
+    const to = cardSpot(from.x, from.y, angle, aimPoint ? Math.hypot(aimPoint.x - from.x, aimPoint.y - from.y) : d.returnRange * aimReach, d.returnRange)
+    let note: NoteInfo | undefined
+    if (d.instrument) {
+      const t = tones(d), m = t.note()
+      note = { midi: m + detuneNow(), color: t.color(m), sym: NOTE_SYMBOLS[rank % NOTE_SYMBOLS.length], wave: 0, phase: 0, voice: d.voice }
+    }
+    const c: Card = { id: nextId++, rank, x: from.x, y: from.y, tx: to.x, ty: to.y, phase: 'out', t: 0, seed: Math.random(), speed: d.returnSpeed, angle, item: h.item, owned: h, owner: active, note, net: Math.floor(Math.random() * 190000) }
+    cards.push(c)
+    h.next = (rank + 1) % DECK_SIZE
+    leaves(h, d)
+    sound('throw', null)
+    if (netOn) netShots.push({ k: 'cd', i: h.item, c: c.net, r: rank, x: Math.round(from.x), y: Math.round(from.y), tx: Math.round(to.x), ty: Math.round(to.y), sp: d.returnSpeed, ...(note ? { col: note.color } : {}) })
+    return true
+  }
+  // who makes a card burst by touching it: the enemies still standing and the training dummies (a broken one only
+  // for a music card, which mends it), the other players (never the one who threw it, nor the chicks) and, online,
+  // the other browsers' chickens
+  function cardTouched(c: Card, touch: number) {
+    for (const g of targets) {
+      if (!alive(g) || g.kind === 'button' || (g.shield ?? 0) >= 1 || (g.kind === 'undead' && (g.data as UndeadState).bird) || (g.dummy && g.hp <= 0 && !c.note)) continue
+      if (cardTouches(c.x, c.y, touch, { l: g.x - g.w / 2, r: g.x + g.w / 2, t: g.y - g.h, b: g.y })) return true
+    }
+    for (const a of blastActors) if (a.id && a.id !== c.owner && cardTouches(c.x, c.y, touch, a.box)) return true
+    for (const b of netBodies) if (cardTouches(c.x, c.y, touch, { l: b.x - 45, r: b.x + 45, t: b.y - 200, b: b.y })) return true
+    return false
+  }
+  // a burst reaches the cards floating around it: each one bursts too, a moment later (a chain goes off in a row)
+  const chainCards = (x: number, y: number, r: number) => {
+    for (const o of burstReaches(cards, x, y, r, CARD_HALF)) if (!o.remote && o.fuse === undefined) o.fuse = CHAIN_DELAY
+  }
+  // a card bursts: it is gone from the world and back in its deck; whoever is in the burst's radius is pushed and
+  // takes its damage, or its harmony in the note the card kept (a music deck). The 7 and the Ás burst wider
+  function burstCard(c: Card) {
+    const d = items[c.item], at = cards.indexOf(c)
+    if (at >= 0) cards.splice(at, 1)
+    arrives(c.owned)
+    const r = Math.max(10, d.explodeRadius) * (burstsAlone(c.rank) ? Math.max(1, d.deckBig) : 1)
+    blastPush(c.x, c.y, r, d.explodePush)
+    const reach = (hit: (t: Target, cx: number, cy: number, dist: number) => void) => targets.forEach(t => {
+      if (t.deadT > 0) return
+      const cx = Math.max(t.x - t.w / 2, Math.min(c.x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(c.y, t.y))
+      const dist = Math.hypot(cx - c.x, cy - c.y)
+      if (dist <= r) hit(t, cx, cy, dist)
+    })
+    const note = c.note
+    if (note) {
+      booms.push({ x: c.x, y: c.y, r, life: 0.5, color: note.color })
+      out.note(note.voice, note.midi, 0, d.noteLen, 0.7, undefined, vibOf(d))
+      burst(c.x, c.y, 14, note.color, 260, 3)
+      reach((t, cx, cy, dist) => harmonize(t, d.explodeDamage * (1 - 0.5 * dist / r), 0, cx, cy, note, d.stun, c.item))
+    } else {
+      booms.push({ x: c.x, y: c.y, r, life: 0.35 })
+      sound('explode', null)
+      burst(c.x, c.y, 20, '#ff6b5b', 340, 4); burst(c.x, c.y, 10, '#fff3b0', 200, 3)
+      reach((t, cx, cy, dist) => hitTarget(t, d.explodeDamage * (1 - dist / r), 0, cx, cy, 'blast'))
+    }
+    chainCards(c.x, c.y, r)
+    if (netOn) netShots.push({ k: 'cx', i: c.item, c: c.net, x: Math.round(c.x), y: Math.round(c.y), rd: Math.round(r), ...(note ? { n: { m: note.midi, c: note.color, v: note.voice } } : {}) })
+  }
+  // a card is gone without bursting (its owner left the game): a little cloud where it was
+  function dropCard(c: Card) {
+    const at = cards.indexOf(c)
+    if (at >= 0) cards.splice(at, 1)
+    if (!c.remote) { arrives(c.owned); if (netOn) netShots.push({ k: 'cb', i: c.item, c: c.net }) }
+    puffs.push({ x: c.x, y: c.y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: '#ffffff' })
+  }
+  // the cards in the world, one step: out to where they were thrown (a wall or the floor stops them short), floating
+  // there, and back to their owner once she is further than the deck's leash. Touching someone on any of the three
+  // bursts them; the 7 and the Ás burst on their own as they arrive
+  function stepCards(dt: number, { boxes, groundY }: StepCtx) {
+    for (let i = cards.length - 1; i >= 0; i--) {
+      const c = cards[i], d = items[c.item]
+      c.t += dt
+      if (c.remote) {
+        // another browser's card: it only shows. Out to its place and floating; sent back, to where it left from
+        const to = c.phase === 'back' ? c.home ?? { x: c.tx, y: c.ty } : { x: c.tx, y: c.ty }
+        const dx = to.x - c.x, dy = to.y - c.y, dist = Math.hypot(dx, dy), go = c.speed * dt
+        if (c.phase === 'park') { if (c.t > REMOTE_CARD_LIFE) cards.splice(i, 1); continue }
+        if (dist <= Math.max(1, go)) { if (c.phase === 'back') cards.splice(i, 1); else { c.x = to.x; c.y = to.y; c.phase = 'park'; c.t = 0 } continue }
+        c.x += (dx / dist) * go; c.y += (dy / dist) * go
+        continue
+      }
+      if (c.fuse !== undefined) { c.fuse -= dt; if (c.fuse <= 0) { burstCard(c); continue } }
+      const her = bodyOf(c.owner)
+      if (c.phase === 'out') {
+        let arrived = false, burstNow = false
+        // in short steps, so it never jumps over a thin wall or a small enemy
+        for (let left = c.speed * dt; left > 0 && !arrived && !burstNow; left -= 12) {
+          const rem = Math.hypot(c.tx - c.x, c.ty - c.y), s = Math.min(12, left, rem)
+          if (rem < 0.5) { arrived = true; break }
+          const nx = c.x + ((c.tx - c.x) / rem) * s, ny = c.y + ((c.ty - c.y) / rem) * s
+          if (ny >= groundY || solidAt(boxes, nx, ny)) { arrived = true; break }
+          c.x = nx; c.y = ny
+          if (cardTouched(c, d.deckTouch)) burstNow = true
+          else if (rem - s < 0.5) arrived = true
+        }
+        if (burstNow || (arrived && burstsAlone(c.rank))) { burstCard(c); continue }
+        if (arrived) { c.phase = 'park'; c.t = 0; c.tx = c.x; c.ty = c.y }
+        continue
+      }
+      // its owner is gone: it goes in a little cloud
+      if (!her) { dropCard(c); continue }
+      const hx = her.x, hy = her.y - 90 * her.scale, dx = hx - c.x, dy = hy - c.y, dist = Math.hypot(dx, dy) || 1
+      if (c.phase === 'park') {
+        if (dist > d.deckLeash) { c.phase = 'back'; c.t = 0; c.speed = d.returnSpeed * 0.5; if (netOn) netShots.push({ k: 'cb', i: c.item, c: c.net }) }
+      } else {
+        c.speed = Math.min(c.speed + 2400 * dt, d.returnSpeed * 1.6)
+        if (dist <= Math.max(34, c.speed * dt)) { cards.splice(i, 1); arrives(c.owned); sound('catch', null); continue }
+        c.x += (dx / dist) * c.speed * dt; c.y += (dy / dist) * c.speed * dt
+      }
+      if (cardTouched(c, d.deckTouch)) burstCard(c)
     }
   }
 
@@ -1169,10 +1581,18 @@ export function createCombat() {
         const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
         const wall = surfaceHit(boxes, lx, ly, x, y)
         const zw = wall ? null : zoneWalls?.(lx, ly, x, y, !dry) ?? null
-        if (!wall && !zw) continue
+        // the wall of a closed block of the Grade de blocos: the note counts there (one the zone's "Só notas do tom"
+        // leaves out only glances off) and, with "Notas quicam nas paredes", bounces
+        let mw = wall || zw || b.room ? null : mine?.note(lx, ly, x, y, dry || b.remote || !music.fits(b.note.midi) ? null : b.by ?? null) ?? null
+        if (mw && !mw.bounce) mw = null
+        if (!wall && !zw && !mw) continue
         b.x = lx; b.y = ly
-        if ((wall ?? zw)!.flipX) b.vx = -b.vx; else b.vy = -b.vy
+        if ((wall ?? zw ?? mw)!.flipX) b.vx = -b.vx; else b.vy = -b.vy
         b.bounces = (b.bounces ?? 0) + 1
+        if (mw) {
+          if (!dry) { b.hits.clear(); burst(lx, ly, 5, mw.color, 140, 2) }
+          return false
+        }
         if (zw) {
           if (!dry) { b.hits.clear(); burst(lx, ly, zw.died ? 28 : 5, zw.color, zw.died ? 340 : 140, zw.died ? 4 : 2) }
           return false
@@ -1194,13 +1614,31 @@ export function createCombat() {
     // walls and the floor: explode, bounce (with a fuse) or stop
     for (let k = 1; k <= steps; k++) {
       const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
+      // the wall of a closed block of the Grade de blocos stops a shot and takes its damage (an explosive's comes
+      // from its blast); one with a fuse bounces off it
+      if (mine && !b.note && !b.room) {
+        const lx = px + (b.x - px) * (k - 1) / steps, ly = py + (b.y - py) * (k - 1) / steps
+        const mw = mine.shot(lx, ly, x, y, b.explode > 0 || b.fuse > 0 ? 0 : b.damage, dry || b.remote ? null : b.by ?? null)
+        if (mw) {
+          b.x = lx; b.y = ly
+          if (b.fuse > 0) {
+            if (mw.flipX) b.vx = -b.vx * b.bounce
+            else { b.vy = -b.vy * b.bounce; b.vx *= 0.7; if (Math.abs(b.vy) < 60) { b.vy = 0; b.drop = 0; b.vx *= 0.5 } }
+            return false
+          }
+          if (b.explode > 0) return gone(lx, ly)
+          if (!dry) burst(lx, ly, 4, '#c9ced6', 120, 2)
+          return true
+        }
+      }
       const box = boxAt(boxes, x, y, !!b.ghost)
       const floor = y >= groundY
       if (!box && !floor) continue
       if (b.fuse > 0) {
-        const fromAbove = floor || (box && crossesBoxTop(box, x, py, y))
+        const top = floor || !box ? null : crossedTop(box, x, py, y)
+        const fromAbove = floor || top !== null
         if (fromAbove && !dry && Math.abs(b.vy) > 120) sound('bounce', b.item)
-        if (fromAbove) { b.y = floor ? groundY - 1 : box!.t - 1; b.vy = -Math.abs(b.vy) * b.bounce; b.vx *= 0.7; if (Math.abs(b.vy) < 60) { b.vy = 0; b.drop = 0; b.vx *= 0.5 } }
+        if (fromAbove) { b.y = floor ? groundY - 1 : top! - 1; b.vy = -Math.abs(b.vy) * b.bounce; b.vx *= 0.7; if (Math.abs(b.vy) < 60) { b.vy = 0; b.drop = 0; b.vx *= 0.5 } }
         else { b.x = px; b.vx = -b.vx * b.bounce }
         if (!floor && box && !fromAbove) b.y = py
         return false
@@ -1248,8 +1686,8 @@ export function createCombat() {
       vy += THROW_GRAVITY * dt; x += vx * dt; y += vy * dt
       points.push({ x, y })
       if (targets.some(g => g.deadT <= 0 && Math.abs(x - g.x) < g.w / 2 + 10 && y > g.y - g.h && y < g.y)) break
-      const top = vy > 0 && ctx.boxes.find(b => crossesBoxTop(b, x, py, y))
-      if (top) { points[points.length - 1] = { x, y: top.t }; break }
+      const top = vy > 0 ? landing(ctx.boxes, x, py, y) : null
+      if (top) { points[points.length - 1] = { x, y: top.y }; break }
       if (vy > 0 && y >= ctx.groundY) { points[points.length - 1] = { x, y: ctx.groundY }; break }
       if (boxAt(ctx.boxes, x, y)) break
     }
@@ -1468,6 +1906,11 @@ export function createCombat() {
     const h = sw.item as Owned | null
     // a lightning weapon: whoever the blow hit is shocked, and the ones around after them
     if (h && struck.length) zap({ x: origin.x + Math.cos(sw.angle) * sw.reach * 0.85, y: origin.y + Math.sin(sw.angle) * sw.reach * 0.85 }, struck, items[h.item], !!sw.heavy, h)
+    // and a block of the Grade de blocos the blow reaches goes back to grey
+    if (h && items[h.item].shockRange > 0) mine?.shock(origin.x, origin.y, origin.x + Math.cos(sw.angle) * sw.reach, origin.y + Math.sin(sw.angle) * sw.reach)
+    // any other blow on the wall of a closed block moves its seesaw: an instrument's toward the music, the rest
+    // (the wing too) toward the damage. Not from inside a house, whose room is all she reaches.
+    else if (sw.damage > 0 && !shotRooms.has(active)) mine?.blow(origin.x, origin.y, sw.angle, sw.arc, sw.reach, sw.damage, !!h && !!items[h.item].instrument, active)
     if (h && sw.hits > 0 && sw.durability && inv.includes(h)) {
       h.durability -= sw.hits
       if (h.durability <= 0) {
@@ -1997,6 +2440,8 @@ export function createCombat() {
     drop(id: string) {
       if (id === active) return
       const l = loadouts.get(id)
+      if (l?.seated && l.seated.seat.by === id) l.seated.seat.by = null
+      seatNear.delete(id)
       if (l) for (const o of l.cages) {
         o.cage!.enterT = Infinity
         pickups.push({ id: nextId++, owned: o, x: (l.lastBody?.x ?? 0) + rand(-50, 50), y: (l.lastBody?.y ?? floorY) - 40, vy: -220, resting: false, noPick: 0.6 })
@@ -2023,7 +2468,8 @@ export function createCombat() {
         }
         out[id] = {
           // a hammer still on its way back is in her wing again; the specials are ready (the next world's clock is new)
-          inv: l.inv.map(({ item, ammo, durability, refill, group, scale }) => ({ item, ammo, durability, refill, group, scale })),
+          // (the Boomerangs and a deck's cards too; the deck goes on from the card it was at)
+          inv: l.inv.map(({ item, ammo, durability, refill, group, scale, next }) => ({ item, ammo, durability, refill, group, scale, ...(next !== undefined ? { next } : {}) })),
           cur: l.cur, cages: kept, loose,
         }
       })
@@ -2069,6 +2515,13 @@ export function createCombat() {
     setPlaceEnv(fn: PlaceEnvFn | null) { placeEnv = fn },
     // the walls of the zones with life (zone-life.ts)
     setZoneWalls(fn: ZoneWallsFn | null) { zoneWalls = fn },
+    // the Grade de blocos: what the notes, the shots, the blasts and the shocks do to its blocks
+    setMine(hooks: MineHooks | null) { mine = hooks },
+    // the bomb of a block going off: the blast everyone sees, hears and is pushed by, which hurts the enemies in it
+    boom(x: number, y: number, r: number, damage: number, push: number) {
+      mineQuiet = true
+      try { explode(x, y, r, damage); blastPush(x, y, r, push) } finally { mineQuiet = false }
+    },
     // a song is playing (the undead wait for it to end before leaving); the birds of the place (null: the zone's)
     setPlaying(on: boolean) { playing = on },
     setZoneBirds(list: BirdId[] | null) { zoneBirds = list?.length ? list : null },
@@ -2092,6 +2545,12 @@ export function createCombat() {
     // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,
     // how bright the sky is from a special (0..1) and where a throw that comes back would fly if let go now
     bolts, flights,
+    // the cards of the decks out in the world (lib/pigchicken/cards.ts)
+    get cards() { return cards as readonly Card[] },
+    // the card a deck throws next (its place in CARD_RANKS), or null: not a deck, or all its cards are away
+    nextCard(o: Owned) { return items[o.item]?.deck ? deckNext(o, items[o.item]) : null },
+    // how many of an item that comes back are in her wings now (the Boomerang: one in each)
+    inHand(o: Owned) { const d = items[o.item]; return d?.returnThrow ? Math.max(0, awayMax(d) - (o.out ?? 0)) : 1 },
     get skyFlash() { return skyFlash },
     predictReturn,
     // an item's special: null when it has none, else how full it is (1 = ready, the next blow that hits is one)
@@ -2106,7 +2565,32 @@ export function createCombat() {
     get aimSkew() { const j = aimSways.get(active); if (!j) return 0; return j.amp * (j.left / j.total) * Math.sin((j.total - j.left) * SOUL_ACT.aim.rate + j.seed) },
     get detune() { return detuneNow() },
     // the aim's reach (0..1) for the current player, set by the page before step; the loudness it gives the held item
-    setAimReach(r: number) { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1 },
+    // (kind: what that reach is: the pointer's place, a stick's push or nothing; the Cordas soltas read it)
+    setAimReach(r: number, kind: AimKind = 'none') { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1; aimKind = kind },
+    // the Cordas soltas for the current player: where along the strings her aim is (the aim's reach) and how long
+    // ago string `i` was plucked (s; Infinity: not yet)
+    get stringReach() { return stringReach() },
+    /** Her hands over the Cordas soltas for this player's next frames ([front, back]; null: one hand, the aim itself). */
+    setStringHands(hands: (StringAim | null)[] | null) { stringAims = hands },
+    /** The Bateria: what the page read this frame (the sticks' places on the chart, the clicks, each piece's shortcuts). */
+    setDrumInput(input: DrumInput | null) { kit.input = input },
+    /** The Bateria's drawing: the sticks on the chart, how long ago and how hard a piece was hit, the Chimbal's pedal. */
+    get drumSticks() { return kit.st.sticks.map(s => (s.live ? { x: s.x, y: s.y } : null)) },
+    drumPulse(piece: DrumPiece) { const s = kit.struck.get(piece); return s ? { age: kit.t - s.at, vel: s.vel } : null },
+    get hatOpen() { return kit.st.open },
+    /** The knocks between the pieces still showing: where on the chart and how long ago (s). */
+    get drumKnocks() { return kit.knocks.filter(k => kit.t - k.at < 0.4).map(k => ({ x: k.x, y: k.y, age: kit.t - k.at })) },
+    /** The same pulse for the kit in the world: of whoever sits at that Bateria (null: nobody, or never hit). */
+    seatPulse(seat: Seat, piece: DrumPiece) {
+      const k = seat.by === null ? null : seat.by === active ? kit : loadouts.get(seat.by)?.kit
+      const s = k?.struck.get(piece)
+      return k && s ? { age: k.t - s.at, vel: s.vel } : null
+    },
+    /** Where each hand is over the strings now: its angle and its place along the radius (null: off the strings). */
+    get stringHands() { return handAims().map(a => a ? { angle: a.angle, r: stringReachOf(a.kind, a.reach, a.sharp) } : null) },
+    stringAge(i: number) { const at = harp.plucked.get(i); return at === undefined ? Infinity : harp.t - at },
+    // where the current player's reticle is, in world px (a deck's card is thrown there); null: only the aim's angle
+    setAimPoint(p: { x: number; y: number } | null) { aimPoint = p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y } : null },
     get aimReach() { return aimReach },
     // the held instrument's scale now (the primary one for anything else)
     get scale() { return scaleOf(held(), def()) },
@@ -2128,11 +2612,30 @@ export function createCombat() {
     get converted() { return conv },
     setMusicOut(o: MusicOut) { out = o },
     setQuantize(v: boolean) { quantizeAll = v },
-    bullets, thrown, targets, pickups, sparks, texts, racks, chests,
+    bullets, thrown, targets, pickups, sparks, texts, racks, chests, seats,
+    // the fixed instrument the current player sits at (null: none), the free one they are next to, and getting up
+    get seated() { return seated?.seat ?? null },
+    get seatNear() { return seatNear.get(active) ?? null },
+    standUp,
+    addSeat(id: string, kind: FixedKind, x: number, y: number, face: 1 | -1): Seat { const s: Seat = { id, kind, x, y, face, by: null }; seats.push(s); return s },
+    /** Online: the other browsers' chickens in the seated pose (world px): the seats they are at are taken here. */
+    setNetSeated(list: readonly { x: number; y: number; first: boolean }[]) { markNetSeats(seats, list) },
     // the nearest closed Baú this player is next to (null: none), for the hint over it
     get chestNear() { return chestNear.get(active) ?? null },
     // the keys this player carries
     get keys() { return keyCount() },
+    // how many of a stacked item the current player has, and one less of it (false: they had none)
+    count(item: ItemId) { return inv.reduce((n, o) => n + (o.item === item ? o.ammo : 0), 0) },
+    spend(item: ItemId) { return spend(id => id === item) },
+    // n of a stacked item straight into the current player's inventory, without taking it in the wing
+    grant(item: ItemId, n = 1) {
+      for (let k = 0; k < n; k++) {
+        const stack = inv.find(o => o.item === item)
+        if (stack) { stack.ammo = Math.min(CONSUMABLE_LIMITS[item] ?? 1, stack.ammo + 1); continue }
+        if (!room()) return
+        if (takeIn({ ...fresh(item), ammo: 1 }) <= cur) cur++
+      }
+    },
     // effects for the modes built on top (the temple): sparks and floating text
     burst, addText(x: number, y: number, text: string, color = '#ffffff', size?: number) { texts.push({ x, y, text, life: size ? 1.2 : 0.9, color, size }) },
     def,
@@ -2313,6 +2816,14 @@ export function createCombat() {
       let peckStarted = false
       // what calls a strong blow's charge off without hitting: the interface, empty hands, a soul's peck
       const heavyCancel = !!input.cancelFire || !!input.deselect || locks.has(active)
+      // sitting at a fixed instrument: only the aim and Atirar count; Pegar gets her up (not Correr's own key);
+      // a portal, being carried or the instrument leaving the Pátio too (online: another browser's player who sat
+      // at it at the same time and comes first)
+      let stoodUp = false
+      if (seated) {
+        if (!seats.includes(seated.seat) || seated.seat.yield || (input.grab && !input.grabRun) || body.state === 'held' || body.state.startsWith('portal')) { standUp(); stoodUp = true; input = { ...input, grab: false, grabHeld: false } }
+        else input = { ...input, ...NO_SWITCH, move: null, deselect: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
+      }
       // rearranging the bar never changes what she holds (nor what is being done with it)
       if (input.move) moveSlot(input.move.from, input.move.to, input.move.after)
       if (input.deselect) {
@@ -2323,8 +2834,10 @@ export function createCombat() {
       }
       // pecked by a soul (lib/pigchicken/soul-acts.ts): her item does not answer for a moment
       if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
-      // her hammer is out flying: the wing waits for it (she can still change items)
+      // her hammer is out flying: the wing waits for it (she can still change items). With one of two Boomerangs or
+      // some of a deck's cards away she still hits and throws the rest, but the item itself is not thrown (Arremesso)
       if (held()?.flying) input = { ...input, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false }
+      else if (held()?.out) input = { ...input, throwHeld: false, throwReleased: false }
       const d = def()
       if (consumption) {
         consumption.left -= dt
@@ -2341,12 +2854,22 @@ export function createCombat() {
       throwAngle = targetAngle
       // tremolo: shaking the aim inside a lane of the instrument's fan, after the note starts, bends its notes
       // (the press, or the violin's bow coming on, starts it in tune)
-      if (d.instrument && d.tremolo > 0 && scaleOf(held(), d).id === 'primary') {
+      // ("Tremolo: reage a" the movement along the string: the aim going away from her raises the note, coming closer
+      // lowers it, from where it was when the note started; on the Cordas soltas each string slides by itself)
+      if (d.instrument && d.tremolo > 0 && d.tremoloAxis === 'along' && scaleOf(held(), d).id !== 'strings') {
+        if (Number.isFinite(trem.slow)) trem = newTremolo()
+        if (!(input.fire && (!bowed(d) || !!beamHeld))) { tremReach = null; tremBend = 0 }
+        else {
+          if (tremReach === null) tremReach = aimReach
+          tremBend = Math.max(-d.tremoloRange, Math.min(d.tremoloRange, (aimReach - tremReach) * 2 * d.tremoloRange * d.tremolo))
+        }
+      } else if (d.instrument && d.tremolo > 0 && d.tremoloAxis !== 'along' && scaleOf(held(), d).id === 'primary') {
+        tremReach = null
         const pool = music.aimPool(d.pitchSet, d.octave, d.span)
         const playing = input.fire && (!bowed(d) || !!beamHeld)
         const lane = stepTremolo(trem, pool, -Math.sin(aimAngle), dt, d.tremolo, d.fretless, playing, d.tremoloRange)
         tremBend = pool.length ? lane - music.noteFor(aimAngle, d.pitchSet, d.octave, d.span) : 0
-      } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0 }
+      } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0; tremReach = null }
 
       lastBody = body
       if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt); clock += dt; skyFlash = Math.max(0, skyFlash - dt * 2.2) }
@@ -2496,13 +3019,19 @@ export function createCombat() {
         }
       } else if (h && d.consumable) {
         // a key (Chave) is only for the Baús: Atirar does nothing with it
-        if (input.firePressed && cooldown <= 0 && !isKey(h.item)) consume(h, d, origin)
+        if (input.firePressed && cooldown <= 0 && !isKey(h.item) && !isMineItem(h.item)) consume(h, d, origin)
       } else if (isStaff(items[h.item])) {
         // a staff (the taco, the passaguá): Atirar is its strong blow. A press arms it, holding charges it (once the
         // interval of the last blow is over) and letting go hits, with whatever charge it has
         // (the item in the wing now: `d` is still the one she held when the frame started)
         const sd = items[h.item]
-        if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
+        if (sd.deck) {
+          // a deck: a press throws its next card where she aims; held, one more every `deckGap` s
+          if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) heavyItem = h
+          else if (heavyItem === h && !input.fire) heavyItem = null
+          if (heavyItem === h && cooldown <= 0 && throwCard(h, sd, opts.throwOrigin ?? origin)) cooldown = Math.max(0.05, sd.deckGap)
+        }
+        else if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
         else if (heavyItem === h && input.fire) { if (meleeCool <= 0) heavyT += dt }
         else if (heavyItem === h) {
           // one that comes back is thrown instead (the Martelo de Thor)
@@ -2510,6 +3039,19 @@ export function createCombat() {
           else if (meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else melee(false, body.scale, Math.min(1, heavyT / staffCharge(sd))) }
           heavyItem = null; heavyT = 0
         }
+      } else if (items[h.item].instrument && scaleOf(h, items[h.item]).id === 'drums') {
+        // the Bateria: the sticks, the clicks and the pieces' shortcuts hit by themselves (no Atirar)
+        if (beam) stopBeam()
+        chargeT = 0; burstLeft = 0
+        if (input.cancelFire) { kit.hat?.stop(0.05); kit.hat = null; kit.st = newDrumState(); kit.input = null }
+        else stepKit(h, items[h.item], muzzle, dt)
+      } else if (items[h.item].instrument && scaleOf(h, items[h.item]).id === 'strings') {
+        // an instrument on the Cordas soltas: Atirar plucks the strings (no magazine, no charge, no reload)
+        if (beam) stopBeam()
+        chargeT = 0; burstLeft = 0
+        harp.t += dt
+        if (input.cancelFire) harp.hands.forEach(hand => { hand.on = -1 })
+        else stepStrings(h, items[h.item], input, muzzle)
       } else if (d.meleeOnly || d.mag === 0) {
         // an item with no shots: Atirar swings it too
         if (input.firePressed && meleeCool <= 0 && canSwing(false)) melee(false, body.scale)
@@ -2617,10 +3159,10 @@ export function createCombat() {
             t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
-        const top = tBoxes.find(b => b.solid !== false && crossesBoxTop(b, t.x, py, t.y))
+        const top = landing(tBoxes, t.x, py, t.y, b => b.solid !== false)
         const side = !top && solidAt(tBoxes, t.x, t.y)
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
-        const floor = top ? top.t : t.y >= tGround ? tGround : null
+        const floor = top ? top.y : t.y >= tGround ? tGround : null
         if (floor !== null && t.vy > 0) {
           // another browser's throw: the item lands on that browser's floor, not here
           if (!t.remote) pickups.push({ id: nextId++, owned: t.owned, x: t.x, y: floor, vy: 0, resting: true, noPick: 0.5 })
@@ -2637,6 +3179,7 @@ export function createCombat() {
         const f = flights[i], fd = items[f.owned.item]
         f.angle += f.spin * dt
         const touch = () => {
+          if (!f.remote && fd.shockRange > 0) mine?.shock(f.x, f.y, f.x, f.y)
           if (!f.remote) for (const g of targets) {
             if (g.deadT > 0 || f.hits.has(g.id) || Math.abs(f.x - g.x) > g.w / 2 + 16 || f.y < g.y - g.h - 12 || f.y > g.y + 12) continue
             f.hits.add(g.id)
@@ -2665,11 +3208,11 @@ export function createCombat() {
         const her = f.remote ? null : bodyOf(f.owner)
         const home = f.home ?? (her ? { x: her.x, y: her.y - 90 * her.scale } : null)
         // its owner is gone: it falls where it is
-        if (!home) { f.owned.flying = false; pickups.push({ id: nextId++, owned: f.owned, x: f.x, y: f.y, vy: 0, resting: false, noPick: 0.3 }); flights.splice(i, 1); continue }
+        if (!home) { arrives(f.owned); if (!f.owned.out) pickups.push({ id: nextId++, owned: f.owned, x: f.x, y: f.y, vy: 0, resting: false, noPick: 0.3 }); flights.splice(i, 1); continue }
         const dx = home.x - f.x, dy = home.y - f.y, dist = Math.hypot(dx, dy) || 1
         f.speed = Math.min(f.speed + 2400 * dt, fd.returnSpeed * 1.6)
         if (dist <= Math.max(34, f.speed * dt)) {
-          f.owned.flying = false; flights.splice(i, 1)
+          arrives(f.owned); flights.splice(i, 1)
           if (!f.remote) sound('catch', null)
           continue
         }
@@ -2680,6 +3223,7 @@ export function createCombat() {
         f.x += f.vx * dt; f.y += f.vy * dt
         touch()
       }
+      if (world) stepCards(dt, { boxes, groundY })
       if (world) for (let i = bolts.length - 1; i >= 0; i--) { bolts[i].t += dt; if (bolts[i].t >= bolts[i].life) bolts.splice(i, 1) }
 
       // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
@@ -2691,8 +3235,8 @@ export function createCombat() {
         if (world && !p.resting) {
           const py = p.y
           p.vy += ITEM_GRAVITY * dt; p.y += p.vy * dt
-          const top = boxes.find(b => b.solid !== false && crossesBoxTop(b, p.x, py, p.y))
-          if (top) { p.y = top.t; p.resting = true; p.vy = 0 }
+          const top = landing(boxes, p.x, py, p.y, b => b.solid !== false)
+          if (top) { p.y = top.y; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
         if (Math.abs(p.x - body.x) < pickupReachX && Math.abs(p.y - body.y) < pickupReachY && canTake(p)) {
@@ -2710,7 +3254,7 @@ export function createCombat() {
       const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       // an item offered at her body (to take or to equip) goes before a Baú
       const itemOffered = !!hover || !!hoverOwned
-      if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.flying) || inv.some(o => o.item === hover!.owned.item))) {
+      if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.out) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
         pickups.splice(at, 1)
         const picked = pickUp(g, !meleePickup)
@@ -2737,6 +3281,11 @@ export function createCombat() {
       if (nearChest && !itemOffered) chestNear.set(active, { chest: nearChest, block: chestBlock(nearChest.params, { keys: keyCount(), souls: cageSouls(cages) }) })
       else chestNear.delete(active)
       if (nearChest && input.grab && !input.grabRun && !itemOffered) openChest(nearChest)
+      // the nearest free fixed instrument in her reach: Pegar sits at it, when no item nor Baú comes first
+      if (seated) { hover = null; hoverOwned = null }
+      const nearSeat = seated || itemOffered || nearChest || !body.grounded ? null : nearestSeat(seats, body.x, body.y, pickupReachX, pickupReachY)
+      if (nearSeat) seatNear.set(active, nearSeat); else seatNear.delete(active)
+      if (nearSeat && input.grab && !input.grabRun && !stoodUp && body.state !== 'held' && !body.state.startsWith('portal')) sit(nearSeat)
       if (!world) return
       // the Baús: the lid eases open or shut, the shiver fades and one that closes again does so after its time
       for (const c of chests) {

@@ -1136,6 +1136,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the aim's distance from her sets the instrument's loudness (lib/pigchicken/aim-volume.ts)
       // (mouse: full at the scale fan's circle; sticks: their value, which already starts at 0 at the dead zone's edge)
       combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, radius: SCALE_FAN_R * scaleSizeRef.current * st.scale, stick: aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? aim.strength : null }))
+      // where the reticle is (the cursor; with a stick or the keys, at the reticle's distance): a deck's card flies there
+      { const sd = S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1); combat.setAimPoint(aim.target ? { x: aim.target.x + camX, y: aim.target.y - camY } : { x: m0.x + Math.cos(aim.angle) * sd + camX, y: m0.y + Math.sin(aim.angle) * sd - camY }) }
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the Itens panel follows the item the main player holds
@@ -1178,6 +1180,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
         combat.setAimReach((rs ?? ls)?.mag ?? 1)
+        { const xdist = S.reticleDist * (rs ? 0.45 + 0.55 * rs.mag : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
         scalePlaying.set(id, xin.fire || xin.melee)

@@ -8,7 +8,8 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
   const held = combat.held, eating = combat.consumption
   const id = eating?.item ?? held?.item
   if (!id) return null
-  // thrown and on its way back (the Martelo de Thor): her wing is empty until it arrives
+  // thrown and on its way back (the Martelo de Thor; both Boomerangs; a deck with every card away): her wing is
+  // empty until one arrives
   if (held?.flying && !eating) return null
   const svg = ITEM_SVG[id]
   if (!svg) return null
@@ -38,5 +39,7 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
     rig: (charge <= 0 || drawing) && !swinging ? itemRig(d, draw) : null,
     archery: parts ? { x: d.handX - draw, y: d.handY, arrow: held && held.ammo > 0 && !combat.reloading ? parts.arrow : null, string: parts.string } : null,
     staff: staff ? staffPose(d, wind, aimElevation(combat.aimAngle, face), now) : null,
+    // the Boomerang: with both in her wings, the second one is in the back wing's hand
+    off: staff && !!held && d.returnThrow && !d.deck && combat.inHand(held) >= 2,
   }
 }

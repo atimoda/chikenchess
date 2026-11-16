@@ -36,6 +36,11 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   passagua: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Música", "Rebate"],
   mjolnir: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música"],
   odinstaff: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música"],
+  // the Boomerang and the decks: staffs thrown that come back, with no shock; a deck's cards burst (Explosão), the
+  // blue one's in a note (Música)
+  boomerang: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música", "Choque", "Especial"],
+  cardsRed: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Música", "Choque", "Especial"],
+  cardsBlue: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Choque", "Especial"],
   wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
   // a key only opens Baús: it has no effect, just its slap and its throw
@@ -44,6 +49,8 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
 // Pontos of a staff (how she carries it, lib/pigchicken/staff-pose.ts); the other items have the pivot and the wings' points
 // the strong blow's own shock numbers, for the staffs that have a strong blow (one that is thrown and comes back has none)
 const HEAVY_SHOCK: (keyof ItemDef)[] = ["heavyShockRange", "heavyShockTime"]
+// what a deck does not use: its cards fly straight to the reticle with no charge and only burst (no fuse)
+const DECK_UNUSED: (keyof ItemDef)[] = ["returnDamage", "returnMin", "returnCharge", "returnPush", "returnCurveMin", "returnCurveMax", "fuse", "bounce"]
 const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
 // the arc a combo blow of this kind starts with: another blow of the same kind, the code's, or 150°
 const comboArc = (combo: ComboStep[], base: ItemDef, kind: BlowKind) =>
@@ -100,7 +107,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {ITEM_PARAM_GROUPS.filter(g => (CAGE_IDS.includes(sel) ? g === "Gaiola" : g !== "Gaiola") && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || (isStaff(it) && !it.returnThrow)) && (g !== "Arremesso que volta" || it.returnThrow) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
+        {ITEM_PARAM_GROUPS.filter(g => (CAGE_IDS.includes(sel) ? g === "Gaiola" : g !== "Gaiola") && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || (isStaff(it) && !it.returnThrow)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g === "Golpe" && isStaff(it) ? "Golpe rápido" : g}</summary>
             <div className="grid gap-field px-4 pb-4">
@@ -272,7 +279,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 </label>
               )}
               <div className="grid gap-field">
-              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key))).map(m => sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: "Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui" } : it.deck && m.key === "returnCount" ? { ...m, label: "Cartas fora ao mesmo tempo", hint: "Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)" } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers

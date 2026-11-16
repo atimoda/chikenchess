@@ -5,7 +5,7 @@
 import { CONSUMABLE_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, type ItemId } from './items'
 
 // the most a Pátio may allow (Configurações do Pátio → Limite do inventário); new Pátios start with all of it
-export const INVENTORY_MAX = 25
+export const INVENTORY_MAX = 30
 export const INVENTORY_MIN = 1
 export const clampInventoryLimit = (n: number) => Math.round(Math.max(INVENTORY_MIN, Math.min(INVENTORY_MAX, Number.isFinite(n) ? n : INVENTORY_MAX)))
 

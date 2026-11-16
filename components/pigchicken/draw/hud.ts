@@ -3,6 +3,7 @@
 import { PATIO_GROUND } from "@/lib/pigchicken/patio-settings"
 import { ARP_GLYPHS, CONSUMABLE_LIMITS, type Arp, type ItemId } from "@/lib/pigchicken/items"
 import { DEGREE_COLORS } from "@/lib/pigchicken/music"
+import { CARD_RANKS, burstsAlone } from "@/lib/pigchicken/cards"
 import { type Combat } from "@/lib/pigchicken/combat"
 import { wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
@@ -334,7 +335,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
       const d = combat.item(o.item)
       // an instrument: its arpeggiator's pattern over the slot (the other players' small rows sit too close for it:
       // there it goes small inside the slot's top, without the click)
-      if (d.instrument && !(drag && drag.from === i)) {
+      if (d.instrument && !d.deck && !(drag && drag.from === i)) {
         if (bottom || row === 0) glyphs.push({ item: o.item, box: drawArpGlyph(ctx, d.arp, x + size / 2, y, bottom, on, size) })
         else drawArpGlyph(ctx, d.arp, x + size / 2, y + 14, false, on, size)
       }
@@ -344,6 +345,14 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
         ctx.font = `bold ${bottom ? 12 : 9}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "right"
         ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.strokeText(t, x + size - 4, y + size - (bottom ? 9 : 6))
         ctx.fillStyle = o.ammo <= 0 ? "#ff8c69" : "#ffffff"; ctx.fillText(t, x + size - 4, y + size - (bottom ? 9 : 6))
+      }
+      // a deck: the card its next throw sends, in the bottom right corner (golden: one that bursts on its own)
+      const card = d.deck ? combat.nextCard(o) : null
+      if (card !== null) {
+        const t = CARD_RANKS[card]
+        ctx.font = `bold ${bottom ? 12 : 9}px ui-sans-serif, system-ui, sans-serif`; ctx.textAlign = "right"
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.strokeText(t, x + size - 4, y + size - (bottom ? 9 : 6))
+        ctx.fillStyle = burstsAlone(card) ? "#ffd166" : "#ffffff"; ctx.fillText(t, x + size - 4, y + size - (bottom ? 9 : 6))
       }
       // several doses of it running at once: how many, in the top left corner
       if (fx && fx.count > 1) {
@@ -360,6 +369,8 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
           : d.refillTime > 0 ? ((o.refill ?? 0) / d.refillTime) * Math.max(1, d.refillAmount) : 0
         drawAmmoBar(ctx, x, y, size, r, barH, d.mag, o.ammo, coming)
       }
+      // more than one of it to throw (the two Boomerangs, a deck's cards): the ones in her wings, in the same bar
+      else if (d.returnThrow && d.returnCount > 1) drawAmmoBar(ctx, x, y, size, r, barH, combat.inHand(o) + (o.out ?? 0), combat.inHand(o), 0)
       // what is left of an item that wears out with hits (over the ammo bar when it has one)
       if (d.durability > 0 && o.durability < d.durability) {
         const k = Math.max(0, o.durability / d.durability), bw = size - 12, ly = y + size - 4 - (ammoBar ? barH + 2 : 0)

@@ -102,7 +102,8 @@ export type ChickenEngine = {
   // `staff`: a staff carried in its own pose (lib/pigchicken/staff-pose.ts), in her body's frame: the wing's hand at
   // (x, y) from her shoulder holding the drawing's point (gripX, gripY), the staff turned to `angle` (degrees, 0 = to
   // her front, -90 = up). A swing leaves from this pose and comes back to it
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null } | null) => void
+  // `off`: with a staff, a second one of it in the back wing's hand, in the same pose (the two Boomerangs)
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: boolean } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in. `size`: how much bigger
   // the item is drawn at the height of the blow (×, a charged strong blow)
@@ -227,7 +228,7 @@ const SVG_MARKUP = `
     ${AURA_MARKUP}
     ${legMarkup('Back', -26)}${legMarkup('Front', -14)}
     <g data-part="body">
-      <g data-part="wingBack"><g data-part="artWingBack"></g></g>
+      <g data-part="wingBack"><g data-part="artWingBack"></g><g data-part="heldOff" style="display:none"></g></g>
       <g data-part="tail"><g data-part="artTail"></g></g>
       <g data-part="artTorso"></g>
       <g data-part="neck"><g data-part="artNeck"></g>
@@ -284,7 +285,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -438,7 +439,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   // ---------- game hooks ----------
-  let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = '', heldArrowSvg = ''
+  let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = '', heldArrowSvg = '', heldOffSvg = '', heldOffOn = false
   const throwTransition = createThrowTransition()
   let peckNow: PeckPose | null = null
   let swingNow: { angle: number; reach: number; t: number; size?: number } | null = null
@@ -1836,6 +1837,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     if (rig?.back) { const h = onItem(rig.back.x, rig.back.y); wingTo(el.wingBack, h.x, h.y) }
     else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
+    // a second one of the staff in the back wing's hand, carried like the first
+    const off = staff && heldItem?.off ? staff : null
+    if (!!off !== heldOffOn) { heldOffOn = !!off; el.heldOff.style.display = off ? '' : 'none' }
+    if (off) {
+      if (heldOffSvg !== heldSvg) { heldOffSvg = heldSvg; el.heldOff.innerHTML = heldSvg }
+      el.heldOff.setAttribute('transform', `translate(${CHICKEN_HAND.x} ${CHICKEN_HAND.y}) rotate(${off.angle.toFixed(1)}) translate(${(-off.gripX).toFixed(2)} ${(-off.gripY).toFixed(2)})`)
+    }
     el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
     const legShift = `translate(0 ${(pose.shiftY || 0).toFixed(2)})`
     el.wrapF.setAttribute('transform', legShift); el.wrapB.setAttribute('transform', legShift)
