@@ -69,6 +69,8 @@ const FOLLOW_NUMBERS: { key: FollowNumber; label: string; unit?: string; hint: s
   { key: "patternTime", label: "Tempo do padrão", unit: "s", hint: "Duração de uma volta do padrão." },
   { key: "loopEvery", label: "Voltinha a cada", unit: "s", hint: "Intervalo das voltinhas no descanso (0: nunca)." },
   { key: "restless", label: "Inquietação", hint: "Quanto vagueia em volta do lugar." },
+  { key: "alert", label: "Susto", unit: "px", hint: "A que distância outro player a incomoda (nunca o dono). 0: não foge de ninguém." },
+  { key: "flee", label: "Fuga", hint: "Quanto se afasta de outro player e a chance de largar o lugar onde pousou. 0: não foge." },
 ]
 // exploring the map: how keen it is, how far it goes, how long it rests and where it likes to land
 const ROAM_NUMBERS: { key: FollowNumber; label: string; unit?: string; hint: string }[] = [

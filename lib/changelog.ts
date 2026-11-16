@@ -39,6 +39,7 @@ const RECENT = [
         'As gaiolas penduradas agora balançam para o lado certo: quando a câmera vai para um lado, elas ficam para trás e começam o balanço para o outro, em vez de acompanhar a câmera.',
         'No painel Itens, os seis modelos de gaiola viraram uma entrada só, “Gaiolas”: ela mostra os seis um abaixo do outro, cada um vazio e, ao lado, cheio até o limite, com as almas nos lugares em que o jogo as põe. Mexer no limite de almas de um modelo muda a gaiola cheia na hora. O Padrão do topo volta os seis de uma vez.',
         'As almas dentro da gaiola agora ficam em pose de descanso, com a asa recolhida junto ao corpo; as almas pousadas pelo mapa também.',
+        'As almas soltas agora fogem dos outros jogadores: perto do dono, afastam-se de quem chega; pousadas pelo mapa, podem voar de volta para o dono. Capturar a alma de outro jogador continua possível, mas pede uma corrida. Cada ficha tem Susto e Fuga no editor, no fim do grupo Voo.',
       ] },
       { title: 'Pátio: Boomerang', items: [
         'Cada arremesso do Boomerang usa uma asa só: o primeiro sai da asa da frente, enquanto o da asa de trás fica parado; o segundo sai da asa de trás, que carrega, golpeia e arremessa com ele enquanto a asa da frente fica vazia. O que volta primeiro vai para a asa da frente.',

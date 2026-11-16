@@ -8,7 +8,7 @@ import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type
 import { birdPerchParams, perchEnd, perchSeekIn, perchSit, perchStart, perchStep, type PerchState, type PerchWorld } from './bird-perch'
 import { ABDUCT_GAP, CHICK_SOUL_COLOR, farSpot, newSoul, noteClass, originOf, shotClass, soulSpecies, stepAbductions, stepScares, weaponClass, type Abduction, type Scare, type Soul, type SoulMark, type SoulOrigin, type SoulWeapon } from './souls'
 import { SOUL_FLIGHT, createSoulBrain, soulErrandStep, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
-import { newSoulRoam, roamLift, soulRoamStep, type SoulRoam } from './soul-roam'
+import { newSoulRoam, roamLift, soulFleeStep, soulRoamStep, type SoulRoam } from './soul-roam'
 import { POOP, newPoop, poopFall, poopHits, poopKnock, poopUnder, poopWait, type Poop } from './poop'
 import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
 import { entryActParams, entryFollowParams, entryOf } from './soul-library'
@@ -2116,6 +2116,16 @@ export function createCombat() {
   const bodyOf = (id: string) => (id === active ? lastBody : loadouts.get(id)?.lastBody) ?? null
   const invOf = (id: string): readonly Owned[] => (id === active ? inv : loadouts.get(id)?.inv ?? [])
   const actorOf = (id: string) => blastActors.find(a => a.id === id)
+  // the player nearest a soul flying free that is not its owner (the other local players and, online, the other
+  // browsers' chickens), inside its alert radius: the middle of their body (null: nobody)
+  function strangerNear(f: FreeSoul) {
+    let best: { x: number; y: number } | null = null, near = f.params.alert
+    if (near <= 0 || f.params.flee <= 0) return null
+    const see = (x: number, y: number) => { const d = Math.hypot(x - f.x, y - f.y); if (d < near) { near = d; best = { x, y } } }
+    for (const a of blastActors) if (a.id && a.id !== f.owner) see((a.box.l + a.box.r) / 2, (a.box.t + a.box.b) / 2)
+    for (const b of netBodies) see(b.x, b.y - 100)
+    return best as { x: number; y: number } | null
+  }
   const soulVoice = (s: Soul): VoiceId => (s.bird ? BIRDS[s.bird].voice : 'bird')
   // the k-th note of the chord playing, `up` semitones above
   const chordNote = (k: number, up = 12) => { const chord = music.chord(true); return chord[((k % chord.length) + chord.length) % chord.length] + up }
@@ -3472,6 +3482,8 @@ export function createCombat() {
         if (f.job) { roamLift(f.roam); continue }
         // out exploring (on its way to a wire, a tree, a platform or an object, or resting there), it does not follow
         if (!soulRoamStep(f.roam, f.brain, f, her, f.params, perchWorld, dt)) soulFollowStep(f.brain, f, her, f.params, { beat: beatNow, air: soulAir }, dt)
+        // it keeps away from the other players (never from its owner); called back, it minds nobody
+        if (f.recallIn === null) soulFleeStep(f.roam, f.brain, f, strangerNear(f), f.params, perchWorld, soulAir, dt)
         if (f.recallIn === null) {
           soulActs(f, her, dt, onBeat)
           birdPoops(f, f.act.poopEvery, f.act.poopDamage, f.brain.vx, f.owner, f.act.poopSpare, true, dt)

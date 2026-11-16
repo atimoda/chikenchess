@@ -55,6 +55,7 @@ A alma solta voa junto do dono (`soulFollowStep`, uma vez por quadro, para as al
 - **Sem amontoar:** dois lugares a menos de 64 px um do outro se afastam aos poucos (até 140 px de desvio para cada alma), e cada alma guarda o desvio.
 - **Dono saiu do jogo:** as almas soltas dele sobem e vão embora em 5 s.
 - **Explorar (15/11):** depois de um tempo em descanso a alma sai para pousar num fio, numa árvore, numa plataforma ou num objeto perto do dono, descansa lá e volta; enquanto está fora, o bot amigo não a move. Regras, parâmetros (`roam`, `roamRange`, `perchTime` e os gostos por lugar) e valores por classe em [Pássaros e almas que exploram](birds-explore.md#almas-soltas-que-exploram).
+- **Fugir dos outros players:** a alma se afasta de quem não é o dono e pode largar o lugar onde pousou. Regras e parâmetros (`alert`, `flee`) em [Pássaros e almas que exploram](birds-explore.md#almas-soltas-que-fogem-dos-outros-players).
 
 Ficha de parâmetros (`SoulFollowParams`; limites em `SOUL_FOLLOW_RANGES`). Os números de cada alma se editam no editor de fichas da Biblioteca de almas, só para admin ([soul-library.md](soul-library.md)); os das classes ficam no código.
 
@@ -171,4 +172,4 @@ A alma solta age pelo dono, e às vezes contra ele (`lib/pigchicken/soul-acts.ts
 
 ## Ainda não implementado
 
-Tecla e botão de controle para soltar e chamar, e fuga das almas soltas de outros players. O plano está fora do código, no documento “Almas capturadas: plano”.
+Tecla e botão de controle para soltar e chamar. O plano está fora do código, no documento “Almas capturadas: plano”.
