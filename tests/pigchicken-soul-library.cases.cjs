@@ -202,6 +202,24 @@ test('the drawing: two flaps for each shape, and a soul in the world keeps the c
     assert.notDeepEqual(frames[0], frames[1], `${shape}: the wings move`)
   }
   assert.equal(new Set(Object.values(A.SOUL_FRAMES).map(f => f[0].join('\n'))).size, Object.keys(A.SOUL_FRAMES).length, 'no two shapes alike')
+  // resting (in a cage, perched): the wings-down body with the wing folded on it, never past its outline
+  assert.deepEqual(Object.keys(A.SOUL_REST).sort(), Object.keys(L.SOUL_SHAPES).sort())
+  for (const [shape, rows] of Object.entries(A.SOUL_REST)) {
+    const down = A.SOUL_FRAMES[shape][1]
+    assert.equal(rows.length, A.SOUL_ROWS, `${shape}: rows`)
+    for (const r of rows) { assert.equal(r.length, A.SOUL_COLS, `${shape}: ${r}`); assert.match(r, /^[.#wbko>]+$/) }
+    assert.equal(rows[3][9], 'o', `${shape}: the eye in its place`)
+    rows.forEach((r, i) => { if (i !== 4 && i !== 5) assert.equal(r, down[i], `${shape}: only the wing changes`) })
+    assert.ok(rows.join('').includes('w'), `${shape}: the wing is there`)
+    for (const r of rows) for (let c = 0; c < r.length; c++) if (r[c] === 'w') {
+      assert.match(r.slice(0, c), /[#bk]/, `${shape}: body behind the wing`)
+      assert.match(r.slice(c + 1), /[#bk]/, `${shape}: body in front of the wing`)
+    }
+    const span = r => [r.search(/[^.]/), r.length - [...r].reverse().join('').search(/[^.]/)]
+    for (const i of [4, 5]) assert.ok(span(rows[i])[0] >= span(down[i])[0] && span(rows[i])[1] === span(down[i])[1], `${shape}: nothing sticks out behind`)
+    assert.ok(!rows[6].includes('w') && !rows[7].includes('w'), `${shape}: no wing tip hanging below`)
+    assert.notDeepEqual(rows, down, `${shape}: not the wings-down flap`)
+  }
   const mk = (o, color) => ({ ...o, id: 1, rarity: 'common', color, bird: 'pardal' })
   const alive = mk(soul('horde', 'alive', 'keys', 'consonant'), '#ff00aa'), look = A.soulLook(alive)
   assert.equal(look.body, '#ff00aa', "the alien's colour, whatever its species' is")

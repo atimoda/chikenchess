@@ -12,15 +12,17 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "
 import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PortalTargetFields } from "./portal-target-fields"
+import { isFreeBlock, isSpawnPortal, rebalanceSpawnPortals, setSpawnChance, spawnChances, spawnPortalsOf } from "@/lib/pigchicken/spawn-portals"
 import { cn } from "@/lib/utils"
 import {
   ELEMENT_DEFS, HARD_KINDS, HORDE_BUTTONS, canHaveDepth, isMusicElement, isPowerElement, isSurfaceElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
   looseFromRack, newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, elementLabel, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
+import { isFixedKind } from "@/lib/pigchicken/fixed-instruments"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_MAX } from "@/lib/pigchicken/racks"
-import { CAGE_IDS, CAGE_SOULS_MAX, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS, isCage, loadItems, type ItemId } from "@/lib/pigchicken/items"
+import { CAGE_IDS, CAGE_SOULS_MAX, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, MINE_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, isCage, loadItems, type ItemId } from "@/lib/pigchicken/items"
 import { addChestItem, CHEST_GLOW, CHEST_RARITIES, defaultChest, type ChestRarity } from "@/lib/pigchicken/chests"
 import { ChestFields, ItemOptGroups } from "./chest-fields"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
@@ -109,6 +111,10 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   layoutRef.current = layout
   const shown = useMemo(() => elementsInWorld(layout, screens), [layout, screens])
   const sel = shown.find(e => e.id === selected) ?? null
+  // the portals she may be born at; with more than one, each shows its chance in Editar
+  const spawnPortals = useMemo(() => spawnPortalsOf(layout.elements), [layout])
+  // with the Grade de blocos on, each of them also says whether its block starts open ("Bloco liberado")
+  const gridOn = !!layout.settings?.mineGrid?.on
   const [draft, setDraft] = useState<Draft | null>(null)
   // the scene whose own zone is open in its panel (the "Zonas sonoras" layer)
   const [scenePanel, setScenePanel] = useState<number | null>(null)
@@ -164,13 +170,17 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     if (partner?.locked) return
     // a rack leaves its item where it stood, on its own (no longer coming back); deleting that item takes it away
     if (el.kind === 'rack') { commit({ ...layoutRef.current, elements: layoutRef.current.elements.map(e => (e.id === id ? looseFromRack(e) : e)) }); select(null); return }
-    commit({ ...layoutRef.current, elements: dropLinks(layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id), id) }); select(null)
+    // a Portal de nascimento gives its chance back to the others
+    const left = dropLinks(layoutRef.current.elements.filter(e => e.id !== id && e.id !== partner?.id), id)
+    commit({ ...layoutRef.current, elements: el.kind === 'spawn' ? rebalanceSpawnPortals(layoutRef.current.elements, left) : left }); select(null)
   }, [commit, select])
   const append = useCallback((elements: LayoutElement[], worldPosition = true) => {
     const current = layoutRef.current
     if (current.elements.length + elements.length > LAYOUT_MAX_ELEMENTS) return false
     const added = elements.map(el => normalizeElement(worldPosition ? storeElementPosition(el, screens) : el)!)
-    commit({ ...current, elements: [...current.elements, ...added] })
+    // a new Portal de nascimento takes an equal part of the chance of being born
+    const next = [...current.elements, ...added]
+    commit({ ...current, elements: added.some(isSpawnPortal) ? rebalanceSpawnPortals(current.elements, next) : next })
     select(added[0].id)
     return true
   }, [commit, screens, select])
@@ -217,7 +227,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
     setDraft(next)
   }
   const edit = (el: LayoutElement) => {
-    if (el.locked || !ELEMENT_DEFS[el.kind].editable) return
+    if (el.locked || !(el.kind === 'entry' ? spawnPortalsOf(layoutRef.current.elements).length > 1 || !!layoutRef.current.settings?.mineGrid?.on : ELEMENT_DEFS[el.kind].editable)) return
     setDraft(null)
     setSelected(el.id)
     setPanel('edit')
@@ -376,6 +386,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
               onDelete={() => remove(sel.id)}
               deleteBlocked={!!portalPartner(sel, layout.elements)?.locked}
               pair={!!portalPartner(sel, layout.elements)}
+              editable={sel.kind === "entry" ? spawnPortals.length > 1 || gridOn : undefined}
             /></DepthLayer>
           )}
         </div>
@@ -387,7 +398,12 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
             onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
           : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} backdropScene={backdropScene}
-            portal={sel.kind === "portal" ? { hasPartner: !!portalPartner(sel, layout.elements), me, signedIn } : undefined} />)}
+            portal={sel.kind === "portal" ? { hasPartner: !!portalPartner(sel, layout.elements), me, signedIn } : undefined}
+            spawn={isSpawnPortal(sel) && spawnPortals.length > 1 ? {
+              chance: spawnChances(spawnPortals)[spawnPortals.findIndex(p => p.id === sel.id)] ?? 0,
+              onChance: v => commit({ ...layoutRef.current, elements: setSpawnChance(layoutRef.current.elements, sel.id, v) }, `spawn-chance:${sel.id}`),
+            } : undefined}
+            freeBlock={isSpawnPortal(sel) && gridOn ? { on: isFreeBlock(sel), last: isFreeBlock(sel) && spawnPortals.filter(isFreeBlock).length <= 1 } : undefined} />)}
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
@@ -432,7 +448,7 @@ const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, e
       data-locked={el.locked || undefined}
       data-link={link}
       aria-label={elementLabel(el)}
-      className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry") && "z-[1]")}
+      className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry" || el.kind === "spawn") && "z-[1]")}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
       onPointerMove={onMove}
@@ -461,11 +477,13 @@ const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, e
 const TOOL = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 bg-[#101713]/95 text-[#dfe8df] transition-colors hover:border-primary hover:text-white disabled:opacity-40"
 
 // the selected element's bar, over its top-right corner
-function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onUp, onDuplicate, onDelete, deleteBlocked, pair }: {
+function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onUp, onDuplicate, onDelete, deleteBlocked, pair, editable }: {
   el: LayoutElement; panel: string; setPanel: (p: "" | "layers" | "edit" | "delete") => void
   onLock: () => void; onGravity: () => void; onRotate: (e: React.PointerEvent) => void; onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void
   onDuplicate: () => void; onDelete: () => void
   deleteBlocked: boolean; pair: boolean
+  // the entry portal has something to edit only while the Pátio has Portais de nascimento (its chance)
+  editable?: boolean
 }) {
   const d = ELEMENT_DEFS[el.kind]
   const b = elementBounds(el)
@@ -492,7 +510,7 @@ function Toolbar({ el, panel, setPanel, onLock, onGravity, onRotate, onMove, onU
               <Layers className="h-4 w-4" />
             </button>
           )}
-          {d.editable && (
+          {(editable ?? d.editable) && (
             <button type="button" className={cn(TOOL, panel === "edit" && "border-primary text-white")} title="Editar parâmetros" aria-label="Editar" aria-pressed={panel === "edit"} onClick={() => setPanel(panel === "edit" ? "" : "edit")}>
               <Pencil className="h-4 w-4" />
             </button>
@@ -631,7 +649,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
 }
 
 // the Edit panel for elements that do not have their own customizer
-function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onLinking, portal, backdropScene }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onDelete?: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void; portal?: { hasPartner: boolean; me: string; signedIn: boolean }; backdropScene?: BackdropScene }) {
+function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onLinking, portal, spawn, freeBlock, backdropScene }: { spawn?: { chance: number; onChance: (value: number) => void }; freeBlock?: { on: boolean; last: boolean }; el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void; onClose: () => void; onDelete?: () => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; linking?: boolean; onLinking?: (on: boolean) => void; portal?: { hasPartner: boolean; me: string; signedIn: boolean }; backdropScene?: BackdropScene }) {
   const set = (p: ElementParams, step?: string) => onChange({ ...el, params: { ...el.params, ...p } }, step)
   const [msg, setMsg] = useState(el.params.message ?? "")
   const editSession = useId()
@@ -671,6 +689,12 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
             onChange={v => set({ maxHp: v }, `hp:${el.id}`)} />
         </>
       )}
+      {spawn && <PatioRange label="Chance de nascer aqui" min={0} max={100} value={spawn.chance} display={`${spawn.chance}%`}
+        hint="A soma das chances de todos os portais de nascimento é sempre 100%: mexer nesta redistribui a diferença entre os outros." onChange={spawn.onChance} />}
+      {freeBlock && <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title={freeBlock.last ? "Pelo menos um portal precisa ter o bloco liberado." : "O bloco onde este portal está nunca tem bomba, começa aberto e não fecha de novo: quem nasce aqui começa do lado aberto."}>
+        <span>Bloco liberado</span>
+        <input type="checkbox" checked={freeBlock.on} disabled={freeBlock.last} onChange={e => set({ freeBlock: e.target.checked })} className="h-5 w-5 accent-[var(--primary)] disabled:opacity-40" />
+      </label>}
       {el.kind === "portal" && <>
         {portal?.hasPartner && el.params.portalTarget === undefined && <p className="text-[#93a79a]">Este portal leva ao outro portal do mesmo par. Mova cada um separadamente. Duplicar ou apagar afeta o par inteiro.</p>}
         {portal && <PortalTargetFields el={el} hasPartner={portal.hasPartner} me={portal.me} signedIn={portal.signedIn} onChange={set} />}
@@ -732,6 +756,12 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
       {el.kind === "lanes" && el.params.lanes && <LanesFields lanes={el.params.lanes} w={el.w} h={el.h} onChange={(lanes, step) => set({ lanes }, step && `${step}:${el.id}`)} />}
       {el.kind === "chalkboard" && el.params.chalkboard && <ChalkboardFields board={el.params.chalkboard} onChange={(chalkboard, step) => set({ chalkboard }, step && `${step}:${el.id}`)} />}
       {el.kind === "chest" && el.params.chest && <ChestFields chest={el.params.chest} onChange={(chest, step) => set({ chest }, step && `${step}:${el.id}`)} />}
+      {isFixedKind(el.kind) && (
+        <label className="flex items-center justify-between gap-3" title="Desligado: quem toca senta à esquerda do instrumento, olhando para a direita">
+          <span>Virar para o outro lado</span>
+          <input type="checkbox" checked={!!el.params.flip} onChange={e => set({ flip: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
+        </label>
+      )}
       {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
       {el.kind === "button" && (
         <label className="grid gap-1">
@@ -822,7 +852,7 @@ function SurfaceFields({ el, surface, onChange }: { el: LayoutElement; surface: 
 // ---------- the palette: drag an element onto the Pátio ----------
 type Entry = { key: string; kind: ElementKind; label: string; params?: ElementParams }
 const ENTRIES: { group: string; items: Entry[] }[] = [
-  { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }, { key: "portal-patio", kind: "portal", label: "Portal para outro Pátio", params: { portalPairId: "", portalTarget: "" } }] },
+  { group: "Portais", items: [{ key: "portal", kind: "portal", label: "Par de portais" }, { key: "portal-patio", kind: "portal", label: "Portal para outro Pátio", params: { portalPairId: "", portalTarget: "" } }, { key: "spawn", kind: "spawn", label: ELEMENT_DEFS.spawn.label }] },
   { group: "Plataformas", items: (["platform", "terrace", "pillar", "trampoline"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Chãos e paredes", items: [
     ...GROUND_BIOMES.map(style => ({ key: `ground-${style}`, kind: "ground" as ElementKind, label: `Chão · ${SURFACE_STYLE_LABELS[style]}`, params: { surface: defaultSurface("ground", style) } })),
@@ -834,7 +864,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Treino", items: [{ key: "chalkboard", kind: "chalkboard", label: ELEMENT_DEFS.chalkboard.label }] },
-  { group: "Música", items: (["zone", "lanes", "gong", "jukebox"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
+  { group: "Música", items: (["zone", "lanes", "gong", "jukebox", "pedalharp", "drumkit"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   { group: "Botões da horda", items: HORDE_BUTTONS.map(a => ({ key: `btn-${a}`, kind: "button" as ElementKind, label: HORDE_BUTTON_LABELS[a], params: { action: a } })) },
   { group: "Esportivos", items: SPORTS_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Armas", items: WEAPON_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
@@ -842,6 +872,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Habilidades especiais", items: CONSUMABLE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Magia", items: MAGIC_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Chaves", items: KEY_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Grade de blocos", items: MINE_ITEM_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Gaiolas", items: CAGE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Baús", items: CHEST_RARITIES.map(r => ({ key: `chest-${r.value}`, kind: "chest" as ElementKind, label: `Baú ${r.label.toLowerCase()}`, params: { chest: defaultChest(r.value) } })) },
 ]
@@ -857,7 +888,10 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "zone") return <span className="flex h-7 w-10 items-center justify-center rounded-md border-2 border-dashed border-[#7b8cff] bg-[#7b8cff]/20 text-[13px] text-[#7b8cff]">♫</span>
   if (entry.kind === "gong") return <span aria-hidden="true" className="relative block h-8 w-9"><span className="absolute inset-x-0 top-0 h-1 rounded-sm bg-[#b3261e]" /><span className="absolute bottom-0 left-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute bottom-0 right-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute left-1/2 top-2 h-5 w-5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f2c46d,#c58b2e_55%,#7a4f12)]" /></span>
   if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
+  if (entry.kind === "pedalharp") return <HarpThumb />
+  if (entry.kind === "drumkit") return <DrumKitThumb />
   if (entry.kind === "chest") return <ChestThumb rarity={entry.params?.chest?.rarity ?? "simple"} />
+  if (entry.kind === "spawn") return <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#7cc4ff] bg-blue-950/60 shadow-[0_0_6px_#408cff]"><span className="h-2 w-2 rounded-full bg-[#ffd166]" /></span>
   if (entry.kind === "chalkboard") return <span aria-hidden="true" className="block h-7 w-11 rounded-[3px] border-[3px] border-[#7a4f27] bg-[#2f5b3f]" />
   if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
   const m = entry.params?.power ? POWER_MODELS[entry.params.power.model] : null
@@ -865,6 +899,33 @@ function Thumb({ entry }: { entry: Entry }) {
   const k = Math.min(48 / w, (m ? 44 : 34) / h)
   // the postes and torres take the sky's silhouette colour: light here, on the dark card
   return <span className="relative block" style={{ width: w * k, height: h * k, ...(m ? { ["--patio-sil" as string]: "#dfe8df" } : {}) }}><ElementArt el={{ kind: entry.kind, params: previewParams(entry), w: w * k, h: h * k }} editing /></span>
+}
+
+// the Harpa on its card: the column, the curved neck, the soundboard and a few strings
+function HarpThumb() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 30 36" className="h-9 w-8">
+      <path d="M22 4 L22 33" stroke="#d9a441" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+      <path d="M22 5 C14 1 9 6 5 12" stroke="#d9a441" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+      <path d="M5 12 L19 33" stroke="#b07d2a" strokeWidth="3" strokeLinecap="round" fill="none" />
+      <path d="M18 6 L18 29 M14 6 L14 24 M10 8 L10 19" stroke="#f4ecd8" strokeWidth="0.8" fill="none" />
+      <path d="M16 5 L16 27" stroke="#ff4d4d" strokeWidth="0.8" fill="none" /><path d="M12 6 L12 22" stroke="#3f6dff" strokeWidth="0.8" fill="none" />
+      <path d="M17 33 L25 33" stroke="#b07d2a" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// the Bateria on its card: the bass drum, a tom, the snare and two cymbals
+function DrumKitThumb() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 40 32" className="h-8 w-10">
+      <path d="M6 30 L6 9 M34 30 L34 6" stroke="#9aa0a8" strokeWidth="1.2" fill="none" />
+      <ellipse cx="6" cy="9" rx="6" ry="1.6" fill="#e3b23c" /><ellipse cx="34" cy="6" rx="6" ry="1.6" fill="#e3b23c" />
+      <rect x="15" y="6" width="10" height="7" rx="1.5" fill="#4f8fc0" />
+      <circle cx="20" cy="22" r="9" fill="#c8553d" stroke="#e9e4d8" strokeWidth="1.6" />
+      <rect x="1" y="17" width="9" height="4" rx="1" fill="#e9e4d8" /><path d="M5.5 21 L5.5 30" stroke="#9aa0a8" strokeWidth="1.2" />
+    </svg>
+  )
 }
 
 // a Baú on its card: the chest in the glow of its rarity
@@ -927,7 +988,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       const p = screenToWorld(e.clientX, e.clientY)
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       // dummies and racks stand on the floor right under where they were dropped
-      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "chest") el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "chest" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       // postes and torres in their model's proportions, planted on the floor under where they were dropped
       if (el.params.power) {

@@ -14,11 +14,12 @@ import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import { angleByte, byteAngle, stateByte, stateName } from "@/lib/chicken/net-protocol"
 import { PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { getNetState, hideRemoteChick, netCan, remoteChicken, remoteChicks, sendNetChicks, sendOwnChickens, subscribeNet, type NetPlayer } from "@/lib/chicken/online-room"
-import { CHICK_STYLES, chickArt } from "@/lib/chicken/chick-art"
+import { CHICK_STYLES, chickArt, playerChickStyle } from "@/lib/chicken/chick-art"
 import { chickAt, chickNumber, chickStyleOf, exportChicks } from "@/lib/chicken/net-chicks"
 import { netIdFor } from "@/lib/pigchicken/net-world"
 import { TAKE_WAIT } from "@/lib/pigchicken/net-souls"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
+import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
@@ -43,7 +44,7 @@ export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getN
 // aim: the angle she is drawn pointing at, eased toward the latest one (the packets come 20 times a second)
 // portal: the portal animation she is in on this screen (as her browser says), and the camera it was last drawn with
 // housed: out of sight, inside a house that is closed on this screen
-type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; housed: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number }
+type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; housed: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number; color: string; small: boolean }
 // another browser's chick drawn here (id: its id in the lobby; hidden: asked of its browser, out of sight meanwhile)
 export type NetChickMirror = { engine: ChickenEngine; wrap: HTMLDivElement; pid: number; id: number; hidden: boolean; hide: () => void }
 // the shortest turn from a to b
@@ -125,7 +126,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const tag = document.createElement("div")
         tag.className = "pointer-events-none fixed left-0 top-0 z-[203] whitespace-nowrap rounded-full border-2 bg-black/60 px-2 py-0.5 font-mono text-[11px] font-bold text-white"
         host.appendChild(tag)
-        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, housed: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0 }
+        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, housed: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0, color: netColor(p.color), small: false }
         engine.setRemote(() => {
           const c = remoteChicken(entry.pid, entry.slot)
           if (!c) return null
@@ -171,6 +172,8 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
       r.engine.setLook((p.looks[slot] as ChickenLook | null) ?? null)
       r.tag.textContent = p.chickens > 1 ? `${p.name} ${slot + 1}` : p.name
       r.tag.style.borderColor = netColor(p.color)
+      // her look was set again: a Filhote is dressed again at the next frame
+      r.color = netColor(p.color); r.small = false
     })
     const speakers: Record<string, ChickenEngine> = {}
     map.forEach(r => { if (r.slot === 0) speakers[`net:${r.pid}`] = r.engine })
@@ -207,6 +210,12 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
       })
       remotes.current.forEach(r => {
         if (!r.seen) return
+        // a Filhote of the Grade de blocos (the lobby's owner says who): a chick in her browser's colour
+        const small = mineStore.netChick(r.pid, r.slot)
+        if (small !== r.small) {
+          r.small = small
+          if (small) { r.engine.setSpecies("chick"); r.engine.setArt(chickArt(playerChickStyle(r.color))) } else { r.engine.setSpecies(undefined); r.engine.setArt(null) }
+        }
         // inside a house no one of this screen is in: the façade hides her and her name
         const housed = houseRoomsStore.netHidden(r.pid, r.slot)
         if (housed !== r.housed) { r.housed = housed; r.wrap.style.visibility = r.tag.style.visibility = housed ? "hidden" : "visible" }

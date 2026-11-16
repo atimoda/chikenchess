@@ -26,6 +26,8 @@ function svgImage(svg: string) {
   return img
 }
 const ready = (img: HTMLImageElement) => img.complete && img.naturalWidth > 0
+/** goes up when a piece of art finishes loading: a cage's image asked for before that is painted again */
+export const cageArtVersion = () => artVersion
 
 const PIC_K = 2 // pixels of a cage's image per unit of its art
 const layers = new Map<ItemId, { back: HTMLImageElement; front: HTMLImageElement }>()
@@ -95,7 +97,7 @@ export function cagePic(item: ItemId, cage: CageState): HTMLCanvasElement | null
     } else {
       const look = soulLook(s), k = BIRD_CELL / look.pixel
       g.save(); g.translate(bx + at.u * bw, by + at.v * bh); g.scale(k, k)
-      drawSoulArt(g, 0, 0, at.face, 0, look)
+      drawSoulArt(g, 0, 0, at.face, 0, look, false, true) // resting, its wing folded
       g.restore()
     }
   }

@@ -10,6 +10,8 @@ Leia esta página para localizar a área; depois abra só o mapa da área e os m
 | Criativo: bancada, salvar/importar kits, knobs | [creative.md](codebase/creative.md) | `components/creative-studio.tsx`, `components/creative/`, `lib/music/creative.ts` |
 | Partida: tabuleiro, widgets, cartas e poderes, bots e análise, globo, campanhas, progresso, efeitos sonoros | [match.md](codebase/match.md) | `components/chess-game.tsx`, `hooks/`, `lib/chess-*.ts`, `components/world-map.tsx` |
 | Pátio / PigChicKen e galinha: movimento, controles, itens, combate, Templo, editor, músicas | [patio.md](codebase/patio.md) | `lib/chicken/`, `lib/pigchicken/`, `components/chicken/`, `components/pigchicken/` |
+| Pátio: escalas dos instrumentos, Cordas soltas, vozes, instrumentos fixos (Harpa, Bateria) | [patio-instruments.md](codebase/patio-instruments.md) | `lib/pigchicken/instrument-scales.ts`, `strings-play.ts`, `drum-kit.ts`, `synth.ts` |
+| Pátio: Grade de blocos e rodada do Campo minado (gangorra, bombas, Filhote) | [patio-mine-grid.md](codebase/patio-mine-grid.md) | `lib/pigchicken/mine-*.ts`, `components/pigchicken/mine-*.ts(x)` |
 | Pátio: layout, Modo editor e elementos inseridos (casas, chãos, árvores, Baú, Gongo, lousa, salvar/abrir) | [patio-editor.md](codebase/patio-editor.md) | `lib/pigchicken/layout*.ts`, `components/pigchicken/patio-editor.tsx` |
 | Online 1v1, contas, backend Supabase, admin, páginas públicas, instalação e deploy | [online-and-site.md](codebase/online-and-site.md) | `components/online/`, `lib/online/`, `supabase/`, `app/` |
 

@@ -8,11 +8,12 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
 import { AngleKnob, ComboWindowBar } from "./combo-controls"
 import { ChainEditor } from "./chain-editor"
+import { CagesView } from "./cages-view"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
 import { ItemPointsEditor } from "./item-points-editor"
@@ -31,6 +32,9 @@ const FIRE_MODES: { value: FireMode; label: string }[] = [
 // throw; the taco has no shots, but its blows are its ammo (Munição)
 const CONSUMABLE_HIDES = ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Desenho", "Pontos", "Explosão", "Música", "Rebate"]
 const HIDDEN: Partial<Record<ItemId, string[]>> = {
+  // a fixed instrument is never carried, thrown nor swung: only its notes (Projétil) and its music
+  pedalharp: ["Disparo", "Munição", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
+  drumkit: ["Disparo", "Munição", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
   peck: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
   bat: ["Disparo", "Projétil", "Espalhamento", "Explosão", "Efeito"],
   passagua: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Música", "Rebate"],
@@ -45,6 +49,7 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
   // a key only opens Baús: it has no effect, just its slap and its throw
   ...Object.fromEntries(KEY_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
+  ...Object.fromEntries(MINE_ITEM_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
 }
 // Pontos of a staff (how she carries it, lib/pigchicken/staff-pose.ts); the other items have the pivot and the wings' points
 // the strong blow's own shock numbers, for the staffs that have a strong blow (one that is thrown and comes back has none)
@@ -82,32 +87,37 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   // the main player equips an item while the panel is open: the dropdown jumps to it
   useEffect(() => subscribeHeldItem(id => { if (id) setSel(id) }), [])
   const it = items[sel], base = DEFAULT_ITEMS[sel]
+  // the Gaiolas are one entry of the dropdown: the six models at once (sel is then any of them)
+  const cages = CAGE_IDS.includes(sel)
   // items held at the hand (sports tools, consumables, a grenade charged in the hand) keep the hand's own pose
   const handHeld = it.reticle === "grenade" && it.fireMode === "charge"
-  const update = (fn: (d: ItemDef) => void) => {
+  const edit = (fn: (all: Record<ItemId, ItemDef>) => void) => {
     const next = structuredClone(items)
-    fn(next[sel])
+    fn(next)
     saveItems(next)
     setItems(next)
   }
+  const update = (fn: (d: ItemDef) => void) => edit(all => fn(all[sel]))
   return (
     <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        <select aria-label="Item" value={sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+        <select aria-label="Item" value={cages ? CAGE_IDS[0] : sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
           <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Armas"><option value="peck">{items.peck.name} (sem item)</option>{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
+          <optgroup label="Instrumentos fixos">{FIXED_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Chaves">{KEY_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Gaiolas">{CAGE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <optgroup label="Grade de blocos">{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <option value={CAGE_IDS[0]}>Gaiolas</option>
           <option value="wing">{items.wing.name}</option>
         </select>
-        <button type="button" onClick={() => update(d => Object.assign(d, structuredClone(base)))} title="Volta este item para os valores do código" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+        <button type="button" onClick={() => edit(all => (cages ? CAGE_IDS : [sel]).forEach(id => Object.assign(all[id], structuredClone(DEFAULT_ITEMS[id]))))} title={cages ? "Volta as gaiolas para os valores do código" : "Volta este item para os valores do código"} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {ITEM_PARAM_GROUPS.filter(g => (CAGE_IDS.includes(sel) ? g === "Gaiola" : g !== "Gaiola") && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || (isStaff(it) && !it.returnThrow)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
+        {cages ? <CagesView items={items} onChange={(id, souls) => edit(all => { all[id].cageSouls = souls })} /> : ITEM_PARAM_GROUPS.filter(g => g !== "Gaiola" && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || (isStaff(it) && !it.returnThrow)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g === "Golpe" && isStaff(it) ? "Golpe rápido" : g}</summary>
             <div className="grid gap-field px-4 pb-4">
@@ -149,7 +159,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <label className="flex items-center justify-between gap-3">
                     <span>Som</span>
                     <select value={it.voice} onChange={e => { const v = e.target.value as VoiceId; update(d => { d.voice = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {(Object.keys(VOICE_LABELS) as VoiceId[]).filter(v => v !== "hangSlap").map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
+                      {(Object.keys(VOICE_LABELS) as VoiceId[]).filter(v => v !== "hangSlap" && v !== "harpHarmonic").map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
                     </select>
                   </label>
                   <label className="flex items-center justify-between gap-3">
@@ -185,6 +195,20 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   <label className="flex items-center justify-between gap-3"><span>No ritmo (quantizar)</span><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Nota sustentada em feixe</span><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><span>Carga em glissando</span><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3" title="Giro da mira: tremer a mira dentro da faixa entorta a nota. Ao longo da corda: afastar a mira dela sobe a nota, aproximar desce (nas Cordas soltas, é o glissando da corda)">
+                    <span>Tremolo: reage a</span>
+                    <select value={it.tremoloAxis} onChange={e => { const v = e.target.value as TremoloAxis; update(d => { d.tremoloAxis = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                      {TREMOLO_AXES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                    </select>
+                  </label>
+                  {it.scales.includes("strings") && (
+                    <label className="flex items-center justify-between gap-3" title="Cordas soltas com duas mãos (os dois analógicos ou dois dedos): apertando as duas juntas, a corda da mão da frente soa este tempo depois da corda da mão de trás, no andamento da música">
+                      <span>Atraso entre as mãos</span>
+                      <select value={it.handDelay} onChange={e => { const v = Number(e.target.value); update(d => { d.handDelay = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+                        {HAND_DELAYS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                      </select>
+                    </label>
+                  )}
                   <label className="flex items-center justify-between gap-3"><span>Sem trastes (tremolo livre)</span><input type="checkbox" checked={it.fretless} onChange={e => { const v = e.target.checked; update(d => { d.fretless = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <PatioDualRange label="Volume pela distância" min={0} max={1} step={0.01} lo={it.volMin} hi={it.volMax} snap={VOLUME_SNAP}
                     display={it.volMin === it.volMax ? "sem variação" : `${Math.round(it.volMin * 100)}–${Math.round(it.volMax * 100)}%`}

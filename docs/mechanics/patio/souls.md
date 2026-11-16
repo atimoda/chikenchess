@@ -12,7 +12,7 @@ Todo pássaro capturado pelo Passaguá vira uma alma (`Soul`) que guarda de onde
 | --- | --- | --- |
 | Espécie | Horda (alien das fileiras), Água-viva, Lanterna, Casco, Gêmeos, Mini, Tambor, Dragão (a cabeça conta como Dragão), Pintinho | Dados do alien (`soulSpecies`); o pintinho vem da captura do bando |
 | Estado | Viva: a harmonia encheu (morte musical). Morta: morte física, depois ressuscitada por notas | `convert` (viva) e o pássaro morto-vivo (morta) |
-| Classe do projétil | Sopro (Flauta, Sax, Trompete), Cordas (Violão, Violino, Harpa), Teclas (Teclado), Percussão (Pandeiro), Rebate (nota de alien rebatida por um golpe) | O instrumento da última nota que entrou na barra antes de ela encher (`shotClass`); sem o item (golpe vindo de outro navegador), vale a voz da nota |
+| Classe do projétil | Sopro (Flauta, Sax, Trompete), Cordas (Violão, Violino, Harpa de Lira, Harpa), Teclas (Teclado), Percussão (Pandeiro), Rebate (nota de alien rebatida por um golpe) | O instrumento da última nota que entrou na barra antes de ela encher (`shotClass`); sem o item (golpe vindo de outro navegador), vale a voz da nota |
 | Tipo de nota | Tônica; Consonante (terça maior ou menor, quinta); Tensão (as outras notas da escala); Sensível (sétima, maior ou menor); Fora da escala (nota que a escala não tem, ou desviada mais de 0,2 semitom) | A mesma última nota, medida no tom e na escala da zona naquele instante (`noteClass`) |
 | Arma da morte (só Morta) | Explosão (qualquer explosão), Bala (Pistola, SMG, Rifle, Escopeta, Sniper), Flecha (Arco), Impacto (Taco, golpe de qualquer item, Asa, Bicada, item arremessado) | O golpe que zerou a vida do alien (`weaponClass`); desconhecida conta como Impacto |
 

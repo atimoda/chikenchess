@@ -5,7 +5,7 @@
 // by the racks and loose items.
 import { Plus, X } from "lucide-react"
 import { CHEST_LOCKS, CHEST_LOOT_MAX, CHEST_RARITIES, CHEST_REOPEN_MAX, CHEST_SOULS, LOOT_GROUPS, type ChestLock, type ChestParams, type ChestRarity, type LootEntry } from "@/lib/pigchicken/chests"
-import { CAGE_IDS, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, SPORTS_IDS, WEAPON_IDS } from "@/lib/pigchicken/items"
+import { CAGE_IDS, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, MINE_ITEM_IDS, SPORTS_IDS, WEAPON_IDS } from "@/lib/pigchicken/items"
 
 const FIELD = "h-9 rounded-md border border-white/15 bg-[#0b110e] px-2"
 
@@ -19,6 +19,7 @@ export function ItemOptGroups() {
     {group("Habilidades especiais", CONSUMABLE_IDS)}
     {group("Magia", MAGIC_IDS)}
     {group("Chaves", KEY_IDS)}
+    {group("Grade de blocos", MINE_ITEM_IDS)}
     {group("Gaiolas", CAGE_IDS)}
   </>
 }

@@ -15,11 +15,18 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
 export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
-  | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum'
+  | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key' | 'boomerang' | 'cardsRed' | 'cardsBlue'
   | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
+  | 'goldkey' | 'minebomb'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
+// what an instrument's tremolo follows: the aim turning, or the aim moving along the string (nearer / farther)
+export type TremoloAxis = 'turn' | 'along'
+export const TREMOLO_AXES: { value: TremoloAxis; label: string }[] = [{ value: 'turn', label: 'Giro da mira' }, { value: 'along', label: 'Movimento ao longo da corda' }]
+// two hands on the Cordas soltas pressed together: how long after the back hand's string the front hand's sounds,
+// in beats of the song (0: together)
+export const HAND_DELAYS: { value: number; label: string }[] = [{ value: 0, label: 'Juntas' }, { value: 0.125, label: 'Fusa' }, { value: 0.25, label: 'Semicolcheia' }, { value: 0.5, label: 'Colcheia' }, { value: 1, label: 'Semínima' }]
 // each family's reticle shows what matters for it
 export type Reticle = 'dot' | 'circle' | 'cross' | 'cone' | 'laser' | 'impact' | 'grenade' | 'bow'
 // consumables: how her walk / run picks up speed while the effect lasts. linear: at a steady rate (her own
@@ -144,6 +151,12 @@ export type ItemDef = {
   gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
   tremoloRange: number // semitones the tremolo can bend a note each way
+  // what the tremolo follows ("Tremolo: reage a"): the aim turning inside a lane, or the aim moving along the
+  // string (away from her: up; closer: down). On the Cordas soltas it sets the glissando's amount and limit
+  tremoloAxis: TremoloAxis
+  // "Atraso entre as mãos" (HAND_DELAYS): with both hands on the Cordas soltas, the front hand's string sounds this
+  // many beats after the back hand's
+  handDelay: number
   // the natural vibrato of its notes (lib/pigchicken/synth.ts Vibrato): cents the pitch sways each way (0 = a straight
   // note), sways per second, and seconds after the note starts before it comes in
   vibratoDepth: number
@@ -288,7 +301,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
+  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, cageSouls: 0, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false, archery: false, drawLen: 30,
@@ -545,9 +558,9 @@ const TAMBOURINE: ItemDef = {
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
-// Harpas → bow: the charge is a glissando, the note rises with the charge and flies far and precise
+// Harpa de Lira (Harpas) → bow: the charge is a glissando, the note rises with the charge and flies far and precise
 const HARP: ItemDef = {
-  ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa', family: 'Harpas', reticle: 'bow', archery: false, pivotX: 0,
+  ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa de Lira', family: 'Harpas', reticle: 'bow', archery: false, pivotX: 0,
   damage: 40, size: 12, speed: 1500, drop: 700, muzzleX: 21, muzzleY: -10, length: 30,
   instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
@@ -563,6 +576,23 @@ const HANGDRUM: ItemDef = {
   instrument: true, voice: 'hang', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 0.8, volMax: 0.8,
   scales: ['hang'], hangRows: 1, hangNotes: 8, hangNotes2: 7,
   rebateChain: chain(['echo', 'dotted', 2]),
+}
+// Harpa (Harpas, instrumento fixo: lib/pigchicken/fixed-instruments.ts): a pedal harp standing in the Pátio. Nobody
+// carries it: a player sits at it and plays its strings (the Cordas soltas, its only scale). The pistol's sheet only
+// for the notes that fly off the strings; no magazine, no reload, no blow
+const PEDALHARP: ItemDef = {
+  ...PISTOL, ...MUSIC_MELEE, id: 'pedalharp', name: 'Harpa', family: 'Harpas', reticle: 'dot',
+  mag: 0, speed: 700, damage: 14, size: 11, range: 950, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
+  instrument: true, voice: 'pedalHarp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 0.5, volMax: 1, quantize: false,
+  scales: ['strings'], handOn: false, backOn: false,
+}
+// Bateria (Baterias, instrumento fixo): an acoustic drum kit standing in the Pátio, played sitting on its throne on
+// the scale Bateria (lib/pigchicken/drum-kit.ts). Each hit sends a batida flying; no magazine, no reload, no blow
+const DRUMKIT: ItemDef = {
+  ...PISTOL, ...MUSIC_MELEE, id: 'drumkit', name: 'Bateria', family: 'Baterias', reticle: 'dot',
+  mag: 0, speed: 700, damage: 10, size: 11, range: 800, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
+  instrument: true, voice: 'kit', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.3, wave: 2, volMin: 1, volMax: 1, quantize: false,
+  scales: ['drums'], handOn: false, backOn: false,
 }
 
 // ---------- consumables (special abilities): Fire uses a dose and puts an effect on her for a while ----------
@@ -588,6 +618,11 @@ const COK: ItemDef = {
 const KEY: ItemDef = {
   ...CONSUMABLE, id: 'key', name: 'Chave', family: 'Chaves',
 }
+// The Grade de blocos' own items (lib/pigchicken/mine-round.ts), kept in stacks like the keys; Atirar does nothing
+// with the key, and with the bomb it installs it. Chave dourada: disarms the bomb of a closed block, from inside it.
+// Bomba: a disarmed bomb taken out of its block, which whoever is on the closed side installs in an open one.
+const GOLD_KEY: ItemDef = { ...CONSUMABLE, id: 'goldkey', name: 'Chave dourada', family: 'Grade de blocos' }
+const MINE_BOMB: ItemDef = { ...CONSUMABLE, id: 'minebomb', name: 'Bomba', family: 'Grade de blocos' }
 
 // ---------- Gaiolas (lib/pigchicken/cages.ts): where the souls a Passaguá catches are kept. Not carried in the
 // inventory: a player hangs up to three of them. Each model has its own art (lib/pigchicken/cage-art.ts) and limit ----------
@@ -601,9 +636,10 @@ const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: 'Voadeira', cage
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
-  flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM,
+  flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY, boomerang: BOOMERANG, cardsRed: CARDS_RED, cardsBlue: CARDS_BLUE,
   cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
+  goldkey: GOLD_KEY, minebomb: MINE_BOMB,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
@@ -611,7 +647,7 @@ export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'v
 export const INSTRUMENT_WEAPON: Partial<Record<ItemId, ItemId>> = {
   flute: 'pistol', sax: 'smg', trumpet: 'rifle', guitar: 'pump', violin: 'sniper', keys: 'launcher', tambourine: 'grenade', harp: 'bow', hangdrum: 'pistol',
 }
-export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3, key: 9 }
+export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3, key: 9, goldkey: 9, minebomb: 10 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
 export const SPORTS_IDS: ItemId[] = ['bat', 'passagua', 'boomerang']
@@ -623,18 +659,23 @@ export const DECK_IDS: ItemId[] = ['cardsRed', 'cardsBlue']
 // the keys: each one opens one Baú that asks for a key (lib/pigchicken/chests.ts)
 export const KEY_IDS: ItemId[] = ['key']
 export const isKey = (id: ItemId) => KEY_IDS.includes(id)
+// the Grade de blocos' items: the Chave dourada and the Bomba
+export const MINE_ITEM_IDS: ItemId[] = ['goldkey', 'minebomb']
+export const isMineItem = (id: ItemId) => MINE_ITEM_IDS.includes(id)
 // the Gaiolas, from the one found most (the basic dome) to the biggest
 export const CAGE_IDS: ItemId[] = ['cage', 'cageWire', 'cageConcorde', 'cageWood', 'cageArch', 'cageFlight']
 export const isCage = (id: ItemId) => CAGE_IDS.includes(id)
 export const CAGE_SOULS_MAX = 99
 export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
+// the instruments that stand in the Pátio and are never carried (lib/pigchicken/fixed-instruments.ts)
+export const FIXED_IDS: ItemId[] = ['pedalharp', 'drumkit']
 // the items a rack can hold
-export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, 'wing', 'peck']
+export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS, ...CAGE_IDS]
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
-const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true, hang: true, handpan: true, hangSteel: true }
+const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true, hang: true, handpan: true, hangSteel: true, pedalHarp: true, kit: true }
 // the violin (a beam instrument) bows its held note with the arpeggiator off; with it on, it plucks the arpeggio
 // (pizzicato: short notes, the bow's seconds spent note by note)
 export const bowed = (d: ItemDef) => d.beam && d.arp === 'off'
@@ -834,6 +875,8 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   if (id === 'bow' && !(v >= 11) && !s.handOn && !s.backOn && !s.pivotX && !s.pivotY) (['pivotX', 'handOn', 'handX', 'handY', 'backOn', 'backX', 'backY'] as const).forEach(k => { (out.bow as Record<string, unknown>)[k] = DEFAULT_ITEMS.bow[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
   if (s.pitchSet === 'chord' || s.pitchSet === 'scale') out[id].pitchSet = s.pitchSet
+  if (TREMOLO_AXES.some(a => a.value === s.tremoloAxis)) out[id].tremoloAxis = s.tremoloAxis
+  if (HAND_DELAYS.some(a => a.value === s.handDelay)) out[id].handDelay = s.handDelay
   ;(['volMin', 'volMax'] as const).forEach(k => { if (typeof s[k] === 'number' && Number.isFinite(s[k])) out[id][k] = Math.max(0, Math.min(1, s[k])) })
   if (typeof s.voice === 'string' && s.voice in VOICE_IDS) out[id].voice = s.voice
   if (ACCEL_CURVES.some(c => c.value === s.effectCurve)) out[id].effectCurve = s.effectCurve
@@ -864,7 +907,7 @@ const ITEMS_VERSION = 11
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)

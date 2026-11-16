@@ -10,6 +10,7 @@ import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world
 import type { NetGive, NetSoul, NetTake } from '../pigchicken/net-souls'
 import type { NetChests } from '../pigchicken/net-chests'
 import type { NetCages } from '../pigchicken/cages'
+import type { NetMineActs, NetMineState } from '../pigchicken/net-mine'
 import { importChicks, keepChicks, type NetChick, type RemoteChick } from './net-chicks'
 
 /* global process */
@@ -51,6 +52,9 @@ export type NetWorldMsg =
   | { type: 'chests'; pid: number; chests: unknown }
   // the Gaiolas another browser's chickens carry (lib/pigchicken/cages.ts)
   | { type: 'cages'; pid: number; list: unknown }
+  // the round of the Grade de blocos: the owner's, or what another browser's players did (lib/pigchicken/net-mine.ts)
+  | { type: 'mine'; pid: number; mine: unknown }
+  // the house each of another browser's chickens is inside of (lib/pigchicken/house-rooms.ts)
   | { type: 'houses'; pid: number; list: unknown }
 type WorldListener = (m: NetWorldMsg) => void
 const worldListeners = new Set<WorldListener>()
@@ -61,7 +65,7 @@ let seq = 0
 // what the server says it relays beyond its first messages (an older one says nothing: a message it does not know
 // would close the connection, so those are only sent to a server that asked for them)
 let caps: Record<string, unknown> = {}
-export const netCan = (cap: 'souls' | 'chicks' | 'chests' | 'cages' | 'houses') => !!caps[cap]
+export const netCan = (cap: 'souls' | 'chicks' | 'chests' | 'cages' | 'mine' | 'houses') => !!caps[cap]
 const listeners = new Set<() => void>()
 const remotes = new Map<string, RemoteChicken>()
 // the other browsers' chicks (lib/chicken/net-chicks.ts), by pid and number
@@ -158,6 +162,7 @@ function attach(r: Room) {
   r.onMessage('take', (m: { pid: number; take: unknown }) => toWorld({ type: 'take', pid: m?.pid, take: m?.take }))
   r.onMessage('give', (m: { pid: number; give: unknown }) => toWorld({ type: 'give', pid: m?.pid, give: m?.give }))
   r.onMessage('cages', (m: { pid: number; l: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'cages', pid: m?.pid, list: m?.l }) })
+  r.onMessage('mine', (m: { pid: number; m: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'mine', pid: m?.pid, mine: m?.m }) })
   r.onMessage('houses', (m: { pid: number; l: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'houses', pid: m?.pid, list: m?.l }) })
   r.onMessage('chests', (m: { pid: number; l: unknown; o?: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'chests', pid: m?.pid, chests: { l: m?.l, o: m?.o } }) })
   r.onMessage('denied', (m: { reason: string }) => set({ notice: m.reason }))
@@ -208,6 +213,8 @@ export const sendNetGive = (to: number, give: NetGive) => soulful()?.send('give'
 export const sendNetChests = (msg: NetChests) => (netCan('chests') ? live() : null)?.send('chests', msg)
 // the Gaiolas each of this browser's chickens carries, as counters
 export const sendNetCages = (l: NetCages) => (netCan('cages') ? live() : null)?.send('cages', { l })
+// the round of the Grade de blocos: the owner's round, or what this browser's players did to it
+export const sendNetMine = (m: NetMineState | NetMineActs) => (netCan('mine') ? live() : null)?.send('mine', { m })
 // the house each of this browser's chickens is inside of ('' outside), in their slots' order
 export const sendNetHouses = (l: string[]) => (netCan('houses') ? live() : null)?.send('houses', { l })
 // the chicks that follow this browser's first chicken (an empty list: none left)

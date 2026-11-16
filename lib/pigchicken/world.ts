@@ -81,14 +81,15 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 // ground floor (y 0..WORLD_GROUND_Y) the camera follows her to keep her a bit below the middle; on any screen, once
 // she climbs above CAMERA_RISE_Y it rises with her, keeping her where that height was, up to the world's ceiling
 // (`top`, the Pátio's height limit; WORLD_TOP by default). Given `viewTop` (the header's bottom), it stops once the
-// ceiling reaches it, so nothing above the limit shows.
+// ceiling reaches it, so nothing above the limit shows. `above` (sitting at a fixed instrument): this much over her
+// feet has to show under the header (the instrument and its strings around her), so the camera rises for it too.
 export function cameraYRange(groundScreen: number, top: number = WORLD_TOP, viewTop?: number) {
   const lo = groundScreen - WORLD_GROUND_Y
   const hi = viewTop === undefined ? lo + (WORLD_GROUND_Y - top) : Math.max(lo, viewTop - top)
   return { lo, hi }
 }
 
-export function cameraYStep(oy: number, o: { worldY: number; groundScreen: number; viewTop: number; dt: number; lag: number; top?: number }) {
+export function cameraYStep(oy: number, o: { worldY: number; groundScreen: number; viewTop: number; dt: number; lag: number; top?: number; above?: number }) {
   const { lo, hi } = cameraYRange(o.groundScreen, o.top ?? WORLD_TOP, o.viewTop)
   // short screens: keep her (her feet) a bit below the middle of what is visible between the header and the ground's place,
   // but never show above y = 0 for that alone
@@ -96,7 +97,8 @@ export function cameraYStep(oy: number, o: { worldY: number; groundScreen: numbe
   const want = clamp(o.viewTop + (o.groundScreen - o.viewTop) * 0.62 - o.worldY, lo, floorHi)
   // climbing above CAMERA_RISE_Y: the camera rises with her on every screen
   const rise = lo + Math.max(0, CAMERA_RISE_Y - o.worldY)
-  const target = clamp(Math.max(want, rise), lo, hi)
+  const fit = o.above ? o.viewTop + o.above - o.worldY : lo
+  const target = clamp(Math.max(want, rise, fit), lo, hi)
   const next = oy + (target - oy) * Math.min(1, o.lag * o.dt)
   return clamp(Math.abs(target - next) < 0.5 ? target : next, lo, hi)
 }

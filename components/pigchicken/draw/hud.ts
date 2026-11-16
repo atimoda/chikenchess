@@ -11,7 +11,7 @@ import { drawItem, type Ctx } from "./shared"
 import { stageWidth } from "@/lib/stage-size"
 
 export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
-  const d = combat.def(), armed = !!combat.inventory[combat.current] && d.mag > 0 && !d.meleeOnly
+  const d = combat.def(), armed = !!combat.held && d.mag > 0 && !d.meleeOnly
   const t = performance.now() / 1000
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
   const ang = Math.atan2(ry - origin.y, rx - origin.x)

@@ -239,6 +239,19 @@ test('the sun\'s colour and glow, and the stars, can be set', () => {
   assert.equal(S.normalizeSky({ sunColor: 'red' }).sunColor, '')
 })
 
+test('"Mostrar estrelas a qualquer hora do dia" shows the stars at noon, off by default', () => {
+  const noon = S.normalizeSky({ ...S.SKY_DEFAULT, hour: 12, follow: true, starGlow: 80 })
+  assert.equal(noon.starsAlways, false); assert.equal(S.normalizeSky({}).starsAlways, false)
+  assert.equal(S.skyLook(noon).stars, 0)
+  const always = S.normalizeSky({ ...noon, starsAlways: true })
+  assert.equal(always.starsAlways, true)
+  const look = S.skyLook(always)
+  assert.ok(Math.abs(look.stars - 0.8) < 1e-9)
+  // the night (and so the aurora's "Só à noite") still follows the hour
+  assert.equal(look.night, 0)
+  assert.equal(S.skyLook({ ...always, starGlow: 0 }).stars, 0)
+})
+
 test('the empty and the example Pátios have no Templo nor Vila', () => {
   assert.equal(L.emptyLayout().settings.temple, false)
   assert.equal(EX.sunsetPowerLayout().settings.temple, false)

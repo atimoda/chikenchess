@@ -29,6 +29,7 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
   // to the carried one. A Throw takes the item to the hand like any other
   const staff = isStaff(d) && !eating && combat.throwCharge <= 0
   const wind = sw ? (sw.heavy && sw.t < sw.hitAt ? sw.charge ?? 0 : 0) : combat.heavyCharge
+  const pair = staff && !!held && d.returnThrow && !d.deck
   return {
     svg: parts?.body ?? svg, itemKey: id, angle: combat.throwCharge > 0 ? combat.throwAngle : combat.aimAngle,
     kick: combat.kick + pull, pull,
@@ -39,7 +40,10 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
     rig: (charge <= 0 || drawing) && !swinging ? itemRig(d, draw) : null,
     archery: parts ? { x: d.handX - draw, y: d.handY, arrow: held && held.ammo > 0 && !combat.reloading ? parts.arrow : null, string: parts.string } : null,
     staff: staff ? staffPose(d, wind, aimElevation(combat.aimAngle, face), now) : null,
-    // the Boomerang: with both in her wings, the second one is in the back wing's hand
-    off: staff && !!held && d.returnThrow && !d.deck && combat.inHand(held) >= 2,
+    // the Boomerang: with both in her wings, the second one is in the back wing's hand, carried still, and only the
+    // front wing moves. With the front one away, the back wing holds the other: carried there the same way, and it
+    // winds, hits and throws with it (each wing throws its own)
+    off: pair && (combat.inHand(held!) >= 2 || (held!.back && wind <= 0 && !sw)) ? staffPose(d, 0, aimElevation(combat.aimAngle, face), now) : null,
+    back: pair && !!held!.back,
   }
 }

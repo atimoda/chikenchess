@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [], houses: [], chests: [], cages: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [], mine: [], houses: [], chests: [], cages: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,7 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
-  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks', 'chests', 'cages', 'houses']) room.onMessage(type, m => seen[type].push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks', 'chests', 'cages', 'mine', 'houses']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -255,6 +255,29 @@ test("cages: the Gaiolas a browser's chickens carry go to everyone else", async 
   await wait(150)
   assert.equal(a.seen.cages.length, 1); assert.equal(b.seen.cages.length, 0)
   for (const x of [a, b]) await x.room.leave()
+})
+
+test("mine: the owner's round goes to everyone else; what the others' players did, to the owner only", async () => {
+  const patioId = '0f000000-0000-4000-8000-000000000009'
+  const a = await browser({ patioId, name: 'Dona' })
+  const b = await browser({ patioId, name: 'Bia' })
+  const c = await browser({ patioId, name: 'Caio' })
+  assert.equal(a.seen.hello.caps.mine, 1, 'the server says it relays it')
+  const pa = a.seen.hello.pid, pb = b.seen.hello.pid
+  const state = { n: 7, c: 2, r: 1, f: 1, l: [[0, 1, 0, 0, 0, -1, 0], [1, 34, -0.5, 0, 0, -1, 90, '', `${pb}:0`]] }
+  a.room.send('mine', { m: state })
+  assert.deepEqual(await until(() => b.seen.mine[0]), { pid: pa, m: state })
+  assert.deepEqual(await until(() => c.seen.mine[0]), { pid: pa, m: state })
+  const acts = { a: [{ k: 'note', c: 1, r: 0, side: 'open', by: `${pb}:0`, n: 3 }], k: [0] }
+  b.room.send('mine', { m: acts })
+  assert.deepEqual(await until(() => a.seen.mine[0]), { pid: pb, m: acts })
+  // not an object, too large: dropped; nobody hears its own, and the others do not hear what is for the owner
+  b.room.send('mine', { m: 'x' })
+  b.room.send('mine', { m: [1, 2] })
+  b.room.send('mine', { m: { a: 'x'.repeat(130_000) } })
+  await wait(150)
+  assert.equal(a.seen.mine.length, 1); assert.equal(b.seen.mine.length, 1); assert.equal(c.seen.mine.length, 1)
+  for (const x of [a, b, c]) await x.room.leave()
 })
 
 test("houses: the house each of a browser's chickens is inside of goes to everyone else", async () => {

@@ -39,7 +39,7 @@ Raras (`RARE_SOULS`; eixo que a receita não cita vale qualquer):
 
 ## Aparência (10/11, v2.7.0)
 
-- **Forma pela família** (`SOUL_FRAMES`, pixel art de 13 × 8 em duas batidas de asa; tamanho do pixel e batidas por segundo em `SOUL_SHAPES`): Sopro tem rabo comprido e claro (3 px, 12/s); Cordas, topete (4 px, 7/s); Teclas, barriga de teclas de piano (4 px, 8/s); Percussão é gorducha e de bico curto (4 px, 9/s); Rebate é coruja, com dois tufos e dois olhos (5 px, 5/s); o Pintinho tem asas curtas (3 px, 10/s).
+- **Forma pela família** (`SOUL_FRAMES`, pixel art de 13 × 8 em duas batidas de asa, mais um quadro de descanso por forma em `SOUL_REST`, com a asa recolhida junto ao corpo, usado na gaiola e nas almas pousadas; tamanho do pixel e batidas por segundo em `SOUL_SHAPES`): Sopro tem rabo comprido e claro (3 px, 12/s); Cordas, topete (4 px, 7/s); Teclas, barriga de teclas de piano (4 px, 8/s); Percussão é gorducha e de bico curto (4 px, 9/s); Rebate é coruja, com dois tufos e dois olhos (5 px, 5/s); o Pintinho tem asas curtas (3 px, 10/s).
 - **Cores:** a viva usa a cor da espécie, com asas mais escuras e barriga clara; a morta é cinza com o olho brilhando na cor da espécie; a rara tem cores próprias (algumas com olho brilhante) e pode ter outra forma e tamanho.
 - **No mundo** (voando para a gaiola ou solta): a forma é a da entrada. A viva aparece na cor do alien que ela era; a morta, cinza com o olho na cor da nota que a ressuscitou; a rara, nas cores da entrada. O brilho em volta segue a cor da alma. Antes de capturado, o pássaro continua com o desenho do seu tipo de pássaro. Numa alma da regra, a cor que a ficha pintou por cima da do código vale no lugar da cor do alien ou da nota (`entryLookFor`).
 

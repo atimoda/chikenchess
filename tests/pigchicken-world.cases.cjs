@@ -22,6 +22,11 @@ test('vertical camera: still on a tall screen on the ground floor, rises with he
   // above y = 500 the camera keeps her where y = 500 was
   assert.equal(world.cameraYStep(tall.lo, { worldY: 300, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), tall.lo + 200)
   // never past the world's top: it stops once the ceiling reaches the header's bottom
+  // sitting at a fixed instrument: what has to show over her feet fits under the header (never past the ceiling,
+  // and never lowering the camera)
+  assert.equal(world.cameraYStep(tall.lo, { worldY: 130, groundScreen: 600, viewTop: 65, dt: 1, lag: 6 }), 40)
+  assert.equal(world.cameraYStep(tall.lo, { worldY: 130, groundScreen: 600, viewTop: 65, dt: 1, lag: 6, above: 270 }), 65 + 270 - 130)
+  assert.equal(world.cameraYStep(tall.lo, { worldY: 930, groundScreen: 933, viewTop: 65, dt: 1, lag: 6, above: 270 }), tall.lo)
   const capped = world.cameraYRange(933, world.WORLD_TOP, 65)
   assert.equal(capped.hi + world.WORLD_TOP, 65)
   assert.equal(world.cameraYStep(tall.lo, { worldY: -5000, groundScreen: 933, viewTop: 65, dt: 1, lag: 6 }), capped.hi)
@@ -85,4 +90,24 @@ test('zoomed follow keeps the player visible and its crop inside the world', () 
     assert.ok(screenX >= 0 && screenX <= viewW, `player ${worldX} is visible at ${screenX}`)
     assert.ok(cam >= range.lo && cam <= range.hi)
   }
+})
+
+test('the Pátio zoom range: whole Pátio at the left end, centred when the world is narrower than the view', () => {
+  const camera = loadTs('lib/pigchicken/camera.ts')
+  const settings = loadTs('lib/pigchicken/patio-settings.ts')
+  // zoomed out past the world's width, the world stands in the middle
+  const r = camera.cameraXRange(1000, 4000, 0.1)
+  assert.equal(r.lo, r.hi); assert.equal(r.lo + 1000 / 2, 2000)
+  const whole = camera.wholeWorldZoom(1366, 19220, 600, 3940)
+  assert.equal(whole, Math.min(1366 / 19220, 600 / 3940))
+  // min 0 is the whole Pátio; a min above it stays; never farther out than the whole Pátio
+  assert.deepEqual(camera.zoomLimits({ min: 0, max: 2.5 }, whole), { lo: whole, hi: 2.5 })
+  assert.deepEqual(camera.zoomLimits({ min: 0.5, max: 2.5 }, whole), { lo: 0.5, hi: 2.5 })
+  assert.deepEqual(camera.zoomLimits({ min: 0.1, max: 0.2 }, 0.3), { lo: 0.3, hi: 0.3 })
+  // saved settings: below the floor is the whole Pátio, the ends are clamped and min never passes max
+  assert.deepEqual(settings.normalizePatioZoom({ min: 0.05, max: 9 }), { min: 0, max: 4 })
+  assert.deepEqual(settings.normalizePatioZoom({ min: 3, max: 2 }), { min: 2, max: 2 })
+  assert.equal(settings.normalizePatioZoom({ min: 'x', max: 2 }), undefined)
+  assert.deepEqual(settings.patioZoom(undefined), { min: 0.5, max: 2.5 })
+  assert.deepEqual(settings.normalizePatioSettings({ zoom: { min: 0, max: 3 } }).zoom, { min: 0, max: 3 })
 })

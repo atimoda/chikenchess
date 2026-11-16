@@ -63,13 +63,21 @@ test('two Boomerangs, one in each wing: the second leaves while the first is awa
   const { c, d } = holding('boomerang')
   const o = c.held
   assert.equal(c.inHand(o), 2)
-  assert.equal(heldItemPose(c, 0, null, 1).off, true, 'the second one is in the back wing')
+  assert.ok(heldItemPose(c, 0, null, 1).off, 'the second one is in the back wing')
+  assert.ok(!heldItemPose(c, 0, null, 1).back, 'the front wing throws the first')
   const toss = () => { step(c, { fire: true, firePressed: true }); step(c) }
   toss()
   assert.equal(c.flights.length, 1); assert.equal(o.out, 1); assert.ok(!o.flying)
   assert.equal(c.inHand(o), 1)
   const pose = heldItemPose(c, 0, null, 1)
-  assert.ok(pose && !pose.off, 'one left, in her wing')
+  assert.ok(pose && pose.back && pose.off, 'the one left is carried in the back wing, which throws it')
+  step(c, { fire: true, firePressed: true }); step(c, { fire: true }, 0); run(c, 0.2, { fire: true })
+  const wind = heldItemPose(c, 0, null, 1)
+  assert.ok(wind.back && !wind.off, 'winding: the back wing moves with it')
+  step(c); run(c, 0.01)
+  for (let i = 0; i < 600 && c.flights.length; i++) step(c)
+  assert.equal(o.out, 0)
+  toss()
   // she still hits with the one she has, but the item itself is not thrown away
   step(c, { throwHeld: true }); assert.equal(c.throwCharge, 0, 'no Arremesso with one away')
   step(c, { melee: true }); assert.ok(c.swing, 'Golpe with the one in her wing')
@@ -80,9 +88,12 @@ test('two Boomerangs, one in each wing: the second leaves while the first is awa
   toss()
   assert.equal(c.flights.length, 2, 'a third one does not exist')
   step(c, { melee: true }); run(c, 0.02)
-  for (let i = 0; i < 600 && c.flights.length; i++) step(c)
+  let first = null
+  for (let i = 0; i < 600 && c.flights.length; i++) { step(c); if (o.out === 1 && !first) first = heldItemPose(c, 0, null, 1) }
+  assert.ok(first && !first.back && !first.off, 'the first one back is in the front wing')
   assert.equal(c.flights.length, 0, 'both came back'); assert.equal(o.out, 0); assert.ok(!o.flying)
-  assert.equal(heldItemPose(c, 0, null, 1).off, true)
+  assert.ok(heldItemPose(c, 0, null, 1).off)
+  assert.ok(!heldItemPose(c, 0, null, 1).back)
   assert.equal(d.returnCount, 2)
 })
 

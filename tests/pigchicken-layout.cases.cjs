@@ -63,8 +63,10 @@ test('the default layout is the Pátio the code always drew: same platform boxes
   const dummies = lay.elements.filter(e => e.kind === 'dummy')
   assert.equal(dummies.length, 5)
   dummies.forEach(d => { assert.ok(d.params.message.length > 0); assert.equal(d.y + d.h, world.WORLD_GROUND_Y) })
-  // a narrower world hides what is past its last scene
-  assert.ok(L.elementsInWorld(lay, 1).filter(e => !e.region).every(e => e.x + e.w / 2 < world.SCENE_W))
+  // the code's Pátio is all 8 screens wide; a narrower world hides what is past its end (the Vila's last scene)
+  assert.equal(lay.settings.screens, L.LAYOUT_MAX_SCREENS)
+  assert.ok(lay.elements.every(e => !e.region))
+  assert.ok(L.elementsInWorld(lay, 1).every(e => e.depth || e.x + e.w / 2 < world.worldScenes(1) * world.SCENE_W))
 })
 
 test('layouts from storage are cleaned: unknown kinds dropped, turns snapped, the game things never turn or collide', () => {
@@ -196,39 +198,78 @@ test('duplicating a portal copies its entire pair into a new independent link, p
   assert.equal(pair[1].params.portalLabel,'Voltar')
 })
 
-test('the demo follows the Temple at every Parquinho width and upgrades a legacy default only once', () => {
+test('a legacy default gains the demo once, at the world x it had, and it stays there at every width', () => {
   const raw = { v: 2, elements: [{ id: 'kept', kind: 'platform', x: 200 }] }
   const personal = L.normalizeLayout(raw)
   assert.deepEqual(personal.elements.filter(e => e.kind !== 'portal' && e.kind !== 'entry').map(e => e.id), ['village-ground', 'kept'])
   const defaultPatio = L.normalizeLayout(raw, true)
+  // saved without a width: the one it was shown at (the game's default here) becomes its own
+  assert.equal(defaultPatio.settings.screens, 4)
   const demo = defaultPatio.elements.filter(e => e.kind === 'house')
   assert.ok(demo.length > 0)
-  for (const screens of [1, 4, 8]) {
-    assert.equal(world.villageScene(screens), world.templeScene(screens) + 1)
-    assert.equal(world.worldScenes(screens), world.villageScene(screens) + 1)
+  const village = world.villageScene(4) * world.SCENE_W
+  demo.forEach(h => { assert.equal(h.region, undefined); assert.ok(h.x + h.w / 2 >= village && h.x + h.w / 2 < village + world.SCENE_W) })
+  for (const screens of [4, 8]) {
     const projected = L.elementsInWorld(defaultPatio, screens).filter(e => e.kind === 'house')
     assert.equal(projected.length, demo.length)
-    assert.equal(projected[0].x, demo[0].x + world.villageScene(screens) * world.SCENE_W)
+    assert.equal(projected[0].x, demo[0].x)
     assert.deepEqual(L.storeElementPosition(projected[0], screens), demo[0])
   }
+  // narrower: past the world's end, hidden but kept
+  assert.equal(L.elementsInWorld(defaultPatio, 2).filter(e => e.kind === 'house').length, 0)
   const edited = { ...defaultPatio, elements: defaultPatio.elements.filter(e => e.id !== demo[0].id) }
   assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(edited)), true), edited)
 })
 
-test('both default shortcuts resolve a partner and return to the start at different world widths', () => {
+test('v11: the Templo\'s and the Vila\'s elements get the world x they had and no longer follow the width', () => {
+  const W = world.SCENE_W
+  const old = { v: 10, settings: { screens: 3 }, elements: [
+    { id: 'shown', kind: 'platform', x: 500, y: 600, w: 200, h: 40 },
+    { id: 'hidden', kind: 'platform', x: W * 3.5, y: 600, w: 200, h: 40 },
+    { id: 'house', kind: 'house', region: 'village', x: 100, y: 500, w: 300, h: 300 },
+    { id: 'gong-side', kind: 'platform', region: 'temple', x: 900, y: 600, w: 200, h: 40 },
+  ] }
+  const now = L.normalizeLayout(JSON.parse(JSON.stringify(old)))
+  const at = id => now.elements.find(e => e.id === id)
+  assert.equal(now.v, L.LAYOUT_VERSION)
+  assert.ok(now.elements.every(e => !e.region))
+  assert.equal(at('shown').x, 500)
+  assert.equal(at('house').x, 100 + world.villageScene(3) * W)
+  assert.equal(at('gong-side').x, 900 + world.templeScene(3) * W)
+  // what the width hid stays hidden (it does not turn up on the Templo or the Vila)
+  assert.equal(at('hidden').x, W * 5.5)
+  assert.deepEqual(L.elementsInWorld(now, 3).map(e => e.id).sort(), ['entry-portal', 'gong-side', 'house', 'shown'])
+  // the same layout on a wider world: everything where it was, nothing moved to the new end
+  const wide = L.elementsInWorld(now, 8)
+  assert.equal(wide.find(e => e.id === 'house').x, at('house').x)
+  assert.equal(wide.find(e => e.id === 'hidden').x, W * 5.5)
+  // narrower: the house is past the end, hidden but kept, and back at the same place when it widens again
+  assert.equal(L.elementsInWorld(now, 1).some(e => e.id === 'house'), false)
+  assert.equal(now.settings.screens, 3)
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(now))), now)
+  // saved without its own width: the one it was shown at (the game's default here) is pinned with it
+  const bare = L.normalizeLayout({ v: 10, elements: [{ id: 'h', kind: 'house', region: 'temple', x: 10, y: 500, w: 300, h: 300 }] })
+  assert.equal(bare.settings.screens, 4)
+  assert.equal(bare.elements.find(e => e.id === 'h').x, 10 + world.templeScene(4) * W)
+  // a current layout without scene-local positions is left as it is, whatever its width
+  const current = L.normalizeLayout({ v: L.LAYOUT_VERSION, elements: [{ id: 'far', kind: 'platform', x: W * 7, y: 600, w: 200, h: 40 }] })
+  assert.equal(current.elements[0].x, W * 7)
+  assert.equal(current.settings, undefined)
+})
+
+test('both default shortcuts resolve a partner and return to the start', () => {
   const layout = L.defaultLayout()
-  for (const screens of [1, 4, 8]) {
-    const portals = L.elementsInWorld(layout, screens).filter(e => e.kind === 'portal')
-    for (const [index, scene] of [[0, world.templeScene(screens)], [2, world.villageScene(screens)]]) {
-      const entry = portals[index]
-      const platform = world.SCENE_PLATFORMS[0][index === 0 ? 2 : 3]
-      assert.equal(entry.x + entry.w / 2, platform.x + platform.w / 2)
-      assert.equal(entry.y + entry.h - 6, world.WORLD_GROUND_Y - platform.bottom - platform.h)
-      const exit = L.portalPartner(entry, portals)
-      assert.equal(Math.floor((exit.x + exit.w / 2) / world.SCENE_W), scene)
-      assert.equal(L.portalPartner(exit, portals), entry)
-      assert.equal(Math.floor(entry.x / world.SCENE_W), 0)
-    }
+  const screens = layout.settings.screens
+  const portals = L.elementsInWorld(layout, screens).filter(e => e.kind === 'portal')
+  for (const [index, scene] of [[0, world.templeScene(screens)], [2, world.villageScene(screens)]]) {
+    const entry = portals[index]
+    const platform = world.SCENE_PLATFORMS[0][index === 0 ? 2 : 3]
+    assert.equal(entry.x + entry.w / 2, platform.x + platform.w / 2)
+    assert.equal(entry.y + entry.h - 6, world.WORLD_GROUND_Y - platform.bottom - platform.h)
+    const exit = L.portalPartner(entry, portals)
+    assert.equal(Math.floor((exit.x + exit.w / 2) / world.SCENE_W), scene)
+    assert.equal(L.portalPartner(exit, portals), entry)
+    assert.equal(Math.floor(entry.x / world.SCENE_W), 0)
   }
 })
 
@@ -264,14 +305,18 @@ test('older layouts gain editable shortcuts once, preserving custom pairs and sa
   const exit = worldView.find(p => p.id === 'shortcut-village-return')
   const entry = L.portalPartner(exit, worldView)
   assert.equal(entry.params.portalLabel, 'Vila dos Telhados')
+  assert.equal(Math.floor((exit.x + exit.w / 2) / world.SCENE_W), world.villageScene(4))
   const moved = L.storeElementPosition({ ...exit, x: exit.x + 95, y: exit.y - 50 }, 4)
-  assert.equal(moved.region, 'village')
+  assert.equal(moved.region, undefined)
+  assert.equal(moved.x, exit.x + 95)
   const saved = L.normalizeLayout(JSON.parse(JSON.stringify({ ...layout, elements: layout.elements.map(p => p.id === moved.id ? moved : p) })))
-  const narrow = L.elementsInWorld(saved, 1)
-  const projected = narrow.find(p => p.id === moved.id)
-  assert.equal(projected.x, moved.x + world.villageScene(1) * world.SCENE_W)
+  // a wider world keeps it where it was; a narrower one hides it
+  const wide = L.elementsInWorld(saved, 8)
+  const projected = wide.find(p => p.id === moved.id)
+  assert.equal(projected.x, moved.x)
   assert.equal(projected.y, moved.y)
-  assert.equal(L.portalPartner(projected, narrow).id, entry.id)
+  assert.equal(L.portalPartner(projected, wide).id, entry.id)
+  assert.equal(L.elementsInWorld(saved, 1).some(p => p.id === moved.id), false)
   const removed = { ...saved, elements: saved.elements.filter(p => p.id !== entry.id && p.id !== exit.id) }
   assert.deepEqual(L.normalizeLayout(removed), removed)
 })
@@ -395,11 +440,14 @@ test('the old Chão da Vila becomes the first ground element, keeping an edited 
   const [ground] = migrated.elements
   assert.equal(ground.id, 'village-ground')
   assert.equal(ground.kind, 'ground')
-  assert.equal(ground.region, 'village')
+  // in the Vila's scene of the width it was shown at (the game's default here), at its world x
+  const off = world.villageScene(4) * world.SCENE_W
+  assert.equal(ground.region, undefined)
+  assert.equal(migrated.settings.screens, 4)
   assert.equal(ground.hard, true)
   assert.equal(ground.params.surface.style, 'village')
   const outline = S.surfacePolygon(ground, ground.params.surface)
-  assert.deepEqual(outline.slice(0, 3).map(([x, y]) => [Math.round(x), Math.round(y)]), ridge)
+  assert.deepEqual(outline.slice(0, 3).map(([x, y]) => [Math.round(x - off), Math.round(y)]), ridge)
   assert.equal(Math.round(outline[3][1]), S.VILLAGE_ROCK_BOTTOM)
   // saved again (v5) it is just an element: kept, moved or deleted like any other
   assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(migrated))), migrated)
@@ -408,7 +456,7 @@ test('the old Chão da Vila becomes the first ground element, keeping an edited 
   // an invalid ridge falls back to the default slope
   const fallback = L.normalizeLayout({ v: 3, elements: [], terrain: [[24, 800], [20, 810]] }).elements.find(e => e.kind === 'ground')
   const def = S.surfacePolygon(fallback, fallback.params.surface)
-  assert.deepEqual(def.slice(0, V.VILLAGE_RIDGE.length).map(([x, y]) => [Math.round(x), Math.round(y)]), V.VILLAGE_RIDGE)
+  assert.deepEqual(def.slice(0, V.VILLAGE_RIDGE.length).map(([x, y]) => [Math.round(x - off), Math.round(y)]), V.VILLAGE_RIDGE)
   // the default Pátio draws it first, so the houses stand in front of it
   assert.equal(L.defaultLayout().elements[0].id, 'village-ground')
 })

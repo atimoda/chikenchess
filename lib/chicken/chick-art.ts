@@ -36,6 +36,13 @@ export const CHICK_STYLES: ChickStyle[] = [
 
 export const chickStyle = (id: string) => CHICK_STYLES.find(s => s.id === id) ?? CHICK_STYLES[0]
 export const chickStyles = (kind: ChickStyleKind) => CHICK_STYLES.filter(s => s.kind === kind)
+// a chick in a player's colour: a Filhote of the Grade de blocos (lib/pigchicken/mine-round.ts), which nobody should
+// take for one of the chicks of a flock
+const mixHex = (hex: string, to: number, k: number) => `#${[1, 3, 5].map(i => Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - k) + to * k).toString(16).padStart(2, '0')).join('')}`
+export function playerChickStyle(color: string | undefined): ChickStyle {
+  if (!color || !/^#[0-9a-f]{6}$/i.test(color)) return CHICK_STYLES[0]
+  return { id: `filhote-${color}`, label: 'Filhote', kind: 'colorido', down: color, belly: mixHex(color, 255, 0.4), back: mixHex(color, 0, 0.22), cheek: mixHex(color, 255, 0.55), beak: '#f2a13a', legs: '#ef9a40' }
+}
 // a style of this kind at random (the chicks that start following her are realistic)
 export const randomChickStyle = (kind: ChickStyleKind = 'realista', rand: () => number = Math.random) => {
   const list = chickStyles(kind)

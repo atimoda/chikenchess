@@ -2,12 +2,14 @@
 // its standby: after `standbyAfter` seconds with nobody playing it, the Escalas layer fades over `fadeTime` seconds
 // down to `standbyVis` (0..100% of the layer), and the cell the aim is on keeps `aimedVis` more (0: it fades with the
 // rest). The round charts also have their own shape: `ringSplit` (the reach where the inner ring ends and the outer
-// begins) and `hole` (the empty middle, drawing only); the Campo harmônico has its `hole`.
+// begins) and `hole` (the empty middle, drawing only); the Campo harmônico has its `hole`. The Cordas soltas have
+// how many strings there are, where along the radius they start and end, and how wide the harmonic's place in
+// their middle is.
 // Saved in this browser (like the Itens panel); "Salvar no game" writes data/pigchicken/default-scales.json.
 import DEFAULTS_FILE from '../../data/pigchicken/default-scales.json'
-import { CHART_HOLE, INSTRUMENT_SCALES, INSTRUMENT_SCALE_IDS, RING_SPLIT, type InstrumentScaleId } from './instrument-scales'
+import { CHART_HOLE, INSTRUMENT_SCALES, INSTRUMENT_SCALE_IDS, RING_SPLIT, STRINGS_DEFAULT, STRINGS_MAX, STRINGS_MIN, type InstrumentScaleId } from './instrument-scales'
 
-export type ScaleParams = { standbyAfter: number; fadeTime: number; standbyVis: number; aimedVis: number; ringSplit: number; hole: number }
+export type ScaleParams = { standbyAfter: number; fadeTime: number; standbyVis: number; aimedVis: number; ringSplit: number; hole: number; strings: number; stringStart: number; stringEnd: number; harmonicWidth: number }
 export type ScaleParamKey = keyof ScaleParams
 export type ScaleParamMeta = { key: ScaleParamKey; label: string; min: number; max: number; step: number; unit: string; group: string; hint?: string; only?: InstrumentScaleId[] }
 
@@ -19,10 +21,14 @@ export const SCALE_PARAM_META: ScaleParamMeta[] = [
   { key: 'aimedVis', label: 'Visibilidade da célula mirada', min: 0, max: 100, step: 1, unit: '%', group: 'Standby', hint: 'Quanto a célula da mira fica acima do resto em standby; 0 = some junto com a escala' },
   { key: 'ringSplit', label: 'Divisa dos anéis', min: 0.3, max: 0.9, step: 0.05, unit: '', group: 'Forma', hint: 'Até onde vai o anel de dentro (fração do raio e do alcance da mira)', only: ['fifths', 'tension'] },
   { key: 'hole', label: 'Miolo vazio', min: 0, max: 0.5, step: 0.01, unit: '', group: 'Forma', hint: 'O vazio do meio (fração do raio); só o desenho', only: ['fifths', 'tension', 'harmonic'] },
+  { key: 'strings', label: 'Cordas', min: STRINGS_MIN, max: STRINGS_MAX, step: 1, unit: '', group: 'Forma', hint: 'Quantas cordas a harpa tem (uma por nota, a partir de um Dó)', only: ['strings'] },
+  { key: 'stringStart', label: 'Começo das cordas', min: 0.1, max: 0.45, step: 0.01, unit: '', group: 'Forma', hint: 'Onde as cordas começam (fração do raio); abaixo disso, o toque é o bemol da corda', only: ['strings'] },
+  { key: 'stringEnd', label: 'Fim das cordas', min: 0.6, max: 0.95, step: 0.01, unit: '', group: 'Forma', hint: 'Onde as cordas terminam (fração do raio); acima disso, o toque é o sustenido da corda', only: ['strings'] },
+  { key: 'harmonicWidth', label: 'Largura do harmônico', min: 0.02, max: 0.2, step: 0.01, unit: '', group: 'Forma', hint: 'Tamanho do ponto no meio da corda onde o toque sai como harmônico (fração do raio)', only: ['strings'] },
 ]
 export const scaleParamApplies = (m: ScaleParamMeta, id: InstrumentScaleId) => !m.only || m.only.includes(id)
 
-const BASE: ScaleParams = { standbyAfter: 0.5, fadeTime: 1.5, standbyVis: 0, aimedVis: 33, ringSplit: RING_SPLIT, hole: CHART_HOLE }
+const BASE: ScaleParams = { standbyAfter: 0.5, fadeTime: 1.5, standbyVis: 0, aimedVis: 33, ringSplit: RING_SPLIT, hole: CHART_HOLE, ...STRINGS_DEFAULT }
 const CODE_SCALES = Object.fromEntries(INSTRUMENT_SCALE_IDS.map(id => [id, { ...BASE }])) as Record<InstrumentScaleId, ScaleParams>
 
 const decimals = (step: number) => (String(step).split('.')[1] ?? '').length
@@ -63,7 +69,7 @@ export function scalesFileProblem(value: unknown): string | null {
 
 // the shape numbers go to the scales themselves (the charts' ring split decides which ring the aim plays)
 function apply(scales: Record<InstrumentScaleId, ScaleParams>) {
-  INSTRUMENT_SCALE_IDS.forEach(id => { INSTRUMENT_SCALES[id].shape = { ringSplit: scales[id].ringSplit, hole: scales[id].hole } })
+  INSTRUMENT_SCALE_IDS.forEach(id => { const p = scales[id]; INSTRUMENT_SCALES[id].shape = { ringSplit: p.ringSplit, hole: p.hole, strings: p.strings, stringStart: p.stringStart, stringEnd: p.stringEnd, harmonicWidth: p.harmonicWidth } })
 }
 
 const STORE = 'pigchicken-scales-v1'

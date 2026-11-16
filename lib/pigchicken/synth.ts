@@ -3,18 +3,22 @@
 import { audio } from './sfx'
 import { midiHz } from './music'
 import type { BassTone, DroneTone } from './zone-ambience'
+import { pieceOfMidi } from './drum-kit'
+import { playKit } from './drum-synth'
 
 export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass' | 'pizz'
-  | 'hang' | 'handpan' | 'hangSteel' | 'hangSlap'
+  | 'hang' | 'handpan' | 'hangSteel' | 'hangSlap' | 'pedalHarp' | 'harpHarmonic' | 'kit'
 export const VOICE_LABELS: Record<VoiceId, string> = {
-  flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo', pizz: 'Violino pizzicato',
+  flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa de Lira', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo', pizz: 'Violino pizzicato',
   hang: 'Hang clássico', handpan: 'Handpan nitretado', hangSteel: 'Handpan inox', hangSlap: 'Hang (batida entre notas)',
+  pedalHarp: 'Harpa', harpHarmonic: 'Harpa (harmônico)', kit: 'Bateria acústica',
 }
 // the hangdrum's kinds of sound (its "Tipo de som"): each one a voice below
 export const HANG_VOICES: VoiceId[] = ['hang', 'handpan', 'hangSteel']
 export const isHangVoice = (v: VoiceId) => v === 'hang' || v === 'handpan' || v === 'hangSteel' || v === 'hangSlap'
 
-const MAX_VOICES = 18
+// (24 since the Harpa: its strings ring for seconds, and a sweep over them is many notes at once)
+const MAX_VOICES = 24
 let bus: GainNode | null = null, amb: GainNode | null = null, comp: DynamicsCompressorNode | null = null
 let noteVol = 0.7, ambVol = 0.35
 type Live = { end: number; kill: (t: number) => void }
@@ -37,6 +41,11 @@ export function setMusicVolumes(notes: number, ambience: number) {
   if (amb) amb.gain.value = ambience
 }
 export const audioTime = () => ctx()?.currentTime ?? 0
+/** The notes' bus, for the voices written outside this file (lib/pigchicken/drum-synth.ts); null: no sound now. */
+export function noteBus() {
+  const a = ctx()
+  return a && bus && noteVol > 0 ? { a, bus, noise: () => noise(a), admit: (v: Live) => admit(a, v) } : null
+}
 
 // keeps the number of voices down: the oldest one fades out fast
 function admit(a: AudioContext, v: Live) {
@@ -92,11 +101,20 @@ function hangRing(f: number, dur: number, ring: number) {
   return Math.max(0.8, Math.min(12, 6.5 * Math.pow(220 / f, 0.35) * ring * Math.max(0.35, Math.min(2.5, dur / 1.5))))
 }
 
-export type Held = { setPitch: (midi: number) => void; setVolume?: (v: number) => void; stop: () => void }
+// seconds a harp string takes to die away: low strings longer (about 4 s at A3), `dur` (the item's Duração da nota,
+// 1.5 s by default) stretching or shortening it
+function harpRing(f: number, dur: number) {
+  return Math.max(0.6, Math.min(9, 4.2 * Math.pow(220 / f, 0.5) * Math.max(0.35, Math.min(2.5, dur / 1.5))))
+}
+
+// stop: fades the note out (in `fade` s; 0.25 by default)
+export type Held = { setPitch: (midi: number) => void; setVolume?: (v: number) => void; stop: (fade?: number) => void }
 
 // plays one note; `at` is a delay in seconds (to land on the grid), `dur` how long it is held; `fade` (seconds)
 // adds a gentle fade-in on top of the voice's own attack, so even plucked voices start without a click
 export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?: number; vel?: number; sustain?: boolean; fade?: number; vib?: Vibrato } = {}): Held | null {
+  // the Bateria: the note's number is the piece's on the General MIDI drum map
+  if (voice === 'kit') return playKit(pieceOfMidi(midi), { at: opts.at, vel: opts.vel })
   const a = ctx()
   if (!a || !bus || noteVol <= 0) return null
   ownVibrato = !opts.vib
@@ -185,6 +203,31 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       o1.connect(out); o2.connect(g2); g2.connect(out); track(o1.frequency, 1); track(o2.frequency, 2)
       sources.push(o1, o2)
       end = env(a, out, t, 0.3 * vel, 0.004, 0, Math.max(0.9, dur * 3)); break
+    }
+    // the pedal harp: a string plucked with the finger's pad. A round fundamental that rings long (lower strings
+    // longer), the overtones bright at the pluck and gone much sooner, and the soft brush of the finger leaving it
+    case 'pedalHarp': {
+      const ring = harpRing(f, dur)
+      for (const [r, peak, part] of [[1, 0.3, 1], [2, 0.12, 0.5], [3, 0.06, 0.3], [4, 0.03, 0.18]] as const) {
+        const o = osc(a, r === 1 ? 'triangle' : 'sine', f * r, t), g = a.createGain(); env(a, g, t, peak * vel, 0.004, 0, ring * part)
+        o.connect(g); g.connect(out); track(o.frequency, r); sources.push(o)
+      }
+      const br = noise(a), bf = a.createBiquadFilter(); bf.type = 'bandpass'; bf.frequency.value = Math.min(3600, f * 3); bf.Q.value = 0.8
+      const bg = a.createGain(); env(a, bg, t, 0.04 * vel, 0.002, 0, 0.04); br.connect(bf); bf.connect(bg); bg.connect(out)
+      sources.push(br)
+      out.gain.setValueAtTime(1, t)
+      end = t + 0.004 + ring; break
+    }
+    // a harp's harmonic (the string touched in its middle as it is plucked): almost a pure tone, an octave up (the
+    // note that comes is already that octave), a softer start and a long, bell-like ring
+    case 'harpHarmonic': {
+      const ring = harpRing(f / 2, dur)
+      for (const [r, peak, part] of [[1, 0.3, 1], [2, 0.035, 0.3]] as const) {
+        const o = osc(a, 'sine', f * r, t), g = a.createGain(); env(a, g, t, peak * vel, 0.012, 0, ring * part)
+        o.connect(g); g.connect(out); track(o.frequency, r); sources.push(o)
+      }
+      out.gain.setValueAtTime(1, t)
+      end = t + 0.012 + ring; break
     }
     case 'bells': {
       const c = osc(a, 'sine', f * 2, t), m = osc(a, 'sine', f * 2 * 3.5, t), mg = a.createGain()
@@ -305,7 +348,7 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       freqs.forEach((p, i) => { p.cancelScheduledValues(now); p.setValueAtTime(p.value, now); p.exponentialRampToValueAtTime(nf * ratios[i], now + 0.06) })
     },
     setVolume(x: number) { level.gain.setTargetAtTime(Math.max(0, Math.min(1, x)), a.currentTime, 0.03) },
-    stop() { const now = a.currentTime; v.end = now; out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), now); out.gain.exponentialRampToValueAtTime(0.0001, now + 0.25); sources.forEach(s => { try { s.stop(now + 0.3) } catch { /* ok */ } }) },
+    stop(fade = 0.25) { const now = a.currentTime, d = Math.max(0.02, fade); v.end = now; out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), now); out.gain.exponentialRampToValueAtTime(0.0001, now + d); sources.forEach(s => { try { s.stop(now + d + 0.05) } catch { /* ok */ } }) },
   }
 }
 

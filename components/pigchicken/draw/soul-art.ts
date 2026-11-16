@@ -132,14 +132,26 @@ export const SOUL_FRAMES: Record<SoulShape, readonly [readonly string[], readonl
     "......#.#....",
   ]],
 }
+// The same birds resting (in a cage, or sitting on a wire, a tree, a platform or an object): the body of the
+// wings-down flap with the wing folded on its side, inside its outline, instead of open behind it
+const rest = (shape: SoulShape, wing: readonly [string, string]) => [...SOUL_FRAMES[shape][1].slice(0, 4), ...wing, ...SOUL_FRAMES[shape][1].slice(6)]
+export const SOUL_REST: Record<SoulShape, readonly string[]> = {
+  wind: rest("wind", ["...#wwwwbbb#.", "....#wwwb#..."]),
+  strings: rest("strings", ["...#wwwwbbb#.", "....#wwwb#..."]),
+  keys: rest("keys", ["...#wwwkbkb#.", "....#wwkb#..."]),
+  percussion: rest("percussion", ["..#wwwwbbbb#.", "...#wwwbb#..."]),
+  rebate: rest("rebate", ["...#wwwwbbb#.", "....#wwwb#..."]),
+  chick: rest("chick", ["...#wwbbbbb#.", "....#wbbb#..."]),
+}
 const BLACK_KEY = "#14141c"
 export const SOUL_SHADOW = "#000000"
 
 // A soul centred at (x, y), facing `face`, at the moment t (s) of its wing beat. shadow: only its outline, in black
-// (one never caught, in the library). still: its wings folded (resting on a wire, a tree, a platform or an object).
+// (one never caught, in the library). still: resting, its wing folded on its body (in a cage, or sitting on a wire, a
+// tree, a platform or an object).
 export function drawSoulArt(ctx: Ctx, x: number, y: number, face: number, t: number, look: SoulLook, shadow = false, still = false) {
   const up = !still && Math.floor(t * SOUL_SHAPES[look.shape].flap) % 2 === 0
-  const rows = SOUL_FRAMES[look.shape][up ? 0 : 1], p = look.pixel
+  const rows = still ? SOUL_REST[look.shape] : SOUL_FRAMES[look.shape][up ? 0 : 1], p = look.pixel
   ctx.save(); ctx.translate(x, y); ctx.scale(face < 0 ? -1 : 1, 1)
   const sprite = pixelSprite(rows, shadow ? "shadow" : `${look.eye}|${look.beak}|${look.wing}|${look.belly}|${look.body}`, () => shadow
     ? () => SOUL_SHADOW

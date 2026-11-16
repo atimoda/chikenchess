@@ -17,6 +17,8 @@ import { lookTargets, drawBird, drawUndead, drawPerson, drawButton, drawAlien, d
 import { drawNote, drawPuff } from "./effects"
 import { drawItem, type Ctx } from "./shared"
 import { chestMarks, drawChest } from "./chests"
+import { drawHarp, seatMarks } from "./harp"
+import { drawDrumKit } from "./drumkit"
 import { CAGE_WORLD_SCALE, drawCageOnFloor } from "./cages"
 import { cageArt } from "@/lib/pigchicken/cage-art"
 import { drawBolts, drawFlights, drawShocked, drawSkyFlash } from "./shock"
@@ -34,6 +36,8 @@ export function markHover(combat: Combat, key: string) {
   at(combat.hoverOwned, "#9aa0a8", "equipar")
   const near = combat.chestNear
   if (near && !chestMarks.has(near.chest)) chestMarks.set(near.chest, { key, block: near.block, souls: combat.capturedSouls })
+  const seat = combat.seatNear
+  if (seat && !seatMarks.has(seat)) seatMarks.set(seat, { key })
 }
 // the grab bind a player sees: from the keyboard they hold (primary first), else from their gamepad
 // the name of an action's first bind on a player's inputs: their keyboard's, else their gamepad's ("" when unbound)
@@ -62,6 +66,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
   })
   combat.chests.forEach(c => { if (visible(c.x, c.y + 40, 320, 520)) drawChest(ctx, c, X(c.x), t) })
+  combat.seats.forEach(s => { if (!visible(s.x, s.y + 40, 320, 520)) return; if (s.kind === 'drumkit') drawDrumKit(ctx, s, X(s.x), p => combat.seatPulse(s, p)); else drawHarp(ctx, s, X(s.x)) })
   combat.pickups.forEach(p => {
     if (!visible(p.x, p.y + 40)) return
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3

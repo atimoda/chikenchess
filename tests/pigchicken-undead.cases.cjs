@@ -168,3 +168,15 @@ test('at most a few dozen undead at once: the oldest leaves', () => {
   const staying = w.c.undead.filter(t => t.data.phase !== 'leave')
   assert.ok(staying.length <= ud.UNDEAD_MAX)
 })
+
+test('the floor under a point of a shaped floor (Chão) is its outline, not the top of the box around it', () => {
+  const L = loadTs('lib/pigchicken/layout.ts')
+  const { floorUnder } = loadTs('lib/pigchicken/undead.ts')
+  const hill = L.normalizeElement({ kind: 'ground', x: 0, y: 0, w: 100, h: 100, params: { surface: { style: 'meadow', points: [[0, 50], [100, 0], [100, 100], [0, 100]] } } })
+  const env = { boxes: L.layoutBoxes([hill]), groundY: 500 }
+  assert.equal(floorUnder(env, 20, -50), 40)
+  assert.equal(floorUnder(env, 80, -50), 10)
+  // from inside it, the next floor down is the ground; off its sides too
+  assert.equal(floorUnder(env, 20, 60), 500)
+  assert.equal(floorUnder(env, 120, -50), 500)
+})

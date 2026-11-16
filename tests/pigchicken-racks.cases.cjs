@@ -86,9 +86,10 @@ test('layout edits update delays without resetting the rack, and moving/revealin
   assert.equal(c.racks.length,1);assert.equal(c.racks[0].respawnDelay,.3)
   step(c,.1);assert.equal(c.pickups.length,1)
   const id=c.pickups[0].id
-  sync.sync([{...el,x:4000}],1);step(c,.01);assert.equal(c.pickups[0].x,-1e6)
-  sync.sync([{...el,x:4000}],4);step(c,.01)
-  assert.equal(c.pickups.length,1);assert.equal(c.pickups[0].id,id);assert.equal(c.pickups[0].x,4038)
+  // past the world's end (1 screen: the Parquinho, the Templo and the Vila, 3 scenes) it waits away
+  sync.sync([{...el,x:6000}],1);step(c,.01);assert.equal(c.pickups[0].x,-1e6)
+  sync.sync([{...el,x:6000}],4);step(c,.01)
+  assert.equal(c.pickups.length,1);assert.equal(c.pickups[0].id,id);assert.equal(c.pickups[0].x,6038)
 })
 
 test('touch Run collects an offered rack item only when enabled and releases its grab source',()=>{
@@ -135,4 +136,23 @@ test('opening another Pátio clears the last one: its racks, dummies and every i
   sync.reset()
   assert.equal(c.pickups.length,0);assert.equal(c.racks.length,0);assert.equal(c.targets.filter(t=>t.kind==='dummy').length,0)
   sync.sync(L.emptyLayout().elements,1);step(c,3);assert.equal(c.pickups.length,0)
+})
+
+test('a rack on a shaped floor (Chão): its item lands on the outline, not on the floor under it',()=>{
+  // the default hill: its top dips, so only one point of it touches the top of its box
+  const ground=L.createElement('ground',0,400,{surface:{style:'village'}})
+  const boxes=L.layoutBoxes([ground])
+  for(const dx of [40,200,330,500,620]){
+    const x=ground.x+dx,top=L.layoutFloorBelow([ground],x,0)
+    assert.ok(top>=ground.y&&top<ground.y+60)
+    const c=createCombat();c.addRack(x,'pistol',top,0)
+    for(let i=0;i<120;i++)c.step(1/60,body,{x:0,y:0},{x:0,y:0},0,input,boxes,1000,()=>{},{})
+    assert.equal(c.pickups.length,1)
+    assert.equal(c.pickups[0].resting,true)
+    assert.ok(Math.abs(c.pickups[0].y-top)<.01,`x ${x}: ${c.pickups[0].y} != ${top}`)
+  }
+  // off the floor's sides it still falls to the ground
+  const c=createCombat();c.addRack(ground.x-40,'pistol',ground.y,0)
+  for(let i=0;i<180;i++)c.step(1/60,body,{x:0,y:0},{x:0,y:0},0,input,boxes,1000,()=>{},{})
+  assert.equal(c.pickups[0].y,1000)
 })
