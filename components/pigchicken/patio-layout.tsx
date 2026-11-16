@@ -184,11 +184,12 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
 
 // a full-screen layer above or below the chicken whose world element follows the camera
 // filter: the sky's light on the scenery (Configurações do Pátio → Céu e luz)
+// (its filter changes softly: the scenery goes dark while someone is inside a house, components/pigchicken/house-dusk.tsx)
 export function FollowLayer({ z, opacity = 1, width, filter = "none", children }: { z: number; opacity?: number; width: number; filter?: string; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => (ref.current ? followCamera(ref.current) : undefined), [])
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: z, opacity, filter: filter === "none" ? undefined : filter }}>
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: z, opacity, filter: filter === "none" ? undefined : filter, transition: "filter 280ms ease" }}>
       <div ref={ref} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
         {children}
       </div>

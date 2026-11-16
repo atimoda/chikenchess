@@ -55,6 +55,7 @@ import { moveLiveCamera, setCameraRestY } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
 import { houseRooms, roomShotWalls, type RoomRect } from "@/lib/pigchicken/house-rooms"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
+import { HouseDusk, useHouseDuskFilter } from "@/components/pigchicken/house-dusk"
 import { DISC_X, GONG_X, RESET_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { accuracy, createNoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
@@ -185,6 +186,8 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       <div className="absolute inset-0" style={lit}><LayoutLayerView elements={shown} layer="scene" editing={editing} power={false} /></div>
       <LayoutLayerView elements={shown} layer="scene" editing={editing} power />
       <LayoutColliders elements={shown} />
+      {/* someone of this screen is inside a house: the rest of the scenery goes dark */}
+      <HouseDusk elements={shown} lit={lit} />
       <WorldLimits width={width} top={worldTop} bottom={WORLD_GROUND_Y + Math.max(LIMIT_BORDER, groundHeight)} />
     </div>
   )
@@ -229,7 +232,7 @@ function WorldLimits({ width, top, bottom }: { width: number; top: number; botto
 export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, editing = false, sky }: { screens: number; fgRef?: React.RefObject<HTMLDivElement | null>; elements?: LayoutElement[]; editing?: boolean; sky?: SkyParams }) {
   const width = worldScenes(screens) * SCENE_W
   const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
-  const filter = useSkyLook(sky).scenery
+  const filter = useHouseDuskFilter(useSkyLook(sky).scenery)
   return (
     <>
       <FollowLayer z={197} width={width} filter={filter}><LayoutLayerView elements={shown} layer="behind" editing={editing} /></FollowLayer>

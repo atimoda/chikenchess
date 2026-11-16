@@ -34,7 +34,7 @@ A Vila, o criador de casas do Modo editor, os pisos das fachadas e a entrada nas
 
 Entrar nas casas do Pátio pela porta (16/11, v2.12.0). Vale para toda casa do Modo editor e da Vila dos Telhados, em todos os Pátios, com players locais e no online. As medidas vêm da própria fachada (`lib/pigchicken/houses.ts`).
 
-Código: `lib/pigchicken/house-rooms.ts` (regras puras), `lib/pigchicken/house-rooms-store.ts` (quem está onde), `components/pigchicken/house-doors.tsx` (laço por quadro), `components/pigchicken/house-art.tsx` (interior e porta acesa), `components/pigchicken/patio-layout.tsx` (pisos do cômodo). Testes em `tests/pigchicken-house-rooms.cases.cjs`.
+Código: `lib/pigchicken/house-rooms.ts` (regras puras), `lib/pigchicken/house-rooms-store.ts` (quem está onde), `components/pigchicken/house-doors.tsx`, `components/pigchicken/house-dusk.tsx` (o escurecimento do cenário de fora) (laço por quadro), `components/pigchicken/house-art.tsx` (interior e porta acesa), `components/pigchicken/patio-layout.tsx` (pisos do cômodo). Testes em `tests/pigchicken-house-rooms.cases.cjs`.
 
 ### Quais casas
 
@@ -64,6 +64,7 @@ Código: `lib/pigchicken/house-rooms.ts` (regras puras), `lib/pigchicken/house-r
 - **De dentro:** enquanto pelo menos um player desta tela está numa casa, a fachada dela some e aparece o interior: parede do fundo escura, pisos dos andares, e janelas e porta como a luz que entra (cor do vidro da casa). O telhado e os contornos continuam.
 - **De fora:** a fachada cobre. No online, o boneco e o nome de um player de outro navegador que está numa casa fechada nesta tela não são desenhados. Quando um player desta tela entra na mesma casa, eles aparecem.
 - Players locais dividem a tela: basta um deles entrar para a casa abrir para todos desta tela.
+- **O resto escurece:** enquanto há uma casa aberta nesta tela, o cenário de fora fica com 40% da luz (céu, montanhas, chão, as outras casas e os demais elementos do Pátio, inclusive os das camadas na frente dos bonecos), e a casa aberta continua clara por cima de tudo isso. O que estiver na frente dela no mundo fica atrás enquanto ela está aberta. Entra e sai em cerca de 0,3 s. Bonecos, itens, inimigos e disparos mantêm as cores, como na luz da hora do dia. Com duas casas abertas (dois players locais), as duas ficam claras.
 
 ### Tiros, notas e arremessos
 

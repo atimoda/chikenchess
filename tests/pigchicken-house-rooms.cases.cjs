@@ -3,7 +3,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { houseInterior, houseRoom, houseRooms, atDoor, doorAt, withinRoom, createDoorGate, roomShotWalls, roomFloorSlab, cleanNetHouses } = loadTs('lib/pigchicken/house-rooms.ts')
+const { houseInterior, houseRoom, houseRooms, atDoor, doorAt, withinRoom, createDoorGate, roomShotWalls, roomFloorSlab, cleanNetHouses, HOUSE_DUSK, houseDuskFilter } = loadTs('lib/pigchicken/house-rooms.ts')
 const { housePreset, houseRoof, HOUSE_STYLES, HOUSE_ROOFS } = loadTs('lib/pigchicken/houses.ts')
 const { normalizeElement } = loadTs('lib/pigchicken/layout.ts')
 const { createCombat } = loadTs('lib/pigchicken/combat.ts')
@@ -186,4 +186,12 @@ test('who is where: a house opens with one of this screen inside, and hides the 
   clearHouseRooms(); clearNetHouseRooms()
   assert.equal(houseRoomsStore.roomOf('p2'), null); assert.ok(!houseRoomsStore.atDoor('a')); assert.equal(houseRoomsStore.open.size, 0)
   off()
+})
+
+test('the scenery outside goes dark while someone is inside: the layer keeps its own filter and loses light', () => {
+  assert.ok(HOUSE_DUSK > 0 && HOUSE_DUSK < 1)
+  assert.equal(houseDuskFilter('none', false), 'none')
+  assert.equal(houseDuskFilter('sepia(0.2)', false), 'sepia(0.2)')
+  assert.equal(houseDuskFilter('none', true), `brightness(${HOUSE_DUSK})`)
+  assert.equal(houseDuskFilter('sepia(0.2)', true), `sepia(0.2) brightness(${HOUSE_DUSK})`)
 })

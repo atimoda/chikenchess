@@ -88,6 +88,11 @@ export function createDoorGate() {
   }
 }
 
+// While a player of this screen is inside a house the scenery outside goes dark: how much of its light is left, and
+// the CSS filter of a layer of scenery with it (`filter`: the one it already has, 'none' without one)
+export const HOUSE_DUSK = 0.4
+export const houseDuskFilter = (filter: string, dark: boolean) => (dark ? `${filter === 'none' ? '' : `${filter} `}brightness(${HOUSE_DUSK})` : filter)
+
 // what another browser says of its players (online): the house of each slot ('' outside); null when it is not that
 export function cleanNetHouses(raw: unknown): string[] | null {
   if (!Array.isArray(raw) || raw.length > 4) return null
