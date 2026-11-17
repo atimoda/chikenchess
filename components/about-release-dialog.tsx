@@ -6,30 +6,62 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { LegalLinks } from './legal-links'
 import { RELEASE_LABEL } from '@/lib/release'
 import { ReleaseNotesContent } from './version-changelog'
+import { BIRD_SONGS_SOURCE, birdCredits } from '@/lib/pigchicken/bird-guide'
 
-export function AboutReleaseDialog({ open, onOpenChange, tab, onTabChange }: { open: boolean; onOpenChange: (open: boolean) => void; tab: 'about' | 'releases'; onTabChange: (tab: 'about' | 'releases') => void }) {
+export type AboutTab = 'about' | 'releases' | 'credits'
+const TABS: readonly AboutTab[] = ['about', 'releases', 'credits']
+const TAB_LABELS: Record<AboutTab, string> = { about: 'About', releases: 'Release notes', credits: 'Credits' }
+
+// Who made what the game plays and is built on: the recordings of the Guia de pássaros, one line each, and Strudel.
+function CreditsContent() {
+  const songs = birdCredits()
+  const link = 'text-primary hover:underline'
+  return <div className="grid gap-5 pb-2 text-sm">
+    <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Strudel</h3>
+      <p className="leading-relaxed">Live coding music engine (@strudel/web), by the Strudel authors, licensed under AGPL-3.0-or-later. <a href="https://strudel.cc" target="_blank" rel="noopener noreferrer" className={link}>strudel.cc</a> · <a href="https://codeberg.org/uzu/strudel" target="_blank" rel="noopener noreferrer" className={link}>source</a></p>
+    </section>
+    <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bird songs</h3>
+      <p className="leading-relaxed">The real songs of the Guia de pássaros are short excerpts (cut, filtered and levelled) of recordings shared on <a href={`https://${BIRD_SONGS_SOURCE}`} target="_blank" rel="noopener noreferrer" className={link}>{BIRD_SONGS_SOURCE}</a> by the recordists below, used non-commercially under each recording&apos;s Creative Commons licence.</p>
+      <ul className="grid gap-1 font-mono text-xs">
+        {songs.map(({ bird, clip }) => <li key={clip.file} className="flex flex-wrap gap-x-2">
+          <i className="text-foreground">{bird.sci}</i>
+          <span>{clip.by}</span>
+          <a href={clip.url} target="_blank" rel="noopener noreferrer" className={link}>XC{clip.xc}</a>
+          <a href={clip.licenseUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:underline">{clip.license}</a>
+        </li>)}
+      </ul>
+    </section>
+    <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Globe</h3>
+      <p className="leading-relaxed">Earth textures from NASA Earth Observatory (Blue Marble Next Generation and Black Marble 2016), public domain.</p>
+    </section>
+  </div>
+}
+
+export function AboutReleaseDialog({ open, onOpenChange, tab, onTabChange }: { open: boolean; onOpenChange: (open: boolean) => void; tab: AboutTab; onTabChange: (tab: AboutTab) => void }) {
   const tabs = useRef<Array<HTMLButtonElement | null>>([])
-  const selectTab = (next: 'about' | 'releases') => onTabChange(next)
+  const selectTab = (next: AboutTab) => onTabChange(next)
   const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
-    const index = event.currentTarget === tabs.current[0] ? 0 : 1
+    const index = Math.max(0, tabs.current.indexOf(event.currentTarget)), n = TABS.length
     let next = index
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % 2
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + 1) % 2
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % n
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + n - 1) % n
     else if (event.key === 'Home') next = 0
-    else if (event.key === 'End') next = 1
+    else if (event.key === 'End') next = n - 1
     else return
     event.preventDefault()
-    const nextTab = next === 0 ? 'about' : 'releases'
-    selectTab(nextTab)
+    selectTab(TABS[next])
     tabs.current[next]?.focus()
   }
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent closeLabel="Fechar About" mobileViewportScroll className="max-w-2xl max-h-[85dvh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-[#101713] text-[#dfe8df] border-white/20" onPointerDown={e => e.stopPropagation()}>
       <DialogHeader>
-        <DialogTitle className="sr-only">About e Release notes</DialogTitle>
+        <DialogTitle className="sr-only">About, Release notes e Credits</DialogTitle>
         <DialogDescription className="sr-only">Informações sobre o ChickenChess e novidades da versão</DialogDescription>
         <div role="tablist" aria-label="About e release notes" className="flex gap-1 border-b border-white/15 pr-2">
-          {(['about', 'releases'] as const).map((value, index) => <button id={`${value}-tab`} key={value} ref={element => { tabs.current[index] = element }} type="button" role="tab" aria-selected={tab === value} aria-controls={`${value}-tabpanel`} tabIndex={tab === value ? 0 : -1} onKeyDown={onKeyDown} onClick={() => selectTab(value)} className={`px-3 py-2 text-xs font-mono ${tab === value ? 'border-b-2 border-primary text-primary' : 'text-[#a7b6a9] hover:text-white'}`}>{value === 'about' ? 'About' : 'Release notes'}</button>)}
+          {TABS.map((value, index) => <button id={`${value}-tab`} key={value} ref={element => { tabs.current[index] = element }} type="button" role="tab" aria-selected={tab === value} aria-controls={`${value}-tabpanel`} tabIndex={tab === value ? 0 : -1} onKeyDown={onKeyDown} onClick={() => selectTab(value)} className={`px-3 py-2 text-xs font-mono ${tab === value ? 'border-b-2 border-primary text-primary' : 'text-[#a7b6a9] hover:text-white'}`}>{TAB_LABELS[value]}</button>)}
         </div>
       </DialogHeader>
       {tab === 'about' ? <div id="about-tabpanel" role="tabpanel" aria-labelledby="about-tab" className="min-h-0 overflow-y-auto overscroll-contain text-sm">
@@ -40,7 +72,8 @@ export function AboutReleaseDialog({ open, onOpenChange, tab, onTabChange }: { o
         <div className="mb-6 space-y-3"><div><p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">General Contact:</p><a href="mailto:atimoda@gmail.com" className="text-sm text-primary hover:underline">atimoda@gmail.com</a></div></div>
         <a href="https://ko-fi.com/chickenchess" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF5E5B] text-white rounded font-bold hover:bg-[#ff4542] transition-colors"><span>☕</span> Buy me a coffee</a>
         <div className="mt-6 border-t border-border pt-4"><LegalLinks newTab className="text-muted-foreground" /></div>
-      </div> : <div id="releases-tabpanel" role="tabpanel" aria-labelledby="releases-tab" className="min-h-0 overflow-hidden"><ReleaseNotesContent /></div>}
+      </div> : tab === 'credits' ? <div id="credits-tabpanel" role="tabpanel" aria-labelledby="credits-tab" className="min-h-0 overflow-y-auto overscroll-contain"><CreditsContent /></div>
+        : <div id="releases-tabpanel" role="tabpanel" aria-labelledby="releases-tab" className="min-h-0 overflow-hidden"><ReleaseNotesContent /></div>}
     </DialogContent>
   </Dialog>
 }

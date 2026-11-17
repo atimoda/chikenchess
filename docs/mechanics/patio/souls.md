@@ -55,6 +55,7 @@ A alma solta voa junto do dono (`soulFollowStep`, uma vez por quadro, para as al
 - **Sem amontoar:** dois lugares a menos de 64 px um do outro se afastam aos poucos (até 140 px de desvio para cada alma), e cada alma guarda o desvio.
 - **Dono saiu do jogo:** as almas soltas dele sobem e vão embora em 5 s.
 - **Explorar (15/11):** depois de um tempo em descanso a alma sai para pousar num fio, numa árvore, numa plataforma ou num objeto perto do dono, descansa lá e volta; enquanto está fora, o bot amigo não a move. Regras, parâmetros (`roam`, `roamRange`, `perchTime` e os gostos por lugar) e valores por classe em [Pássaros e almas que exploram](birds-explore.md#almas-soltas-que-exploram).
+- **Fugir dos outros players:** a alma se afasta de quem não é o dono e pode largar o lugar onde pousou. Regras e parâmetros (`alert`, `flee`) em [Pássaros e almas que exploram](birds-explore.md#almas-soltas-que-fogem-dos-outros-players).
 
 Ficha de parâmetros (`SoulFollowParams`; limites em `SOUL_FOLLOW_RANGES`). Os números de cada alma se editam no editor de fichas da Biblioteca de almas, só para admin ([soul-library.md](soul-library.md)); os das classes ficam no código.
 
@@ -120,6 +121,7 @@ A alma solta age pelo dono, e às vezes contra ele (`lib/pigchicken/soul-acts.ts
 | Força do atrapalho | 0 a 1 | 0,3 |
 
 - **Relógio:** a primeira volta chega entre 40% e 100% de “A cada” depois de solta; as outras, a cada “A cada”. Em cada volta a alma sorteia o atrapalho pela chance. Se não sair, fica pronta e ajuda assim que houver o que fazer; feita a ajuda, o intervalo recomeça. Pronta e sem o que fazer, continua sorteando o atrapalho a cada volta.
+- **Canto real e voz (17/11, v2.13.0):** em cada volta do relógio a alma também sorteia o canto gravado da ave que a inspira (“Canto real”, 15% por padrão), sem mudar o que faz naquela volta. As notas que ela toca usam a voz dessa ave. Regras em [Guia de pássaros](bird-guide.md).
 - **Recado:** para buscar item, ser degrau ou atrapalhar de perto, ela larga o lugar e voa reto até o ponto, a 2,2 vezes a velocidade dela (520 px/s no mínimo). Desiste depois de 4 s (9 s carregando item, 1,5 s no degrau) e volta ao lugar.
 - **Cancelamento:** chamada pelo Callback, capturada por um Passaguá ou com o dono fora do jogo, ela para o que fazia; o item que carregava cai de onde ela está.
 
@@ -171,4 +173,4 @@ A alma solta age pelo dono, e às vezes contra ele (`lib/pigchicken/soul-acts.ts
 
 ## Ainda não implementado
 
-Tecla e botão de controle para soltar e chamar, e fuga das almas soltas de outros players. O plano está fora do código, no documento “Almas capturadas: plano”.
+Tecla e botão de controle para soltar e chamar. O plano está fora do código, no documento “Almas capturadas: plano”.

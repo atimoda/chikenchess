@@ -10,6 +10,8 @@
 //   each time its clock comes round, higher the rarer it is.
 // - "Cagar" (lib/pigchicken/poop.ts): the souls of some species let a dropping fall on whoever is under them. It
 //   hurts enemies a little; a living soul spares its owner, a dead one does not.
+// - Its real song: now and then, between what it does, it sings a recording of the real bird its sheet takes after
+//   (`song`: the chance each time its clock comes round, low by default). The notes it plays stay the synth's.
 // Every number is a parameter (SoulActParams): its class's and its state's first, its own entry's over them.
 import type { SoulClassId } from './soul-follow'
 import type { Soul, SoulRarity, SoulSpecies, SoulState, SoulWeapon } from './souls'
@@ -28,13 +30,14 @@ export type SoulActParams = {
   poopEvery: number // s between two droppings (0: it has no such power)
   poopDamage: number // what a dropping takes from an enemy (and how hard it knocks a chicken)
   poopSpare: boolean // it never lets one fall on its owner
+  song: number // 0 to 1: each time its clock comes round, the chance it sings the real song of its bird (lib/pigchicken/bird-guide.ts)
 }
-export const SOUL_ACT_DEFAULTS: SoulActParams = { help: 'sing', every: 6, range: 300, power: 0.5, hinder: 'own', chance: 0, force: 0.3, poopEvery: 0, poopDamage: 2, poopSpare: true }
+export const SOUL_ACT_DEFAULTS: SoulActParams = { help: 'sing', every: 6, range: 300, power: 0.5, hinder: 'own', chance: 0, force: 0.3, poopEvery: 0, poopDamage: 2, poopSpare: true, song: 0.15 }
 type Numeric = Exclude<keyof SoulActParams, 'help' | 'hinder' | 'poopSpare'>
 export const SOUL_ACT_RANGES: Record<Numeric, { min: number; max: number; step: number }> = {
   every: { min: 1, max: 30, step: 0.5 }, range: { min: 50, max: 800, step: 10 }, power: { min: 0, max: 1, step: 0.05 },
   chance: { min: 0, max: 1, step: 0.05 }, force: { min: 0, max: 1, step: 0.05 },
-  poopEvery: { min: 0, max: 60, step: 1 }, poopDamage: { min: 0, max: 20, step: 0.5 },
+  poopEvery: { min: 0, max: 60, step: 1 }, poopDamage: { min: 0, max: 20, step: 0.5 }, song: { min: 0, max: 1, step: 0.05 },
 }
 export const SOUL_HELPS: Record<SoulHelp, string> = { none: 'Nenhuma', sing: 'Cantar nas harmonias', beat: 'Cantar no tempo', fetch: 'Buscar item', warn: 'Avisar perigo', step: 'Degrau no ar' }
 export const SOUL_HINDERS: Record<SoulHinder, string> = { own: 'O da própria alma', none: 'Nenhum', push: 'Empurrar', bounce: 'Quicar', aim: 'Desviar a mira', peck: 'Bicar', detune: 'Desafinar' }
@@ -75,6 +78,8 @@ export const SOUL_ACT = {
   aim: { deg: [12, 55] as const, time: [0.7, 1.6] as const, rate: 22 }, // her aim sways this wide, for this long (rad/s)
   peck: { push: [160, 520] as const, lock: [0.25, 0.9] as const }, // px/s she is knocked; s her item does not answer
   detune: { semis: 0.5, time: [3, 9] as const }, // her notes play this far off, for this long
+  // its real song: s before the same soul sings again; px from the middle of the screen at which it is no longer heard
+  song: { gap: 12, far: 1600 },
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
@@ -111,3 +116,8 @@ export function actClockStep(c: SoulActClock, p: SoulActParams, soul: Origin, dt
   return false
 }
 export function actDone(c: SoulActClock, p: SoulActParams) { c.ready = false; c.in = p.every }
+/** Its clock comes round this frame (ask before actClockStep): the moment it may sing its real song. sang: s since it last did. */
+export const songDue = (c: SoulActClock, p: SoulActParams, sang: number, dt: number, rand: () => number = Math.random) =>
+  c.in - dt <= 0 && p.song > 0 && sang >= SOUL_ACT.song.gap && rand() < p.song
+/** how loud a song is heard `d` px away from the middle of the screen (1 at it, 0 from `far` on) */
+export const songVolume = (d: number) => Math.max(0, 1 - d / SOUL_ACT.song.far) ** 1.5

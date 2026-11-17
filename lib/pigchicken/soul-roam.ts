@@ -8,8 +8,11 @@
 //   then either goes on to another place (the chance is `roam`) or flies back to her.
 // - It comes back at once when she goes farther than ROAM.leash times `roamRange` from it, or when its place is gone.
 // While it is out the caller skips soulFollowStep; what it does for and against her goes on as before.
+//
+// It also keeps away from the other players (soulFleeStep, after the two steps above): by her, it backs off from
+// whoever comes closer than it likes; sitting on a place, it may fly back to her.
 import { perchHold, perchPick, perchPoint, perchTouch, perchEnd, type PerchState, type PerchWorld } from './bird-perch'
-import { soulErrandStep, type SoulBrain, type SoulFlyer, type SoulFollowParams, type SoulOwner } from './soul-follow'
+import { soulErrandStep, type SoulAir, type SoulBrain, type SoulFlyer, type SoulFollowParams, type SoulOwner } from './soul-follow'
 
 export const SOUL_ROAM = {
   home: [20, 1] as const, // s it rests by her before leaving, at roam 0 (never, in fact) and at roam 1
@@ -26,12 +29,13 @@ export const SOUL_ROAM = {
 }
 
 // in: s it still rests by her before leaving; spot: the place it holds (on its way there, or sitting); sat: it landed;
-// left: s it still sits; hops: places it has been to since it left her
-export type SoulRoam = { in: number; spot: PerchState | null; sat: boolean; left: number; hops: number }
+// left: s it still sits; hops: places it has been to since it left her; shy: it has made up its mind about the player
+// near its place; fx, fy: how far it has backed off from a player (px, added to where it would be)
+export type SoulRoam = { in: number; spot: PerchState | null; sat: boolean; left: number; hops: number; shy: boolean; fx: number; fy: number }
 const lerp = ([a, b]: readonly [number, number], k: number) => a + (b - a) * k
 const homeTime = (p: SoulFollowParams, rand: () => number) => lerp(SOUL_ROAM.home, Math.max(0, Math.min(1, p.roam))) * lerp(SOUL_ROAM.vary, rand())
 export const newSoulRoam = (p: SoulFollowParams, rand: () => number = Math.random): SoulRoam =>
-  ({ in: homeTime(p, rand) * lerp(SOUL_ROAM.first, rand()), spot: null, sat: false, left: 0, hops: 0 })
+  ({ in: homeTime(p, rand) * lerp(SOUL_ROAM.first, rand()), spot: null, sat: false, left: 0, hops: 0, shy: false, fx: 0, fy: 0 })
 // it is sitting on a place (drawn with its wings still)
 export const soulPerched = (r: SoulRoam) => !!r.spot && r.sat
 
@@ -83,4 +87,43 @@ export function soulRoamStep(r: SoulRoam, b: SoulBrain, me: SoulFlyer, owner: So
   if (!next) { r.spot = null; r.sat = false; r.in = homeTime(p, rand); b.mode = 'follow'; return false }
   r.spot = perchHold(w, next); r.sat = false
   return true
+}
+
+// ---------- keeping away from the other players ----------
+export const SOUL_FLEE = {
+  keep: [0.4, 1] as const, // of its alert radius: how far it keeps from a player, at flee 0 and at flee 1
+  up: 0.3, // of how far it backs off: it also goes up
+  speed: 1.2, // of its flight speed: how fast it backs off and comes back
+  perch: 0.6, // of its alert radius: a player closer than this may make it leave the place it sits on
+}
+/** One frame of a soul minding the nearest player that is not its owner (threat: world px; null: nobody near), after
+ * soulRoamStep / soulFollowStep moved `me`. By her, it backs off to keep its distance, no faster than it flies, and
+ * comes back when they go. Sitting on a place, it decides once per approach: with chance `flee` it flies back to her.
+ * true: it left its place. */
+export function soulFleeStep(r: SoulRoam, b: SoulBrain, me: SoulFlyer, threat: { x: number; y: number } | null, p: SoulFollowParams, w: PerchWorld | null, air: SoulAir | null | undefined, dt: number, rand: () => number = Math.random): boolean {
+  if (dt <= 0) return false
+  let tx = 0, ty = 0, left = false
+  const dx = threat ? me.x - threat.x : 0, dy = threat ? me.y - threat.y : 0, d = Math.hypot(dx, dy)
+  if (!threat || p.alert <= 0 || p.flee <= 0 || d >= p.alert) r.shy = false
+  else if (r.spot) {
+    // on its way to a place it goes on; sitting there, it makes up its mind once
+    if (r.sat && d < p.alert * SOUL_FLEE.perch && !r.shy) {
+      r.shy = true
+      if (rand() < p.flee) { roamHome(r, w, p, rand); b.mode = 'follow'; left = true }
+    }
+  } else {
+    const keep = p.alert * lerp(SOUL_FLEE.keep, Math.min(1, p.flee))
+    if (d < keep) {
+      const back = keep - d
+      tx = (d > 1 ? dx / d : 0) * back; ty = (d > 1 ? dy / d : -1) * back - back * SOUL_FLEE.up
+    }
+  }
+  const ex = tx - r.fx, ey = ty - r.fy, e = Math.hypot(ex, ey), step = p.speed * SOUL_FLEE.speed * dt
+  if (e <= step) { r.fx = tx; r.fy = ty } else { r.fx += (ex / e) * step; r.fy += (ey / e) * step }
+  if (r.fx || r.fy) {
+    me.x += r.fx; me.y += r.fy
+    if (air) { me.x = Math.max(air.l, Math.min(air.r, me.x)); me.y = Math.max(air.top, me.y) }
+    if (Math.abs(r.fx) > 12) me.face = r.fx > 0 ? 1 : -1
+  }
+  return left
 }

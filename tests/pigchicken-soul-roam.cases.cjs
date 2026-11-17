@@ -346,3 +346,119 @@ test('a wild bird of a type with the power lets one fall on a chicken that passe
   assert.equal(pushes.length, 1)
   assert.ok(Math.abs(pushes[0].vx) < 60, 'hardly a knock')
 })
+
+// ---------- keeping away from the other players ----------
+test('a soul backs off from a player that is not its owner, no faster than it flies, and comes back when they go', () => {
+  const p = { ...F.SOUL_FOLLOW_DEFAULTS, alert: 200, flee: 0.5, speed: 240 }
+  const keep = 200 * (R.SOUL_FLEE.keep[0] + (R.SOUL_FLEE.keep[1] - R.SOUL_FLEE.keep[0]) * 0.5)
+  const brain = F.createSoulBrain(0, 400, p, rand), r = R.newSoulRoam(p, rand)
+  // (where the follow step leaves it each frame: the same spot)
+  const at = () => ({ x: 0, y: 400, face: 1 })
+  const run = (threat, n, par = p, air = null) => { let me = at(); for (let i = 0; i < n; i++) { me = at(); R.soulFleeStep(r, brain, me, threat, par, null, air, DT, rand) } return me }
+
+  // nobody near, somebody past its alert radius, a soul that minds nobody: it stays
+  assert.deepEqual(run(null, 30), at())
+  assert.deepEqual(run({ x: -260, y: 400 }, 30), at())
+  assert.deepEqual(run({ x: -50, y: 400 }, 30, { ...p, alert: 0 }), at())
+  assert.deepEqual(run({ x: -50, y: 400 }, 30, { ...p, flee: 0 }), at())
+  // inside its alert radius but farther than it keeps: it only watches
+  assert.deepEqual(run({ x: -(keep + 20), y: 400 }, 30), at())
+
+  // a player 50 px to its left: it backs off to the right and a little up, one step at a time
+  const thief = { x: -50, y: 400 }
+  const one = run(thief, 1)
+  assert.ok(one.x > 0 && one.y < 400)
+  assert.ok(Math.hypot(one.x, one.y - 400) <= p.speed * R.SOUL_FLEE.speed * DT + 1e-6, 'no faster than it flies')
+  const far = run(thief, 120)
+  assert.ok(near(far.x, keep - 50), `until it keeps its distance (${far.x})`)
+  assert.ok(near(400 - far.y, (keep - 50) * R.SOUL_FLEE.up), 'a little higher')
+  assert.equal(far.face, 1, 'looking where it goes')
+  // the keener to flee, the farther it keeps
+  const r2 = R.newSoulRoam(p, rand)
+  let shy = at(), bold = at()
+  for (let i = 0; i < 240; i++) { shy = at(); R.soulFleeStep(r2, brain, shy, thief, { ...p, flee: 1 }, null, null, DT, rand) }
+  r2.fx = r2.fy = 0
+  for (let i = 0; i < 240; i++) { bold = at(); R.soulFleeStep(r2, brain, bold, thief, { ...p, flee: 0.1 }, null, null, DT, rand) }
+  assert.ok(shy.x > far.x && far.x > bold.x && bold.x > 0)
+  // the walls and the top of the sky hold it
+  const walled = run(thief, 120, p, { l: -500, r: 30, top: 395 })
+  assert.deepEqual({ x: walled.x, y: walled.y }, { x: 30, y: 395 })
+  // they go: it comes back, as slowly
+  const back = run(null, 1)
+  assert.ok(back.x < far.x && back.x > far.x - p.speed * R.SOUL_FLEE.speed * DT - 1e-6)
+  assert.deepEqual(run(null, 120), at())
+})
+
+test('a soul sitting on a place makes up its mind once per player that comes close: it flies back to its owner or stays', () => {
+  const w = worldOf(el('platform', 300, 300))
+  const p = { ...F.SOUL_FOLLOW_DEFAULTS, roam: 1, roamRange: 1200, perchTime: 60, speed: 300, alert: 200, flee: 0.5 }
+  const owner = { x: 0, y: 600, face: 1, scale: 1 }
+  const sit = () => {
+    const brain = F.createSoulBrain(0, 400, p, rand), me = { x: 0, y: 400, face: 1 }, r = R.newSoulRoam(p, rand)
+    brain.mode = 'rest'; r.in = 0.01
+    for (let i = 0; i < 900 && !R.soulPerched(r); i++) { w.time += DT; R.soulRoamStep(r, brain, me, owner, p, w, DT, rand) }
+    assert.ok(R.soulPerched(r))
+    return { brain, me, r }
+  }
+  // it stays when the dice say so, however long the player stands there
+  const a = sit(), spot = { x: a.me.x, y: a.me.y }
+  const close = { x: spot.x - 60, y: spot.y }
+  let rolls = 0
+  const stay = () => { rolls++; return 0.9 }
+  for (let i = 0; i < 120; i++) assert.equal(R.soulFleeStep(a.r, a.brain, a.me, close, p, w, null, DT, stay), false)
+  assert.equal(rolls, 1, 'one roll per approach')
+  assert.ok(R.soulPerched(a.r))
+  assert.deepEqual({ x: a.me.x, y: a.me.y }, spot, 'and it does not shuffle on its place')
+  // far enough it does not even roll; the player leaves and comes again: another roll
+  for (let i = 0; i < 10; i++) R.soulFleeStep(a.r, a.brain, a.me, { x: spot.x - 150, y: spot.y }, p, w, null, DT, stay)
+  assert.equal(rolls, 1)
+  R.soulFleeStep(a.r, a.brain, a.me, { x: spot.x - 400, y: spot.y }, p, w, null, DT, stay)
+  assert.equal(R.soulFleeStep(a.r, a.brain, a.me, close, p, w, null, DT, () => 0.1), true, 'this time it leaves')
+  assert.equal(a.r.spot, null); assert.equal(a.brain.mode, 'follow')
+  assert.equal(w.birds.size, 0, 'its place is free again')
+  // on its way to a place it goes on
+  const b = sit()
+  b.r.sat = false
+  assert.equal(R.soulFleeStep(b.r, b.brain, b.me, { x: b.me.x - 30, y: b.me.y }, p, w, null, DT, () => 0), false)
+  assert.ok(b.r.spot)
+})
+
+test('a soul let out keeps away from another local player and from a chicken of another browser, never from its owner', () => {
+  const { c, her } = world()
+  const f = free(c)
+  f.params = { ...f.params, roam: 0, alert: 200, flee: 1, pattern: 'still', restless: 0, loopEvery: 0 }
+  const box = (x, y) => ({ l: x - 45, r: x + 45, t: y - 200, b: y })
+  const settle = () => { for (let i = 0; i < 400; i++) step(c, her) ; return { x: f.x, y: f.y } }
+  c.setBlastActors([{ id: 'p1', box: box(her.x, her.y), push: () => {} }])
+  const home = settle()
+  // its owner walks right under it: nothing
+  her.x = home.x; c.setBlastActors([{ id: 'p1', box: box(her.x, her.y), push: () => {} }])
+  const withHer = settle()
+  // another player stands where it is: it moves off
+  const there = { x: withHer.x - 40, y: withHer.y + 100 }
+  c.setBlastActors([{ id: 'p1', box: box(her.x, her.y), push: () => {} }, { id: 'p2', box: box(there.x, there.y), push: () => {} }])
+  const away = settle()
+  assert.ok(Math.hypot(away.x - there.x, away.y - (there.y - 100)) > 150, `it keeps its distance (${Math.round(Math.hypot(away.x - there.x, away.y - (there.y - 100)))})`)
+  assert.ok(away.x > withHer.x + 60)
+  // they leave: it is back where it was
+  c.setBlastActors([{ id: 'p1', box: box(her.x, her.y), push: () => {} }])
+  const again = settle()
+  assert.ok(Math.abs(again.x - withHer.x) < 2 && Math.abs(again.y - withHer.y) < 8, '(it bobs a little)')
+  // online, a chicken of another browser does the same
+  c.setNetOn(true); c.setNetBodies([{ x: there.x, y: there.y }])
+  const net = settle()
+  assert.ok(net.x > withHer.x + 60)
+  // a chick (no player) is nobody
+  c.setNetBodies([]); c.setBlastActors([{ id: 'p1', box: box(her.x, her.y), push: () => {} }, { box: box(there.x, there.y), push: () => {} }])
+  const chick = settle()
+  assert.ok(Math.abs(chick.x - withHer.x) < 2 && Math.abs(chick.y - withHer.y) < 8)
+})
+
+test('each class minds the other players in its way; a chick minds nobody', () => {
+  const of = shot => F.soulFollowParams({ species: 'jelly', shot })
+  assert.ok(of('wind').alert > of('strings').alert && of('strings').alert > of('keys').alert && of('keys').alert > of('rebate').alert)
+  assert.ok(of('wind').flee > of('strings').flee && of('strings').flee > of('keys').flee && of('keys').flee > of('rebate').flee)
+  const chick = F.soulFollowParams({ species: 'chick', shot: null })
+  assert.deepEqual([chick.alert, chick.flee], [0, 0])
+  for (const k of ['alert', 'flee']) assert.ok(F.SOUL_FOLLOW_RANGES[k].max >= F.SOUL_FOLLOW_DEFAULTS[k])
+})

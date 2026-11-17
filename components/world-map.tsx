@@ -18,7 +18,7 @@ import { OnlineHub } from './online/online-hub'
 import OPENING_PHRASES from '@/data/ui/opening-phrases.json'
 import { isAdminUser } from '@/lib/admin/access'
 import { useOnline } from './online/online-provider'
-import { AboutReleaseDialog } from './about-release-dialog'
+import { AboutReleaseDialog, type AboutTab } from './about-release-dialog'
 import styles from './world-map.module.css'
 import { ChickenGround, ChickenLayer, ChickenLimits, ChickenTouchToggle } from './chicken/chicken-layer'
 import { ChickenPortal, chickenPortalAvoid } from './chicken/chicken-portal'
@@ -128,7 +128,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
   const [pressedPopupState, setPressedPopupState] = useState<{ id: string } | null>(null)
   const [enteringCityId, setEnteringCityId] = useState<string | null>(null)
   const [showAbout, setShowAbout] = useState(false)
-  const [aboutTab, setAboutTab] = useState<'about' | 'releases'>('about')
+  const [aboutTab, setAboutTab] = useState<AboutTab>('about')
   const [profileTabRequested, setProfileTabRequested] = useState(false)
   const [currentZoom, setCurrentZoom] = useState(100)
   const [isFullscreen, setIsFullscreen] = useState(false)

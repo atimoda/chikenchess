@@ -52,6 +52,33 @@ Parâmetros (em `SoulFollowParams`, junto dos de voo; editáveis no grupo **Expl
 | Preguiçosa | 0,85 | 900 | 25 s | 0,5 | 1 | 0,2 | 0,2 |
 | Pintinho | 0 | | | | | | |
 
+## Almas soltas que fogem dos outros players
+
+`soulFleeStep` (`lib/pigchicken/soul-roam.ts`), uma vez por quadro e por alma, depois da exploração e do bot amigo. Deixa a captura de alma solta por outro player ([Almas](souls.md#captura-de-alma-solta-1011-v270)) mais difícil, sem impedir.
+
+- **Quem assusta:** o player mais próximo que não é o dono: os outros players locais e, no Pátio online, as galinhas dos outros navegadores. O dono, os pintinhos e os inimigos nunca assustam. Conta o meio do corpo do boneco.
+- **Junto do dono (descansando ou seguindo):** com alguém a menos da distância que ela guarda, a alma se afasta na direção oposta, um pouco para cima (30% do recuo), até ficar a essa distância. A distância guardada é o `alert` vezes 0,4 (com `flee` 0) a 1 (com `flee` 1). Ela recua e volta a no máximo 1,2 vez a sua velocidade de voo, então quem corre para cima dela ainda a alcança. Quando o player sai, ela volta ao lugar. As paredes e o topo do céu a seguram.
+- **Pousada num lugar:** com alguém a menos de 0,6 do `alert`, ela decide uma vez por aproximação: com chance `flee`, larga o lugar e voa de volta para o dono; senão fica, e só decide de novo depois que o player sair do `alert` e voltar. A caminho de um lugar, ela não desvia.
+- **Sem efeito:** chamada pelo Callback, numa ajuda que a leva a algum ponto, dentro de um portal ou com o dono fora do jogo, ela não foge. `alert` 0 ou `flee` 0 desligam a fuga.
+
+Parâmetros (em `SoulFollowParams`; no editor de fichas, no fim do grupo **Voo**):
+
+| Parâmetro | Faixa | Padrão | O que faz |
+| --- | --- | --- | --- |
+| `alert` (Susto) | 0 a 600 px | 220 | A que distância outro player a incomoda; 0 não foge de ninguém |
+| `flee` (Fuga) | 0 a 1 | 0,4 | Quanto se afasta e a chance de largar o lugar onde pousou; 0 não foge |
+
+| Classe | Susto | Fuga |
+| --- | --- | --- |
+| Sentinela | 300 | 0,6 |
+| Patrulheira | 220 | 0,4 |
+| Escolta | 120 | 0,15 |
+| Ritmada | 220 | 0,4 |
+| Preguiçosa | 110 | 0,1 |
+| Pintinho | 0 | 0 |
+
+No Pátio online cada navegador decide a fuga das suas almas; os outros veem a alma se afastar pela posição enviada.
+
 ## Cagar
 
 Poder de algumas aves. O pássaro só solta quando há um boneco embaixo: na coluna dele (26 px para cada lado do boneco), de 50 a 900 px abaixo, sem piso sólido no meio. Pronto e sem ninguém embaixo, olha de novo a cada 0,15 s.
@@ -76,4 +103,4 @@ Pátio e Templo, todos os players locais e o Pátio online (com os limites acima
 
 ## Ainda não implementado
 
-Fuga das almas soltas de outros players, e cagado visível para os outros navegadores.
+Cagado visível para os outros navegadores.
