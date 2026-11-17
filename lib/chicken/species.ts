@@ -77,8 +77,8 @@ export const FOX_FACTORS: Partial<Record<NumKey, number>> = {
 }
 // values set outright, not scaled
 const SET: Partial<Record<BirdSpecies, Partial<Record<NumKey, number>>>> = {
-  pig: { airJumps: 0, climbSpeed: 0, jumpFlaps: 0, broodJumpFlaps: 0, flyFallDivisor: 1, flyUpFallAtten: 0, flyDownFallAtten: 0 },
-  fox: { airJumps: 1, jumpFlaps: 0, broodJumpFlaps: 0 },
+  pig: { maxHp: 300, airJumps: 0, climbSpeed: 0, jumpFlaps: 0, broodJumpFlaps: 0, flyFallDivisor: 1, flyUpFallAtten: 0, flyDownFallAtten: 0 },
+  fox: { maxHp: 200, airJumps: 1, jumpFlaps: 0, broodJumpFlaps: 0 },
 }
 
 // the tuning a bird of this species reads, from the chicken's (already merged with the central configuration)

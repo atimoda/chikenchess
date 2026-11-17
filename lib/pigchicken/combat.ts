@@ -782,6 +782,9 @@ export function createCombat() {
     addText(t.x, top - 60, t.kind === 'alien' ? 'virou passarinho!' : 'curado!', '#7bdff2')
   }
   let lastBody: Body | null = null
+  // damage to this browser's own player (setHurt): a zombie's bite takes ZOMBIE_BITE of its health
+  let hurtSelf: ((amount: number, fromX: number) => void) | null = null
+  const ZOMBIE_BITE = 15
 
   // ---------- the undead ----------
   const harmonyNow = () => { const z = music.zone; return { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() } }
@@ -2406,13 +2409,15 @@ export function createCombat() {
     onBite: (t, at) => {
       const px = at?.x ?? playerX, py = at?.y ?? playerY
       // the bitten one is this browser's chicken: it counts here
-      if (px === playerX && py === playerY) kills.bites++
+      if (px === playerX && py === playerY) { kills.bites++; hurtSelf?.(ZOMBIE_BITE, t.x) }
       addText(px, py - 150, 'mordida!', '#ff6b5b'); burst(px + (t.face > 0 ? -20 : 20), py - 80, 10, '#ff6b5b', 200, 3); sound('bite', null)
     },
   })
 
   return {
     setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
+    /** What damage to this browser's own player does (its health, lib/chicken/engine.ts): a zombie's bite. */
+    setHurt(fn: ((amount: number, fromX: number) => void) | null) { hurtSelf = fn },
     setCatchables(list: Catchable[]) { catchables = list },
     /** a little cloud where something left (another browser's chick that is no longer there) */
     puff(x: number, y: number) { cloud(x, y) },

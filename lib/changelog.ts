@@ -17,6 +17,7 @@ const RECENT = [
         'O ajuste Tamanho da galinha agora vale 1 no tamanho normal (antes era 0,5), sem mudar o tamanho na tela: configurações salvas antes são convertidas ao abrir. Ajuste novo em Voo: Pulos no ar (máximo).',
         'Sem item na mão, Pig bate com a corrente (Correntada) e Ken com o rabo (Rabada): Golpe dá o golpe rápido, no combo, e Atirar carrega o golpe forte e solta ao largar o botão, como nos bastões. A corrente alcança e empurra mais; o rabo varre arcos maiores e gira por baixo do Ken. Os números ficam no painel Itens, nas fichas Correntada e Rabada.',
         'Chocando no chão, Pig fica firme (Guarda): explosões e golpes não o empurram. Fora disso, Pig sofre só 35% do empurrão e Ken 80%. Chocar + Pulo vira Bote no Ken (salto longo e baixo) e Investida no Pig (carga quase reta pelo chão).',
+        'Os bonecos ganharam vida: galinha 100, Ken 200 e Pig 300. Explosões e mordidas de zumbi tiram vida, a Guarda do Pig corta 60% do dano que vem de frente, e depois de 6 segundos sem dano ela volta aos poucos. Uma barrinha sobre a cabeça aparece quando falta vida.',
       ] },
       { title: 'Partida', items: [
         'Na campanha e no online, tentar um lance que deixaria o próprio rei sob ataque (mover uma peça cravada, levar o rei para uma casa atacada ou não sair do cheque) mostra por 3 segundos o aviso “Você não pode deixar seu rei sob ataque.”, com a peça tremendo e o som de bloqueio. Antes, o lance era só ignorado.',

@@ -1157,6 +1157,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // Register every local player before the shared projectile update, including its owner.
       // (id: the local player each one is, for what their souls flying free do to them; the chicks have none)
       const playerOf = new Map([[engine, "p1"] as const, ...Array.from(extras?.current?.entries() ?? [], ([id, e]) => [e, id] as const)])
+      // a zombie biting this browser's chicken takes some of her health
+      combat.setHurt((amount, fromX) => engine.hurt(amount, fromX - camX))
       combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? []), ...Array.from(chicks?.current?.values() ?? [])].map(eng => {
         const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
         return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }

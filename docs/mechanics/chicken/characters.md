@@ -26,6 +26,16 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 - **Ainda não feitos:** Pisão (onda ao pousar da queda rápida do Pig), Embalo (Pig jogando longe quem encosta na velocidade máxima), quique do Ken (0,35 s agarrado e salto para o outro lado), o rabo girando como hélice na Planagem e o rabo em seis ossos.
 - **Não verificado no navegador:** a animação da Rabada e da Correntada em jogo (o painel do navegador estava oculto e o laço do jogo não roda assim); conferido por tipos e testes.
 
+## Vida (etapa 4)
+
+- **Quanto:** parâmetro `maxHp`: galinha 100 (a base do jogo), Ken 200 e Pig 300 pela classe (`SET` em `species.ts`). Pintinhos (bots) não têm vida.
+- **O que tira:** explosões que acertam o boneco (o dano que a explosão já calculava para o empurrão) e a mordida de zumbi no boneco deste navegador (15). Tiros e golpes de outros jogadores ainda não acertam jogadores (fica para a arena).
+- **Guarda do Pig:** chocando no chão, o dano que vem da frente cai `guardBlock`% (60).
+- **Volta sozinha:** `regenDelay` s sem tomar dano (6) e ela volta a `regenRate`% da vida cheia por segundo (8).
+- **Barra:** uma barrinha sobre a cabeça, verde acima de 50%, âmbar acima de 25% e vermelha abaixo; aparece quando falta vida e some 2 s depois de encher. Não espelha com o boneco.
+- **Vida zero (provisório):** por enquanto o boneco recupera a vida toda na hora. Na etapa 5 ele vira filhote.
+- **Não verificado no navegador:** a barra e o dano em jogo (o painel do navegador estava oculto e o laço do jogo não roda assim); conferido por tipos.
+
 ## Tamanho (escala rebaseada)
 
 - O ajuste **Tamanho da galinha** (`scale`) passa a valer 1 no tamanho normal: o motor desenha o rig a `SCALE_BASE` (0,5) vezes o valor. O padrão do código vai de 0,55 para 1, que é o tamanho que a galinha tinha com 0,5.
@@ -49,4 +59,4 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 
 ## Ainda não implementado
 
-Planejado e aprovado na prévia, em etapas: Pisão e Embalo do Pig, quique e rabo-hélice do Ken, Espreita fora da mira dos aliens, vida (Chi 100, Ken 200, Pig 300), filhotes (leitão e raposinha), captura pelo Passaguá e o rabo do Ken em seis ossos.
+Planejado e aprovado na prévia, em etapas: Pisão e Embalo do Pig, quique e rabo-hélice do Ken, Espreita fora da mira dos aliens, filhotes (leitão e raposinha), captura pelo Passaguá e o rabo do Ken em seis ossos.

@@ -106,6 +106,12 @@ export const CHICKEN_PARAMS = {
   airJumps: 99,
   // how much a push (explosion, blow) moves her: 1 = all of it (Pig takes 0.35, Ken 0.8)
   knockbackTaken: 1,
+  // health: how much she has (Pig 300, Ken 200 by their class), how long without damage until it comes back and how
+  // fast (% of the whole per second); Guarda: how much less the damage from the front hurts Pig (%)
+  maxHp: 100,
+  regenDelay: 6,
+  regenRate: 8,
+  guardBlock: 60,
   heldFlapRate: 9,
   jumpFlapRate: 14,
   // Idle

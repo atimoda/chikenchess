@@ -32,7 +32,7 @@ import { mixGain } from '../pigchicken/mixer'
 import { LIMIT_BORDER } from './limits'
 import { stageWidth } from "../stage-size"
 
-export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number; species?: BirdSpecies }
+export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number; species?: BirdSpecies; hp?: number; maxHp?: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
 // accelMult scales her acceleration; accelPower > 1 eases each start (1 linear, 3 "ease-super-in": slow, then fast),
 // reaching full speed in accelRamp seconds; buddha / fizz are how many doses of each consumable look she has
@@ -63,6 +63,8 @@ export type ChickenEngine = {
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
   getMotionState: () => Omit<ChickenState, 'shoulder'>
+  /** Health (docs/mechanics/chicken/characters.md): takes `amount` off (from a source at x `fromX`, for Pig's Guarda). */
+  hurt: (amount: number, fromX?: number) => void
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
@@ -285,6 +287,7 @@ const SVG_MARKUP = `
     <radialGradient id="chk-buddhaGlow"><stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/><stop offset="0.6" stop-color="#ffd166" stop-opacity="0.22"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient>
   </defs>
   <ellipse data-part="shadow" rx="60" ry="7" fill="#000" opacity="0.35"/>
+  <g data-part="hpBar" style="display:none"><rect x="-32" y="-4" width="64" height="8" rx="4" fill="#0b0f0c" opacity="0.7"/><rect data-part="hpFill" x="-30" y="-2" width="60" height="4" rx="2" fill="#3fcf6b"/></g>
   <g data-part="root" style="pointer-events: visiblePainted; cursor: grab; touch-action: none">
     ${AURA_MARKUP}
     ${legMarkup('Back', -26)}${legMarkup('Front', -14)}
@@ -349,7 +352,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo', 'bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead', 'xraySocket', 'artWingBack', 'artTail', 'artTorso', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'hpBar', 'hpFill', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo', 'bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead', 'xraySocket', 'artWingBack', 'artTail', 'artTorso', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -433,6 +436,32 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let species = opts.species
   const R = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
   paramsReady = true
+  // ---------- health ----------
+  // hp: what she has left; hurtAgo: seconds since the last damage (it comes back on its own after regenDelay);
+  // a chick (a bot) has none. At zero she gets it all back for now (the Filhote comes in the next step).
+  let hp = R.maxHp, hurtAgo = Infinity, barShown = 0
+  function hurt(amount: number, fromX?: number) {
+    if (!(amount > 0) || portalEntry || species === 'chick') return
+    // Pig's Guarda: brooding on the ground, what comes from the front hurts less
+    const sp = species ?? lookSpecies
+    if (sp === 'pig' && S.grounded && S.state === 'brood' && fromX !== undefined && Math.sign(fromX - S.x) === S.face) amount *= 1 - R.guardBlock / 100
+    hp = Math.max(0, hp - amount); hurtAgo = 0; barShown = 2
+    if (hp <= 0) { hp = R.maxHp; S.squash = 1 }
+  }
+  function stepHealth(dt: number) {
+    if (hp > R.maxHp) hp = R.maxHp
+    hurtAgo += dt
+    if (hurtAgo >= R.regenDelay && hp < R.maxHp) hp = Math.min(R.maxHp, hp + R.maxHp * R.regenRate / 100 * dt)
+    if (hp < R.maxHp) barShown = 2; else barShown = Math.max(0, barShown - dt)
+    const show = barShown > 0 && species !== 'chick'
+    el.hpBar.style.display = show ? '' : 'none'
+    if (!show) return
+    const f = hp / Math.max(1, R.maxHp)
+    el.hpFill.setAttribute('width', (60 * f).toFixed(1))
+    el.hpFill.setAttribute('fill', f > 0.5 ? '#3fcf6b' : f > 0.25 ? '#f2c14e' : '#ef4b4b')
+    const top = (S.cl ? S.cl.py : S.y) - (HEAD_TOP + 40) * R.scale
+    el.hpBar.setAttribute('transform', `translate(${(S.cl ? S.cl.px : S.x).toFixed(1)} ${top.toFixed(1)}) scale(${Math.max(0.6, R.scale * 1.6).toFixed(2)})`)
+  }
   let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     rigMatrices.clear()
@@ -2273,6 +2302,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (portalEntry) { remote?.(); if (portalEntry) renderPortal(now) }
     else if (remote) remoteStep(dt)
     else if (!isChickenControlsListening()) step(dt); else render()
+    if (!portalEntry && !remote) stepHealth(dt)
     raf = requestGameFrame(frame)
   }
   tagBoxes()
@@ -2306,7 +2336,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   function motionState(): Omit<ChickenState, 'shoulder'> {
-    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, networkAnimation: !portalEntry && S.cl ? S.clingAnim ?? 'cling' : !portalEntry && !S.held && !S.cl && !S.grounded && S.shocking ? 'shockingAirPrepare' : !portalEntry && !S.held && !S.cl && !S.grounded && shockingAirReleaseTime > 0 ? 'shockingAirRelease' : undefined, held: !!S.held, width: W, height: H, groundY, species: species ?? lookSpecies }
+    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, networkAnimation: !portalEntry && S.cl ? S.clingAnim ?? 'cling' : !portalEntry && !S.held && !S.cl && !S.grounded && S.shocking ? 'shockingAirPrepare' : !portalEntry && !S.held && !S.cl && !S.grounded && shockingAirReleaseTime > 0 ? 'shockingAirRelease' : undefined, held: !!S.held, width: W, height: H, groundY, species: species ?? lookSpecies, hp, maxHp: R.maxHp }
   }
 
   return {
@@ -2391,6 +2421,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // Full snapshots remain eager; camera/contact queries need no SVG geometry.
     getState: () => ({ ...motionState(), shoulder: shoulder() }),
     getMotionState: motionState,
+    hurt,
     canPointAndClick,
     canWalkToPortal,
     walkToPortal(id, point) {
@@ -2525,6 +2556,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
           // (she flinches and holds on)
           if (!hit.drop) { S.squash = 0.5; return }
         }
+        if (damage) hurt(damage, S.x - Math.sign(vx || 1) * 100)
         // how much a push moves her (Pig barely moves; in Guarda, brooding on the ground, not at all)
         const k = R.knockbackTaken * (S.grounded && S.state === 'brood' && (species ?? lookSpecies) === 'pig' ? 0 : 1)
         if (k <= 0) { S.squash = 0.5; return }
