@@ -9,6 +9,7 @@ import { isBirdId, type BirdId } from './birds'
 import { SILENCE, ambienceKey, cleanAmbience, legacyAmbience, type ZoneAmbience } from './zone-ambience'
 import { SCENE_W, templeScene, worldScenes } from './world'
 import { FEELS, SCALE_IDS, ZONE_BPM, ZONE_LIFE, isZoneChange, zoneChange, type ZoneChangeId } from './zone-changes'
+import { ZONE_TIME, isGravity, type GravityId } from './zone-physics'
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
@@ -50,6 +51,11 @@ export type SoundZoneParams = ZoneSequence & {
   change: ZoneChangeId
   // "Dano só no tom" (music.ts): absent when off
   inKey?: InKeyRule
+  // what it does to the bodies inside it (zone-physics.ts): the gravity of a planet, the Moon or the Sun (absent: the
+  // Earth's), its time in percent (slow motion; absent: 100) and the x-ray look (absent: off)
+  gravity?: GravityId
+  time?: number
+  xray?: true
 }
 export const ZONE_PRIORITY = { min: 1, max: 9 }
 export { ZONE_BPM, ZONE_LIFE }
@@ -104,6 +110,9 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
     life: Math.round(clamp(num(z.life, 0), ZONE_LIFE.min, ZONE_LIFE.max)),
     change: isZoneChange(z.change) ? z.change : d.change,
     ...(IN_KEY_RULES.includes(z.inKey as InKeyRule) ? { inKey: z.inKey as InKeyRule } : {}),
+    ...(isGravity(z.gravity) && z.gravity !== 'earth' ? { gravity: z.gravity } : {}),
+    ...(typeof z.time === 'number' && Number.isFinite(z.time) && Math.round(clamp(z.time, ZONE_TIME.min, ZONE_TIME.max)) !== 100 ? { time: Math.round(clamp(z.time, ZONE_TIME.min, ZONE_TIME.max)) } : {}),
+    ...(z.xray === true ? { xray: true as const } : {}),
   }
 }
 

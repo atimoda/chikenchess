@@ -1,6 +1,6 @@
 "use client"
 
-// The art of the Chãos (5 biomes) and Paredes (3 styles): the element's outline filled with its texture, shaded
+// The art of the Chãos (7 biomes) and Paredes (3 styles): the element's outline filled with its texture, shaded
 // towards the back, and the walkable top (the edges facing up) drawn with the biome's cap.
 import { memo, useId, useMemo } from "react"
 import { surfaceTopEdges, type SurfaceParams, type SurfacePoint } from "@/lib/pigchicken/surfaces"
@@ -46,6 +46,29 @@ const LOOKS: Record<SurfaceParams["style"], Look> = {
     pattern: { w: 110, h: 84, body: <>
       <path d="M0 30l18 6 14-10 20 8 18-4 22 9 18-5M40 34l-6 22 10 14m36-31 4 20-12 18" fill="none" stroke="#ff6a2b" strokeWidth="2" opacity=".55" />
       <path d="M8 62l20-4 16 6" fill="none" stroke="#5a4744" strokeWidth="2" opacity=".6" />
+    </> },
+  },
+  moon: {
+    fill: "#9a9aa1", shade: "#3b3b44", outline: "#2b2b32", cap: [[8, "#5f5f68"], [3, "#e4e4e8"]],
+    pattern: { w: 132, h: 96, body: <>
+      <ellipse cx="30" cy="24" rx="17" ry="7" fill="#6c6c75" opacity=".6" />
+      <path d="M13 24a17 7 0 0 0 34 0" fill="none" stroke="#d2d2d8" strokeWidth="1.6" opacity=".7" />
+      <ellipse cx="96" cy="62" rx="24" ry="9" fill="#686871" opacity=".55" />
+      <path d="M72 62a24 9 0 0 0 48 0" fill="none" stroke="#d2d2d8" strokeWidth="1.8" opacity=".65" />
+      <ellipse cx="22" cy="78" rx="7" ry="3" fill="#71717a" opacity=".6" />
+      <ellipse cx="78" cy="14" rx="5" ry="2.2" fill="#71717a" opacity=".6" />
+      <circle cx="58" cy="44" r="1.6" fill="#c8c8ce" opacity=".6" /><circle cx="118" cy="30" r="1.3" fill="#c8c8ce" opacity=".6" />
+    </> },
+  },
+  mars: {
+    fill: "#b0532f", shade: "#4d1c0e", outline: "#3a1409", cap: [[9, "#7d311a"], [4, "#e39a68"]],
+    pattern: { w: 116, h: 80, body: <>
+      <path d="M0 16q14-5 29 0t29 0 29 0 29 0M0 52q14-5 29 0t29 0 29 0 29 0" fill="none" stroke="#c97a4f" strokeWidth="1.8" opacity=".4" />
+      <ellipse cx="34" cy="34" rx="7" ry="4" fill="#6e2a16" opacity=".55" />
+      <ellipse cx="88" cy="68" rx="9" ry="4.5" fill="#6e2a16" opacity=".5" />
+      <ellipse cx="74" cy="30" rx="12" ry="4.5" fill="#8a3a1f" opacity=".55" />
+      <path d="M62 30a12 4.5 0 0 0 24 0" fill="none" stroke="#e7a77a" strokeWidth="1.4" opacity=".55" />
+      <circle cx="14" cy="66" r="2.2" fill="#5a2212" opacity=".6" /><circle cx="104" cy="40" r="1.8" fill="#5a2212" opacity=".6" />
     </> },
   },
   brick: {

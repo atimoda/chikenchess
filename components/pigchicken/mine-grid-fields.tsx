@@ -108,8 +108,8 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
             </StepSelect>
           </label>
         </>)}
-        {group("Zonas sonoras", <>
-          {check("Blocos são zonas sonoras", "Cada bloco toca como uma Zona sonora: o tom, a escala, o andamento e o baixo da cena onde ele está, com a percussão sorteada para ele.", g.zones.on, on => set({ zones: { ...g.zones, on } }))}
+        {group("Zonas", <>
+          {check("Blocos são zonas", "Cada bloco é uma Zona: o tom, a escala, o andamento e o baixo da cena onde ele está, com a percussão sorteada para ele.", g.zones.on, on => set({ zones: { ...g.zones, on } }))}
           {g.zones.on && <>
             <PatioRange label="Blocos com ritmo" min={MINE_ZONE_RHYTHM.min} max={MINE_ZONE_RHYTHM.max} step={MINE_ZONE_RHYTHM.step} value={g.zones.rhythm} display={`${g.zones.rhythm}%`}
               onChange={v => set({ zones: { ...g.zones, rhythm: v } })} onReset={() => set({ zones: { ...g.zones, rhythm: MINE_ZONE_RHYTHM.default } })}

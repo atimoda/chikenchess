@@ -9,6 +9,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { followParallax, onCameraMove, watchCameraRegion } from "@/lib/pigchicken/live-camera"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
+import { FOREST_DEFAULT, forestDraw, type ForestParams } from "@/lib/pigchicken/forest"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OUTLINE_PX, type MountainParams } from "@/lib/pigchicken/mountains"
 import { rng, shadeFaces, snowRegion } from "@/lib/pigchicken/mountain-draw"
 import { BACKDROP_BOTTOM, BACKDROP_PAD_L, BACKDROP_PAD_R, CLOUD_DEPTH, backdropLayerTop, FOREST_FAR, FOREST_NEAR, MOUNTAIN_RANGES, SUN_DEPTH, backdropCopies, backdropLayerW, rangeRidge, type BackdropLayerId } from "@/lib/pigchicken/backdrop-layers"
@@ -24,13 +25,13 @@ const G = WORLD_GROUND_Y
 const BOTTOM = BACKDROP_BOTTOM, PAD_L = BACKDROP_PAD_L, PAD_R = BACKDROP_PAD_R
 const layerW = backdropLayerW
 
-// trees along a line: rounded crowns and pines, as one silhouette path per colour
-function trees(w: number, seed: number, base: number, size: number, gap: number) {
+// trees along a line: rounded crowns and pines (`pines`: their share, 0 to 1), as one silhouette path per colour
+function trees(w: number, seed: number, base: number, size: number, gap: number, pines = 0.45) {
   const r = rng(seed)
   let crowns = "", trunks = ""
   for (let x = r() * gap; x < w; x += gap * (0.5 + r())) {
     const h = size * (0.65 + r() * 0.6)
-    if (r() < 0.45) {
+    if (r() < pines) {
       // a pine: three stacked triangles
       const wd = h * 0.42
       trunks += `M ${x - h * 0.03} ${base} L ${x - h * 0.03} ${base - h * 0.2} L ${x + h * 0.03} ${base - h * 0.2} L ${x + h * 0.03} ${base} Z `
@@ -174,15 +175,18 @@ function rangeColor(look: SkyLook, p: number) {
 
 // mountains: Configurações do Pátio → Montanhas (shape, snow, tint); their light and haze come from the sky
 // clouds: Configurações do Pátio → Nuvens (amount, size, height, softness, wind, tint…); snowfall: → Neve caindo;
-// aurora: → Aurora (curtains of light at the sun's depth, behind the clouds)
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, zoomMin = 0.5 }: { worldW: number; look?: SkyLook; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; zoomMin?: number }) {
+// aurora: → Aurora (curtains of light at the sun's depth, behind the clouds); forest: → Mata (each tree line's
+// density, size, pines, shape and tint; Céu e luz → Mata still hides both)
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, forest = FOREST_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, zoomMin = 0.5 }: { worldW: number; look?: SkyLook; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; zoomMin?: number }) {
   // zoomed out far enough to see the whole world, the layers repeat past their ends
   const copies = (p: number) => backdropCopies(worldW, p, zoomMin)
   const wSun = layerW(worldW, SUN_DEPTH), wCloud = layerW(worldW, CLOUD_DEPTH)
   const wTreesFar = layerW(worldW, FOREST_FAR.p), wTrees = layerW(worldW, FOREST_NEAR.p)
+  const far = forestDraw("far", forest.far), near = forestDraw("near", forest.near)
   const shapes = useMemo(() => ({
-    treeFar: trees(wTreesFar, 31, G - 40, 64, 46), treeNear: trees(wTrees, 47, G - 6, 120, 210),
-  }), [wTreesFar, wTrees])
+    treeFar: trees(wTreesFar, far.seed, G - 40, far.size, far.gap, far.pines), treeNear: trees(wTrees, near.seed, G - 6, near.size, near.gap, near.pines),
+  }), [wTreesFar, wTrees, far.seed, far.size, far.gap, far.pines, near.seed, near.size, near.gap, near.pines])
+  const treeFill = (i: 0 | 1) => { const l = i ? forest.near : forest.far; return l.tintAmount > 0 ? mix(look.trees[i], l.tint, l.tintAmount / 100 * 0.8) : look.trees[i] }
   const starPath = useMemo(() => stars(wSun, 5, look.starCount, look.starSize), [wSun, look.starCount, look.starSize])
   const { size: cSize, height: cHeight, spread: cSpread, shape: cShape, kind: cKind, puffs: cPuffs, detail: cDetail } = cloudSet
   const cloudList = useMemo(() => cKind === "cumulus"
@@ -321,13 +325,13 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         )
       })}
       {look.forest && <>
-        <Layer p={FOREST_FAR.p} w={wTreesFar} id="forestFar" copies={copies(FOREST_FAR.p)}>
-          <path d={treeFar.trunks} fill={look.trees[0]} /><path d={treeFar.crowns} fill={look.trees[0]} />
-          <rect x={0} y={FOREST_FAR.top} width={wTreesFar} height={BOTTOM - G + 42} fill={look.trees[0]} />
-        </Layer>
-        <Layer p={FOREST_NEAR.p} w={wTrees} id="forestNear" copies={copies(FOREST_NEAR.p)}>
-          <path d={treeNear.trunks} fill={look.trees[1]} /><path d={treeNear.crowns} fill={look.trees[1]} />
-        </Layer>
+        {forest.far.show && <Layer p={FOREST_FAR.p} w={wTreesFar} id="forestFar" copies={copies(FOREST_FAR.p)}>
+          <path d={treeFar.trunks} fill={treeFill(0)} /><path d={treeFar.crowns} fill={treeFill(0)} />
+          <rect x={0} y={FOREST_FAR.top} width={wTreesFar} height={BOTTOM - G + 42} fill={treeFill(0)} />
+        </Layer>}
+        {forest.near.show && <Layer p={FOREST_NEAR.p} w={wTrees} id="forestNear" copies={copies(FOREST_NEAR.p)}>
+          <path d={treeNear.trunks} fill={treeFill(1)} /><path d={treeNear.crowns} fill={treeFill(1)} />
+        </Layer>}
       </>}
       {snowfall && snowfall.amount > 0 && <Snowfall snow={snowfall} color={mix("#ffffff", look.clouds.lit, 0.25)} />}
     </div>

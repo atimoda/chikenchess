@@ -465,9 +465,9 @@ test('the old Chão da Vila becomes the first ground element, keeping an edited 
   assert.equal(L.defaultLayout().elements[0].id, 'village-ground')
 })
 
-test('grounds and walls: five biomes, three walls, hard by default and an outline that survives storage', () => {
+test('grounds and walls: seven biomes, three walls, hard by default and an outline that survives storage', () => {
   const S = loadTs('lib/pigchicken/surfaces.ts')
-  assert.equal(S.GROUND_BIOMES.length, 5)
+  assert.equal(S.GROUND_BIOMES.length, 7)
   assert.equal(S.WALL_STYLES.length, 3)
   for (const style of S.GROUND_BIOMES) {
     const el = L.createElement('ground', 400, 600, { surface: S.defaultSurface('ground', style) })

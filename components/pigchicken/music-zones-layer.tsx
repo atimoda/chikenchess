@@ -127,7 +127,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
   const xs = sceneEdgeList(sceneEdges, screens)
   const zoneEls = elements.filter(e => e.kind === "zone" && e.params.zone)
   return (
-    <div aria-label="Zonas sonoras" className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
+    <div aria-label="Zonas" className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
       <div ref={ref} className="absolute left-0 top-0">
         {/* each scene's own zone, stuck to the ground: it plays in the whole column over its floor, up to the ceiling */}
         {Array.from({ length: scenes }, (_, s) => {

@@ -45,6 +45,7 @@ import { SCENE_W, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt,
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, type LayoutElement } from "@/lib/pigchicken/layout"
 import { groundZones, placeEnvAt, soundZoneOf, zoneAt, zoneBlockSolo, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
+import { setLiveZones, zoneEffectsAt } from "@/lib/pigchicken/zone-physics"
 import { hitZone, liveZones, resetZoneLife, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { bindMinePlay } from "./mine-grid-play"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
@@ -727,6 +728,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let blockZones: ZoneBox[] = [], blockZonesOf: unknown[] = []
     const allZones = () => liveZones([...ground, ...blockZones, ...worldMusic.zones])
     combat.setPlaceEnv((x, y) => placeEnvAt(playZones, worldMusic.lanes, x, y))
+    combat.setZoneEffects((x, y) => zoneEffectsAt(playZones, x, y))
     combat.setZoneWalls((px, py, x, y, count) => {
       const hit = zoneWallHit(playZones, px, py, x, y)
       if (!hit) return null
@@ -938,6 +940,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       moveLiveCamera(camX, camY, zoom)
       engine.setCameraZoom(zoom)
       others.forEach(o => o.setCameraZoom(zoom))
+      // the Zona where each chicken stands: its gravity and the x-ray look (zone-physics.ts); the online players'
+      // chickens ask the same zones (setLiveZones)
+      setLiveZones(playZones)
+      const zoneFxOf = (o: ChickenEngine) => { const os = o.getMotionState(); o.setZoneEffects(zoneEffectsAt(playZones, os.x + camX, os.y - camY - 60 * os.scale)) }
+      zoneFxOf(engine); others.forEach(zoneFxOf)
 
       // ---------- aim ----------
       // picked up by the pointer: every action but Throw waits until she is let go

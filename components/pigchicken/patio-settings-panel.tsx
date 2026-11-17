@@ -17,6 +17,7 @@ import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
 import { AuroraFields, CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
+import { ForestFields } from "./forest-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 // the zoom's slider runs on a log scale (each step the same proportion); its left end, below the floor, is the
@@ -74,7 +75,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             }}
             onReset={() => set({ zoom: base.zoom })}
             hint="Até onde a câmera afasta (ponto da esquerda) e aproxima (ponto da direita). Na ponta esquerda, Pátio inteiro: afasta até o Pátio todo caber na tela." />
-          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Cada cena toca a sua zona (Campo, Noite, Feira…). Desligado, só as Zonas sonoras do mapa tocam; fora delas não há percussão nem drone.">
+          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Cada cena toca a sua zona (Campo, Noite, Feira…). Desligado, só as Zonas do mapa tocam; fora delas não há percussão nem drone.">
             <span>Zonas das cenas</span>
             <input type="checkbox" checked={patioSceneMusic(layout.settings)} onChange={e => {
               const { sceneMusic: _old, ...rest } = layout.settings ?? {}
@@ -101,6 +102,10 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           {group("Montanhas", <MountainFields mountains={layout.settings?.mountains} onChange={mountains => {
             const { mountains: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: mountains ? { ...rest, mountains } : rest })
+          }} />)}
+          {group("Mata", <ForestFields forest={layout.settings?.forest} skyForest={layout.settings?.sky?.forest !== false} onChange={forest => {
+            const { forest: _old, ...rest } = layout.settings ?? {}
+            onChange({ ...layout, settings: forest ? { ...rest, forest } : rest })
           }} />)}
           {group("Nuvens", <CloudFields clouds={layout.settings?.clouds} skyClouds={layout.settings?.sky?.clouds} onChange={clouds => {
             const { clouds: _old, ...rest } = layout.settings ?? {}

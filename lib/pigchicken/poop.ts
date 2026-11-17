@@ -50,9 +50,10 @@ export function poopUnder(x: number, y: number, bodies: readonly Box[], floors: 
 export const newPoop = (x: number, y: number, vx: number, damage: number, by: string | null, spare: boolean, foes: boolean): Poop =>
   ({ x, y, vx: vx * 0.3, vy: 40, t: 0, damage, by, spare, foes })
 // one frame of its fall; false: its time is up
-export function poopFall(p: Poop, dt: number): boolean {
+// (gravity: the factor of the Zona it falls in, zone-physics.ts)
+export function poopFall(p: Poop, dt: number, gravity = 1): boolean {
   p.t += dt
-  p.vy = Math.min(POOP.max, p.vy + POOP.gravity * dt)
+  p.vy = Math.min(POOP.max, p.vy + POOP.gravity * gravity * dt)
   p.x += p.vx * dt; p.y += p.vy * dt
   return p.t < POOP.life
 }

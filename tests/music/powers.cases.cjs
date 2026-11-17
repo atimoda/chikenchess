@@ -4,7 +4,7 @@ const assert = require('node:assert/strict')
 const { Chess } = require('chess.js')
 const { loadTs } = require('../helpers/music.cjs')
 const { canUseMatchPower, createMatchPower, permitsPowerMove, permittedPowerMoves, advanceMatchPowers, shieldCaptureBlock, shieldCaptureBlockMessage, frozenCaptureBlock } = loadTs('lib/chess-powers.ts')
-const { makePoweredChess, clonePoweredChess, freezeApplicationError, setPoweredChessPowers, syncPoweredMoveSan, poweredChessSnapshot, restorePoweredChess, stockfishSupportsPosition } = loadTs('lib/powered-chess.ts')
+const { makePoweredChess, clonePoweredChess, freezeApplicationError, setPoweredChessPowers, syncPoweredMoveSan, poweredChessSnapshot, restorePoweredChess, stockfishSupportsPosition, moveExposesOwnKing } = loadTs('lib/powered-chess.ts')
 const { analyzePoweredMoves } = loadTs('lib/powered-analysis.ts')
 const { releasedPowers, MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, mulliganGhostEaseInOut, getOfflineMulliganPreviewMoves, getOnlineMulliganPreviewMoves } = loadTs('lib/power-presentation.ts')
 
@@ -750,4 +750,18 @@ test('A king left in check by an expired Shield stays out of Stockfish and keeps
   assert.equal(analysis.complete, true)
   assert.ok(analysis.best.length > 0)
   assert.ok(analysis.best.every(move => move.uci.slice(2, 4) !== 'e8'), 'no king capture is offered')
+})
+
+test('A move that leaves the own king under attack is told apart from an impossible move', () => {
+  // White bishop on d2 pinned by the black rook on d8 against the king on d1.
+  const pinned = makePoweredChess(new Chess('3r3k/8/8/8/8/8/3B4/3K4 w - - 0 1'))
+  assert.equal(moveExposesOwnKing(pinned, 'd2', 'e3'), true, 'pinned bishop leaving the file')
+  assert.equal(moveExposesOwnKing(pinned, 'd2', 'd3'), false, 'bishops never move straight')
+  assert.equal(moveExposesOwnKing(pinned, 'd1', 'c2'), false, 'safe king step is legal')
+  // King stepping into the rook's file.
+  const king = new Chess('3r3k/8/8/8/8/8/8/4K3 w - - 0 1')
+  assert.equal(moveExposesOwnKing(king, 'e1', 'd1'), true)
+  assert.equal(moveExposesOwnKing(king, 'e1', 'f1'), false)
+  // Only the side to move is checked.
+  assert.equal(moveExposesOwnKing(pinned, 'd8', 'd2'), false)
 })

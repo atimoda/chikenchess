@@ -190,10 +190,13 @@ function roam(t: Target, d: EnemyData & { kind: 'zombie' }, r: Roam, dx: number,
 }
 
 // the formations move once per frame (not once per alien): sideways, a step down at the screen's sides
-export function stepFormations(targets: Target[], dt: number, env: EnemyEnv) {
+// timeAt: the share of the frame a point of the map lives (a Zona's slow motion, zone-physics.ts); a formation moves
+// on the time of where its first alien is
+export function stepFormations(targets: Target[], frameDt: number, env: EnemyEnv, timeAt?: (x: number, y: number) => number) {
   const groups = new Map<Formation, Target[]>()
   targets.forEach(t => { const d = t.data as EnemyData | undefined; if (d?.kind === 'alien' && t.deadT <= 0) { const g = groups.get(d.f) ?? []; g.push(t); groups.set(d.f, g) } })
   groups.forEach((list, f) => {
+    const dt = frameDt * (timeAt?.(list[0].x, list[0].y - list[0].h / 2) ?? 1)
     // entering: come down from above the screen first
     if (f.y < f.targetY - 1) { f.y = Math.min(f.targetY, f.y + 160 * dt); if (f.y < 0) return }
     else if (f.y < f.targetY) f.y = f.targetY
