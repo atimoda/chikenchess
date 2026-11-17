@@ -40,8 +40,9 @@
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: almas capturadas (identidade, raridade, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
 | Pátio: Gaiolas (modelos e limite de almas, até três por player, captura, negação, espanto sem gaiola, soltar e trocar, contadores e avatares dos players, binds, Pátio online) | [Gaiolas](docs/mechanics/patio/cages.md) |
-| Pátio: pássaros e almas que exploram o mapa, lugares de pouso (árvores, plataformas, telhados, objetos), poder de cagar | [Pássaros e almas que exploram](docs/mechanics/patio/birds-explore.md) |
-| Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel e editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
+| Pátio: pássaros e almas que exploram o mapa, lugares de pouso (árvores, plataformas, telhados, objetos), fuga das almas soltas dos outros players, poder de cagar | [Pássaros e almas que exploram](docs/mechanics/patio/birds-explore.md) |
+| Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel com Receita, Inspiration e som, editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
+| Pátio: Guia de pássaros (aves reais, a ave que inspira cada alma, cantos gravados e créditos, canto real das almas soltas) | [Guia de pássaros](docs/mechanics/patio/bird-guide.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução, Cordas soltas da harpa), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
@@ -116,8 +117,9 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
 | [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 23 KB |
 | [Pátio: Gaiolas](docs/mechanics/patio/cages.md) | 9 KB |
-| [Pátio: pássaros e almas que exploram, cagar](docs/mechanics/patio/birds-explore.md) | 7 KB |
-| [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 13 KB |
+| [Pátio: pássaros e almas que exploram, fuga, cagar](docs/mechanics/patio/birds-explore.md) | 10 KB |
+| [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 14 KB |
+| [Pátio: Guia de pássaros](docs/mechanics/patio/bird-guide.md) | 6 KB |
 | [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 23 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |

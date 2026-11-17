@@ -5,6 +5,9 @@
 // card opens with how many were caught and the notes and weapons already seen (the ones missing stay hidden).
 // The cards stand still: only the one under the pointer or focused beats its wings, so the whole library costs one
 // drawing a frame. The collection lives in this browser (lib/pigchicken/soul-library.ts).
+// A click on a card (and on the open soul's drawing) plays the sound the soul makes: three notes in the voice of the
+// real bird it takes after. The open card says its recipe and its Inspiration, which opens the Guia de pássaros on
+// that bird (onBird); `focus` opens the library on a soul (from the guide).
 // An admin gets the pencil: with it on, every card opens its sheet to edit (name, rarity, flight, look, what it does
 // let out, and a rare one's recipe), kept as a draft in this browser and followed live by the souls in the game; "Salvar no game" writes
 // it to the game's file.
@@ -16,34 +19,19 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { SaveToGameButton, useIsAdmin } from "@/components/admin/save-to-game-button"
 import { saveDefaultSouls } from "@/lib/admin/game-defaults-client"
 import { soulSyncState, subscribeSoulSyncState } from "@/lib/pigchicken/soul-online"
-import { SOUL_COLS, SOUL_ROWS, drawSoulArt } from "@/components/pigchicken/draw/soul-art"
+import { drawSoulCard } from "@/components/pigchicken/draw/soul-card"
+import { GUIDE_BIRDS } from "@/lib/pigchicken/bird-guide"
+import { playNote } from "@/lib/pigchicken/synth"
 import { SOUL_ACT_DEFAULTS, SOUL_ACT_RANGES, SOUL_HELPS, SOUL_HINDERS, type SoulActParams, type SoulHelp, type SoulHinder } from "@/lib/pigchicken/soul-acts"
 import { SOUL_CLASSES, SOUL_FOLLOW_DEFAULTS, SOUL_FOLLOW_RANGES, SOUL_PATTERNS, SOUL_SIDES, type SoulClassId, type SoulFollowParams, type SoulPattern, type SoulSide } from "@/lib/pigchicken/soul-follow"
 import {
   SOUL_ENTRIES, SOUL_LOOK_COLOURS, SOUL_NAME_MAX, SOUL_NOTES, SOUL_NOTE_ORDER, SOUL_PIXEL, SOUL_RARITIES, SOUL_SHAPES, SOUL_SHOTS, SOUL_SHOT_ORDER, SOUL_SPECIES, SOUL_SPECIES_ORDER,
-  SOUL_STATES, SOUL_WEAPONS, SOUL_WEAPON_ORDER, addRare, changeEntry, cleanRecipe, collectionProgress, entryActBase, entryActParams, entryClassName, entryColor, entryFollowParams, entryTraits,
-  loadCollection, loadSoulEntries, moveRare, removeRare, resetEntry, saveSoulEntries, subscribeCollection, subscribeSoulEntries,
+  SOUL_STATES, SOUL_WEAPONS, SOUL_WEAPON_ORDER, addRare, changeEntry, cleanRecipe, collectionProgress, entryActBase, entryActParams, entryBird, entryClassName, entryFollowParams, entryTraits,
+  loadCollection, loadSoulEntries, moveRare, recipeText, removeRare, resetEntry, saveSoulEntries, subscribeCollection, subscribeSoulEntries,
   type SoulCollection, type SoulEntry, type SoulLook, type SoulRecipe, type SoulShape,
 } from "@/lib/pigchicken/soul-library"
 import type { SoulRarity } from "@/lib/pigchicken/souls"
 
-function sizeCanvas(c: HTMLCanvasElement) {
-  const dpr = Math.min(2, window.devicePixelRatio || 1), w = c.clientWidth, h = c.clientHeight
-  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr) }
-  const ctx = c.getContext("2d")!
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h)
-  return { ctx, w, h }
-}
-// the soul in the middle of a canvas, as big as `most` lets it be (the big ones stay bigger than the small ones);
-// found: its drawing with its glow, else its outline. now: null stands still, wings up
-function drawSoul(c: HTMLCanvasElement, e: SoulEntry, found: boolean, now: number | null, most: number) {
-  const { ctx, w, h } = sizeCanvas(c)
-  const k = Math.min(most, (h * 0.8) / (SOUL_ROWS * e.look.pixel), (w * 0.9) / (SOUL_COLS * e.look.pixel))
-  ctx.save(); ctx.translate(w / 2, h / 2 + (now === null ? 0 : Math.sin(now * 3) * 2)); ctx.scale(k, k)
-  if (found) { ctx.globalAlpha = 0.18; ctx.fillStyle = entryColor(e); ctx.beginPath(); ctx.arc(0, 0, Math.min(SOUL_ROWS * e.look.pixel * 0.7, (h * 0.45) / k), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1 }
-  drawSoulArt(ctx, 0, 0, 1, now ?? 0, e.look, !found)
-  ctx.restore()
-}
 const CARD = 1.2, PREVIEW = 3.4
 const sectionsOf = (entries: readonly SoulEntry[]) => [
   ...SOUL_SPECIES_ORDER.map(sp => ({ id: sp as string, name: SOUL_SPECIES[sp].name, entries: entries.filter(e => !e.recipe && e.species === sp) })),
@@ -70,6 +58,8 @@ const FOLLOW_NUMBERS: { key: FollowNumber; label: string; unit?: string; hint: s
   { key: "patternTime", label: "Tempo do padrão", unit: "s", hint: "Duração de uma volta do padrão." },
   { key: "loopEvery", label: "Voltinha a cada", unit: "s", hint: "Intervalo das voltinhas no descanso (0: nunca)." },
   { key: "restless", label: "Inquietação", hint: "Quanto vagueia em volta do lugar." },
+  { key: "alert", label: "Susto", unit: "px", hint: "A que distância outro player a incomoda (nunca o dono). 0: não foge de ninguém." },
+  { key: "flee", label: "Fuga", hint: "Quanto se afasta de outro player e a chance de largar o lugar onde pousou. 0: não foge." },
 ]
 // exploring the map: how keen it is, how far it goes, how long it rests and where it likes to land
 const ROAM_NUMBERS: { key: FollowNumber; label: string; unit?: string; hint: string }[] = [
@@ -90,6 +80,12 @@ const ACT_NUMBERS: Record<ActNumber, { label: string; unit?: string; hint: strin
   force: { label: "Força do atrapalho", hint: "Tamanho do empurrão, do quique, do desvio da mira, da bicada, ou o tempo desafinada." },
   poopEvery: { label: "Cagar a cada", unit: "s", hint: "Intervalo entre dois cagados; ela só solta com um boneco embaixo. 0: não tem esse poder." },
   poopDamage: { label: "Dano do cagado", hint: "Vida que tira de inimigo ou alvo de treino; numa galinha, a força do tranco." },
+  song: { label: "Canto real", hint: "Chance de cantar uma gravação da ave que a inspira, a cada volta do intervalo. 0: nunca." },
+}
+// the sound a soul of this entry makes: three notes of a chord (minor for a dead one) in its bird's voice
+function soulSound(e: SoulEntry) {
+  const voice = entryBird(e).voice
+  ;(e.state === "dead" ? [0, 3, 7] : [0, 4, 7]).forEach((step, i) => playNote(voice, 72 + step, { at: i * 0.16, dur: i === 2 ? 0.45 : 0.2, vel: 0.5 }))
 }
 // what a soul of this entry does against its owner, for the card
 const hinderName = (e: SoulEntry, p: SoulActParams) => (p.hinder !== "own" ? SOUL_HINDERS[p.hinder] : e.state === "dead" ? "Pela arma que a matou" : "Desafinar")
@@ -104,7 +100,7 @@ function NameInput({ name, onName }: { name: string; onName: (name: string) => v
   return <input aria-label="Nome" value={typed ?? name} maxLength={SOUL_NAME_MAX} onChange={e => { setTyped(e.target.value); if (e.target.value.trim()) onName(e.target.value) }} onBlur={() => setTyped(null)} onKeyDown={e => e.stopPropagation()} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white" />
 }
 
-export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
+export function SoulLibraryPanel({ onClose, focus, onBird }: { onClose: () => void; focus?: { id: string; n: number } | null; onBird?: (bird: string) => void }) {
   const [col, setCol] = useState<SoulCollection>(() => loadCollection())
   const [entries, setEntries] = useState<readonly SoulEntry[]>(() => loadSoulEntries())
   const [sel, setSel] = useState<string | null>(null)
@@ -115,12 +111,17 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
   const preview = useRef<HTMLCanvasElement | null>(null)
   // the list keeps its scroll while a soul is open
   const scroller = useRef<HTMLDivElement | null>(null), listTop = useRef(0)
-  const pick = (id: string | null) => {
+  const pick = (id: string | null, quiet = false) => {
     if (id && !sel) listTop.current = scroller.current?.scrollTop ?? 0
     setSel(id)
+    const e = id && !quiet ? entries.find(o => o.id === id) : null
+    if (e) soulSound(e)
     requestAnimationFrame(() => { if (scroller.current) scroller.current.scrollTop = id ? 0 : listTop.current })
   }
   useEffect(() => subscribeCollection(setCol), [])
+  // asked for from the Guia de pássaros: the library opens on that soul
+  const asked = focus?.n
+  useEffect(() => { if (focus) pick(focus.id) }, [asked]) // (only a new ask opens it)
   const [sync, setSync] = useState(soulSyncState)
   useEffect(() => subscribeSoulSyncState(setSync), [])
   useEffect(() => subscribeSoulEntries(setEntries), [])
@@ -140,7 +141,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
     cards.current.forEach((el, key) => {
       if (id && key !== id) return
       const e = list.find(o => o.id === key)
-      if (e && el.isConnected) drawSoul(el, e, all || !!c[key], null, CARD)
+      if (e && el.isConnected) drawSoulCard(el, e.look, all || !!c[key], null, CARD)
     })
   }
   const hover = (id: string | null) => {
@@ -163,17 +164,17 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
   const setCard = (e: SoulEntry, found: boolean) => (el: HTMLCanvasElement | null) => {
     if (!el) { cards.current.delete(e.id); return }
     cards.current.set(e.id, el)
-    if (moving.current !== e.id) drawSoul(el, e, found, null, CARD)
+    if (moving.current !== e.id) drawSoulCard(el, e.look, found, null, CARD)
   }
   useEffect(() => {
     let raf = 0
     const frame = () => {
       const now = performance.now() / 1000
       const { col: c, v: cur, entries: list, editing: all } = live.current
-      if (cur && preview.current) drawSoul(preview.current, cur, true, now, PREVIEW)
+      if (cur && preview.current) drawSoulCard(preview.current, cur.look, true, now, PREVIEW)
       else if (moving.current) {
         const el = cards.current.get(moving.current), e = list.find(o => o.id === moving.current)
-        if (el && e && el.isConnected && (all || c[e.id])) drawSoul(el, e, true, now, CARD)
+        if (el && e && el.isConnected && (all || c[e.id])) drawSoulCard(el, e.look, true, now, CARD)
       }
       raf = requestAnimationFrame(frame)
     }
@@ -202,7 +203,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
   })
   const actRange = (key: ActNumber) => {
     const n = acts[key], r = SOUL_ACT_RANGES[key], m = ACT_NUMBERS[key]
-    return <PatioRange key={key} label={m.label} min={r.min} max={r.max} step={r.step} value={n} display={key === "chance" ? `${Math.round(n * 100)}%` : `${Math.round(n * 100) / 100}${m.unit ? ` ${m.unit}` : ""}`}
+    return <PatioRange key={key} label={m.label} min={r.min} max={r.max} step={r.step} value={n} display={key === "chance" || key === "song" ? `${Math.round(n * 100)}%` : `${Math.round(n * 100) / 100}${m.unit ? ` ${m.unit}` : ""}`}
       changed={n !== actBase[key]} hint={m.hint} onChange={x => setAct(key, x)} onReset={() => setAct(key, actBase[key])} />
   }
   const setRecipe = (patch: Partial<SoulRecipe>) => update(e => ({ ...e, recipe: cleanRecipe({ ...e.recipe, ...patch }) }))
@@ -211,7 +212,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
   const changed = !!(v && base && JSON.stringify(v) !== JSON.stringify(base))
   const draft = useMemo(() => JSON.stringify(entries) !== JSON.stringify(SOUL_ENTRIES), [entries])
   const duplicate = () => { const made = addRare(entries, v); if (made) { commit(made.entries); setSel(made.id) } }
-  const create = () => { const made = addRare(entries); if (made) { commit(made.entries); hover(null); pick(made.id) } }
+  const create = () => { const made = addRare(entries); if (made) { commit(made.entries); hover(null); pick(made.id, true) } }
 
   const traits = v ? entryTraits(v, entries) : null
   const row = "flex items-center justify-between gap-3"
@@ -287,7 +288,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
         {v && traits && (
           <>
             <div className="grid gap-3 px-4 py-3">
-              <canvas ref={preview} aria-label={v.name} className="h-36 w-full rounded-lg bg-[#1b2531]" />
+              <canvas ref={preview} role="button" tabIndex={0} aria-label={`${v.name}: ouvir`} title="Ouvir" onClick={() => soulSound(v)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); soulSound(v) } }} className="h-36 w-full cursor-pointer rounded-lg bg-[#1b2531]" />
               {editing && (
                 <div className="flex flex-wrap gap-1.5">
                   {v.recipe && <button type="button" aria-label="Subir" title="Antes na lista: a primeira receita que serve leva a alma" onClick={() => commit(moveRare(entries, v.id, -1))} className={small}><ArrowUp className="h-3.5 w-3.5" /></button>}
@@ -310,6 +311,15 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                   {acts.poopEvery > 0 && <div className={row}><span>Caga</span><span className="text-white">{acts.poopSpare ? "Poupa o dono" : "Até no dono"}</span></div>}
                   {got && <div className={row}><span>Capturadas</span><span className="text-white">{got.n}</span></div>}
                   {got && got.at > 0 && <div className={row}><span>Primeira captura</span><span className="text-white">{new Date(got.at).toLocaleDateString("pt-BR")}</span></div>}
+                  <div className={row}><span>Inspiration</span>
+                    <button type="button" title="Abrir no Guia de pássaros" onClick={() => onBird?.(v.bird)} className="min-w-0 truncate text-right text-primary hover:underline"><i>{entryBird(v).sci}</i> · {entryBird(v).name}</button>
+                  </div>
+                </div>
+              )}
+              {!editing && (
+                <div className="grid gap-1.5">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">Receita</h3>
+                  <p className="leading-relaxed text-white">{recipeText(v)}</p>
                 </div>
               )}
               {!editing && got && traits.notes.length > 0 && (
@@ -340,6 +350,11 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                         <StepSelect value={v.cls} onChange={e => { const c = e.target.value as SoulClassId; update(o => ({ ...o, cls: c })) }} className={field}>
                           {(Object.keys(SOUL_CLASSES) as SoulClassId[]).map(c => <option key={c} value={c}>{SOUL_CLASSES[c].name}</option>)}
                         </StepSelect>
+                      </label>
+                      <label className={row} title="A ave real que inspira esta alma: a voz das notas dela e o canto real que ela solta de vez em quando"><span>Inspiration</span>
+                        <select value={v.bird} onChange={e => { const b = e.target.value; update(o => ({ ...o, bird: b })) }} className={field}>
+                          {GUIDE_BIRDS.map(b => <option key={b.id} value={b.id}>{b.name} ({b.sci})</option>)}
+                        </select>
                       </label>
                       {!v.recipe && <p className="text-[10px] text-[#93a79a]">{speciesOf(v)}{v.species !== "chick" ? ` · ${stateOf(v)} · ${shotOf(v)}` : ""}</p>}
                     </>
@@ -407,6 +422,7 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                         </StepSelect>
                       </label>
                       <div className="grid gap-field">{(["chance", "force"] as const).map(actRange)}</div>
+                      <div className="grid gap-field">{actRange("song")}</div>
                       <div className="grid gap-field">{(acts.poopEvery > 0 ? ["poopEvery", "poopDamage"] as const : ["poopEvery"] as const).map(actRange)}</div>
                       {acts.poopEvery > 0 && (
                         <label className={row} title="Ligado, ela nunca caga no próprio dono; desligado, o dono é um boneco como os outros"><span>Poupar o dono</span>

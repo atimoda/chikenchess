@@ -41,3 +41,4 @@ __pycache__/
 
 # local dev server output
 /dev.log
+.bird-songs-cache/
