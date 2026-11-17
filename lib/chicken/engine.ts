@@ -131,12 +131,12 @@ export type ChickenEngine = {
   // `off`: with a staff, one of it in the back wing's hand, carried in this pose (the two Boomerangs)
   // `back`: the back wing holds the item (the second Boomerang): with `off`, carried there, and the item itself is not
   // shown; without, the back wing moves as the front wing would. The front wing rests
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: HeldStaff | null; back?: boolean; swap?: boolean } | null) => void
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: HeldStaff | null; back?: boolean; swap?: boolean; charging?: boolean } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in. `size`: how much bigger
   // the item is drawn at the height of the blow (×, a charged strong blow)
   setPeck: (peck: PeckPose | null) => void
-  setSwing: (swing: { angle: number; reach: number; t: number; size?: number; bare?: boolean } | null) => void
+  setSwing: (swing: { angle: number; reach: number; t: number; size?: number; bare?: boolean; heavy?: boolean } | null) => void
   // a point on the held item's drawing (rig units, x forward from the grip, y down) on the screen when the
   // item points at `angle` (screen radians); her shoulder for (0, 0)
   heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
@@ -394,6 +394,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let rotorT = 0
   // Pig's and Ken's arms (arm-rig.ts): bent at the elbow to reach where the wings put their hands
   let arms: ArmsSpec | null = null
+  // where the held pivot sits (the shoulder, lowered by the art's holdDrop), and how far the strong blow has moved
+  // the hand to the other shoulder (0..1, eased)
+  let heldBase: [number, number] = [PIV.wing[0], PIV.wing[1]], otherHand = 0
   // where the other arm (the back wing) rests, from the near one; the strong blow's charge with an empty hand (0..1)
   let backOffset: [number, number] = [-4, -2], bareCharge: number | null = null
   const tailBlow = () => !!swingNow?.bare && (species ?? lookSpecies) === 'fox'
@@ -432,7 +435,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     armTip.x = h[0]; armTip.y = h[1]; armTip.dx = h[0] - PIV.wing[0]; armTip.dy = h[1] - PIV.wing[1]
     armTip.deg = Math.atan2(armTip.dy, armTip.dx) * 180 / Math.PI; armTip.len = Math.hypot(armTip.dx, armTip.dy)
     ownEyes = !!A.face.ownEyes
-    el.heldPivot.setAttribute('transform', `translate(${PIV.wing[0]} ${PIV.wing[1] + (A.wing.holdDrop ?? 0)})`)
+    heldBase = [PIV.wing[0], PIV.wing[1] + (A.wing.holdDrop ?? 0)]
+    el.heldPivot.setAttribute('transform', `translate(${heldBase[0]} ${heldBase[1]})`)
     const klass = ownArt ? 'galinha' : variantClass(look.torso)
     const nextSpecies: BirdSpecies | undefined = klass === 'porco' ? 'pig' : klass === 'raposa' ? 'fox' : undefined
     if (nextSpecies !== lookSpecies) { lookSpecies = nextSpecies; if (paramsReady) resize() }
@@ -601,7 +605,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const throwTransition = createThrowTransition()
   let peckNow: PeckPose | null = null
   // bare: a blow with an empty hand (Ken hits it with the tail instead of the arm)
-  let swingNow: { angle: number; reach: number; t: number; size?: number; bare?: boolean } | null = null
+  let swingNow: { angle: number; reach: number; t: number; size?: number; bare?: boolean; heavy?: boolean } | null = null
   // screen angle (degrees) -> her rig: undo the root's turn, the mirror when facing left, and the body's lean
   const rigAngle = (screenDeg: number) => {
     let a = screenDeg - vis.a
@@ -2254,6 +2258,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     }
     // Ken's Rabada: the tail sweeps down and forward, under her, and back
     if (arms) {
+      // the strong blow (charging and swinging) goes with the other hand: with an item, or Pig's chain (Ken's own
+      // strong blow is the tail). The wing and the item move to that arm's shoulder, so the blow turns around it
+      const heavy = !!swingNow?.heavy || !!heldItem?.charging || (bareCharge !== null && !heldItem)
+      const handBlow = heavy && !(!heldItem && (species ?? lookSpecies) === 'fox')
+      otherHand += ((handBlow ? 1 : 0) - otherHand) * Math.min(1, frameDt * 14)
+      if (otherHand < 0.002) otherHand = 0
+      const backHolds = !!heldItem?.swap !== handBlow
+      const sx = (arms.back.shoulder[0] - arms.front.shoulder[0]) * otherHand, sy = (arms.back.shoulder[1] - arms.front.shoulder[1]) * otherHand
+      el.heldPivot.setAttribute('transform', `translate(${(heldBase[0] + sx).toFixed(2)} ${(heldBase[1] + sy).toFixed(2)})`)
+      if (otherHand > 0) el.wing.setAttribute('transform', `translate(${sx.toFixed(2)} ${sy.toFixed(2)}) ${el.wing.getAttribute('transform') ?? ''}`)
       const map = (node: SVGGraphicsElement, x: number, y: number): [number, number] => {
         const m = node.transform.baseVal.consolidate()?.matrix
         return m ? [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f] : [x, y]
@@ -2274,10 +2288,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const second = onHeld && rig?.back ? itemPt(rig.back.x, rig.back.y)
         : heldItem?.back ? tipOf(el.wingBack)
         : onHeld && staff?.grip2 ? itemPt(staff.grip2.x, staff.grip2.y) : null
-      // "Segurar com a outra mão": the back arm takes the item and the front one is the second hand
-      const swap = !!heldItem?.swap
-      const f = swap ? second ?? arms.front.rest : main
-      const b = swap ? main : second ?? arms.back.rest
+      // "Segurar com a outra mão": the back arm takes the item and the front one is the second hand (the strong blow
+      // turns it round once more)
+      const f = backHolds ? second ?? arms.front.rest : main
+      const b = backHolds ? main : second ?? arms.back.rest
       el.armF.innerHTML = armMarkup(arms.front, f[0], f[1])
       el.armB.innerHTML = armMarkup(arms.back, b[0], b[1])
     }

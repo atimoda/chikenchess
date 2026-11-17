@@ -47,5 +47,7 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
     back: pair && !!held!.back,
     // two-armed characters: the back arm holds it and the front one is the second hand
     swap: d.swapHands,
+    // the strong blow charging: two-armed characters wind it with the other hand
+    charging: !swinging && combat.heavyCharging && combat.heavyCharge > 0,
   }
 }
