@@ -32,6 +32,8 @@ export const CHICK_FACTORS: Partial<Record<NumKey, number>> = {
   crouchRunJumpBoost: 0.3,
   crouchRunBroodJumpBoost: 0.3,
   shockingAirMaxMultiplier: 0.5,
+  // charging the shocking jump in the air: twice the chicken's wing beats (8/s for her 4/s)
+  shockingAirFlapRate: 2,
   // voo: the flaps barely slow the fall
   flyFallDivisor: 0.45,
   flyUpFallAtten: 0.35,
@@ -63,6 +65,8 @@ export function speciesParams(species: BirdSpecies | undefined, base: ChickenPar
   out.broodJumpFlaps = Math.max(1, Math.round(out.broodJumpFlaps))
   // a fly divisor under 1 would make the flaps speed the fall up
   out.flyFallDivisor = Math.max(1.05, out.flyFallDivisor)
+  // (the setting's own top)
+  out.shockingAirFlapRate = Math.min(15, out.shockingAirFlapRate)
   out.volume = 0
   return out
 }

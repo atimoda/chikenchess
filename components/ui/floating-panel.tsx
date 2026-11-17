@@ -8,6 +8,8 @@
 // A panel marked `overDock` that opens while the Modo editor is docked at the right covers that dock instead: it is
 // drawn over the whole page, with the dock's place and size, may be moved anywhere on the window, and its place is
 // not remembered (the next time it covers the dock again).
+// The panel itself never scrolls: its sides and corners (the resize areas) stay on its border. What scrolls is a part
+// inside it: pass `bodyClassName` to have the whole content in one scrolling column, or give a child its own overflow.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
@@ -141,7 +143,7 @@ function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean, vw = 
   return { w, h, x, y }
 }
 
-export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewport = false, overDock = false, className, children, ...rest }: {
+export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewport = false, overDock = false, className, bodyClassName, children, ...rest }: {
   id: string
   overDock?: boolean
   initial: (vw: number, vh: number) => Rect
@@ -149,6 +151,8 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   minH?: number
   keepInViewport?: boolean
   className?: string
+  /** The content goes in one column that scrolls when it does not fit, with these classes (its padding, its gap). */
+  bodyClassName?: string
   children: React.ReactNode
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
   const [rect, setRect] = useState<Rect | null>(null)
@@ -241,7 +245,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
       data-chicken-ignore
       {...rest}
       style={{ color, ...rest.style, left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: PANEL_Z + Math.max(0, place) }}
-      className={cn("fixed flex flex-col overflow-hidden", className)}
+      className={cn("fixed flex flex-col", className, "overflow-hidden supports-[overflow:clip]:overflow-clip")}
       onPointerDownCapture={e => { rest.onPointerDownCapture?.(e); raisePanel(token) }}
       onPointerDown={e => {
         rest.onPointerDown?.(e)
@@ -256,7 +260,7 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
       onPointerUp={end}
       onPointerCancel={end}
     >
-      {children}
+      {bodyClassName === undefined ? children : <div className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto", bodyClassName)}>{children}</div>}
       {EDGES.map(({ edge, className: c, cursor }) => (
         <div key={edge} aria-hidden className={cn("absolute z-10 touch-none", c)} style={{ cursor }} onPointerDown={begin(edge)} />
       ))}

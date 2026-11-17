@@ -8,6 +8,7 @@
 // An admin gets the pencil: with it on, every card opens its sheet to edit (name, rarity, flight, look, what it does
 // let out, and a rare one's recipe), kept as a draft in this browser and followed live by the souls in the game; "Salvar no game" writes
 // it to the game's file.
+import { StepSelect } from "@/components/ui/step-select"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowDown, ArrowLeft, ArrowUp, Cloud, CloudOff, Copy, Pencil, Plus, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -331,14 +332,14 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                   {g === "Ficha" && (
                     <>
                       <label className={row}><span>Raridade</span>
-                        <select value={v.rarity} onChange={e => { const r = e.target.value as SoulRarity; update(o => ({ ...o, rarity: r })) }} className={field}>
+                        <StepSelect value={v.rarity} onChange={e => { const r = e.target.value as SoulRarity; update(o => ({ ...o, rarity: r })) }} className={field}>
                           {(Object.keys(SOUL_RARITIES) as SoulRarity[]).map(r => <option key={r} value={r}>{SOUL_RARITIES[r].name}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <label className={row} title="A classe dá os números do voo; a aba Voo muda os desta alma"><span>Classe de voo</span>
-                        <select value={v.cls} onChange={e => { const c = e.target.value as SoulClassId; update(o => ({ ...o, cls: c })) }} className={field}>
+                        <StepSelect value={v.cls} onChange={e => { const c = e.target.value as SoulClassId; update(o => ({ ...o, cls: c })) }} className={field}>
                           {(Object.keys(SOUL_CLASSES) as SoulClassId[]).map(c => <option key={c} value={c}>{SOUL_CLASSES[c].name}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       {!v.recipe && <p className="text-[10px] text-[#93a79a]">{speciesOf(v)}{v.species !== "chick" ? ` · ${stateOf(v)} · ${shotOf(v)}` : ""}</p>}
                     </>
@@ -346,9 +347,9 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                   {g === "Aparência" && (
                     <>
                       <label className={row}><span>Forma</span>
-                        <select value={v.look.shape} onChange={e => setLook({ shape: e.target.value as SoulShape })} className={field}>
+                        <StepSelect value={v.look.shape} onChange={e => setLook({ shape: e.target.value as SoulShape })} className={field}>
                           {(Object.keys(SOUL_SHAPES) as SoulShape[]).map(s => <option key={s} value={s}>{SOUL_SHAPES[s].name}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <PatioRange label="Tamanho do pixel" min={SOUL_PIXEL.min} max={SOUL_PIXEL.max} step={1} value={v.look.pixel} display={`${v.look.pixel} px`}
                         changed={!!base && v.look.pixel !== base.look.pixel} onChange={x => setLook({ pixel: x })} onReset={base ? () => setLook({ pixel: base.look.pixel }) : undefined} />
@@ -365,14 +366,14 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                   {g === "Voo" && (
                     <>
                       <label className={row}><span>Lado</span>
-                        <select value={flight.side} onChange={e => setFollow("side", e.target.value as SoulSide)} className={field}>
+                        <StepSelect value={flight.side} onChange={e => setFollow("side", e.target.value as SoulSide)} className={field}>
                           {(Object.keys(SOUL_SIDES) as SoulSide[]).map(s => <option key={s} value={s}>{SOUL_SIDES[s]}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <label className={row}><span>No lugar</span>
-                        <select value={flight.pattern} onChange={e => setFollow("pattern", e.target.value as SoulPattern)} className={field}>
+                        <StepSelect value={flight.pattern} onChange={e => setFollow("pattern", e.target.value as SoulPattern)} className={field}>
                           {(Object.keys(SOUL_PATTERNS) as SoulPattern[]).map(p => <option key={p} value={p}>{SOUL_PATTERNS[p]}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <div className="grid gap-field">
                         {FOLLOW_NUMBERS.map(m => {
@@ -395,15 +396,15 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                   {g === "Ações" && (
                     <>
                       <label className={row}><span>Ajuda</span>
-                        <select value={acts.help} onChange={e => setAct("help", e.target.value as SoulHelp)} className={field}>
+                        <StepSelect value={acts.help} onChange={e => setAct("help", e.target.value as SoulHelp)} className={field}>
                           {(Object.keys(SOUL_HELPS) as SoulHelp[]).map(h => <option key={h} value={h}>{SOUL_HELPS[h]}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <div className="grid gap-field">{(["every", "range", "power"] as const).map(actRange)}</div>
                       <label className={row} title="O da própria alma: a morta, pelo que a matou (explosão empurra, bala faz quicar, flecha desvia a mira, impacto bica); a viva de nota fora da escala desafina"><span>Atrapalho</span>
-                        <select value={acts.hinder} onChange={e => setAct("hinder", e.target.value as SoulHinder)} className={field}>
+                        <StepSelect value={acts.hinder} onChange={e => setAct("hinder", e.target.value as SoulHinder)} className={field}>
                           {(Object.keys(SOUL_HINDERS) as SoulHinder[]).map(h => <option key={h} value={h}>{SOUL_HINDERS[h]}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <div className="grid gap-field">{(["chance", "force"] as const).map(actRange)}</div>
                       <div className="grid gap-field">{(acts.poopEvery > 0 ? ["poopEvery", "poopDamage"] as const : ["poopEvery"] as const).map(actRange)}</div>
@@ -418,9 +419,9 @@ export function SoulLibraryPanel({ onClose }: { onClose: () => void }) {
                     <>
                       <div className="grid gap-1.5"><span>Espécie</span><div className="flex flex-wrap gap-field">{SOUL_SPECIES_ORDER.filter(s => s !== "chick").map(s => pill(s, SOUL_SPECIES[s].name, !!v.recipe?.species?.includes(s), () => setRecipe({ species: toggle(v.recipe?.species, s) })))}</div></div>
                       <label className={row}><span>Estado</span>
-                        <select value={v.recipe.state ?? ""} disabled={!!v.recipe.weapon} onChange={e => setRecipe({ state: (e.target.value || undefined) as SoulRecipe["state"] })} className={field}>
+                        <StepSelect value={v.recipe.state ?? ""} disabled={!!v.recipe.weapon} onChange={e => setRecipe({ state: (e.target.value || undefined) as SoulRecipe["state"] })} className={field}>
                           <option value="">Qualquer</option><option value="alive">{SOUL_STATES.alive}</option><option value="dead">{SOUL_STATES.dead}</option>
-                        </select>
+                        </StepSelect>
                       </label>
                       <div className="grid gap-1.5"><span>Instrumento</span><div className="flex flex-wrap gap-field">{SOUL_SHOT_ORDER.map(s => pill(s, SOUL_SHOTS[s].name, !!v.recipe?.shot?.includes(s), () => setRecipe({ shot: toggle(v.recipe?.shot, s) })))}</div></div>
                       <div className="grid gap-1.5"><span>Nota</span><div className="flex flex-wrap gap-field">{SOUL_NOTE_ORDER.map(n => pill(n, SOUL_NOTES[n], !!v.recipe?.note?.includes(n), () => setRecipe({ note: toggle(v.recipe?.note, n) })))}</div></div>

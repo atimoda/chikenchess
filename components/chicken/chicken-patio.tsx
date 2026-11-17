@@ -3,12 +3,13 @@
 // Pátio da Galinha: the game's playground where the player chicken is tuned. The panel edits a draft of
 // the central configuration (lib/chicken/config.ts) that the chicken here follows live; "Salvar no game"
 // (admin account only) saves it for every screen that draws the chicken.
+import { StepSelect } from "@/components/ui/step-select"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
-import { Bird, Bug, Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
+import { Bird, Bug, Crosshair, FolderOpen, Gamepad2, Ghost, Grid3x3, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -61,6 +62,7 @@ import { PatioEditor } from "@/components/pigchicken/patio-editor"
 import { LayerEyes, usePatioLayers } from "@/components/pigchicken/layer-eyes"
 import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
+import { MineGridPanel } from "@/components/pigchicken/mine-grid-panel"
 import { patioGround, patioInventoryLimit, patioMineGrid, patioSceneMusic, patioScreens, patioTemple, patioWorldTop, patioZoom } from "@/lib/pigchicken/patio-settings"
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
@@ -71,7 +73,7 @@ import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigc
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
 import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
 import { PatioOpenPanel, PatioPersonPanel, PatioSavePanel, type PatioPersonCard } from "@/components/pigchicken/patio-lobby-panels"
-import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
+import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, KEYS_AIM_RELEASE_MAX, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 import {
   LOBBY_MAX, PLAYER_COLORS, addLocalPlayer, adoptDevices, assignDevice, createLobby, firstLocal, loadEntryMode, loadLobby, localPlayers, removePlayer,
   renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyPlayer, type LobbyResult, type LobbyState,
@@ -144,6 +146,8 @@ export function ChickenPatio() {
   const [pqOpen, setPqOpen] = useState(false)
   // the Sun button: the current Pátio's settings (its limits)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // the grid button: the Grade de blocos' own panel
+  const [gridOpen, setGridOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
   const [scalesOpen, setScalesOpen] = useState(false)
   const [aliensOpen, setAliensOpen] = useState(false)
@@ -641,7 +645,10 @@ export function ChickenPatio() {
 
   return (
     <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]" style={dockInset ? { right: dockInset, contain: "layout" } : undefined}>
-      <header className="pointer-events-auto absolute inset-x-0 top-0 z-[120] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)]" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
+      {/* the header's strip, behind the world: a press between its buttons is not a shot. The buttons themselves are
+          in front of everything the world draws over the characters (front elements, the Grade de blocos' faces) */}
+      <div aria-hidden="true" data-chicken-ignore className="absolute inset-x-0 top-0 z-[120] h-14" />
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-[206] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)] [&>*]:pointer-events-auto" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
         {/* the same Globe button as the chess matches' header */}
         <Button
           asChild
@@ -704,6 +711,10 @@ export function ChickenPatio() {
         <button type="button" aria-label="Configurações do Pátio" aria-pressed={settingsOpen} title="Configurações do Pátio" onClick={() => setSettingsOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", settingsOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Sun className="h-4 w-4" />
         </button>
+        {/* the Grade de blocos: for whoever may change it and, while it is on, for everyone (the grid lit: it is on) */}
+        {(access.canEdit || !!mineParams) && <button type="button" aria-label="Grade de blocos" aria-pressed={gridOpen} title="Grade de blocos" onClick={() => setGridOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", gridOpen ? "border-[#ffd166]" : "border-white/15", mineParams ? "text-[#ffd166]" : gridOpen ? "text-white" : "text-[#b9c7b9]")}>
+          <Grid3x3 className="h-4 w-4" />
+        </button>}
         <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
@@ -734,7 +745,7 @@ export function ChickenPatio() {
       {/* the FPS counter (Camadas → Contador de FPS) */}
       <FpsCounter />
       {/* the avatars: one per local player, at the right end of that player's inventory (drawn by the Parquinho) */}
-      <div data-chicken-ignore className="pointer-events-none fixed z-[190] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
+      <div data-chicken-ignore className="pointer-events-none fixed z-[206] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
         {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] }))].map(row => {
           const on = vestOpen && vestFor === row.id
           return (
@@ -755,7 +766,7 @@ export function ChickenPatio() {
       <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
 
       <MineGridLayer pass={!!mineParams?.pass} engine={engine} extras={extraEngines} worldRef={worldRef} width={worldScenes(screens) * SCENE_W} opacity={patioLayers.layers.grid / 100} houses={mineHouses} />
-      <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
+      <ChickenLayer dropIn={false} fixedScale controlsFront onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
       <ChickenPortal engine={engine} id={spawn === entry ? "patio" : "patio-exit"} href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={patioActors} birth={spawn === entry ? takeBirth : undefined} />
       {/* the Portais de nascimento: the same ring, leading nowhere; the one drawn for this visit is where they arrive */}
       {spawnPortals.slice(1).map(el => <ChickenPortal key={el.id} engine={engine} id={el === spawn ? "patio" : el.id} href="/" world={{ host: worldRef, x: el.x + el.w / 2, groundY: el.y + el.h - 6, d: el.w }} enabled={false} actors={patioActors} birth={el === spawn ? takeBirth : undefined} />)}
@@ -763,7 +774,7 @@ export function ChickenPatio() {
       <HouseDoors engine={engine} extras={extraEngines} elements={patio?.layout.elements} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} temple={patioTemple(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
@@ -790,7 +801,8 @@ export function ChickenPatio() {
         />
       )}
       {mineParams && <MineRoundEnd players={[{ id: "p1", name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] })), ...mineNetPlayers]} onReset={canResetGrid ? mine.reset : undefined} />}
-      {settingsOpen && patio && <PatioSettingsPanel layout={patio.layout} screens={screens} canEdit={access.canEdit} canGrid={canGrid} onResetGrid={mineParams && canResetGrid ? mine.reset : undefined} onChange={changeLayout} onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && patio && <PatioSettingsPanel layout={patio.layout} screens={screens} canEdit={access.canEdit} onChange={changeLayout} onClose={() => setSettingsOpen(false)} />}
+      {gridOpen && patio && <MineGridPanel layout={patio.layout} canEdit={access.canEdit} canGrid={canGrid} onResetGrid={mineParams && canResetGrid ? mine.reset : undefined} onChange={changeLayout} onClose={() => setGridOpen(false)} />}
       {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {scalesOpen && <ScalesPanel onClose={() => setScalesOpen(false)} />}
@@ -808,15 +820,16 @@ export function ChickenPatio() {
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
           <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
-            <select aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
+            <StepSelect aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
               {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
+            </StepSelect>
           </label>
           <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
           <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
           <PqRange label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
           <PqRange label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
           <PqRange label="Mira parada volta para o movimento" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou" />
+          <PqRange label="Mouse parado devolve a mira ao teclado" unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : "0 (nunca)")} hint="Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse" />
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
           <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
           <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
@@ -910,11 +923,11 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
     return (
       <label className="flex items-center justify-between gap-3">
         <span className={cn("min-w-0", changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
-        <select value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        <StepSelect value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
           <option value="">sem som</option>
           <option value="all">sorteio</option>
           {CHICKEN_SOUND_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-        </select>
+        </StepSelect>
       </label>
     )
   }

@@ -59,7 +59,7 @@ Poder de algumas aves. O pássaro só solta quando há um boneco embaixo: na col
 - **Quem tem:** almas das espécies mini (a cada 8 s, dano 1), gêmeos (10 s, dano 2) e tambor (14 s, dano 4); pássaros vivos Pardal (10 s, dano 1) e Bem-te-vi (12 s, dano 2), e os mortos-vivos desses tipos. O intervalo varia de 0,7 a 1,3 vez; o primeiro vem mais cedo.
 - **Queda:** cai com gravidade (1500 px/s², até 1000 px/s), levando 30% da velocidade lateral do pássaro. Some em 6 s.
 - **Em inimigo ou Alvo de treino:** tira o `dano` em vida (alien, zumbi, morto-vivo que não é pássaro, alvo). No Pátio online o golpe segue o caminho dos outros golpes.
-- **Em galinha:** as galinhas não têm vida no Pátio, então o cagado dá um tranco pequeno (30 + 14 × dano px/s para o lado, metade disso para cima) e deixa uma mancha nas costas por 4 s, desenhada por cima dela. Os pintinhos nunca são atingidos.
+- **Em galinha:** as galinhas não têm vida no Pátio, então o cagado dá um tranco pequeno (30 + 14 × dano px/s para o lado, metade disso para cima) e deixa uma mancha nas costas por 4 s, desenhada por cima dela. Agarrada numa parede ou num teto, ela só é derrubada quando o dano somado chega a “Cair do grab após” ([Paredes, teto e fios](../chicken/climbing.md)); a mancha aparece de qualquer jeito. Os pintinhos nunca são atingidos.
 - **No chão ou numa plataforma:** deixa uma marca por 3 s.
 - **Poupar o dono** (`poopSpare`, na ficha): ligado, o cagado da alma nunca conta o dono (atravessa); desligado, o dono é um boneco como os outros. Almas vivas poupam por padrão; almas mortas não. Os outros players locais sempre contam.
 - **Pássaros vivos:** acertam galinhas, inimigos e alvos. **Pássaros mortos-vivos:** só galinhas.

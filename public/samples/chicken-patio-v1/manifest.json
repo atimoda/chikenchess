@@ -1,0 +1,207 @@
+{
+  "repository": "sgossner/VCSL",
+  "revision": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+  "license": "CC0-1.0",
+  "recordings": [
+    {
+      "file": "clap-0.wav",
+      "source": "Idiophones/Struck Idiophones/Claps/Clap_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Claps/Clap_rr1.wav",
+      "source_sha256": "4c9f3fe4a34733b9be6ed9ce5e5aad48b19c1029ae9c6dd1b96294a847539e3f",
+      "semitones": 0,
+      "seconds": 0.25
+    },
+    {
+      "file": "clap-1.wav",
+      "source": "Idiophones/Struck Idiophones/Claps/Clap_rr2.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Claps/Clap_rr2.wav",
+      "source_sha256": "5ae64e838b76d0658cc541f07c3c7dcfd4b08815a915f32843a8279bf2c33b9a",
+      "semitones": 0,
+      "seconds": 0.25
+    },
+    {
+      "file": "sidestick-0.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 2/Snare3M_Xstick_v2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%202/Snare3M_Xstick_v2_rr1_Mid.wav",
+      "source_sha256": "fad304d674fa84a73ec89235aa1b811c91edf155bed108315b68fbd69f652fce",
+      "semitones": 0,
+      "seconds": 0.18
+    },
+    {
+      "file": "sidestick-1.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 2/Snare3M_Xstick_v2_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%202/Snare3M_Xstick_v2_rr2_Mid.wav",
+      "source_sha256": "7cd63e9b7851d3a075c68ebf7e48f047c4d6d12927338d4bb888a88172aa1475",
+      "semitones": 0,
+      "seconds": 0.18
+    },
+    {
+      "file": "rimshot-0.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 3/Snare4_rimshot_v2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%203/Snare4_rimshot_v2_rr1_Mid.wav",
+      "source_sha256": "a7444dd2945019a7dc08e574b7270ace4b34274b70f7f1622d719bfd1a7e9b4b",
+      "semitones": 0,
+      "seconds": 0.3
+    },
+    {
+      "file": "rimshot-1.wav",
+      "source": "Membranophones/Struck Membranophones/Snare Drum, Modern 3/Snare4_rimshot_v2_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%203/Snare4_rimshot_v2_rr2_Mid.wav",
+      "source_sha256": "f6f8e1dacae9a3af84736e37f33e39dc3a699ca5a13e35676f3a39345a84e5e3",
+      "semitones": 0,
+      "seconds": 0.3
+    },
+    {
+      "file": "hat-foot-0.wav",
+      "source": "Idiophones/Struck Idiophones/Hi-Hat Cymbal/HiHat_Close_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_Close_rr1_Mid.wav",
+      "source_sha256": "4e4dbb4ddbeea653f95c2c229685fd5966ed9492fb8489d89d19dbd864f1a6b4",
+      "semitones": 0,
+      "seconds": 0.15
+    },
+    {
+      "file": "hat-foot-1.wav",
+      "source": "Idiophones/Struck Idiophones/Hi-Hat Cymbal/HiHat_Close_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_Close_rr2_Mid.wav",
+      "source_sha256": "7a6c73b5ea831498d5c5c596b464a57e380cdc7dd2ab697bf10a2696b7f1987d",
+      "semitones": 0,
+      "seconds": 0.15
+    },
+    {
+      "file": "triangle-open-0.wav",
+      "source": "Idiophones/Struck Idiophones/Triangles/Triangle1_Hit_v2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Triangles/Triangle1_Hit_v2_rr1_Mid.wav",
+      "source_sha256": "bec62db48c6a052bff1b54f88c11fc6cb6131b9633da2afb35636291754971af",
+      "semitones": 0,
+      "seconds": 0.9
+    },
+    {
+      "file": "triangle-closed-0.wav",
+      "source": "Idiophones/Struck Idiophones/Triangles/Triangle1_HitM_v1_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Triangles/Triangle1_HitM_v1_rr2_Mid.wav",
+      "source_sha256": "260790ef70630f0b05f63f845a775011b020aadb3389c5ca68c9f6cf58f69bfc",
+      "semitones": 0,
+      "seconds": 0.12
+    },
+    {
+      "file": "triangle-closed-1.wav",
+      "source": "Idiophones/Struck Idiophones/Triangles/Triangle1_HitM_v1_rr4_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Triangles/Triangle1_HitM_v1_rr4_Mid.wav",
+      "source_sha256": "6e4f8cad1b1ee2c352988067ab541dd53758195af8a10f2d1107dd7076ef9d8a",
+      "semitones": 0,
+      "seconds": 0.12
+    },
+    {
+      "file": "cowbell-0.wav",
+      "source": "Idiophones/Struck Idiophones/Cowbells/Cowbell1_Normal_v3_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cowbells/Cowbell1_Normal_v3_rr1_Mid.wav",
+      "source_sha256": "e212cc27b3490d7927d41508bd7e90d6e09b0b8da169f0357341d3057c4910c4",
+      "semitones": 0,
+      "seconds": 0.35
+    },
+    {
+      "file": "cowbell-muted-0.wav",
+      "source": "Idiophones/Struck Idiophones/Cowbells/Cowbell1_Muted_v3_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cowbells/Cowbell1_Muted_v3_rr1_Mid.wav",
+      "source_sha256": "aeac086aae2ebe56ec5bcf13dac8cfb4fa76666678bd4267149517c548cafe9a",
+      "semitones": 0,
+      "seconds": 0.15
+    },
+    {
+      "file": "cabasa-0.wav",
+      "source": "Idiophones/Struck Idiophones/Cabasa/Cabasa1_Hit_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cabasa/Cabasa1_Hit_rr1_Mid.wav",
+      "source_sha256": "0290fec6f2e39d3757c6d69562ef50d47c4ec7da2e2947110e7738896b4f378d",
+      "semitones": 0,
+      "seconds": 0.14
+    },
+    {
+      "file": "cabasa-1.wav",
+      "source": "Idiophones/Struck Idiophones/Cabasa/Cabasa1_Hit_rr2_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Cabasa/Cabasa1_Hit_rr2_Mid.wav",
+      "source_sha256": "3ad7d3e63b235755cef86be29b4c188d2935dd621e96b48658d0aa6adb78b4d1",
+      "semitones": 0,
+      "seconds": 0.14
+    },
+    {
+      "file": "clave-0.wav",
+      "source": "Idiophones/Struck Idiophones/Claves/Claves1_Hit_v2_rr1_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Claves/Claves1_Hit_v2_rr1_Mid.wav",
+      "source_sha256": "bcabe27330761309eb4b4f6207e6e3b4be59815df86449ac05bfb9b81f19efc9",
+      "semitones": 0,
+      "seconds": 0.15
+    },
+    {
+      "file": "woodblock-0.wav",
+      "source": "Idiophones/Struck Idiophones/Woodblock/wood_click_f_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Woodblock/wood_click_f_rr1.wav",
+      "source_sha256": "86b690a393ad62d65dc6832948adb0cc164fe22f544a8065809f000c65d615fc",
+      "semitones": 0,
+      "seconds": 0.12
+    },
+    {
+      "file": "ganza-0.wav",
+      "source": "Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Down_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Shaker%2C%20Small/Mid_ShakerHighFaster_Down_rr1.wav",
+      "source_sha256": "cf4cb388ffcff5a042149e0645123b089ae85e8342876421e817dce55ce66a5a",
+      "semitones": 0,
+      "seconds": 0.16
+    },
+    {
+      "file": "ganza-1.wav",
+      "source": "Idiophones/Struck Idiophones/Shaker, Small/Mid_ShakerHighFaster_Up_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Shaker%2C%20Small/Mid_ShakerHighFaster_Up_rr1.wav",
+      "source_sha256": "45ae715ce4f64280c9d8fa7eacb4e7003127b93c59c08e95125b67b173cf98e0",
+      "semitones": 0,
+      "seconds": 0.16
+    },
+    {
+      "file": "zabumba-0.wav",
+      "source": "Membranophones/Struck Membranophones/Bass Drum 1/BDrumNew_hit_v5_rr1_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v5_rr1_Sum.wav",
+      "source_sha256": "642aaf3375eaff1307973f7de3ccbf74d18e71fb3cf9412e021b08fc3bf1981c",
+      "semitones": 7,
+      "seconds": 0.4
+    },
+    {
+      "file": "zabumba-aberta-0.wav",
+      "source": "Membranophones/Struck Membranophones/Bass Drum 1/BDrumNew_hit_v5_rr1_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v5_rr1_Sum.wav",
+      "source_sha256": "642aaf3375eaff1307973f7de3ccbf74d18e71fb3cf9412e021b08fc3bf1981c",
+      "semitones": 7,
+      "seconds": 0.7
+    },
+    {
+      "file": "bacalhau-0.wav",
+      "source": "Membranophones/Struck Membranophones/Frame Drum/HDrumS_HitMuted_v3_rr1_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Frame%20Drum/HDrumS_HitMuted_v3_rr1_Sum.wav",
+      "source_sha256": "9ac5fae877b90f0f354766efe8dc813be87eeb31e6b52fe8750fa0528c2c16c4",
+      "semitones": 7,
+      "seconds": 0.09
+    },
+    {
+      "file": "pandeiro-grave-0.wav",
+      "source": "Membranophones/Struck Membranophones/Frame Drum/HDrumS_Hand_v1_rr1_Sum.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Frame%20Drum/HDrumS_Hand_v1_rr1_Sum.wav",
+      "source_sha256": "5d8d963ee3487725097c82cb0f4f485ade3423e75541cedc32de2ed6ec6f61ce",
+      "semitones": 3,
+      "seconds": 0.3
+    },
+    {
+      "file": "platinela-0.wav",
+      "source": "Idiophones/Struck Idiophones/Tambourine 2/Tamb2_Shake_rr3_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Tambourine%202/Tamb2_Shake_rr3_Mid.wav",
+      "source_sha256": "af9eb210ae8a8e8a6af9e65253e04e65c5c55ab8858b09d89d995527f36423c1",
+      "semitones": 0,
+      "seconds": 0.14
+    },
+    {
+      "file": "platinela-1.wav",
+      "source": "Idiophones/Struck Idiophones/Tambourine 2/Tamb2_Shake_rr4_Mid.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Tambourine%202/Tamb2_Shake_rr4_Mid.wav",
+      "source_sha256": "b4f07441b32e0137a2f7acc8b3a5a174dd47ee214047e9c54463c3f2c4886c4e",
+      "semitones": 0,
+      "seconds": 0.14
+    }
+  ]
+}

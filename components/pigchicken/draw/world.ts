@@ -30,10 +30,12 @@ export const templeDraw: { temple: Temple | null; stage: NoteStage | null; charg
 
 // the hint over the items the local players can grab (set every frame): the first player to stand on one shows theirs
 export const pickupMarks = new Map<Pickup, { c: string; t: string }>()
+const MARK_GREY = "#9aa0a8"
 export function markHover(combat: Combat, key: string) {
   const at = (p: Pickup | null, c: string, t: string) => { if (p && !pickupMarks.has(p)) pickupMarks.set(p, { c, t: key ? `${key}: ${t}` : t }) }
-  at(combat.hover, "#4cc9f0", combat.hoverSwaps ? "trocar" : "pegar")
-  at(combat.hoverOwned, "#9aa0a8", "equipar")
+  // blue: a new item, taken; grey: something of hers changes places (swapped out with no room, or hers equipped)
+  at(combat.hover, combat.hoverSwaps ? MARK_GREY : "#4cc9f0", combat.hoverSwaps ? "trocar" : "pegar")
+  at(combat.hoverOwned, MARK_GREY, "equipar")
   const near = combat.chestNear
   if (near && !chestMarks.has(near.chest)) chestMarks.set(near.chest, { key, block: near.block, souls: combat.capturedSouls })
   const seat = combat.seatNear
@@ -87,7 +89,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.fillStyle = "rgba(123,223,242,0.18)"; ctx.beginPath(); ctx.ellipse(x, p.y - 2, 22, 5, 0, 0, Math.PI * 2); ctx.fill()
     ctx.save(); ctx.translate(x, y - 8)
     // the item grab would take: a blue outline and the key to press
-    // blue: grab takes it (or swaps it in when the inventory is full); grey: she already carries one, grab equips hers
+    // blue: grab takes it; grey: grab swaps it in (no room for it) or, when she already carries one, equips hers
     const mark = pickupMarks.get(p)
     if (mark) {
       ctx.filter = `drop-shadow(2px 0 0 ${mark.c}) drop-shadow(-2px 0 0 ${mark.c}) drop-shadow(0 2px 0 ${mark.c}) drop-shadow(0 -2px 0 ${mark.c})`

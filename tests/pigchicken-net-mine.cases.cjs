@@ -86,6 +86,7 @@ test('what arrives is checked: a browser speaks only for its own players, and a 
     { k: 'shot', c: 2, r: 1, d: 40, by: '3:1', face: 'nowhere' },
     { k: 'shot', c: 2, r: 1, d: -4, by: '3:1' },
     { k: 'shot', c: 2, r: 1, d: 5, by: '3:1', face: 'tl' }, // a cut corner's slanted wall
+    { k: 'shot', c: 2, r: 1, d: 6, by: '3:1', side: 'closed' }, { k: 'shot', c: 2, r: 1, d: 7, by: '3:1', side: 'inside' }, // whose side shot
     { k: 'shock', c: 0, r: 2 },
     { k: 'use', c: 1, r: 1, use: 'disarm', by: '3:0' }, { k: 'use', c: 1, r: 1, use: 'eat', by: '3:0' },
     { k: 'install', c: 1, r: 1, by: '3:0', turn: 'x' },
@@ -96,6 +97,7 @@ test('what arrives is checked: a browser speaks only for its own players, and a 
     { k: 'note', c: 1, r: 0, side: 'open', by: '3:0', face: 'left', n: 5 },
     { k: 'shot', c: 2, r: 1, d: 40, by: '3:1' },
     { k: 'shot', c: 2, r: 1, d: 5, by: '3:1', face: 'tl' },
+    { k: 'shot', c: 2, r: 1, d: 6, by: '3:1', side: 'closed' }, { k: 'shot', c: 2, r: 1, d: 7, by: '3:1' },
     { k: 'shock', c: 0, r: 2 },
     { k: 'use', c: 1, r: 1, use: 'disarm', by: '3:0' },
     { k: 'install', c: 1, r: 1, by: '3:0', turn: null },
@@ -113,6 +115,8 @@ test('what arrives is checked: a browser speaks only for its own players, and a 
 test('a burst on one wall is one message', () => {
   const note = { k: 'note', c: 1, r: 0, side: 'open', by: 'p1', face: 'left' }, shot = { k: 'shot', c: 1, r: 0, d: 10, by: 'p1' }
   assert.deepEqual(N.batchMineActs([note, note, { ...note, n: 2 }, shot, shot, { ...shot, by: 'p2' }, note]), [{ ...note, n: 4 }, { ...shot, d: 20 }, { ...shot, by: 'p2' }, note])
+  // a shot from the closed side is not added to one from the open side
+  assert.deepEqual(N.batchMineActs([{ ...shot, side: 'open' }, { ...shot, side: 'open' }, { ...shot, side: 'closed' }]), [{ ...shot, side: 'open', d: 20 }, { ...shot, side: 'closed' }])
   assert.deepEqual(N.mapActIds({ k: 'dead', who: 'p1', owner: '5:0' }, id => N.mineIdOut(id, ['p1'], 2)), { k: 'dead', who: '2:0', owner: '5:0' })
   assert.deepEqual(N.mapEventIds({ kind: 'boom', c: 0, r: 0, owner: '2:1', contained: true, cells: [] }, id => N.mineIdIn(id, ['p1', 'p2'], 2)), { kind: 'boom', c: 0, r: 0, owner: 'p2', contained: true, cells: [] })
   assert.equal(same('x'), 'x')

@@ -2,6 +2,18 @@
 // changelog only open lib/changelog.ts; entries here no longer change, they are only shown in the release notes.
 export const CHANGELOG_ARCHIVE = [
   {
+    version: '2.10.1',
+    date: '14/11/2026',
+    title: 'Correções do Pátio com zoom: nuvens grandes inteiras e prévia do arraste no tamanho certo',
+    groups: [
+      { title: 'Pátio', items: [
+        'Nuvens Suaves com Tamanho acima do normal não aparecem mais cortadas retas no topo.',
+        'Com a câmera no alto do Pátio, nuvens e cenário com profundidade não somem mais antes de sair da tela.',
+        'No Modo editor, ao arrastar uma casa ou árvore para o Pátio com zoom diferente de 100%, a prévia aparece do tamanho que o elemento terá ao ser solto, em vez de gigante (ou pequena).',
+      ] },
+    ],
+  },
+  {
     version: '2.10.0',
     date: '13/11/2026',
     title: 'Pátio Training room e Quadro de lousa; portais para outro Pátio e gerador de Pátio novo; postes presos ao fundo; Martelo de Thor e Cajado de Odin; fase Marseille 1997 · Orchestral rap na campanha Classical; qualidade gráfica e sonora com ajuste automático; Baú no Modo editor e Bag of souls',

@@ -47,6 +47,12 @@ export function noteBus() {
   return a && bus && noteVol > 0 ? { a, bus, noise: () => noise(a), admit: (v: Live) => admit(a, v) } : null
 }
 
+/** The ambience's bus, for the voices written outside this file (lib/pigchicken/kit-player.ts); null: no sound now. */
+export function ambienceBus() {
+  const a = ctx()
+  return a && amb && ambVol > 0 ? { a, amb } : null
+}
+
 // keeps the number of voices down: the oldest one fades out fast
 function admit(a: AudioContext, v: Live) {
   const now = a.currentTime

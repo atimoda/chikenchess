@@ -505,11 +505,18 @@ test('Harpa fixa: Pegar next to it sits, only the aim and Atirar count, Pegar ag
   assert.equal(c.seatNear, null)
   step(0, { grab: true })
   assert.equal(c.seated, null)
-  // next to the stool: it is offered; Correr's own key does not sit, Pegar does
+  // next to the stool: it is offered; Pegar sits, also from a key shared with Correr (the gamepad's X)
   step(spot.x + 10)
   assert.equal(c.seatNear, seat)
   step(spot.x + 10, { grab: true, grabRun: true })
+  assert.equal(c.seated, seat)
+  // seated, a Pegar that is one of the instrument's own binds (Shift as the sustenido) does not get her up; any other
+  // Pegar does, the gamepad's X (shared with Correr) included
+  step(spot.x + 10, { grab: true, grabRun: true, grabKeep: true })
+  assert.equal(c.seated, seat)
+  step(spot.x + 10, { grab: true, grabRun: true })
   assert.equal(c.seated, null)
+  step(spot.x + 10)
   step(spot.x + 10, { grab: true })
   assert.equal(c.seated, seat)
   assert.equal(seat.by, 'p1')
@@ -695,7 +702,7 @@ test('Harpa fixa in the example Pátios: the default Pátio has it on a floating
   const { WORLD_GROUND_Y: G, SCENE_PLATFORMS } = loadTs('lib/pigchicken/world.ts')
   const def = L.defaultLayout()
   const island = def.elements.find(e => e.id === 'harp-island'), harp = def.elements.find(e => e.kind === 'pedalharp')
-  assert.equal(L.LAYOUT_VERSION, 11)
+  assert.equal(L.LAYOUT_VERSION, 12)
   assert.equal(island.kind, 'ground'); assert.equal(island.hard, true); assert.equal(island.params.surface.style, 'meadow')
   // it floats between the two high platforms of the portals, a step under them, and the Harpa stands on its flat top
   const [shelf, , a, b] = SCENE_PLATFORMS[0]

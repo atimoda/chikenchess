@@ -4,6 +4,7 @@
 // the Itens panel). Saved in this browser; the Parquinho follows it live. The dropdown follows the scale the main
 // player's instrument is on. Under the dropdown, always in view, the scale's own drawing follows its numbers
 // (components/pigchicken/scale-preview.tsx); the Bateria's is its kit's setup (components/pigchicken/drum-kit-editor.tsx).
+import { StepSelect } from "@/components/ui/step-select"
 import { PatioRange } from "@/components/ui/patio-range"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
@@ -36,9 +37,9 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
   return (
     <FloatingPanel id="pigchicken-scales" aria-label="Escalas" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(360, vw - 24), h: Math.min(560, vh - 104) })} minW={260} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        <select aria-label="Escala" value={sel} onChange={e => setSel(e.target.value as InstrumentScaleId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+        <StepSelect aria-label="Escala" value={sel} onChange={e => setSel(e.target.value as InstrumentScaleId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
           {INSTRUMENT_SCALE_IDS.map(id => <option key={id} value={id}>{INSTRUMENT_SCALES[id].label}</option>)}
-        </select>
+        </StepSelect>
         <button type="button" onClick={() => { update(p => Object.assign(p, structuredClone(base))); if (sel === "drums") saveDrumKit(structuredClone(DEFAULT_KIT)) }} title="Volta esta escala para os valores padrão" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar escalas" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>

@@ -62,13 +62,13 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
       if (!round || !p) return null
       const hit = mineWallHit(round.grid, px, py, x, y)
       if (!hit) return null
-      if (by && damage > 0) { mineAct({ k: "shot", c: hit.c, r: hit.r, d: damage, by, face: hit.face }); mineTouched() }
+      if (by && damage > 0) { mineAct({ k: "shot", c: hit.c, r: hit.r, d: damage, by, face: hit.face, side: mineStore.side(by) }); mineTouched() }
       return { flipX: hit.flipX }
     },
     blast(x, y, r, damage, by) {
       const round = mineStore.round, p = mineStore.params
       if (!round || !p) return
-      for (const k of mineBlastCells(round.grid, x, y, r)) mineAct({ k: "shot", c: k.c, r: k.r, d: damage * k.part, by })
+      for (const k of mineBlastCells(round.grid, x, y, r)) mineAct({ k: "shot", c: k.c, r: k.r, d: damage * k.part, by, side: mineStore.side(by) })
       mineTouched()
     },
     shock(x1, y1, x2, y2) {
@@ -83,7 +83,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
       const hits = mineBlowHits(round.grid, x, y, angle, arc, reach)
       for (const hit of hits) {
         // an instrument's blow counts as notes (the open side's only, like the ones it plays), any other as a shot
-        mineAct(music ? { k: "note", c: hit.c, r: hit.r, side: mineStore.side(by), by, face: hit.face, n: mineBlowNotes(p, damage) } : { k: "shot", c: hit.c, r: hit.r, d: damage, by, face: hit.face })
+        mineAct(music ? { k: "note", c: hit.c, r: hit.r, side: mineStore.side(by), by, face: hit.face, n: mineBlowNotes(p, damage) } : { k: "shot", c: hit.c, r: hit.r, d: damage, by, face: hit.face, side: mineStore.side(by) })
       }
       if (hits.length) mineTouched()
     },
@@ -210,7 +210,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
           hint.use = { at, use }
           if (input.grab && !combat.hover) {
             if (!waiting.has(who)) ask(who, { k: "use", c: at.c, r: at.r, use, by: who })
-            input.grab = false; input.grabHeld = false
+            input.grab = false; input.grabHeld = false; input.grabReleased = false
           }
         }
       }

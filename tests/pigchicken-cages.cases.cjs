@@ -267,7 +267,7 @@ test('a chick caught is still a chick: it sits in the cage as one and, let out, 
   assert.equal(c.cages[0].cage.flash, 'lose')
 })
 
-test('a cage on the floor keeps its souls: whoever takes it takes them; with three, it swaps with the one in front', () => {
+test('a cage on the floor keeps its souls: whoever takes it takes them; with three, only a whole press of Pegar on it swaps it with the one in front', () => {
   const c = world('cage')
   sweepBirds(c, 2)
   // one lying in the world with a limit of its own, taken with Pegar: it hangs behind
@@ -276,8 +276,9 @@ test('a cage on the floor keeps its souls: whoever takes it takes them; with thr
   assert.deepEqual([names(c), c.cages.map(o => o.cage.cap)], [['cage', 'cageWood'], [I.DEFAULT_ITEMS.cage.cageSouls, 5]], 'the one she had stays in front')
   assert.equal(c.cages[1].cage.enterT < G.CAGE_ENTER, true, 'swinging in')
   assert.equal(c.hoverSwaps, false)
+  // with room, passing over one with Pegar held (running) takes it by itself
   c.addPickup(0, 'cageArch', 0)
-  step(c); step(c, { grab: true })
+  step(c); step(c, { grabHeld: true })
   assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'])
   assert.equal(c.pickups.length, 0)
   // a fourth one, with souls in it
@@ -290,7 +291,19 @@ test('a cage on the floor keeps its souls: whoever takes it takes them; with thr
   step(c, { melee: true })
   assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'], 'Golpe never swaps')
   for (let i = 0; i < 40; i++) step(c)
-  step(c, { grab: true })
+  const same = why => { assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'], why); assert.equal(c.hoverSwaps, true, 'still offered as a swap') }
+  const away = { ...me, x: 900 }
+  // no room: passing over it with Pegar held (pressed before she got there) leaves it, and so does letting go on it
+  step(c, { grab: true, grabHeld: true }, away); step(c, { grabHeld: true }, away)
+  for (let i = 0; i < 5; i++) step(c, { grabHeld: true })
+  same('Pegar held while passing never swaps')
+  step(c, { grabReleased: true }); same('nor Pegar let go on it, pressed somewhere else')
+  // pressed on it: nothing yet; she walks off it before letting go: nothing either
+  step(c, { grab: true, grabHeld: true }); step(c, { grabHeld: true }); same('pressed, not let go yet')
+  step(c, { grabHeld: true }, away); step(c, { grabHeld: true }); step(c, { grabReleased: true })
+  same('pressed on it, let go after leaving it and coming back')
+  // pressed and let go on it
+  step(c, { grab: true, grabHeld: true }); step(c, { grabHeld: true }); step(c, { grabReleased: true })
   assert.deepEqual(names(c), ['cageFlight', 'cageWood', 'cageArch'], 'it takes the place of the one in front')
   assert.equal(c.cages[0], lying)
   assert.equal(c.capturedSouls, 2, 'its souls came with it')

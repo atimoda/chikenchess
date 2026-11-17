@@ -15,6 +15,7 @@ export type MineGridParams = {
   blockNotes: boolean // "Notas quicam nas paredes": the notes bounce off the walls of the closed blocks (off: they go through)
   toFlag: number // notes from grey to the flag
   toOpen: number // damage from grey until the block is set free (0: it never breaks)
+  insideBreaks: boolean // "Lado de dentro quebra paredes": the closed side's shots, blasts and blows damage the blocks too
   toDoubt: number // notes from the flag to the doubt
   turn: MineTurn // "Giro da gangorra": the edge the blue grows from
   fuse: number // the detonator's time, s
@@ -39,7 +40,7 @@ export const MINE_WALL_OPACITY = { min: 0, max: 100, step: 5, default: 100 } as 
 export const MINE_CORNER = { min: 0, max: 100, step: 5, default: 0 } as const
 export const defaultMineGrid = (): MineGridParams => ({
   on: false, cell: MINE_CELL.default, gap: MINE_GAP.default, pass: true, bombs: MINE_BOMBS.default,
-  blockNotes: false, toFlag: MINE_NOTES.default, toOpen: MINE_DAMAGE.default, toDoubt: MINE_NOTES.default, turn: 0, fuse: MINE_FUSE.default, startBombs: MINE_START_BOMBS.default,
+  blockNotes: false, toFlag: MINE_NOTES.default, toOpen: MINE_DAMAGE.default, insideBreaks: true, toDoubt: MINE_NOTES.default, turn: 0, fuse: MINE_FUSE.default, startBombs: MINE_START_BOMBS.default,
   ...MINE_COLORS, wallOpacity: MINE_WALL_OPACITY.default, corner: MINE_CORNER.default,
 })
 
@@ -57,7 +58,7 @@ export function normalizeMineGrid(raw: unknown): MineGridParams | undefined {
     on: p.on === true,
     cell: snap(num(p.cell, d.cell), MINE_CELL), gap: snap(num(p.gap, d.gap), MINE_GAP),
     pass: p.pass !== false, bombs: snap(num(p.bombs, d.bombs), MINE_BOMBS),
-    blockNotes: p.blockNotes === true, toFlag: snap(num(p.toFlag, d.toFlag), MINE_NOTES), toOpen: snap(num(p.toOpen, d.toOpen), MINE_DAMAGE), toDoubt: snap(num(p.toDoubt, d.toDoubt), MINE_NOTES),
+    blockNotes: p.blockNotes === true, toFlag: snap(num(p.toFlag, d.toFlag), MINE_NOTES), toOpen: snap(num(p.toOpen, d.toOpen), MINE_DAMAGE), insideBreaks: p.insideBreaks !== false, toDoubt: snap(num(p.toDoubt, d.toDoubt), MINE_NOTES),
     turn: turnOf(p.turn), fuse: snap(num(p.fuse, d.fuse), MINE_FUSE), startBombs: snap(num(p.startBombs, d.startBombs), MINE_START_BOMBS),
     grey: color(p.grey, d.grey), blue: color(p.blue, d.blue), red: color(p.red, d.red),
     wallOpacity: snap(num(p.wallOpacity, d.wallOpacity), MINE_WALL_OPACITY), corner: snap(num(p.corner, d.corner), MINE_CORNER),
@@ -283,28 +284,24 @@ export function mineWalls(grid: MineGrid, only?: (c: number, r: number) => boole
 // next room's floor): each such stretch gets a plug, a solid box only for the bodies bigger than `fit`. `shaft`
 // stands between two closed blocks side by side, `corridor` between one and the one above it, `cross` where four
 // closed blocks meet. A gap beside an open block or the end of the grid stays free: there is room next to it.
-// `corner`: what a block's cut corner leaves open beside a plugged stretch (a triangle, `shape` in its box): for
-// those bodies the block is square there, as the plug beside it is.
-export type MinePlug = MineRect & { id: string; group: string; c: number; r: number; kind: 'shaft' | 'corridor' | 'cross' | 'corner'; fit: number; shape?: [number, number][] }
+// With cut corners ("Cantos em octógono") a plug stands only where the passage is as narrow as the gap, between the
+// two blocks' straight sides: what the cuts leave open (the valley over a shaft, the wedge beside a corridor, the
+// diamond where four blocks meet) is space for every body, as drawn, and the slanted walls are what bounds it.
+export type MinePlug = MineRect & { id: string; group: string; c: number; r: number; kind: 'shaft' | 'corridor' | 'cross'; fit: number }
 
 export function minePlugs(grid: MineGrid, only?: (c: number, r: number) => boolean): MinePlug[] {
   const g = grid.geo, out: MinePlug[] = []
   if (g.gap <= 0) return out
   const closed = (c: number, r: number) => { const cell = mineCell(grid, c, r); return !!cell && !cell.open }
   // a gap narrower than the thinnest collider the engine reads grows into the walls beside it
-  const pad = Math.max(0, (8 - g.gap) / 2)
+  const pad = Math.max(0, (8 - g.gap) / 2), k = g.cut
   for (let r = 0; r < g.rows; r++) for (let c = 0; c < g.cols; c++) {
     if (!closed(c, r) || (only && !only(c, r))) continue
-    const b = mineCellRect(g, c, r), right = closed(c + 1, r), up = closed(c, r + 1)
+    const b = mineCellRect(g, c, r), right = closed(c + 1, r), up = closed(c, r + 1), low = mineCornerCut(g, r, 'bl')
     const add = (kind: MinePlug['kind'], x: number, y: number, w: number, h: number) => out.push({ id: `mine-${c}-${r}-${kind}`, group: `mine-${c}-${r}-${kind}`, c, r, kind, fit: g.gap, x, y, w, h })
-    if (right) add('shaft', b.x + b.w - pad, b.y, g.gap + pad * 2, b.h)
-    if (up) add('corridor', b.x, b.y - g.gap - pad, b.w, g.gap + pad * 2)
-    if (right && up && closed(c + 1, r + 1)) add('cross', b.x + b.w - pad, b.y - g.gap - pad, g.gap + pad * 2, g.gap + pad * 2)
-    for (const corner of MINE_CORNERS) {
-      const cut = mineCornerCut(g, r, corner)
-      if (!cut || !(closed(c + (corner[1] === 'l' ? -1 : 1), r) || closed(c, r + (corner[0] === 't' ? 1 : -1)))) continue
-      out.push({ id: `mine-${c}-${r}-fill-${corner}`, group: `mine-${c}-${r}`, c, r, kind: 'corner', fit: g.gap, ...cornerPiece(b, corner, [[0, 0], [cut, 0], [0, cut]]) })
-    }
+    if (right) add('shaft', b.x + b.w - pad, b.y + k, g.gap + pad * 2, b.h - k - low)
+    if (up) add('corridor', b.x + k, b.y - g.gap - pad, b.w - k * 2, g.gap + pad * 2)
+    if (!k && right && up && closed(c + 1, r + 1)) add('cross', b.x + b.w - pad, b.y - g.gap - pad, g.gap + pad * 2, g.gap + pad * 2)
   }
   return out
 }

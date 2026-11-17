@@ -3,6 +3,7 @@
 // "Gerar de MIDI" (the jukebox): pick a .mid file, the tracks that go in and each one's alien, the difficulty, the
 // key and the bars; the song is made as the choices change (its cover and its numbers show it), Ouvir plays it in
 // the temple and Gerar saves it under its name and opens it in the editor.
+import { StepSelect } from "@/components/ui/step-select"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { FileMusic, Play, Wand2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -105,10 +106,10 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
                         <span className="block text-[10px] text-[#93a79a]">{t.notes.length} notas · {t.drums ? "bateria" : `${noteName(Math.min(...ms))} a ${noteName(Math.max(...ms))}`}</span>
                       </span>
                     </label>
-                    <select aria-label={`Alien da faixa ${t.name}`} value={g.variant} onChange={e => setTrack(t.index, { variant: e.target.value })} className={cn(field, "max-w-44")}>
+                    <StepSelect aria-label={`Alien da faixa ${t.name}`} value={g.variant} onChange={e => setTrack(t.index, { variant: e.target.value })} className={cn(field, "max-w-44")}>
                       {t.drums && <option value={DRUMS_BY_PIECE}>Por peça (bumbo, caixa…)</option>}
                       {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>)}
-                    </select>
+                    </StepSelect>
                   </div>
                 )
               })}
@@ -120,16 +121,16 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
             </div>
             <div className="flex flex-wrap items-center gap-field">
               <label className="flex items-center gap-1.5">Tom
-                <select value={root ?? ""} onChange={e => setRoot(e.target.value === "" ? null : Number(e.target.value))} className={field}>
+                <StepSelect value={root ?? ""} onChange={e => setRoot(e.target.value === "" ? null : Number(e.target.value))} className={field}>
                   <option value="">Do arquivo{key ? ` (${keyName(key.root)} ${key.minor ? "menor" : "maior"})` : ""}</option>
                   {ROOTS.map(r => <option key={r} value={r}>{keyName(r)}</option>)}
-                </select>
+                </StepSelect>
               </label>
               <label className="flex items-center gap-1.5">Escala
-                <select value={scale ?? ""} onChange={e => setScale(e.target.value === "" ? null : (e.target.value as ScaleId))} className={field}>
+                <StepSelect value={scale ?? ""} onChange={e => setScale(e.target.value === "" ? null : (e.target.value as ScaleId))} className={field}>
                   <option value="">Pentatônica do tom</option>
                   {(Object.keys(SCALES) as ScaleId[]).map(k => <option key={k} value={k}>{SCALES[k].label}</option>)}
-                </select>
+                </StepSelect>
               </label>
               <label className="flex items-center gap-1.5">Do compasso<input type="number" min={1} max={999} value={fromBar} onChange={e => setFromBar(Math.max(1, Math.round(Number(e.target.value) || 1)))} className={cn(field, "w-16")} /></label>
               <label className="flex items-center gap-1.5">Compassos<input type="number" min={0} max={999} value={bars} onChange={e => setBars(Math.max(0, Math.round(Number(e.target.value) || 0)))} className={cn(field, "w-16")} title="0: até o fim" /></label>

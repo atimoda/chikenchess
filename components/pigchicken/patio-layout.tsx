@@ -20,6 +20,8 @@ import { SceneryWindStyles } from "./scenery-wind-bend"
 import { LanesArt, ZoneArt } from "./sound-zone-art"
 import { SurfaceArt } from "./surface-art"
 import { ChalkboardArt } from "./chalkboard-art"
+import { BalustradeArt, BuildingArt } from "./building-art"
+import { BALUSTRADE_FLOOR, buildingSurfaces, normalizeBalustrade, normalizeBuilding } from "@/lib/pigchicken/buildings"
 
 // one element's art filling its box
 // placed: the element as it stands in the Pátio (a house there opens when someone goes in), not a preview of it
@@ -29,6 +31,8 @@ export const ElementArt = memo(function ElementArt({ el, worldX, editing, placed
   if (el.kind === "lanes") return el.params.lanes ? <LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing={editing} /> : null
   if (el.kind === "chalkboard") return el.params.chalkboard ? <ChalkboardArt board={el.params.chalkboard} w={el.w} h={el.h} /> : null
   if (el.kind === "house") return placed && el.id ? <PlacedHouseArt id={el.id} house={el.params.house ?? normalizeHouse(null)} /> : <HouseArt house={el.params.house ?? normalizeHouse(null)} />
+  if (el.kind === "building") return <BuildingArt building={el.params.building ?? normalizeBuilding(null)} w={el.w} h={el.h} />
+  if (el.kind === "balustrade") return <BalustradeArt balustrade={el.params.balustrade ?? normalizeBalustrade(null)} w={el.w} h={el.h} />
   if ((el.kind === "ground" || el.kind === "wall") && el.params.surface) return <SurfaceArt surface={el.params.surface} w={el.w} h={el.h} />
   if (el.kind === "tree" && el.params.tree) return <CustomTreeArt tree={el.params.tree} worldX={worldX} />
   if (el.kind === "trampoline") {
@@ -118,6 +122,14 @@ const TreeCollider = memo(function TreeCollider({ id, x, y, w, h, rot, tree, dep
     data-chicken-walls={walls || undefined} data-chicken-nearby className="absolute" />
 })
 
+// a Prédio: its roofs' top edges and eaves are one-way floors (lib/pigchicken/buildings.ts)
+const BuildingCollider = memo(function BuildingCollider({ id, x, y, w, h, building, depth }: Pick<LayoutElement, 'id' | 'x' | 'y' | 'w' | 'h'> & { building: NonNullable<LayoutElement['params']['building']>; depth: number }) {
+  const lines = useMemo(() => buildingSurfaces(building, w, h)
+    .map(points => points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')).join('|'), [building, w, h])
+  if (!lines) return null
+  return <div data-chicken-id={id} data-chicken-depth={depth} data-chicken-world-box={`${x},${y},${w},${h}`} data-chicken-line={lines} data-chicken-nearby className="absolute" />
+})
+
 // a closed outline (a Chão or Parede, or any "Objeto duro"): the engine reads its edges as floors (facing up),
 // walls (steep) and ceilings (facing down); `data-chicken-hard` makes all of them solid and blocks walking through
 const ShapeCollider = memo(function ShapeCollider({ id, outline, hard, depth }: { id: string; outline: [number, number][]; hard: boolean; depth: number }) {
@@ -170,6 +182,9 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
             data-chicken-bounce={`${el.params.trampoline.strength},${el.params.trampoline.angle}`} data-chicken-nearby className="absolute" />
         }
         if (el.kind === "house" && el.params.house) return <HouseCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} house={el.params.house} depth={depth} />
+        if (el.kind === "building" && el.params.building) return <BuildingCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} building={el.params.building} depth={depth} />
+        // the Mureta com cerca: a floating floor along the top of its wall, under the balustrade
+        if (el.kind === "balustrade") return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${el.x},${el.y},${el.w},${el.h}`} data-chicken-line={`0,${BALUSTRADE_FLOOR} ${el.w},${BALUSTRADE_FLOOR}`} data-chicken-nearby className="absolute" />
         const outline = elementOutline(el) ?? (isHard(el) ? elementCorners(el) : null)
         if (outline) return <ShapeCollider key={el.id} id={el.id} outline={outline} hard={isHard(el)} depth={depth} />
         const b = elementBounds(el)

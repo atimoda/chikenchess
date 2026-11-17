@@ -55,12 +55,12 @@ Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAM
 - **Quantidade** (0 a 100%: ~450 flocos numa tela de 1600 × 900 em 100%, proporcional à área), **Tamanho** (20 a 300%), **Velocidade** (0 a 300%; 0 = parados no ar), **Vento** (−100 a +100, para a esquerda ou a direita) e **Opacidade** (10 a 100%).
 - Um canvas do tamanho da tela, por cima de todo o fundo (céu, montanhas e matas) e atrás das coisas do Pátio. Ele desfaz câmera e zoom a cada quadro, então cobre a tela inteira em qualquer zoom. Cada floco tem uma profundidade: os de perto são maiores, mais rápidos, mais opacos e escorregam mais quando a câmera anda. A cor é branco puxando para a luz das nuvens. Com movimento reduzido no sistema, os flocos ficam parados.
 
-## Templo e Vila opcionais (11/11, v2.8.0)
+## Fundo da Vila opcional (11/11, v2.8.0; 17/11, v2.13.0)
 
-`settings.temple` (`patioTemple` em `lib/pigchicken/patio-settings.ts`); `ParquinhoWorld` e `ParquinhoPlay` recebem `temple`.
+`settings.temple` (`patioTemple` em `lib/pigchicken/patio-settings.ts`); `ParquinhoWorld` recebe `temple`.
 
-- Em Configurações do Pátio, **Templo e Vila** (ligado por padrão). Desligado: o Templo do Gongo (desenho, telhados que são pisos, gongo, pedra Recomeçar, jukebox e os cinco suportes de armas e instrumentos da entrada, com os itens que estavam neles) e o desenho da Vila dos Telhados (a montanha no fim) saem; a música do Templo não toca. As duas cenas continuam no mundo como espaço vazio (a largura não muda). Os elementos do layout que estiverem lá continuam.
-- O **Pátio vazio** (`emptyLayout`) e o **Pátio de exemplo do pôr do sol** já nascem com ele desligado; Pátios salvos antes continuam com Templo e Vila.
+- Em Configurações do Pátio, **Fundo da Vila** (ligado por padrão; até 17/11 era “Templo e Vila”). Desligado: o desenho fixo ao fundo da Vila dos Telhados (os terraços e a placa) sai; a cena continua no mundo (a largura não muda) e os elementos do layout que estiverem lá continuam. Desde 17/11 o Templo do Gongo é feito de elementos ([Templo montado com elementos](temple.md)) e não depende dessa opção, que só decide se um Pátio salvo antes recebe o Templo na migração.
+- O **Pátio vazio** (`emptyLayout`) e o **Pátio de exemplo do pôr do sol** já nascem com ele desligado; Pátios salvos antes continuam com ele ligado.
 
 ## Pé das camadas do fundo (11/11, v2.8.0)
 

@@ -21,7 +21,7 @@ import { CAGES_MAX, CAGE_DENY, bringFront, cageCap, cageRoom, cageSouls, cageWit
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isCage, isKey, isMineItem, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
-import { rackRespawnDelay } from './racks'
+import { rackRefillLimit, rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, netIdFor, type NetHit, type NetShot } from './net-world'
 import { TAKE_WAIT, glideSoulMirror, importSouls, soulFromWho, soulWho, type NetGive, type NetSoulWho, type NetTake, type SoulMirror } from './net-souls'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
@@ -251,7 +251,9 @@ export type FrameInput = {
   cancelFire?: boolean // UI, focus loss or a grabbed/portal chicken cancels preparation
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
   grabHeld?: boolean // Pegar held down: every item she passes over is taken as if grab were pressed on it
+  grabReleased?: boolean // Pegar let go in this frame (a Gaiola with no room for it is swapped in only by a whole press on it)
   grabRun?: boolean // that press came only from Correr's keys/buttons: it takes (Pegar) but never equips (Equipar)
+  grabKeep?: boolean // seated: that press came only from the instrument's own binds (lib/pigchicken/instrument-binds.ts): it does not get her up
 }
 
 export const SLOTS = INVENTORY_MAX
@@ -302,7 +304,9 @@ export function createCombat() {
   let consumption: { item: ItemId; left: number; total: number } | null = null
   let effects: Effect[] = []
   // id: the local player it is (the souls act on their owner through it); the chicks have none
-  let blastActors: { id?: string; box: BlastBox; push: (vx: number, vy: number) => void }[] = []
+  // push(vx, vy, damage): damage is what the blow does, for a bird grabbed on a wall (lib/chicken/grab-damage.ts);
+  // without it the push always takes it off
+  let blastActors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[] = []
   // other catchable birds in the world (the chicks that follow her): where they are (world px, their middle and
   // size) and what to do when the Passaguá catches one (the Parquinho removes it)
   let catchables: Catchable[] = []
@@ -341,7 +345,7 @@ export function createCombat() {
   const cards: Card[] = []
   let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
-  const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; cageSouls?: number }[] = []
+  const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; cageSouls?: number; refillLimit?: number; given: number }[] = []
   // the Baús of the layout (the layout sync adds, moves and removes them) and the one each local player is next to
   const chests: Chest[] = []
   const chestNear = new Map<string, ChestNear>()
@@ -834,16 +838,18 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number; cageArm: number | null
     trem: TremoloState; tremBend: number; tremReach: number | null; aimReach: number; aimKind: AimKind; harp: HarpState; stringAims: (StringAim | null)[] | null; kit: KitState; seated: { seat: Seat; owned: Owned } | null; aimPoint: { x: number; y: number } | null
   }
   const loadouts = new Map<string, Loadout>()
   let active = 'p1'
   // her Gaiolas (lib/pigchicken/cages.ts), at most CAGES_MAX: the first one is in front, where the souls caught go
   // and come out of; each one is a stack (the last soul in is the first one out). cageDeny: s left of the shake of a
-  // catch that did not fit anywhere
+  // catch that did not fit anywhere. cageArm: the Gaiola on the floor (its pickup's id) Pegar was pressed on while
+  // she had no room for it: letting Pegar go still on it swaps it in
   let cages: Owned[] = []
   let cageDeny = 0
+  let cageArm: number | null = null
   // the ground's y, as the last step had it
   let floorY = 0
   // souls on their way to a Gaiola (the world's: each one knows whose it is and which cage keeps its place)
@@ -878,18 +884,18 @@ export function createCombat() {
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, trem: newTremolo(), tremBend: 0, tremReach: null, aimReach: 1, aimKind: 'none', harp: newHarp(), stringAims: null, kit: newKit(), seated: null, aimPoint: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, cageArm: null, trem: newTremolo(), tremBend: 0, tremReach: null, aimReach: 1, aimKind: 'none', harp: newHarp(), stringAims: null, kit: newKit(), seated: null, aimPoint: null,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint } = l)
     active = id
   }
 
@@ -915,8 +921,9 @@ export function createCombat() {
   // the cage of `owner`'s a soul on its way back takes (the one in front first; no cage comes to the front for it)
   const cageFor = (owner: string): CageState | null => { const list = cagesOf(owner), i = cageWithRoom(list, reserved); return i < 0 ? null : list[i].cage! }
   const denyCatch = () => { if (cageDeny <= 0) sound('locked', null); cageDeny = CAGE_DENY }
-  // a Gaiola taken hangs with her others, behind them (the first one is in front). With CAGES_MAX already, Pegar
-  // (swap) puts it in front and the one that was there falls to the floor with its souls; Golpe never swaps
+  // a Gaiola taken hangs with her others, behind them (the first one is in front). With CAGES_MAX already, a whole
+  // press of Pegar on it (swap: pressed and let go while it is the one offered, see the step) puts it in front and
+  // the one that was there falls to the floor with its souls; Golpe and Pegar held while passing never swap
   function takeCage(p: Pickup, swap: boolean) {
     const cage = p.owned.cage!
     if (cages.length >= CAGES_MAX) {
@@ -1324,7 +1331,7 @@ export function createCombat() {
         // cards of this browser it reaches); the damage is the other browser's
         const at = cards.findIndex(o => o.remote && o.net === s.c)
         if (at >= 0) cards.splice(at, 1)
-        blastPush(s.x, s.y, s.rd, d.explodePush)
+        blastPush(s.x, s.y, s.rd, d.explodePush, d.explodeDamage)
         booms.push({ x: s.x, y: s.y, r: s.rd, life: s.n ? 0.5 : 0.35, ...(s.n ? { color: s.n.c } : {}) })
         burst(s.x, s.y, 16, s.n ? s.n.c : '#ff6b5b', 300, 3)
         if (near && heard++ < 4) { if (s.n) out.note(s.n.v as VoiceId, s.n.m, 0, d.noteLen, 0.4); else sounds.push({ kind: 'explode', item: null }) }
@@ -1352,11 +1359,13 @@ export function createCombat() {
     }
   }
 
-  // a burst pushes away whoever is in its radius: the players (the one who made it too) and the enemies
-  function blastPush(x: number, y: number, r: number, strength: number, housed = false) {
+  // a burst pushes away whoever is in its radius: the players (the one who made it too) and the enemies.
+  // damage: the burst's at its centre; a player takes it fading to the edge like the push (it only counts for
+  // falling off a grab)
+  function blastPush(x: number, y: number, r: number, strength: number, damage: number, housed = false) {
     blastActors.forEach(actor => {
       const push = explosionImpulse(x, y, r, strength, actor.box)
-      if (push) actor.push(push.x, push.y)
+      if (push) actor.push(push.x, push.y, damage * Math.hypot(push.x, push.y) / strength)
     })
     // inside a house the blast stays in the room: the enemies are all outside
     if (!housed) targets.forEach(t => {
@@ -1368,7 +1377,8 @@ export function createCombat() {
     })
   }
   function explode(x: number, y: number, r: number, damage: number, b?: Bullet) {
-    blastPush(x, y, r, b ? b.explodePush ?? items[b.item].explodePush : 0, !!b?.room)
+    // (another browser's shot carries no damage here: its item's stands for it)
+    blastPush(x, y, r, b ? b.explodePush ?? items[b.item].explodePush : 0, b?.remote ? items[b.item].explodeDamage : damage, !!b?.room)
     if (b?.note) { musicBurst(x, y, r, damage, b); return }
     booms.push({ x, y, r, life: 0.35 })
     sound('explode', null)
@@ -1458,7 +1468,7 @@ export function createCombat() {
     if (at >= 0) cards.splice(at, 1)
     arrives(c.owned)
     const r = Math.max(10, d.explodeRadius) * (burstsAlone(c.rank) ? Math.max(1, d.deckBig) : 1)
-    blastPush(c.x, c.y, r, d.explodePush)
+    blastPush(c.x, c.y, r, d.explodePush, d.explodeDamage)
     const reach = (hit: (t: Target, cx: number, cy: number, dist: number) => void) => targets.forEach(t => {
       if (t.deadT > 0) return
       const cx = Math.max(t.x - t.w / 2, Math.min(c.x, t.x + t.w / 2)), cy = Math.max(t.y - t.h, Math.min(c.y, t.y))
@@ -2186,7 +2196,7 @@ export function createCombat() {
         const foe = !who && p.foes ? targets.find(t => poopable(t) && poopHits(p, targetBox(t))) : undefined
         if (who) {
           const k = poopKnock(p.damage), dir = p.vx > 0 ? 1 : p.vx < 0 ? -1 : Math.random() < 0.5 ? -1 : 1
-          who.push(dir * k, -k * POOP.knock.up)
+          who.push(dir * k, -k * POOP.knock.up, p.damage)
           // on her back: nearer the middle of her box than where it fell, and below her head
           poopStains.push({ id: who.id!, dx: (p.x - (who.box.l + who.box.r) / 2) * POOP.stainIn, dy: (who.box.b - who.box.t) * POOP.stainAt, x: p.x, y: p.y, left: POOP.stain })
           splat(p.x, p.y); gone = true
@@ -2368,7 +2378,7 @@ export function createCombat() {
   })
 
   return {
-    setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number) => void }[]) { blastActors = actors },
+    setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
     setCatchables(list: Catchable[]) { catchables = list },
     /** a little cloud where something left (another browser's chick that is no longer there) */
     puff(x: number, y: number) { cloud(x, y) },
@@ -2520,7 +2530,7 @@ export function createCombat() {
     // the bomb of a block going off: the blast everyone sees, hears and is pushed by, which hurts the enemies in it
     boom(x: number, y: number, r: number, damage: number, push: number) {
       mineQuiet = true
-      try { explode(x, y, r, damage); blastPush(x, y, r, push) } finally { mineQuiet = false }
+      try { explode(x, y, r, damage); blastPush(x, y, r, push, damage) } finally { mineQuiet = false }
     },
     // a song is playing (the undead wait for it to end before leaving); the birds of the place (null: the zone's)
     setPlaying(on: boolean) { playing = on },
@@ -2797,7 +2807,7 @@ export function createCombat() {
     addChest(id: string, x: number, y: number, params: ChestParams): Chest { const c: Chest = { id, x, y, params, open: false, lid: 0, t: 0, shake: 0 }; chests.push(c); return c },
     // cageSouls: a Gaiola's limit of souls on this rack (none: the item's own)
     // (a Gaiola's rack waits longer between one cage and the next, but its first one is there from the start)
-    addRack(x: number, item: ItemId, y?: number, respawnDelay?: number, cageSouls?: number) { const delay = rackRespawnDelay(item, respawnDelay); racks.push({ x, item, t: isCage(item) ? delay : 0, label: items[item].name.toUpperCase(), y, respawnDelay: delay, cageSouls }) },
+    addRack(x: number, item: ItemId, y?: number, respawnDelay?: number, cageSouls?: number, refillLimit?: number) { const delay = rackRespawnDelay(item, respawnDelay); racks.push({ x, item, t: isCage(item) ? delay : 0, label: items[item].name.toUpperCase(), y, respawnDelay: delay, cageSouls, refillLimit: rackRefillLimit(refillLimit), given: 0 }) },
     // the spread right now, in degrees (the reticle draws it)
     spread(body: Body) {
       const d = def()
@@ -2816,13 +2826,14 @@ export function createCombat() {
       let peckStarted = false
       // what calls a strong blow's charge off without hitting: the interface, empty hands, a soul's peck
       const heavyCancel = !!input.cancelFire || !!input.deselect || locks.has(active)
-      // sitting at a fixed instrument: only the aim and Atirar count; Pegar gets her up (not Correr's own key);
+      // sitting at a fixed instrument: only the aim and Atirar count; Pegar gets her up (not a key that is one of the
+      // instrument's own binds);
       // a portal, being carried or the instrument leaving the Pátio too (online: another browser's player who sat
       // at it at the same time and comes first)
       let stoodUp = false
       if (seated) {
-        if (!seats.includes(seated.seat) || seated.seat.yield || (input.grab && !input.grabRun) || body.state === 'held' || body.state.startsWith('portal')) { standUp(); stoodUp = true; input = { ...input, grab: false, grabHeld: false } }
-        else input = { ...input, ...NO_SWITCH, move: null, deselect: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
+        if (!seats.includes(seated.seat) || seated.seat.yield || (input.grab && !input.grabKeep) || body.state === 'held' || body.state.startsWith('portal')) { standUp(); stoodUp = true; input = { ...input, grab: false, grabHeld: false, grabReleased: false } }
+        else input = { ...input, ...NO_SWITCH, move: null, deselect: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false }
       }
       // rearranging the bar never changes what she holds (nor what is being done with it)
       if (input.move) moveSlot(input.move.from, input.move.to, input.move.after)
@@ -2830,7 +2841,7 @@ export function createCombat() {
         stopBeam(); peck = null; peckPrep = 0; swing = null; consumption = null; heavyItem = null; heavyT = 0
         cur = inv.length; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0
         throwT = 0; throwItem = null; throwVoid = input.throwHeld
-        input = { ...input, ...NO_SWITCH, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
+        input = { ...input, ...NO_SWITCH, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false }
       }
       // pecked by a soul (lib/pigchicken/soul-acts.ts): her item does not answer for a moment
       if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
@@ -2842,7 +2853,7 @@ export function createCombat() {
       if (consumption) {
         consumption.left -= dt
         if (consumption.left <= 0) consumption = null
-        input = { ...input, ...NO_SWITCH, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false }
+        input = { ...input, ...NO_SWITCH, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false }
       }
       // aim turns at the item's speed
       if (d.turnRate > 0) {
@@ -2987,6 +2998,8 @@ export function createCombat() {
             if (!pickUp(p, false)) pickups.splice(i, 0, p)
             else if (hover === p) hover = null
           })
+          // and it chips the closed blocks of the Grade de blocos whose wall it reaches, like a Golpe with the wing
+          if (d.meleeDamage > 0 && !shotRooms.has(active)) mine?.blow(at.x, at.y, peck.angle, arc, peck.reach, d.meleeDamage, false, active)
         }
         if (peck.t >= peck.time) peck = null
       }
@@ -3250,8 +3263,16 @@ export function createCombat() {
       // holding Pegar while walking takes every item she passes over, as if it were pressed on each one
       if (!input.grabHeld) heldTaken.clear()
       // Golpe or a Bicada (when it is let go) also stores the new item offered at her body
-      const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover
-      const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      // a Gaiola with no room for it (she has CAGES_MAX): it is only offered ("trocar"). Passing over it with Pegar
+      // held (running) or a Golpe leaves it there; it is swapped with the one in front only by a whole press of
+      // Pegar on it: pressed and let go while it is the item offered
+      const fullCage = !!hover?.owned.cage && cages.length >= CAGES_MAX
+      if (input.grab && fullCage) cageArm = hover!.id
+      else if (cageArm !== null && (input.grab || hover?.id !== cageArm)) cageArm = null
+      const cageSwap = !!input.grabReleased && fullCage && cageArm === hover!.id
+      if (input.grabReleased) cageArm = null
+      const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover && !fullCage
+      const grabNow = fullCage ? cageSwap : !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       // an item offered at her body (to take or to equip) goes before a Baú
       const itemOffered = !!hover || !!hoverOwned
       if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.out) || inv.some(o => o.item === hover!.owned.item))) {
@@ -3271,7 +3292,8 @@ export function createCombat() {
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
         if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
       }
-      // the nearest closed Baú in her reach: Pegar (not Correr's own key) opens it when no item is offered
+      // the nearest closed Baú in her reach: Pegar opens it when no item is offered, also from a key/button shared
+      // with Correr (the gamepad's X has no other Pegar)
       let nearChest: Chest | null = null
       for (const c of chests) {
         if (c.open || Math.abs(c.x - body.x) > pickupReachX + CHEST_REACH_X || body.y < c.y - 70 - pickupReachY || body.y > c.y + pickupReachY) continue
@@ -3280,12 +3302,13 @@ export function createCombat() {
       // (an item offered at her feet hides its hint: Pegar takes the item first)
       if (nearChest && !itemOffered) chestNear.set(active, { chest: nearChest, block: chestBlock(nearChest.params, { keys: keyCount(), souls: cageSouls(cages) }) })
       else chestNear.delete(active)
-      if (nearChest && input.grab && !input.grabRun && !itemOffered) openChest(nearChest)
-      // the nearest free fixed instrument in her reach: Pegar sits at it, when no item nor Baú comes first
+      if (nearChest && input.grab && !itemOffered) openChest(nearChest)
+      // the nearest free fixed instrument in her reach: Pegar sits at it (Correr's shared key too), when no item
+      // nor Baú comes first
       if (seated) { hover = null; hoverOwned = null }
       const nearSeat = seated || itemOffered || nearChest || !body.grounded ? null : nearestSeat(seats, body.x, body.y, pickupReachX, pickupReachY)
       if (nearSeat) seatNear.set(active, nearSeat); else seatNear.delete(active)
-      if (nearSeat && input.grab && !input.grabRun && !stoodUp && body.state !== 'held' && !body.state.startsWith('portal')) sit(nearSeat)
+      if (nearSeat && input.grab && !stoodUp && body.state !== 'held' && !body.state.startsWith('portal')) sit(nearSeat)
       if (!world) return
       // the Baús: the lid eases open or shut, the shiver fades and one that closes again does so after its time
       for (const c of chests) {
@@ -3310,9 +3333,11 @@ export function createCombat() {
           r.pickupId = undefined; r.t = 0
           if (r.respawnDelay > 0) return
         }
+        // its "Limite de reposição": the first item and that many more, then it stays empty
+        if (r.refillLimit !== undefined && r.given > r.refillLimit) return
         r.t += dt
         if (r.t + 1e-9 >= r.respawnDelay) {
-          r.pickupId = nextId++
+          r.pickupId = nextId++; r.given++
           r.spawnX = r.x; r.spawnY = r.y
           pickups.push({ id: r.pickupId, owned: fresh(r.item, r.cageSouls), x: r.x, y: (r.y ?? groundY) - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0
         }

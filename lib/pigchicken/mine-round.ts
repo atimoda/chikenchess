@@ -8,7 +8,8 @@
 // no armed bomb it opens, with one it blows up.
 import { MINE_CORNERS, mineBlankCell, mineCell, mineCellAt, mineCellRect, mineCornerCut, mineIndex, mineNeighbours, type MineCorner, type MineGrid, type MineGridParams, type MineSide, type MineSpot } from './mine-grid'
 
-export type MineRules = Pick<MineGridParams, 'toFlag' | 'toOpen' | 'toDoubt' | 'fuse' | 'turn'>
+// insideBreaks may be left out by whoever has no say on it (it counts as on)
+export type MineRules = Pick<MineGridParams, 'toFlag' | 'toOpen' | 'toDoubt' | 'fuse' | 'turn'> & Partial<Pick<MineGridParams, 'insideBreaks'>>
 // what each player did in the round. music: notes that counted (blue or yellow); damage: damage that counted (red);
 // solved: doubts taken away, by the flag again or by opening the block; kills: deaths by the bombs they installed or
 // detonated; deaths: times they became a Filhote
@@ -156,9 +157,12 @@ export function mineNote(round: MineRound, rules: MineRules, at: MineSpot, side:
 }
 
 // a firearm's damage on a closed block, from either side. A block with a flag takes none; in doubt it does again.
-export function mineShot(round: MineRound, rules: MineRules, at: MineSpot, damage: number, by: string, face?: MineFace): MineEvent[] {
+// side: the side of whoever did it; with "Lado de dentro quebra paredes" off, the closed side's does nothing (a
+// shot with no side, from a browser that does not say it, counts).
+export function mineShot(round: MineRound, rules: MineRules, at: MineSpot, damage: number, by: string, face?: MineFace, side?: MineSide): MineEvent[] {
   const cell = mineCell(round.grid, at.c, at.r)
   if (!cell || cell.open || cell.flag || rules.toOpen <= 0 || !(damage > 0)) return []
+  if (side === 'closed' && rules.insideBreaks === false) return []
   const st = stat(round, by)
   cell.by.shot = by
   const next = Math.max(-1, cell.gauge - damage / rules.toOpen)
@@ -261,7 +265,7 @@ export function mineKilled(round: MineRound, victim: string, owner?: string) {
 // blast (owner: whose bomb it was).
 export type MineAct =
   | { k: 'note'; c: number; r: number; side: MineSide; by: string; face?: MineFace; n?: number }
-  | { k: 'shot'; c: number; r: number; d: number; by: string; face?: MineFace }
+  | { k: 'shot'; c: number; r: number; d: number; by: string; face?: MineFace; side?: MineSide }
   | { k: 'shock'; c: number; r: number }
   | { k: 'use'; c: number; r: number; use: MineBombUse; by: string }
   | { k: 'install'; c: number; r: number; by: string; turn: number | null }
@@ -273,7 +277,7 @@ export function mineDo(round: MineRound, rules: MineRules, a: MineAct): MineEven
       for (let i = 0; i < (a.n ?? 1); i++) out.push(...mineNote(round, rules, a, a.side, a.by, a.face))
       return out
     }
-    case 'shot': return mineShot(round, rules, a, a.d, a.by, a.face)
+    case 'shot': return mineShot(round, rules, a, a.d, a.by, a.face, a.side)
     case 'shock': return mineShock(round, rules, a)
     case 'use': return mineUseBomb(round, rules, a, a.use, a.by)
     case 'install': return mineInstall(round, a, a.by, a.turn)

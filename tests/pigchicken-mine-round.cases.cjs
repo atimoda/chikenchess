@@ -91,6 +91,25 @@ test('shots fill the red and undo the blue; all red opens a block with no armed 
   assert.equal(cell(rd, 2, 0).gauge, 0)
 })
 
+test('"Lado de dentro quebra paredes" off: the closed side\'s shots do nothing, the open side\'s and the ones with no side still count', () => {
+  const rd = round(), off = { ...rules, insideBreaks: false }
+  // on (or left out), both sides break
+  assert.deepEqual(R.mineShot(rd, rules, { c: 1, r: 0 }, 30, 'in', undefined, 'closed'), [])
+  assert.ok(Math.abs(cell(rd, 1, 0).gauge + 0.3) < 1e-9)
+  assert.deepEqual(R.mineShot(rd, { ...rules, insideBreaks: true }, { c: 1, r: 0 }, 10, 'in', undefined, 'closed'), [])
+  assert.ok(Math.abs(cell(rd, 1, 0).gauge + 0.4) < 1e-9)
+  // off: nothing from the closed side, not even the stats
+  assert.deepEqual(R.mineShot(rd, off, { c: 1, r: 0 }, 9999, 'in', 'left', 'closed'), [])
+  assert.deepEqual(R.mineDo(rd, off, { k: 'shot', c: 1, r: 0, d: 9999, by: 'in', side: 'closed' }), [])
+  assert.ok(Math.abs(cell(rd, 1, 0).gauge + 0.4) < 1e-9)
+  assert.equal(rd.stats.in.damage, 40)
+  // the open side's, and a shot from a browser that does not say its side
+  assert.deepEqual(R.mineDo(rd, off, { k: 'shot', c: 1, r: 0, d: 10, by: 'out', side: 'open' }), [])
+  assert.deepEqual(R.mineDo(rd, off, { k: 'shot', c: 1, r: 0, d: 10, by: 'out' }), [])
+  assert.ok(Math.abs(cell(rd, 1, 0).gauge + 0.6) < 1e-9)
+  assert.deepEqual(kinds(R.mineShot(rd, off, { c: 1, r: 0 }, 500, 'out', undefined, 'open')), ['open'])
+})
+
 test('a flag takes no shot; notes over it fill the yellow, and the doubt takes shots again', () => {
   const rd = round()
   notes(rd, 1, 0, 4)

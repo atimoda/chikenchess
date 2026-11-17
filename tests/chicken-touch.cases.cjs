@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { resolveAim, keysAimFor } = loadTs('lib/pigchicken/aim.ts')
+const { resolveAim, keysAimFor, keysAimAfterMouse, createMouseOwner } = loadTs('lib/pigchicken/aim.ts')
 const controls = loadTs('lib/chicken/controls.ts')
 const layout = loadTs('lib/chicken/touch-layout.ts')
 
@@ -51,6 +51,23 @@ test('the movement keys aim only for a player without the mouse', () => {
   assert.equal(keysAimFor(['kb2']), true)
   assert.equal(keysAimFor(['kb1', 'kb2', 'pad0']), true)
   assert.equal(keysAimFor(null), false)
+})
+
+test('with the mouse, the movement keys take the aim back after the mouse is still for the set time (0 = never)', () => {
+  assert.equal(keysAimAfterMouse(['kb1', 'mouse'], 5), true)
+  assert.equal(keysAimAfterMouse(['kb1', 'mouse'], 0), false)
+  assert.equal(keysAimAfterMouse(['kb2'], 5), false)
+  assert.equal(keysAimAfterMouse(null, 5), false)
+  const owner = createMouseOwner()
+  owner.moved(20, 1000)
+  assert.equal(owner.owns, true)
+  owner.otherAim(5999, 5)
+  assert.equal(owner.owns, true)
+  owner.otherAim(6000, 5)
+  assert.equal(owner.owns, false)
+  // moving the mouse takes it back
+  owner.moved(20, 7000)
+  assert.equal(owner.owns, true)
 })
 
 test('a PlayStation gamepad is told by its id and its buttons get PlayStation names', () => {
@@ -723,4 +740,47 @@ test('Y is Melee and B Próximo utilitário on the gamepad; the first group-bind
     c = controls.loadChickenControls()
     assert.deepEqual([c.pad.melee[0], c.pad.nextUtility[0]], ['Pad:b1', 'Pad:b3'])
   } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
+})
+
+test('the mouse wheel: up is Próximo item and down Item anterior by default; each direction can be any action, and is saved', () => {
+  let raw = null
+  globalThis.window = { localStorage: { getItem: () => raw, setItem: (_, v) => { raw = v } }, dispatchEvent() {} }
+  assert.deepEqual(controls.loadChickenControls().wheel, { up: 'nextItem', down: 'prevItem' })
+  const c = controls.loadChickenControls()
+  c.wheel.up = 'fire'; c.wheel.down = 'jump'
+  controls.saveChickenControls(c)
+  assert.deepEqual(controls.loadChickenControls().wheel, { up: 'fire', down: 'jump' })
+  assert.deepEqual(controls.chickenControlsDefaultsFile(controls.loadChickenControls()).wheel, { up: 'fire', down: 'jump' })
+  // an unknown action falls back to the default; null (no action) stays
+  raw = JSON.stringify({ wheel: { up: 'nope', down: null } })
+  assert.deepEqual(controls.loadChickenControls().wheel, { up: 'nextItem', down: null })
+})
+
+test('the Harpa\'s own binds: Sustenido is Shift (each keyboard) and L3 by default, saved apart from the actions; a Pegar that is one of the seated instrument\'s binds keeps her seated', () => {
+  let raw = null
+  globalThis.window = { localStorage: { getItem: () => raw, setItem: (_, v) => { raw = v } }, dispatchEvent() {} }
+  const IB = loadTs('lib/pigchicken/instrument-binds.ts')
+  const { DEFAULT_KIT } = loadTs('lib/pigchicken/drum-kit.ts')
+  const c = controls.loadChickenControls()
+  assert.deepEqual(c.harp, { keys: { sharp: ['Key:ShiftLeft', null, null] }, keys2: { sharp: ['Key:ShiftRight', null] }, pad: { sharp: ['Pad:b10', null, null] } })
+  // a key of the Harpa never leaves the action that also has it
+  assert.ok(c.keys.run.includes('Key:ShiftLeft'))
+  assert.deepEqual(IB.harpTokens(c, 'sharp', ['kb2']), ['Key:ShiftRight'])
+  assert.deepEqual(IB.harpTokens(c, 'sharp', ['pad0']), ['Pad:b10'])
+  const pad = []; pad[10] = 1
+  assert.equal(IB.harpHeld(c, 'sharp', ['pad0'], new Set(), pad), true)
+  assert.equal(IB.harpHeld(c, 'sharp', ['pad0'], new Set(), []), false)
+  // Pegar by Shift esq. (also the sustenido) keeps her at the Harpa; by E, or the gamepad's X, it gets her up
+  const harp = IB.seatTokens('harp', c, null, DEFAULT_KIT)
+  assert.equal(IB.grabIsSeatBind(c, ['kb1'], new Set(['Key:ShiftLeft']), [], harp), true)
+  assert.equal(IB.grabIsSeatBind(c, ['kb1'], new Set(['Key:KeyE']), [], harp), false)
+  const x = []; x[2] = 1
+  assert.equal(IB.grabIsSeatBind(c, ['pad0'], new Set(), x, harp), false)
+  // nothing held (the on-screen Pegar): it gets her up
+  assert.equal(IB.grabIsSeatBind(c, null, new Set(), [], harp), false)
+  // saved, and in the defaults file
+  c.harp.pad.sharp = ['Pad:b2', null, null]
+  controls.saveChickenControls(c)
+  assert.deepEqual(controls.loadChickenControls().harp.pad.sharp, ['Pad:b2', null, null])
+  assert.deepEqual(controls.chickenControlsDefaultsFile(controls.loadChickenControls()).harp.pad.sharp, ['Pad:b2', null, null])
 })

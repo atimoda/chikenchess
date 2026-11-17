@@ -17,7 +17,6 @@ import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
 import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
 import { AuroraFields, CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
-import { MineGridFields } from "./mine-grid-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 // the zoom's slider runs on a log scale (each step the same proportion); its left end, below the floor, is the
@@ -26,10 +25,9 @@ const ZOOM_STEP = 0.05, ZOOM_LEFT = -3.4, ZOOM_RIGHT = Math.log2(PATIO_ZOOM.ceil
 const zoomPct = (z: number) => `${Math.round(z * 100)}%`
 const zoomLabel = (z: PatioZoom) => `${z.min === 0 ? "Pátio inteiro" : zoomPct(z.min)} – ${zoomPct(z.max)}`
 
-// canGrid: may turn the Grade de blocos on and off (the Pátio's creator, its godparent, the admin); onResetGrid: may
-// start its round again (them and the room's owner)
-export function PatioSettingsPanel({ layout, screens, canEdit, canGrid = false, onResetGrid, onChange, onClose }: {
-  layout: PatioLayout; screens: number; canEdit: boolean; canGrid?: boolean; onResetGrid?: () => void
+// (the Grade de blocos has its own panel: components/pigchicken/mine-grid-panel.tsx)
+export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose }: {
+  layout: PatioLayout; screens: number; canEdit: boolean
   onChange: (layout: PatioLayout) => void; onClose: () => void
 }) {
   const height = patioHeight(layout.settings)
@@ -83,15 +81,14 @@ export function PatioSettingsPanel({ layout, screens, canEdit, canGrid = false, 
               onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, sceneMusic: false } })
             }} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
-          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="O Templo do Gongo (gongo, jukebox e os suportes de armas da entrada) e a Vila dos Telhados no fim do mundo. Desligado, as duas cenas ficam vazias.">
-            <span>Templo e Vila</span>
+          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Os terraços e a placa ao fundo da Vila dos Telhados, no fim do mundo. O Templo do Gongo e as casas da Vila são elementos do Modo editor.">
+            <span>Fundo da Vila</span>
             <input type="checkbox" checked={patioTemple(layout.settings)} onChange={e => {
               const { temple: _old, ...rest } = layout.settings ?? {}
               onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, temple: false } })
             }} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
           </div>
-          {group("Grade de blocos", <MineGridFields grid={layout.settings?.mineGrid} canToggle={canGrid} onReset={onResetGrid} onChange={mineGrid => set({ mineGrid })} />)}
           {group("Céu e luz", <SkyFields sky={layout.settings?.sky} onChange={sky => {
             const { sky: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: sky ? { ...rest, sky } : rest })
@@ -123,9 +120,8 @@ export function PatioSettingsPanel({ layout, screens, canEdit, canGrid = false, 
           <dt>Zoom</dt><dd className="font-bold">{zoomLabel(zoom)}</dd>
           <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
           <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
-          <dt>Templo e Vila</dt><dd className="font-bold">{patioTemple(layout.settings) ? "Sim" : "Não"}</dd>
+          <dt>Fundo da Vila</dt><dd className="font-bold">{patioTemple(layout.settings) ? "Sim" : "Não"}</dd>
           <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
-          {layout.settings?.mineGrid?.on && <><dt>Grade de blocos</dt><dd className="font-bold">{onResetGrid ? <button type="button" onClick={onResetGrid} className="rounded border border-white/15 px-2 py-0.5 hover:border-[#ffd166]">Resetar grade</button> : "Ligada"}</dd></>}
         </dl>
       )}
       <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultPatioSettings(layout.settings, screens)} className="justify-end px-4 py-3" />
