@@ -122,7 +122,7 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Sorteio do cacarejo', key: 'byType', label: 'Sortear o tipo antes do sample', type: 'bool', hint: 'ligado: cada tipo tem a mesma chance, mesmo com poucos samples' },
   { group: 'Sorteio do cacarejo', key: 'avoidRepeat', label: 'Não repetir o último sample', type: 'bool'},
   ...CHICKEN_SFX_EVENTS.map(([ev, label]) => ({ group: 'Som de cada movimento', key: ('sfx_' + ev) as ChickenParamKey, label, type: 'select' as const })),
-  { group: 'Visual', key: 'scale', label: 'Tamanho da galinha', unit: '×', min: 0.5, max: 6, step: 0.05, hint: '1 = o tamanho normal. Pig e Ken somam o tamanho da classe deles.' },
+  { group: 'Visual', key: 'scale', label: 'Tamanho', unit: '×', min: 0.5, max: 6, step: 0.05, hint: '1 = o tamanho normal da galinha. Pig sai ×1,15 e Ken ×1,05 deste valor, pela classe.' },
 ]
 
 export const CHICKEN_PARAM_META: ChickenParamMeta[] = RAW

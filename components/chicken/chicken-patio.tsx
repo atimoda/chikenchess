@@ -741,7 +741,7 @@ export function ChickenPatio() {
         <button type="button" aria-label="Controles" title="Controles" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Ajustes da galinha" aria-pressed={panelOpen} title="Ajustes da galinha" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Ajustes do personagem" aria-pressed={panelOpen} title="Ajustes do personagem" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
         </button>
         <VolumeButton />
@@ -875,7 +875,7 @@ export function ChickenPatio() {
       )}
 
       {panelOpen && (
-        <FloatingPanel id="chicken-tuning" aria-label="Ajustes da galinha" initial={(vw, vh) => { const w = Math.min(400, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <FloatingPanel id="chicken-tuning" aria-label="Ajustes do personagem" initial={(vw, vh) => { const w = Math.min(400, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Ajustes</h2>
             {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
