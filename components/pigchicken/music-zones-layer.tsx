@@ -6,7 +6,7 @@
 // editable in the editor, only shown otherwise. Outside the editor the zones show as they play now (with the changes
 // their walls made and their life). In the editor the limits are dragged: the sides of each Zona sonora and the
 // line between two scenes' zones.
-import { useEffect, useRef, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import { elementBounds, type LayoutElement } from "@/lib/pigchicken/layout"
 import { followCamera, liveCamera } from "@/lib/pigchicken/live-camera"
 import { cn } from "@/lib/utils"
@@ -15,6 +15,8 @@ import { zoneLabel } from "@/lib/pigchicken/music"
 import { TEMPLE_IDLE } from "@/lib/pigchicken/temple-music"
 import { sceneEdgeList, sceneZoneParams, type SceneEdges, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
 import { zoneLiveStore } from "@/lib/pigchicken/zone-life"
+import { mineStore } from "@/lib/pigchicken/mine-grid-store"
+import { mineZoneBoxes } from "@/lib/pigchicken/mine-zones"
 import { LanesArt } from "./sound-zone-art"
 import { ZoneTags } from "./zone-tags"
 
@@ -91,6 +93,19 @@ function ZoneLimits({ el, zones, origin, onResize }: { el: LayoutElement; zones:
   </>
 }
 
+// the Grade de blocos' blocks that play a rhythm ("Blocos são zonas sonoras"), outlined with its name; the silent
+// ones are not drawn
+const gridGeo = () => mineStore.round?.grid.geo ?? null
+const gridZones = () => mineStore.params?.zones ?? null
+function BlockZones({ screens, sceneZones, sceneEdges }: { screens: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges }) {
+  const geo = useSyncExternalStore(mineStore.subscribe, gridGeo, gridGeo), zones = useSyncExternalStore(mineStore.subscribe, gridZones, gridZones)
+  const boxes = useMemo(() => (geo && zones ? mineZoneBoxes(geo, zones, { zones: sceneZones, edges: sceneEdges, screens }).filter(b => b.beat !== "none") : []), [geo, zones, sceneZones, sceneEdges, screens])
+  return <>{boxes.map(b => (
+    <div key={`${b.c},${b.r}`} className="absolute" style={{ left: b.x + 4, top: b.y + 4, width: b.w - 8, height: b.h - 8, border: `2px dashed ${b.zone.color}`, background: `${b.zone.color}18` }}>
+      <span className="absolute left-2 top-1 whitespace-nowrap font-mono text-[13px] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]" style={{ color: b.zone.color }}>{b.zone.name}</span>
+    </div>
+  ))}</>
+}
 
 // sceneMusic: false when the Pátio turned the scenes' own zones off (their strips are not shown)
 export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, onSceneEdge = noop, onResizeZones = noop, opacity = 1 }: {
@@ -134,6 +149,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
             </div>
           )
         })}
+        <BlockZones screens={screens} sceneZones={sceneZones} sceneEdges={sceneEdges} />
         {/* the limit between two scenes' zones, from the ground to over the tallest ceiling */}
         {editable && sceneMusic && Array.from({ length: Math.max(0, screens - 1) }, (_, i) => i + 1).map(s => (
           <div key={`limite${s}`} className="absolute border-l border-dashed border-white/40" style={{ left: xs[s], top: WORLD_GROUND_Y - LIMIT_H, height: LIMIT_H, width: 0 }}>
