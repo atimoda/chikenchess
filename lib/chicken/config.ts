@@ -5,16 +5,18 @@
 // The Pátio sets a preview (its unsaved draft) that the chickens on screen follow until it closes.
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, SCALE_BASE, type ChickenParams } from './params'
+import { defaultClasses, normalizeClasses, type ClassesTuning } from './species'
 import { onlineConfigured, requireOnlineClient } from '@/lib/online/client'
 
 /* global process, fetch */
-export type ChickenConfig = { params: ChickenParams; look: ChickenLook }
+// classes: Pig's and Ken's factors over these params (species.ts), edited in the same panel
+export type ChickenConfig = { params: ChickenParams; look: ChickenLook; classes: ClassesTuning }
 export type SavedChickenConfig = { config: ChickenConfig; revision: number; updatedAt: string | null }
 
 const CACHE = 'chickenchess:chicken-config:v1'
 const REFRESH_AFTER_MS = 60_000
 
-export const defaultChickenConfig = (): ChickenConfig => ({ params: { ...CHICKEN_PARAMS }, look: LOOK_ART.breedLook('caipira') })
+export const defaultChickenConfig = (): ChickenConfig => ({ params: { ...CHICKEN_PARAMS }, look: LOOK_ART.breedLook('caipira'), classes: defaultClasses() })
 
 const SFX_VALUES = new Set(['', 'all', ...Object.keys(CHICKEN_CLUCKS)])
 
@@ -36,7 +38,7 @@ function storedBackpedal() {
 /** Keeps only known settings with the right type; anything missing or broken falls back to the default. */
 export function normalizeChickenConfig(raw: unknown): ChickenConfig {
   const out = defaultChickenConfig()
-  const src = (raw && typeof raw === 'object' ? raw : {}) as { params?: Record<string, unknown>; look?: Record<string, unknown> }
+  const src = (raw && typeof raw === 'object' ? raw : {}) as { params?: Record<string, unknown>; look?: Record<string, unknown>; classes?: unknown }
   const params = src.params && typeof src.params === 'object' ? src.params : {}
   const target = out.params as Record<string, unknown>
   if (params.backpedal === undefined) out.params.backpedal = storedBackpedal() ?? legacyBackpedal() ?? out.params.backpedal
@@ -55,6 +57,7 @@ export function normalizeChickenConfig(raw: unknown): ChickenConfig {
   }
   if (oldScale) out.params.scale = Math.round((params.scale as number) / SCALE_BASE * 100) / 100
   out.params.scaleBase = SCALE_BASE
+  out.classes = normalizeClasses(src.classes)
   const look = src.look && typeof src.look === 'object' ? src.look : {}
   for (const slot of Object.keys(out.look) as ChickenSlot[]) {
     const v = look[slot]

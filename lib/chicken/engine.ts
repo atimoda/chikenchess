@@ -464,7 +464,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
   let species = opts.species
-  const R = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+  const R = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams, config.classes)
   paramsReady = true
   // ---------- health ----------
   // hp: what she has left; hurtAgo: seconds since the last damage (it comes back on its own after regenDelay);
@@ -503,7 +503,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
-    const P = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+    const P = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams, config.classes)
     Object.assign(R, P)
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
     R.scale = P.scale * SCALE_BASE * vf

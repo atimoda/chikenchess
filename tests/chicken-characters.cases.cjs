@@ -50,6 +50,22 @@ test('one movement per species class: Pig is slow, heavy and stays on the ground
   assert.equal(base.airJumps, 99)
 })
 
+test('Pig and Ken tuning is saved with the central config: factors over the chicken, jumps in the air set outright', () => {
+  const { normalizeChickenConfig, defaultChickenConfig } = loadTs('lib/chicken/config.ts')
+  const { defaultClasses, CLASS_FACTOR_KEYS } = loadTs('lib/chicken/species.ts')
+  const d = defaultClasses()
+  assert.equal(d.pig.factors.scale, 1.15); assert.equal(d.fox.factors.maxHp, 2); assert.equal(d.pig.airJumps, 0)
+  assert.ok(!CLASS_FACTOR_KEYS.includes('airJumps') && CLASS_FACTOR_KEYS.includes('walkSpeed'))
+  assert.deepEqual(normalizeChickenConfig({ params: {} }).classes, d, 'a config saved before has the code tuning')
+  const c = normalizeChickenConfig({ params: {}, classes: { fox: { factors: { walkSpeed: 2, gravity: 99, bogus: 3 }, airJumps: 3.4 } } })
+  assert.equal(c.classes.fox.factors.walkSpeed, 2); assert.equal(c.classes.fox.factors.gravity, 5); assert.equal(c.classes.fox.airJumps, 3)
+  assert.equal(c.classes.fox.factors.bogus, undefined)
+  const base = { ...CHICKEN_PARAMS }
+  const fox = speciesParams('fox', base, c.classes)
+  assert.equal(fox.walkSpeed, base.walkSpeed * 2); assert.equal(fox.airJumps, 3)
+  assert.equal(speciesParams('pig', base, defaultChickenConfig().classes).maxHp, 300)
+})
+
 test('the size setting is rebased: 1 is the usual size, and a config saved before reads the same size', () => {
   assert.equal(SCALE_BASE, 0.5)
   assert.equal(CHICKEN_PARAMS.scale, 1)
