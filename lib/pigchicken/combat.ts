@@ -10,7 +10,8 @@ import { ABDUCT_GAP, CHICK_SOUL_COLOR, farSpot, newSoul, noteClass, originOf, sh
 import { SOUL_FLIGHT, createSoulBrain, soulErrandStep, soulFollowStep, spreadSouls, type SoulAir, type SoulBrain, type SoulFollowParams } from './soul-follow'
 import { newSoulRoam, roamLift, soulFleeStep, soulRoamStep, type SoulRoam } from './soul-roam'
 import { POOP, newPoop, poopFall, poopHits, poopKnock, poopUnder, poopWait, type Poop } from './poop'
-import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
+import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, songDue, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
+import { guideBird } from './bird-guide'
 import { entryActParams, entryFollowParams, entryOf } from './soul-library'
 import { crossedTop, landing } from './box-tops'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
@@ -120,6 +121,9 @@ export type FreeSoul = {
   roam: SoulRoam
   poopIn: number // s until it may let a dropping fall (its entry's poopEvery; lib/pigchicken/poop.ts)
   act: SoulActParams; clock: SoulActClock; job: SoulJob | null; acts: number; warned: { id: number; at: number } | null
+  // the real bird its entry takes after (lib/pigchicken/bird-guide.ts): the voice of its notes and the song it sings
+  // now and then; sang: when it last did (s of the souls' clock)
+  bird: string; sang: number
   // in a portal with its owner: where it was when she went in (it flies from there to the portal's centre) and how big
   // it is drawn meanwhile (1 .. 0 inside; missing: its own size)
   portal?: { x: number; y: number } | null; k?: number
@@ -312,6 +316,8 @@ export function createCombat() {
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
   const sounds: { kind: WeaponSound; item: ItemId | null }[] = []
+  // the real songs the souls flying free started this frame (the Parquinho drains it: lib/pigchicken/bird-song.ts)
+  const songs: { bird: string; x: number; y: number }[] = []
   const sound = (kind: WeaponSound, item: ItemId | null = held()?.item ?? null) => {
     const d = item ? items[item] : null
     // instruments make musical sounds instead of the mechanical ones
@@ -2126,7 +2132,8 @@ export function createCombat() {
     for (const b of netBodies) see(b.x, b.y - 100)
     return best as { x: number; y: number } | null
   }
-  const soulVoice = (s: Soul): VoiceId => (s.bird ? BIRDS[s.bird].voice : 'bird')
+  // the voice of a soul's notes is its real bird's
+  const soulVoice = (f: FreeSoul): VoiceId => guideBird(f.bird).voice
   // the k-th note of the chord playing, `up` semitones above
   const chordNote = (k: number, up = 12) => { const chord = music.chord(true); return chord[((k % chord.length) + chord.length) % chord.length] + up }
   const alive = (t: Target) => t.deadT <= 0 && t.state !== 'converted' && t.state !== 'dead'
@@ -2228,7 +2235,7 @@ export function createCombat() {
     }
     if (!best) return false
     const m = chordNote(f.acts), color = DEGREE_COLORS[music.degreeOf(m) % DEGREE_COLORS.length]
-    const note: NoteInfo = { midi: m, color, sym: NOTE_SYMBOLS[m % NOTE_SYMBOLS.length], wave: 0, phase: 0, voice: soulVoice(f.soul) }
+    const note: NoteInfo = { midi: m, color, sym: NOTE_SYMBOLS[m % NOTE_SYMBOLS.length], wave: 0, phase: 0, voice: soulVoice(f) }
     const x = best.x, y = best.y - best.h / 2
     // nobody played this one a note yet: the bird it becomes takes after the soul that sang to it
     if ((best.kind === 'alien' || best.kind === 'undead') && !best.soul?.shot) { const z = music.zone; best.soul = { ...best.soul, shot: f.soul.shot ?? 'wind', note: noteClass(m, z.root, SCALES[z.scale].steps) } }
@@ -2267,7 +2274,7 @@ export function createCombat() {
     }
     if (!best) return false
     f.warned = { id: best.id, at: soulClock }
-    const m = chordNote(0, 24), v = soulVoice(f.soul)
+    const m = chordNote(0, 24), v = soulVoice(f)
     out.note(v, m, 0, 0.07, 0.55); out.note(v, m, 0.12, 0.07, 0.55)
     texts.push({ x: f.x, y: f.y - 22, text: '!', life: 0.9, color: '#ff6b5b', size: 22 }, { x: best.x, y: best.y - best.h - 14, text: '!', life: 0.9, color: '#ff6b5b', size: 18 })
     return true
@@ -2286,7 +2293,7 @@ export function createCombat() {
     if (kind === 'none') return
     if (kind !== 'detune') { f.job = { kind, t: 0, side: f.x >= her.x ? 1 : -1 }; return }
     detunes.set(f.owner, { semis: (Math.random() < 0.5 ? -1 : 1) * SOUL_ACT.detune.semis, left: actLerp(SOUL_ACT.detune.time, f.act.force) })
-    const m = chordNote(0), v = soulVoice(f.soul)
+    const m = chordNote(0), v = soulVoice(f)
     out.note(v, m, 0, 0.3, 0.5); out.note(v, m + 1, 0, 0.3, 0.5)
     texts.push({ x: f.x, y: f.y - 20, text: '♭', life: 1, color: '#9aa0a8', size: 20 })
   }
@@ -2316,7 +2323,7 @@ export function createCombat() {
     else if (job.kind !== 'fetch' && job.kind !== 'step' && Math.random() < dt * 40) sparks.push({ x: f.x, y: f.y, vx: 0, vy: 0, life: 0.25, max: 0.25, color: '#ff6b5b', size: 2 })
     if (left > E.reach) return true
     // it got there
-    const actor = actorOf(f.owner), force = f.act.force, v = soulVoice(f.soul)
+    const actor = actorOf(f.owner), force = f.act.force, v = soulVoice(f)
     if (job.kind === 'fetch') { job.kind = 'carry'; job.t = 0; if (job.item) hang(f, job.item); out.note(v, chordNote(1, 24), 0, 0.08, 0.35); return true }
     if (job.kind === 'carry') return false
     if (job.kind === 'step') {
@@ -2345,6 +2352,11 @@ export function createCombat() {
   }
   // a frame of a soul at its spot: its clock, and its help as soon as there is something to do
   function soulActs(f: FreeSoul, her: Body, dt: number, onBeat: boolean) {
+    // now and then, as its clock comes round, the real song of its bird
+    if (songDue(f.clock, f.act, soulClock - f.sang, dt)) {
+      f.sang = soulClock; songs.push({ bird: f.bird, x: f.x, y: f.y })
+      texts.push({ x: f.x, y: f.y - 20, text: '♪', life: 1.2, color: f.soul.color, size: 18 })
+    }
     if (actClockStep(f.clock, f.act, f.soul, dt)) { soulHinders(f, her); return }
     if (!f.clock.ready) return
     const h = f.act.help
@@ -2358,7 +2370,7 @@ export function createCombat() {
     const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry), brain = createSoulBrain(x, y, params)
     // it pops out, down and to one side
     brain.vx = rand(-160, 160); brain.vy = rand(80, 180)
-    freed.push({ soul, owner, x, y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, roam: newSoulRoam(params), poopIn: poopWait(act.poopEvery, Math.random, true), recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null })
+    freed.push({ soul, owner, x, y, face: brain.vx >= 0 ? 1 : -1, t: 0, brain, params, roam: newSoulRoam(params), poopIn: poopWait(act.poopEvery, Math.random, true), recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null, bird: entry.bird, sang: -Infinity })
   }
 
   const env = (groundY: number, playerX: number, playerY: number, bounds?: { l: number; r: number }): EnemyEnv => ({
@@ -2411,7 +2423,7 @@ export function createCombat() {
     // the souls caught from the wild, to be taken (spliced) by whoever keeps the library; (x, y): where, in world px
     soulNews,
     // the library's sheets changed: the souls flying free take the numbers their entries have now
-    refreshSouls() { for (const f of freed) { const e = entryOf(f.soul); f.params = entryFollowParams(e); f.act = entryActParams(e) } },
+    refreshSouls() { for (const f of freed) { const e = entryOf(f.soul); f.params = entryFollowParams(e); f.act = entryActParams(e); f.bird = e.bird } },
     // the souls out of the bags, every player's (lib/pigchicken/soul-follow.ts), and how many are this player's
     get freedSouls() { return freed as readonly FreeSoul[] },
     // the droppings falling, the stains they left on the chickens and the marks on the floor (lib/pigchicken/poop.ts)
@@ -2495,7 +2507,7 @@ export function createCombat() {
         for (const soul of [...c.cages.flatMap(k => k.souls), ...c.loose]) nextId = Math.max(nextId, soul.id + 1)
         for (const soul of c.loose) {
           const entry = entryOf(soul), params = entryFollowParams(entry), act = entryActParams(entry)
-          freed.push({ soul, owner: id, x: 0, y: 0, face: 1, t: 0, brain: createSoulBrain(0, 0, params), params, roam: newSoulRoam(params), poopIn: poopWait(act.poopEvery, Math.random, true), recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null, portal: { x: 0, y: 0 }, k: 0 })
+          freed.push({ soul, owner: id, x: 0, y: 0, face: 1, t: 0, brain: createSoulBrain(0, 0, params), params, roam: newSoulRoam(params), poopIn: poopWait(act.poopEvery, Math.random, true), recallIn: null, away: null, act, clock: newActClock(act), job: null, acts: 0, warned: null, bird: entry.bird, sang: -Infinity, portal: { x: 0, y: 0 }, k: 0 })
         }
       }
     },
@@ -2617,7 +2629,7 @@ export function createCombat() {
     predictThrow,
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
-    booms, tracers, sounds, critters, music,
+    booms, tracers, sounds, songs, critters, music,
     get beam() { return beam },
     get converted() { return conv },
     setMusicOut(o: MusicOut) { out = o },

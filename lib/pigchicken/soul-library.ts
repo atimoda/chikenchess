@@ -9,9 +9,12 @@
 // - recordSoul / mergeCollections: the collection only grows (first capture, how many, notes and weapons seen).
 // - How a soul flies when let out and what it does then (its help, its hindering) are its entry's: its class's
 //   numbers with the entry's own over them (entryFollowParams, entryActParams).
+// - Each entry takes after one real bird of the Guia de pássaros (lib/pigchicken/bird-guide.ts): `bird`, the code's
+//   rule (inspirationOf) unless its sheet names another. recipeText says how a soul like it is made.
 // - The sheets: the game's catalogue is the code's with data/pigchicken/default-souls.json over it ("Salvar no game"),
 //   and an admin's browser may keep a draft over the code's. setSoulEntries says which one is in use.
 import DEFAULTS_FILE from '../../data/pigchicken/default-souls.json'
+import { guideBird, inspirationOf, isGuideBird } from './bird-guide'
 import { UNDEAD_LOOK } from './birds'
 import { SOUL_ACT_RANGES, SOUL_HELPS, SOUL_HINDERS, soulActBase, type SoulActParams } from './soul-acts'
 import { SOUL_CLASSES, SOUL_FOLLOW_DEFAULTS, SOUL_FOLLOW_RANGES, SOUL_PATTERNS, SOUL_SIDES, soulClassOf, type SoulClassId, type SoulFollowParams } from './soul-follow'
@@ -71,6 +74,7 @@ export type SoulEntry = {
   rarity: SoulRarity
   cls: SoulClassId // how it flies when let out (lib/pigchicken/soul-follow.ts)
   look: SoulLook
+  bird: string // the real bird it takes after (a GuideBird's id): its "Inspiration"
   follow?: Partial<SoulFollowParams> // its own numbers over its class's
   act?: Partial<SoulActParams> // what it does let out (lib/pigchicken/soul-acts.ts): its own over its class's
   recipe?: SoulRecipe // a rare one
@@ -147,21 +151,25 @@ export function cleanRecipe(raw: unknown): SoulRecipe {
 const baseId = (species: SoulSpecies, state: SoulState, shot: SoulShot | null) => (species === 'chick' ? 'chick' : `${species}.${state}.${shot ?? 'wind'}`)
 function baseEntry(species: SoulSpecies, state: SoulState, shot: SoulShot): SoulEntry {
   const s = SOUL_SHOTS[shot]
+  const id = baseId(species, state, shot)
   return {
-    id: baseId(species, state, shot), name: `${state === 'alive' ? s.alive : s.dead} ${SOUL_SPECIES[species].of}`, species, state, shot,
+    id, name: `${state === 'alive' ? s.alive : s.dead} ${SOUL_SPECIES[species].of}`, species, state, shot,
     rarity: soulRarity(originOf(species, state, { note: 'tonic' })), cls: soulClassOf({ species, shot }),
-    look: baseLook(species, state, shot),
+    look: baseLook(species, state, shot), bird: inspirationOf({ id, species, state, shot }),
   }
 }
 // a rare one: its shape is its family's unless it says another, its colours come from `body` unless it says others
 // a rare one as the sheets keep it, and as an entry (what its recipe fixes is its species, state and family)
-export type SoulRare = { id: string; name: string; rarity: SoulRarity; cls: SoulClassId; look: SoulLook; follow?: Partial<SoulFollowParams>; act?: Partial<SoulActParams>; recipe: SoulRecipe }
+// (bird: only when it is not the one the code's rule gives it)
+export type SoulRare = { id: string; name: string; rarity: SoulRarity; cls: SoulClassId; look: SoulLook; bird?: string; follow?: Partial<SoulFollowParams>; act?: Partial<SoulActParams>; recipe: SoulRecipe }
 const rareLook = (shape: SoulShape, body: string): SoulLook => ({ shape, pixel: SOUL_SHAPES[shape].pixel, ...soulPalette(body), beak: '#fff3b0', eye: EYE, halo: false })
-const rareEntry = (r: SoulRare): SoulEntry => ({
-  id: r.id, name: r.name, species: r.recipe.species?.length === 1 ? r.recipe.species[0] : null, state: r.recipe.state ?? 'alive',
-  shot: r.recipe.shot?.length === 1 ? r.recipe.shot[0] : null, rarity: r.rarity, cls: r.cls, look: r.look, ...(r.follow ? { follow: r.follow } : {}), ...(r.act ? { act: r.act } : {}), recipe: r.recipe,
+const rareAxes = (r: Pick<SoulRare, 'id' | 'recipe'>) => ({
+  id: r.id, species: r.recipe.species?.length === 1 ? r.recipe.species[0] : null, state: r.recipe.state ?? 'alive' as SoulState, shot: r.recipe.shot?.length === 1 ? r.recipe.shot[0] : null,
 })
-const asRare = (e: SoulEntry): SoulRare => ({ id: e.id, name: e.name, rarity: e.rarity, cls: e.cls, look: e.look, ...(e.follow ? { follow: e.follow } : {}), ...(e.act ? { act: e.act } : {}), recipe: e.recipe ?? {} })
+const rareEntry = (r: SoulRare): SoulEntry => ({
+  ...rareAxes(r), name: r.name, rarity: r.rarity, cls: r.cls, look: r.look, bird: r.bird ?? inspirationOf(rareAxes(r)), ...(r.follow ? { follow: r.follow } : {}), ...(r.act ? { act: r.act } : {}), recipe: r.recipe,
+})
+const asRare = (e: SoulEntry): SoulRare => ({ id: e.id, name: e.name, rarity: e.rarity, cls: e.cls, look: e.look, ...(e.bird !== inspirationOf(rareAxes({ id: e.id, recipe: e.recipe ?? {} })) ? { bird: e.bird } : {}), ...(e.follow ? { follow: e.follow } : {}), ...(e.act ? { act: e.act } : {}), recipe: e.recipe ?? {} })
 function rare(id: string, name: string, rarity: SoulRarity, asks: SoulRecipe, body: string, over: Partial<SoulLook> & { cls?: SoulClassId } = {}): SoulEntry {
   const recipe = cleanRecipe(asks), shot = recipe.shot?.length === 1 ? recipe.shot[0] : null
   const { cls, ...look } = over
@@ -188,14 +196,14 @@ const BASE_SOULS: readonly SoulEntry[] = [
     ...SOUL_SHOT_ORDER.map(shot => baseEntry(species, 'alive', shot)),
     ...(species === 'dragon' ? [] : SOUL_SHOT_ORDER.map(shot => baseEntry(species, 'dead', shot))),
   ]),
-  { id: 'chick', name: 'Pintinho', species: 'chick', state: 'alive', shot: null, rarity: 'common', cls: 'chick', look: baseLook('chick', 'alive', 'chick') },
+  { id: 'chick', name: 'Pintinho', species: 'chick', state: 'alive', shot: null, rarity: 'common', cls: 'chick', look: baseLook('chick', 'alive', 'chick'), bird: inspirationOf({ id: 'chick', species: 'chick', state: 'alive', shot: null }) },
 ]
 export const CODE_SOUL_ENTRIES: readonly SoulEntry[] = [...BASE_SOULS, ...RARE_SOULS]
 
 // ---------- the sheets: what an admin changed over the code's catalogue ----------
 // A soul of the rule keeps its id, species, state and family; its sheet holds only what differs from the code's. The
 // rare ones are a list of their own, kept whole once anything in it differs from the code's.
-export type SoulSheet = { name?: string; rarity?: SoulRarity; cls?: SoulClassId; look?: Partial<SoulLook>; follow?: Partial<SoulFollowParams>; act?: Partial<SoulActParams> }
+export type SoulSheet = { name?: string; rarity?: SoulRarity; cls?: SoulClassId; look?: Partial<SoulLook>; bird?: string; follow?: Partial<SoulFollowParams>; act?: Partial<SoulActParams> }
 export type SoulsFile = { sheets?: Record<string, SoulSheet>; rares?: SoulRare[] }
 function cleanRare(raw: unknown, taken: Set<string>): SoulRare | null {
   if (!raw || typeof raw !== 'object') return null
@@ -206,7 +214,7 @@ function cleanRare(raw: unknown, taken: Set<string>): SoulRare | null {
   const recipe = cleanRecipe(r.recipe), shot = recipe.shot?.length === 1 ? recipe.shot[0] : null, follow = cleanFollow(r.follow), act = cleanAct(r.act)
   return {
     id, name, rarity: has(SOUL_RARITIES, r.rarity) ? r.rarity : 'rare', cls: has(SOUL_CLASSES, r.cls) ? r.cls : soulClassOf({ species: 'horde', shot }),
-    look: cleanLook(r.look, rareLook(shot ?? 'wind', '#9aa0a8')), ...(follow ? { follow } : {}), ...(act ? { act } : {}), recipe,
+    look: cleanLook(r.look, rareLook(shot ?? 'wind', '#9aa0a8')), ...(isGuideBird(r.bird) && r.bird !== inspirationOf(rareAxes({ id, recipe })) ? { bird: r.bird } : {}), ...(follow ? { follow } : {}), ...(act ? { act } : {}), recipe,
   }
 }
 /** The code's catalogue with a sheets file over it (whatever it holds: the unknown is dropped). */
@@ -217,7 +225,7 @@ export function soulEntriesOver(file: unknown): SoulEntry[] {
     const s = sheets[e.id]
     if (!s || typeof s !== 'object') return e
     const r = s as Record<string, unknown>, follow = cleanFollow(r.follow), act = cleanAct(r.act)
-    return { ...e, name: cleanName(r.name) ?? e.name, rarity: has(SOUL_RARITIES, r.rarity) ? r.rarity : e.rarity, cls: has(SOUL_CLASSES, r.cls) ? r.cls : e.cls, look: cleanLook(r.look, e.look), ...(follow ? { follow } : {}), ...(act ? { act } : {}) }
+    return { ...e, name: cleanName(r.name) ?? e.name, rarity: has(SOUL_RARITIES, r.rarity) ? r.rarity : e.rarity, cls: has(SOUL_CLASSES, r.cls) ? r.cls : e.cls, look: cleanLook(r.look, e.look), bird: isGuideBird(r.bird) ? r.bird : e.bird, ...(follow ? { follow } : {}), ...(act ? { act } : {}) }
   })
   if (!Array.isArray(f.rares)) return [...base, ...RARE_SOULS]
   const taken = new Set<string>()
@@ -237,6 +245,7 @@ export function soulsFile(entries: readonly SoulEntry[]): SoulsFile {
     if (e.cls !== code.cls) s.cls = e.cls
     for (const k of Object.keys(code.look) as (keyof SoulLook)[]) if (e.look[k] !== code.look[k]) (look as Record<string, unknown>)[k] = e.look[k]
     if (Object.keys(look).length) s.look = look
+    if (e.bird !== code.bird) s.bird = e.bird
     if (e.follow && Object.keys(e.follow).length) s.follow = e.follow
     if (e.act && Object.keys(e.act).length) s.act = e.act
     if (Object.keys(s).length) sheets[code.id] = s
@@ -329,6 +338,27 @@ function traitTable(entries: readonly SoulEntry[]) {
 // (an entry no soul can be has none; so does the chick)
 export const entryTraits = (e: SoulEntry, entries: readonly SoulEntry[] = live) => traitTable(entries).get(e.id) ?? { notes: [], weapons: [] }
 export const entryClassName = (e: SoulEntry) => SOUL_CLASSES[e.cls].name
+
+// ---------- the recipe: how a soul like this one is made, in words ----------
+const or = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} ou ${names[names.length - 1]}` : names[0])
+const RECIPE_SHOTS: Record<SoulShot, string> = { wind: 'um instrumento de Sopro', strings: 'um instrumento de Cordas', keys: 'um instrumento de Teclas', percussion: 'um instrumento de Percussão', rebate: 'notas de alien rebatidas com um golpe' }
+const RECIPE_WEAPONS: Record<SoulWeapon, string> = { blast: 'uma explosão', bullet: 'uma arma de fogo', arrow: 'uma flecha', impact: 'um golpe' }
+const RECIPE_NOTES: Record<SoulNote, string> = { tonic: 'a tônica', consonant: 'uma consonante (terça ou quinta)', tension: 'uma nota de tensão', leading: 'a sensível (sétima)', outside: 'uma nota fora da escala' }
+/** What to do to get a soul of this entry: which alien, how it has to die (by music or by a weapon), with which
+ * family of instrument and, for a rare one, on which note. */
+export function recipeText(e: SoulEntry): string {
+  if (e.species === 'chick') return 'Capture um pintinho com o Passaguá.'
+  const r: SoulRecipe = e.recipe ?? { species: e.species ? [e.species] : undefined, state: e.state, shot: e.shot ? [e.shot] : undefined }
+  const who = r.species?.length ? `um alien ${or(r.species.map(s => SOUL_SPECIES[s].name))}` : 'um alien qualquer'
+  const play = r.shot?.length ? or(r.shot.map(s => RECIPE_SHOTS[s])) : 'qualquer instrumento'
+  const note = r.note?.length ? `, com a última nota sendo ${or(r.note.map(n => RECIPE_NOTES[n]))}` : ''
+  const net = 'capture o pássaro com o Passaguá'
+  if (r.state === 'dead') return `Mate ${who} com ${r.weapon?.length ? or(r.weapon.map(w => RECIPE_WEAPONS[w])) : 'qualquer arma'}, ressuscite-o tocando ${play}${note} e ${net}.`
+  if (r.state === 'alive') return `Encha a harmonia de ${who} tocando ${play}${note} e ${net}.`
+  return `Encha a harmonia de ${who}, vivo ou morto, tocando ${play}${note} e ${net}.`
+}
+/** the real bird an entry takes after */
+export const entryBird = (e: SoulEntry) => guideBird(e.bird)
 
 // ---------- the collection ----------
 // n: how many were caught; at: when the first one was (ms); notes, weapons: the ones seen so far

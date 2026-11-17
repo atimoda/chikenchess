@@ -92,6 +92,13 @@ Só para contas admin (`useIsAdmin`); para as outras o painel não muda.
 - **Coleção dos jogadores:** é guardada pelo id da entrada. Excluir uma rara ou mudar uma receita não apaga o que já foi capturado: a entrada some da biblioteca e volta com as capturas se o id voltar.
 - **Escopo:** todos os Pátios e o Templo.
 
+## Receita, Inspiration e som (17/11, v2.13.0)
+
+- **Receita:** a ficha aberta de uma alma capturada mostra uma frase que diz como conseguir uma alma igual (`recipeText`): qual alien, se enchendo a harmonia (viva) ou matando e ressuscitando (morta, com a arma quando a receita pede), com qual família de instrumento e, nas raras, qual tem de ser a última nota. O pintinho: capturar um pintinho com o Passaguá.
+- **Inspiration:** a ficha mostra a ave real que inspira a alma, com o nome científico e o popular. Um clique abre o Guia de pássaros naquela ave ([bird-guide.md](bird-guide.md)) e fecha a Biblioteca. A Biblioteca também abre já numa alma quando o clique vem da lista “Almas inspiradas” do guia.
+- **Som:** clicar no cartão de uma alma capturada, ou no desenho da alma aberta, toca o som dela: três notas na voz da ave que a inspira, acorde maior para a viva e menor para a morta.
+- **Editor:** a aba Ficha tem o campo Inspiration (lista das aves do guia) e a aba Ações tem “Canto real” (a chance do canto gravado). A ficha publicada guarda `bird` só quando difere da regra do código.
+
 ## Ainda não implementado
 
 Som próprio de cada alma.

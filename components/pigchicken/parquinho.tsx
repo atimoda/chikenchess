@@ -36,6 +36,8 @@ import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { createDrone, playBass, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
 import { SILENCE, ambienceDrone, bassNotes, beatHits, legacyAmbience } from "@/lib/pigchicken/zone-ambience"
 import { mixGain } from "@/lib/pigchicken/mixer"
+import { playBirdSong } from "@/lib/pigchicken/bird-song"
+import { songVolume } from "@/lib/pigchicken/soul-acts"
 import { ZONES, chordName, droneOf, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
@@ -1476,6 +1478,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- sound ----------
       setWeaponVolume(mixGain("weapons"))
       combat.sounds.splice(0).forEach(e => playWeaponSound(e.kind, e.item))
+      // the real songs of the souls flying free: louder the nearer the middle of the screen
+      combat.songs.splice(0).forEach(e => playBirdSong(e.bird, songVolume(Math.hypot(e.x - (camX + viewW / 2), e.y - (st.height / 2 - camY)))))
       // the souls just caught go into the library: a new one says its name where it was caught, a new note or
       // weapon of one already there shows a star
       for (const n of combat.soulNews.splice(0)) {

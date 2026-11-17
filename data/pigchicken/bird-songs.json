@@ -1,0 +1,1376 @@
+{
+ "version": 1,
+ "source": "xeno-canto.org",
+ "folder": "samples/birds-v1",
+ "birds": {
+  "turdus-rufiventris": [
+   {
+    "file": "turdus-rufiventris-1",
+    "kind": "song",
+    "seconds": 6.6,
+    "xc": 1096135,
+    "by": "Franco Vushurovich",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1096135"
+   },
+   {
+    "file": "turdus-rufiventris-2",
+    "kind": "song",
+    "seconds": 5.5,
+    "xc": 974088,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/974088"
+   },
+   {
+    "file": "turdus-rufiventris-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 838233,
+    "by": "Bernard BOUSQUET",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/838233"
+   },
+   {
+    "file": "turdus-rufiventris-4",
+    "kind": "call",
+    "seconds": 4.0,
+    "xc": 1051859,
+    "by": "Pedro Menoncin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1051859"
+   }
+  ],
+  "pitangus-sulphuratus": [
+   {
+    "file": "pitangus-sulphuratus-1",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 1179925,
+    "by": "Nick Talbot",
+    "country": "Costa Rica",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1179925"
+   },
+   {
+    "file": "pitangus-sulphuratus-2",
+    "kind": "song",
+    "seconds": 6.7,
+    "xc": 1072166,
+    "by": "AUDEVARD Aurélien",
+    "country": "Costa Rica",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1072166"
+   },
+   {
+    "file": "pitangus-sulphuratus-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1052925,
+    "by": "rafarrinho",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1052925"
+   },
+   {
+    "file": "pitangus-sulphuratus-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1192805,
+    "by": "Robert Bain",
+    "country": "Peru",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1192805"
+   }
+  ],
+  "passer-domesticus": [
+   {
+    "file": "passer-domesticus-1",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 1152146,
+    "by": "Philippe_Grange",
+    "country": "France",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "url": "https://xeno-canto.org/1152146"
+   },
+   {
+    "file": "passer-domesticus-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1138674,
+    "by": "Olivier SWIFT",
+    "country": "France",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1138674"
+   },
+   {
+    "file": "passer-domesticus-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1103781,
+    "by": "David Darrell-Lambert",
+    "country": "United Arab Emirates",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1103781"
+   },
+   {
+    "file": "passer-domesticus-4",
+    "kind": "call",
+    "seconds": 4.0,
+    "xc": 1062518,
+    "by": "János Schadl",
+    "country": "Georgia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1062518"
+   }
+  ],
+  "sicalis-flaveola": [
+   {
+    "file": "sicalis-flaveola-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1105162,
+    "by": "Cid Espínola",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1105162"
+   },
+   {
+    "file": "sicalis-flaveola-2",
+    "kind": "song",
+    "seconds": 6.4,
+    "xc": 1053969,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1053969"
+   },
+   {
+    "file": "sicalis-flaveola-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1018580,
+    "by": "Robson Silva e Silva",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1018580"
+   },
+   {
+    "file": "sicalis-flaveola-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1135369,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1135369"
+   }
+  ],
+  "athene-cunicularia": [
+   {
+    "file": "athene-cunicularia-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 535647,
+    "by": "Manuel Grosselet",
+    "country": "Mexico",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/535647"
+   },
+   {
+    "file": "athene-cunicularia-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 534567,
+    "by": "Isain Contreras Rodríguez",
+    "country": "Mexico",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/534567"
+   },
+   {
+    "file": "athene-cunicularia-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 369890,
+    "by": "Carlos S. Rodrigues",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/369890"
+   },
+   {
+    "file": "athene-cunicularia-4",
+    "kind": "call",
+    "seconds": 3.8,
+    "xc": 1162239,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1162239"
+   }
+  ],
+  "eupetomena-macroura": [
+   {
+    "file": "eupetomena-macroura-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 953336,
+    "by": "Ricardo José Mitidieri",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/953336"
+   },
+   {
+    "file": "eupetomena-macroura-2",
+    "kind": "song",
+    "seconds": 4.3,
+    "xc": 813195,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/813195"
+   },
+   {
+    "file": "eupetomena-macroura-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 705695,
+    "by": "Fernando Igor de Godoy",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/705695"
+   },
+   {
+    "file": "eupetomena-macroura-4",
+    "kind": "call",
+    "seconds": 4.0,
+    "xc": 824507,
+    "by": "Guilherme",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/824507"
+   }
+  ],
+  "furnarius-rufus": [
+   {
+    "file": "furnarius-rufus-1",
+    "kind": "song",
+    "seconds": 5.8,
+    "xc": 1163747,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1163747"
+   },
+   {
+    "file": "furnarius-rufus-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1009595,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1009595"
+   },
+   {
+    "file": "furnarius-rufus-3",
+    "kind": "song",
+    "seconds": 5.8,
+    "xc": 992354,
+    "by": "Guillermo Treboux",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/992354"
+   },
+   {
+    "file": "furnarius-rufus-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1096753,
+    "by": "Dante Buzzetti",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1096753"
+   }
+  ],
+  "vanellus-chilensis": [
+   {
+    "file": "vanellus-chilensis-1",
+    "kind": "song",
+    "seconds": 6.8,
+    "xc": 1163749,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1163749"
+   },
+   {
+    "file": "vanellus-chilensis-2",
+    "kind": "song",
+    "seconds": 7.0,
+    "xc": 1143691,
+    "by": "Manuel Grosselet",
+    "country": "Panama",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1143691"
+   },
+   {
+    "file": "vanellus-chilensis-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1000536,
+    "by": "David Ricardo Rodríguez-Villamil",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1000536"
+   },
+   {
+    "file": "vanellus-chilensis-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1142645,
+    "by": "Cristian Pinto Fernandez",
+    "country": "Chile",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1142645"
+   }
+  ],
+  "zonotrichia-capensis": [
+   {
+    "file": "zonotrichia-capensis-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1187549,
+    "by": "Juan Freile",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1187549"
+   },
+   {
+    "file": "zonotrichia-capensis-2",
+    "kind": "song",
+    "seconds": 4.5,
+    "xc": 1086722,
+    "by": "Brian Cox",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1086722"
+   },
+   {
+    "file": "zonotrichia-capensis-3",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 1083717,
+    "by": "Carlos Delgado JUMABITA",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1083717"
+   },
+   {
+    "file": "zonotrichia-capensis-4",
+    "kind": "call",
+    "seconds": 4.0,
+    "xc": 1141820,
+    "by": "Mateus Gonçalves Santos",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1141820"
+   }
+  ],
+  "thraupis-sayaca": [
+   {
+    "file": "thraupis-sayaca-1",
+    "kind": "song",
+    "seconds": 6.1,
+    "xc": 930888,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/930888"
+   },
+   {
+    "file": "thraupis-sayaca-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1192905,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1192905"
+   },
+   {
+    "file": "thraupis-sayaca-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1074846,
+    "by": "Fernando Igor de Godoy",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1074846"
+   },
+   {
+    "file": "thraupis-sayaca-4",
+    "kind": "call",
+    "seconds": 3.9,
+    "xc": 972928,
+    "by": "Pedro Rinaldi",
+    "country": "Uruguay",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/972928"
+   }
+  ],
+  "columbina-talpacoti": [
+   {
+    "file": "columbina-talpacoti-1",
+    "kind": "song",
+    "seconds": 7.0,
+    "xc": 920674,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/920674"
+   },
+   {
+    "file": "columbina-talpacoti-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 690980,
+    "by": "Mauricio Cuellar Ramirez (@Birding.travel)",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/690980"
+   },
+   {
+    "file": "columbina-talpacoti-3",
+    "kind": "song",
+    "seconds": 7.0,
+    "xc": 616374,
+    "by": "Marcelo J Feliti",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/616374"
+   },
+   {
+    "file": "columbina-talpacoti-4",
+    "kind": "call",
+    "seconds": 4.0,
+    "xc": 552746,
+    "by": "Jerome Fischer",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/552746"
+   }
+  ],
+  "crotophaga-ani": [
+   {
+    "file": "crotophaga-ani-1",
+    "kind": "song",
+    "seconds": 4.1,
+    "xc": 645167,
+    "by": "Ricardo José Mitidieri",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/645167"
+   },
+   {
+    "file": "crotophaga-ani-2",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 589584,
+    "by": "Robson Silva e Silva",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/589584"
+   },
+   {
+    "file": "crotophaga-ani-3",
+    "kind": "song",
+    "seconds": 6.5,
+    "xc": 549957,
+    "by": "Bernabe Lopez-Lanus",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/549957"
+   },
+   {
+    "file": "crotophaga-ani-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1192181,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1192181"
+   }
+  ],
+  "troglodytes-musculus": [
+   {
+    "file": "troglodytes-musculus-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1172813,
+    "by": "Mateus Gonçalves Santos",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1172813"
+   },
+   {
+    "file": "troglodytes-musculus-2",
+    "kind": "song",
+    "seconds": 4.2,
+    "xc": 1072168,
+    "by": "AUDEVARD Aurélien",
+    "country": "Costa Rica",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1072168"
+   },
+   {
+    "file": "troglodytes-musculus-3",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 1009596,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1009596"
+   },
+   {
+    "file": "troglodytes-musculus-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1078079,
+    "by": "Meena Haribal",
+    "country": "Chile",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1078079"
+   }
+  ],
+  "colaptes-campestris": [
+   {
+    "file": "colaptes-campestris-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1074533,
+    "by": "GABRIEL LEITE",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1074533"
+   },
+   {
+    "file": "colaptes-campestris-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 824844,
+    "by": "Bernard BOUSQUET",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/824844"
+   },
+   {
+    "file": "colaptes-campestris-3",
+    "kind": "song",
+    "seconds": 4.3,
+    "xc": 704846,
+    "by": "Guillermo Treboux",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/704846"
+   },
+   {
+    "file": "colaptes-campestris-4",
+    "kind": "call",
+    "seconds": 4.0,
+    "xc": 1008363,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1008363"
+   }
+  ],
+  "rupornis-magnirostris": [
+   {
+    "file": "rupornis-magnirostris-1",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 1175824,
+    "by": "José María Loaiza B.",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1175824"
+   },
+   {
+    "file": "rupornis-magnirostris-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1071696,
+    "by": "Pedro Rinaldi",
+    "country": "Uruguay",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1071696"
+   },
+   {
+    "file": "rupornis-magnirostris-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 974195,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/974195"
+   },
+   {
+    "file": "rupornis-magnirostris-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1183194,
+    "by": "Richard E. Webster",
+    "country": "Mexico",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1183194"
+   }
+  ],
+  "coragyps-atratus": [
+   {
+    "file": "coragyps-atratus-1",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 929989,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/929989"
+   },
+   {
+    "file": "coragyps-atratus-2",
+    "kind": "call",
+    "seconds": 3.9,
+    "xc": 743758,
+    "by": "Ricardo José Mitidieri",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/743758"
+   },
+   {
+    "file": "coragyps-atratus-3",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 638591,
+    "by": "Santiago Varela & Manuel Dueñas",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/638591"
+   },
+   {
+    "file": "coragyps-atratus-4",
+    "kind": "call",
+    "seconds": 3.0,
+    "xc": 638575,
+    "by": "Santiago Varela",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/638575"
+   }
+  ],
+  "ramphastos-toco": [
+   {
+    "file": "ramphastos-toco-1",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 1054733,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1054733"
+   },
+   {
+    "file": "ramphastos-toco-2",
+    "kind": "song",
+    "seconds": 6.4,
+    "xc": 760916,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/760916"
+   },
+   {
+    "file": "ramphastos-toco-3",
+    "kind": "song",
+    "seconds": 6.1,
+    "xc": 716365,
+    "by": "Nunes D´Acosta",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/716365"
+   },
+   {
+    "file": "ramphastos-toco-4",
+    "kind": "call",
+    "seconds": 3.9,
+    "xc": 1073033,
+    "by": "Cid Espínola",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1073033"
+   }
+  ],
+  "pionus-maximiliani": [
+   {
+    "file": "pionus-maximiliani-1",
+    "kind": "song",
+    "seconds": 6.8,
+    "xc": 1193159,
+    "by": "Odirlei Vieira da Fonseca",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1193159"
+   },
+   {
+    "file": "pionus-maximiliani-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 489837,
+    "by": "Franco Vushurovich",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/489837"
+   },
+   {
+    "file": "pionus-maximiliani-3",
+    "kind": "song",
+    "seconds": 6.8,
+    "xc": 1193159,
+    "by": "Odirlei Vieira da Fonseca",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1193159"
+   },
+   {
+    "file": "pionus-maximiliani-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1142993,
+    "by": "Marcos E. Sosa",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1142993"
+   }
+  ],
+  "pygochelidon-cyanoleuca": [
+   {
+    "file": "pygochelidon-cyanoleuca-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1185159,
+    "by": "Étienne Leroy",
+    "country": "Peru",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1185159"
+   },
+   {
+    "file": "pygochelidon-cyanoleuca-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 698051,
+    "by": "Mauricio Cuéllar Ramírez",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/698051"
+   },
+   {
+    "file": "pygochelidon-cyanoleuca-3",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 943098,
+    "by": "Carlos Delgado JUMABITA",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/943098"
+   }
+  ],
+  "ardea-alba": [
+   {
+    "file": "ardea-alba-1",
+    "kind": "call",
+    "seconds": 3.5,
+    "xc": 1185827,
+    "by": "Xavier Riera",
+    "country": "Belgium",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1185827"
+   },
+   {
+    "file": "ardea-alba-2",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1166667,
+    "by": "Esperanza Poveda",
+    "country": "Spain",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1166667"
+   },
+   {
+    "file": "ardea-alba-3",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1094410,
+    "by": "David Darrell-Lambert",
+    "country": "United Arab Emirates",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1094410"
+   },
+   {
+    "file": "ardea-alba-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1071100,
+    "by": "Chi-Hsuan Shao",
+    "country": "Taiwan",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1071100"
+   }
+  ],
+  "nyctibius-griseus": [
+   {
+    "file": "nyctibius-griseus-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1188265,
+    "by": "Uil",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1188265"
+   },
+   {
+    "file": "nyctibius-griseus-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1175781,
+    "by": "José María Loaiza B.",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1175781"
+   },
+   {
+    "file": "nyctibius-griseus-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1073980,
+    "by": "Juan Freile",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1073980"
+   },
+   {
+    "file": "nyctibius-griseus-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 770501,
+    "by": "Mateus Gonçalves Santos",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/770501"
+   }
+  ],
+  "procnias-nudicollis": [
+   {
+    "file": "procnias-nudicollis-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1165469,
+    "by": "Aran Rodrigues Cardoso",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1165469"
+   },
+   {
+    "file": "procnias-nudicollis-2",
+    "kind": "song",
+    "seconds": 6.8,
+    "xc": 1006063,
+    "by": "Dante Buzzetti",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1006063"
+   },
+   {
+    "file": "procnias-nudicollis-3",
+    "kind": "song",
+    "seconds": 7.0,
+    "xc": 951579,
+    "by": "Miguel Angelo Biz",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/951579"
+   },
+   {
+    "file": "procnias-nudicollis-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 927328,
+    "by": "Niall Perrins",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/927328"
+   }
+  ],
+  "cyphorhinus-arada": [
+   {
+    "file": "cyphorhinus-arada-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1163720,
+    "by": "GABRIEL LEITE",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1163720"
+   },
+   {
+    "file": "cyphorhinus-arada-2",
+    "kind": "song",
+    "seconds": 6.8,
+    "xc": 1151478,
+    "by": "Paul Lenrumé",
+    "country": "French Guiana",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1151478"
+   },
+   {
+    "file": "cyphorhinus-arada-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 771383,
+    "by": "Guilherme Melo Becher",
+    "country": "Peru",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/771383"
+   },
+   {
+    "file": "cyphorhinus-arada-4",
+    "kind": "call",
+    "seconds": 3.1,
+    "xc": 390494,
+    "by": "Jerome Fischer",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/390494"
+   }
+  ],
+  "tangara-seledon": [
+   {
+    "file": "tangara-seledon-1",
+    "kind": "song",
+    "seconds": 6.9,
+    "xc": 1175187,
+    "by": "Aran Rodrigues Cardoso",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1175187"
+   },
+   {
+    "file": "tangara-seledon-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 469403,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/469403"
+   },
+   {
+    "file": "tangara-seledon-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 347765,
+    "by": "Robson Silva e Silva",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/347765"
+   },
+   {
+    "file": "tangara-seledon-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 556622,
+    "by": "Caio Brito",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/556622"
+   }
+  ],
+  "cariama-cristata": [
+   {
+    "file": "cariama-cristata-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1180176,
+    "by": "Miguel Angelo Biz",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1180176"
+   },
+   {
+    "file": "cariama-cristata-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1044377,
+    "by": "Robson Silva e Silva",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1044377"
+   },
+   {
+    "file": "cariama-cristata-3",
+    "kind": "song",
+    "seconds": 7.0,
+    "xc": 1003080,
+    "by": "Dante Buzzetti",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1003080"
+   },
+   {
+    "file": "cariama-cristata-4",
+    "kind": "call",
+    "seconds": 3.9,
+    "xc": 388100,
+    "by": "Bobby Wilcox",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/388100"
+   }
+  ],
+  "gallus-gallus": [
+   {
+    "file": "gallus-gallus-1",
+    "kind": "song",
+    "seconds": 5.0,
+    "xc": 1153683,
+    "by": "Aku Kalliomäki",
+    "country": "Finland",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1153683"
+   },
+   {
+    "file": "gallus-gallus-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1048462,
+    "by": "Michael John O Mahony",
+    "country": "Malaysia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1048462"
+   },
+   {
+    "file": "gallus-gallus-3",
+    "kind": "song",
+    "seconds": 6.0,
+    "xc": 882264,
+    "by": "Lars Lachmann",
+    "country": "India",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/882264"
+   },
+   {
+    "file": "gallus-gallus-4",
+    "kind": "call",
+    "seconds": 4.0,
+    "xc": 938747,
+    "by": "Moon Hui",
+    "country": "Singapore",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/938747"
+   }
+  ],
+  "tyto-furcata": [
+   {
+    "file": "tyto-furcata-1",
+    "kind": "song",
+    "seconds": 4.6,
+    "xc": 878745,
+    "by": "Dante Buzzetti",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/878745"
+   },
+   {
+    "file": "tyto-furcata-2",
+    "kind": "song",
+    "seconds": 5.2,
+    "xc": 856879,
+    "by": "Francisco contreras",
+    "country": "Venezuela",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/856879"
+   },
+   {
+    "file": "tyto-furcata-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 805126,
+    "by": "Juanita Barrera Vargas",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/805126"
+   },
+   {
+    "file": "tyto-furcata-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1154030,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1154030"
+   }
+  ],
+  "caracara-plancus": [
+   {
+    "file": "caracara-plancus-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1187040,
+    "by": "Carlos Delgado JUMABITA",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1187040"
+   },
+   {
+    "file": "caracara-plancus-2",
+    "kind": "song",
+    "seconds": 6.8,
+    "xc": 932757,
+    "by": "JAYRSON ARAUJO DE OLIVEIRA",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/932757"
+   },
+   {
+    "file": "caracara-plancus-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 854908,
+    "by": "Guilherme Melo",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/854908"
+   },
+   {
+    "file": "caracara-plancus-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 833970,
+    "by": "Bernard BOUSQUET",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/833970"
+   }
+  ],
+  "nyctidromus-albicollis": [
+   {
+    "file": "nyctidromus-albicollis-1",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1174897,
+    "by": "Jonas Nilsson",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1174897"
+   },
+   {
+    "file": "nyctidromus-albicollis-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1146863,
+    "by": "Heiler Uribe",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1146863"
+   },
+   {
+    "file": "nyctidromus-albicollis-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1083752,
+    "by": "Carlos Delgado JUMABITA",
+    "country": "Colombia",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1083752"
+   },
+   {
+    "file": "nyctidromus-albicollis-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 1175507,
+    "by": "José",
+    "country": "Ecuador",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1175507"
+   }
+  ],
+  "mimus-saturninus": [
+   {
+    "file": "mimus-saturninus-1",
+    "kind": "song",
+    "seconds": 5.9,
+    "xc": 1090727,
+    "by": "Pedro Sanetti",
+    "country": "Argentina",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "url": "https://xeno-canto.org/1090727"
+   },
+   {
+    "file": "mimus-saturninus-2",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1008356,
+    "by": "Fabrício Grigolin",
+    "country": "Brazil",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1008356"
+   },
+   {
+    "file": "mimus-saturninus-3",
+    "kind": "song",
+    "seconds": 7.1,
+    "xc": 1001557,
+    "by": "Marcos E. Sosa",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/1001557"
+   },
+   {
+    "file": "mimus-saturninus-4",
+    "kind": "call",
+    "seconds": 4.1,
+    "xc": 981836,
+    "by": "Sabrina Andrea Rendon Anaya",
+    "country": "Argentina",
+    "license": "CC BY-NC-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "url": "https://xeno-canto.org/981836"
+   }
+  ]
+ }
+}

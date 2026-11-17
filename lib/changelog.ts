@@ -5,6 +5,24 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.13.0',
+    date: '17/11/2026',
+    title: 'Guia de pássaros reais: 30 aves com cantos gravados, a ave que inspira cada alma, receita na ficha e canto real das almas soltas',
+    groups: [
+      { title: 'Pátio: Guia de pássaros e almas', items: [
+        'O Pátio ganhou o Guia de pássaros (botão da pena, ao lado da Biblioteca de almas): 30 aves reais do Brasil, cada uma com nome popular, nome científico, família, tamanho, onde vive e uma curiosidade, desenhada em pixel art nas cores da ave.',
+        'Clicar numa ave do guia toca um canto real dela. Cada ave tem até quatro gravações (cantos e um chamado), e cada clique no desenho toca a próxima; a lista “Cantos reais” mostra quem gravou cada uma, com link para a gravação original.',
+        'Cada alma da Biblioteca passou a ter uma ave real que a inspira. A ficha da alma mostra a linha “Inspiration” com o nome científico e o popular; clicar nela abre o Guia de pássaros já naquela ave.',
+        'Na ficha da ave, embaixo, aparecem as almas inspiradas nela, com as miniaturas: as que ainda não foram capturadas ficam escurecidas, como na Biblioteca, e clicar numa capturada abre a Biblioteca de almas nela.',
+        'A ficha da alma ganhou a “Receita”: uma frase que diz como conseguir uma alma igual (qual alien, se pela música ou morto por qual arma, com qual família de instrumento e, nas raras, em qual nota).',
+        'Clicar numa alma na Biblioteca toca o som dela: três notas na voz da ave que a inspira (acorde menor para as mortas). Clicar no desenho da alma aberta toca de novo.',
+        'As almas soltas cantam de vez em quando o canto real da sua ave, entre uma ação e outra, com uma nota ♪ em cima delas. O canto fica mais baixo quanto mais longe do meio da tela e segue o volume “Efeitos do cenário”. As notas que elas tocam nas harmonias continuam sintetizadas, agora na voz da ave que inspira a alma.',
+        'Para o admin, no editor de fichas: a aba Ficha tem o campo Inspiration (troca a ave da alma) e a aba Ações tem “Canto real”, a chance de a alma cantar a gravação a cada volta do intervalo (15% por padrão; 0 desliga).',
+        'O About ganhou a aba Credits, com os créditos do Strudel e de cada gravação de canto (ave, quem gravou, número no xeno-canto e licença). As gravações vêm do acervo público xeno-canto.org, em uso não comercial.',
+      ] },
+    ],
+  },
+  {
     version: '2.12.0',
     date: '16/11/2026',
     title: 'Campo minado no Pátio: Grade de blocos com paredes e dois lados, gangorra de música e dano, bandeira, bombas, detonador e Filhote, com a rodada compartilhada no online e um Pátio de exemplo; Portais de nascimento no Modo editor, cada um com a sua chance; gaiolas penduradas balançam para o lado certo; painel Itens com os seis modelos de gaiola numa tela só; almas em pose de descanso na gaiola e pousadas; cada Boomerang sai de uma asa; itens param em cima dos chãos com contorno, e a galinha agachada agarra a beirada deles; estrelas a qualquer hora do dia; dá para entrar nas casas pela porta; os elementos do Templo e da Vila ficam no lugar ao mudar a largura do Pátio; e cada Pátio escolhe a faixa de zoom, até ver o Pátio inteiro',
@@ -177,18 +195,6 @@ const RECENT = [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
         'Preferências da partida ganhou “Match log”, com o botão Copy: copia o histórico completo da partida, uma linha por acontecimento, com cada lance (posição, lances possíveis, listas Best e Worst com os scores, classificação, sequência e ovos pagos), Freeze e Shield, Undo, Redo, Mulligan e cada vez que as setas foram abertas. Serve para colar numa conversa ao relatar um bug. Vale na campanha e no online.',
         'Um rei não pode mais ir para uma casa que uma peça adversária congelada alcançaria, nem descobrir essa ameaça movendo outra peça. Antes, o adversário (inclusive o bot) podia congelar o seu rei e encostar o rei dele ao lado; quando os poderes se desfaziam por falta de jogadas, os dois reis ficavam vizinhos. Vale na campanha, contra os bots e no online.',
-      ] },
-    ],
-  },
-  {
-    version: '2.10.1',
-    date: '14/11/2026',
-    title: 'Correções do Pátio com zoom: nuvens grandes inteiras e prévia do arraste no tamanho certo',
-    groups: [
-      { title: 'Pátio', items: [
-        'Nuvens Suaves com Tamanho acima do normal não aparecem mais cortadas retas no topo.',
-        'Com a câmera no alto do Pátio, nuvens e cenário com profundidade não somem mais antes de sair da tela.',
-        'No Modo editor, ao arrastar uma casa ou árvore para o Pátio com zoom diferente de 100%, a prévia aparece do tamanho que o elemento terá ao ser solto, em vez de gigante (ou pequena).',
       ] },
     ],
   },

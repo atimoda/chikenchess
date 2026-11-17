@@ -12,7 +12,7 @@ export const MIX_LAYERS: { key: MixLayer; label: string; hint: string }[] = [
   { key: 'notes', label: 'Instrumentos', hint: 'As notas que ela toca e as respostas dos inimigos' },
   { key: 'ambience', label: 'Ambiente', hint: 'Percussão e drone de cada zona (0 desliga)' },
   { key: 'weapons', label: 'Armas', hint: 'Tiros, recarga, golpes, explosões e inimigos morrendo' },
-  { key: 'effects', label: 'Efeitos do cenário', hint: 'Gongo, sons do Templo e o portal' },
+  { key: 'effects', label: 'Efeitos do cenário', hint: 'Gongo, sons do Templo, o portal e o canto real das aves' },
   { key: 'chicken', label: 'Galinha', hint: 'Os cacarejos dela (em todas as telas)' },
 ]
 
