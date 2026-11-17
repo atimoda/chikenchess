@@ -6,19 +6,24 @@
 import { useEffect, useState } from "react"
 import { Lock, X } from "lucide-react"
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from "@/lib/chicken/look-art"
+import { variantClass } from "@/lib/chicken/beast-art"
 import { RARITIES, RARITY_COLOR, RARITY_LABEL, breedRarity, itemRarity, type Rarity } from "@/lib/chicken/rarity"
 import { cn } from "@/lib/utils"
 
 const UNLOCK = "chickenchess:chicken-vest-unlock-all:v1"
 type Src = "green" | "gold" | "red"
 // where each variant comes from: Caipira items come with the player; the others are earned (gold) or bought (red)
-const SRC: Record<string, Src> = { caipira: "green", none: "green", angola: "gold", onagadori: "red" }
+const SRC: Record<string, Src> = { caipira: "green", none: "green", angola: "gold", onagadori: "red", "porco-rosa": "green", "raposa-vermelha": "green" }
+// the other pigs and foxes are earned
+const srcOf = (id: string): Src => SRC[id] ?? (variantClass(id) === "galinha" ? "green" : "gold")
 const SRC_LABEL: Record<Src, string> = { green: "liberado", gold: "conquista", red: "loja" }
 // the cards' border: a neutral gray, so it never reads as a player's color (players are told apart by color)
 const CARD_BORDER = "#3a3e42"
 const SRC_COLOR: Record<Src, string> = { green: "#1fd39a", gold: "#f2c14e", red: "#ef4b4b" }
-const OWNED = new Set(["caipira", "none"])
-const KLASS: Record<string, string> = { leve: "Leve", media: "Média", pesada: "Pesada", ana: "Anã", cauda_longa: "Ornamental de cauda longa" }
+// the three protagonists come with the player: Chi (the Caipira), Pig and Ken
+const OWNED = new Set(["caipira", "none", "porco-rosa", "raposa-vermelha"])
+// the species class of each breed: it sets the movement; the breed only the look
+const KLASS: Record<string, string> = { galinha: "Galinha", porco: "Porco", raposa: "Raposa" }
 const TABS = [{ id: "racas", label: "Raças" }, { id: "cabeca", label: "Cabeça" }, { id: "penas", label: "Penas" }, { id: "corpo", label: "Corpo" }, { id: "pernas", label: "Pernas" }, { id: "acessorios", label: "Acessórios" }]
 
 const sameLook = (a: ChickenLook, b: ChickenLook) => LOOK_ART.SLOTS.every(s => a[s.id] === b[s.id])
@@ -64,7 +69,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
 
   let body: React.ReactNode
   if (tab === "racas") {
-    body = ([["galinhas", "Galinhas"], ["galos", "Galos"], ["rapina", "Aves de rapina"]] as const).map(([cat, title]) => {
+    body = ([["galinhas", "Galinhas"], ["galos", "Galos"], ["porcos", "Porcos"], ["raposas", "Raposas"]] as const).map(([cat, title]) => {
       const list = LOOK_ART.BREEDS.filter(b => b.cat === cat)
       return (
         <section key={cat} className="grid gap-3 border-b border-white/10 px-4 py-3.5">
@@ -74,7 +79,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
               {list.map(br => {
                 const l = LOOK_ART.breedLook(br.id)
                 const locked = LOOK_ART.SLOTS.some(s => !owned(l[s.id]))
-                return card(br.id, SRC[br.id] ?? "green", breedRarity(br.id), locked, sameLook(look, l), svg(fullView(l), LOOK_ART.compose(l)), <>{br.label}<br /><small className="text-[#93a79a]">classe {KLASS[br.klass] ?? br.klass}</small></>, br.label, () => onChange(l), true)
+                return card(br.id, srcOf(br.id), breedRarity(br.id), locked, sameLook(look, l), svg(fullView(l), LOOK_ART.compose(l)), <>{br.label}<br /><small className="text-[#93a79a]">classe {KLASS[br.klass] ?? br.klass}</small></>, br.label, () => onChange(l), true)
               })}
             </div>
           ) : <p className="rounded-[10px] border border-dashed border-white/15 p-3.5 text-center text-[#93a79a]">Em breve</p>}
@@ -90,15 +95,17 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
       </section>
     )
   } else {
-    body = LOOK_ART.SLOTS.filter(s => s.tab === tab).map(slot => (
+    // parts of the same species class as the current look only: a fox's head never goes on a chicken
+    const klass = variantClass(look.torso)
+    body = LOOK_ART.SLOTS.filter(s => s.tab === tab).map(slot => ({ slot, list: Object.entries(LOOK_ART.art[slot.id]).filter(([v]) => v === "none" ? klass === "galinha" : variantClass(v) === klass) })).filter(({ list }) => list.length > 1 || klass === "galinha").map(({ slot, list }) => (
       <section key={slot.id} className="grid gap-3 border-b border-white/10 px-4 py-3.5">
         <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">{slot.label}</h3>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2.5">
-          {Object.entries(LOOK_ART.art[slot.id]).map(([v, it]) => {
+          {list.map(([v, it]) => {
             const l = { ...look, [slot.id]: v }
             const view = slot.id === "tail" && LOOK_ART.TAIL_VIEW[v] ? LOOK_ART.TAIL_VIEW[v] : LOOK_ART.VIEW[slot.id]
             const art = slot.id === "tail" ? svg(view, it.svg ?? "") : svg(view, LOOK_ART.compose(l))
-            return card(v, SRC[v] ?? "green", itemRarity(slot.id, v), !owned(v), look[slot.id] === v, art, it.label, `${slot.label}: ${it.label}`, () => onChange({ ...look, [slot.id as ChickenSlot]: v }))
+            return card(v, srcOf(v), itemRarity(slot.id, v), !owned(v), look[slot.id] === v, art, it.label, `${slot.label}: ${it.label}`, () => onChange({ ...look, [slot.id as ChickenSlot]: v }))
           })}
         </div>
       </section>
