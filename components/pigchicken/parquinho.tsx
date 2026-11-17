@@ -5,6 +5,8 @@
 // arrows > facing, drawn as a reticle. Firing, hitting and throwing only flash for now; the items come next.
 // The world is in fixed units (lib/pigchicken/world.ts): the same size on every screen, which only changes the crop.
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
+import { feedBaby, getBaby } from "@/lib/chicken/baby"
+import { getChickenConfig } from "@/lib/chicken/config"
 import { Search } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
@@ -1252,6 +1254,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       for (let i = fingers.length - 1; i >= 0; i--) { if (fingers[i].up || !combat.seated) fingers.splice(i, 1); else fingers[i].fresh = false }
       minePlay.step(dt)
       minePlay.player("p1", engine, input)
+      // a Filhote (lib/chicken/baby.ts) plays its instruments and uses Usar, and nothing else; the notes that reach
+      // it fill its music bar
+      if (getBaby().on) {
+        if (!(combat.held && combat.def().instrument)) { input.fire = false; input.firePressed = false; input.melee = false; input.throwHeld = false; input.throwReleased = false }
+        combat.setBabies([{ by: "p1", box: { l: body.x - 40 * st.scale, r: body.x + 40 * st.scale, t: body.y - 200 * st.scale, b: body.y }, fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
+      } else combat.setBabies([])
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       // (she stays where its stool is, in the seated pose, until she gets up)
       { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }

@@ -65,6 +65,10 @@ export type ChickenEngine = {
   getMotionState: () => Omit<ChickenState, 'shoulder'>
   /** Health (docs/mechanics/chicken/characters.md): takes `amount` off (from a source at x `fromX`, for Pig's Guarda). */
   hurt: (amount: number, fromX?: number) => void
+  /** What happens when her health reaches zero (she turns into a Filhote, lib/chicken/baby.ts); she gets it all back. */
+  setOnDown: (fn: (() => void) | null) => void
+  /** A bar over her head that is not her health (the Filhote's music bar, 0..1), or null for none. */
+  setMeter: (fill: number | null) => void
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
@@ -440,25 +444,26 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // hp: what she has left; hurtAgo: seconds since the last damage (it comes back on its own after regenDelay);
   // a chick (a bot) has none. At zero she gets it all back for now (the Filhote comes in the next step).
   let hp = R.maxHp, hurtAgo = Infinity, barShown = 0
+  let onDown: (() => void) | null = null, meter: number | null = null
   function hurt(amount: number, fromX?: number) {
     if (!(amount > 0) || portalEntry || species === 'chick') return
     // Pig's Guarda: brooding on the ground, what comes from the front hurts less
     const sp = species ?? lookSpecies
     if (sp === 'pig' && S.grounded && S.state === 'brood' && fromX !== undefined && Math.sign(fromX - S.x) === S.face) amount *= 1 - R.guardBlock / 100
     hp = Math.max(0, hp - amount); hurtAgo = 0; barShown = 2
-    if (hp <= 0) { hp = R.maxHp; S.squash = 1 }
+    if (hp <= 0) { hp = R.maxHp; hurtAgo = Infinity; barShown = 0; S.squash = 1; onDown?.() }
   }
   function stepHealth(dt: number) {
     if (hp > R.maxHp) hp = R.maxHp
     hurtAgo += dt
     if (hurtAgo >= R.regenDelay && hp < R.maxHp) hp = Math.min(R.maxHp, hp + R.maxHp * R.regenRate / 100 * dt)
     if (hp < R.maxHp) barShown = 2; else barShown = Math.max(0, barShown - dt)
-    const show = barShown > 0 && species !== 'chick'
+    const show = meter !== null || (barShown > 0 && species !== 'chick')
     el.hpBar.style.display = show ? '' : 'none'
     if (!show) return
-    const f = hp / Math.max(1, R.maxHp)
+    const f = meter ?? hp / Math.max(1, R.maxHp)
     el.hpFill.setAttribute('width', (60 * f).toFixed(1))
-    el.hpFill.setAttribute('fill', f > 0.5 ? '#3fcf6b' : f > 0.25 ? '#f2c14e' : '#ef4b4b')
+    el.hpFill.setAttribute('fill', meter !== null ? '#b45cff' : f > 0.5 ? '#3fcf6b' : f > 0.25 ? '#f2c14e' : '#ef4b4b')
     const top = (S.cl ? S.cl.py : S.y) - (HEAD_TOP + 40) * R.scale
     el.hpBar.setAttribute('transform', `translate(${(S.cl ? S.cl.px : S.x).toFixed(1)} ${top.toFixed(1)}) scale(${Math.max(0.6, R.scale * 1.6).toFixed(2)})`)
   }
@@ -2422,6 +2427,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     getState: () => ({ ...motionState(), shoulder: shoulder() }),
     getMotionState: motionState,
     hurt,
+    setOnDown(fn) { onDown = fn },
+    setMeter(fill) { meter = fill === null ? null : clamp(fill, 0, 1) },
     canPointAndClick,
     canWalkToPortal,
     walkToPortal(id, point) {

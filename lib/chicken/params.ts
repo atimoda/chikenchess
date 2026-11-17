@@ -112,6 +112,8 @@ export const CHICKEN_PARAMS = {
   regenDelay: 6,
   regenRate: 8,
   guardBlock: 60,
+  // the Filhote: how many notes that reach it fill its music bar (then it is an adult again)
+  babyNotes: 4,
   heldFlapRate: 9,
   jumpFlapRate: 14,
   // Idle

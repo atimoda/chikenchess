@@ -58,3 +58,22 @@ test('the size setting is rebased: 1 is the usual size, and a config saved befor
   assert.equal(normalizeChickenConfig({ params: { scale: 0.75 } }).params.scale, 1.5)
   assert.equal(normalizeChickenConfig({ params: { scale: 1.2, scaleBase: 0.5 } }).params.scale, 1.2)
 })
+
+test('the Filhote: a baby of each class with its own skins, and a music bar that makes it an adult again', () => {
+  const store = {}
+  global.window = { localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v } } }
+  const B = loadTs('lib/chicken/baby.ts')
+  const pig = LOOK_ART.breedLook('porco-hampshire'), ken = LOOK_ART.breedLook('raposa-feneco'), chi = LOOK_ART.breedLook('caipira')
+  assert.equal(B.babyClassOf(pig), 'porco'); assert.equal(B.babyClassOf(ken), 'raposa'); assert.equal(B.babyClassOf(chi), 'galinha')
+  assert.equal(B.babySkins('porco').length, 7); assert.equal(B.babySkins('raposa').length, 10)
+  assert.equal(B.defaultBabySkin(pig), 'preto'); assert.equal(B.defaultBabySkin(ken), 'feneco'); assert.equal(B.defaultBabySkin(chi), 'amarelo')
+  for (const look of [pig, ken, chi]) assert.ok(LOOK_ART.composeSet(B.babyArt(look, null)).length > 500)
+  B.setBaby({ on: true, skin: 'malhado', bar: 0 })
+  assert.equal(B.getBaby().on, true)
+  assert.equal(B.feedBaby(4), false); assert.equal(B.getBaby().bar, 0.25)
+  B.feedBaby(4); B.feedBaby(4)
+  assert.equal(B.feedBaby(4), true, 'the 4th note makes it an adult')
+  assert.equal(B.getBaby().on, false)
+  assert.ok(JSON.parse(store['chickenchess:baby:v1']).on === false)
+  delete global.window
+})

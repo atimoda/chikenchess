@@ -785,6 +785,9 @@ export function createCombat() {
   // damage to this browser's own player (setHurt): a zombie's bite takes ZOMBIE_BITE of its health
   let hurtSelf: ((amount: number, fromX: number) => void) | null = null
   const ZOMBIE_BITE = 15
+  // the Filhotes here (lib/chicken/baby.ts): the notes that reach one fill its music bar (not its own notes)
+  let babies: { by?: string; box: BlastBox; fill: () => void }[] = []
+  const babyAt = (x: number, y: number, r: number, by?: string) => babies.find(b => b.by !== by && x + r > b.box.l && x - r < b.box.r && y + r > b.box.t && y - r < b.box.b)
 
   // ---------- the undead ----------
   const harmonyNow = () => { const z = music.zone; return { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() } }
@@ -1582,6 +1585,13 @@ export function createCombat() {
     if (b.fuse > 0 && b.t >= b.fuse) return gone(b.x, b.y)
     if (b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
+    // an instrument's note that reaches a Filhote (not the one who played it) fills its music bar
+    if (b.note && !b.room) {
+      for (let k = 1; k <= steps; k++) {
+        const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps, baby = babyAt(x, y, b.size, b.by)
+        if (baby) { baby.fill(); burst(x, y, 6, b.note.color, 140, 2); return true }
+      }
+    }
     // swept test against targets: points along the step's segment inside the target's box
     for (const t of b.room ? [] : targets) {
       if (t.deadT > 0 || b.hits.has(t.id)) continue
@@ -2084,6 +2094,9 @@ export function createCombat() {
       }
       const tuned = laneRetune(n.x, n.y)
       if (tuned !== null && tuned !== n.midi) { n.midi = tuned; n.color = DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
+      // a rebated note that reaches a Filhote fills its music bar
+      const baby = babyAt(n.x, n.y, n.size)
+      if (baby) { baby.fill(); burst(n.x, n.y, 8, n.color, 160, 3); noteShots.splice(i, 1); continue }
       const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie' || (t.kind === 'undead' && !(t.data as UndeadState).bird)) && t.deadT <= 0 && t.state !== 'converted' &&
         n.x + n.size > t.x - t.w / 2 && n.x - n.size < t.x + t.w / 2 && n.y + n.size > t.y - t.h && n.y - n.size < t.y)
       if (hit) {
@@ -2418,6 +2431,8 @@ export function createCombat() {
     setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
     /** What damage to this browser's own player does (its health, lib/chicken/engine.ts): a zombie's bite. */
     setHurt(fn: ((amount: number, fromX: number) => void) | null) { hurtSelf = fn },
+    /** The Filhotes the notes can reach: each note that does fills a share of its music bar. */
+    setBabies(list: { by?: string; box: BlastBox; fill: () => void }[]) { babies = list },
     setCatchables(list: Catchable[]) { catchables = list },
     /** a little cloud where something left (another browser's chick that is no longer there) */
     puff(x: number, y: number) { cloud(x, y) },

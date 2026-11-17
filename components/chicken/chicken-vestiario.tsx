@@ -3,10 +3,13 @@
 // Vestiário (ported from the "Pátio da Caipira" prototype): picks the chicken's look by breed or part by
 // part, with art thumbnails and a big preview. It edits the look of the Pátio's draft of the central
 // configuration, so "Salvar no game" in Ajustes saves it for every screen together with the params.
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { Lock, X } from "lucide-react"
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from "@/lib/chicken/look-art"
 import { variantClass } from "@/lib/chicken/beast-art"
+import { babyArt, babyClassOf, babySkins, defaultBabySkin, getBaby, setBaby, subscribeBaby, type BabyState } from "@/lib/chicken/baby"
+
+const NO_BABY: BabyState = { on: false, skin: null, bar: 0 }
 import { RARITIES, RARITY_COLOR, RARITY_LABEL, breedRarity, itemRarity, type Rarity } from "@/lib/chicken/rarity"
 import { cn } from "@/lib/utils"
 
@@ -40,6 +43,9 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
   const toggleUnlock = (v: boolean) => { setUnlockAll(v); try { window.localStorage.setItem(UNLOCK, v ? "1" : "0") } catch { /* ignore */ } }
   const owned = (v: string) => unlockAll || OWNED.has(v)
   const dirty = !sameLook(look, savedLook)
+  // a Filhote only changes to another baby of its class (lib/chicken/baby.ts)
+  const baby = useSyncExternalStore(subscribeBaby, getBaby, () => NO_BABY)
+  const babySkin = baby.skin ?? defaultBabySkin(look)
 
   // the photo's background takes a tint of the item's rarity; where it comes from only colors the small label
   const card = (key: string, src: Src, rarity: Rarity, locked: boolean, on: boolean, art: React.ReactNode, name: React.ReactNode, label: string, onPick: () => void, wide = false) => (
@@ -68,7 +74,17 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
   const svg = (view: string, html: string) => <svg viewBox={view} aria-hidden="true" className="h-full w-full" dangerouslySetInnerHTML={{ __html: html }} />
 
   let body: React.ReactNode
-  if (tab === "racas") {
+  if (baby.on) {
+    const klass = babyClassOf(look)
+    body = (
+      <section className="grid gap-3 border-b border-white/10 px-4 py-3.5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">Filhote</h3>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2.5">
+          {babySkins(klass).map(k => card(k.id, "green", "comum", false, babySkin === k.id, svg("-90 -210 180 220", LOOK_ART.composeSet(babyArt(look, k.id))), k.label, `Filhote: ${k.label}`, () => setBaby({ skin: k.id })))}
+        </div>
+      </section>
+    )
+  } else if (tab === "racas") {
     body = ([["galinhas", "Galinhas"], ["galos", "Galos"], ["porcos", "Porcos"], ["raposas", "Raposas"]] as const).map(([cat, title]) => {
       const list = LOOK_ART.BREEDS.filter(b => b.cat === cat)
       return (
@@ -122,12 +138,12 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <div className="relative h-56 shrink-0 border-b border-primary/30 bg-[radial-gradient(120%_70%_at_50%_85%,rgba(31,211,154,0.09),transparent_70%)] md:h-auto md:w-[260px] md:border-b-0 md:border-r">
           <p className="absolute left-3.5 top-2.5 text-[10px] uppercase tracking-wider text-[#93a79a]">Prévia</p>
-          <div className="absolute inset-x-3 bottom-8 top-8">{svg(fullView(look), LOOK_ART.compose(look))}</div>
+          <div className="absolute inset-x-3 bottom-8 top-8">{baby.on ? svg("-90 -210 180 220", LOOK_ART.composeSet(babyArt(look, babySkin))) : svg(fullView(look), LOOK_ART.compose(look))}</div>
           <div className="absolute inset-x-0 bottom-8 h-0.5 bg-primary/55" />
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <nav role="tablist" className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/10 px-2.5 py-2">
-            {TABS.map(t => (
+            {(baby.on ? TABS.slice(0, 1).map(t => ({ ...t, label: "Filhote" })) : TABS).map(t => (
               <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold", tab === t.id ? "bg-[#22302a] text-white shadow-[inset_0_0_0_1px_rgba(31,211,154,0.6)]" : "text-[#93a79a] hover:text-white")}>{t.label}</button>
             ))}
           </nav>

@@ -33,8 +33,20 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 - **Guarda do Pig:** chocando no chão, o dano que vem da frente cai `guardBlock`% (60).
 - **Volta sozinha:** `regenDelay` s sem tomar dano (6) e ela volta a `regenRate`% da vida cheia por segundo (8).
 - **Barra:** uma barrinha sobre a cabeça, verde acima de 50%, âmbar acima de 25% e vermelha abaixo; aparece quando falta vida e some 2 s depois de encher. Não espelha com o boneco.
-- **Vida zero (provisório):** por enquanto o boneco recupera a vida toda na hora. Na etapa 5 ele vira filhote.
+- **Vida zero:** vira filhote (ver abaixo) e recupera a vida toda para quando voltar a adulto.
 - **Não verificado no navegador:** a barra e o dano em jogo (o painel do navegador estava oculto e o laço do jogo não roda assim); conferido por tipos.
+
+## Filhote (etapa 5)
+
+- **Gatilho:** a vida do boneco deste navegador chega a zero (`hurt` no motor chama `setOnDown`). Ele vira o filhote da classe dele, na hora e no mesmo lugar: pintinho (galinhas), leitão (porcos) ou raposinha (raposas), com a vida cheia guardada para quando voltar a adulto.
+- **Arte:** leitão e raposinha no traço do pintinho (`lib/chicken/baby-art.ts`): cabeça e corpo redondos, olho de conta com brilho, sem boca nem contorno, em pé. O motor usa a espécie `chick` (tamanho e movimento do pintinho) com a arte do filhote (`setSpecies('chick')` + `setArt`).
+- **Estilos (skins):** 7 leitões (rosa, branco, malhado, manchas cinza, ruivo pintado, caramelo, preto), 10 raposinhas (uma por espécie de raposa) e os pintinhos realistas. O filhote começa no estilo mais parecido com o adulto (Pig Hampshire → leitão preto, Mangalica → caramelo, cada raposa → a raposinha dela, galinhas → pintinho amarelo-claro).
+- **Imortal:** filhote não perde vida.
+- **Mãos:** toca instrumentos e usa Usar; Atirar (fora dos instrumentos), Golpe e Arremesso não fazem nada (como o Filhote do Campo minado).
+- **Volta a adulto:** a **barra de música** (roxa, sobre a cabeça) enche com as notas que acertam o filhote: notas rebatidas (tiros-nota dos aliens no guitar hero e assobios dos pássaros, devolvidos com um golpe) e notas de instrumentos de outros jogadores (as dele mesmo não contam). Cada nota enche `1 / babyNotes` (padrão 4 notas, em `params.ts`). Cheia, ele volta a ser o adulto do visual dele.
+- **Fica salvo neste navegador** (`chickenchess:baby:v1`): voltar ao globo e entrar em outro Pátio mantém o filhote, com a barra onde estava. Ainda não é salvo na conta (fica para depois, com o servidor).
+- **Vestiário:** enquanto é filhote, o Vestiário mostra só a aba Filhote, com os estilos de filhote da classe dele; a prévia mostra o filhote.
+- **Escopo:** o boneco deste navegador (Player 1), no globo e no Pátio. Outros players locais e o online ainda não viram filhote; a captura pelo Passaguá é a etapa 6.
 
 ## Tamanho (escala rebaseada)
 
@@ -59,4 +71,4 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 
 ## Ainda não implementado
 
-Planejado e aprovado na prévia, em etapas: Pisão e Embalo do Pig, quique e rabo-hélice do Ken, Espreita fora da mira dos aliens, filhotes (leitão e raposinha), captura pelo Passaguá e o rabo do Ken em seis ossos.
+Planejado e aprovado na prévia, em etapas: Pisão e Embalo do Pig, quique e rabo-hélice do Ken, Espreita fora da mira dos aliens, captura pelo Passaguá e o rabo do Ken em seis ossos.
