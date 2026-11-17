@@ -64,6 +64,8 @@ export const PIG_FACTORS: Partial<Record<NumKey, number>> = {
   // Investida (Brood + Jump): a charge along the ground, longer and flat
   broodJumpBoost: 1.6, airBroodJumpBoost: 1.2, broodJumpVerticalBoost: 0.15, runBroodJumpBoost: 1.3,
   knockbackTaken: 0.35,
+  // a mammal's body: the head barely tilts running, the body leans less, Chocar sinks less (Guarda)
+  runHeadTilt: 0.25, runLean: 0.5, broodDepth: 0.5,
 }
 // Ken: a little faster than Pig and slower than the chicken, but quick to answer (acceleration, stopping, air control);
 // high jumps, one jump in the air, a very slow glide spinning the tail
@@ -74,11 +76,12 @@ export const FOX_FACTORS: Partial<Record<NumKey, number>> = {
   // Bote (Brood + Jump): a long, low leap
   broodJumpBoost: 1.5, airBroodJumpBoost: 1.3, broodJumpVerticalBoost: 0.7, runBroodJumpBoost: 1.3,
   knockbackTaken: 0.8,
+  runHeadTilt: 0.25, runLean: 0.7, broodDepth: 0.55,
 }
 // values set outright, not scaled
 const SET: Partial<Record<BirdSpecies, Partial<Record<NumKey, number>>>> = {
-  pig: { maxHp: 300, airJumps: 0, climbSpeed: 0, jumpFlaps: 0, broodJumpFlaps: 0, flyFallDivisor: 1, flyUpFallAtten: 0, flyDownFallAtten: 0 },
-  fox: { maxHp: 200, airJumps: 1, jumpFlaps: 0, broodJumpFlaps: 0 },
+  pig: { toeCurl: 0, maxHp: 300, airJumps: 0, climbSpeed: 0, jumpFlaps: 0, broodJumpFlaps: 0, flyFallDivisor: 1, flyUpFallAtten: 0, flyDownFallAtten: 0 },
+  fox: { toeCurl: 0, maxHp: 200, airJumps: 1, jumpFlaps: 0, broodJumpFlaps: 0 },
 }
 
 // the tuning a bird of this species reads, from the chicken's (already merged with the central configuration)

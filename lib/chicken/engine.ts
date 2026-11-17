@@ -384,7 +384,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let lookSpecies: BirdSpecies | undefined
   let paramsReady = false
   // a blow with an empty hand that Ken gives with his tail
+  let rotorT = 0
   const tailBlow = () => !!swingNow?.bare && (species ?? lookSpecies) === 'fox'
+  // Pig and Ken (not the chicken, not a chick): they move like mammals
+  // (their Filhotes too: the leitão and the raposinha draw their own eyes, the chick does not)
+  const beast = () => { const sp = species ?? lookSpecies; return sp === 'pig' || sp === 'fox' || ownEyes }
   // each leg moved along her body (rig units) by legs.shape
   const legDx = { F: 0, B: 0 }
   // her voice: the breed of her beak, if that breed has clucks of its own (params.ts CHICKEN_VOICES)
@@ -411,6 +415,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     armTip.x = h[0]; armTip.y = h[1]; armTip.dx = h[0] - PIV.wing[0]; armTip.dy = h[1] - PIV.wing[1]
     armTip.deg = Math.atan2(armTip.dy, armTip.dx) * 180 / Math.PI; armTip.len = Math.hypot(armTip.dx, armTip.dy)
     ownEyes = !!A.face.ownEyes
+    el.heldPivot.setAttribute('transform', `translate(${PIV.wing[0]} ${PIV.wing[1] + (A.wing.holdDrop ?? 0)})`)
     const klass = ownArt ? 'galinha' : variantClass(look.torso)
     const nextSpecies: BirdSpecies | undefined = klass === 'porco' ? 'pig' : klass === 'raposa' ? 'fox' : undefined
     if (nextSpecies !== lookSpecies) { lookSpecies = nextSpecies; if (paramsReady) resize() }
@@ -453,7 +458,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     hp = Math.max(0, hp - amount); hurtAgo = 0; barShown = 2
     if (hp <= 0) { hp = R.maxHp; hurtAgo = Infinity; barShown = 0; S.squash = 1; onDown?.() }
   }
+  let hpMax = R.maxHp
   function stepHealth(dt: number) {
+    // another class (a new look): the same share of a different whole
+    if (R.maxHp !== hpMax) { hp = hp / Math.max(1, hpMax) * R.maxHp; hpMax = R.maxHp }
     if (hp > R.maxHp) hp = R.maxHp
     hurtAgo += dt
     if (hurtAgo >= R.regenDelay && hp < R.maxHp) hp = Math.min(R.maxHp, hp + R.maxHp * R.regenRate / 100 * dt)
@@ -1845,7 +1853,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       t.tail = Math.sin(Math.PI * stepT) * 4
     }
     const contact = S.contact; S.contact = false
-    if (st === 'walk' || ((st === 'crouch' || st === 'cling') && speed > 5)) {
+    // Pig and Ken walk like mammals: no head locked in the air and thrust forward at each step
+    if (beast() && (st === 'walk' || ((st === 'crouch' || st === 'cling') && speed > 5))) {
+      headAnchor.x = null
+      const stepT = feet.F.stepping ? feet.F.t : feet.B.stepping ? feet.B.t : 0
+      t.neck = -pose.body * 0.5; t.head = Math.sin(Math.PI * stepT) * 2
+      k = 20
+    } else if (st === 'walk' || ((st === 'crouch' || st === 'cling') && speed > 5)) {
       // head locks in place; when a foot lands it shoots forward to where the body will be next, never back
       const A = headAnchor, reach = NECK_LEN * 0.7 * R.scale
       if (A.x === null) { A.x = A.from = A.to = S.x; A.t = 1; A.lastContact = S.x }
@@ -1908,16 +1922,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (Math.random() < 0.3) idle.next = 0.25
       }
       t.neck = idle.neck; t.head = idle.head
+      // a mammal looks around much less than a hen
+      if (beast()) { t.neck *= 0.25; t.head *= 0.3 }
       t.bob = Math.sin(performance.now() / 600) * 0.6
-      k = 38
+      k = beast() ? 8 : 38
     }
     if (!S.grounded) {
       t.ik = 0
       t.tgtF = [LEG.F.hx + 6, -36]; t.tgtB = [LEG.B.hx + 2, -40]; t.tuck = 12
+      // Pig and Ken let their legs hang in the air (tucked up, a mammal's would hide inside the body)
+      if (beast()) { t.tgtF = [LEG.F.hx + 10, -10]; t.tgtB = [LEG.B.hx - 2, -12]; t.tuck = 0 }
       t.body = clamp(S.vy / 70, -14, 14)
       t.tail = -8; t.neck = -4; t.head = S.vy < 0 ? -10 : 6
       if (st === 'held') { t.tgtF = [LEG.F.hx + 3, -2]; t.tgtB = [LEG.B.hx - 3, 0]; t.tuck = -14; t.body = clamp(-S.vx / 35, -28, 28); t.neck = 4; t.head = 10; t.tail = 10 }
-      if (st === 'fastFall') { t.wing = 120; t.wingBack = 110; t.tgtF = [LEG.F.hx + 4, -6]; t.tgtB = [LEG.B.hx + 8, -8]; t.tuck = -10; t.body = 6; t.head = 14; t.tail = -24 }
+      if (st === 'fastFall') { t.wing = beast() ? 30 : 120; t.wingBack = beast() ? 26 : 110; t.tgtF = [LEG.F.hx + 4, -6]; t.tgtB = [LEG.B.hx + 8, -8]; t.tuck = -10; t.body = 6; t.head = 14; t.tail = -24 }
       k = 18
     }
     if (U && (st === 'walk' || st === 'run' || st === 'crouch' || !S.grounded)) { t.neck -= 10; t.head -= 30 }
@@ -1982,7 +2000,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       pose['toe' + key] = ease(pose['toe' + key], toeW - (sa - 90), lk === 160 ? 160 : 40, dt)
     })
 
-    if (chargeFlap || (!S.shocking && flapping && (st !== 'fastFall' || S.burst > 0))) {
+    // Pig and Ken have arms, not wings: they never flap them
+    if (!beast() && (chargeFlap || (!S.shocking && flapping && (st !== 'fastFall' || S.burst > 0)))) {
       const f = (1 - Math.cos(S.flapPhase)) / 2
       pose.wing = 15 + f * 95; pose.wingBack = 10 + f * 85
     } else {
@@ -2103,7 +2122,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // flip it is mirrored across that line, so a wing turned all the way round is not upside down
     const wingTo = (node: SVGGraphicsElement, x: number, y: number) => {
       const [px, py] = PIV.wing
-      node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(Math.max(1, Math.hypot(x, y)) / armTip.len).toFixed(3)} ${rig?.flip ? -1 : 1}) rotate(${(-armTip.deg).toFixed(2)}) translate(${-px} ${-py})`)
+      node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(beast() ? clamp(Math.hypot(x, y) / armTip.len, 0.7, 1.35) : Math.max(1, Math.hypot(x, y)) / armTip.len).toFixed(3)} ${rig?.flip ? -1 : 1}) rotate(${(-armTip.deg).toFixed(2)}) translate(${-px} ${-py})`)
     }
     // a staff carried in its own pose: the hand at its place on her body, whatever the aim
     const staff = heldItem && !consumable && !heldItem.throwing ? heldItem.staff ?? null : null
@@ -2111,7 +2130,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const restHandX = armTip.dx * Math.cos(restAngle) - armTip.dy * Math.sin(restAngle)
     const restHandY = armTip.dx * Math.sin(restAngle) + armTip.dy * Math.cos(restAngle)
     let handX = restHandX, handY = restHandY
-    const wingToHand = (flip = false) => { el.wing.setAttribute('transform', `translate(${PIV.wing[0]} ${PIV.wing[1]}) rotate(${Math.atan2(handY, handX) * DEG}) scale(${Math.hypot(handX, handY) / armTip.len} ${flip ? -1 : 1}) rotate(${-armTip.deg}) translate(${-PIV.wing[0]} ${-PIV.wing[1]})`) }
+    const wingToHand = (flip = false) => { el.wing.setAttribute('transform', `translate(${PIV.wing[0]} ${PIV.wing[1]}) rotate(${Math.atan2(handY, handX) * DEG}) scale(${beast() ? clamp(Math.hypot(handX, handY) / armTip.len, 0.7, 1.35) : Math.hypot(handX, handY) / armTip.len} ${flip ? -1 : 1}) rotate(${-armTip.deg}) translate(${-PIV.wing[0]} ${-PIV.wing[1]})`) }
     // the swing of a staff: the angle (degrees) the staff itself points at, turning from its carried pose to the blow
     let staffSwingA = 0
     if (consumable) {
@@ -2147,6 +2166,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const b = rest + ((((target - rest) % 360) + 540) % 360 - 180) * e
       const full = Math.max(armTip.len, swingNow.reach / Math.max(0.01, R.scale * pose.puff))
       wingLen = restLen + (full - restLen) * e
+      // an arm (Pig, Ken) does not stretch like a wing: the blow's reach is the chain's or the tail's
+      if (beast()) wingLen = Math.min(wingLen, armTip.len * 1.3)
       tipRig = b
       if (staff) staffSwingA = staff.angle + ((((target - staff.angle) % 360) + 540) % 360 - 180) * e
       const [px, py] = PIV.wing
@@ -2210,7 +2231,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.heldOff.setAttribute('transform', `translate(${armTip.x} ${armTip.y}) rotate(${off.angle.toFixed(1)}) translate(${(-off.gripX).toFixed(2)} ${(-off.gripY).toFixed(2)})`)
     }
     // Ken's Rabada: the tail sweeps down and forward, under her, and back
-    el.tail.setAttribute('transform', rot('tail', tailBlow() ? -150 * smooth(clamp(swingNow!.t, 0, 1)) : pose.tail * tailSwing))
+    // Ken's Planagem (gliding, Jump held in the air): the tail raised and spinning like a rotor
+    const rotor = (species ?? lookSpecies) === 'fox' && S.state === 'fly'
+    rotorT = rotor ? rotorT + frameDt : 0
+    if (rotor) {
+      const [tx, ty] = PIV.tail, c = Math.cos(rotorT * 22)
+      el.tail.setAttribute('transform', `${rot('tail', 150)} translate(${tx} ${ty}) scale(${((0.25 + 0.75 * Math.abs(c)) * (c < 0 ? -1 : 1)).toFixed(3)} 1) translate(${-tx} ${-ty})`)
+    } else el.tail.setAttribute('transform', rot('tail', tailBlow() ? -150 * smooth(clamp(swingNow!.t, 0, 1)) : pose.tail * tailSwing))
     const legShift = `translate(0 ${(pose.shiftY || 0).toFixed(2)})`
     el.wrapF.setAttribute('transform', `translate(${legDx.F} 0) ${legShift}`); el.wrapB.setAttribute('transform', `translate(${legDx.B} 0) ${legShift}`)
     ;(['F', 'B'] as const).forEach(k => { ['leg', 'tib', 'shin', 'toe'].forEach(b => { el[b + k].setAttribute('transform', rot(b + k, pose[b + k])) }) })

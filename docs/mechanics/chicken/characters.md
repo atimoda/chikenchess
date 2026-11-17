@@ -23,8 +23,7 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 - **Guarda (Pig):** Chocar no chão trava a mira (como na galinha) e, enquanto ele está chocando no chão, empurrões de explosões e golpes não o movem. Fora da Guarda, Pig sofre 35% do empurrão e Ken 80% (`knockbackTaken`). A redução de 60% do dano de frente vem com a vida (etapa 4).
 - **Bote (Ken) e Investida (Pig):** Chocar + Pulo é o salto carregado da galinha com outros números da classe: o Bote é mais longo e mais baixo (impulso lateral ×1,5, vertical ×0,7); a Investida sai quase reta pelo chão (lateral ×1,6, vertical ×0,15). O dano ao cair em cima de alguém vem com a vida.
 - **Espreita (Ken):** por enquanto é o Chocar da galinha (abaixa, anda devagar e trava a mira). Os aliens deixarem de mirar nele ainda não está feito.
-- **Ainda não feitos:** Pisão (onda ao pousar da queda rápida do Pig), Embalo (Pig jogando longe quem encosta na velocidade máxima), quique do Ken (0,35 s agarrado e salto para o outro lado), o rabo girando como hélice na Planagem e o rabo em seis ossos.
-- **Não verificado no navegador:** a animação da Rabada e da Correntada em jogo (o painel do navegador estava oculto e o laço do jogo não roda assim); conferido por tipos e testes.
+- **Ainda não feitos:** Pisão (onda ao pousar da queda rápida do Pig), Embalo (Pig jogando longe quem encosta na velocidade máxima), quique do Ken (0,35 s agarrado e salto para o outro lado), e o rabo em seis ossos.
 
 ## Vida (etapa 4)
 
@@ -53,6 +52,19 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 - O ajuste **Tamanho da galinha** (`scale`) passa a valer 1 no tamanho normal: o motor desenha o rig a `SCALE_BASE` (0,5) vezes o valor. O padrão do código vai de 0,55 para 1, que é o tamanho que a galinha tinha com 0,5.
 - Configurações salvas antes (no servidor, no cache do navegador ou no rascunho do Pátio) não têm `scaleBase` e são lidas com o valor dividido por 0,5: quem usava 0,5 passa a ver 1, sem mudar o tamanho na tela. Ao salvar, o novo formato leva `scaleBase`.
 - Faixa do ajuste: 0,5 a 6. Pig e Ken somam o tamanho da classe (×1,15 e ×1,05).
+
+## Corpo de mamífero (ajustes de animação)
+
+Pig, Ken e os filhotes deles (leitão e raposinha) usam o rig da galinha, mas com estes ajustes (`beast()` no motor):
+
+- **Cabeça:** sem a cabeça parada no ar que dá o bote para a frente a cada passo; andando, ela acompanha o corpo com um balanço leve. Parado, olha em volta bem menos (25% do pescoço, 30% da cabeça) e mais devagar.
+- **Braços:** nunca batem como asas (pulo, voo, carga do shocking jump); na queda rápida sobem só um pouco (30°). O braço não estica como asa: no golpe chega a no máximo 1,3× o comprimento, e segurando item fica entre 0,7× e 1,35×.
+- **Itens:** seguram os itens mais baixo que a galinha (`wing.holdDrop`: Pig 16, Ken 24 unidades), para não cobrir o rosto.
+- **Pernas no ar:** penduradas, sem dobrar para dentro do corpo; pés (casco, pata) sem curvar (`toeCurl` 0 na classe).
+- **Corrida e Chocar:** a cabeça quase não inclina correndo (×0,25), o corpo inclina menos (Pig ×0,5, Ken ×0,7) e o Chocar afunda metade (Guarda, Espreita).
+- **Planagem do Ken:** com Pulo seguro no ar, o rabo sobe por trás (150°) e gira como hélice (achata e espelha ~3,5 vezes por segundo).
+- **Vida ao trocar de classe:** a barra mantém a mesma fração ao trocar de raça (100 → 200 → 300).
+- Conferido no navegador quadro a quadro: andar, correr, pulo, planagem, Chocar, agachar, Correntada, Rabada e a raposinha andando e pulando.
 
 ## Vestiário
 

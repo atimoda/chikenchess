@@ -127,7 +127,7 @@ function pigParts(s: PigStyle): Record<ChickenSlot, ChickenArtVariant> {
     neck: { label: 'Sem pescoço', svg: '' },
     face: { label: `Cabeça de porco ${s.label.toLowerCase()}`, ownEyes: true, svg: inFrame(f, pigHead(s)) },
     torso: { label: `Corpo de porco ${s.label.toLowerCase()} com colete`, svg: inFrame(f, defs + `<path d="${PIG.body}" fill="${s.skin}"/>${wool(PIG.body)}` + (s.belt ? `<path d="${PIG.belt}" fill="${s.belt}"/>` : '') + `<path d="${PIG.vestL}" fill="${s.vest}"/><path d="${PIG.vestR}" fill="${s.vest}"/>`) },
-    wing: { label: 'Braço com algema', back, backPath: capsule(shoulder, hand, 7.5), hand, svg: inFrame(f, pigArm(s)) },
+    wing: { label: 'Braço com algema', back, backPath: capsule(shoulder, hand, 7.5), hand, holdDrop: 16, svg: inFrame(f, pigArm(s)) },
     tail: { label: 'Rabinho enrolado', swing: 0.6, svg: inFrame(f, `<path d="${PIG.tail}" stroke="${s.skin}" stroke-width="15" fill="none" stroke-linecap="round"/>`) },
     legs: {
       label: 'Pernas de porco', front: { drum: s.skin, shank: s.skin }, back: { drum: shade(s.skin, 0.12), shank: shade(s.skin, 0.12) },
@@ -217,7 +217,7 @@ function foxParts(s: FoxStyle): Record<ChickenSlot, ChickenArtVariant> {
         (s.patches ? `<clipPath id="${tc}"><path d="${FOX.torso}"/></clipPath><g clip-path="url(#${tc})">${ells(s.patches, s.patch!)}</g>` : '') +
         `<path d="${FOX.bib}" fill="${s.cream}"/><path d="${FOX.hipTuft}" fill="${s.coat}"/>`),
     },
-    wing: { label: 'Braço de raposa', back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), hand, svg: inFrame(f, foxArm(s)) },
+    wing: { label: 'Braço de raposa', back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), hand, holdDrop: 24, svg: inFrame(f, foxArm(s)) },
     tail: {
       label: `Rabo de ${s.label.toLowerCase()}`, swing: 0.5,
       svg: inFrame(f, `<clipPath id="${tl}"><path d="${FOX.tail}"/></clipPath><path d="${FOX.tail}" fill="${s.tailCoat ?? s.coat}"/>${frost(FOX.tail)}<g clip-path="url(#${tl})"><path d="${FOX.tailTip}" fill="${s.tail}"/></g>`),

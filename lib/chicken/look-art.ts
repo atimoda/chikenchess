@@ -8,11 +8,12 @@ export type LegColors = { drum: string; shank: string }
 // tail.swing (how much the tail follows the body), legs.front/back (leg stroke colors), wing.backPath (the far wing's
 // outline, else the chicken's WING), face.eye / face.pupil (eye colors, else the chicken's light eye; a chick's is dark), face.eyeAt (the eye's middle).
 // wing.hand: the near limb's tip in rest pose (rig units; else the chicken's wing tip), where held items sit;
+// wing.holdDrop: how much lower than the chicken's shoulder held items sit (Pig and Ken have their heads lower);
 // face.ownEyes: the face draws its own eyes (the engine's eye, pupil and blinking lid are hidden);
 // legs.shape: legs drawn another way (Pig, Ken): stroke widths of thigh, lower leg and shin, a foot drawn at the toe
 // joint in place of the toes ('FILL' is replaced by the shank color), and each leg moved along the body.
 export type LegShape = { thigh: number; tib: number; shin: number; foot?: string; dxFront?: number; dxBack?: number }
-export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number]; hand?: [number, number]; ownEyes?: boolean; shape?: LegShape }
+export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number]; hand?: [number, number]; holdDrop?: number; ownEyes?: boolean; shape?: LegShape }
 // a whole set of parts, one variant per slot (a bird drawn apart from the chickens' catalog, such as a chick)
 export type ChickenArtSet = Record<ChickenSlot, ChickenArtVariant>
 
