@@ -77,3 +77,23 @@ test('the Filhote: a baby of each class with its own skins, and a music bar that
   assert.ok(JSON.parse(store['chickenchess:baby:v1']).on === false)
   delete global.window
 })
+
+test('Pig and Ken arms bend at the elbow to reach a hand point, never stretching; items say which hand holds', () => {
+  const { reach } = loadTs('lib/chicken/arm-rig.ts')
+  const { DEFAULT_ITEMS } = loadTs('lib/pigchicken/items.ts')
+  const { staffPose } = loadTs('lib/pigchicken/staff-pose.ts')
+  for (const id of ['porco-rosa', 'raposa-vermelha']) {
+    const arms = LOOK_ART.art.wing[id].arms
+    assert.ok(arms && arms.front && arms.back, id)
+    for (const a of [arms.front, arms.back]) {
+      const near = reach(a, a.rest[0], a.rest[1])
+      assert.ok(Math.hypot(near.wrist[0] - a.rest[0], near.wrist[1] - a.rest[1]) < 0.5, `${id} reaches its rest`)
+      const far = reach(a, a.shoulder[0] + 500, a.shoulder[1])
+      assert.ok(Math.hypot(far.wrist[0] - a.shoulder[0], far.wrist[1] - a.shoulder[1]) <= a.upper + a.fore, `${id} does not stretch`)
+    }
+  }
+  const bat = DEFAULT_ITEMS.bat
+  assert.equal(bat.swapHands, false); assert.equal(bat.grip2On, false)
+  assert.equal(staffPose(bat).grip2, null)
+  assert.deepEqual(staffPose({ ...bat, grip2On: true, grip2X: 30, grip2Y: 2 }).grip2, { x: 30, y: 2 })
+})

@@ -5,6 +5,7 @@
 // The near arm is the "wing" (it holds the items, hand at `hand`), the far arm the back wing; the face draws its own
 // eyes; the legs keep the rig's joints with thicker strokes and a hoof or paw for a foot.
 import type { ChickenArtVariant, ChickenSlot } from './look-art'
+import { reach, type ArmSpec } from './arm-rig'
 
 type P = [number, number]
 const fx = (n: number) => Math.round(n * 10) / 10
@@ -14,7 +15,6 @@ const sub = (a: P, b: P): P => [a[0] - b[0], a[1] - b[1]]
 const lerp = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 const len = (a: P) => Math.hypot(a[0], a[1])
 const ang = (a: P, b: P) => Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI
-const poly = (pts: P[], w: number, c: string) => `<path d="M${pts.map(pt).join(' L ')}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`
 const at = (p: P, deg: number, inner: string) => `<g transform="translate(${fx(p[0])} ${fx(p[1])}) rotate(${fx(deg)})">${inner}</g>`
 const ells = (list: number[][], fill: string) => list.map(([x, y, rx, ry, r = 0]) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${r} ${x} ${y})" fill="${fill}"/>`).join('')
 // mix a color toward black (k > 0) or white (k < 0)
@@ -36,6 +36,16 @@ function capsule(a: P, b: P, r: number) {
   const d = sub(b, a), l = len(d) || 1, n: P = [-d[1] / l * r, d[0] / l * r]
   return `M${pt(add(a, n))} L ${pt(add(b, n))} A ${r} ${r} 0 0 0 ${pt(sub(b, n))} L ${pt(sub(a, n))} A ${r} ${r} 0 0 0 ${pt(add(a, n))} Z`
 }
+
+// an arm (arm-rig.ts) from a pose drawn in the picture's pixels: shoulder, elbow, wrist; the elbow bends the same way
+function armFrom(f: Frame, pose: P[], width: number, color: string, hand: string, handTurn: number, wrist?: string, hang?: string): ArmSpec {
+  const [s, e, w] = pose.map(p => toRig(f, p)) as P[]
+  const a: ArmSpec = { shoulder: s, upper: len(sub(e, s)), fore: len(sub(w, e)), rest: w, bend: 1, width: width * f.s, color, hand, handTurn, wrist, hang }
+  const d = (b: number) => { const r = reach({ ...a, bend: b }, w[0], w[1]).elbow; return Math.hypot(r[0] - e[0], r[1] - e[1]) }
+  a.bend = d(1) <= d(-1) ? 1 : -1
+  return a
+}
+const scaled = (f: Frame, inner: string) => `<g transform="scale(${f.s})">${inner}</g>`
 
 // ---------- the chain on Pig's cuffs ----------
 const CHAIN = { ring: '#6b6a75', edge: '#4c4b55', hi: '#9d9ca8', cuff: '#3d3b45', cuffHi: '#55535f', rivet: '#a3a1ad' }
@@ -107,19 +117,24 @@ function pigHead(s: PigStyle) {
     `<ellipse cx="420" cy="222" rx="58" ry="50" fill="${s.snout}"/><ellipse cx="398" cy="226" rx="10" ry="17" transform="rotate(-8 398 226)" fill="${s.nostril}"/><ellipse cx="441" cy="220" rx="10" ry="17" transform="rotate(-8 441 220)" fill="${s.nostril}"/>` +
     (s.flop ? `<path d="${PIG.earNearFlop}" fill="${s.skin}"/>${wool(PIG.earNearFlop)}` : `<path d="${PIG.earNear}" fill="${s.skin}"/><path d="${PIG.earNearIn}" fill="${s.inner}"/>`)
 }
-// the near arm, from the shoulder (the rig's) down to the hoof, with its cuff and a broken chain hanging from it
+// the near shoulder (the rig wing's pivot)
 const PIG_ARM: P[] = [[446, 372], [474, 428], [470, 482]]
-function pigArm(s: PigStyle, dk = 0) {
-  const [sh, el, wr] = PIG_ARM, dir = ang(el, wr), skin = shade(s.belt ?? s.skin, dk), hoof = shade(s.hoof, dk)
-  const tip = add(wr, [Math.cos(dir * Math.PI / 180) * 4, Math.sin(dir * Math.PI / 180) * 4])
-  const c = lerp(el, wr, 0.82)
-  return poly([sh, el, wr], 56, skin) + at(tip, dir - 10, `<path d="${PIG.handHoof}" fill="${hoof}"/>`) + cuff(c, dir) +
-    chainLinks([c, add(c, [-14, 44]), add(c, [-8, 98]), add(c, [12, 138])])
-}
 
+// the arms as drawn in the reference: the near one hangs at the front of the body, the other crosses the belly
+const PIG_FRONT: P[] = [[446, 372], [482, 424], [506, 464]]
+const PIG_REST: P[] = [[180, 372], [136, 452], [236, 478]]
+function pigArms(s: PigStyle) {
+  const f = PIG_FRAME, hoof = (c: string) => scaled(f, `<path d="${PIG.handHoof}" fill="${c}"/>`)
+  const chain = scaled(f, chainLinks([[0, 0], [-14, 44], [-8, 98], [12, 138]]))
+  const cuffArt = scaled(f, cuff([-8, 0], 0))
+  return {
+    front: armFrom(f, PIG_FRONT, 52, s.belt ?? s.skin, hoof(s.hoof), 22, cuffArt, chain),
+    back: armFrom(f, PIG_REST, 56, shade(s.belt ?? s.skin, 0.06), hoof(shade(s.hoof, 0.06)), 22, cuffArt, chain),
+  }
+}
 function pigParts(s: PigStyle): Record<ChickenSlot, ChickenArtVariant> {
   const f = PIG_FRAME, { defs, wool } = woolOf(s), back = shade(s.belt ?? s.skin, 0.18)
-  const hand = toRig(f, PIG_ARM[2]), shoulder = toRig(f, PIG_ARM[0])
+  const hand = toRig(f, PIG_FRONT[2]), shoulder = toRig(f, PIG_ARM[0])
   return {
     comb: { label: 'Sem crista', svg: '' },
     wattle: { label: 'Sem barbela', svg: '' },
@@ -127,7 +142,7 @@ function pigParts(s: PigStyle): Record<ChickenSlot, ChickenArtVariant> {
     neck: { label: 'Sem pescoço', svg: '' },
     face: { label: `Cabeça de porco ${s.label.toLowerCase()}`, ownEyes: true, svg: inFrame(f, pigHead(s)) },
     torso: { label: `Corpo de porco ${s.label.toLowerCase()} com colete`, svg: inFrame(f, defs + `<path d="${PIG.body}" fill="${s.skin}"/>${wool(PIG.body)}` + (s.belt ? `<path d="${PIG.belt}" fill="${s.belt}"/>` : '') + `<path d="${PIG.vestL}" fill="${s.vest}"/><path d="${PIG.vestR}" fill="${s.vest}"/>`) },
-    wing: { label: 'Braço com algema', back, backPath: capsule(shoulder, hand, 7.5), backSvg: inFrame(f, pigArm(s, 0.14)), backOffset: [-30, 4], backFront: true, hand, holdDrop: 16, svg: inFrame(f, pigArm(s)) },
+    wing: { label: 'Braços com algemas', back, backPath: capsule(shoulder, hand, 7.5), arms: pigArms(s), hand, holdDrop: 16, svg: '' },
     tail: { label: 'Rabinho enrolado', swing: 0.6, svg: inFrame(f, `<path d="${PIG.tail}" stroke="${s.skin}" stroke-width="15" fill="none" stroke-linecap="round"/>`) },
     legs: {
       label: 'Pernas de porco', front: { drum: s.skin, shank: s.skin }, back: { drum: shade(s.skin, 0.12), shank: shade(s.skin, 0.12) },
@@ -198,13 +213,18 @@ function foxHead(s: FoxStyle) {
     `<path d="M410 318 C 426 334, 452 336, 472 320" stroke="${s.lid}" stroke-width="4.5" fill="none" stroke-linecap="round"/><path d="M410 318 L 402 314" stroke="${s.lid}" stroke-width="4" stroke-linecap="round"/>`
 }
 const FOX_ARM: P[] = [[462, 412], [500, 466], [516, 516]]
-function foxArm(s: FoxStyle, dk = 0) {
-  const [sh, el, wr] = FOX_ARM, dir = ang(el, wr), coat = shade(s.coat, dk)
-  return poly([sh, el], 26, coat) + poly([el, wr], 22, coat) + at(wr, dir - 70, `<path d="${FOX.fist}" fill="${shade(s.dark, dk)}"/><path d="${FOX.knuckles}" stroke="${s.tip}" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.55"/>`)
+const FOX_FRONT: P[] = [[462, 404], [494, 468], [506, 512]]
+const FOX_REST: P[] = [[350, 402], [292, 488], [338, 526]]
+function foxArms(s: FoxStyle) {
+  const f = FOX_FRAME, fist = (c: string) => scaled(f, `<g transform="translate(14 0)"><path d="${FOX.fist}" fill="${c}"/><path d="${FOX.knuckles}" stroke="${s.tip}" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.55"/></g>`)
+  return {
+    front: armFrom(f, FOX_FRONT, 23, s.coat, fist(s.dark), 0),
+    back: armFrom(f, FOX_REST, 25, shade(s.coat, 0.06), fist(shade(s.dark, 0.06)), 0),
+  }
 }
 function foxParts(s: FoxStyle): Record<ChickenSlot, ChickenArtVariant> {
   const f = FOX_FRAME, { defs, frost } = frostOf(s), tc = uidOf('tz'), tl = uidOf('tl')
-  const hand = toRig(f, FOX_ARM[2]), shoulder = toRig(f, FOX_ARM[0])
+  const hand = toRig(f, FOX_FRONT[2]), shoulder = toRig(f, FOX_ARM[0])
   return {
     comb: { label: 'Sem crista', svg: '' },
     wattle: { label: 'Sem barbela', svg: '' },
@@ -217,7 +237,7 @@ function foxParts(s: FoxStyle): Record<ChickenSlot, ChickenArtVariant> {
         (s.patches ? `<clipPath id="${tc}"><path d="${FOX.torso}"/></clipPath><g clip-path="url(#${tc})">${ells(s.patches, s.patch!)}</g>` : '') +
         `<path d="${FOX.bib}" fill="${s.cream}"/><path d="${FOX.hipTuft}" fill="${s.coat}"/>`),
     },
-    wing: { label: 'Braço de raposa', back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), backSvg: inFrame(f, foxArm(s, 0.16)), backOffset: [-20, 2], backFront: true, hand, holdDrop: 24, svg: inFrame(f, foxArm(s)) },
+    wing: { label: 'Braços de raposa', back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), arms: foxArms(s), hand, holdDrop: 24, svg: '' },
     tail: {
       label: `Rabo de ${s.label.toLowerCase()}`, swing: 0.5,
       svg: inFrame(f, `<clipPath id="${tl}"><path d="${FOX.tail}"/></clipPath><path d="${FOX.tail}" fill="${s.tailCoat ?? s.coat}"/>${frost(FOX.tail)}<g clip-path="url(#${tl})"><path d="${FOX.tailTip}" fill="${s.tail}"/></g>`),

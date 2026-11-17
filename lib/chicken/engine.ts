@@ -14,6 +14,7 @@ import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenArtSet, type ChickenLook } from './look-art'
 import { speciesParams, type BirdSpecies } from './species'
 import { variantClass } from './beast-art'
+import { armMarkup, type ArmsSpec } from './arm-rig'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, SCALE_BASE, chickenClucks, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
@@ -130,7 +131,7 @@ export type ChickenEngine = {
   // `off`: with a staff, one of it in the back wing's hand, carried in this pose (the two Boomerangs)
   // `back`: the back wing holds the item (the second Boomerang): with `off`, carried there, and the item itself is not
   // shown; without, the back wing moves as the front wing would. The front wing rests
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: HeldStaff | null; back?: boolean } | null) => void
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: HeldStaff | null; back?: boolean; swap?: boolean } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in. `size`: how much bigger
   // the item is drawn at the height of the blow (×, a charged strong blow)
@@ -170,7 +171,7 @@ export type ChickenEngine = {
 }
 
 // flip: the wings that hold it are mirrored across their own length (shoulder to tip), for poses that turn them upside down
-export type HeldStaff = { x: number; y: number; angle: number; gripX: number; gripY: number; flip?: boolean }
+export type HeldStaff = { x: number; y: number; angle: number; gripX: number; gripY: number; flip?: boolean; grip2?: { x: number; y: number } | null }
 export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: { x: number; y: number } | null; back?: { x: number; y: number } | null; flip?: boolean }
 
 // ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
@@ -303,6 +304,7 @@ const SVG_MARKUP = `
       <g data-part="wingBack"><g data-part="artWingBack"></g><g data-part="heldOff" style="display:none"></g></g>
       <g data-part="tail"><g data-part="artTail"></g></g>
       <g data-part="artTorso"></g>
+      <g data-part="armB"></g>
       <g data-part="neck"><g data-part="artNeck"></g>
         <g data-part="head">${HALO_MARKUP}<g data-part="artComb"></g><g data-part="artFace"></g><g data-part="artBeak"></g><g data-part="artWattle"></g>
           <circle data-part="sclera" cx="51" cy="-192" r="4.6" fill="#fff8e1"/>
@@ -313,6 +315,7 @@ const SVG_MARKUP = `
         ${XRAY_NECK}
       </g>
       <g data-part="wing"><g data-part="artWing"></g>${XRAY_WING}</g>
+      <g data-part="armF"></g>
       <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"><path data-part="heldString" fill="none" stroke="#e8e2d0" stroke-width="1.2" stroke-linejoin="round" style="display:none"/><g data-part="heldArrow" style="display:none"></g><g data-part="heldArt"></g><g data-part="heldBow" style="display:none">${BOW_MARKUP}</g></g></g>
       ${XRAY_BODY}
     </g>
@@ -360,7 +363,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'hpBar', 'hpFill', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo', 'bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead', 'xraySocket', 'artWingBack', 'artTail', 'artTorso', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'hpBar', 'hpFill', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo', 'bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead', 'xraySocket', 'artWingBack', 'artTail', 'artTorso', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing', 'armF', 'armB'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -389,6 +392,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let paramsReady = false
   // a blow with an empty hand that Ken gives with his tail
   let rotorT = 0
+  // Pig's and Ken's arms (arm-rig.ts): bent at the elbow to reach where the wings put their hands
+  let arms: ArmsSpec | null = null
   // where the other arm (the back wing) rests, from the near one; the strong blow's charge with an empty hand (0..1)
   let backOffset: [number, number] = [-4, -2], bareCharge: number | null = null
   const tailBlow = () => !!swingNow?.bare && (species ?? lookSpecies) === 'fox'
@@ -405,7 +410,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const set = (name: string, html: string | undefined) => { part(name).innerHTML = html ?? '' }
     set('artComb', A.comb.svg); set('artFace', A.face.svg); set('artBeak', A.beak.svg); set('artWattle', A.wattle.svg)
     set('artNeck', A.neck.svg); set('artTorso', A.torso.svg); set('artTail', A.tail.svg); set('artWing', A.wing.svg)
-    set('artWingBack', A.wing.backSvg ?? `<path d="${A.wing.backPath ?? LOOK_ART.WING}" fill="${A.wing.back}"/>`)
+    set('artWingBack', A.wing.arms ? '' : A.wing.backSvg ?? `<path d="${A.wing.backPath ?? LOOK_ART.WING}" fill="${A.wing.back}"/>`)
+    arms = A.wing.arms ?? null
+    if (!arms) { el.armF.innerHTML = ''; el.armB.innerHTML = '' }
     // Pig's and Ken's other arm is drawn in front of the body, a little behind the near one (both arms show)
     backOffset = A.wing.backOffset ?? [-4, -2]
     if (A.wing.backFront) { if (el.wingBack.previousElementSibling !== el.artTorso) el.artTorso.after(el.wingBack) }
@@ -2227,7 +2234,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // charging the strong Correntada: the arm with the chain goes back and up, shaking when full
     if (bareCharge !== null && !heldItem && !swingNow && (species ?? lookSpecies) === 'pig') {
       const c = smooth(bareCharge), shake = bareCharge >= 1 ? Math.sin(frameNow / 30) * 3 : 0
-      el.wing.setAttribute('transform', rot('wing', 140 * c + shake))
+      el.wing.setAttribute('transform', rot('wing', 105 * c + shake))
     }
     if (rig?.back) { const h = onItem(rig.back.x, rig.back.y); wingTo(el.wingBack, h.x, h.y) }
     else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ` translate(${backOffset[0]} ${backOffset[1]})`)
@@ -2246,6 +2253,34 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.heldOff.setAttribute('transform', `translate(${armTip.x} ${armTip.y}) rotate(${off.angle.toFixed(1)}) translate(${(-off.gripX).toFixed(2)} ${(-off.gripY).toFixed(2)})`)
     }
     // Ken's Rabada: the tail sweeps down and forward, under her, and back
+    if (arms) {
+      const map = (node: SVGGraphicsElement, x: number, y: number): [number, number] => {
+        const m = node.transform.baseVal.consolidate()?.matrix
+        return m ? [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f] : [x, y]
+      }
+      const tipOf = (node: SVGGraphicsElement) => map(node, armTip.x, armTip.y)
+      // a point of the held item's drawing, where it is drawn this frame
+      const itemPt = (x: number, y: number) => { const [hx, hy] = map(el.held, x, y); return map(el.heldPivot, hx, hy) }
+      const onHeld = !!heldItem && !heldItem.back && el.held.style.opacity !== '0'
+      // the hand holding the item: on its touch point (a staff's grip, the hand point of the item), at the hand
+      // of an item carried in it, else (no item, a blow, an item turning with the wing) where the wing's tip went.
+      // The wing stretches only so far for these bodies; the arm goes to the item itself
+      const main = onHeld && rig?.hand ? itemPt(rig.hand.x, rig.hand.y)
+        : onHeld && staff ? itemPt(staff.gripX, staff.gripY)
+        : onHeld && (heldItem?.atHand || consumable) && !swingNow ? map(el.heldPivot, handX, handY)
+        : tipOf(el.wing)
+      // the other hand: on the item's second touch point (or the item it holds), on a staff's second hand point
+      // (carried or swinging with it), else resting where it was drawn
+      const second = onHeld && rig?.back ? itemPt(rig.back.x, rig.back.y)
+        : heldItem?.back ? tipOf(el.wingBack)
+        : onHeld && staff?.grip2 ? itemPt(staff.grip2.x, staff.grip2.y) : null
+      // "Segurar com a outra mão": the back arm takes the item and the front one is the second hand
+      const swap = !!heldItem?.swap
+      const f = swap ? second ?? arms.front.rest : main
+      const b = swap ? main : second ?? arms.back.rest
+      el.armF.innerHTML = armMarkup(arms.front, f[0], f[1])
+      el.armB.innerHTML = armMarkup(arms.back, b[0], b[1])
+    }
     // Ken's Planagem (gliding, Jump held in the air): the tail raised and spinning like a rotor
     const rotor = (species ?? lookSpecies) === 'fox' && S.state === 'fly'
     rotorT = rotor ? rotorT + frameDt : 0

@@ -6,8 +6,9 @@
 // (gripX, gripY) and that point sits at (x, y); the staff is turned to `angle` around it.
 import type { ItemDef } from './items'
 
-export type StaffPose = { x: number; y: number; angle: number; gripX: number; gripY: number; flip: boolean }
-type StaffDef = Pick<ItemDef, 'gripX' | 'gripY' | 'staffX' | 'staffY' | 'staffAngle' | 'windX' | 'windY' | 'windAngle' | 'wingFlip'>
+// grip2: the point of the drawing a two-armed character's other hand holds (null: that hand rests)
+export type StaffPose = { x: number; y: number; angle: number; gripX: number; gripY: number; flip: boolean; grip2: { x: number; y: number } | null }
+type StaffDef = Pick<ItemDef, 'gripX' | 'gripY' | 'staffX' | 'staffY' | 'staffAngle' | 'windX' | 'windY' | 'windAngle' | 'wingFlip' | 'grip2On' | 'grip2X' | 'grip2Y'>
 
 const DEG = Math.PI / 180
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
@@ -41,6 +42,7 @@ export function staffPose(d: StaffDef, charge = 0, elev = 0, now = 0): StaffPose
     y: d.staffY + (wy - d.staffY) * k,
     angle: d.staffAngle + (d.windAngle - d.staffAngle) * k + turn / DEG + Math.sin(elev) * STAFF_LEAN * (1 - k) + sway,
     gripX: d.gripX, gripY: d.gripY, flip: d.wingFlip,
+    grip2: d.grip2On ? { x: d.grip2X, y: d.grip2Y } : null,
   }
 }
 

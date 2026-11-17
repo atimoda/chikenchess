@@ -57,7 +57,7 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
 const HEAVY_SHOCK: (keyof ItemDef)[] = ["heavyShockRange", "heavyShockTime"]
 // what a deck does not use: its cards fly straight to the reticle with no charge and only burst (no fuse)
 const DECK_UNUSED: (keyof ItemDef)[] = ["returnDamage", "returnMin", "returnCharge", "returnPush", "returnCurveMin", "returnCurveMax", "fuse", "bounce"]
-const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
+const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "grip2X", "grip2Y", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
 // the arc a combo blow of this kind starts with: another blow of the same kind, the code's, or 150°
 const comboArc = (combo: ComboStep[], base: ItemDef, kind: BlowKind) =>
   combo.find(c => c.kind === kind)?.arc ?? base.combo.find(c => c.kind === kind)?.arc ?? 150

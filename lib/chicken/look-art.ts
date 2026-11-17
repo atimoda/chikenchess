@@ -3,6 +3,7 @@
 export type ChickenSlot = 'comb' | 'face' | 'beak' | 'wattle' | 'neck' | 'torso' | 'wing' | 'tail' | 'legs'
 export type ChickenLook = Record<ChickenSlot, string>
 import { BEAST_BREEDS } from './beast-art'
+import { armMarkup, type ArmsSpec } from './arm-rig'
 export type LegColors = { drum: string; shank: string }
 // One variant of a part. Extra fields per slot: face.lid (eyelid color), wing.back (far wing color), beak.mouth (the mouth point),
 // tail.swing (how much the tail follows the body), legs.front/back (leg stroke colors), wing.backPath (the far wing's
@@ -15,7 +16,7 @@ export type LegColors = { drum: string; shank: string }
 // legs.shape: legs drawn another way (Pig, Ken): stroke widths of thigh, lower leg and shin, a foot drawn at the toe
 // joint in place of the toes ('FILL' is replaced by the shank color), and each leg moved along the body.
 export type LegShape = { thigh: number; tib: number; shin: number; foot?: string; dxFront?: number; dxBack?: number }
-export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number]; hand?: [number, number]; holdDrop?: number; backSvg?: string; backOffset?: [number, number]; backFront?: boolean; ownEyes?: boolean; shape?: LegShape }
+export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number]; hand?: [number, number]; holdDrop?: number; arms?: ArmsSpec; backSvg?: string; backOffset?: [number, number]; backFront?: boolean; ownEyes?: boolean; shape?: LegShape }
 // a whole set of parts, one variant per slot (a bird drawn apart from the chickens' catalog, such as a chick)
 export type ChickenArtSet = Record<ChickenSlot, ChickenArtVariant>
 
@@ -123,8 +124,8 @@ export const LOOK_ART = (() => {
   function composeSet(A: ChickenArtSet) {
     const legs = A.legs, wing = A.wing;
     return staticLeg(-26, legs.back as LegColors, legs.shape, legs.shape?.dxBack) + staticLeg(-14, legs.front as LegColors, legs.shape, legs.shape?.dxFront) +
-      (wing.backFront ? '' : backOf(wing)) +
-      (A.tail.svg ?? '') + (A.torso.svg ?? '') + (wing.backFront ? backOf(wing) : '') + (A.neck.svg ?? '') + headOf(A) + (wing.svg ?? '');
+      (wing.backFront || wing.arms ? '' : backOf(wing)) +
+      (A.tail.svg ?? '') + (A.torso.svg ?? '') + (wing.backFront ? backOf(wing) : '') + (wing.arms ? armMarkup(wing.arms.back, ...wing.arms.back.rest) : '') + (A.neck.svg ?? '') + headOf(A) + (wing.svg ?? '') + (wing.arms ? armMarkup(wing.arms.front, ...wing.arms.front.rest) : '');
   }
   // whole chicken in rest pose, as SVG markup (thumbnails, avatar)
   const compose = (look: ChickenLook) => composeSet(resolve(look));

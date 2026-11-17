@@ -203,6 +203,13 @@ export type ItemDef = {
   // itself stays where it is, held by the back wing (lib/pigchicken/held-pose.ts)
   archery: boolean
   drawLen: number
+  // two-armed characters (Pig, Ken): the item is held by the back arm instead of the front one, which becomes the
+  // second hand (lib/chicken/arm-rig.ts)
+  swapHands: boolean
+  // a staff's second hand: the point of its drawing the other hand holds (else that hand rests)
+  grip2On: boolean
+  grip2X: number
+  grip2Y: number
   wingFlip: boolean // the wings that hold it are flipped vertically (mirrored along their length), for poses that turn them upside down
   // a staff (an item only for hitting: taco, passaguá): how she carries it. The wing's hand grips the point `grip` of
   // its drawing; that point sits at (staffX, staffY) from her shoulder (rig units, x to her front, y down) with the
@@ -304,7 +311,7 @@ const NO_MUSIC = {
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, cageSouls: 0, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
-  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false, archery: false, drawLen: 30,
+  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, swapHands: false, grip2On: false, grip2X: 0, grip2Y: 0, wingFlip: false, archery: false, drawLen: 30,
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
   heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as BlowKind,
   heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
@@ -758,6 +765,8 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'drawLen', label: 'Puxada da flecha', min: 0, max: 120, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Quanto a asa puxa a flecha para trás com a carga cheia' },
   { key: 'gripX', label: 'Mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a mão da asa segura' },
   { key: 'gripY', label: 'Mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'grip2X', label: 'Segunda mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a outra mão segura (personagens de dois braços, com “Segunda mão” ligada)' },
+  { key: 'grip2Y', label: 'Segunda mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'staffX', label: 'Posição no corpo X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Onde a mão fica, a partir do ombro; positivo é para a frente dela' },
   { key: 'staffY', label: 'Posição no corpo Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Negativo sobe' },
   { key: 'staffAngle', label: 'Inclinação', min: -360, max: 360, step: 1, unit: '°', group: 'Pontos', hint: '0 = apontando para a frente dela; −90 = para cima' },
@@ -886,7 +895,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip', 'archery', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   // saved before "Arco e Flecha" (v11): a bow whose points were never touched takes the new ones (both wings on it)
   if (id === 'bow' && !(v >= 11) && !s.handOn && !s.backOn && !s.pivotX && !s.pivotY) (['pivotX', 'handOn', 'handX', 'handY', 'backOn', 'backX', 'backY'] as const).forEach(k => { (out.bow as Record<string, unknown>)[k] = DEFAULT_ITEMS.bow[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
@@ -923,7 +932,7 @@ const ITEMS_VERSION = 11
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)

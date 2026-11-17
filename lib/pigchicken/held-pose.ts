@@ -45,5 +45,7 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
     // winds, hits and throws with it (each wing throws its own)
     off: pair && (combat.inHand(held!) >= 2 || (held!.back && wind <= 0 && !sw)) ? staffPose(d, 0, aimElevation(combat.aimAngle, face), now) : null,
     back: pair && !!held!.back,
+    // two-armed characters: the back arm holds it and the front one is the second hand
+    swap: d.swapHands,
   }
 }
