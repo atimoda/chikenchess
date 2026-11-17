@@ -69,6 +69,8 @@ export type ChickenEngine = {
   setOnDown: (fn: (() => void) | null) => void
   /** A bar over her head that is not her health (the Filhote's music bar, 0..1), or null for none. */
   setMeter: (fill: number | null) => void
+  /** The strong blow being charged with an empty hand (Pig's Correntada, Ken's Rabada), 0..1, or null. */
+  setBareCharge: (charge: number | null) => void
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
@@ -196,6 +198,8 @@ const SWITCH_GRACE = 0.18
 const SHOCKING_GROUND_GRACE = 0.12
 // a box collider's edges: `<element id>:<part>`, clipped pieces add `~n`
 const BOX_PART = /^(.*):(top|bottom|left|right|under|topBelow)(?:~\d+)?$/
+// where Ken's tail points at rest from its pivot (degrees, rig units, 0 = forward): the Rabada turns it from here
+const TAIL_REST_DEG = 117
 const PIV: Record<string, [number, number]> = {
   legF: [-14, -88], tibF: [-14, -58], shinF: [-14, -26], toeF: [-14, 14],
   legB: [-26, -88], tibB: [-26, -58], shinB: [-26, -26], toeB: [-26, 14],
@@ -385,6 +389,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let paramsReady = false
   // a blow with an empty hand that Ken gives with his tail
   let rotorT = 0
+  // where the other arm (the back wing) rests, from the near one; the strong blow's charge with an empty hand (0..1)
+  let backOffset: [number, number] = [-4, -2], bareCharge: number | null = null
   const tailBlow = () => !!swingNow?.bare && (species ?? lookSpecies) === 'fox'
   // Pig and Ken (not the chicken, not a chick): they move like mammals
   // (their Filhotes too: the leitão and the raposinha draw their own eyes, the chick does not)
@@ -399,7 +405,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const set = (name: string, html: string | undefined) => { part(name).innerHTML = html ?? '' }
     set('artComb', A.comb.svg); set('artFace', A.face.svg); set('artBeak', A.beak.svg); set('artWattle', A.wattle.svg)
     set('artNeck', A.neck.svg); set('artTorso', A.torso.svg); set('artTail', A.tail.svg); set('artWing', A.wing.svg)
-    set('artWingBack', `<path d="${A.wing.backPath ?? LOOK_ART.WING}" fill="${A.wing.back}"/>`)
+    set('artWingBack', A.wing.backSvg ?? `<path d="${A.wing.backPath ?? LOOK_ART.WING}" fill="${A.wing.back}"/>`)
+    // Pig's and Ken's other arm is drawn in front of the body, a little behind the near one (both arms show)
+    backOffset = A.wing.backOffset ?? [-4, -2]
+    if (A.wing.backFront) { if (el.wingBack.previousElementSibling !== el.artTorso) el.artTorso.after(el.wingBack) }
+    else if (el.body.firstElementChild !== el.wingBack) el.body.prepend(el.wingBack)
     el.sclera.setAttribute('fill', A.face.eye ?? '#fff8e1'); el.pupil.setAttribute('fill', A.face.pupil ?? '#1f1a17')
     eyeAt = A.face.eyeAt ? { x: A.face.eyeAt[0], y: A.face.eyeAt[1] } : { x: 51, y: -192 }
     el.sclera.setAttribute('cx', String(eyeAt.x)); el.sclera.setAttribute('cy', String(eyeAt.y)); el.lid.setAttribute('cx', String(eyeAt.x))
@@ -2214,8 +2224,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         handX = animated.handX; handY = animated.handY; wingToHand()
       }
     }
+    // charging the strong Correntada: the arm with the chain goes back and up, shaking when full
+    if (bareCharge !== null && !heldItem && !swingNow && (species ?? lookSpecies) === 'pig') {
+      const c = smooth(bareCharge), shake = bareCharge >= 1 ? Math.sin(frameNow / 30) * 3 : 0
+      el.wing.setAttribute('transform', rot('wing', 140 * c + shake))
+    }
     if (rig?.back) { const h = onItem(rig.back.x, rig.back.y); wingTo(el.wingBack, h.x, h.y) }
-    else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
+    else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ` translate(${backOffset[0]} ${backOffset[1]})`)
     // the back wing holds it: moving, it takes the pose the front wing got (the item went behind her body above);
     // carried, the item is the one in the back wing's hand below. The front wing rests
     if (heldItem?.back) {
@@ -2237,7 +2252,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (rotor) {
       const [tx, ty] = PIV.tail, c = Math.cos(rotorT * 22)
       el.tail.setAttribute('transform', `${rot('tail', 150)} translate(${tx} ${ty}) scale(${((0.25 + 0.75 * Math.abs(c)) * (c < 0 ? -1 : 1)).toFixed(3)} 1) translate(${-tx} ${-ty})`)
-    } else el.tail.setAttribute('transform', rot('tail', tailBlow() ? -150 * smooth(clamp(swingNow!.t, 0, 1)) : pose.tail * tailSwing))
+    } else if (tailBlow()) {
+      // the Rabada: the tail swings from its rest to point where the blow goes (it rests pointing back and down)
+      const target = rigAngle(swingNow!.angle * DEG), turnTo = ((((target - TAIL_REST_DEG) % 360) + 540) % 360) - 180
+      el.tail.setAttribute('transform', rot('tail', turnTo * smooth(clamp(swingNow!.t, 0, 1))))
+    } else if (bareCharge !== null && (species ?? lookSpecies) === 'fox') {
+      // charging the strong Rabada: the tail cocks up behind him, shaking when full
+      const c = bareCharge, shake = c >= 1 ? Math.sin(frameNow / 30) * 3 : 0
+      el.tail.setAttribute('transform', rot('tail', 70 * smooth(c) + shake))
+    } else el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
     const legShift = `translate(0 ${(pose.shiftY || 0).toFixed(2)})`
     el.wrapF.setAttribute('transform', `translate(${legDx.F} 0) ${legShift}`); el.wrapB.setAttribute('transform', `translate(${legDx.B} 0) ${legShift}`)
     ;(['F', 'B'] as const).forEach(k => { ['leg', 'tib', 'shin', 'toe'].forEach(b => { el[b + k].setAttribute('transform', rot(b + k, pose[b + k])) }) })
@@ -2455,6 +2478,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     getMotionState: motionState,
     hurt,
     setOnDown(fn) { onDown = fn },
+    setBareCharge(c) { bareCharge = c === null ? null : clamp(c, 0, 1) },
     setMeter(fill) { meter = fill === null ? null : clamp(fill, 0, 1) },
     canPointAndClick,
     canWalkToPortal,

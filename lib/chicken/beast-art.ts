@@ -109,11 +109,11 @@ function pigHead(s: PigStyle) {
 }
 // the near arm, from the shoulder (the rig's) down to the hoof, with its cuff and a broken chain hanging from it
 const PIG_ARM: P[] = [[446, 372], [474, 428], [470, 482]]
-function pigArm(s: PigStyle) {
-  const [sh, el, wr] = PIG_ARM, dir = ang(el, wr)
+function pigArm(s: PigStyle, dk = 0) {
+  const [sh, el, wr] = PIG_ARM, dir = ang(el, wr), skin = shade(s.belt ?? s.skin, dk), hoof = shade(s.hoof, dk)
   const tip = add(wr, [Math.cos(dir * Math.PI / 180) * 4, Math.sin(dir * Math.PI / 180) * 4])
   const c = lerp(el, wr, 0.82)
-  return poly([sh, el, wr], 56, s.belt ?? s.skin) + at(tip, dir - 10, `<path d="${PIG.handHoof}" fill="${s.hoof}"/>`) + cuff(c, dir) +
+  return poly([sh, el, wr], 56, skin) + at(tip, dir - 10, `<path d="${PIG.handHoof}" fill="${hoof}"/>`) + cuff(c, dir) +
     chainLinks([c, add(c, [-14, 44]), add(c, [-8, 98]), add(c, [12, 138])])
 }
 
@@ -127,7 +127,7 @@ function pigParts(s: PigStyle): Record<ChickenSlot, ChickenArtVariant> {
     neck: { label: 'Sem pescoço', svg: '' },
     face: { label: `Cabeça de porco ${s.label.toLowerCase()}`, ownEyes: true, svg: inFrame(f, pigHead(s)) },
     torso: { label: `Corpo de porco ${s.label.toLowerCase()} com colete`, svg: inFrame(f, defs + `<path d="${PIG.body}" fill="${s.skin}"/>${wool(PIG.body)}` + (s.belt ? `<path d="${PIG.belt}" fill="${s.belt}"/>` : '') + `<path d="${PIG.vestL}" fill="${s.vest}"/><path d="${PIG.vestR}" fill="${s.vest}"/>`) },
-    wing: { label: 'Braço com algema', back, backPath: capsule(shoulder, hand, 7.5), hand, holdDrop: 16, svg: inFrame(f, pigArm(s)) },
+    wing: { label: 'Braço com algema', back, backPath: capsule(shoulder, hand, 7.5), backSvg: inFrame(f, pigArm(s, 0.14)), backOffset: [-30, 4], backFront: true, hand, holdDrop: 16, svg: inFrame(f, pigArm(s)) },
     tail: { label: 'Rabinho enrolado', swing: 0.6, svg: inFrame(f, `<path d="${PIG.tail}" stroke="${s.skin}" stroke-width="15" fill="none" stroke-linecap="round"/>`) },
     legs: {
       label: 'Pernas de porco', front: { drum: s.skin, shank: s.skin }, back: { drum: shade(s.skin, 0.12), shank: shade(s.skin, 0.12) },
@@ -198,9 +198,9 @@ function foxHead(s: FoxStyle) {
     `<path d="M410 318 C 426 334, 452 336, 472 320" stroke="${s.lid}" stroke-width="4.5" fill="none" stroke-linecap="round"/><path d="M410 318 L 402 314" stroke="${s.lid}" stroke-width="4" stroke-linecap="round"/>`
 }
 const FOX_ARM: P[] = [[462, 412], [500, 466], [516, 516]]
-function foxArm(s: FoxStyle) {
-  const [sh, el, wr] = FOX_ARM, dir = ang(el, wr)
-  return poly([sh, el], 26, s.coat) + poly([el, wr], 22, s.coat) + at(wr, dir - 70, `<path d="${FOX.fist}" fill="${s.dark}"/><path d="${FOX.knuckles}" stroke="${s.tip}" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.55"/>`)
+function foxArm(s: FoxStyle, dk = 0) {
+  const [sh, el, wr] = FOX_ARM, dir = ang(el, wr), coat = shade(s.coat, dk)
+  return poly([sh, el], 26, coat) + poly([el, wr], 22, coat) + at(wr, dir - 70, `<path d="${FOX.fist}" fill="${shade(s.dark, dk)}"/><path d="${FOX.knuckles}" stroke="${s.tip}" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.55"/>`)
 }
 function foxParts(s: FoxStyle): Record<ChickenSlot, ChickenArtVariant> {
   const f = FOX_FRAME, { defs, frost } = frostOf(s), tc = uidOf('tz'), tl = uidOf('tl')
@@ -217,7 +217,7 @@ function foxParts(s: FoxStyle): Record<ChickenSlot, ChickenArtVariant> {
         (s.patches ? `<clipPath id="${tc}"><path d="${FOX.torso}"/></clipPath><g clip-path="url(#${tc})">${ells(s.patches, s.patch!)}</g>` : '') +
         `<path d="${FOX.bib}" fill="${s.cream}"/><path d="${FOX.hipTuft}" fill="${s.coat}"/>`),
     },
-    wing: { label: 'Braço de raposa', back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), hand, holdDrop: 24, svg: inFrame(f, foxArm(s)) },
+    wing: { label: 'Braço de raposa', back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), backSvg: inFrame(f, foxArm(s, 0.16)), backOffset: [-20, 2], backFront: true, hand, holdDrop: 24, svg: inFrame(f, foxArm(s)) },
     tail: {
       label: `Rabo de ${s.label.toLowerCase()}`, swing: 0.5,
       svg: inFrame(f, `<clipPath id="${tl}"><path d="${FOX.tail}"/></clipPath><path d="${FOX.tail}" fill="${s.tailCoat ?? s.coat}"/>${frost(FOX.tail)}<g clip-path="url(#${tl})"><path d="${FOX.tailTip}" fill="${s.tail}"/></g>`),

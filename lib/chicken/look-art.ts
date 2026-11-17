@@ -8,12 +8,14 @@ export type LegColors = { drum: string; shank: string }
 // tail.swing (how much the tail follows the body), legs.front/back (leg stroke colors), wing.backPath (the far wing's
 // outline, else the chicken's WING), face.eye / face.pupil (eye colors, else the chicken's light eye; a chick's is dark), face.eyeAt (the eye's middle).
 // wing.hand: the near limb's tip in rest pose (rig units; else the chicken's wing tip), where held items sit;
+// wing.backSvg / backOffset / backFront: the other arm drawn whole (not a flat shape), where it rests from the near
+// one, and drawn in front of the body (Pig, Ken);
 // wing.holdDrop: how much lower than the chicken's shoulder held items sit (Pig and Ken have their heads lower);
 // face.ownEyes: the face draws its own eyes (the engine's eye, pupil and blinking lid are hidden);
 // legs.shape: legs drawn another way (Pig, Ken): stroke widths of thigh, lower leg and shin, a foot drawn at the toe
 // joint in place of the toes ('FILL' is replaced by the shank color), and each leg moved along the body.
 export type LegShape = { thigh: number; tib: number; shin: number; foot?: string; dxFront?: number; dxBack?: number }
-export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number]; hand?: [number, number]; holdDrop?: number; ownEyes?: boolean; shape?: LegShape }
+export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number]; hand?: [number, number]; holdDrop?: number; backSvg?: string; backOffset?: [number, number]; backFront?: boolean; ownEyes?: boolean; shape?: LegShape }
 // a whole set of parts, one variant per slot (a bird drawn apart from the chickens' catalog, such as a chick)
 export type ChickenArtSet = Record<ChickenSlot, ChickenArtVariant>
 
@@ -116,12 +118,13 @@ export const LOOK_ART = (() => {
       (A.face.ownEyes ? '' : A.face.eyeAt ? '<circle cx="' + A.face.eyeAt[0] + '" cy="' + A.face.eyeAt[1] + '" r="4.6" fill="' + (A.face.eye ?? '#fff8e1') + '"></circle>' : '<circle cx="51" cy="-192" r="4.6" fill="#fff8e1"></circle><circle cx="52.5" cy="-192" r="2.8" fill="#1f1a17"></circle>');
   }
   const headSvg = (look: ChickenLook) => headOf(resolve(look));
+  const backOf = (wing: ChickenArtVariant) => '<g transform="translate(' + (wing.backOffset ?? [-4, -2]).join(' ') + ')">' + (wing.backSvg ?? '<path d="' + (wing.backPath ?? WING) + '" fill="' + wing.back + '"></path>') + '</g>';
   // a whole set of parts (a breed's, or a bird's own such as a Filhote's) in rest pose, as SVG markup
   function composeSet(A: ChickenArtSet) {
     const legs = A.legs, wing = A.wing;
     return staticLeg(-26, legs.back as LegColors, legs.shape, legs.shape?.dxBack) + staticLeg(-14, legs.front as LegColors, legs.shape, legs.shape?.dxFront) +
-      '<g transform="translate(-4 -2)"><path d="' + (wing.backPath ?? WING) + '" fill="' + wing.back + '"></path></g>' +
-      (A.tail.svg ?? '') + (A.torso.svg ?? '') + (A.neck.svg ?? '') + headOf(A) + (wing.svg ?? '');
+      (wing.backFront ? '' : backOf(wing)) +
+      (A.tail.svg ?? '') + (A.torso.svg ?? '') + (wing.backFront ? backOf(wing) : '') + (A.neck.svg ?? '') + headOf(A) + (wing.svg ?? '');
   }
   // whole chicken in rest pose, as SVG markup (thumbnails, avatar)
   const compose = (look: ChickenLook) => composeSet(resolve(look));

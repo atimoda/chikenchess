@@ -59,6 +59,8 @@ Pig, Ken e os filhotes deles (leitão e raposinha) usam o rig da galinha, mas co
 
 - **Cabeça:** sem a cabeça parada no ar que dá o bote para a frente a cada passo; andando, ela acompanha o corpo com um balanço leve. Parado, olha em volta bem menos (25% do pescoço, 30% da cabeça) e mais devagar.
 - **Braços:** nunca batem como asas (pulo, voo, carga do shocking jump); na queda rápida sobem só um pouco (30°). O braço não estica como asa: no golpe chega a no máximo 1,3× o comprimento, e segurando item fica entre 0,7× e 1,35×.
+- **Dois braços:** o braço de trás é desenhado inteiro (`wing.backSvg`, um tom mais escuro; no Pig com a algema e a corrente) e fica na frente do corpo, um pouco atrás do braço da frente (`backOffset`: Pig −30, Ken −20), como na arte de referência. Antes era uma forma achatada escondida atrás do corpo, que esticava deformada ao segurar itens de duas mãos.
+- **Golpes:** a Rabada leva o rabo do repouso até o ângulo do golpe (`TAIL_REST_DEG` 117°) e volta. Carregando o golpe forte com a mão vazia (`setBareCharge`), o Pig leva o braço com a corrente para trás e para cima (até 140°) e o Ken arma o rabo para cima (70°); com a carga cheia, os dois tremem.
 - **Itens:** seguram os itens mais baixo que a galinha (`wing.holdDrop`: Pig 16, Ken 24 unidades), para não cobrir o rosto.
 - **Pernas no ar:** penduradas, sem dobrar para dentro do corpo; pés (casco, pata) sem curvar (`toeCurl` 0 na classe).
 - **Corrida e Chocar:** a cabeça quase não inclina correndo (×0,25), o corpo inclina menos (Pig ×0,5, Ken ×0,7) e o Chocar afunda metade (Guarda, Espreita).

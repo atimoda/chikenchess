@@ -1260,6 +1260,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (!(combat.held && combat.def().instrument)) { input.fire = false; input.firePressed = false; input.melee = false; input.throwHeld = false; input.throwReleased = false }
         combat.setBabies([{ by: "p1", box: { l: body.x - 40 * st.scale, r: body.x + 40 * st.scale, t: body.y - 200 * st.scale, b: body.y }, fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
       } else combat.setBabies([])
+      // the strong blow charged with an empty hand (Correntada, Rabada): the arm or the tail winds up
+      engine.setBareCharge(!combat.held && combat.heavyCharging ? combat.heavyCharge : null)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       // (she stays where its stool is, in the seated pose, until she gets up)
       { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }
