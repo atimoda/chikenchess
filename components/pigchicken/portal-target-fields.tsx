@@ -2,6 +2,7 @@
 
 // A portal's Destino in the editor mode's Edit panel: the other portal of its pair, or another Pátio, picked from
 // the Pátios this player sees in Playgrounds or made new by the generator (lib/pigchicken/portal-links.ts).
+import { StepSelect } from "@/components/ui/step-select"
 import { useEffect, useState } from "react"
 import { Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -84,20 +85,20 @@ export function PortalTargetFields({ el, hasPartner, me, signedIn, onChange }: {
       {hasPartner && (
         <label className="grid gap-1">
           <span>Destino</span>
-          <select aria-label="Destino do portal" value={toPatio ? "patio" : "pair"} className={field}
+          <StepSelect aria-label="Destino do portal" value={toPatio ? "patio" : "pair"} className={field}
             onChange={e => onChange(e.target.value === "patio" ? { portalTarget: "" } : { portalTarget: undefined, portalTargetName: undefined })}>
             <option value="pair">O outro portal do par</option>
             <option value="patio">Outro Pátio</option>
-          </select>
+          </StepSelect>
         </label>
       )}
       {toPatio && <>
         <label className="grid gap-1">
           <span>{hasPartner ? "Pátio" : "Destino"}</span>
-          <select aria-label="Pátio de destino" value={target} onChange={e => choose(e.target.value)} className={field} disabled={options === null}>
-            <option value="">{options === null ? "Carregando…" : "Escolha um Pátio"}</option>
+          <StepSelect aria-label="Pátio de destino" value={target} onChange={e => choose(e.target.value)} className={field} disabled={options === null}>
+            <option value="" data-skip>{options === null ? "Carregando…" : "Escolha um Pátio"}</option>
             {list.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+          </StepSelect>
         </label>
         {status === "missing" && <p role="alert" className="text-[#ff8a7a]">Este pátio não existe mais. Escolha outro destino ou crie um Pátio novo.</p>}
         <button type="button" aria-expanded={making} onClick={() => setMaking(v => !v)}

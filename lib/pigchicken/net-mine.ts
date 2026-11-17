@@ -109,7 +109,7 @@ export function batchMineActs(acts: MineAct[]): MineAct[] {
   for (const a of acts) {
     const last = out[out.length - 1]
     if (a.k === 'note' && last?.k === 'note' && last.c === a.c && last.r === a.r && last.by === a.by && last.side === a.side && last.face === a.face) last.n = (last.n ?? 1) + (a.n ?? 1)
-    else if (a.k === 'shot' && last?.k === 'shot' && last.c === a.c && last.r === a.r && last.by === a.by && last.face === a.face) last.d += a.d
+    else if (a.k === 'shot' && last?.k === 'shot' && last.c === a.c && last.r === a.r && last.by === a.by && last.side === a.side && last.face === a.face) last.d += a.d
     else out.push({ ...a })
   }
   return out
@@ -137,7 +137,7 @@ export function cleanMineActs(raw: unknown, pid: number): NetMineActs | null {
       if (a.k === 'shock') out.a.push({ k: 'shock', ...at })
       else if (!own(a.by)) continue
       else if (a.k === 'note' && (a.side === 'open' || a.side === 'closed')) out.a.push({ k: 'note', ...at, side: a.side as MineSide, by: a.by, ...(f ? { face: f } : {}), ...(int(a.n, 64) && a.n > 1 ? { n: a.n } : {}) })
-      else if (a.k === 'shot' && num(a.d) && a.d > 0) out.a.push({ k: 'shot', ...at, d: Math.min(a.d, 100000), by: a.by, ...(f ? { face: f } : {}) })
+      else if (a.k === 'shot' && num(a.d) && a.d > 0) out.a.push({ k: 'shot', ...at, d: Math.min(a.d, 100000), by: a.by, ...(f ? { face: f } : {}), ...(a.side === 'open' || a.side === 'closed' ? { side: a.side as MineSide } : {}) })
       else if (a.k === 'use' && USES.includes(a.use as MineBombUse)) out.a.push({ k: 'use', ...at, use: a.use as MineBombUse, by: a.by })
       else if (a.k === 'install') out.a.push({ k: 'install', ...at, by: a.by, turn: int(a.turn, 359) ? a.turn : null })
     }

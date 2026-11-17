@@ -17,6 +17,9 @@ import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, chic
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
+import { grabDamageStep } from './grab-damage'
+import { clingAnim, clingSpeedLimit } from './cling-brood'
+import { hangSwitch, standSwitch, wallSwitch } from './side-switch'
 import { shockingAirLegPose } from './shocking-pose'
 import { magnetVector } from './analog-magnet'
 import { createThrowTransition } from './throw-transition'
@@ -77,6 +80,9 @@ export type ChickenEngine = {
   // the Pegar of the last getActions came only from inputs Correr also has (a shared key or pad button, or the on-screen
   // Correr with "Correr também pega itens"): it still takes items, but does not equip one she already carries
   grabIsRun: () => boolean
+  // one press of an action that has no button to hold (the mouse wheel's bind, components/pigchicken/parquinho.tsx):
+  // it counts in the next getActions and in the next physics step, like a key pressed and let go between two reads
+  tapAction: (action: ChickenAction) => void
   // Freeze gameplay and shrink/fade the drawn rig into a screen-space portal centre.
   // Repeated calls update the target without restarting; null cancels the transition.
   setPortalEntry: (entry: { x: number; y: number; durationMs: number } | null) => void
@@ -124,7 +130,10 @@ export type ChickenEngine = {
   rigPoint: (point: 'hand' | 'mouth' | 'neck') => { x: number; y: number }
   // A push (px/s), e.g. recoil, only in the air by default. Blast=true also launches
   // her off the floor/wall and keeps its sideways impulse until landing.
-  impulse: (vx: number, vy: number, blast?: boolean) => void
+  // `damage`: what the blow that pushes her does (a blast, a dropping). Grabbed on a wall or a ceiling, she holds on
+  // (no push at all) until the damage taken on that grab reaches `clingDropDamage`; without it, the push always
+  // takes her off
+  impulse: (vx: number, vy: number, blast?: boolean, damage?: number) => void
   // the input devices this chicken listens to (local players: each drives their own); null = every device
   setDevices: (devices: InputDeviceId[] | null) => void
   getDevices: () => InputDeviceId[] | null
@@ -373,7 +382,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const unsubscribe = subscribeChickenControls(c => { controls = c; rebind() })
   const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
   const shifts = new Set<string>()
-  const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>()
+  const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>(), actionTaps = new Set<ChickenAction>()
   let pad: Partial<Record<ChickenAction, boolean>> = {}, padOwnGrab = false, grabRunOnly = false
   // the devices she listens to (null: all of them) and, from them, the keys of each action
   let devices: InputDeviceId[] | null = null
@@ -513,6 +522,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let shockingAirElapsed = 0
   let shockingAirLimitApplied = false
   let shockingAirReleaseTime = 0
+  // the damage she took since she grabbed the surface she is on (grab-damage.ts); letting go clears it
+  let grabDamage = 0
   function step(dt: number) {
     pollPad()
     const Lh = input('left'), Rh = input('right'), U = input('up'), Dk = input('down'), C = input('crouch'), J = input('jump'), RUN = input('run')
@@ -537,6 +548,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     let airChargeMultiplier = 1
     let airShockReleased = false
     let groundRelease = false
+    let shockLaunch = false
     if (S.shocking && (!Dk || S.held || S.cl)) S.shocking = false
     S.groundJumpT = (S.groundJumpT ?? Infinity) + dt
     // the plain jump that left the ground a moment ago turns into the preparation (on the ground's terms)
@@ -548,15 +560,32 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // standing on a floating box, Brood + Jump (with or without a sideways direction, never with Up or Down/Crouch)
     // flips her under it (no shocking prep); Down + Brood + Jump still drops through, Up + Brood + Jump goes up
     const flipPlat = S.grounded && S.plat && !S.held && !S.cl ? segById(S.plat) : null
-    const flipUnder = jumpPressed && Dk && !C && !U && !!flipPlat && !flipPlat.solid && canHangUnder(flipPlat)
+    // (side-switch.ts) without Down it is the other face of the same line (under a box's top from inside the box,
+    // under the wire); with Down on a box, the box's other side (under its bottom)
+    const flipKind = jumpPressed && Dk && !!flipPlat && !flipPlat.solid ? standSwitch({ brood: true, up: U, down: C, against: false }) : null
+    const flipFace = flipKind === 'face' && !!otherFace(flipPlat!)
+    const flipUnder = flipKind === 'box' && !flipPlat!.side && canHangUnder(flipPlat!)
     // ...and on the floor of a room over another room (a wall that leads through, see crossWall) the same gesture
     // takes her down through it
     const crossUnder = jumpPressed && Dk && !C && !U && !!flipPlat?.cross && flipPlat.cross.key === crossKey
-    if (jumpPressed && D && !S.cl && !S.held && !flipUnder && !crossUnder) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
+    if (jumpPressed && D && !S.cl && !S.held && !flipFace && !flipUnder && !crossUnder) { S.shocking = true; shockingAirReleaseTime = 0; jumpPressed = false }
     if (S.shocking && !J) {
       if (Dk && !S.grounded && !S.shockFromGround) { airShockReleased = true; airChargeMultiplier = shockingAirMultiplier(shockingAirElapsed, R.shockingAirChargeTime, R.shockingAirMaxMultiplier) }
-      S.shocking = false; jumpPressed = Dk
+      S.shocking = false; jumpPressed = Dk; shockLaunch = Dk
       if (S.shockFromGround) { groundRelease = Dk; S.shockFromGround = false }
+    }
+    // the shocking jump prepared on a wall (clingStep, Brood + Jump with the direction away from it): letting go of
+    // Jump with Brood held launches it off the wall like one from the ground, toward the direction held; letting go
+    // of Brood first cancels it
+    let wallShockN = 0
+    if (S.cl?.shock && !S.held) {
+      if (!Dk) S.cl.shock = false
+      else if (!J) {
+        const c = S.cl, jy = Math.min(groundY, c.py + 30 * R.scale)
+        wallShockN = Math.sign(c.n[0]) || 1
+        fallFrom(stepOff(c.px, c.n[0], 40, jy), jy, 0, 0)
+        jumpPressed = true; groundRelease = true; shockLaunch = true
+      }
     }
     if (S.shocking && !S.grounded && !S.shockFromGround && J && Dk) {
       const charge = advanceShockingAirCharge(shockingAirElapsed, shockingAirLimitApplied, dt, R.shockingAirChargeTime, R.shockingAirAfterTimeMultiplier)
@@ -581,8 +610,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (inputDir !== 0 && inputDir !== S.lastInputDir) { S.turnDir = inputDir; S.turnFace = screenFace(); S.turnT = nowS }
     S.lastInputDir = inputDir
     const against = inputDir !== 0 && S.turnDir === inputDir && S.turnFace === -inputDir && nowS - S.turnT < SWITCH_GRACE
-    if (S.held) { heldStep(dt); return }
-    if (S.cl) { clingStep(dt, dir, U, D || C, jumpPressed, RUN, against, Dk && !C && !U); return }
+    if (S.held) { S.shockRise = false; heldStep(dt); return }
+    // grabbed, Brood broods on the surface (cling-brood.ts); only Down/Crouch is the way down
+    if (S.cl) { S.shockRise = false; clingStep(dt, dir, U, C, jumpPressed, RUN, against, Dk && !C && !U, D); return }
+    grabDamage = 0; S.clBrood = false
     // Floating walls grab while she passes without a movement control, or if she is looking straight up.
     // Up is therefore the one direction that does not block an airborne grab on contact.
     S.noGrab = Lh || Rh || Dk || C || J || RUN
@@ -598,7 +629,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       }
       // crouched, walking off a floating edge (or off the end of a hard outline's floor) grabs the side below it
       // instead of falling
-      if (sg && fy === null && C && dir !== 0 && (!sg.solid || sg.hardN) && grabEdgeSide(sg, dir, (U ? 1 : 0) - (D || C ? 1 : 0))) { clingPose(dt, U, D || C); return }
+      if (sg && fy === null && C && dir !== 0 && (!sg.solid || sg.hardN) && grabEdgeSide(sg, dir, (U ? 1 : 0) - (C ? 1 : 0))) { clingPose(dt, U, C, D); return }
       if (!sg || fy === null) { S.grounded = false; S.plat = null; S.vy = 0; S.jumpIndex = 0 }
       else {
         const dx = sg.anchorX - S.platAx, dy = fy - S.y; S.platAx = sg.anchorX
@@ -692,7 +723,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // drops (with a direction it is the normal super jump up)
     const plat = S.grounded && S.plat ? segById(S.plat) : null
     // ...but on a floating box, Brood + Jump without Up or Down flips her under it, upside down (see flipUnder)
-    if (flipUnder && jumpPressed && plat && !plat.solid && hangUnder(plat, S.face)) {
+    if ((flipFace || flipUnder) && jumpPressed && plat && !plat.solid && hangUnder(plat, S.face, flipFace ? otherFace(plat) : underSide(plat))) {
       clingPose(dt, U, false); return
     } else if (crossUnder && jumpPressed && plat && crossWall(plat, [0, -1], S.x, S.y)) {
       clingPose(dt, U, false); return
@@ -704,6 +735,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     } else if (jumpPressed) {
       const fromGround = S.grounded || groundRelease
       S.jumpIndex = fromGround ? 0 : S.jumpIndex + 1
+      // the way up of a shocking jump (launched letting go of Jump with Brood held) grabs a hard ceiling by itself
+      S.shockRise = shockLaunch
       // Every jump keeps its normal takeoff, including air jumps and super jumps.
       // Brood's directional impulse is added separately below; horizontal input
       // must never remove the normal upward jump.
@@ -727,6 +760,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         const direction = stick ? magnetVector({ x: stick.x * stick.mag, y: stick.y * stick.mag }, controls.analog.magnetDeg) : { x: inputDir, y: (downDirection ? 1 : 0) - (U ? 1 : 0) }
         const impulse = directionalJumpImpulse(direction, boost, R.broodJumpVerticalBoost)
         S.airBoost = impulse.x
+        // off a wall, never back into it
+        if (wallShockN && S.airBoost * wallShockN < 0) S.airBoost = 0
         S.vy += impulse.y
       } else S.airBoost = (dir !== 0 ? dir * R.jumpPush : 0) + hd * boost
       if (!fromGround && D) { S.airBoost *= airChargeMultiplier; S.vy *= airChargeMultiplier }
@@ -763,8 +798,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (best) land((best as { sg: Seg; y: number }).y, (best as { sg: Seg; y: number }).sg)
       }
       if (S.y >= groundY && S.vy >= 0) land(groundY, null)
-      // rising into a ceiling: Up grabs it (she hangs upside down); the limits' ceiling stops her otherwise
-      else if (S.vy < 0 && ceilingStep(prevY, U)) return
+      // rising into a ceiling: Up grabs it (she hangs upside down); the limits' ceiling stops her otherwise.
+      // A shocking jump grabs the hard ones without Up (never with Down/Crouch held)
+      if (S.grounded || S.vy >= 0) S.shockRise = false
+      else if (ceilingStep(prevY, U, !!S.shockRise && !C)) return
     }
     const prevX = S.x
     S.x += S.vx * motionDt
@@ -1053,7 +1090,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function fallFrom(x: number, y: number, vx: number, vy: number) {
     if (S.cl && !S.held) startTurn()
     if (S.cl) { S.clLast = S.cl.id; S.clCool = 0.35 }
-    S.cl = null; S.plat = null; S.grounded = false; S.jumpIndex = 0; S.airBoost = 0
+    S.cl = null; S.plat = null; S.grounded = false; S.jumpIndex = 0; S.airBoost = 0; S.shockRise = false
     S.x = x; S.y = y; S.vx = vx; S.vy = vy; plantFeet(); headAnchor.x = null
   }
 
@@ -1104,8 +1141,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5
   }
   // rising into a ceiling (her head crosses it): Up grabs it and she hangs upside down; without Up a solid
-  // ceiling (the limits') stops her and a box's underside lets her through. True when she grabbed it.
-  function ceilingStep(prevY: number, up: boolean) {
+  // ceiling (the limits') stops her and a box's underside lets her through. `hard`: a solid ceiling is grabbed
+  // without Up (the way up of a shocking jump). True when she grabbed it.
+  function ceilingStep(prevY: number, up: boolean, hard = false) {
     const reach = HEAD_TOP * R.scale, was = prevY - reach, now = S.y - reach
     let hit: Seg | null = null, hitY = -Infinity
     for (const sg of SEGS) {
@@ -1120,7 +1158,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       else if (sg.fused && was < cy - 0.5 && prevY > cy && prevY > S.y) { S.y = prevY; S.vy = 0 }
     }
     if (!hit) return false
-    if (up && !(S.clCool > 0 && hit.id === S.clLast)) {
+    if ((up || (hard && hit.solid)) && !(S.clCool > 0 && hit.id === S.clLast)) {
       const face = S.face
       attach(hit, S.x, hitY)
       // upside down her rig's forward is the screen's backward: keep looking the same way
@@ -1206,12 +1244,19 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     return bp && bp.part === 'top' ? partAt(bp.base, 'under', S.x, null) : null
   }
   // whether the floating floor is a box top (or a wire) with an underside right below her (where hangUnder would put her)
+  // the other face of the floating floor she stands on, right at her feet: the ceiling under a box's top seen from
+  // inside the box, the box's underside for its bottom seen from inside, the other side of a wire
+  function otherFace(plat: Seg) {
+    if (plat.side?.top) return wireSideAt(plat.side.base, false, S.x)
+    const bp = boxPart(plat.id)
+    return bp && (bp.part === 'top' || bp.part === 'bottom') ? partAt(bp.base, bp.part === 'top' ? 'topBelow' : 'under', S.x, null) : null
+  }
   function canHangUnder(plat: Seg) {
     return !!underSide(plat)
   }
   // standing on a floating box (or a wire): hang upside down from its underside, right below (switching sides)
-  function hangUnder(plat: Seg, look: number) {
-    const under = underSide(plat)
+  // (`under`: another ceiling at her feet instead, the other face of the same line)
+  function hangUnder(plat: Seg, look: number, under = underSide(plat)) {
     if (!under) return false
     const y = floorY(under, S.x) ?? under.ay
     // on a sloped wire piece her feet point into the line, square to it
@@ -1271,6 +1316,25 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.vy = 0; S.grounded = true; S.plat = null; S.sliding = false; S.jumpIndex = -1; S.squash = 0.5; sfx('grab')
     return true
   }
+  // Brood + Jump on a floating (not hard) collider she clings to: the other face of the same line, at the same point.
+  // Hanging, she stands on it (on the box's top from under that top inside the box, inside on the box's bottom from
+  // under the box, on the wire); on a wall she clings to its other face (into the box from outside, out from inside).
+  function switchFace(sg: Seg) {
+    if (sg.solid) return false
+    const c = S.cl, bp = boxPart(sg.id)
+    if (c.n[1] > 0.7) {
+      const floor = sg.side && !sg.side.top ? wireSideAt(sg.side.base, true, c.px)
+        : bp && (bp.part === 'topBelow' || bp.part === 'under') ? partAt(bp.base, bp.part === 'topBelow' ? 'top' : 'bottom', c.px, null) : null
+      if (!floor) return false
+      const look = screenFace()
+      standAt(c.px, floorY(floor, c.px) ?? c.py, floor, look)
+      return true
+    }
+    if (sg.ceil) return false
+    clingFrame(sg, [-c.n[0], -c.n[1]], c.px, c.py)
+    S.squash = 0.5; sfx('grab')
+    return true
+  }
   // Jump against her look on a floating (not hard) collider: the other side of the same collider. Under a box she
   // climbs onto its top; on a box's outer side she moves to its opposite side; elsewhere she crosses the line.
   function switchSide(sg: Seg) {
@@ -1300,7 +1364,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     S.squash = 0.5; sfx('grab')
     return true
   }
-  function clingStep(dt: number, dir: number, U: boolean, Dn: boolean, jumpPressed: boolean, RUN: boolean, against: boolean, broodFlip = false) {
+  function clingStep(dt: number, dir: number, U: boolean, Dn: boolean, jumpPressed: boolean, RUN: boolean, against: boolean, broodFlip = false, brood = false) {
     const vup = (U ? 1 : 0) - (Dn ? 1 : 0)
     const c = S.cl, sg = segById(c.id)
     if (!sg) { letGo(0, 0); return }
@@ -1314,11 +1378,17 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const hanging = c.n[1] > 0.7
     // Jump against her look (or into the collider: Up under a ceiling, toward a wall) on a floating collider
     // switches her to its other side; hanging, Brood + Jump (without Up or Down) does too
-    if (jumpPressed && ((broodFlip && crossWall(sg, c.n, c.px, c.py)) || ((hanging ? against || U || broodFlip : dir !== 0 && dir * c.n[0] < 0) && switchSide(sg)))) {
-      if (S.cl) clingPose(dt, U, Dn)
+    // (side-switch.ts) Brood + Jump is the other face of the same line; hanging with Up, it is the box's other side
+    // preparing the shocking jump off the wall: she holds still, in the preparation's pose (step() launches or cancels)
+    if (c.shock) { S.vx = 0; clingPose(dt, U, Dn, true); return }
+    const sw = !jumpPressed ? null : hanging ? hangSwitch({ brood, up: U, down: Dn, against }) : wallSwitch({ brood, dir, toward: dir * c.n[0] < 0 })
+    if (jumpPressed && ((broodFlip && crossWall(sg, c.n, c.px, c.py)) || (sw === 'box' && switchSide(sg)) || (sw === 'face' && switchFace(sg)))) {
+      if (S.cl) clingPose(dt, U, Dn, brood)
       else { S.state = 'idle'; animate(dt, 'idle', false, 0) }
       return
     }
+    // (a wall that leads to another room took her through first)
+    if (sw === 'shock') { c.shock = true; S.vx = 0; clingPose(dt, U, Dn, true); return }
     // hanging upside down from a ceiling: Jump lets go and she falls upright
     if (hanging && jumpPressed) {
       letGo(0, 120)
@@ -1342,8 +1412,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const inKey = `${dir},${vup}`
     if (c.carry && (c.carry.key !== inKey || (!dir && !vup))) c.carry = null
     if (c.carry) want = c.carry.sign * c.sigma
-    S.vx = approach(S.vx, want * R.climbSpeed * (RUN ? 1.5 : 1), R.acceleration * dt)
-    if (Math.abs(want) > 0.15) S.face = Math.sign(want)
+    // brooding she moves at the brooding walk's share of the climb and keeps looking the way she looked
+    S.vx = approach(S.vx, want * clingSpeedLimit(R.climbSpeed, R.broodWalk, brood, RUN), R.acceleration * dt)
+    if (!brood && Math.abs(want) > 0.15) S.face = Math.sign(want)
     // double tap away from the wall lets go; double tap toward a near-vertical floating wall swaps sides
     if (dir !== 0 && dir !== c.lastDir) {
       const now = performance.now() / 1000
@@ -1390,7 +1461,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
           if (jy !== null && jy <= end[1] + 1) { standAt(jx, jy, o, -Math.sign(c.n[0]) || 1); return }
         }
       }
-      if (end[1] < groundY - 3 && wrapCorner(sg, end, other, inKey)) { clingPose(dt, U, Dn); return }
+      if (end[1] < groundY - 3 && wrapCorner(sg, end, other, inKey)) { clingPose(dt, U, Dn, brood); return }
       if (upper) {
         s = clamp(s, 0, sg.len); S.x = (s + offset) * c.sigma; S.vx = 0; c.px = sg.ax + ux * s; c.py = sg.ay + uy * s
       } else if (end[1] >= groundY - 3) {
@@ -1398,18 +1469,21 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       } else if (c.n[1] > 0.7) { c.px = end[0]; c.py = end[1]; letGo(0, 0); return }
       else { fallFrom(stepOff(end[0], c.n[0], 30, end[1]), end[1], 0, 0); return }
     }
-    clingPose(dt, U, Dn)
+    clingPose(dt, U, Dn, brood)
   }
   // Hanging upside down she walks, stands, crouches and looks like on the ground, with Up and Down swapped
   // (Up pulls her in to the ceiling like crouching, Down stretches her head toward the ground like looking up)
-  function clingPose(dt: number, U = false, Dn = false) {
+  // brood: Brood held, she broods on the surface (the brood's pose in the grab's frame)
+  function clingPose(dt: number, U = false, Dn = false, brood = false) {
     const c = S.cl
     // the body leans down the slope; flat (a ceiling) it does not lean
     const sin = Math.sin(c.phi)
     c.tilt = Math.abs(sin) < 0.05 ? 0 : -Math.sign(S.face * sin) * R.clingTilt
     const speed = Math.abs(S.vx)
     const hanging = c.n[1] > 0.7
-    const st = !hanging ? 'cling' : speed > 5 ? (speed > R.climbSpeed * 1.2 ? 'run' : 'walk') : U ? 'crouch' : Dn ? 'lookUp' : 'idle'
+    const st = clingAnim(hanging, speed, R.climbSpeed, U, Dn, brood)
+    if (brood && !S.clBrood) sfx('st_brood')
+    S.clBrood = brood
     S.state = 'cling'; S.clingAnim = st
     updateFeet(dt, st, speed)
     animate(dt, st, st === 'lookUp', speed)
@@ -1635,7 +1709,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     let k = 16
     S.burst = Math.max(0, S.burst - dt)
     const flapping = S.burst > 0 || st === 'fly' || (st === 'held' && R.heldFlapRate > 0)
-    if (flapping) S.flapPhase += dt * (S.burst > 0 ? R.jumpFlapRate : st === 'held' ? R.heldFlapRate : R.flapRate) * Math.PI * 2
+    // charging the shocking jump in the air (Brood + Jump held): the wings beat at their own rate (0: they stay folded)
+    const chargeFlap = S.shocking && !S.grounded && !S.shockFromGround && !S.held && !S.cl && R.shockingAirFlapRate > 0
+    if (chargeFlap) S.flapPhase += dt * R.shockingAirFlapRate * Math.PI * 2
+    else if (flapping) S.flapPhase += dt * (S.burst > 0 ? R.jumpFlapRate : st === 'held' ? R.heldFlapRate : R.flapRate) * Math.PI * 2
     const walking = st === 'walk' || st === 'run' || ((st === 'crouch' || st === 'cling') && speed > 5)
     if (walking) {
       // the body rocks and shifts a little with each step
@@ -1687,6 +1764,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     } else if (st === 'brood') {
       // the body settles over the legs, which fold up under it
       t.sink = R.broodDepth; t.legSink = R.broodDepth; t.puff = 1.07; t.wing = 8; t.wingBack = 6; t.tail = 6; t.neck = 6; t.head = -6
+      // grabbed (brooding on a wall): the grab keeps the body's lean
+      if (S.cl) t.body += S.cl.tilt
       k = 10
     } else if (st === 'cling') {
       // half sideways: feet gripping the surface, body turned back toward upright
@@ -1720,7 +1799,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       k = 18
     }
     if (U && (st === 'walk' || st === 'run' || st === 'crouch' || !S.grounded)) { t.neck -= 10; t.head -= 30 }
-    if (S.shocking) {
+    if (S.shocking || S.cl?.shock) {
       t.sink = R.broodDepth + R.shockingBodyDepth
       t.legSink = R.broodDepth + R.shockingLegBend
       t.ik = 1; t.tuck = 0
@@ -1781,7 +1860,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       pose['toe' + key] = ease(pose['toe' + key], toeW - (sa - 90), lk === 160 ? 160 : 40, dt)
     })
 
-    if (!S.shocking && flapping && (st !== 'fastFall' || S.burst > 0)) {
+    if (chargeFlap || (!S.shocking && flapping && (st !== 'fastFall' || S.burst > 0))) {
       const f = (1 - Math.cos(S.flapPhase)) / 2
       pose.wing = 15 + f * 95; pose.wingBack = 10 + f * 85
     } else {
@@ -2170,7 +2249,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       S.shocking = false; shockingAirElapsed = 0; shockingAirReleaseTime = 0; shockingAirLimitApplied = false
       throwTransition.reset()
       goal = null; tap = null; drag.id = null; drag.on = false
-      pressed.clear(); virtTapped.clear(); gameTaps.clear()
+      pressed.clear(); virtTapped.clear(); gameTaps.clear(); actionTaps.clear()
       el.root.style.pointerEvents = 'none'
       renderPortal(portalEntry.start)
     },
@@ -2189,7 +2268,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       S.vx = 0; S.vy = 0; S.airBoost = 0; S.shocking = false; S.broodLatch = false; S.sliding = false
       S.state = 'idle'; S.jumpIndex = -1; S.burst = 0; S.squash = 0; turn.t = 1
       goal = null; tap = null; drag.id = null; drag.on = false
-      pressed.clear(); virtTapped.clear(); gameTaps.clear(); plantFeet()
+      pressed.clear(); virtTapped.clear(); gameTaps.clear(); actionTaps.clear(); plantFeet()
       el.root.setAttribute('opacity', '1')
       render()
       portalEntry = { ...arrival, mode: 'arrive', start: performance.now(), duration: Math.max(1, arrival.durationMs), fromX: arrival.x, fromY: arrival.y, dx: 0, dy: 0, transform: el.root.getAttribute('transform') || '' }
@@ -2202,6 +2281,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (S.grounded && !S.plat && !S.cl) S.y = groundY
     },
     setCameraZoom(zoom) { camZoom = Math.max(0.02, Math.min(8, zoom)); svg.style.transform = zoom === 1 ? '' : `scale(${camZoom})` },
+    tapAction(action) {
+      if (bot || !virtOk() || portalEntry || isChickenControlsListening()) return
+      if (WALK_ACTIONS.includes(action)) goal = null
+      virtTapped.add(action); actionTaps.add(action)
+    },
     setVirtual(action, on) {
       if (on && WALK_ACTIONS.includes(action)) goal = null
       ensureAudio()
@@ -2232,11 +2316,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     getActions() {
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
-      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t))) })
+      CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t)) || actionTaps.has(a.key)) })
       // Pegar with none of its own sources: only keys/buttons shared with Correr, or the on-screen Correr
       grabRunOnly = out.grab && !bot && !padOwnGrab && !(virtOk() && virt.grab)
         && !keyBinds.grab.some(t => !keyBinds.run.includes(t) && (held.has(t) || gameTaps.has(t)))
-      gameTaps.clear()
+      gameTaps.clear(); actionTaps.clear()
       return out
     },
     peekActions() {
@@ -2335,9 +2419,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         frameDt = 0; render(); frameDt = previousDt
       }
     },
-    impulse(vx, vy, blast = false) {
+    impulse(vx, vy, blast = false, damage) {
       if (portalEntry || S.held) return
       if (blast) {
+        // grabbed, a blow with damage only takes her off once what she took on this grab reaches the limit
+        if (S.cl && damage !== undefined) {
+          const hit = grabDamageStep(grabDamage, damage, R.clingDropDamage)
+          grabDamage = hit.taken
+          // (she flinches and holds on)
+          if (!hit.drop) { S.squash = 0.5; return }
+        }
         leaveSeat()
         const state = { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y }
         fallFrom(state.x, state.y, S.vx + vx, S.vy + vy)

@@ -11,12 +11,13 @@ import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
 import type { ChickenEngine, ChickenGame } from "@/lib/chicken/engine"
 import { isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { isPadDevice, padButtonValues, padTokensFor, stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
-import { createMouseOwner, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
+import { grabIsSeatBind, harpHeld, seatTokens } from "@/lib/pigchicken/instrument-binds"
+import { createMouseOwner, keysAimAfterMouse, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, cameraXRange, leadStep, wholeWorldZoom, zoomLimits } from "@/lib/pigchicken/camera"
 import { PATIO_ZOOM, type PatioZoom } from "@/lib/pigchicken/patio-settings"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
-import { createCombat, lookDoses, type Box, type Catchable, type Combat, type Effect, type ShotRoom, type SoulPortal, type StringAim, type WorldCarry } from "@/lib/pigchicken/combat"
+import { createCombat, lookDoses, type Box, type Catchable, type Effect, type ShotRoom, type SoulPortal, type StringAim, type WorldCarry } from "@/lib/pigchicken/combat"
 import { createNetWorldSync } from "@/lib/pigchicken/net-world-sync"
 import { getNetState, remoteChicken } from "@/lib/chicken/online-room"
 import { chickNumber, chickStyleOf } from "@/lib/chicken/net-chicks"
@@ -33,20 +34,22 @@ import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { ALIEN_PATTERNS } from "@/lib/pigchicken/enemies"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
-import { createDrone, playBass, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
-import { SILENCE, ambienceDrone, bassNotes, beatHits, legacyAmbience } from "@/lib/pigchicken/zone-ambience"
+import { audioTime, createDrone, playBass, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
+import { SILENCE, ambienceDrone, ambienceKit, bassNotes, beatHits, grooveOf, legacyAmbience } from "@/lib/pigchicken/zone-ambience"
+import { playKitHit, preloadKit } from "@/lib/pigchicken/kit-player"
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { playBirdSong } from "@/lib/pigchicken/bird-song"
 import { songVolume } from "@/lib/pigchicken/soul-acts"
 import { ZONES, chordName, droneOf, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
-import { SCENE_W, TEMPLE_PLATFORMS, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
+import { SCENE_W, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
-import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, TEMPLE_PLATFORM_DEPTH, type LayoutElement } from "@/lib/pigchicken/layout"
-import { groundZones, placeEnvAt, soundZoneOf, zoneAt, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
+import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, type LayoutElement } from "@/lib/pigchicken/layout"
+import { groundZones, placeEnvAt, soundZoneOf, zoneAt, zoneBlockSolo, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
 import { hitZone, liveZones, resetZoneLife, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { bindMinePlay } from "./mine-grid-play"
+import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { drawScaleFan, SCALE_FAN_R, seatedFanSize } from "@/components/pigchicken/draw/scale-fan"
 import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { dropScaleStage, setScaleStage } from "@/lib/pigchicken/scale-preview"
@@ -61,14 +64,14 @@ import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "
 import { houseRooms, roomShotWalls, type RoomRect } from "@/lib/pigchicken/house-rooms"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { HouseDusk, useHouseDuskFilter } from "@/components/pigchicken/house-dusk"
-import { DISC_X, GONG_X, RESET_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
+import { GONG_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { accuracy, createNoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
-import { JUKEBOX_H, JUKEBOX_W, drawNoteShots, drawNoteStageHud, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
+import { drawNoteShots, drawNoteStageHud, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
 import { CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, onStopSong, openJukebox, recordScore, subscribeLibrary } from "@/lib/pigchicken/song-library"
 import { newGongRun, stepGong, strikeGong, type GongParams, type GongRun } from "@/lib/pigchicken/gong"
 import { drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
-import { TEMPLE_ROOF_LINES, TempleBackdrop, lineAttr } from "@/components/pigchicken/temple-backdrop"
+import { BuildingStyles } from "@/components/pigchicken/building-art"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import type { MountainParams } from "@/lib/pigchicken/mountains"
 import { patioClouds, type CloudParams } from "@/lib/pigchicken/clouds"
@@ -104,6 +107,8 @@ const groupPress = (act: Partial<Record<ChickenAction, boolean>>, prev: Partial<
   GROUP_BINDS.find(([a]) => act[a] && !prev[a])?.[1] ?? null
 // how far (px) a press on the inventory bar moves before it becomes a drag instead of a click
 const BAR_DRAG_START = 6
+// the state the combat reads: a bird brooding on a grab (a wall, a ceiling) broods, for the spread of its shots
+const bodyState = (st: { state: string; networkAnimation?: string }) => st.state === "cling" && st.networkAnimation === "brood" ? "brood" : st.state
 // the keys shown left of each group on the first player's big bar (with a mouse, like the slot numbers; null: none)
 const barLabels = (controls: ChickenControls | null, devices: InputDeviceId[] | null, lifted: boolean) =>
   !controls || lifted || !showKeyHints() ? null : groupBindLabels(controls, devices)
@@ -128,11 +133,10 @@ function onlyThrow(actions: Record<ChickenAction, boolean>): Record<ChickenActio
 // backdrop: how strongly the scenery far behind shows (sky, sun, mountains; the layers menu's Fundo, 0 hides it)
 // sky: the Pátio's sky and light (Configurações do Pátio → Céu e luz); without it, the classic dusk
 // mountains: the far ranges' shape (Configurações do Pátio → Montanhas); clouds: theirs (→ Nuvens)
-// temple: false leaves out the Templo do Gongo and the Vila dos Telhados (their scenes stay, empty)
+// temple: false leaves out the Vila dos Telhados' fixed backdrop (the Templo do Gongo is made of layout elements)
 export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1, sky, mountains, clouds, snowfall, aurora, temple = true, zoomMin = PATIO_ZOOM.min }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number; sky?: SkyParams; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; temple?: boolean; zoomMin?: number }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
-  const templeLeft = templeScene(screens) * SCENE_W
   const villageLeft = villageScene(screens) * SCENE_W
   const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
   const occlusion = useMemo(() => createCollisionOcclusion(layoutCollisionMasks(shown)), [shown])
@@ -160,7 +164,6 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
         </div>
       ))}
       {temple && <div className="absolute inset-0" style={lit}>
-        <TempleBackdrop left={templeScene(screens) * SCENE_W} />
         <VillageBackdrop left={villageLeft} />
       </div>}
       {debug && temple && (
@@ -173,28 +176,15 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
           <span className="absolute left-2 top-28 whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-white/50">Cena {screens + 2} · Vila dos Telhados</span>
         </div>
       )}
-      {/* the temple's roofs: floors with their own curves (drawn only in debug) */}
-      {debug && temple && (
-        <svg aria-hidden="true" className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }}>
-          {TEMPLE_ROOF_LINES.map(l => <polyline key={l.id} points={lineAttr(l.pts)} fill="none" stroke="#ff3b3b" strokeWidth={3} strokeDasharray="8 5" />)}
-        </svg>
-      )}
       {/* the numbers of the Grade de blocos (components/pigchicken/mine-grid-layer.tsx), behind the Pátio's elements */}
       <div data-mine-numbers aria-hidden="true" className="absolute inset-0" />
       {/* the Pátio's layout (lib/pigchicken/layout.ts): the scenery behind the platforms, then the platforms' layer */}
       <PatioTreeStyles />
+      <BuildingStyles />
       <SceneryVisibilityStyles />
       <div className="absolute inset-0" style={lit}><LayoutLayerView elements={shown} layer="back" editing={editing} power={false} /></div>
       <LayoutLayerView elements={shown} layer="back" editing={editing} power />
       <div data-chicken-platforms className="absolute inset-0">
-        {temple && TEMPLE_PLATFORMS.map((p, i) => {
-          const x = templeLeft + p.x, y = WORLD_GROUND_Y - p.bottom - p.h
-          return <div key={`tp-${i}`} data-chicken-id={`tp-${i}`} data-chicken-depth={TEMPLE_PLATFORM_DEPTH}
-            data-chicken-world-box={`${x},${y},${p.w},${p.h}`} className="absolute rounded-sm border-t-4 border-[#ffd166] shadow-[0_6px_0_#5c120d,0_14px_18px_rgba(40,8,4,0.35)]" style={{ left: x, top: y, width: p.w, height: p.h, background: "linear-gradient(#d8402f, #9a2117 55%, #1f6b62 55%, #1f6b62 80%, #ffd166 80%, #ffd166 88%, #7a1710 88%)" }} />
-        })}
-        {temple && TEMPLE_ROOF_LINES.map(l => (
-          <div key={l.id} data-chicken-id={`tp-${l.id}`} data-chicken-world-box={`${templeScene(screens) * SCENE_W},0,${SCENE_W},${WORLD_GROUND_Y}`} data-chicken-line={lineAttr(l.pts)} className="absolute top-0" style={{ left: templeScene(screens) * SCENE_W, width: SCENE_W, height: WORLD_GROUND_Y }} />
-        ))}
       </div>
       <div className="absolute inset-0" style={lit}><LayoutLayerView elements={shown} layer="scene" editing={editing} power={false} /></div>
       <LayoutLayerView elements={shown} layer="scene" editing={editing} power />
@@ -258,7 +248,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, temple: templeOn = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, patioKey = null, zoomRange }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; temple?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; patioKey?: string | null; zoomRange?: PatioZoom }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, patioKey = null, zoomRange }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; patioKey?: string | null; zoomRange?: PatioZoom }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -276,9 +266,6 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   sceneEdgesRef.current = sceneEdges
   const sceneMusicRef = useRef(sceneMusic)
   sceneMusicRef.current = sceneMusic
-  // the Templo do Gongo (Configurações do Pátio → Templo e Vila): off, its gong, stones, jukebox and racks leave
-  const templeRef = useRef(templeOn)
-  templeRef.current = templeOn
   // the layers menu's debug layers: Escalas (each player's aim fan with the note and degree of each lane, this
   // strong; 0 off) and Hit-boxes
   const scaleFanRef = useRef(scaleFan)
@@ -426,6 +413,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       document.body.classList.toggle('pigchicken-camera-mode', cameraKey)
     }
     const isUi = (t: EventTarget | null) => !!(t as Element | null)?.closest?.("header, aside, button, input, select, a, [data-chicken-ignore], [role='dialog']")
+    // the camera key's wheel (zoom) and press (pan, reset) also work over the Modo editor's hit areas (an element,
+    // selected or not, and its corners): only panels and real controls keep them
+    const blocksCamera = (t: EventTarget | null) => isUi(t) && !(t as Element | null)?.closest?.("[data-patio-hit]")
     // a press on a chicken's body picks her up (the engine drags her); it neither fires nor walks
     const onChicken = (t: EventTarget | null) => !!(t as Element | null)?.closest?.('[data-part="root"]')
     // point-and-click with empty hands: a click or a tap on the scene sends her walking there (like on the globe)
@@ -496,8 +486,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       mouse = { x: e.clientX, y: e.clientY }
     }
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || isUi(e.target) || noMouse()) return
-      if (cameraKey) {
+      if (e.pointerType !== "mouse" || noMouse()) return
+      if (cameraKey && !blocksCamera(e.target)) {
         e.preventDefault(); e.stopPropagation()
         if (e.button === 0) {
           panPointer = e.pointerId; mouse = { x: e.clientX, y: e.clientY }
@@ -506,6 +496,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (e.button === 1) resetView()
         return
       }
+      if (isUi(e.target)) return
       // (sitting at the Harpa she is not picked up: a press on her plucks the strings there)
       if (e.button === 0 && onChicken(e.target) && !p1Seated) return
       // empty hands: the left button pecks as always and, on a quick click, also walks there
@@ -526,13 +517,20 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     const onMenu = (e: MouseEvent) => { if (!isUi(e.target)) e.preventDefault() }
     const onCameraClick = (e: MouseEvent) => {
-      if (cameraKey && !isUi(e.target)) { e.preventDefault(); e.stopPropagation() }
+      if (cameraKey && !blocksCamera(e.target)) { e.preventDefault(); e.stopPropagation() }
     }
     const onWheel = (e: WheelEvent) => {
-      if (isUi(e.target) || noMouse()) return
-      if (cameraKey) zoom = clampZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))
-      // rolled up (away from her hand): the next item; down: the one before
-      else wheel -= Math.sign(e.deltaY)
+      if (noMouse()) return
+      if (cameraKey) { if (!blocksCamera(e.target)) zoom = clampZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)); return }
+      if (isUi(e.target) || !e.deltaY) return
+      // the open inventory wheel: rolled up, the next slice; down, the one before
+      if (wh.open) { wheel -= Math.sign(e.deltaY); return }
+      // otherwise each direction does the action it is bound to in Controles (by default up: Próximo item, down: Item
+      // anterior); the item steps count every notch, any other action is one press of it
+      const action = controls.wheel[e.deltaY < 0 ? "up" : "down"]
+      if (action === "nextItem") wheel++
+      else if (action === "prevItem") wheel--
+      else if (action) engine.tapAction(action)
     }
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
@@ -615,6 +613,17 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     window.addEventListener("blur", cancelPeckInput)
     window.addEventListener("pointercancel", cancelPeckInput)
     let slotsShown = "2:0:0", wheelDrawn = false, fireBlock = false, prevFire = false
+    // the canvas over the characters, sized like the main one and empty, for this frame
+    const clearFront = () => {
+      if (wheelCanvas.width !== canvas.width || wheelCanvas.height !== canvas.height) {
+        wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
+        const dpr = canvas.width / stageWidth()
+        wctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+        wheelCanvas.style.display = ""
+      }
+      wctx.clearRect(0, 0, stageWidth(), window.innerHeight)
+      wheelDrawn = true
+    }
     // horde settings, changed by shooting their buttons
     const horde = { zombies: 6, pattern: 0 }
     const ZOMBIE_COUNTS = [3, 6, 10, 20]
@@ -668,7 +677,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // "Tocar" in the jukebox's panel: the song starts now
     let playRequest: string | null = null, jukeRing = 9
     // where a song plays: in the temple (leaving it loses the song), or anywhere ("free": started by a Gongo or a
-    // Jukebox of the layout, or with the Templo e Vila off). jukeFrom: the jukebox struck last (its button's label)
+    // Jukebox of the layout, or with no Gongo do Templo). jukeFrom: the jukebox struck last (its button's label)
     let jukeFrom = "jukebox", requestFree = false, stageFree = false, stageGongX: number | undefined, wasStageOn = false
     let anchor: { free: boolean; gongX?: number } | null = null
     const unsubPlay = onPlaySong(id => { playRequest = id; requestFree = jukeFrom !== "jukebox" })
@@ -688,15 +697,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStage: stage, __chickenEngine: engine })
     const drone = createDrone()
     let zoneShown: Zone | null = null, zoneBanner = 0
+    let clockOff: number | null = null
     const unsubItems = subscribeItems(next => combat.setItems(next))
     // the souls' catalogue in use: the game's, or the draft an admin edits in the library (the souls flying follow it)
     setSoulEntries(loadSoulEntries())
     const unsubSouls = subscribeSoulEntries(next => { setSoulEntries(next); combat.refreshSouls() })
     // creative mode: a rack that keeps a pistol to pick up, and target dummies in the first two scenes
-    let placed = false, offerShown: GrabOffer = "", templeFor = "", wasPortalArrival = false
-    // the temple's things move with the world's width: the gong and its racks
-    let gong: Combat["targets"][number] | null = null, resetStone: Combat["targets"][number] | null = null, jukebox: Combat["targets"][number] | null = null
-    const templeRacks: Combat["racks"] = []
+    let placed = false, offerShown: GrabOffer = "", wasPortalArrival = false
     const G = WORLD_GROUND_Y
     // the Pátio's own things (dummies, racks, horde buttons) come from its layout and follow its edits
     const layoutSync = createLayoutSync(combat)
@@ -704,37 +711,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the Quadros de lousa's ghosts (training-ghosts.ts), in world units like the layout they come from
     const ghosts = ghostHostRef.current ? createTrainingGhosts(ghostHostRef.current) : null
     let ghostElements: LayoutElement[] = []
-    const place = () => {
-      // the temple: the gong (strike it to start) and a few weapons and instruments by the entrance
-      combat.addButton(0, G - 40, "gong", 130, 150)
-      gong = combat.targets[combat.targets.length - 1]
-      // and the reset stone (Recomeçar): strike it to end the game and clear the panels
-      combat.addButton(0, G - 4, "reset", 80, 110)
-      resetStone = combat.targets[combat.targets.length - 1]
-      // and the jukebox: strike it to pick a song
-      combat.addButton(0, G - 4, "jukebox", JUKEBOX_W, JUKEBOX_H)
-      jukebox = combat.targets[combat.targets.length - 1]
-      ;(["bat", "pistol", "smg", "guitar", "flute"] as ItemId[]).forEach(id => { combat.addRack(0, id); templeRacks.push(combat.racks[combat.racks.length - 1]) })
-      placed = true
-    }
-    const placeTemple = (screens: number, on: boolean) => {
-      // without the temple its things wait far outside the world, and its racks stop (their items go too)
-      const L = on ? templeScene(screens) * SCENE_W : -1e6
-      if (gong) { gong.x = gong.home = L + GONG_X }
-      if (resetStone) { resetStone.x = resetStone.home = L + RESET_X }
-      if (jukebox) { jukebox.x = jukebox.home = L + DISC_X }
-      templeRacks.forEach((r, i) => {
-        r.x = L + 60 + i * 90
-        const at = combat.racks.indexOf(r)
-        if (!on && at >= 0) {
-          combat.racks.splice(at, 1)
-          const item = combat.pickups.findIndex(p => p.id === r.pickupId)
-          if (item >= 0) combat.pickups.splice(item, 1)
-          r.pickupId = undefined; r.t = 0
-        } else if (on && at < 0) combat.racks.push(r)
-      })
-      templeFor = `${screens}:${on}`
-    }
+    // the Templo do Gongo's gong, stone, jukebox and racks are elements of the layout (layout-sync.ts)
+    const place = () => { placed = true }
     // the platforms the shots hit, in world units (the same boxes the world draws)
     let worldBoxes: Box[] = []
     // the layout's Zonas sonoras and Faixas fixas: what each point of the map plays
@@ -795,13 +773,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const spawnX = spawnXRef.current
         if (spawnX !== undefined && !engine.getPortalTransit()) { engine.shift(spawnX - camX - st.x); st = engine.getMotionState() }
       }
-      if (templeFor !== `${S.screens}:${templeRef.current}`) placeTemple(S.screens, templeRef.current)
       if (syncedElements !== elementsRef.current || syncedScreens !== S.screens) {
         syncedElements = elementsRef.current; syncedScreens = S.screens
         const shown = elementsInWorld({ v: 1, elements: syncedElements }, S.screens)
         layoutSync.sync(syncedElements, S.screens)
         gongSet.clear()
-        for (const el of syncedElements) if (el.kind === "gong" && el.params.gong) gongSet.set(el.id, el.params.gong)
+        for (const el of syncedElements) if (el.kind === "gong" && el.params.gong && !el.params.gong.temple) gongSet.set(el.id, el.params.gong)
         for (const id of [...gongRuns.keys()]) if (!gongSet.has(id)) { gongRuns.delete(id); templeDraw.gongs.delete(`gong:${id}`) }
         const nextBoxes = layoutBoxes(shown)
         shotRooms = new Map(houseRooms(shown).map(room => [room.id, { id: room.id, ...roomShotWalls(room), rect: room.room }]))
@@ -1016,14 +993,19 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // brooding with an item in the wing is aiming: she stays put and the aim is locked while brood is held
       const armed = !!combat.held
       const aimLock = act.down && armed && st.grounded
-      // without the mouse, the movement keys aim in the 8 directions; brood is not a direction, crouch is down
-      const keys = keysAimFor(devs) ? { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch ? 1 : 0) - (act.up ? 1 : 0) } : { x: 0, y: 0 }
-      const keysAim = keys.x !== 0 || keys.y !== 0
+      // the movement keys aim in the 8 directions (brood is not a direction, crouch is down): without the mouse always;
+      // with the mouse only once it has been still for `keysAimRelease` (0 = never)
+      const keysOwn = keysAimFor(devs), keysAfterMouse = keysAimAfterMouse(devs, S.keysAimRelease)
+      const keyDir = { x: (act.right ? 1 : 0) - (act.left ? 1 : 0), y: (act.crouch ? 1 : 0) - (act.up ? 1 : 0) }
+      const keysPressed = (keysOwn || keysAfterMouse) && (keyDir.x !== 0 || keyDir.y !== 0)
       // the wheel's stick choices are not aim: while it is open the aim stick is not held
       const liveStick = wh.open ? null : rightStickForAim ?? touchAim.current
       if (liveStick) { heldStick = { stick: liveStick, touch: !rightStick }; stickOwner.moved(1, now); owner.release() }
       // the left stick or the movement keys take the aim back from a mouse / aim stick still for `aimRelease`
-      if (leftStick || keysAim) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
+      if (leftStick || (keysOwn && keysPressed)) { owner.otherAim(now, S.aimRelease); stickOwner.otherAim(now, S.aimRelease) }
+      // with the mouse, the keys wait for it to be still for `keysAimRelease`
+      if (keysAfterMouse && keysPressed) { owner.otherAim(now, S.keysAimRelease); stickOwner.otherAim(now, S.keysAimRelease) }
+      const keys = keysOwn || (keysAfterMouse && !owner.owns) ? keyDir : { x: 0, y: 0 }
       const held = !liveStick && stickOwner.owns ? heldStick : null
       // her shoulder as drawn (it turns with her body on walls)
       const origin = engine.getState().shoulder
@@ -1116,15 +1098,17 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             reloadPending = false; reloadFired = false
           }
           return pressed
-        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabRun: engine.grabIsRun(),
+        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(),
+        grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
         groupPick: wh.open ? null : groupPress(act, prev), move,
       }
       slotPick = 0; slotTap.current = 0
-      // (at the Bateria its pieces' shortcuts come first: L3 is the Ataque there, not Soltar alma)
-      cageBinds("p1", p1Kit ? {} : act, p1Kit ? {} : prev)
+      // (sitting at a fixed instrument its own binds come first: L3 is the Harpa's sustenido and the Bateria's Ataque
+      // there, not Soltar alma)
+      cageBinds("p1", p1Seated ? {} : act, p1Seated ? {} : prev)
       prev = { ...act, fire, melee }
       const boxes = worldBoxes
-      const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: st.state, vx: st.vx }
+      const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: bodyState(st), vx: st.vx }
       const worldOrigin = { x: origin.x + camX, y: origin.y - camY }
       // the enemies move inside the scene she is in: the same for every screen size (and every player)
       const sceneL = Math.min(sceneAt(body.x), worldScenes(S.screens) - 1) * SCENE_W
@@ -1163,7 +1147,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const playerOf = new Map([[engine, "p1"] as const, ...Array.from(extras?.current?.entries() ?? [], ([id, e]) => [e, id] as const)])
       combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? []), ...Array.from(chicks?.current?.values() ?? [])].map(eng => {
         const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
-        return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number) => eng.impulse(vx, vy, true) }
+        return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }
       }))
       if (perches.spans.length) {
         perches.camX = camX; perches.camY = camY - yr.lo; perches.restY = yr.lo; perches.time += dt
@@ -1214,12 +1198,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // (the part of the screen the Bateria's chart may use, whatever the camera's zoom: under the header's buttons)
       { const hw = stageWidth() / 2, hh = window.innerHeight / 2; setDrumScreen({ l: hw - (hw - 8) / zoom, r: hw + (hw - 8) / zoom, t: hh - (hh - 60) / zoom, b: hh + (hh - 8) / zoom }) }
       // her hands over its strings: the fingers on the screen (each one a hand, its touch the pluck); else a gamepad's
-      // sticks (right: the front hand, left: the back one; a stick at rest is a hand off the strings; Correr: the
-      // sustenido); else the aim itself (the mouse's own place; the keys' direction, a plain note)
+      // sticks (right: the front hand, left: the back one; a stick at rest is a hand off the strings; the Harpa's
+      // Sustenido bind, L3 or Shift by default); else the aim itself (the mouse's own place; the keys' direction, a plain note)
       if (combat.seated) {
         const fanR = SCALE_FAN_R * seatedFanSize(scaleSizeRef.current) * st.scale
         const padR = wh.open ? null : rightStickForAim, padL = wh.open ? null : stickFor(devs, 0, an.deadzoneL)
-        const stickHand = (s: Stick): StringAim => ({ angle: Math.atan2(s.y, s.x), reach: s.mag, kind: "stick", sharp: act.run })
+        const sharp = harpHeld(controls, "sharp", devs, drumKeys, padButtonValues(devs))
+        const stickHand = (s: Stick): StringAim => ({ angle: Math.atan2(s.y, s.x), reach: s.mag, kind: "stick", sharp })
         if (padR || padL) padHands = true
         else if (aim.source === "mouse" || aim.source === "keys") padHands = false
         let hands: (StringAim | null)[] = [null, null]
@@ -1230,7 +1215,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           })
         } else if (padR || padL) hands = [padR ? stickHand(padR) : null, padL ? stickHand(padL) : null]
         else if (aim.target) hands = [{ angle: Math.atan2(aim.target.y - origin.y, aim.target.x - origin.x), reach: aimReach({ px: Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y), radius: fanR }), kind: "point" }, null]
-        else if (!padHands && (aim.source === "keys" || aim.source === "facing")) hands = [{ angle: aim.angle, reach: 1, kind: "none", sharp: act.run }, null]
+        else if (!padHands && (aim.source === "keys" || aim.source === "facing")) hands = [{ angle: aim.angle, reach: 1, kind: "none", sharp }, null]
         combat.setStringHands(hands)
         // at the Bateria: each stick is a drumstick on the chart, each click or finger that landed a hit, and
         // every piece's shortcuts as her keys and gamepad say them
@@ -1291,21 +1276,23 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           deselect: xa.deselectItem && !xp.deselectItem,
           cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
-          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabRun: eng.grabIsRun(),
+          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(),
+          grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
           groupPick: groupPress(xa, xp),
         }
-        cageBinds(id, extraKit.has(id) ? {} : xa, extraKit.has(id) ? {} : xp)
+        cageBinds(id, extraSeated.has(id) ? {} : xa, extraSeated.has(id) ? {} : xp)
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
-        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx }
         combat.setAimReach((rs ?? ls)?.mag ?? 1, rs ?? ls ? "stick" : "none")
         { const xdist = S.reticleDist * (rs ? 0.45 + 0.55 * rs.mag : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
         if (eng.takeSeatLeft()) combat.standUp()
         // (her hands over the Harpa's strings: the two sticks; with the keys, the direction they aim)
         if (combat.seated) {
           const padL = stickFor(devs, 0, an.deadzoneL), pad = !!devs?.some(isPadDevice)
-          const stickHand = (s: Stick): StringAim => ({ angle: Math.atan2(s.y, s.x), reach: s.mag, kind: "stick", sharp: xa.run })
-          combat.setStringHands(rs || padL ? [rs ? stickHand(rs) : null, padL ? stickHand(padL) : null] : pad ? [null, null] : [{ angle, reach: 1, kind: "none", sharp: xa.run }, null])
+          const sharp = harpHeld(controls, "sharp", devs, drumKeys, padButtonValues(devs))
+          const stickHand = (s: Stick): StringAim => ({ angle: Math.atan2(s.y, s.x), reach: s.mag, kind: "stick", sharp })
+          combat.setStringHands(rs || padL ? [rs ? stickHand(rs) : null, padL ? stickHand(padL) : null] : pad ? [null, null] : [{ angle, reach: 1, kind: "none", sharp }, null])
           // (at the Bateria: their sticks are the drumsticks, their keys and buttons the pieces' shortcuts)
           if (combat.scale.id === "drums") {
             extraKit.add(id)
@@ -1328,8 +1315,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.use("p1")
 
       // ---------- the temple's mini-game ----------
-      const tL = templeScene(S.screens) * SCENE_W
-      const inTemple = templeRef.current && body.x >= tL && body.x < tL + SCENE_W
+      // the Templo plays in the scene around its Gongo do Templo (the first one in the world), the gong where the
+      // temple always had it (GONG_X from the scene's left edge, the scene kept inside the world); without one there
+      // is no Templo
+      const templeGong = combat.targets.find(t => t.label === "gong" && t.x > -1e5)
+      const hasTemple = !!templeGong
+      const tL = templeGong ? Math.max(0, Math.min(SCENE_W * (worldScenes(S.screens) - 1), templeGong.x - GONG_X)) : templeScene(S.screens) * SCENE_W
+      const inTemple = hasTemple && body.x >= tL && body.x < tL + SCENE_W
+      // the Recomeçar stone she struck: the one nearest to her
+      const resetStone = resetHit ? combat.targets.filter(t => t.label === "reset" && t.x > -1e5).sort((a, b) => Math.abs(a.x - body.x) - Math.abs(b.x - body.x))[0] : undefined
       const events = combat.music.events.splice(0)
       // the note stage first: while its song plays, the gong is dull and the reset stone stops the song
       const stageOn = stage.active
@@ -1342,7 +1336,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const id = playRequest
         playRequest = null
         if (id === CAMPAIGN_ID) startCampaign = !stageOn
-        else if (stage.select(id) && !stageOn) { discHit = true; anchor = { free: requestFree || !templeRef.current } }
+        else if (stage.select(id) && !stageOn) { discHit = true; anchor = { free: requestFree || !hasTemple } }
         requestFree = false
       }
       // Parar, in the jukebox's panel
@@ -1398,7 +1392,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (stageOn) resetHit = false
       // a song just began: where it plays (the editor's Tocar daqui follows the jukebox struck last)
       if (stage.active && !wasStageOn) {
-        const a = anchor ?? { free: jukeFrom !== "jukebox" || !templeRef.current }
+        const a = anchor ?? { free: jukeFrom !== "jukebox" || !hasTemple }
         stageFree = a.free; stageGongX = a.gongX
       }
       wasStageOn = stage.active
@@ -1411,7 +1405,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       nowPlaying.beat = stage.beatAt(combat.music.time, combat.music.secondsPerBeat())
       nowPlaying.draft = stage.state.draft
       const io: TempleIO = {
-        targets: combat.targets, music: combat.music, sceneL: tL, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
+        targets: combat.targets, music: combat.music, sceneL: tL, gongX: templeGong?.x, resetX: resetStone?.x, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
         gongHit, resetHit: resetHit || forcedReset, firePressed: input.firePressed,
         // a song picked: the gong's strikes start it (on the next frame, through the stage)
         song: songPicked ? () => { playRequest = library.picked; requestFree = false } : undefined, start: startCampaign, beats: events.filter(e => e.kind === "beat").map(e => e.n),
@@ -1452,13 +1446,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const inZone = templeMusic && musicHere ? null : zoneAt(playZones, body.x, body.y - 90 * body.scale, true)
       combat.setZoneBirds(inZone?.zone.birds ?? null)
       // with the scenes' zones off (Configurações do Pátio), outside a Zona sonora there is no ambience at all
-      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone) : musicHere ? templeMusic?.zone ?? TEMPLE_IDLE : NO_SCENE_ZONE
+      const zone = inZone ? soundZoneOf(inZone.id, inZone.zone, zoneBlockSolo()) : musicHere ? templeMusic?.zone ?? TEMPLE_IDLE : NO_SCENE_ZONE
       combat.music.setZone(zone)
       combat.setQuantize(S.quantize)
       setMusicVolumes(mixGain("notes"), mixGain("ambience"))
-      if (combat.music.zone !== zoneShown) { zoneShown = combat.music.zone; zoneBanner = 2.5 }
+      if (combat.music.family !== zoneShown) { zoneShown = combat.music.family; zoneBanner = 2.5 }
       zoneBanner = Math.max(0, zoneBanner - dt)
       const templeZone = combat.music.zone.id.startsWith("templo")
+      // the conductor's clock runs on frames and the sound on the audio clock: how far apart they are is kept
+      // smoothed, so what is scheduled ahead lands on the audio clock without the jitter of a frame
+      const clockGap = audioTime() - combat.music.time
+      clockOff = clockOff === null || Math.abs(clockGap - clockOff) > 0.03 ? clockGap : clockOff + (clockGap - clockOff) * 0.02
+      const clockFix = clockOff - clockGap
       events.forEach(e => {
         if (mixGain("ambience") <= 0) return
         if (e.kind === "bar" && !stage.silent) {
@@ -1467,10 +1466,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           if (voice) { const d = droneOf(z, combat.music.chord()); drone.set(d.root + 12 * voice.oct, d.fifth, d.third, voice.tone, voice.vol) }
           else drone.set(null)
         }
+        // the recordings of the zone that takes over on the next bar (and of its variation blocks) load ahead
+        if (e.kind === "beat") { const p = combat.music.pending; if (p) for (const z of p.blocks?.map(b => b.zone) ?? [p]) preloadKit(ambienceKit(z.ambience ?? legacyAmbience(z.feel))) }
         if (e.kind === "step") {
           // a pause in total silence: no background
           if (templeZone) { if (!stage.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }
-          else ambience(combat.music.zone, e.n % 16, combat.music.bar, combat.music.chord(true), combat.music.secondsPerBeat())
+          // a zone's ambience is scheduled one sixteenth ahead (the Templo's own music plays on the sixteenth)
+          const up = combat.music.ahead()
+          if (!up.zone.id.startsWith("templo")) ambience(up.zone, up.step, up.bar, up.chord, up.spb, up.wait + clockFix)
         }
       })
       if (mixGain("ambience") <= 0 || stage.silent) drone.set(null)
@@ -1627,7 +1630,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           const power = xd.fireMode === "charge" ? xd.chargeMin + (1 - xd.chargeMin) * combat.fireCharge : 1
           xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
         }
-        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: xs.state, vx: xs.vx }
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx }
         drawVolumeRing(ctx, combat, xrx, xry, tints?.[id] ?? "#ffffff")
         drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
         if (combat.throwCharge > 0 && combat.held) {
@@ -1641,17 +1644,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // one inventory per local player: a small row to the left of each player's avatar (top right); on desktop and
       // tablet the first player's is the big bar at the bottom right instead
       const barBottom = !liftedRef.current
+      // with the Grade de blocos on, the inventories and the Gaiolas go on the canvas over the characters: the faces
+      // of its blocks cover everything under them
+      const hudFront = !!mineStore.round, hud = hudFront ? wctx : ctx
+      if (hudFront) clearFront()
       const offsets = getTouchLayout().offsets
       const drag = barDrag.current?.active ? barDrag.current : null
       arpBoxes.length = 0
-      arpBoxes.push(...drawInventory(ctx, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
+      arpBoxes.push(...drawInventory(hud, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
       cageBoxes.length = 0
       const cam = { x: camX, y: camY, zoom }
       // the first player's Gaiolas hang in the top left corner, under the header, and swing with the camera
       combat.use("p1")
       stepCageHud(cageHud, swayCamX === null || dt <= 0 ? 0 : (camX - swayCamX) / dt, dt); swayCamX = camX
       const callback = !combat.bagOfSouls.length && combat.looseSouls > 0, front = combat.bagOfSouls.length > 0 || callback
-      for (const b of drawHangingCages(ctx, cageHud, combat.cages, { top: viewTop, color: tints?.p1 ?? "#7bd88f", deny: combat.cageDeny, now, dt, callback, hover: cageHover?.id === "p1" ? cageHover.i : null })) cageBoxes.push({ id: "p1", ...b, on: b.i > 0 || front })
+      for (const b of drawHangingCages(hud, cageHud, combat.cages, { top: viewTop, color: tints?.p1 ?? "#7bd88f", deny: combat.cageDeny, now, dt, callback, hover: cageHover?.id === "p1" ? cageHover.i : null })) cageBoxes.push({ id: "p1", ...b, on: b.i > 0 || front })
       // the other local players' are counters left of their avatars (the one in front lit), and their inventory row
       // starts left of those. With the on-screen controls (phones) the avatars and counters stay in the top right
       // corner, wherever the inventory row was moved to
@@ -1660,10 +1667,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         combat.use(id)
         const counts = cageCounts(combat.cages), h = 24, color = tints?.[id] ?? "#7bd88f"
         const rowW = counts.reduce((n, c) => n + cageCounterWidth(c.item, h) + 3, 0)
-        arpBoxes.push(...drawInventory(ctx, combat, i + 1, false, tints?.[id] ?? null, now, { x: (offsets.inventory?.x ?? 0) - Math.max(0, rowW - INV_SIZE), y: offsets.inventory?.y ?? 0 }))
+        arpBoxes.push(...drawInventory(hud, combat, i + 1, false, tints?.[id] ?? null, now, { x: (offsets.inventory?.x ?? 0) - Math.max(0, rowW - INV_SIZE), y: offsets.inventory?.y ?? 0 }))
         const on = (counts[0]?.n ?? 0) > 0 || combat.looseSouls > 0
         const right = stageWidth() - INV_STACK.right - INV_SIZE - INV_STACK.avatarGap + (soulsAt?.x ?? 0), top = invRowY(i + 1) + (soulsAt?.y ?? 0) + (INV_SIZE - h) / 2
-        for (const b of drawCageCounters(ctx, counts, right, top, h, color, "right", 0)) cageBoxes.push({ id, ...b, cx: b.x + b.w / 2, cy: b.y + b.h / 2, on: b.i > 0 || on })
+        for (const b of drawCageCounters(hud, counts, right, top, h, color, "right", 0)) cageBoxes.push({ id, ...b, cx: b.x + b.w / 2, cy: b.y + b.h / 2, on: b.i > 0 || on })
       })
       // the Gaiola under the pointer stopped being a button (its last soul left): the reticle comes back
       if (cageHover && !cageBoxes.some(b => b.id === cageHover!.id && b.i === cageHover!.i && b.on)) { hoverCage(null); mouseOverUi = false }
@@ -1700,13 +1707,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.use("p1")
       const stained = combat.poopStains.length > 0
       if (wh.open || fronts.length || stained) {
-        if (wheelCanvas.width !== canvas.width || wheelCanvas.height !== canvas.height) {
-          wheelCanvas.width = canvas.width; wheelCanvas.height = canvas.height
-          const dpr = canvas.width / stageWidth()
-          wctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-          wheelCanvas.style.display = ""
-        }
-        wctx.clearRect(0, 0, stageWidth(), window.innerHeight)
+        if (!hudFront) clearFront()
         wctx.save()
         if (zoom !== 1) { wctx.translate(stageWidth() / 2, window.innerHeight / 2); wctx.scale(zoom, zoom); wctx.translate(-stageWidth() / 2, -window.innerHeight / 2) }
         fronts.forEach(([id, at]) => { combat.use(id); drawSwing(wctx, combat, at, "front", screenView) })
@@ -1715,8 +1716,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         wctx.restore()
         combat.use("p1")
         if (wh.open) drawWheel(wctx, combat, wh.hover, Math.min(1, (now - wh.at) / 110))
-        wheelDrawn = true
-      } else if (wheelDrawn) {
+      } else if (wheelDrawn && !hudFront) {
         wheelCanvas.width = 1; wheelCanvas.height = 1
         wheelCanvas.style.display = "none"; wheelDrawn = false
       }
@@ -1934,7 +1934,7 @@ function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, bottom, grabOffer 
     </button>
   )
   return (
-    <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
+    <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[206] select-none" style={{ touchAction: "none" }}>
       <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
         {/* standing on an item: grab it (blue) or equip the one she already carries (grey) */}
         {(grabOffer || editing) && <Movable id="grab" className="absolute" style={{ right: 184, top: (STICK - 48) / 2 }}>{button(GRAB_LABELS[grabOffer || "take"], "grab", grabOffer === "equip" ? "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white" : "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white")}</Movable>}
@@ -2042,13 +2042,16 @@ function effectGame(e: Effect | null, weight: number, doses: readonly Effect[] =
 }
 
 // ---------- the zone's ambience on a sixteenth: its percussion and its bass line (the sustained voices follow the
-// bars). With swing the off-beat eighths land late ----------
-function ambience(zone: Zone, step: number, bar: number, chord: number[], spb: number) {
-  const a = zone.ambience ?? legacyAmbience(zone.feel)
-  const late = zone.feel === "swing" && step % 4 === 2 ? (spb / 4) * 0.33 : 0
-  for (const hit of beatHits(a, step)) playDrum(hit.drum, late, hit.vel)
+// bars). It is scheduled one sixteenth ahead (music.ts ahead), `wait` seconds before the sixteenth, so every note
+// lands exactly where its microtiming puts it, early or late: each drum by its own time, the bass by the groove ----------
+function ambience(zone: Zone, step: number, bar: number, chord: number[], spb: number, wait: number) {
+  const a = zone.ambience ?? legacyAmbience(zone.feel), s16 = spb / 4, kit = ambienceKit(a)
+  if (step % 4 === 0) preloadKit(kit)
+  for (const hit of beatHits(a, step, zone.feel)) playKitHit(kit, hit.drum, Math.max(0, wait + hit.shift * s16), hit.vel)
   const notes = bassNotes(a, chord, droneOf(zone, chord).root - 24, step, bar)
-  for (const n of notes) playBass(n.tone, n.midi, late, n.len * (spb / 4), n.vel)
+  if (!notes.length) return
+  const late = Math.max(0, wait + grooveOf(a, zone.feel)[step] * s16)
+  for (const n of notes) playBass(n.tone, n.midi, late, n.len * s16, n.vel)
 }
 
 export { BAR, BAR_GROUND_H, INV_STACK } from "@/components/pigchicken/draw/hud"

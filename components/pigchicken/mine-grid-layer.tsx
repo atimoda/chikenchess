@@ -24,6 +24,7 @@ import {
 } from "@/lib/pigchicken/mine-grid"
 import { mineStore, setMineParams, setMineSide, startMineRound } from "@/lib/pigchicken/mine-grid-store"
 import { BOMB_USE_LABELS, MINE_YELLOW, mineHints, mineSpotOf } from "./mine-grid-play"
+import { MINE_BOMB_BOX, mineBombSvg } from "@/lib/pigchicken/mine-bomb-art"
 import { FollowLayer } from "./patio-layout"
 
 // the round of the Pátio open: drawn again when another Pátio opens, when the grid's shape (its blocks' cut corners
@@ -128,6 +129,16 @@ function Face({ k, x, y, size, p, veil, clip }: { k: MineCell; x: number; y: num
   )
 }
 
+// the bomb of a block (lib/pigchicken/mine-bomb-art.ts). Armed: the timer lit, with the seconds its detonator has
+// left (the "Tempo do detonador" while nobody pressed it) and a glow in the damage's colour; disarmed: grey, the
+// timer off and a wire cut
+const BOMB_W = 0.36
+function Bomb({ k, size, p }: { k: MineCell; size: number; p: MineGridParams }) {
+  const [, , bw, bh] = MINE_BOMB_BOX, w = size * BOMB_W
+  const svg = useMemo(() => mineBombSvg(k.armed ? { time: k.fuse ?? p.fuse } : {}), [k.armed, k.fuse === null ? p.fuse : Math.ceil(k.fuse)])
+  return <svg viewBox={MINE_BOMB_BOX.join(" ")} width={w} height={(w * bh) / bw} style={{ filter: k.armed ? `drop-shadow(0 0 ${Math.max(3, size * 0.02)}px ${p.red})` : "grayscale(0.9)" }} dangerouslySetInnerHTML={{ __html: svg }} />
+}
+
 // a block's outline with its corners cut ("Cantos em octógono"), for a CSS clip-path and for an SVG path; and the
 // ring of its walls (the outline and, the other way round, the room inside)
 const outlinePath = (pts: [number, number][]) => `M${pts.map(([x, y]) => `${x} ${y}`).join("L")}Z`
@@ -164,7 +175,7 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
     // are one solid for the engine (`data-chicken-fused`)
     return [
       ...mineWalls(grid, close).map(w => ({ ...w, fit: undefined as number | undefined, cross: w.cross ? `closed,${w.cross}` : undefined })),
-      ...minePlugs(grid, close).map(p => ({ ...p, cross: undefined as string | undefined })),
+      ...minePlugs(grid, close).map(p => ({ ...p, shape: undefined as [number, number][] | undefined, cross: undefined as string | undefined })),
     ]
   }, [grid, pass, view.near, version])
   const cells = useMemo(() => {
@@ -212,7 +223,8 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
             {p.wallOpacity > 0 && (cutShapes
               ? <svg className="absolute inset-0 h-full w-full" style={{ opacity: p.wallOpacity / 100 }}><path d={shapeOf(r)!.outer} fill={`${p.grey}40`} /><path d={shapeOf(r)!.walls} fill="#5b6470" fillRule="evenodd" /></svg>
               : <div className="absolute inset-0" style={{ background: `${p.grey}40`, boxShadow: `inset 0 0 0 ${t}px #5b6470`, opacity: p.wallOpacity / 100 }} />)}
-            {mine === "closed" && k.bomb && <span className="relative rounded-full" style={{ width: size * 0.26, height: size * 0.26, background: k.armed ? "#14181d" : "#6f7882", boxShadow: k.armed ? `0 0 0 3px ${p.red}` : "0 0 0 3px #3a4149" }}>
+            {mine === "closed" && k.bomb && <span className="relative flex">
+              <Bomb k={k} size={size} p={p} />
               {uses.has(`${c},${r}`) && <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[13px] font-bold text-white" style={{ bottom: "118%", textShadow: "0 1px 0 #14181d" }}>{BOMB_USE_LABELS[uses.get(`${c},${r}`)!]}</span>}
             </span>}
           </div>)}
@@ -235,7 +247,7 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
           ? mine === "closed" && <div key={`${c},${r}`} className="absolute bg-[#0e1512]" style={{ left: x, top: y, width: size, height: size, clipPath: shapeOf(r)?.clip }} />
           : <Face key={`${c},${r}`} k={k} x={x} y={y} size={size} p={p} veil={mine === "open"} clip={shapeOf(r)?.clip} />)}
         {/* the admin's debug (Configurações do Pátio → Grade de blocos): the bombs and the numbers of every block */}
-        {debug.bombs && cells.filter(({ k }) => !k.open && k.bomb).map(({ c, r, x, y, k }) => <span key={`b${c},${r}`} className="absolute rounded-full" style={{ left: x + size * 0.37, top: y + size * 0.37, width: size * 0.26, height: size * 0.26, background: k.armed ? "#14181d" : "#6f7882", boxShadow: k.armed ? `0 0 0 3px ${p.red}` : "0 0 0 3px #3a4149" }} />)}
+        {debug.bombs && cells.filter(({ k }) => !k.open && k.bomb).map(({ c, r, x, y, k }) => <span key={`b${c},${r}`} className="absolute flex items-center justify-center" style={{ left: x, top: y, width: size, height: size }}><Bomb k={k} size={size} p={p} /></span>)}
         {debug.numbers && cells.map(({ c, r, x, y }) => <span key={`n${c},${r}`} className="absolute rounded-sm bg-black/70 px-1 font-mono font-bold text-white" style={{ left: x + 6, top: y + 6, fontSize: Math.max(12, size * 0.07) }}>{bombsAround(grid, c, r)}</span>)}
         {/* the open block a bomb in the wing would close */}
         {cells.filter(({ c, r }) => installs.has(`${c},${r}`)).map(({ c, r, x, y }) => cutShapes

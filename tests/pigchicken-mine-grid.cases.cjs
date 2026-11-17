@@ -9,17 +9,20 @@ const geo = (cell = 288, gap = 32, w = world) => M.mineGeometry({ cell, gap }, w
 test('the saved grid is cleaned to its ranges; nothing saved means no grid', () => {
   assert.equal(M.normalizeMineGrid(undefined), undefined)
   assert.equal(M.normalizeMineGrid('on'), undefined)
-  const round = { blockNotes: false, toFlag: 24, toOpen: 600, toDoubt: 24, turn: 0, fuse: 10, startBombs: 2, grey: '#8f98a3', blue: '#4d9bff', red: '#ff5a5a', wallOpacity: 100, corner: 0 }
+  const round = { blockNotes: false, toFlag: 24, toOpen: 600, insideBreaks: true, toDoubt: 24, turn: 0, fuse: 10, startBombs: 2, grey: '#8f98a3', blue: '#4d9bff', red: '#ff5a5a', wallOpacity: 100, corner: 0 }
   assert.deepEqual(M.normalizeMineGrid({}), { on: false, cell: 288, gap: 32, pass: true, bombs: 15, ...round })
   assert.deepEqual(M.normalizeMineGrid({ on: true, cell: 5000, gap: -9, pass: false, bombs: 99.6 }), { on: true, cell: 960, gap: 0, pass: false, bombs: 60, ...round })
   assert.deepEqual(M.normalizeMineGrid({ on: 1, cell: 291, gap: 33, bombs: NaN }), { on: false, cell: 288, gap: 32, pass: true, bombs: 15, ...round })
   // the seesaw's settings: ranges, the turn's choices and colours as #rrggbb
   assert.deepEqual(
     M.normalizeMineGrid({ blockNotes: true, toFlag: 1, toOpen: 99999, toDoubt: 300, turn: 'first', fuse: -4, startBombs: 3.4, grey: 'red', blue: '#ABCDEF', red: '#12', wallOpacity: 37, corner: 37 }),
-    { on: false, cell: 288, gap: 32, pass: true, bombs: 15, blockNotes: true, toFlag: 4, toOpen: 5000, toDoubt: 200, turn: 'first', fuse: 0, startBombs: 3, grey: '#8f98a3', blue: '#abcdef', red: '#ff5a5a', wallOpacity: 35, corner: 35 },
+    { on: false, cell: 288, gap: 32, pass: true, bombs: 15, blockNotes: true, toFlag: 4, toOpen: 5000, insideBreaks: true, toDoubt: 200, turn: 'first', fuse: 0, startBombs: 3, grey: '#8f98a3', blue: '#abcdef', red: '#ff5a5a', wallOpacity: 35, corner: 35 },
   )
   // the notes bounce only where a Pátio says so
   assert.equal(M.normalizeMineGrid({ blockNotes: 1 }).blockNotes, false)
+  // the closed side breaks its blocks unless a Pátio says it does not
+  assert.equal(M.normalizeMineGrid({ insideBreaks: false }).insideBreaks, false)
+  assert.equal(M.normalizeMineGrid({ insideBreaks: 0 }).insideBreaks, true)
   assert.equal(M.normalizeMineGrid({ turn: 135 }).turn, 135)
   assert.equal(M.normalizeMineGrid({ turn: 'random' }).turn, 'random')
   assert.equal(M.normalizeMineGrid({ turn: 30 }).turn, 0)
@@ -365,26 +368,54 @@ test('with cut corners and no gap, the frontier goes round a closed block from o
   assert.equal(full.some(w => w.id === 'mine-0-0-tr' || w.id === 'mine-1-0-tl' || w.id === 'mine-0-1-br'), false)
 })
 
-test('beside a plugged gap a cut corner is filled for the bodies that do not fit: the blocks are square there', () => {
+test('with cut corners a plug stands only between the straight sides: the cuts stay open for every body, as drawn', () => {
   // (0,1) and (1,1) closed side by side among open blocks, 3 x 3 of 300 with a gap of 30
   const g = M.mineGeometry({ cell: 300, gap: 30, corner: 100 }, { width: 960, top: 930 - 960, ground: 930 })
   const free = []
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (r !== 1 || c === 2) free.push({ c, r })
   const grid = M.createMineGrid(g, { bombs: 0, seed: 1, free })
   const plugs = M.minePlugs(grid), k = Math.round(g.cut * 10) / 10
-  assert.deepEqual(plugs.map(p => [p.id, p.kind, p.fit]), [
-    ['mine-0-1-shaft', 'shaft', 30], ['mine-0-1-fill-tr', 'corner', 30], ['mine-0-1-fill-br', 'corner', 30], ['mine-1-1-fill-tl', 'corner', 30], ['mine-1-1-fill-bl', 'corner', 30],
-  ])
+  // the shaft's plug: from the end of the top cuts to the start of the bottom ones
+  assert.deepEqual(plugs.map(p => [p.id, p.kind, p.fit, p.x, Math.round(p.y * 10) / 10, p.w, Math.round(p.h * 10) / 10]), [['mine-0-1-shaft', 'shaft', 30, 300, 300 + k, 30, Math.round((300 - g.cut * 2) * 10) / 10]])
   const big = solid([...M.mineWalls(grid), ...plugs])
-  // one flat roof from the left block's cut corner to the right block's: its top, the fill, the plug, the fill, the top
-  const roof = big.filter(f => f.endsWith(' up') && f.includes(',300-')).map(f => f.split(' ')[0].split('-').map(p => Number(p.split(',')[0])))
-  assert.deepEqual(roof.sort((a, b) => a[0] - b[0]), [[k, 300 - k], [300 - k, 300], [300, 330], [330, 330 + k], [Math.round((330 + k) * 10) / 10, 630 - k]])
-  // no slope left between them, and no side of the plug
-  for (const f of [`${300 - k},300-300,${300 + k} upright`, `330,${300 + k}-${330 + k},300 upleft`, `${300 - k},600-300,${600 - k} downright`]) assert.equal(big.includes(f), false, f)
+  // a valley over the plug: the left block's slope down, the plug's top, the right block's slope up
+  for (const f of [`${300 - k},300-300,${300 + k} upright`, `300,${300 + k}-330,${300 + k} up`, `330,${300 + k}-${330 + k},300 upleft`]) assert.equal(big.includes(f), true, f)
+  // ...and the same upside down under it; nothing stands at the blocks' square corners, and the plug has no side
+  for (const f of [`${300 - k},600-300,${600 - k} downright`, `300,${600 - k}-330,${600 - k} down`]) assert.equal(big.includes(f), true, f)
+  assert.equal(big.some(f => f.endsWith(' up') && /^(300|330),300-/.test(f)), false)
   assert.equal(big.some(f => /^(300|330),[\d.]+-\1,/.test(f)), false)
-  // a body that fits has the slopes and the gap
+  // a body that fits has the same slopes, and the gap between them
   const little = solid(M.mineWalls(grid))
   assert.equal(little.includes(`${300 - k},300-300,${300 + k} upright`), true)
+  assert.equal(little.includes(`300,${300 + k}-330,${300 + k} up`), false)
+
+  // one closed block over another, open blocks beside them: the corridor's plug stops at the cuts, so the wedge
+  // between the two slanted walls is free and no wall stands at the blocks' square corners (x 330 and 630)
+  const stack = M.createMineGrid(g, { bombs: 0, seed: 1, free: free.filter(f => f.c !== 1 || f.r !== 2).concat({ c: 0, r: 1 }) })
+  const cork = M.minePlugs(stack)
+  assert.deepEqual(cork.map(p => [p.id, Math.round(p.x * 10) / 10, p.y, Math.round(p.w * 10) / 10, p.h]), [['mine-1-1-corridor', 330 + k, 270, Math.round((300 - g.cut * 2) * 10) / 10, 30]])
+  const wedge = solid([...M.mineWalls(stack), ...cork])
+  for (const f of [`330,${300 + k}-${330 + k},300 upleft`, `330,${270 - k}-${330 + k},270 downleft`, `${330 + k},270-${330 + k},300 left`]) assert.equal(wedge.includes(f), true, f)
+  assert.equal(wedge.some(f => /^330,(2[4-9]\d|3[0-4]\d)[\d.]*-330,/.test(f)), false)
+
+  // four closed blocks around a crossing: with cuts it is a diamond wider than the gap, so no plug in its middle
+  assert.equal(M.minePlugs(M.createMineGrid(g, { bombs: 0, seed: 1 })).some(p => p.kind === 'cross'), false)
+})
+
+test('the Bomba is a bundle of dynamite with a timer: lit with the seconds left when armed, off when disarmed', () => {
+  const A = loadTs('lib/pigchicken/mine-bomb-art.ts')
+  assert.deepEqual([A.mineBombTime(10), A.mineBombTime(6.2), A.mineBombTime(67.4), A.mineBombTime(0), A.mineBombTime(-3), A.mineBombTime(1e6)], ['0010', '0007', '0108', '0000', '0000', '9959'])
+  const off = A.mineBombSvg(), ten = A.mineBombSvg({ time: 10 }), seven = A.mineBombSvg({ time: 7 })
+  // lit digits only on an armed one, and they change with the time
+  assert.equal(off.includes('#ff3b30'), false)
+  assert.equal(ten.includes('#ff3b30'), true)
+  assert.notEqual(ten, seven)
+  assert.equal(A.mineBombSvg({ time: 6.2 }), seven)
+  // the item is the disarmed one, drawn in its box
+  const art = loadTs('lib/pigchicken/art.ts')
+  assert.equal(art.ITEM_SVG.minebomb, off)
+  assert.deepEqual(art.ITEM_BOX.minebomb, A.MINE_BOMB_BOX)
+  for (const m of off.matchAll(/(?:x|cx)="(-?[\d.]+)"/g)) assert.ok(Number(m[1]) >= A.MINE_BOMB_BOX[0] && Number(m[1]) <= A.MINE_BOMB_BOX[0] + A.MINE_BOMB_BOX[2], m[0])
 })
 
 test('a slanted edge at 45° is a floor or a ceiling whatever its points lost on the way to the engine', () => {
@@ -436,8 +467,12 @@ test('the example Pátio "Campo minado" survives saving and starts a round: thre
     assert.equal(shelvesOf.filter(s => s.y === floor && s.x <= e.x && s.x + s.w >= e.x + e.w).length, r === 0 ? 0 : 1, e.id)
   })
   assert.equal(shelvesOf.length, new Set([...portals, ...racks, ...chests].map(blockOf).filter(([, r]) => r > 0).map(String)).size)
-  // in a block that may hide a bomb, no item stands where it is drawn (the middle of the block)
-  ;[...racks, ...chests].forEach(e => { const [c, r] = blockOf(e), k = M.mineCellRect(geo, c, r), mid = k.x + k.w / 2, half = k.w * 0.13; assert.ok(M.mineCell(grid, c, r).free || e.x + e.w <= mid - half || e.x >= mid + half, e.id) })
+  // in a block that may hide a bomb, no item stands where it is drawn (the middle of the block, 36% of it wide)
+  const [, , bw, bh] = loadTs('lib/pigchicken/mine-bomb-art.ts').MINE_BOMB_BOX
+  ;[...racks, ...chests].forEach(e => {
+    const [c, r] = blockOf(e), k = M.mineCellRect(geo, c, r), mx = k.x + k.w / 2, my = k.y + k.h / 2, hw = k.w * 0.18, hh = (hw * bh) / bw
+    assert.ok(M.mineCell(grid, c, r).free || e.x + e.w <= mx - hw || e.x >= mx + hw || e.y + e.h <= my - hh || e.y >= my + hh, e.id)
+  })
   const ex = SEED.EXAMPLE_PATIOS.find(e => e.name === 'Campo minado')
   assert.ok(ex)
   assert.deepEqual(ex.layout(), layout)

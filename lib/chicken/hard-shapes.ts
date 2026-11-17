@@ -84,9 +84,9 @@ export function blockHardWalls(segs: readonly HardWall[], prevX: number, x: numb
 // she would climb over them into the solid. So each of their faces keeps only the stretches with no other fused box
 // right in front of them, and the faces of one group that go on along the same line become a single one. Whatever
 // else crosses a fused box (a platform of the Pátio through a room's wall) ends at it: the stretch inside is cut out.
-// A hard outline of any shape can be joined to them (`data-chicken-join`: the slanted wall of a block's cut corner,
-// what fills a cut corner for a body too big for the gap beside it): it is part of the same solid, so a face of
-// theirs or of its own with another of these outlines, or a fused box, right in front of its middle is no surface.
+// A hard outline of any shape can be joined to them (`data-chicken-join`: the slanted wall of a block's cut
+// corner): it is part of the same solid, so a face of theirs or of its own with another of these outlines, or a
+// fused box, right in front of its middle is no surface.
 export type FusedBox = { id: string; group: string; left: number; top: number; right: number; bottom: number }
 export type JoinedShape = { id: string; poly: number[][]; left: number; top: number; right: number; bottom: number }
 type FusedFace = {

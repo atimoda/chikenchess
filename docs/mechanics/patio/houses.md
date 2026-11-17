@@ -87,3 +87,12 @@ Código: `lib/pigchicken/house-rooms.ts` (regras puras), `lib/pigchicken/house-r
 - Pintinhos, almas, gaiolas no chão, itens soltos e inimigos não entram: continuam desenhados na frente da fachada.
 - As notas da fase de notas (as que vêm para ser rebatidas) ignoram os cômodos.
 - Não há móveis nem itens próprios do interior.
+
+## Prédio e Mureta com cerca (17/11, v2.13.0)
+
+`lib/pigchicken/buildings.ts` (parâmetros, geometria e pisos), `components/pigchicken/building-art.tsx` (desenho), `BuildingFields` em `components/pigchicken/patio-editor.tsx`, colisores em `components/pigchicken/patio-layout.tsx`. As peças do [Templo do Gongo](temple.md), para cada um montar o seu.
+
+- **Prédio** (`building`; paleta, grupo Templo: “Prédio: salão”, 640 × 420, e “Prédio: pavilhão”, 400 × 395 com telhado em pirâmide, 5 colunas e 4 portas): redimensiona livre (mínimo 120 × 120), gira, troca de camada e é sólido como a Casa. **Editar:** Telhado (Beirais curvos ou Pirâmide), Andares (1 ou 2; o de cima é recuado e tem o próprio telhado), Colunas (2 a 30), Portas (0 até o número de vãos; portas de treliça acesas no centro, os outros vãos viram janelas), Lanternas (0 a 12, penduradas sob o beiral), Cumeeira com dragões (na pirâmide, Ponta dourada), Placa e Na névoa.
+- **Pisos do Prédio:** a linha de cima de cada telhado e a borda de baixo de cada beiral são pisos de mão única com a curva do desenho, marcados com o friso dourado. Seguram só a galinha (tiros e bombas passam), como as Casas; itens que caem não pousam neles. **Na névoa** desbota o prédio para o azul do entardecer, para parecer longe, e tira os pisos. Janelas e lanternas acendem mais durante a partida do Templo e ao vencer.
+- **Mureta com cerca** (`balustrade`; paleta, grupo Plataformas, 640 × 130, altura mínima 50): a balaustrada branca sobre o muro vermelho. O desenho acompanha a caixa: a cerca fica no topo e o muro preenche o resto. O piso é flutuante, de mão única, na largura toda, 42 abaixo do topo (no topo do muro, logo abaixo da cerca); itens que caem pousam nele. Não bloqueia tiros. **Editar:** Piso de pedra (ligado por padrão) desenha o pátio de pedra embaixo do muro.
+- Escopo: todos os modos, local e online, todos os players locais.

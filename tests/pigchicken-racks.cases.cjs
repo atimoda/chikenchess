@@ -38,6 +38,23 @@ test('a rack waits its configured interval after the player picks up its item',(
   step(c,.01);assert.equal(c.pickups.length,1);assert.notEqual(c.pickups[0].id,first)
 })
 
+test('Limite de reposição: the first item and that many more, then the rack stays empty; none is no limit, and it is saved',()=>{
+  const c=createCombat();c.addRack(0,'pistol',1000,0,undefined,1)
+  // its pickup taken away each frame: the rack puts the next one at once (delay 0)
+  let given=0
+  for(let i=0;i<5;i++){step(c,.01);const own=c.pickups.find(p=>p.id===c.racks[0].pickupId);if(own){given++;c.pickups.splice(c.pickups.indexOf(own),1)}}
+  assert.equal(given,2,'the first item and one refill')
+  const free=createCombat();free.addRack(0,'pistol',1000,0)
+  let n=0
+  for(let i=0;i<8;i++){step(free,.01);const own=free.pickups.find(p=>p.id===free.racks[0].pickupId);if(own){n++;free.pickups.splice(free.pickups.indexOf(own),1)}}
+  assert.ok(n>=7,'no limit keeps refilling')
+  const el=L.createElement('rack',100,200,{item:'cok',refillLimit:3})
+  const out=L.normalizeLayout(JSON.parse(JSON.stringify({v:L.LAYOUT_VERSION,elements:[el,L.createElement('rack',0,0,{item:'cok'}),L.createElement('rack',0,0,{item:'cok',refillLimit:999})]})))
+  assert.equal(out.elements[0].params.refillLimit,3)
+  assert.equal(out.elements[1].params.refillLimit,undefined)
+  assert.equal(out.elements[2].params.refillLimit,50)
+})
+
 test('consumable racks refill in 0.1 seconds and zero delay refills immediately',()=>{
   for(const item of ['maryjane','cok']){
     const c=createCombat();c.addRack(0,item,1000)

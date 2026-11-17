@@ -18,7 +18,7 @@ Código: `lib/pigchicken/chests.ts` (parâmetros, limpeza, regra de abertura e s
 
 ## Abrir
 
-- **Gatilho:** Pegar (a tecla ou botão de Pegar; a tecla de Correr, que também pega item, não abre) com o boneco perto de um baú fechado: até a distância de pegar um item mais 30 px para cada lado, da tampa ao chão do baú. Com vários perto, vale o mais próximo na horizontal.
+- **Gatilho:** Pegar (a tecla ou botão de Pegar, inclusive o que ele divide com Correr: o X do gamepad, Shift no teclado e o botão Correr do toque que também pega) com o boneco perto de um baú fechado: até a distância de pegar um item mais 30 px para cada lado, da tampa ao chão do baú. Com vários perto, vale o mais próximo na horizontal.
 - **Prioridade:** um item oferecido aos pés (para pegar ou para equipar) vem antes: o Pegar o pega, e a dica do baú some enquanto o item é oferecido. O próximo Pegar abre o baú.
 - **Dica:** perto de um baú fechado, aparece embaixo dele, na cor do brilho, “<tecla>: abrir”; se falta algo, em vermelho claro, “precisa de chave” ou “almas nas gaiolas N/M” (almas do player / pedidas). O primeiro player local perto mostra a sua.
 - **Fechadura no desenho:** Livre, um trinco; Chave, um cadeado com fechadura; Merecimento, um selo redondo com o número de almas pedido. Some quando a tampa abre.

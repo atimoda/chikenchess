@@ -80,10 +80,14 @@ test('Pegar next to a free Baú opens it once and its items jump out as pickups'
   step(c,{grab:true}); assert.equal(c.pickups.length,n)
 })
 
-test('too far away, Correr\'s own press or an item offered first: the Baú stays shut',()=>{
+test('a press shared with Correr (the gamepad\'s X) opens the Baú too',()=>{
+  const {c}=withChest({rarity:'simple',lock:'free',souls:5,reopen:0,loot:[{pick:'pistol',chance:100}]})
+  step(c,{grab:true,grabRun:true}); assert.equal(c.chests[0].open,true)
+})
+
+test('too far away or an item offered first: the Baú stays shut',()=>{
   const {c}=withChest({rarity:'simple',lock:'free',souls:5,reopen:0,loot:[{pick:'pistol',chance:100}]})
   step(c,{grab:true},{...body,x:400}); assert.equal(c.chests[0].open,false)
-  step(c,{grab:true,grabRun:true}); assert.equal(c.chests[0].open,false)
   c.addPickup(0,'bat',1000)
   step(c); step(c,{grab:true})
   assert.equal(c.chests[0].open,false,'the item at her feet is taken first')

@@ -9,7 +9,7 @@ import type { Chest, Combat, Target } from './combat'
 import { isFixedKind, type Seat } from './fixed-instruments'
 import { DUMMY_DEFAULTS } from './dummies'
 import { worldEnd, type LayoutElement } from './layout'
-import { rackRespawnDelay } from './racks'
+import { rackRefillLimit, rackRespawnDelay } from './racks'
 
 type Rack = Combat['racks'][number]
 const AWAY = -1e6
@@ -18,8 +18,12 @@ const AWAY = -1e6
 const DEVICES = {
   gong: { w: 130, h: 150, lift: 40 },
   jukebox: { w: 112, h: 214, lift: 4 },
+  resetstone: { w: 80, h: 110, lift: 4 },
 } as const
 export const deviceLabel = (kind: 'gong' | 'jukebox', id: string) => `${kind}:${id}`
+// the label of a Gongo, a Jukebox or a Recomeçar stone: the Gongo do Templo and the stone answer to the temple's own
+// labels ("gong", "reset"), the others to their element
+const labelOf = (el: LayoutElement) => el.kind === 'resetstone' ? 'reset' : el.kind === 'gong' && el.params.gong?.temple ? 'gong' : deviceLabel(el.kind === 'gong' ? 'gong' : 'jukebox', el.id)
 
 export function createLayoutSync(combat: Combat) {
   const targets = new Map<string, Target>()
@@ -40,7 +44,7 @@ export function createLayoutSync(combat: Combat) {
     const end = worldEnd(screens)
     const seen = new Set<string>()
     for (const el of elements) {
-      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox' && el.kind !== 'chest' && !isFixedKind(el.kind)) continue
+      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox' && el.kind !== 'resetstone' && el.kind !== 'chest' && !isFixedKind(el.kind)) continue
       seen.add(el.id)
       const cx = el.x + el.w / 2, bottom = el.y + el.h
       const inside = cx < end
@@ -86,28 +90,29 @@ export function createLayoutSync(combat: Combat) {
         const item = el.params.item!
         if (!r || r.item !== item) {
           if (r) combat.racks.splice(combat.racks.indexOf(r), 1)
-          combat.addRack(cx, item, bottom, el.params.respawnDelay, el.params.cageSouls)
+          combat.addRack(cx, item, bottom, el.params.respawnDelay, el.params.cageSouls, el.params.refillLimit)
           r = combat.racks[combat.racks.length - 1]
           racks.set(el.id, r)
           // the loose item it was (undone delete): it holds that item again
           const was = looses.get(el.id)
           if (was) {
             const kept = was.item === item ? activePickup(was.pickupId) : undefined
-            if (kept) { r.pickupId = kept.id; r.spawnX = cx; r.spawnY = bottom } else dropPickup(was.pickupId)
+            if (kept) { r.pickupId = kept.id; r.given = 1; r.spawnX = cx; r.spawnY = bottom } else dropPickup(was.pickupId)
             looses.delete(el.id)
           }
         }
         r.x = inside ? cx : AWAY; r.y = bottom
         r.respawnDelay = rackRespawnDelay(item, el.params.respawnDelay)
+        r.refillLimit = rackRefillLimit(el.params.refillLimit)
         // a Gaiola's limit here: the next ones come with it, and the one waiting takes it now
         r.cageSouls = el.params.cageSouls; setCageLimit(activePickup(r.pickupId), el.params.cageSouls)
         continue
       }
       let t = targets.get(el.id)
-      if (el.kind === 'gong' || el.kind === 'jukebox') {
+      if (el.kind === 'gong' || el.kind === 'jukebox' || el.kind === 'resetstone') {
         const dev = DEVICES[el.kind]
-        if (!t) { combat.addButton(cx, bottom - dev.lift, deviceLabel(el.kind, el.id), dev.w, dev.h); t = combat.targets[combat.targets.length - 1]; targets.set(el.id, t) }
-        t.w = dev.w; t.h = dev.h; t.y = bottom - dev.lift
+        if (!t) { combat.addButton(cx, bottom - dev.lift, labelOf(el), dev.w, dev.h); t = combat.targets[combat.targets.length - 1]; targets.set(el.id, t) }
+        t.w = dev.w; t.h = dev.h; t.y = bottom - dev.lift; t.label = labelOf(el)
         const x = inside ? cx : AWAY
         if (t.home !== x) { t.x = t.home = x; t.vx = 0 }
         continue

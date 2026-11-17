@@ -1,6 +1,7 @@
 "use client"
 
 // A chain of transformations (lib/pigchicken/transforms.ts) to edit: the items' rebate, a surface's, a zone's ambience.
+import { StepSelect } from "@/components/ui/step-select"
 import { cn } from "@/lib/utils"
 import { CHAIN_MAX, TRANSFORMS, TRANSFORM_KINDS, newTransform, type Transform, type TransformKind } from "@/lib/pigchicken/transforms"
 
@@ -10,11 +11,12 @@ const field = "h-8 rounded-md border border-white/15 bg-[#0b110e] px-1.5"
 export function ChainEditor({ chain, changed, onChange, onReset, title = "Cadeia de transformações", hint = "Cada nota rebatida por este item passa por estes passos, em ordem; cada um acontece com a sua chance" }: {
   chain: Transform[]; changed: boolean; onChange: (fn: (c: Transform[]) => void) => void; onReset?: () => void; title?: string; hint?: string
 }) {
-  const kindSelect = (value: string, onPick: (k: TransformKind) => void, label: string, empty?: string) => (
-    <select aria-label={label} value={value} onChange={e => { if (e.target.value) onPick(e.target.value as TransformKind) }} className={cn(field, "min-w-0 flex-1")}>
+  // `empty`: the list that adds a step, a menu and not a choice, so it has no "next item" button
+  const kindSelect = (value: string, onPick: (k: TransformKind) => void, label: string, empty?: string, Pick: "select" | typeof StepSelect = empty ? "select" : StepSelect) => (
+    <Pick aria-label={label} value={value} onChange={e => { if (e.target.value) onPick(e.target.value as TransformKind) }} className={cn(field, "min-w-0 flex-1")}>
       {empty && <option value="">{empty}</option>}
       {GROUPS.map(g => <optgroup key={g} label={g}>{TRANSFORM_KINDS.filter(k => TRANSFORMS[k].group === g).map(k => <option key={k} value={k}>{TRANSFORMS[k].label}</option>)}</optgroup>)}
-    </select>
+    </Pick>
   )
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field">
@@ -41,9 +43,9 @@ export function ChainEditor({ chain, changed, onChange, onReset, title = "Cadeia
                 </label>
               )}
               {m.modes && (
-                <select aria-label="Modo" value={t.mode} onChange={e => { const v = e.target.value; onChange(c => { c[i].mode = v }) }} className={cn(field, "min-w-0 flex-1")}>
+                <StepSelect aria-label="Modo" value={t.mode} onChange={e => { const v = e.target.value; onChange(c => { c[i].mode = v }) }} className={cn(field, "min-w-0 flex-1")}>
                   {m.modes.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                </StepSelect>
               )}
             </div>
           </div>

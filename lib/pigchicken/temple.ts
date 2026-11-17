@@ -8,6 +8,7 @@
 import { boxContains, type Box, type Target } from './combat'
 import type { Conductor } from './music'
 import { SCENE_W } from './world'
+import { TEMPLE_SPOTS } from './gong'
 import { STAGE_MUSIC, melodyNote, type TempleSound } from './temple-music'
 
 export type Species = 'jelly' | 'lantern' | 'shell' | 'twin' | 'mini' | 'drum' | 'dragon' | 'dragonHead'
@@ -42,9 +43,9 @@ export const STAGES: StageDef[] = [
 export const GONG_FIRST = 5, GONG_NEXT = 3
 // the reset stone (Recomeçar): this many strikes put the temple back at rest, panels and score cleared
 export const RESET_NEED = 3
-export const RESET_X = 1770
+export const RESET_X = TEMPLE_SPOTS.reset
 // the jukebox (the songs of the guitar hero mode), left of the reset stone
-export const DISC_X = 1640
+export const DISC_X = TEMPLE_SPOTS.jukebox
 const MAX_HEARTS = 3
 const INTRO = 3.2
 const DRAGON_SEGMENTS = 14
@@ -92,7 +93,9 @@ export function newTempleState(seed = 1): TempleState {
 export type TempleIO = {
   targets: Target[]
   music: Conductor
-  sceneL: number // the temple scene's left edge (world x)
+  sceneL: number // the temple scene's left edge (world x): the scene around the Gongo do Templo
+  gongX?: number // where the Gongo do Templo stands (else sceneL + GONG_X)
+  resetX?: number // where the Recomeçar stone struck stands (else sceneL + RESET_X)
   groundY: number
   inside: boolean // she is in the temple scene
   body: { x: number; y: number; scale: number }
@@ -119,7 +122,7 @@ export const PERFECT = 0.07, GOOD = 0.14
 // the drum aliens open around each beat (beat phase)
 export const drumOpen = (beatPhase: number) => beatPhase < 0.22 || beatPhase > 0.9
 // the gong totem's place in the temple scene
-export const GONG_X = 560
+export const GONG_X = TEMPLE_SPOTS.gong
 
 let nextId = 2_000_000
 
@@ -262,7 +265,7 @@ export function createTemple(seed = 1) {
       else {
         s.gongHits++
         io.sound({ kind: 'gong', hit: s.gongHits, need: s.gongNeed })
-        io.fx.text(L + GONG_X, G - 230, `${Math.min(s.gongHits, s.gongNeed)}/${s.gongNeed}`, '#ffd166', 22)
+        io.fx.text(io.gongX ?? L + GONG_X, G - 230, `${Math.min(s.gongHits, s.gongNeed)}/${s.gongNeed}`, '#ffd166', 22)
         if (s.gongHits >= s.gongNeed && io.song) {
           s.gongHits = 0
           io.song()
@@ -287,7 +290,7 @@ export function createTemple(seed = 1) {
       else {
         s.resetHits++
         io.sound({ kind: 'reset', hit: s.resetHits, need: RESET_NEED })
-        io.fx.text(L + RESET_X, G - 170, `${s.resetHits}/${RESET_NEED}`, '#7bdff2', 20)
+        io.fx.text(io.resetX ?? L + RESET_X, G - 170, `${s.resetHits}/${RESET_NEED}`, '#7bdff2', 20)
         if (s.resetHits >= RESET_NEED) {
           clearAliens(io, true)
           Object.assign(s, newTempleState(s.rng), { welcomed: true, resetRing: 0 })

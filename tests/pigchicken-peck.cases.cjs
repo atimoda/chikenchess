@@ -157,3 +157,11 @@ test('letting a Bicada go also stores the item offered at her body', () => {
   assert.equal(c.held, null)
   assert.ok(c.peckZone, 'the peck still goes out')
 })
+
+test('the Bicada chips the Grade de blocos like a wing blow, once per peck, with its own damage', () => {
+  const c = createCombat(), blows = []
+  c.setMine({ note: () => null, shot: () => null, blast: () => {}, shock: () => {}, blow: (x, y, angle, arc, reach, damage, music, by) => blows.push({ x, y, angle, reach, damage, music, by }) })
+  hold(c, 0.5); assert.equal(blows.length, 0)
+  step(c, {}, 0.5); finish(c)
+  assert.deepEqual(blows, [{ x: 0, y: 0, angle: 0.5, reach: DEFAULT_ITEMS.peck.meleeRange, damage: DEFAULT_ITEMS.peck.meleeDamage, music: false, by: 'p1' }])
+})

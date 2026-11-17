@@ -105,7 +105,8 @@ export const patioSceneMusic = (settings: PatioSettings | undefined) => settings
 export const patioInventoryLimit = (settings: PatioSettings | undefined) => settings?.inventory ?? PATIO_INVENTORY.default
 // the Grade de blocos of this Pátio while it is on (Configurações do Pátio → Grade de blocos)
 export const patioMineGrid = (settings: PatioSettings | undefined) => (settings?.mineGrid?.on ? settings.mineGrid : null)
-// whether the Templo do Gongo and the Vila stand at the world's end (Configurações do Pátio → Templo e Vila)
+// whether the Vila dos Telhados' fixed backdrop is drawn (Configurações do Pátio → Fundo da Vila); a Pátio saved
+// before v12 with it off gets no Templo do Gongo elements
 export const patioTemple = (settings: PatioSettings | undefined) => settings?.temple !== false
 
 // ---------- the game's defaults for a new empty Pátio (data/pigchicken/default-patio.json → settings) ----------

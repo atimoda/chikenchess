@@ -5,6 +5,7 @@
 // (out of the drumsticks' reach) and its shortcuts: a key or a gamepad button caught on the next press, or one of
 // the player's own movement directions. Below, how the chart is framed around her in the Pátio (its size, its
 // shift from her shoulder, whether it always fits the screen). Saved in this browser; the Pátio follows it live.
+import { StepSelect } from "@/components/ui/step-select"
 import { useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
@@ -132,9 +133,9 @@ export function DrumKitEditor() {
       {pad && base && (
         <>
           <div className="flex items-center justify-between gap-3">
-            <select aria-label="Peça" value={sel} onChange={e => setSel(e.target.value as DrumPiece)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+            <StepSelect aria-label="Peça" value={sel} onChange={e => setSel(e.target.value as DrumPiece)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
               {kit.pads.map(p => <option key={p.piece} value={p.piece}>{drumPiece(p.piece).label}</option>)}
-            </select>
+            </StepSelect>
           </div>
           <PatioRange label="Tamanho" min={PAD_R_MIN} max={PAD_R_MAX} step={0.01} value={pad.r} display={pad.r.toFixed(2)} changed={pad.r !== base.r} hint="O raio do botão (fração do raio da escala)"
             onChange={n => update(k => { k.pads.find(p => p.piece === sel)!.r = n })} onReset={() => update(k => { k.pads.find(p => p.piece === sel)!.r = base.r })} />

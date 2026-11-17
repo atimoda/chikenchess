@@ -2,6 +2,7 @@
 // `box` is the art's bounding box [x, y, width, height], used to draw it on the canvas (pickups, inventory).
 import type { ItemId } from './items'
 import { CAGE_ART, cageItemArt } from './cage-art'
+import { MINE_BOMB_BOX, mineBombSvg } from './mine-bomb-art'
 
 type Art = { svg: string; box: [number, number, number, number]; pic?: Pic }
 // a drawing (PNG) placed in rig units: `len` along its height, the point (gx, gy) of the picture (0..1) at the grip,
@@ -241,14 +242,8 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M22 2.4 L22 8.5 L26 8.5 L26 2.4 M28 2.4 L28 6.5 L31 6.5 L31 2.4 M33 2.4 L33 9 L36.5 9 L36.5 2.4" fill="#ffd34a" stroke="#9a6a10" stroke-width="1.2"/>
     <path d="M-10 -6 Q-5 -10 1 -7.5 M9 -1.2 L34 -1.2" stroke="#fff8d6" stroke-width="1.1" fill="none" opacity="0.9"/>`,
   },
-  // Bomba (Grade de blocos): a disarmed one, a dark ball with its cap and a cut fuse
-  minebomb: {
-    box: [-16, -20, 32, 36],
-    svg: `<circle cx="0" cy="2" r="13" fill="#23272d" stroke="#0c0e11" stroke-width="1.6"/>
-    <rect x="-4.5" y="-15" width="9" height="6" rx="1.5" fill="#5b6470" stroke="#0c0e11" stroke-width="1.2"/>
-    <path d="M0 -15 Q2 -19 5 -18" stroke="#c9a56a" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <path d="M-8 -4 Q-4 -9 2 -8" stroke="#7d8794" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.8"/>`,
-  },
+  // Bomba (Grade de blocos): a disarmed one, a bundle of dynamite with its timer off and a cut wire
+  minebomb: { box: MINE_BOMB_BOX, svg: mineBombSvg() },
   // Hangdrum: the hang seen from the side, two steel domes joined at the rim, the ding on top and dents of notes
   hangdrum: {
     box: [-2, -15, 64, 26],

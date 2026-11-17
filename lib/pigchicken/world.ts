@@ -49,7 +49,8 @@ export const SCENE_PLATFORMS: { x: number; bottom: number; w: number; h: number 
 ]
 
 // the temple (Templo do Gongo, the aliens' mini-game) is one more scene after the `screens` of the Parquinho.
-// It has no loose platforms: its roofs are the floors (TEMPLE_ROOF_LINES in temple-backdrop.tsx)
+// Its halls, balustrade, gong and racks are elements of the layout (lib/pigchicken/layout.ts, templeElements): it
+// has no fixed platforms of its own
 export const TEMPLE_PLATFORMS: { x: number; bottom: number; w: number; h: number }[] = []
 // the scene index of the temple and the whole world's width in scenes
 export const templeScene = (screens: number) => screens
