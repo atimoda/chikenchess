@@ -20,7 +20,7 @@ import { explosionImpulse, stepBlastMotion, type BlastBox, type BlastMotion } fr
 import { chestBlock, rollLoot, type ChestParams } from './chests'
 import { CAGES_MAX, CAGE_DENY, bringFront, cageCap, cageRoom, cageSouls, cageWithRoom, cycleCages, flashCage, newCage, stepCage, type CageState } from './cages'
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isCage, isKey, isMineItem, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
-import { INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
+import { FIRST_IN_GROUP, INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
 import { rackRefillLimit, rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, netIdFor, type NetHit, type NetShot } from './net-world'
@@ -35,6 +35,7 @@ import { STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './ins
 import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, type FixedKind, type Seat } from './fixed-instruments'
 import { drumKit, drumPiece, hatRing, newDrumState, padOf, stepDrums, type DrumHit, type DrumInput, type DrumKnock, type DrumPiece, type DrumState } from './drum-kit'
 import { SWEEP_GAP, newStringHand, stepStringHand, stringAlong, stringSlide, type StringHand } from './strings-play'
+import { NO_EFFECTS, type ZoneEffects } from './zone-physics'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES, type PitchSet } from './music'
 import type { Drum, Held, Vibrato, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
@@ -372,6 +373,11 @@ export function createCombat() {
   const noteEvents: NoteShotEvent[] = []
   let noteEnv: NoteEnvFn | null = null
   let placeEnv: PlaceEnvFn | null = null
+  // what the Zona at a point does to the bodies there (zone-physics.ts): the factor on gravity and the x-ray look
+  let zoneFx: ((x: number, y: number) => ZoneEffects) | null = null
+  const gravityAt = (x: number, y: number) => zoneFx?.(x, y).gravity ?? 1
+  // the share of a frame a point lives (a Zona's slow motion): what is there moves and counts down by it
+  const timeAt = (x: number, y: number) => zoneFx?.(x, y).time ?? 1
   // the walls of the Zonas sonoras with life: a note crossing one bounces (count: it takes a point of the zone's life)
   let zoneWalls: ZoneWallsFn | null = null
   // mineQuiet: the blast being made is a block's own bomb, which does not hurt the blocks around
@@ -467,8 +473,9 @@ export function createCombat() {
   const held = (): Owned | null => seated?.owned ?? inv[cur] ?? null
   const ownGroup = (item: ItemId) => itemGroup(item, !!items[item]?.instrument)
   const groupOf = (o: Owned) => o.group ?? ownGroup(o.item)
-  // an item taken goes to the end of its own group (even one dragged to another group before it was dropped)
-  const takeIn = (o: Owned) => { o.group = ownGroup(o.item); return insertSorted(inv, o, groupOf) }
+  // an item taken goes to the end of its own group (even one dragged to another group before it was dropped); the
+  // Passaguá goes to the first slot of the utilities instead, and stays there unless the player drags it away
+  const takeIn = (o: Owned) => { o.group = ownGroup(o.item); return insertSorted(inv, o, groupOf, FIRST_IN_GROUP.has(o.item)) }
   const room = () => inv.length < limit
   // the slots shown on the bar and the wheel: her items, plus the empty one while there is room
   const shown = (): (Owned | null)[] => room() ? [...inv, null] : inv.slice()
@@ -1506,9 +1513,9 @@ export function createCombat() {
   // the cards in the world, one step: out to where they were thrown (a wall or the floor stops them short), floating
   // there, and back to their owner once she is further than the deck's leash. Touching someone on any of the three
   // bursts them; the 7 and the Ás burst on their own as they arrive
-  function stepCards(dt: number, { boxes, groundY }: StepCtx) {
+  function stepCards(frameDt: number, { boxes, groundY }: StepCtx) {
     for (let i = cards.length - 1; i >= 0; i--) {
-      const c = cards[i], d = items[c.item]
+      const c = cards[i], d = items[c.item], dt = frameDt * timeAt(c.x, c.y)
       c.t += dt
       if (c.remote) {
         // another browser's card: it only shows. Out to its place and floating; sent back, to where it left from
@@ -1560,7 +1567,7 @@ export function createCombat() {
     const { boxes, groundY } = b.room ?? ctx
     const px = b.x, py = b.y
     b.t += dt
-    b.vy += b.drop * dt
+    if (b.drop) b.vy += b.drop * gravityAt(b.x, b.y) * dt
     b.x += b.vx * dt; b.y += b.vy * dt
     b.dist += Math.hypot(b.x - px, b.y - py)
     const gone = (x: number, y: number) => { if (b.explode > 0 && !dry) explode(x, y, b.explode, b.explodeDamage, b); return true }
@@ -1699,7 +1706,7 @@ export function createCombat() {
     const points = [{ x, y }], dt = 1 / 60
     for (let n = 0; n < 180; n++) {
       const py = y
-      vy += THROW_GRAVITY * dt; x += vx * dt; y += vy * dt
+      vy += THROW_GRAVITY * gravityAt(x, y) * dt; x += vx * dt; y += vy * dt
       points.push({ x, y })
       if (targets.some(g => g.deadT <= 0 && Math.abs(x - g.x) < g.w / 2 + 10 && y > g.y - g.h && y < g.y)) break
       const top = vy > 0 ? landing(ctx.boxes, x, py, y) : null
@@ -2207,7 +2214,7 @@ export function createCombat() {
     const splat = (x: number, y: number) => { burst(x, y, 6, '#f4f1e6', 110, 2); sound('splat', null) }
     for (let i = poops.length - 1; i >= 0; i--) {
       const p = poops[i], py = p.y
-      let gone = !poopFall(p, dt)
+      let gone = !poopFall(p, dt * timeAt(p.x, p.y), gravityAt(p.x, p.y))
       if (!gone) {
         const who = blastActors.find(a => a.id && !(p.spare && a.id === p.by) && poopHits(p, a.box))
         const foe = !who && p.foes ? targets.find(t => poopable(t) && poopHits(p, targetBox(t))) : undefined
@@ -2545,6 +2552,9 @@ export function createCombat() {
     setNoteEnv(fn: NoteEnvFn | null) { noteEnv = fn },
     // what a point of the map plays (its Zonas sonoras and Faixas fixas); the stage's ambience wins over it
     setPlaceEnv(fn: PlaceEnvFn | null) { placeEnv = fn },
+    // what the Zona at a point does to the bodies there: gravity for what falls and flies, x-ray for the canvas
+    setZoneEffects(fn: ((x: number, y: number) => ZoneEffects) | null) { zoneFx = fn },
+    zoneEffectsAt(x: number, y: number): ZoneEffects { return zoneFx?.(x, y) ?? NO_EFFECTS },
     // the walls of the zones with life (zone-life.ts)
     setZoneWalls(fn: ZoneWallsFn | null) { zoneWalls = fn },
     // the Grade de blocos: what the notes, the shots, the blasts and the shocks do to its blocks
@@ -2842,8 +2852,11 @@ export function createCombat() {
     },
 
     // world: false steps only the current player's loadout (another local player in the same frame)
-    step(dt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
+    step(frameDt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      // her own hands (aim, cooldowns, swings, charges) live on the time of the Zona she is in; the world below goes
+      // thing by thing, each on the time of where it is, and the music keeps the frame's
+      let dt = frameDt * timeAt(body.x, body.y - 60 * body.scale)
       floorY = groundY
       let peckStarted = false
       // what calls a strong blow's charge off without hitting: the interface, empty hands, a soul's peck
@@ -2905,7 +2918,7 @@ export function createCombat() {
       } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0; tremReach = null }
 
       lastBody = body
-      if (world) { music.step(dt); bonusTextT = Math.max(0, bonusTextT - dt); clock += dt; skyFlash = Math.max(0, skyFlash - dt * 2.2) }
+      if (world) { music.step(frameDt); bonusTextT = Math.max(0, bonusTextT - frameDt); clock += frameDt; skyFlash = Math.max(0, skyFlash - frameDt * 2.2) }
       // the arpeggio starts over after a pause
       if (!input.fire) { arpIdle += dt; if (arpIdle > 0.6) arpStep = 0 } else arpIdle = 0
       cooldown = Math.max(0, cooldown - dt); meleeCool = Math.max(0, meleeCool - dt)
@@ -3175,16 +3188,18 @@ export function createCombat() {
 
       // projectiles
       const ctx = { boxes, groundY }
-      if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt, ctx)) bullets.splice(i, 1)
+      // from here on, the world: each thing on the time of the Zona where it is
+      dt = frameDt
+      if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt * timeAt(bullets[i].x, bullets[i].y), ctx)) bullets.splice(i, 1)
       if (world) stepNoteShots(dt, ctx)
       if (world) for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
       if (world) for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }
 
       // thrown items: spin, hit once, land as a pickup
       if (world) for (let i = thrown.length - 1; i >= 0; i--) {
-        const t = thrown[i]
+        const t = thrown[i], dt = frameDt * timeAt(t.x, t.y)
         const py = t.y
-        t.vy += THROW_GRAVITY * dt; t.x += t.vx * dt; t.y += t.vy * dt; t.angle += t.spin * dt
+        t.vy += THROW_GRAVITY * gravityAt(t.x, t.y) * dt; t.x += t.vx * dt; t.y += t.vy * dt; t.angle += t.spin * dt
         // thrown inside a house: it stays in that room
         const tBoxes = t.room?.boxes ?? boxes, tGround = t.room?.groundY ?? groundY
         if (!t.hit && !t.room) for (const g of targets) {
@@ -3211,7 +3226,7 @@ export function createCombat() {
       // a staff thrown that comes back: out along its curve, hitting and shocking whoever it crosses, then to its
       // owner's wing. Its path bends to the side its owner aims, the more the further the aim is from its line
       if (world) for (let i = flights.length - 1; i >= 0; i--) {
-        const f = flights[i], fd = items[f.owned.item]
+        const f = flights[i], fd = items[f.owned.item], dt = frameDt * timeAt(f.x, f.y)
         f.angle += f.spin * dt
         const touch = () => {
           if (!f.remote && fd.shockRange > 0) mine?.shock(f.x, f.y, f.x, f.y)
@@ -3265,11 +3280,11 @@ export function createCombat() {
       hover = null; hoverOwned = null
       const { x: pickupReachX, y: pickupReachY } = pickupReach(body.scale)
       for (let i = pickups.length - 1; i >= 0; i--) {
-        const p = pickups[i]
+        const p = pickups[i], dt = frameDt * timeAt(p.x, p.y)
         if (world) p.noPick = Math.max(0, p.noPick - dt)
         if (world && !p.resting) {
           const py = p.y
-          p.vy += ITEM_GRAVITY * dt; p.y += p.vy * dt
+          p.vy += ITEM_GRAVITY * gravityAt(p.x, p.y) * dt; p.y += p.vy * dt
           const top = landing(boxes, p.x, py, p.y, b => b.solid !== false)
           if (top) { p.y = top.y; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
@@ -3371,17 +3386,19 @@ export function createCombat() {
       targets.forEach(t => { if (t.mirror) glideMirror(t, dt) })
       targets.forEach(t => { if (t.blast && !t.mirror) { t.x -= t.blast.x; t.y -= t.blast.y } })
       const e = env(groundY, body.x, body.y)
-      stepFormations(targets.some(t => t.mirror) ? targets.filter(t => !t.mirror) : targets, dt, e)
+      // each target on the time of where it is (its middle)
+      const tdt = (t: { x: number; y: number; h: number }) => frameDt * timeAt(t.x, t.y - t.h / 2)
+      stepFormations(targets.some(t => t.mirror) ? targets.filter(t => !t.mirror) : targets, dt, e, (x, y) => timeAt(x, y))
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
-        if ((t.kind === 'alien' || t.kind === 'zombie') && !t.mirror && !stepEnemy(t, dt, e)) targets.splice(i, 1)
+        if ((t.kind === 'alien' || t.kind === 'zombie') && !t.mirror && !stepEnemy(t, tdt(t), e)) targets.splice(i, 1)
       }
       // the undead: fall, lie, get up and wander, fly as birds (and whistle), leave once the music ends
       targets.push(...pendingUndead.splice(0))
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
         if (t.kind !== 'undead' || t.mirror) continue
-        const u = t.data as UndeadState
+        const u = t.data as UndeadState, dt = tdt(t)
         t.animT += dt
         // an undead bird may rest on a wire after circling a while, and runs from whoever comes near
         if (u.bird && u.perch !== null && perchWorld?.spans.length && t.deadT <= 0) {
@@ -3399,7 +3416,7 @@ export function createCombat() {
             }
           }
         }
-        if (!stepUndead(t, u, dt, { boxes, groundY, viewL: view.l, viewR: view.r, playing, rand: Math.random })) { targets.splice(i, 1); continue }
+        if (!stepUndead(t, u, dt, { boxes, groundY, viewL: view.l, viewR: view.r, playing, rand: Math.random, gravity: gravityAt })) { targets.splice(i, 1); continue }
         if (u.bird && u.phase === 'bird' && t.deadT <= 0) {
           const type = BIRDS[u.bird]
           u.whistleIn -= dt
@@ -3409,6 +3426,7 @@ export function createCombat() {
       }
       targets.forEach(t => {
         if (t.kind !== 'dummy' && t.kind !== 'button') return
+        const dt = tdt(t)
         t.flash = Math.max(0, t.flash - dt)
         if (t.kind === 'button') return
         t.wobble *= Math.pow(0.02, dt)
@@ -3419,18 +3437,19 @@ export function createCombat() {
 
       targets.forEach(t => {
         if (!t.blast || t.mirror) return
-        stepBlastMotion(t.blast, dt)
+        stepBlastMotion(t.blast, tdt(t))
         t.x += t.blast.x; t.y += t.blast.y
       })
 
       // every target: the stillness of a note wears off; answers cool down
       targets.forEach(t => {
+        const dt = tdt(t)
         if (t.stun && !t.mirror) t.stun = Math.max(0, t.stun - dt); if (t.answerCool) t.answerCool = Math.max(0, t.answerCool - dt)
         if (t.shock && (t.shock.left -= dt) <= 0) t.shock = undefined
       })
       // converted enemies leave: birds flap up and away, people run off with little hops
       for (let i = critters.length - 1; i >= 0; i--) {
-        const c = critters[i]
+        const c = critters[i], dt = frameDt * timeAt(c.x, c.y)
         c.t += dt
         const type = c.kind === 'bird' && c.bird ? BIRDS[c.bird] : null
         // a wild bird of a type with the power lets its droppings fall on any boneco under it

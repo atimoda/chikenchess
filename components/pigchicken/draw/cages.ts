@@ -183,12 +183,13 @@ export function drawHangingCages(ctx: Ctx, hud: CageHud, cages: readonly CageLik
     const text = i === 0 && opts.callback ? "Callback" : `${cage.souls.length}/${cage.cap}`, big = i === 0
     const fs = Math.round((big ? 13 : 10) * Math.max(0.8, Math.min(1.15, s))), ly = hy + bodyH + (big ? 14 : 9) * s
     ctx.font = `bold ${fs}px ui-monospace, monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle"
-    const tw = ctx.measureText(text).width + fs * 1.1, th = fs * 1.7
-    ctx.beginPath(); ctx.roundRect(hx - tw / 2, ly - th / 2, tw, th, th / 2)
-    ctx.fillStyle = DARK; ctx.fill()
-    if (i === 0 && (opts.callback || opts.hover === 0)) { ctx.globalAlpha = opts.callback ? (opts.hover === 0 ? 0.5 : 0.3) : 0.2; ctx.fillStyle = opts.color; ctx.fill(); ctx.globalAlpha = 1 }
-    if (big || opts.hover === i) { ctx.lineWidth = 2; ctx.strokeStyle = opts.color; ctx.stroke() }
-    ctx.fillStyle = "#e9f4ee"; ctx.fillText(text, hx, ly + 0.5)
+    const th = fs * 1.7
+    // only the white text, no box: a soft shadow keeps it readable over the scene; under the pointer it is fully lit
+    ctx.save()
+    ctx.shadowColor = "rgba(0,0,0,0.7)"; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1
+    ctx.globalAlpha = opts.hover === i ? 1 : 0.88
+    ctx.fillStyle = "#ffffff"; ctx.fillText(text, hx, ly + 0.5)
+    ctx.restore()
     boxes[i] = { i, x: hx - w / 2, y: hy, w, h: bodyH + (big ? 14 : 9) * s + th / 2, cx: v.cx, cy: v.cy }
   }
   // the ones behind first

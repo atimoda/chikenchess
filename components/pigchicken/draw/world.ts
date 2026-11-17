@@ -21,7 +21,7 @@ import { drawHarp, seatMarks } from "./harp"
 import { drawDrumKit } from "./drumkit"
 import { CAGE_WORLD_SCALE, drawCageOnFloor } from "./cages"
 import { cageArt } from "@/lib/pigchicken/cage-art"
-import { drawBolts, drawFlights, drawShocked, drawSkyFlash } from "./shock"
+import { drawBolts, drawFlights, drawShocked, drawSkyFlash, drawXray } from "./shock"
 import { drawCards } from "./cards"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
@@ -127,6 +127,8 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     if (g.state === "converted") return
     // shocked by a lightning weapon: it shakes and blinks in x-ray
     if (g.shock && g.kind !== "button") drawShocked(ctx, g, X(g.x), t, (c, x) => drawTarget(c, g, x))
+    // standing in a Zona with x-ray: always in x-ray
+    else if (g.kind !== "button" && combat.zoneEffectsAt(g.x, g.y - g.h / 2).xray) drawXray(ctx, g, X(g.x), (c, x) => drawTarget(c, g, x))
     else drawTarget(ctx, g, X(g.x))
   })
   const pulse = Math.pow(1 - combat.music.beatPhase, 3)

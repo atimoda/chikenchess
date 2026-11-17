@@ -10,6 +10,7 @@ import { NOTE_NAMES, SCALES } from "@/lib/pigchicken/music"
 import { BIRDS } from "@/lib/pigchicken/birds"
 import { ZONE_BPM, ZONE_LIFE, ZONE_PRIORITY, chainSummary, normalizeSoundZone, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
 import { bassLabel, beatName } from "@/lib/pigchicken/zone-ambience"
+import { gravityLabel, nextGravity, nextZoneTime, zoneTimeLabel } from "@/lib/pigchicken/zone-physics"
 import { FEEL_LABELS, PROGRESSIONS, ZONE_STEP, pcOf, progressionIndex, progressionText, zoneChange } from "@/lib/pigchicken/zone-changes"
 
 const TAG = "relative inline-flex h-7 shrink-0 items-center overflow-hidden whitespace-nowrap rounded px-2 font-mono text-[13px] leading-none"
@@ -86,6 +87,9 @@ export function ZoneTags({ zone, editable, onChange, onOpen, scene = false, live
     <CycleTag label={zone.chain.length ? chainSummary(zone.chain) : "sem cadeia"} title="Cadeia do ambiente" color={c} editable={editable} onClick={step("chain")} />
     {!scene && <SliderTag label={`prioridade ${zone.priority}`} title="Prioridade" color={c} editable={editable} value={zone.priority} min={ZONE_PRIORITY.min} max={ZONE_PRIORITY.max} onChange={(priority, g) => set({ priority }, `tag-priority:${g}`)} />}
     <CycleTag label={zone.music ? "troca a música" : "só rebates"} title="Troca a música ao entrar" color={c} editable={editable} onClick={step("music")} />
+    <CycleTag label={gravityLabel(zone.gravity)} title="Gravidade" color={c} editable={editable} onClick={() => set({ gravity: nextGravity(zone.gravity) })} />
+    <CycleTag label={zoneTimeLabel(zone.time)} title="Tempo: abaixo de 100%, tudo dentro da zona anda em câmera lenta" color={c} editable={editable} onClick={() => set({ time: nextZoneTime(zone.time) })} />
+    <CycleTag label={zone.xray ? "raio-x" : "sem raio-x"} title="Raio-x: todo boneco dentro da zona aparece em raio-x" color={c} editable={editable} onClick={() => set({ xray: zone.xray ? undefined : true })} />
     <CycleTag label={zone.birds.length ? zone.birds.map(b => BIRDS[b].name).join(", ") : "pássaros da cena"} title="Pássaros da zona" color={c} editable={editable} onClick={step("birds")} />
     {!scene && <>
       <SliderTag label={zone.life ? (live && !editable ? `♥ ${live.hp}/${zone.life}` : `♥ ${zone.life}`) : "sem paredes"} title="Vida das paredes (notas até mudar; 0 = sem paredes)" color={c} editable={editable}

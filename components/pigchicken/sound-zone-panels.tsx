@@ -22,6 +22,7 @@ import { BeatGridEditor } from "./beat-grid-editor"
 import { ChainEditor } from "./chain-editor"
 import { BIRDS, BIRD_IDS } from "@/lib/pigchicken/birds"
 import { LanesArt } from "./sound-zone-art"
+import { GRAVITIES, ZONE_TIME, gravityOf, isGravity } from "@/lib/pigchicken/zone-physics"
 import { PROGRESSIONS, ZONE_CHANGES, chordScalesFor, fitChords, progressionIndex, zoneChange, type ZoneChangeId } from "@/lib/pigchicken/zone-changes"
 
 const field = "h-9 w-full min-w-0 rounded-md border border-white/15 bg-[#0b110e] px-2"
@@ -194,6 +195,20 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
           </StepSelect>
         </Field>
       </div>
+
+      <h3 className={SECTION}>Corpos</h3>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-field">
+        <StepSelect aria-label="Gravidade" title="Gravidade: a de um planeta, da Lua ou do Sol, em relação à da Terra" value={gravityOf(zone.gravity).id} onChange={e => { if (isGravity(e.target.value)) set({ gravity: e.target.value }) }} className={field}>
+          {GRAVITIES.map(p => <option key={p.id} value={p.id}>{p.label} · {Math.round(p.g * 100)}%</option>)}
+        </StepSelect>
+        <label className="flex items-center gap-2" title="Todo boneco dentro da zona aparece em raio-x">
+          <span>Raio-x</span>
+          <input type="checkbox" checked={!!zone.xray} onChange={e => set({ xray: e.target.checked ? true : undefined })} className="h-5 w-5 shrink-0 accent-[var(--primary)]" />
+        </label>
+      </div>
+      <PatioRange label="Tempo" min={ZONE_TIME.min} max={ZONE_TIME.max} step={ZONE_TIME.step} value={zone.time ?? ZONE_TIME.initial} changed={(zone.time ?? ZONE_TIME.initial) !== ZONE_TIME.initial} onReset={() => set({ time: undefined })} display={`${zone.time ?? ZONE_TIME.initial}%`}
+        hint="Abaixo de 100%, tudo dentro da zona (galinhas, tiros, itens, inimigos) anda em câmera lenta; acima, acelera. A música não muda."
+        onChange={time => set({ time }, "zone-time")} />
 
       <details className="mt-1 border-t border-white/10 pt-3">
         <summary className="cursor-pointer select-none text-[10px] uppercase tracking-[0.12em] text-[#93a79a] hover:text-white">Notas e regras</summary>

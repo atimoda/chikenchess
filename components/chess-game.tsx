@@ -2312,6 +2312,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   matchPowers={matchPowers}
                   onFrozenCaptureBlocked={() => toast('Não é possível capturar uma peça congelada.', { id: 'frozen-capture-blocked', duration: 3000 })}
                   onShieldCaptureBlocked={reason => toast(shieldCaptureBlockMessage(reason), { id: 'shield-capture-blocked', duration: 3000 })}
+                  onKingExposed={() => toast('Você não pode deixar seu rei sob ataque.', { id: 'king-exposed', duration: 3000 })}
                   isMoveAllowed={move => permitsPowerMove(move, matchPowersRef.current, game.history().length + 1)}
                   cityColor={city.color} 
                   isThinking={isThinking} 

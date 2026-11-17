@@ -520,3 +520,18 @@ test('aurora: curtains spread over the span, rays stand on the foot line inside 
   const low = AD.auroraCurtains(span, { ...p, lift: 0 })[0], high = AD.auroraCurtains(span, { ...p, lift: 100 })[0]
   assert.ok(high.base < low.base)
 })
+
+test('forest (Mata): each tree line is cleaned and kept with the Pátio; without it, the usual two', () => {
+  const F = loadTs('lib/pigchicken/forest.ts')
+  const PS = loadTs('lib/pigchicken/patio-settings.ts')
+  assert.equal(F.normalizeForest(undefined), undefined)
+  const f = F.normalizeForest({ far: { density: 999, size: 10, pines: 70, tint: '#ABCDEF', tintAmount: 40 }, near: { show: false } })
+  assert.deepEqual(f.far, { show: true, density: 300, size: 30, pines: 70, shape: 0, tint: '#abcdef', tintAmount: 40 })
+  assert.equal(f.near.show, false); assert.equal(f.near.density, 100)
+  assert.deepEqual(PS.normalizePatioSettings({ forest: f }).forest, f)
+  assert.equal(PS.normalizePatioSettings({ screens: 3 })?.forest, undefined)
+  assert.deepEqual(PS.patioSettingsOver({ forest: f }).forest, f)
+  // the usual lines draw as they always did
+  assert.deepEqual(F.forestDraw('far', F.FOREST_DEFAULT.far), { size: 64, gap: 46, seed: 31, pines: 0.45 })
+  assert.deepEqual(F.forestDraw('near', F.FOREST_DEFAULT.near), { size: 120, gap: 210, seed: 47, pines: 0.45 })
+})

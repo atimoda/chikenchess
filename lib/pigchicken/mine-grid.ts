@@ -4,6 +4,7 @@
 // side, and the walls of the closed blocks keep the two apart. Pure: the settings live in the Pátio's settings
 // (patio-settings.ts), the round's rules in mine-round.ts and its state in mine-grid-store.ts; the walls go to the
 // DOM for the chicken's engine, with the drawing, in components/pigchicken/mine-grid-layer.tsx.
+import { defaultMineZones, normalizeMineZones, type MineZoneParams } from './mine-zone-params'
 
 export type MineGridParams = {
   on: boolean
@@ -23,6 +24,7 @@ export type MineGridParams = {
   grey: string; blue: string; red: string // the seesaw's colours
   wallOpacity: number // "Opacidade das paredes": how opaque the closed blocks are drawn, whole percents
   corner: number // "Cantos em octógono": how much of each block's corners is cut, whole percents (100: a regular octagon)
+  zones: MineZoneParams // "Blocos são zonas sonoras" (mine-zone-params.ts, mine-zones.ts)
 }
 // the seesaw's turn: the angle the blue grows along (0: from the bottom up, 90: from the left to the right, as a CSS
 // gradient's), one drawn for each block, or the wall the first note or shot lands on
@@ -41,7 +43,7 @@ export const MINE_CORNER = { min: 0, max: 100, step: 5, default: 0 } as const
 export const defaultMineGrid = (): MineGridParams => ({
   on: false, cell: MINE_CELL.default, gap: MINE_GAP.default, pass: true, bombs: MINE_BOMBS.default,
   blockNotes: false, toFlag: MINE_NOTES.default, toOpen: MINE_DAMAGE.default, insideBreaks: true, toDoubt: MINE_NOTES.default, turn: 0, fuse: MINE_FUSE.default, startBombs: MINE_START_BOMBS.default,
-  ...MINE_COLORS, wallOpacity: MINE_WALL_OPACITY.default, corner: MINE_CORNER.default,
+  ...MINE_COLORS, wallOpacity: MINE_WALL_OPACITY.default, corner: MINE_CORNER.default, zones: defaultMineZones(),
 })
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
@@ -62,6 +64,7 @@ export function normalizeMineGrid(raw: unknown): MineGridParams | undefined {
     turn: turnOf(p.turn), fuse: snap(num(p.fuse, d.fuse), MINE_FUSE), startBombs: snap(num(p.startBombs, d.startBombs), MINE_START_BOMBS),
     grey: color(p.grey, d.grey), blue: color(p.blue, d.blue), red: color(p.red, d.red),
     wallOpacity: snap(num(p.wallOpacity, d.wallOpacity), MINE_WALL_OPACITY), corner: snap(num(p.corner, d.corner), MINE_CORNER),
+    zones: normalizeMineZones(p.zones),
   }
 }
 

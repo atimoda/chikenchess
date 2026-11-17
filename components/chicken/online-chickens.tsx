@@ -26,6 +26,11 @@ import { ITEM_SVG } from "@/lib/pigchicken/art"
 import { DEFAULT_ITEMS, isStaff, itemRig, type ItemId } from "@/lib/pigchicken/items"
 import { aimElevation, staffPose } from "@/lib/pigchicken/staff-pose"
 import { stageWidth } from "@/lib/stage-size"
+import { liveZoneEffectsAt } from "@/lib/pigchicken/zone-physics"
+
+// the Zona where another browser's chicken stands, as this one sees it: its x-ray look (and its gravity, though
+// her moves come from her own browser)
+const zoneFx = (engine: ChickenEngine) => { const s = engine.getMotionState(); engine.setZoneEffects(liveZoneEffectsAt(s.x + liveCamera.x, s.y - liveCamera.y - 60 * s.scale)) }
 
 // the item in hand travels as one byte: its place in this list (0: empty hands)
 const ITEM_KEYS = Object.keys(ITEM_SVG).sort()
@@ -207,6 +212,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const hidden = c.hidden > now
         if (hidden !== m.hidden) { m.hidden = hidden; m.wrap.style.visibility = hidden ? "hidden" : "visible" }
         m.engine.setCameraZoom(liveCamera.zoom)
+        zoneFx(m.engine)
       })
       remotes.current.forEach(r => {
         if (!r.seen) return
@@ -220,6 +226,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const housed = houseRoomsStore.netHidden(r.pid, r.slot)
         if (housed !== r.housed) { r.housed = housed; r.wrap.style.visibility = r.tag.style.visibility = housed ? "hidden" : "visible" }
         r.engine.setCameraZoom(liveCamera.zoom)
+        zoneFx(r.engine)
         const s = r.engine.getMotionState()
         const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
         const x = cx + (s.x - cx) * z - r.tag.offsetWidth * z / 2

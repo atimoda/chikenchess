@@ -771,7 +771,7 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
+      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} forest={patio?.layout.settings?.forest} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
 
       <MineGridLayer pass={!!mineParams?.pass} engine={engine} extras={extraEngines} worldRef={worldRef} width={worldScenes(screens) * SCENE_W} opacity={patioLayers.layers.grid / 100} houses={mineHouses} />
       <ChickenLayer dropIn={false} fixedScale controlsFront onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />

@@ -84,7 +84,8 @@ export type UndeadState = {
 
 type Box = { l: number; t: number; r: number; b: number; solid?: boolean; occludedAt?: (x: number, y: number) => boolean; topsAt?: (x: number) => number[] }
 export type UndeadBody = { x: number; y: number; w: number; h: number; hp: number; deadT: number; flash: number; face: number }
-export type UndeadEnv = { boxes: Box[]; groundY: number; viewL: number; viewR: number; playing: boolean; rand: () => number }
+// gravity: the factor of the Zona at a point (zone-physics.ts; absent: the Earth's)
+export type UndeadEnv = { boxes: Box[]; groundY: number; viewL: number; viewR: number; playing: boolean; rand: () => number; gravity?: (x: number, y: number) => number }
 
 const solidBox = (b: Box) => b.solid !== false
 const between = (rand: () => number, a: number, b: number) => (Number.isFinite(b) ? a + rand() * Math.max(0, b - a) : Infinity)
@@ -139,7 +140,7 @@ export function stepUndead(b: UndeadBody, u: UndeadState, dt: number, env: Undea
   // falling stiff: gravity, a spin, bounces that lose speed; it rests lying where it fell
   if (u.phase === 'fall' || (u.phase === 'leave' && u.vy !== 0)) {
     const py = b.y
-    u.vy += UNDEAD_GRAVITY * dt
+    u.vy += UNDEAD_GRAVITY * (env.gravity?.(b.x, b.y) ?? 1) * dt
     b.x += u.vx * dt; b.y += u.vy * dt
     u.vx *= Math.pow(0.5, dt)
     if (u.phase === 'fall') u.angle += u.spin * dt

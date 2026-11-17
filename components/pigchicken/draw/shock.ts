@@ -79,7 +79,16 @@ function drawBones(ctx: Ctx, g: Target, x: number) {
 export function drawShocked(ctx: Ctx, g: Target, x: number, now: number, paint: (ctx: Ctx, x: number) => void) {
   const s = g.shock!, shake = shockShake(s, now, g.id)
   ctx.save(); ctx.translate(shake.x, shake.y)
-  if (!shockXray(s, now)) { paint(ctx, x); ctx.restore(); return }
+  if (!shockXray(s, now)) paint(ctx, x)
+  else drawXray(ctx, g, x, paint)
+  ctx.restore()
+}
+
+/**
+ * Someone in x-ray (a shock's blink, or standing in a Zona with x-ray): drawn dark and bluish, with a glow around it
+ * and its bones showing.
+ */
+export function drawXray(ctx: Ctx, g: Target, x: number, paint: (ctx: Ctx, x: number) => void) {
   const size = Math.ceil(Math.max(g.w, g.h) * 2 + 160), el = scratchOf(size), c = el.getContext("2d")!
   const cy = g.y - g.h / 2
   c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.globalAlpha = 1; c.filter = "none"; c.shadowBlur = 0
@@ -92,7 +101,6 @@ export function drawShocked(ctx: Ctx, g: Target, x: number, now: number, paint: 
   ctx.drawImage(el, 0, 0, size, size, x - size / 2, cy - size / 2, size, size)
   ctx.restore()
   drawBones(ctx, g, x)
-  ctx.restore()
 }
 
 // the bolts of a shock: jagged, forked, redrawn in another shape every few ms so that they flicker; violet outside,

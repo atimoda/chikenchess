@@ -97,6 +97,9 @@ export type ChickenEngine = {
   setGroundHeight: (h: number) => void
   // magnification of the shared Pátio camera
   setCameraZoom: (zoom: number) => void
+  // what the Zona where she stands does to her (lib/pigchicken/zone-physics.ts): a factor on her gravity and the
+  // x-ray look, and its time (slow motion: a share of each frame for all she does); the Pátio sets it every frame
+  setZoneEffects: (fx: { gravity: number; time?: number; xray: boolean }) => void
   // the Pátio's point-and-click: walk to this spot (screen pixels as clicked, before the camera's zoom)
   walkTo: (point: { x: number; y: number }) => void
   setGame: (game: ChickenGame) => void
@@ -243,8 +246,39 @@ const HALO_MARKUP = `<g data-part="halo" style="display:none">
     <circle cx="34" cy="-204" r="34" fill="none" stroke="#ffd166" stroke-width="9" opacity="0.22"/>
     <circle cx="34" cy="-204" r="34" fill="none" stroke="#ffe08a" stroke-width="3.5" opacity="0.95"><animate attributeName="opacity" values="0.7;1;0.7" dur="2.4s" repeatCount="indefinite"/></circle>
   </g>`
+// a Zona with x-ray (lib/pigchicken/zone-physics.ts): the same look as someone shocked by a lightning weapon
+// (components/pigchicken/draw/shock.ts): the body dark and bluish with a cold glow around it, and the bones showing
+const XRAY_BONE = '#f1fbff', XRAY_SOCKET = '#1b2438', XRAY_GLOW = '#86d9ff'
+const XRAY_DEFS = `
+    <filter id="chk-xray" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0.19  0 0 0 0 0.235  0 0 0 0 0.36  0 0 0 1 0"/>
+    </filter>
+    <filter id="chk-xrayBone" x="-20%" y="-20%" width="140%" height="140%">
+      <feFlood flood-color="${XRAY_BONE}"/><feComposite in2="SourceAlpha" operator="in"/>
+    </filter>
+    <filter id="chk-xrayGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feFlood flood-color="${XRAY_GLOW}" flood-opacity="0.85"/><feComposite in2="SourceAlpha" operator="in"/><feGaussianBlur stdDeviation="6" result="glow"/>
+      <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`
+const XRAY_STROKE = `fill="none" stroke="${XRAY_BONE}" stroke-linecap="round" stroke-linejoin="round"`
+// the spine from the tail to the neck, the ribs hanging from it, the keel and the hips (in the body)
+const XRAY_BODY = `<g data-part="bonesBody" style="display:none">
+    <path d="M-52 -104 Q -16 -120 22 -124" stroke-width="5" ${XRAY_STROKE}/>
+    <path d="${[-34, -20, -6, 8].map(x => `M${x} ${-116 + x * -0.05} Q ${x + 14} ${-96} ${x + 6} ${-76}`).join(' ')}" stroke-width="3.2" ${XRAY_STROKE}/>
+    <path d="M30 -120 Q 50 -100 34 -76" stroke-width="4" ${XRAY_STROKE}/>
+    <ellipse cx="-22" cy="-90" rx="15" ry="7" fill="${XRAY_BONE}"/>
+  </g>`
+// the wing's bones, from the shoulder to its tip (in the wing)
+const XRAY_WING = `<g data-part="bonesWing" style="display:none"><path d="M14 -120 L -12 -102 L -44 -92" stroke-width="3.5" ${XRAY_STROKE}/></g>`
+// the neck's vertebrae (in the neck) and the skull with its eye socket and the beak's bone (in the head)
+const XRAY_NECK = `<g data-part="bonesNeck" style="display:none"><path d="M24 -124 L 40 -176" stroke-width="7" stroke-dasharray="5 3" ${XRAY_STROKE.replace('stroke-linecap="round"', 'stroke-linecap="butt"')}/></g>`
+const XRAY_HEAD = `<g data-part="bonesHead" style="display:none">
+    <circle cx="45" cy="-190" r="13" fill="${XRAY_BONE}"/>
+    <path d="M55 -197 L 73 -189 L 55 -182 Z" fill="${XRAY_BONE}"/>
+    <circle data-part="xraySocket" cx="51" cy="-192" r="4.6" fill="${XRAY_SOCKET}"/>
+  </g>`
 const SVG_MARKUP = `
-  <defs>
+  <defs>${XRAY_DEFS}
     <clipPath id="chk-wingClip"><path d="${LOOK_ART.WING}"/></clipPath>
     <pattern id="chk-pearlDots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.35" fill="#eef1f5"/><circle cx="5.5" cy="5.5" r="1.35" fill="#eef1f5"/></pattern>
     <radialGradient id="chk-buddhaGlow"><stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/><stop offset="0.6" stop-color="#ffd166" stop-opacity="0.22"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient>
@@ -262,10 +296,13 @@ const SVG_MARKUP = `
           <circle data-part="sclera" cx="51" cy="-192" r="4.6" fill="#fff8e1"/>
           <circle data-part="pupil" cx="52.5" cy="-192" r="2.8" fill="#1f1a17"/>
           <ellipse data-part="lid" cx="51" cy="-197.4" rx="5.4" ry="0" fill="#f7b21b"/>
+          ${XRAY_HEAD}
         </g>
+        ${XRAY_NECK}
       </g>
-      <g data-part="wing"><g data-part="artWing"></g></g>
+      <g data-part="wing"><g data-part="artWing"></g>${XRAY_WING}</g>
       <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"><path data-part="heldString" fill="none" stroke="#e8e2d0" stroke-width="1.2" stroke-linejoin="round" style="display:none"/><g data-part="heldArrow" style="display:none"></g><g data-part="heldArt"></g><g data-part="heldBow" style="display:none">${BOW_MARKUP}</g></g></g>
+      ${XRAY_BODY}
     </g>
   </g>`
 
@@ -311,7 +348,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo', 'bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead', 'xraySocket', 'artWingBack', 'artTail', 'artTorso', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -343,6 +380,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     el.sclera.setAttribute('fill', A.face.eye ?? '#fff8e1'); el.pupil.setAttribute('fill', A.face.pupil ?? '#1f1a17')
     eyeAt = A.face.eyeAt ? { x: A.face.eyeAt[0], y: A.face.eyeAt[1] } : { x: 51, y: -192 }
     el.sclera.setAttribute('cx', String(eyeAt.x)); el.sclera.setAttribute('cy', String(eyeAt.y)); el.lid.setAttribute('cx', String(eyeAt.x))
+    el.xraySocket.setAttribute('cx', String(eyeAt.x)); el.xraySocket.setAttribute('cy', String(eyeAt.y))
     const legs = A.legs
     ;([['wrapF', legs.front], ['wrapB', legs.back]] as const).forEach(([w, c]) => {
       el[w].querySelectorAll('.c-drum').forEach(p => p.setAttribute('stroke', c.drum))
@@ -775,7 +813,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // vertical
     let mode: string | null = null
     if (!S.grounded) {
-      let g = R.gravity, term = R.terminalVelocity
+      let g = R.gravity * zoneGravity, term = R.terminalVelocity
       if (D) { g *= R.fastFall; term *= R.fastFall; mode = 'fastFall' }
       else if (J && !jumpPressed) {
         mode = 'fly'; if (S.vy > 0) { g /= R.flyFallDivisor; term /= R.flyFallDivisor }
@@ -1616,6 +1654,18 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const drag = { on: false, id: null as number | null, x0: 0, y0: 0, ox: 0, oy: 0, px: 0, py: 0 }
   // the Pátio's camera zoom scales the drawing around the screen's centre: a pointer in her own pixels
   let camZoom = 1
+  // what the Zona where she stands does to her (lib/pigchicken/zone-physics.ts): the factor on her gravity (her jump
+  // keeps the Earth's push, so a lighter gravity takes her higher) and the x-ray look
+  let zoneGravity = 1, zoneTime = 1, xrayOn = false
+  const XRAY_DARK = ['artWingBack', 'artTail', 'artTorso', 'artNeck', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing']
+  function paintXray(on: boolean) {
+    XRAY_DARK.forEach(n => (on ? el[n].setAttribute('filter', 'url(#chk-xray)') : el[n].removeAttribute('filter')))
+    ;(['wrapF', 'wrapB'] as const).forEach(n => (on ? el[n].setAttribute('filter', 'url(#chk-xrayBone)') : el[n].removeAttribute('filter')))
+    // one glow around her whole shape (the bones' too), like the shocked ones' on the canvas
+    if (on) el.root.setAttribute('filter', 'url(#chk-xrayGlow)'); else el.root.removeAttribute('filter')
+    ;['bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead'].forEach(n => { el[n].style.display = on ? '' : 'none' })
+    ;['sclera', 'pupil', 'lid'].forEach(n => { el[n].style.visibility = on ? 'hidden' : '' })
+  }
   const local = (x: number, y: number) => camZoom === 1 ? { x, y } : { x: W / 2 + (x - W / 2) / camZoom, y: H / 2 + (y - H / 2) / camZoom }
   function heldStep(dt: number) {
     const tx = drag.px - drag.ox, ty = drag.py - drag.oy
@@ -2176,7 +2226,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   function frame(now: number) {
     frameNow = now
-    const dt = Math.min(1 / 30, (now - last) / 1000); last = now; frameDt = dt
+    // in a Zona's slow motion all she does (moves, animations, timers) takes that share of the frame; another
+    // browser's chicken moves as her own browser says
+    const dt = Math.min(1 / 30, (now - last) / 1000) * (remote ? 1 : zoneTime); last = now; frameDt = dt
     tagT -= dt; if (tagT <= 0) { tagBoxes(); tagT = 0.5 }
     // an online player's chicken in a portal: her browser is still asked (it says when she is out), the portal draws her
     if (portalEntry) { remote?.(); if (portalEntry) renderPortal(now) }
@@ -2279,6 +2331,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (h === opts.groundHeight) return
       opts.groundHeight = h; groundY = H - h
       if (S.grounded && !S.plat && !S.cl) S.y = groundY
+    },
+    setZoneEffects(fx) {
+      zoneGravity = Number.isFinite(fx.gravity) && fx.gravity > 0 ? fx.gravity : 1
+      zoneTime = fx.time !== undefined && Number.isFinite(fx.time) && fx.time > 0 ? Math.min(4, fx.time) : 1
+      if (fx.xray !== xrayOn) { xrayOn = fx.xray; paintXray(xrayOn) }
     },
     setCameraZoom(zoom) { camZoom = Math.max(0.02, Math.min(8, zoom)); svg.style.transform = zoom === 1 ? '' : `scale(${camZoom})` },
     tapAction(action) {

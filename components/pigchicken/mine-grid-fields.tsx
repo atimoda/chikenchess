@@ -4,13 +4,16 @@
 // Turning the grid on or off belongs to the Pátio's creator and godparent (and the admin); "Resetar grade" also to
 // the room's owner; the other settings to whoever may edit the Pátio (everyone else sees them, dimmed).
 import { useState, useSyncExternalStore } from "react"
-import { RotateCcw } from "lucide-react"
+import { ChevronDown, Dices, RotateCcw } from "lucide-react"
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { StepSelect } from "@/components/ui/step-select"
 import { MINE_BOMBS, MINE_CELL, MINE_COLORS, MINE_CORNER, MINE_DAMAGE, MINE_FUSE, MINE_GAP, MINE_NOTES, MINE_START_BOMBS, MINE_TURNS, MINE_WALL_OPACITY, defaultMineGrid, type MineGridParams, type MineTurn } from "@/lib/pigchicken/mine-grid"
 import { mineStore, setMineDebug } from "@/lib/pigchicken/mine-grid-store"
 import { patioIsAdmin } from "@/lib/pigchicken/edit-access"
+import { MINE_ZONE_RHYTHM, mineZoneHas, mineZonePoolLabel, toggleMineZoneBeat, type MineZoneParams } from "@/lib/pigchicken/mine-zone-params"
+import { BEATS, BEAT_GROUPS } from "@/lib/pigchicken/beats"
 
 const ROW = "flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3"
 // the seesaw's turn: where the blue grows from (the red comes from the other side)
@@ -20,6 +23,30 @@ const TURN_LABELS: Record<string, string> = {
   random: "Aleatório", first: "Primeiro tiro determina o lado",
 }
 const COLOR_ROWS = [["grey", "Cor neutra"], ["blue", "Cor da música"], ["red", "Cor do dano"]] as const
+const MENU_ITEM = "cursor-pointer font-mono text-xs text-white focus:bg-white/10 focus:text-white"
+
+// the rhythms that go into the blocks' draw: "Todos" and each rhythm, by group, with a check on the chosen ones
+function RhythmPool({ zones, disabled, onChange }: { zones: MineZoneParams; disabled: boolean; onChange: (z: MineZoneParams) => void }) {
+  const item = (id: Parameters<typeof toggleMineZoneBeat>[1], label: string, checked: boolean) => (
+    <DropdownMenuCheckboxItem key={id} checked={checked} className={MENU_ITEM}
+      onSelect={e => e.preventDefault()} onCheckedChange={on => onChange(toggleMineZoneBeat(zones, id, on === true))}>{label}</DropdownMenuCheckboxItem>
+  )
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger disabled={disabled} className="inline-flex h-8 max-w-[60%] items-center gap-1 truncate rounded-md border border-white/15 bg-[#0b110e] px-2 hover:border-[#ffd166]">
+        <span className="truncate">{mineZonePoolLabel(zones)}</span><ChevronDown className="h-3.5 w-3.5 shrink-0" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="z-[1000] max-h-80 border-white/15 bg-[#101713] text-white">
+        {item("all", "Todos", zones.all)}
+        {BEAT_GROUPS.map(g => <div key={g}>
+          <DropdownMenuSeparator className="bg-white/10" />
+          <DropdownMenuLabel className="font-mono text-[11px] font-normal text-white/50">{g}</DropdownMenuLabel>
+          {BEATS.filter(b => b.group === g).map(b => item(b.id, b.label, mineZoneHas(zones, b.id)))}
+        </div>)}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
 export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: {
   grid: MineGridParams | undefined; canEdit: boolean; canToggle: boolean
@@ -80,6 +107,21 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
               {[...MINE_TURNS, "random", "first"].map(t => <option key={t} value={t}>{TURN_LABELS[t]}</option>)}
             </StepSelect>
           </label>
+        </>)}
+        {group("Zonas", <>
+          {check("Blocos são zonas", "Cada bloco é uma Zona: o tom, a escala, o andamento e o baixo da cena onde ele está, com a percussão sorteada para ele.", g.zones.on, on => set({ zones: { ...g.zones, on } }))}
+          {g.zones.on && <>
+            <PatioRange label="Blocos com ritmo" min={MINE_ZONE_RHYTHM.min} max={MINE_ZONE_RHYTHM.max} step={MINE_ZONE_RHYTHM.step} value={g.zones.rhythm} display={`${g.zones.rhythm}%`}
+              onChange={v => set({ zones: { ...g.zones, rhythm: v } })} onReset={() => set({ zones: { ...g.zones, rhythm: MINE_ZONE_RHYTHM.default } })}
+              hint="Quantos blocos tocam um ritmo sorteado. Os outros ficam em silêncio." />
+            <div className={ROW}>
+              <span>Ritmos do sorteio</span>
+              <RhythmPool zones={g.zones} disabled={!canEdit} onChange={zones => set({ zones })} />
+            </div>
+            <button type="button" disabled={!canToggle || !canEdit} onClick={() => set({ zones: { ...g.zones, seed: 1 + Math.floor(Math.random() * 0x7ffffffe) } })}
+              title={canToggle ? "Sorteia de novo quais blocos tocam ritmo e qual ritmo cada um toca" : "Só o criador, o padrinho e o admin sorteiam."}
+              className="flex h-10 items-center justify-center gap-2 rounded-md border border-white/15 bg-[#0b110e] hover:border-[#ffd166] hover:text-white disabled:opacity-40"><Dices className="h-4 w-4" />Sortear</button>
+          </>}
         </>)}
         {group("Bombas", <>
           <PatioRange label="Chance de bomba por bloco" min={MINE_BOMBS.min} max={MINE_BOMBS.max} step={MINE_BOMBS.step} value={g.bombs} display={`${g.bombs}%`}

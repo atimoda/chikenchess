@@ -658,7 +658,7 @@ function LayersPanel({ el, onChange, onClose }: { el: LayoutElement; onChange: (
         <Toggle label="Invisível no jogo" hint="Só aparece no modo editor" checked={el.hidden} onChange={v => onChange({ ...el, hidden: v })} />
         <PatioRange label="Opacidade" min={10} max={100} step={5} value={Math.round(el.opacity * 100)}
           display={`${Math.round(el.opacity * 100)}%`} onChange={v => onChange({ ...el, opacity: v / 100 })} />
-      </div> : isMusicElement(el.kind) ? <p className="border-t border-white/10 pt-3 text-[#93a79a]">{el.kind === "zone" ? "A zona sonora é invisível no jogo e não tem colisões." : "As faixas não têm colisões: só mudam as notas que passam por elas."}</p> : <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field border-t border-white/10 pt-3">
+      </div> : isMusicElement(el.kind) ? <p className="border-t border-white/10 pt-3 text-[#93a79a]">{el.kind === "zone" ? "A zona é invisível no jogo e não tem colisões." : "As faixas não têm colisões: só mudam as notas que passam por elas."}</p> : <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field border-t border-white/10 pt-3">
         {el.kind === 'house'
           ? <p className="text-[#93a79a]">Base, telhado, peitoris e vergas são pisos de mão única. A galinha pode saltar através da fachada.</p>
           : el.kind === 'tree' ? <p className="text-[#93a79a]">Configure os apoios no Editor de árvores.</p>
@@ -1106,8 +1106,8 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
           <button type="button" className={TOOL} onClick={onClose} title="Sair do modo editor (=)" aria-label="Sair do modo editor"><X className="h-4 w-4" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-3 pt-2">
-          <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas sonoras, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
-            aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas sonoras</button>
+          <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
+            aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas</button>
           <PaletteSection title="Casas">
             {housePreviews.map(house => {
               const size = houseDraftSize(house)

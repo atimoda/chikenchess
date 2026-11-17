@@ -60,10 +60,15 @@ export function itemGroup(id: ItemId, instrument: boolean): ItemGroup {
   return UTILITY_ITEMS.has(id) ? 2 : 1
 }
 
-// puts the item at the end of its group (the others keep their order) and returns where it went
-export function insertSorted<T>(list: T[], item: T, group: (t: T) => number): number {
+// items that always go to the first slot of their group when taken (the Passaguá, first of the utilities); there
+// they stay while the player does not drag them away (other items taken later go after them)
+export const FIRST_IN_GROUP = new Set<ItemId>(['passagua'])
+
+// puts the item at the end of its group (or, with `first`, at its start; the others keep their order) and returns
+// where it went
+export function insertSorted<T>(list: T[], item: T, group: (t: T) => number, first = false): number {
   const g = group(item)
-  const at = list.findIndex(o => group(o) > g)
+  const at = list.findIndex(o => first ? group(o) >= g : group(o) > g)
   if (at < 0) { list.push(item); return list.length - 1 }
   list.splice(at, 0, item)
   return at

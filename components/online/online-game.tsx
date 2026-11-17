@@ -1603,6 +1603,7 @@ export function OnlineMatchBoard({
               }}
               onFrozenCaptureBlocked={() => toast("Não é possível capturar uma peça congelada.", { id: "frozen-capture-blocked", duration: 3000 })}
               onShieldCaptureBlocked={(reason) => toast(shieldCaptureBlockMessage(reason), { id: "shield-capture-blocked", duration: 3000 })}
+              onKingExposed={() => toast("Você não pode deixar seu rei sob ataque.", { id: "king-exposed", duration: 3000 })}
               musicEffectsEnabled={engineOn}
               musicPulseMonitor={music.pulseMonitor}
               synthSelectedSquare={selected?.square as Square | undefined}

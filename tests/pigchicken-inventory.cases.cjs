@@ -486,6 +486,18 @@ test('three groups: instruments, weapons, then sports tools, consumables and uti
   assert.deepEqual(c.inventoryGroups, [0, 0, 1, 1, 2, 2, 2])
 })
 
+test('the Passaguá always goes to the first slot of the utilities and stays there until the player drags it away', () => {
+  const c = createCombat()
+  c.give('maryjane'); c.give('pistol'); c.give('passagua'); c.give('bat'); c.give('cok')
+  assert.deepEqual(names(c), ['pistol', 'passagua', 'maryjane', 'bat', 'cok', null])
+  assert.equal(c.held.item, 'cok')
+  // dragged after the bat, it is no longer first: the next utilities go to the end, it stays where the player put it
+  step(c, { move: { from: 1, to: 3, after: true } })
+  assert.deepEqual(names(c), ['pistol', 'maryjane', 'bat', 'passagua', 'cok', null])
+  c.give('boomerang')
+  assert.deepEqual(names(c), ['pistol', 'maryjane', 'bat', 'passagua', 'cok', 'boomerang', null])
+})
+
 test('dragging a slot moves it before / after another, joining that group; the held item stays held', () => {
   const c = createCombat()
   c.give('flute'); c.give('pistol'); c.give('rifle'); c.give('bat')

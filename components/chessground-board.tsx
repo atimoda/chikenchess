@@ -14,6 +14,7 @@ export { PiecesSVG } from "@/lib/chess-piece-svg"
 import rewardStyles from "./chessground-board.module.css"
 import { frozenCaptureBlock, shieldCaptureBlock, type ShieldCaptureBlock, type MatchPower, type MatchPowerKind } from "@/lib/chess-powers"
 import { getSfxEngine } from "@/lib/sfx-engine"
+import { moveExposesOwnKing } from "@/lib/powered-chess"
 import { EGG_REWARDS } from "@/lib/egg-rewards"
 import { MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, POWER_RELEASE_MS, releasedPowers, type MulliganPreviewMove } from "@/lib/power-presentation"
 
@@ -31,6 +32,8 @@ interface ChessgroundBoardProps {
   confirmedPowerState?: { powers: MatchPower[]; ply: number }
   isMoveAllowed?: (move: Move) => boolean
   onShieldCaptureBlocked?: (reason: ShieldCaptureBlock) => void
+  /** The attempted move would leave the mover's own king under attack. */
+  onKingExposed?: () => void
   onPieceDoubleTap?: (square: Square) => void
   onPieceHold?: (square: Square) => void
   onPieceRelease?: () => void
@@ -187,6 +190,7 @@ export function ChessgroundBoard({
   confirmedPowerState,
   isMoveAllowed,
   onShieldCaptureBlocked,
+  onKingExposed,
   onPieceDoubleTap,
   synthSelectedSquare,
   activeSquares,
@@ -532,6 +536,14 @@ export function ChessgroundBoard({
     return true
   }, [game, matchPowers, onShieldCaptureBlocked, onFrozenCaptureBlocked, triggerRejectedShake])
 
+  const rejectKingExposure = useCallback((from: Square, to: Square) => {
+    if (!moveExposesOwnKing(game, from, to)) return false
+    triggerRejectedShake(from)
+    void getSfxEngine().playBlockedCue()
+    onKingExposed?.()
+    return true
+  }, [game, onKingExposed, triggerRejectedShake])
+
   const handleSquareClick = useCallback(
     (square: Square) => {
       if (freeMode) {
@@ -560,7 +572,7 @@ export function ChessgroundBoard({
       const piece = game.get(square)
 
       if (selectedSquare) {
-        if (rejectPowerCapture(selectedSquare, square)) {
+        if (rejectPowerCapture(selectedSquare, square) || rejectKingExposure(selectedSquare, square)) {
           setSelectedSquare(null)
           setLegalMoves([])
           return true
@@ -605,7 +617,7 @@ export function ChessgroundBoard({
         onBoardClick?.(square)
       }
     },
-    [game, selectedSquare, turn, isThinking, onMove, freeMode, onBoardClick, isMoveAllowed, rejectPowerCapture, playerColor, movesDisabled, deferMoves, orientation],
+    [game, selectedSquare, turn, isThinking, onMove, freeMode, onBoardClick, isMoveAllowed, rejectPowerCapture, rejectKingExposure, playerColor, movesDisabled, deferMoves, orientation],
   )
 
   // Handle drag and drop
@@ -776,6 +788,7 @@ export function ChessgroundBoard({
 
         try {
           if (rejectPowerCapture(dragPiece.from, targetSquare)) throw new Error('Power capture blocked')
+          if (rejectKingExposure(dragPiece.from, targetSquare)) throw new Error('Own king left under attack')
           const candidate = game.moves({ square: dragPiece.from, verbose: true }).find(move => move.to === targetSquare && (!move.promotion || move.promotion === 'q'))
           if (!candidate || (isMoveAllowed && !isMoveAllowed(candidate))) throw new Error('Move blocked by a power')
           const move = deferMoves ? candidate : game.move({
@@ -807,7 +820,7 @@ export function ChessgroundBoard({
         setLegalMoves([])
       }
     },
-    [game, onMove, freeMode, isMoveAllowed, rejectPowerCapture, playerColor, movesDisabled, deferMoves, orientation],
+    [game, onMove, freeMode, isMoveAllowed, rejectPowerCapture, rejectKingExposure, playerColor, movesDisabled, deferMoves, orientation],
   )
 
   useEffect(() => {

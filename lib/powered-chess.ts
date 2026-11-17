@@ -145,6 +145,19 @@ export function clonePoweredChess(game: Chess, powers: MatchPower[]): Chess {
   return restorePoweredChess(poweredChessSnapshot(game), powers)
 }
 
+/**
+ * True when from→to is a move the piece could make by its own movement (powers
+ * included) but the rules reject because it would leave the mover's king under
+ * attack, e.g. moving a pinned piece or stepping the king into check.
+ */
+export function moveExposesOwnKing(game: Chess, from: Square, to: Square): boolean {
+  const piece = game.get(from)
+  if (!piece || piece.color !== game.turn() || from === to) return false
+  const variant = game as unknown as ChessInternals
+  const reaches = (legal: boolean) => variant._moves({ legal, square: from }).some(move => square(move.to) === to)
+  return reaches(false) && !reaches(true)
+}
+
 /** Validate a Freeze before charging, using the current board for both teams. */
 export function freezeApplicationError(game: Chess, powers: MatchPower[], power: MatchPower): string | null {
   if (power.kind !== 'freeze') return null

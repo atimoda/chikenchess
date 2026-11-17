@@ -8,7 +8,7 @@ import { SCENE_W, WORLD_GROUND_Y } from './world'
 import { VILLAGE_RIDGE, type RidgePoint } from './village'
 
 export type SurfacePoint = [x: number, y: number]
-export const GROUND_BIOMES = ['village', 'meadow', 'desert', 'snow', 'volcanic'] as const
+export const GROUND_BIOMES = ['village', 'meadow', 'desert', 'snow', 'volcanic', 'moon', 'mars'] as const
 export type GroundBiome = (typeof GROUND_BIOMES)[number]
 export const WALL_STYLES = ['brick', 'stone', 'wood'] as const
 export type WallStyle = (typeof WALL_STYLES)[number]
@@ -16,7 +16,7 @@ export type SurfaceKind = 'ground' | 'wall'
 export type SurfaceParams = { style: GroundBiome | WallStyle; points: SurfacePoint[] }
 
 export const SURFACE_STYLE_LABELS: Record<GroundBiome | WallStyle, string> = {
-  village: 'Rocha da Vila', meadow: 'Campo', desert: 'Deserto', snow: 'Neve', volcanic: 'Vulcânico',
+  village: 'Rocha da Vila', meadow: 'Campo', desert: 'Deserto', snow: 'Neve', volcanic: 'Vulcânico', moon: 'Lua', mars: 'Marte',
   brick: 'Tijolos', stone: 'Pedra', wood: 'Madeira',
 }
 

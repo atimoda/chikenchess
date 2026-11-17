@@ -138,7 +138,7 @@ export function SkyFields({ sky, onChange }: { sky: SkyParams | undefined; onCha
         {pct("Luz no pátio", "light", "Quanto a hora do dia ilumina, escurece e esquenta o cenário do Pátio.")}
       </div>
       <div className="grid">
-        <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3"><span>Mata ao longe</span>
+        <label className="flex h-9 items-center justify-between gap-2 rounded-md bg-[#22302a] px-3" title="As duas fileiras de árvores do fundo. Cada uma se ajusta em Mata."><span>Mata</span>
           <input type="checkbox" checked={s.forest} onChange={e => set({ forest: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" /></label>
       </div>
     </div>

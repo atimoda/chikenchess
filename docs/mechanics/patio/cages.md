@@ -34,7 +34,7 @@ As Gaiolas substituem a Bag of souls: as almas que o Passaguá captura ficam den
 
 ## Na tela
 
-- **As suas (primeiro player):** penduradas no canto superior esquerdo, abaixo da barra do topo. A da frente é grande; as outras duas ficam menores (55%), uma de cada lado, um pouco atrás dela. Embaixo de cada uma, “almas/limite”; a da frente tem o contorno na cor do player.
+- **As suas (primeiro player):** penduradas no canto superior esquerdo, abaixo da barra do topo. A da frente é grande; as outras duas ficam menores (55%), uma de cada lado, um pouco atrás dela. Embaixo de cada uma, “almas/limite” (ou “Callback”) só em texto branco, sem fundo nem borda, com uma sombra leve para ler sobre o cenário; sob o ponteiro o texto fica totalmente aceso (desde 17/11, v2.13.0; antes era uma pílula escura com contorno na cor do player na da frente).
 - **Balanço:** cada gaiola é um pêndulo empurrado pela aceleração da câmera, e leva um empurrãozinho quando uma alma entra ou sai. A gaiola fica para trás da câmera: quando a câmera começa a ir para um lado, ela balança primeiro para o outro (corrigido em 16/11, v2.11.1; antes ela acompanhava a câmera).
 - **Entrada:** a gaiola recém-pegada entra balançando, vinda de fora do canto superior esquerdo, em 1,1 s (`CAGE_ENTER`); a secundária entra menor, por trás.
 - **Brilho:** azul por 0,45 s quando ganha uma alma, vermelho quando solta uma (`CAGE_FLASH`).

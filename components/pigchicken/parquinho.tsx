@@ -47,9 +47,11 @@ import { SCENE_W, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt,
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, type LayoutElement } from "@/lib/pigchicken/layout"
 import { groundZones, placeEnvAt, soundZoneOf, zoneAt, zoneBlockSolo, type LanesBox, type SceneEdges, type SceneZones, type ZoneBox } from "@/lib/pigchicken/sound-zones"
+import { setLiveZones, zoneEffectsAt } from "@/lib/pigchicken/zone-physics"
 import { hitZone, liveZones, resetZoneLife, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { bindMinePlay } from "./mine-grid-play"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
+import { mineZoneBoxes } from "@/lib/pigchicken/mine-zones"
 import { drawScaleFan, SCALE_FAN_R, seatedFanSize } from "@/components/pigchicken/draw/scale-fan"
 import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { dropScaleStage, setScaleStage } from "@/lib/pigchicken/scale-preview"
@@ -74,6 +76,7 @@ import { drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-d
 import { BuildingStyles } from "@/components/pigchicken/building-art"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
 import type { MountainParams } from "@/lib/pigchicken/mountains"
+import type { ForestParams } from "@/lib/pigchicken/forest"
 import { patioClouds, type CloudParams } from "@/lib/pigchicken/clouds"
 import type { SnowfallParams } from "@/lib/pigchicken/snowfall"
 import type { AuroraParams } from "@/lib/pigchicken/aurora"
@@ -132,9 +135,9 @@ function onlyThrow(actions: Record<ChickenAction, boolean>): Record<ChickenActio
 // worldTop: the Pátio's ceiling (world y, its height limit); groundHeight: how much ground the page shows below the floor
 // backdrop: how strongly the scenery far behind shows (sky, sun, mountains; the layers menu's Fundo, 0 hides it)
 // sky: the Pátio's sky and light (Configurações do Pátio → Céu e luz); without it, the classic dusk
-// mountains: the far ranges' shape (Configurações do Pátio → Montanhas); clouds: theirs (→ Nuvens)
+// mountains: the far ranges' shape (Configurações do Pátio → Montanhas); forest: the tree lines' (→ Mata); clouds: theirs (→ Nuvens)
 // temple: false leaves out the Vila dos Telhados' fixed backdrop (the Templo do Gongo is made of layout elements)
-export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1, sky, mountains, clouds, snowfall, aurora, temple = true, zoomMin = PATIO_ZOOM.min }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number; sky?: SkyParams; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; temple?: boolean; zoomMin?: number }) {
+export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DEFAULT_ELEMENTS, editing = false, worldTop = WORLD_TOP, groundHeight = 30, backdrop = 1, sky, mountains, forest, clouds, snowfall, aurora, temple = true, zoomMin = PATIO_ZOOM.min }: { screens: number; worldRef: React.RefObject<HTMLDivElement | null>; debug?: boolean; elements?: LayoutElement[]; editing?: boolean; worldTop?: number; groundHeight?: number; backdrop?: number; sky?: SkyParams; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; temple?: boolean; zoomMin?: number }) {
   // The Parquinho, the Templo do Gongo and the Vila dos Telhados share one world.
   const width = worldScenes(screens) * SCENE_W
   const villageLeft = villageScene(screens) * SCENE_W
@@ -155,7 +158,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
       <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
-      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} /></div>)}
+      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} /></div>)}
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)", ...lit }} />
       {debug && Array.from({ length: screens }, (_, s) => (
@@ -722,8 +725,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the scenes' own zones: Zonas sonoras stuck to the ground, under the map's (made again when the Pátio changes
     // them, their limits or its width)
     let ground: ZoneBox[] = [], groundOf: unknown[] = []
-    const allZones = () => liveZones([...ground, ...worldMusic.zones])
+    // the Grade de blocos' blocks as Zonas sonoras (mine-zones.ts), between the scenes' zones and the map's: made
+    // again when the grid's shape, its settings or the scenes' zones change
+    let blockZones: ZoneBox[] = [], blockZonesOf: unknown[] = []
+    const allZones = () => liveZones([...ground, ...blockZones, ...worldMusic.zones])
     combat.setPlaceEnv((x, y) => placeEnvAt(playZones, worldMusic.lanes, x, y))
+    combat.setZoneEffects((x, y) => zoneEffectsAt(playZones, x, y))
     combat.setZoneWalls((px, py, x, y, count) => {
       const hit = zoneWallHit(playZones, px, py, x, y)
       if (!hit) return null
@@ -935,6 +942,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       moveLiveCamera(camX, camY, zoom)
       engine.setCameraZoom(zoom)
       others.forEach(o => o.setCameraZoom(zoom))
+      // the Zona where each chicken stands: its gravity and the x-ray look (zone-physics.ts); the online players'
+      // chickens ask the same zones (setLiveZones)
+      setLiveZones(playZones)
+      const zoneFxOf = (o: ChickenEngine) => { const os = o.getMotionState(); o.setZoneEffects(zoneEffectsAt(playZones, os.x + camX, os.y - camY - 60 * os.scale)) }
+      zoneFxOf(engine); others.forEach(zoneFxOf)
 
       // ---------- aim ----------
       // picked up by the pointer: every action but Throw waits until she is let go
@@ -1438,6 +1450,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (groundNow.some((v, i) => v !== groundOf[i])) {
         groundOf = groundNow
         ground = sceneMusicRef.current ? groundZones(sceneZonesRef.current, sceneEdgesRef.current, S.screens) : []
+        playZones = allZones()
+      }
+      const mineGeo = mineStore.round?.grid.geo, mineZones = mineStore.params?.zones
+      const blocksNow = [mineGeo, mineZones, sceneZonesRef.current, sceneEdgesRef.current, S.screens]
+      if (blocksNow.some((v, i) => v !== blockZonesOf[i])) {
+        blockZonesOf = blocksNow
+        blockZones = mineGeo && mineZones ? mineZoneBoxes(mineGeo, mineZones, { zones: sceneZonesRef.current, edges: sceneEdgesRef.current, screens: S.screens }) : []
         playZones = allZones()
       }
       // the zone she is in: a Zona sonora of the map wins over the scene's (not over a song playing in the temple)

@@ -36,6 +36,7 @@
 | Pátio: Quadro de lousa, fantasma de treino e o Pátio Training room | [Treino](docs/mechanics/patio/training.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, presos às camadas do fundo, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
 | Pátio: aurora no céu (Configurações do Pátio → Aurora) | [Aurora](docs/mechanics/patio/aurora.md) |
+| Pátio: mata do fundo (Configurações do Pátio → Mata: Mata ao longe e Mata perto) | [Mata](docs/mechanics/patio/forest.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: almas capturadas (identidade, raridade, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
@@ -53,7 +54,7 @@
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
-| Pátio: camadas (olho), tags das zonas, música ambiente (drone e percussão), zonas das cenas, paredes com vida | [Zonas e camadas](docs/mechanics/patio/zones.md) |
+| Pátio: zonas (nome, gravidade dos planetas, câmera lenta e raio-x), camadas (olho), tags das zonas, música ambiente (drone e percussão), zonas das cenas, paredes com vida | [Zonas e camadas](docs/mechanics/patio/zones.md) |
 | Pátio: ritmos das zonas: microtempo (swing) de cada ritmo, timbres gravados, variações, grade com notas arrastáveis, blocos de variação, knobs do painel | [Ritmos das zonas](docs/mechanics/patio/rhythms.md) |
 | Admin e catálogos locais | [Admin](docs/mechanics/admin.md) |
 | Online 1v1: salas, lobby e convites | [Lobby](docs/mechanics/online/lobby.md) |

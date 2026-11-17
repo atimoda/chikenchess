@@ -163,7 +163,7 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   entry: { label: 'Portal de entrada', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: 150, minH: 150 },
   // a Portal de nascimento: one more place to be born at, by its chance (spawn-portals.ts); it leads nowhere
   spawn: { label: 'Portal de nascimento', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
-  zone: { label: 'Zona sonora', group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
+  zone: { label: 'Zona', group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
   lanes: { label: 'Faixas fixas', group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
   ground: { label: 'Chão', group: 'Chãos e paredes', w: 640, h: 200, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 24 },
   wall: { label: 'Parede', group: 'Chãos e paredes', w: 72, h: 320, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 12, minH: 24 },
