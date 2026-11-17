@@ -252,6 +252,7 @@ export type FrameInput = {
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
   grabHeld?: boolean // Pegar held down: every item she passes over is taken as if grab were pressed on it
   grabRun?: boolean // that press came only from Correr's keys/buttons: it takes (Pegar) but never equips (Equipar)
+  grabUp?: boolean // Pegar let go this frame (a Gaiola with no room among hers is swapped on a press down and up on it)
 }
 
 export const SLOTS = INVENTORY_MAX
@@ -1005,6 +1006,8 @@ export function createCombat() {
   let hover: Pickup | null = null
   // items taken (or dropped by a swap) during the current hold of Pegar: each is taken once per hold
   const heldTaken = new Set<number>()
+  // each player's press of Pegar that went down on a Gaiola to swap (its pickup id): it swaps when let go on it
+  const cageSwapPress = new Map<string, number>()
   // an item on the floor she already carries: grab equips hers
   let hoverOwned: Pickup | null = null
 
@@ -3251,7 +3254,16 @@ export function createCombat() {
       if (!input.grabHeld) heldTaken.clear()
       // Golpe or a Bicada (when it is let go) also stores the new item offered at her body
       const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover
-      const grabNow = !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      // a Gaiola offered when she already hangs CAGES_MAX is only swapped (for the one in front) by Pegar itself: its
+      // press goes down and comes up on that cage while it is offered. Running over it (Correr), Pegar held while
+      // walking and Golpe leave it on the floor; a cage with room is taken by any of them
+      const swapCage = !!hover?.owned.cage && cages.length >= CAGES_MAX
+      if (!swapCage) cageSwapPress.delete(active)
+      else if (input.grab && !input.grabRun) cageSwapPress.set(active, hover!.id)
+      else if (cageSwapPress.get(active) !== hover!.id) cageSwapPress.delete(active)
+      const swapNow = swapCage && !!input.grabUp && cageSwapPress.get(active) === hover!.id
+      if (input.grabUp) cageSwapPress.delete(active)
+      const grabNow = swapCage ? swapNow : !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       // an item offered at her body (to take or to equip) goes before a Baú
       const itemOffered = !!hover || !!hoverOwned
       if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.out) || inv.some(o => o.item === hover!.owned.item))) {
@@ -3265,7 +3277,7 @@ export function createCombat() {
           heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
         }
       }
-      else if (input.grab && hoverOwned && !input.grabRun) {
+      else if (input.grab && hoverOwned && !input.grabRun && !swapCage) {
         // the same item is in her inventory: grab equips it (the one on the floor stays);
         // not when the press is Correr's own key, so running over her items never swaps the one in her hand
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)

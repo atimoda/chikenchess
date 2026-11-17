@@ -5,6 +5,17 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.12.1',
+    date: '17/11/2026',
+    title: 'Gaiolas: passar correndo só pega com vaga; trocar pede Pegar',
+    groups: [
+      { title: 'Pátio: Gaiolas', items: [
+        'Passar correndo por cima de uma gaiola (ou andar segurando Pegar) só pega a gaiola quando você ainda tem vaga para ela. Com as três gaiolas, a do chão fica onde está e o aviso mostra “trocar”.',
+        'Para trocar a gaiola da frente pela do chão, aperte e solte Pegar em cima dela enquanto o aviso aparece. Golpe continua sem trocar.',
+      ] },
+    ],
+  },
+  {
     version: '2.12.0',
     date: '16/11/2026',
     title: 'Campo minado no Pátio: Grade de blocos com paredes e dois lados, gangorra de música e dano, bandeira, bombas, detonador e Filhote, com a rodada compartilhada no online e um Pátio de exemplo; Portais de nascimento no Modo editor, cada um com a sua chance; gaiolas penduradas balançam para o lado certo; painel Itens com os seis modelos de gaiola numa tela só; almas em pose de descanso na gaiola e pousadas; cada Boomerang sai de uma asa; itens param em cima dos chãos com contorno, e a galinha agachada agarra a beirada deles; estrelas a qualquer hora do dia; dá para entrar nas casas pela porta; os elementos do Templo e da Vila ficam no lugar ao mudar a largura do Pátio; e cada Pátio escolhe a faixa de zoom, até ver o Pátio inteiro',
@@ -176,18 +187,6 @@ const RECENT = [
         'Quando você está perdendo por mais de 1 peão, um lance da lista Best continua pagando 3 ovos, mas agora conta na sequência de Best e nunca dobra. Antes ele entrava na sequência de Worst, e a partir do terceiro lance premiado seguido todo Best e todo Worst pagava 6 ovos, sem parar. Os 6 ovos voltam a exigir três Worst de verdade seguidos. Vale na campanha, para os ChickenBots e no online.',
         'Preferências da partida ganhou “Match log”, com o botão Copy: copia o histórico completo da partida, uma linha por acontecimento, com cada lance (posição, lances possíveis, listas Best e Worst com os scores, classificação, sequência e ovos pagos), Freeze e Shield, Undo, Redo, Mulligan e cada vez que as setas foram abertas. Serve para colar numa conversa ao relatar um bug. Vale na campanha e no online.',
         'Um rei não pode mais ir para uma casa que uma peça adversária congelada alcançaria, nem descobrir essa ameaça movendo outra peça. Antes, o adversário (inclusive o bot) podia congelar o seu rei e encostar o rei dele ao lado; quando os poderes se desfaziam por falta de jogadas, os dois reis ficavam vizinhos. Vale na campanha, contra os bots e no online.',
-      ] },
-    ],
-  },
-  {
-    version: '2.10.1',
-    date: '14/11/2026',
-    title: 'Correções do Pátio com zoom: nuvens grandes inteiras e prévia do arraste no tamanho certo',
-    groups: [
-      { title: 'Pátio', items: [
-        'Nuvens Suaves com Tamanho acima do normal não aparecem mais cortadas retas no topo.',
-        'Com a câmera no alto do Pátio, nuvens e cenário com profundidade não somem mais antes de sair da tela.',
-        'No Modo editor, ao arrastar uma casa ou árvore para o Pátio com zoom diferente de 100%, a prévia aparece do tamanho que o elemento terá ao ser solto, em vez de gigante (ou pequena).',
       ] },
     ],
   },

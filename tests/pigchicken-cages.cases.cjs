@@ -276,9 +276,10 @@ test('a cage on the floor keeps its souls: whoever takes it takes them; with thr
   assert.deepEqual([names(c), c.cages.map(o => o.cage.cap)], [['cage', 'cageWood'], [I.DEFAULT_ITEMS.cage.cageSouls, 5]], 'the one she had stays in front')
   assert.equal(c.cages[1].cage.enterT < G.CAGE_ENTER, true, 'swinging in')
   assert.equal(c.hoverSwaps, false)
+  // running over one (Correr's press) takes it while there is room
   c.addPickup(0, 'cageArch', 0)
-  step(c); step(c, { grab: true })
-  assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'])
+  step(c); step(c, { grab: true, grabHeld: true, grabRun: true })
+  assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'], 'running over it takes it')
   assert.equal(c.pickups.length, 0)
   // a fourth one, with souls in it
   const id = c.addPickup(0, 'cageFlight', 0)
@@ -290,7 +291,18 @@ test('a cage on the floor keeps its souls: whoever takes it takes them; with thr
   step(c, { melee: true })
   assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'], 'Golpe never swaps')
   for (let i = 0; i < 40; i++) step(c)
-  step(c, { grab: true })
+  // with no room, running over it or holding Pegar while walking leaves it there
+  for (let i = 0; i < 5; i++) step(c, { grab: i === 0, grabHeld: true, grabRun: true })
+  step(c, { grabUp: true })
+  for (let i = 0; i < 5; i++) step(c, { grabHeld: true })
+  step(c, { grabUp: true })
+  assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'], 'running or walking over it never swaps')
+  assert.equal(c.hoverSwaps, true, 'still offered, to swap')
+  // Pegar itself: down on it does nothing yet, up on it swaps
+  step(c, { grab: true, grabHeld: true })
+  for (let i = 0; i < 3; i++) step(c, { grabHeld: true })
+  assert.deepEqual(names(c), ['cage', 'cageWood', 'cageArch'], 'not while it is held down')
+  step(c, { grabUp: true })
   assert.deepEqual(names(c), ['cageFlight', 'cageWood', 'cageArch'], 'it takes the place of the one in front')
   assert.equal(c.cages[0], lying)
   assert.equal(c.capturedSouls, 2, 'its souls came with it')

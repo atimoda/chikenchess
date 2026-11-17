@@ -25,8 +25,8 @@ As Gaiolas substituem a Bag of souls: as almas que o Passaguá captura ficam den
 ## Carregar gaiolas
 
 - **Quantas:** até 3 por player (`CAGES_MAX`), cada uma com as suas almas. A primeira é a da frente (a ativa); as outras ficam atrás.
-- **Pegar:** Usar/Pegar (ou Golpe, ou segurar Pegar andando) sobre uma gaiola no chão ou no cavalete. A primeira vira a da frente. Tendo alguma, a nova entra atrás e não é selecionada.
-- **Com três:** Usar/Pegar troca a gaiola da frente pela do chão (o aviso do item diz “trocar”); a que estava na frente cai ali com as almas dela. Golpe não troca.
+- **Pegar:** com vaga, Usar/Pegar, Golpe, segurar Pegar andando ou passar correndo (Correr) sobre uma gaiola no chão ou no cavalete pega a gaiola. A primeira vira a da frente. Tendo alguma, a nova entra atrás e não é selecionada.
+- **Com três (17/11, v2.12.1):** a gaiola do chão continua oferecida, com o aviso “trocar”. Só Pegar troca: a tecla ou botão de Pegar precisa descer e subir com aquela gaiola oferecida (a troca acontece ao soltar). Apertar em cima e soltar depois de sair dela, apertar Correr, segurar Pegar andando e Golpe não trocam. A troca põe a gaiola do chão na frente; a que estava na frente cai ali com as almas dela.
 - **No chão:** a gaiola guarda as almas. Quem pega leva as almas junto; elas passam a ser dele sem contar como captura nova na Biblioteca.
 - **Trocar de Pátio:** as gaiolas atravessam com o player, na mesma ordem e com as almas dentro ([Troca de mundo](editor.md)); as do chão ficam no Pátio anterior.
 - **Sair do jogo:** as gaiolas de um player local que sai caem onde ele estava, com o que têm dentro. Valem só durante a sessão; não são salvas.
