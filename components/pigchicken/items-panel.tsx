@@ -108,8 +108,14 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
     <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <StepSelect aria-label="Item" value={cages ? CAGE_IDS[0] : sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+          <optgroup label="Golpes">
+            <option value="peck">{items.peck.name} (Chi sem item)</option>
+            <option value="wing">{items.wing.name} (Chi sem item)</option>
+            <option value="chainBlow">{items.chainBlow.name} (Pig sem item)</option>
+            <option value="tailBlow">{items.tailBlow.name} (Ken sem item)</option>
+          </optgroup>
           <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Armas"><option value="peck">{items.peck.name} (sem item)</option>{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Instrumentos fixos">{FIXED_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
@@ -117,9 +123,6 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Chaves">{KEY_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Grade de blocos">{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value={CAGE_IDS[0]}>Gaiolas</option>
-          <option value="wing">{items.wing.name}</option>
-          <option value="chainBlow">{items.chainBlow.name} (Pig sem item)</option>
-          <option value="tailBlow">{items.tailBlow.name} (Ken sem item)</option>
         </StepSelect>
         <button type="button" onClick={() => edit(all => (cages ? CAGE_IDS : [sel]).forEach(id => Object.assign(all[id], structuredClone(DEFAULT_ITEMS[id]))))} title={cages ? "Volta as gaiolas para os valores do código" : "Volta este item para os valores do código"} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
