@@ -122,7 +122,9 @@ test('items have Pontos per class: Pig and Ken use their own set when they have 
   const own = { ...I.pointsOf(bat), gripX: 33, swapHands: true }
   const withPig = { ...bat, classPoints: { pig: own } }
   assert.equal(I.classItem(withPig, 'pig').gripX, 33); assert.equal(I.classItem(withPig, 'pig').swapHands, true)
-  assert.equal(I.classItem(withPig, 'fox').gripX, bat.gripX); assert.equal(I.classItem(withPig, 'chi').gripX, bat.gripX)
+  assert.equal(I.classItem(withPig, 'fox').gripX, 33, 'Ken without his own takes Pig\'s'); assert.equal(I.classItem(withPig, 'chi').gripX, bat.gripX)
+  const both = { ...bat, classPoints: { pig: own, fox: { ...own, gripX: 7 } } }
+  assert.equal(I.classItem(both, 'fox').gripX, 7); assert.equal(I.classItem(both, 'pig').gripX, 33)
   assert.equal(I.pointClassOf('pig'), 'pig'); assert.equal(I.pointClassOf('fox'), 'fox'); assert.equal(I.pointClassOf('chicken'), 'chi')
   // saved and read back (the defaults file too), clamped to the panel's range
   const file = I.itemsDefaultsFile({ ...I.DEFAULT_ITEMS, bat: { ...withPig, classPoints: { pig: { ...own, gripY: 9999 } } } })

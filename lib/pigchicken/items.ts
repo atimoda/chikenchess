@@ -861,7 +861,7 @@ export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]
 
 // ---------- Pontos per class (Chi, Pig, Ken) ----------
 // How an item sits in the hands depends on the body: Pig and Ken can each have their own Pontos (the numbers of the
-// Pontos group and the choices of the points editors); with none, they use the item's own, which are Chi's
+// Pontos group and the choices of the points editors); with none, the other one's, and with neither, Chi's
 export type PointClass = 'chi' | 'pig' | 'fox'
 export const POINT_CLASSES = ['pig', 'fox'] as const
 const POINT_NUM_META = ITEM_PARAM_META.filter(m => m.group === 'Pontos')
@@ -872,9 +872,10 @@ export type ClassPoints = Partial<Record<(typeof POINT_CLASSES)[number], PointSe
 export const pointsOf = (d: ItemDef): PointSet => Object.fromEntries(POINT_KEYS.map(k => [k, d[k]])) as PointSet
 /** The point class of a body's species ('pig', 'fox'; anything else is Chi's). */
 export const pointClassOf = (species: string | null | undefined): PointClass => species === 'pig' ? 'pig' : species === 'fox' ? 'fox' : 'chi'
-/** The item as a body of this class holds it: its own Pontos for Pig or Ken when it has them. */
+/** The item as a body of this class holds it: its own Pontos for Pig or Ken when it has them; with none, the other
+ * one's (both have arms, and hold things almost the same way); with neither, Chi's (the item's own). */
 export function classItem(d: ItemDef, cls: PointClass): ItemDef {
-  const own = cls === 'chi' ? undefined : d.classPoints?.[cls]
+  const own = cls === 'chi' ? undefined : d.classPoints?.[cls] ?? d.classPoints?.[cls === 'pig' ? 'fox' : 'pig']
   return own ? { ...d, ...own } : d
 }
 
