@@ -1267,7 +1267,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the Itens panel follows the item the main player holds
-      announceHeldItem(combat.held?.item ?? null)
+      // (empty-handed, Pig and Ken hit with the chain and the tail: the panel opens on them)
+      announceHeldItem(combat.held?.item ?? (body.species === 'pig' ? 'chainBlow' : body.species === 'fox' ? 'tailBlow' : null))
       announceHeldScale(combat.held && combat.def().instrument ? combat.scale.id : null)
       // (and its preview is in this Pátio's key)
       setScaleStage(combat.music)

@@ -47,6 +47,9 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   cardsRed: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Música", "Choque", "Especial"],
   cardsBlue: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Choque", "Especial"],
   wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito"],
+  // Pig's chain and Ken's tail: only their blows (quick, in the combo, and strong), and the notes they rebate
+  chainBlow: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música"],
+  tailBlow: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
   // a key only opens Baús: it has no effect, just its slap and its throw
   ...Object.fromEntries(KEY_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
@@ -57,6 +60,8 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
 const HEAVY_SHOCK: (keyof ItemDef)[] = ["heavyShockRange", "heavyShockTime"]
 // what a deck does not use: its cards fly straight to the reticle with no charge and only burst (no fuse)
 const DECK_UNUSED: (keyof ItemDef)[] = ["returnDamage", "returnMin", "returnCharge", "returnPush", "returnCurveMin", "returnCurveMax", "fuse", "bounce"]
+// what Pig and Ken hit with when empty-handed (lib/pigchicken/combat.ts bareDef)
+const BARE_BLOWS: ItemId[] = ["chainBlow", "tailBlow"]
 const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "grip2X", "grip2Y", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
 // the arc a combo blow of this kind starts with: another blow of the same kind, the code's, or 150°
 const comboArc = (combo: ComboStep[], base: ItemDef, kind: BlowKind) =>
@@ -306,7 +311,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 </label>
               )}
               <div className="grid gap-field">
-              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: "Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui" } : it.deck && m.key === "returnCount" ? { ...m, label: "Cartas fora ao mesmo tempo", hint: "Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)" } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(BARE_BLOWS.includes(sel) && m.key === "durability") && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: "Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui" } : it.deck && m.key === "returnCount" ? { ...m, label: "Cartas fora ao mesmo tempo", hint: "Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)" } : BARE_BLOWS.includes(sel) && (m.key === "meleeRange" || m.key === "heavyRange") ? { ...m, label: sel === "chainBlow" ? "Alcance da corrente" : "Alcance do rabo" } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
                 const v = it[m.key] as number, changed = v !== base[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
