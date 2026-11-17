@@ -103,6 +103,7 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Voo', key: 'flyDownFallAtten', label: 'Atenuador de queda (segurando para baixo)', unit: '%', min: -200, max: 200, step: 1, hint: 'Voando (Pulo segurado) com Baixo (agachar): tira esta parte da gravidade. 100% anula a queda; acima disso ela sobe; negativo puxa para baixo.' },
   { group: 'Voo', key: 'flapRate', label: 'Batidas de asa voando', unit: '/s', min: 2, max: 20, step: 0.5},
   { group: 'Voo', key: 'jumpFlaps', label: 'Batidas de asa por pulo', unit: '', min: 0, max: 6, step: 1},
+  { group: 'Voo', key: 'airJumps', label: 'Pulos no ar (máximo)', unit: '', min: 0, max: 99, step: 1, hint: '99 = sem limite (a galinha). Ken tem 1 e Pig 0, pela classe.' },
   { group: 'Voo', key: 'heldFlapRate', label: 'Batidas de asa sendo arrastada', unit: '/s', min: 0, max: 20, step: 0.5, hint: '0 = asas paradas' },
   { group: 'Voo', key: 'jumpFlapRate', label: 'Velocidade das batidas do pulo', unit: '/s', min: 4, max: 24, step: 0.5},
   { group: 'Idle', key: 'idleMin', label: 'Balanço de cabeça: intervalo mín.', unit: 's', min: 0.2, max: 6, step: 0.1},
@@ -121,7 +122,7 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Sorteio do cacarejo', key: 'byType', label: 'Sortear o tipo antes do sample', type: 'bool', hint: 'ligado: cada tipo tem a mesma chance, mesmo com poucos samples' },
   { group: 'Sorteio do cacarejo', key: 'avoidRepeat', label: 'Não repetir o último sample', type: 'bool'},
   ...CHICKEN_SFX_EVENTS.map(([ev, label]) => ({ group: 'Som de cada movimento', key: ('sfx_' + ev) as ChickenParamKey, label, type: 'select' as const })),
-  { group: 'Visual', key: 'scale', label: 'Tamanho da galinha', unit: '×', min: 0.5, max: 3, step: 0.05 },
+  { group: 'Visual', key: 'scale', label: 'Tamanho da galinha', unit: '×', min: 0.5, max: 6, step: 0.05, hint: '1 = o tamanho normal. Pig e Ken somam o tamanho da classe deles.' },
 ]
 
 export const CHICKEN_PARAM_META: ChickenParamMeta[] = RAW

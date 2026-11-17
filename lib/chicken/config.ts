@@ -4,7 +4,7 @@
 // browser so the chicken starts with it right away; without it the defaults in params.ts apply.
 // The Pátio sets a preview (its unsaved draft) that the chickens on screen follow until it closes.
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from './look-art'
-import { CHICKEN_CLUCKS, CHICKEN_PARAMS, type ChickenParams } from './params'
+import { CHICKEN_CLUCKS, CHICKEN_PARAMS, SCALE_BASE, type ChickenParams } from './params'
 import { onlineConfigured, requireOnlineClient } from '@/lib/online/client'
 
 /* global process, fetch */
@@ -42,6 +42,9 @@ export function normalizeChickenConfig(raw: unknown): ChickenConfig {
   if (params.backpedal === undefined) out.params.backpedal = storedBackpedal() ?? legacyBackpedal() ?? out.params.backpedal
   // a version saved before 'runBroodJumpBoost' existed still has the old crouch-run speed (1): drop it so the new default applies
   const legacy = !('runBroodJumpBoost' in params)
+  // a version saved before the size was rebased kept the rig's own scale (0.5 was the usual size): the same size now
+  // reads as scale / SCALE_BASE
+  const oldScale = !('scaleBase' in params) && typeof params.scale === 'number' && Number.isFinite(params.scale)
   for (const [key, def] of Object.entries(CHICKEN_PARAMS)) {
     if (legacy && key === 'crouchRunSpeed') continue
     const v = params[key]
@@ -50,6 +53,8 @@ export function normalizeChickenConfig(raw: unknown): ChickenConfig {
       target[key] = v
     }
   }
+  if (oldScale) out.params.scale = Math.round((params.scale as number) / SCALE_BASE * 100) / 100
+  out.params.scaleBase = SCALE_BASE
   const look = src.look && typeof src.look === 'object' ? src.look : {}
   for (const slot of Object.keys(out.look) as ChickenSlot[]) {
     const v = look[slot]

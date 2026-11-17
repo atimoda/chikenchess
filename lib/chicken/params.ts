@@ -4,6 +4,9 @@
 // values are its fallback and fill any setting the saved version lacks.
 // Distances are in screen pixels at full size; the engine scales the ones in CHICKEN_PX_PARAMS on small screens.
 // sfx_* pick the cluck of each movement: '' none, 'all' any enabled type, or one type.
+// the size the rig is drawn at when the Tamanho setting is 1 (the chicken's usual size)
+export const SCALE_BASE = 0.5
+
 export const CHICKEN_PARAMS = {
   // Movimento
   walkSpeed: 255,
@@ -99,6 +102,8 @@ export const CHICKEN_PARAMS = {
   flyDownFallAtten: 69,
   flapRate: 9,
   jumpFlaps: 2,
+  // how many jumps in the air before landing (the chicken's are not counted; Ken has 1, Pig 0)
+  airJumps: 99,
   heldFlapRate: 9,
   jumpFlapRate: 14,
   // Idle
@@ -143,7 +148,10 @@ export const CHICKEN_PARAMS = {
   sfx_st_fly: '',
   sfx_st_fastFall: '',
   // Visual
-  scale: 0.55,
+  // 1 = the chicken's usual size: the engine draws her at SCALE_BASE of the rig (the old 0.5)
+  scale: 1,
+  // marks a saved configuration whose scale is already on that base (older ones are converted when read)
+  scaleBase: SCALE_BASE,
 }
 
 export type ChickenParams = typeof CHICKEN_PARAMS

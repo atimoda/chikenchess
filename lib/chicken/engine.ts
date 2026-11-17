@@ -13,7 +13,8 @@ import { requestGameFrame, cancelGameFrame } from '../game-frame'
 import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenArtSet, type ChickenLook } from './look-art'
 import { speciesParams, type BirdSpecies } from './species'
-import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, chickenClucks, type ChickenParams } from './params'
+import { variantClass } from './beast-art'
+import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, SCALE_BASE, chickenClucks, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
@@ -372,6 +373,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const armTip = { x: CHICKEN_HAND.x as number, y: CHICKEN_HAND.y as number, dx: HAND_DX, dy: HAND_DY, deg: WING_TIP_DEG, len: WING_TIP_LEN }
   // a face that draws its own eyes hides hers (sclera, pupil, blinking lid)
   let ownEyes = false
+  // the species her look's class asks for (Pig, Ken), when she was not given one (a chick): it sets her movement
+  let lookSpecies: BirdSpecies | undefined
+  let paramsReady = false
   // each leg moved along her body (rig units) by legs.shape
   const legDx = { F: 0, B: 0 }
   // her voice: the breed of her beak, if that breed has clucks of its own (params.ts CHICKEN_VOICES)
@@ -398,6 +402,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     armTip.x = h[0]; armTip.y = h[1]; armTip.dx = h[0] - PIV.wing[0]; armTip.dy = h[1] - PIV.wing[1]
     armTip.deg = Math.atan2(armTip.dy, armTip.dx) * 180 / Math.PI; armTip.len = Math.hypot(armTip.dx, armTip.dy)
     ownEyes = !!A.face.ownEyes
+    const klass = ownArt ? 'galinha' : variantClass(look.torso)
+    const nextSpecies: BirdSpecies | undefined = klass === 'porco' ? 'pig' : klass === 'raposa' ? 'fox' : undefined
+    if (nextSpecies !== lookSpecies) { lookSpecies = nextSpecies; if (paramsReady) resize() }
     ;['sclera', 'pupil', 'lid'].forEach(n => { el[n].style.display = ownEyes ? 'none' : '' })
     // legs drawn their own way: thicker strokes, a foot (hoof, paw) in place of the toes, each leg moved along the body
     ;([['wrapF', 'F', legs.front], ['wrapB', 'B', legs.back]] as const).forEach(([w, k, c]) => {
@@ -422,7 +429,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
   let species = opts.species
-  const R = speciesParams(species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+  const R = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+  paramsReady = true
   let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     rigMatrices.clear()
@@ -430,10 +438,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
-    const P = speciesParams(species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+    const P = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
     Object.assign(R, P)
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
-    R.scale = P.scale * vf
+    R.scale = P.scale * SCALE_BASE * vf
     if (S.grounded && !S.plat && !S.cl) S.y = groundY
     // clinging, S.x is her distance along the surface (the limits' walls can be taller than the screen)
     if (!S.cl) S.x = clamp(S.x, 40 * R.scale, W - 40 * R.scale)
@@ -794,7 +802,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
     } else if (jumpPressed && plat && !plat.solid && !D && !C && against && hangUnder(plat, face0)) {
       clingPose(dt, U, false); return
-    } else if (jumpPressed) {
+    } else if (jumpPressed && (S.grounded || groundRelease || S.jumpIndex + 1 <= R.airJumps)) {
       const fromGround = S.grounded || groundRelease
       S.jumpIndex = fromGround ? 0 : S.jumpIndex + 1
       // the way up of a shocking jump (launched letting go of Jump with Brood held) grabs a hard ceiling by itself
@@ -1159,6 +1167,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // walls: solid ones grab when pushing toward them; floating ones when her feet touch them in the
   // air while no movement control is held
   function tryCling(dir: number, up = false) {
+    // a species that does not climb (Pig) never grabs a wall
+    if (R.climbSpeed <= 0) return false
     const bodyY = S.y - 40 * R.scale, footY = S.y - 4 * R.scale
     for (const sg of SEGS) {
       if (!sg.wall || sg.ceil || (S.clCool > 0 && sg.id === S.clLast)) continue
@@ -1319,7 +1329,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // standing on a floating box (or a wire): hang upside down from its underside, right below (switching sides)
   // (`under`: another ceiling at her feet instead, the other face of the same line)
   function hangUnder(plat: Seg, look: number, under = underSide(plat)) {
-    if (!under) return false
+    if (!under || R.climbSpeed <= 0) return false
     const y = floorY(under, S.x) ?? under.ay
     // on a sloped wire piece her feet point into the line, square to it
     const ux = (under.bx - under.ax) / under.len, uy = (under.by - under.ay) / under.len
@@ -1333,6 +1343,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // A hard outline's floor ("Objeto duro") does the same with the outline's own walls, on their outside; the other
   // solid walls (the limits) never take her this way.
   function grabEdgeSide(sg: Seg, dir: number, vup: number) {
+    if (R.climbSpeed <= 0) return false
     const ex = dir > 0 ? Math.max(sg.ax, sg.bx) : Math.min(sg.ax, sg.bx), ey = floorY(sg, ex)
     if (ey === null) return false
     for (const w of SEGS) {

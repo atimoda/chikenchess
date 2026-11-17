@@ -6,7 +6,9 @@
 // (the chicken's clucks are not a chick's peep).
 import type { ChickenParams } from './params'
 
-export type BirdSpecies = 'chicken' | 'chick'
+// 'pig' (Pig, the tank) and 'fox' (Ken, the assassin): the species classes of the Vestiário's pigs and foxes
+// (beast-art.ts). Every skin of a class moves the same way; the chickens all use the configured chicken (the Caipira).
+export type BirdSpecies = 'chicken' | 'chick' | 'pig' | 'fox'
 
 type NumKey = { [K in keyof ChickenParams]: ChickenParams[K] extends number ? K : never }[keyof ChickenParams]
 
@@ -55,10 +57,33 @@ export const CHICK_FACTORS: Partial<Record<NumKey, number>> = {
   terminalVelocity: 0.85,
 }
 
+// Pig: bigger, slow to start and to stop, short heavy jumps, no jump in the air, no climbing, hard to push
+export const PIG_FACTORS: Partial<Record<NumKey, number>> = {
+  scale: 1.15, walkSpeed: 0.78, runMultiplier: 0.75, runBoost: 0.37, runBoostTime: 2, acceleration: 0.36, deceleration: 0.56,
+  airControl: 0.45, jumpHeight: 0.65, superJump: 0.65, gravity: 1.35, fastFall: 1.5, slideFriction: 2.44, backpedal: 0.9,
+}
+// Ken: a little faster than Pig and slower than the chicken, but quick to answer (acceleration, stopping, air control);
+// high jumps, one jump in the air, a very slow glide spinning the tail
+export const FOX_FACTORS: Partial<Record<NumKey, number>> = {
+  scale: 1.05, walkSpeed: 0.96, runMultiplier: 0.875, runBoost: 1.27, runBoostTime: 0.4, acceleration: 1.56, deceleration: 3.33,
+  airControl: 1.64, jumpHeight: 1.15, superJump: 1.1, gravity: 1.15, slideFriction: 0.62, backpedal: 1.5, wallJump: 1.15,
+  flyFallDivisor: 2,
+}
+// values set outright, not scaled
+const SET: Partial<Record<BirdSpecies, Partial<Record<NumKey, number>>>> = {
+  pig: { airJumps: 0, climbSpeed: 0, jumpFlaps: 0, broodJumpFlaps: 0, flyFallDivisor: 1, flyUpFallAtten: 0, flyDownFallAtten: 0 },
+  fox: { airJumps: 1, jumpFlaps: 0, broodJumpFlaps: 0 },
+}
+
 // the tuning a bird of this species reads, from the chicken's (already merged with the central configuration)
 export function speciesParams(species: BirdSpecies | undefined, base: ChickenParams): ChickenParams {
   if (!species || species === 'chicken') return base
   const out = { ...base } as ChickenParams
+  if (species === 'pig' || species === 'fox') {
+    for (const [k, f] of Object.entries(species === 'pig' ? PIG_FACTORS : FOX_FACTORS) as [NumKey, number][]) (out as any)[k] = (base[k] as number) * f
+    Object.assign(out, SET[species])
+    return out
+  }
   for (const [k, f] of Object.entries(CHICK_FACTORS) as [NumKey, number][]) (out as any)[k] = (base[k] as number) * f
   // never fewer than one flap after a jump, never less than one (stable) jump in the air
   out.jumpFlaps = Math.max(1, Math.round(out.jumpFlaps))

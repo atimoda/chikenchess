@@ -34,3 +34,27 @@ test('the chickens keep their own eyes, wing tip and bird legs', () => {
     assert.equal(LOOK_ART.art.legs[id].shape, undefined)
   }
 })
+
+const { CHICKEN_PARAMS, SCALE_BASE } = loadTs('lib/chicken/params.ts')
+const { speciesParams } = loadTs('lib/chicken/species.ts')
+
+test('one movement per species class: Pig is slow, heavy and stays on the ground; Ken is quick with one air jump', () => {
+  const base = { ...CHICKEN_PARAMS }
+  const pig = speciesParams('pig', base), fox = speciesParams('fox', base)
+  assert.ok(pig.walkSpeed < fox.walkSpeed && fox.walkSpeed < base.walkSpeed)
+  assert.ok(pig.walkSpeed * pig.runMultiplier < fox.walkSpeed * fox.runMultiplier && fox.walkSpeed * fox.runMultiplier < base.walkSpeed * base.runMultiplier)
+  assert.ok(fox.acceleration > base.acceleration && fox.airControl > base.airControl)
+  assert.equal(pig.airJumps, 0); assert.equal(pig.climbSpeed, 0); assert.equal(pig.flyFallDivisor, 1)
+  assert.equal(fox.airJumps, 1); assert.ok(fox.flyFallDivisor > base.flyFallDivisor)
+  assert.ok(pig.scale > fox.scale && fox.scale > base.scale)
+  assert.equal(base.airJumps, 99)
+})
+
+test('the size setting is rebased: 1 is the usual size, and a config saved before reads the same size', () => {
+  assert.equal(SCALE_BASE, 0.5)
+  assert.equal(CHICKEN_PARAMS.scale, 1)
+  const { normalizeChickenConfig } = loadTs('lib/chicken/config.ts')
+  assert.equal(normalizeChickenConfig({ params: { scale: 0.5 } }).params.scale, 1)
+  assert.equal(normalizeChickenConfig({ params: { scale: 0.75 } }).params.scale, 1.5)
+  assert.equal(normalizeChickenConfig({ params: { scale: 1.2, scaleBase: 0.5 } }).params.scale, 1.2)
+})
