@@ -895,7 +895,7 @@ export function ChickenPatio() {
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {/* the class columns: the chicken's value on the left, Pig's and Ken's factors over it on the right */}
-            <div className={cn(ROW, "sticky top-0 z-10 border-b border-white/10 bg-[#101713] px-4 py-1.5 text-center text-[10px] uppercase tracking-wider text-[#8a9a8a]")}>
+            <div className={cn(ROW, "sticky top-0 z-30 border-b border-white/10 bg-[#101713] px-4 py-1.5 text-center text-[10px] uppercase tracking-wider text-[#8a9a8a]")}>
               <span className="text-left">Chi</span><span>Pig</span><span>Ken</span>
             </div>
             <Group title="Visual" open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
