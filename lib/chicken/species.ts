@@ -61,6 +61,9 @@ export const CHICK_FACTORS: Partial<Record<NumKey, number>> = {
 export const PIG_FACTORS: Partial<Record<NumKey, number>> = {
   scale: 1.15, walkSpeed: 0.78, runMultiplier: 0.75, runBoost: 0.37, runBoostTime: 2, acceleration: 0.36, deceleration: 0.56,
   airControl: 0.45, jumpHeight: 0.65, superJump: 0.65, gravity: 1.35, fastFall: 1.5, slideFriction: 2.44, backpedal: 0.9,
+  // Investida (Brood + Jump): a charge along the ground, longer and flat
+  broodJumpBoost: 1.6, airBroodJumpBoost: 1.2, broodJumpVerticalBoost: 0.15, runBroodJumpBoost: 1.3,
+  knockbackTaken: 0.35,
 }
 // Ken: a little faster than Pig and slower than the chicken, but quick to answer (acceleration, stopping, air control);
 // high jumps, one jump in the air, a very slow glide spinning the tail
@@ -68,6 +71,9 @@ export const FOX_FACTORS: Partial<Record<NumKey, number>> = {
   scale: 1.05, walkSpeed: 0.96, runMultiplier: 0.875, runBoost: 1.27, runBoostTime: 0.4, acceleration: 1.56, deceleration: 3.33,
   airControl: 1.64, jumpHeight: 1.15, superJump: 1.1, gravity: 1.15, slideFriction: 0.62, backpedal: 1.5, wallJump: 1.15,
   flyFallDivisor: 2,
+  // Bote (Brood + Jump): a long, low leap
+  broodJumpBoost: 1.5, airBroodJumpBoost: 1.3, broodJumpVerticalBoost: 0.7, runBroodJumpBoost: 1.3,
+  knockbackTaken: 0.8,
 }
 // values set outright, not scaled
 const SET: Partial<Record<BirdSpecies, Partial<Record<NumKey, number>>>> = {

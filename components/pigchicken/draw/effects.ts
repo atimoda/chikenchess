@@ -67,7 +67,7 @@ export function drawZoneBanner(ctx: Ctx, zone: Zone, life: number) {
 export function rigSwing(sw: Swing | null) {
   if (!sw || sw.t >= sw.time) return null
   const p = swingPose(sw)
-  return { angle: p.angle, reach: p.reach, t: p.blend, size: sw.size }
+  return { angle: p.angle, reach: p.reach, t: p.blend, size: sw.size, bare: sw.wing }
 }
 
 // the blow's air: a cream crescent along the sweep, thick at the tip and thin at the tail, that appears in a frame or

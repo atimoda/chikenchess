@@ -14,7 +14,7 @@ export type PathShow = 'off' | 'hold' | 'holdAim' | 'always'
 export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
-export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
+export type ItemId = 'wing' | 'peck' | 'chainBlow' | 'tailBlow' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key' | 'boomerang' | 'cardsRed' | 'cardsBlue'
   | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
@@ -415,6 +415,22 @@ const WING: ItemDef = {
   rebateChain: chain(['dynamics', 'soft']), rebateSnap: 25, rebateSnapForce: 0.5,
 }
 
+// Pig's chain (Correntada) and Ken's tail (Rabada): what an empty hand does for those classes, like a staff with
+// nothing in the wing. Golpe is the quick blow in the combo; Atirar arms the strong blow, charged while held and let go
+// to hit. The chain reaches further and pushes harder; the tail sweeps wider arcs, behind her too.
+const CHAIN_BLOW: ItemDef = {
+  ...WING, id: 'chainBlow', name: 'Correntada', mag: 0, length: 0,
+  meleeDamage: 12, meleeRange: 110, meleeArc: 150, combo: swingCombo(150, 150, 190), meleeTime: 0.2, meleePush: 380,
+  trailWidth: 22, trailColor: '#9d9ca8', trailWisps: 4,
+  heavyDamage: 34, heavyRange: 130, heavyArc: 200, heavyTime: 0.45, heavyPush: 760, heavyTrailWidth: 34,
+}
+const TAIL_BLOW: ItemDef = {
+  ...WING, id: 'tailBlow', name: 'Rabada', mag: 0, length: 0,
+  meleeDamage: 10, meleeRange: 92, meleeArc: 220, combo: swingCombo(220, 220, 260), meleeTime: 0.15, meleePush: 240,
+  trailWidth: 26, trailColor: '#fae4c8', trailWisps: 5,
+  heavyDamage: 28, heavyRange: 104, heavyArc: 300, heavyTime: 0.36, heavyPush: 520, heavyTrailWidth: 38,
+}
+
 // Taco: only for hitting (no shots). A baseball bat: a wide arc, a quick blow, a long reach; a rebate goes off
 // faster with a wooden "tok", and its chain keeps the note and only accents it (the neutral taco). It has 8 blows
 // in a row (its "bullets"), which come back one every half second, or all at once when it is emptied
@@ -635,7 +651,7 @@ const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: 'Voadeira', cage
 
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
-  wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
+  wing: WING, peck: PECK, chainBlow: CHAIN_BLOW, tailBlow: TAIL_BLOW, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY, boomerang: BOOMERANG, cardsRed: CARDS_RED, cardsBlue: CARDS_BLUE,
   cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
@@ -671,7 +687,7 @@ export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 export const FIXED_IDS: ItemId[] = ['pedalharp', 'drumkit']
 // the items a rack can hold
 export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS, ...CAGE_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck']
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck', 'chainBlow', 'tailBlow']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)

@@ -104,6 +104,8 @@ export const CHICKEN_PARAMS = {
   jumpFlaps: 2,
   // how many jumps in the air before landing (the chicken's are not counted; Ken has 1, Pig 0)
   airJumps: 99,
+  // how much a push (explosion, blow) moves her: 1 = all of it (Pig takes 0.35, Ken 0.8)
+  knockbackTaken: 1,
   heldFlapRate: 9,
   jumpFlapRate: 14,
   // Idle

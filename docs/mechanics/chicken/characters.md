@@ -16,6 +16,16 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 - **Ken:** 5% maior; caminhada ×0,96 e corrida ×0,875 (mais rápido que Pig, mais lento que a galinha); arrancada forte e curta; acelera ×1,56, freia ×3,33 e controla no ar ×1,64 (o “controle”); pulo ×1,15, super pulo ×1,1, gravidade ×1,15; desliza longe (atrito ×0,62); recua mirando mais rápido (×1,5); salto de parede ×1,15. **Um pulo no ar** (pulo duplo) e **Planagem**: segurar Pulo no ar usa a queda planando da galinha com o divisor dobrado (queda bem lenta), e Cima/Baixo mudam a intensidade com os mesmos ajustes do voo. Ainda escala paredes como a galinha; o rabo girando como hélice e o quique da parede vêm na etapa de habilidades.
 - **Pulos no ar:** parâmetro novo `airJumps` (Ajustes → Voo, “Pulos no ar (máximo)”): quantos pulos o boneco dá no ar antes de pousar. A galinha tem 99 (sem limite, como antes); a classe fixa Ken em 1 e Pig em 0.
 
+## Habilidades (etapa 3, parcial)
+
+- **Correntada (Pig) e Rabada (Ken):** com a mão vazia, Golpe e Atirar deixam de ser asa e Bicada. Seguem o padrão dos bastões (`docs/mechanics/patio/staffs.md`): **Golpe** dá o golpe rápido, no combo; **Atirar** arma o golpe forte, que carrega enquanto o botão fica apertado (`heavyCharge`) e sai ao soltar. Os números são as fichas virtuais `chainBlow` (Correntada) e `tailBlow` (Rabada) em `lib/pigchicken/items.ts`, editáveis no painel Itens como a Asa: a corrente alcança mais (110, forte 130) e empurra mais (380, forte 760); o rabo varre arcos maiores (220°, forte 300°). Cancelar a carga: Golpe, Arremesso, segurar um item, interface que bloqueia Atirar. A galinha continua com asa e Bicada.
+- **Animação:** a Correntada usa o braço da frente (com a algema e a corrente). A Rabada não mexe o braço: o rabo do Ken gira por baixo e para a frente (até 150°) e volta, no tempo do golpe (`swing.bare` em `rigSwing`, `tailBlow` no motor).
+- **Guarda (Pig):** Chocar no chão trava a mira (como na galinha) e, enquanto ele está chocando no chão, empurrões de explosões e golpes não o movem. Fora da Guarda, Pig sofre 35% do empurrão e Ken 80% (`knockbackTaken`). A redução de 60% do dano de frente vem com a vida (etapa 4).
+- **Bote (Ken) e Investida (Pig):** Chocar + Pulo é o salto carregado da galinha com outros números da classe: o Bote é mais longo e mais baixo (impulso lateral ×1,5, vertical ×0,7); a Investida sai quase reta pelo chão (lateral ×1,6, vertical ×0,15). O dano ao cair em cima de alguém vem com a vida.
+- **Espreita (Ken):** por enquanto é o Chocar da galinha (abaixa, anda devagar e trava a mira). Os aliens deixarem de mirar nele ainda não está feito.
+- **Ainda não feitos:** Pisão (onda ao pousar da queda rápida do Pig), Embalo (Pig jogando longe quem encosta na velocidade máxima), quique do Ken (0,35 s agarrado e salto para o outro lado), o rabo girando como hélice na Planagem e o rabo em seis ossos.
+- **Não verificado no navegador:** a animação da Rabada e da Correntada em jogo (o painel do navegador estava oculto e o laço do jogo não roda assim); conferido por tipos e testes.
+
 ## Tamanho (escala rebaseada)
 
 - O ajuste **Tamanho da galinha** (`scale`) passa a valer 1 no tamanho normal: o motor desenha o rig a `SCALE_BASE` (0,5) vezes o valor. O padrão do código vai de 0,55 para 1, que é o tamanho que a galinha tinha com 0,5.
@@ -39,4 +49,4 @@ Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Páti
 
 ## Ainda não implementado
 
-Planejado e aprovado na prévia, em etapas: Embalo do Pig, quique e rabo-hélice do Ken, golpes Correntada e Rabada (rápido no Golpe, forte no Atirar), Espreita, Bote, Guarda, Investida, Pisão, vida (Chi 100, Ken 200, Pig 300), filhotes (leitão e raposinha), captura pelo Passaguá e o rabo do Ken em seis ossos.
+Planejado e aprovado na prévia, em etapas: Pisão e Embalo do Pig, quique e rabo-hélice do Ken, Espreita fora da mira dos aliens, vida (Chi 100, Ken 200, Pig 300), filhotes (leitão e raposinha), captura pelo Passaguá e o rabo do Ken em seis ossos.

@@ -246,7 +246,8 @@ export const PUFF_LIFE = 0.4
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
 export type { Swing } from './swing'
 
-export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
+// species: her class's species ('pig', 'fox'): an empty hand of theirs hits with the chain or the tail
+export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; species?: string }
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
@@ -492,7 +493,11 @@ export function createCombat() {
     return true
   }
   const useKey = () => { spend(isKey) }
-  const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
+  // an empty hand: the wing, or Pig's chain (Correntada) and Ken's tail (Rabada)
+  const bareDef = (): ItemDef => lastBody?.species === 'pig' ? items.chainBlow : lastBody?.species === 'fox' ? items.tailBlow : items.wing
+  // the strong blow charged with an empty hand (Pig, Ken) has no item: this stands in for it
+  const BARE: Owned = { item: 'wing', ammo: 0, durability: 0 }
+  const def = (): ItemDef => { const h = held(); return h ? items[h.item] : bareDef() }
   // a Gaiola is born empty with its model's limit (cap: this one's own, a rack's or a loose item's)
   const fresh = (item: ItemId, cap?: number): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability, ...(items[item].cageSouls > 0 ? { cage: newCage(cageCap(cap, items[item].cageSouls)) } : {}) })
 
@@ -1720,7 +1725,7 @@ export function createCombat() {
   // a blow pressed while the last one is still going interrupts it and the new one starts right away (with no
   // interval, every note of a song can be hit), unless the item says not to: then it waits for the move to end
   function canSwing(wing: boolean) {
-    const d = wing ? items.wing : def()
+    const d = wing ? bareDef() : def()
     return d.meleeInterrupt || !swing || swing.t >= swing.time
   }
   // an item only for hitting with blows to count (the taco): a blow needs one loaded and not reloading
@@ -1729,7 +1734,7 @@ export function createCombat() {
   function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
   // heavy: the strong blow, with the share of the charge it was let go with (0..1)
   function melee(wing: boolean, scale: number, heavy: number | null = null) {
-    const d = wing ? items.wing : def()
+    const d = wing ? bareDef() : def()
     const strong = heavy !== null
     const own = wing ? null : held()
     if (own && d.meleeOnly && d.mag > 0) {
@@ -1954,7 +1959,7 @@ export function createCombat() {
       const off = music.time - n.arriveAt, grade = judgeNote(off)
       // what it plays: the sequenced note through the ambience (the stage's fan, the map's lanes and zone) and the
       // item's chain of transformations, in the order the note's rule says
-      const d = sw.wing ? items.wing : def()
+      const d = sw.wing ? bareDef() : def()
       const env = noteEnv?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? null
       const voice: VoiceId = d.instrument ? d.voice : 'bells'
       const seq: NoteOut = { midi: n.midi, at: 0, dur: grade === 'fora' ? 0.2 : 0.4, vel: grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25, voice }
@@ -2582,8 +2587,8 @@ export function createCombat() {
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
     get hoverSwaps() { return hover?.owned.cage ? cages.length >= CAGES_MAX : !room() && !inv.some(o => o.item === hover?.owned.item) },
     // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
-    get heavyCharging() { return !!heavyItem && heavyItem === held() },
-    get heavyCharge() { return heavyItem && heavyItem === held() ? Math.min(1, heavyT / staffCharge(def())) : 0 },
+    get heavyCharging() { return !!heavyItem && heavyItem === (held() ?? BARE) },
+    get heavyCharge() { return heavyItem && heavyItem === (held() ?? BARE) ? Math.min(1, heavyT / staffCharge(def())) : 0 },
     // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,
     // how bright the sky is from a special (0..1) and where a throw that comes back would fly if let go now
     bolts, flights,
@@ -2965,7 +2970,7 @@ export function createCombat() {
       if (input.melee && meleeCool <= 0 && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
       // a strong blow being charged is called off by Golpe (the quick blow comes out instead), by another item in
       // the wing and by a Throw
-      if (heavyItem && (heavyCancel || input.melee || heavyItem !== hNow || input.throwHeld)) { heavyItem = null; heavyT = 0 }
+      if (heavyItem && (heavyCancel || input.melee || heavyItem !== (hNow ?? BARE) || input.throwHeld)) { heavyItem = null; heavyT = 0 }
       if (hNow && !dNow.consumable && !dNow.meleeOnly && dNow.mag !== 0 && swing && swing.t < swing.time) {
         fireResume = input.fire ? hNow : null
         input = { ...input, fire: false, firePressed: false }
@@ -3055,7 +3060,17 @@ export function createCombat() {
       }
       const canFire = body.state !== 'slide' || d.slideFire
       if (effects.length) { effects.forEach(e => { e.left -= dt }); effects = effects.filter(e => e.left > 0) }
-      if (!h) {
+      if (!h && bareDef() !== items.wing) {
+        // Pig and Ken with empty hands: Atirar is the strong blow of the chain or the tail, like a staff's
+        const bd = bareDef()
+        if (input.cancelFire || body.state === 'held' || body.state.startsWith('portal')) { heavyItem = null; heavyT = 0 }
+        else if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { heavyItem = BARE; heavyT = 0 }
+        else if (heavyItem === BARE && input.fire) { if (meleeCool <= 0) heavyT += dt }
+        else if (heavyItem === BARE) {
+          if (meleeCool <= 0 && canSwing(true)) melee(true, body.scale, Math.min(1, heavyT / staffCharge(bd)))
+          heavyItem = null; heavyT = 0
+        }
+      } else if (!h) {
         if (!input.cancelFire && !input.melee && body.state !== 'held' && !body.state.startsWith('portal')) {
           if (input.firePressed && peckCool <= 0 && meleeCool <= 0 && !peck) peckPrep = dt
           else if (input.fire && peckPrep > 0) peckPrep += dt
