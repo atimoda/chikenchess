@@ -137,6 +137,8 @@ export type ChickenEngine = {
   // the item is drawn at the height of the blow (×, a charged strong blow)
   setPeck: (peck: PeckPose | null) => void
   setSwing: (swing: { angle: number; reach: number; t: number; size?: number; bare?: boolean; heavy?: boolean } | null) => void
+  // her species class now ('chicken', 'pig', 'fox', 'chick'): the one set, or the one her look gives
+  speciesNow: () => BirdSpecies
   // a point on the held item's drawing (rig units, x forward from the grip, y down) on the screen when the
   // item points at `angle` (screen radians); her shoulder for (0, 0)
   heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
@@ -2606,6 +2608,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     setPeck(next) { if (!portalEntry) peckNow = next },
     setSwing(next) { swingNow = next; if (next) throwTransition.reset() },
+    speciesNow: () => species ?? lookSpecies ?? 'chicken',
     heldPoint(angle, x, y) {
       // The trajectory and release use the resting hand, not the hand pulled
       // back while charging; otherwise each frame would move the origin again.

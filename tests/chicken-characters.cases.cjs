@@ -113,3 +113,22 @@ test('Pig and Ken arms bend at the elbow to reach a hand point, never stretching
   assert.equal(staffPose(bat).grip2, null)
   assert.deepEqual(staffPose({ ...bat, grip2On: true, grip2X: 30, grip2Y: 2 }).grip2, { x: 30, y: 2 })
 })
+
+test('items have Pontos per class: Pig and Ken use their own set when they have one, else Chi\'s', () => {
+  const I = loadTs('lib/pigchicken/items.ts')
+  const bat = I.DEFAULT_ITEMS.bat
+  assert.deepEqual(bat.classPoints, {})
+  assert.equal(I.classItem(bat, 'pig'), bat)
+  const own = { ...I.pointsOf(bat), gripX: 33, swapHands: true }
+  const withPig = { ...bat, classPoints: { pig: own } }
+  assert.equal(I.classItem(withPig, 'pig').gripX, 33); assert.equal(I.classItem(withPig, 'pig').swapHands, true)
+  assert.equal(I.classItem(withPig, 'fox').gripX, bat.gripX); assert.equal(I.classItem(withPig, 'chi').gripX, bat.gripX)
+  assert.equal(I.pointClassOf('pig'), 'pig'); assert.equal(I.pointClassOf('fox'), 'fox'); assert.equal(I.pointClassOf('chicken'), 'chi')
+  // saved and read back (the defaults file too), clamped to the panel's range
+  const file = I.itemsDefaultsFile({ ...I.DEFAULT_ITEMS, bat: { ...withPig, classPoints: { pig: { ...own, gripY: 9999 } } } })
+  assert.equal(file.bat.classPoints.pig.gripY, 9999)
+  const problem = I.itemsFileProblem(file)
+  assert.match(problem, /bat\.classPoints/)
+  const ok = I.itemsDefaultsFile({ ...I.DEFAULT_ITEMS, bat: withPig })
+  assert.equal(I.itemsFileProblem(ok), null)
+})

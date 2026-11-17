@@ -210,6 +210,8 @@ export type ItemDef = {
   grip2On: boolean
   grip2X: number
   grip2Y: number
+  // Pig's and Ken's own Pontos (how they hold it: pivot, hands, staff pose, which hand); absent, they use these
+  classPoints: ClassPoints
   wingFlip: boolean // the wings that hold it are flipped vertically (mirrored along their length), for poses that turn them upside down
   // a staff (an item only for hitting: taco, passaguá): how she carries it. The wing's hand grips the point `grip` of
   // its drawing; that point sits at (staffX, staffY) from her shoulder (rig units, x to her front, y down) with the
@@ -311,7 +313,7 @@ const NO_MUSIC = {
   quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, cageSouls: 0, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
-  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, swapHands: false, grip2On: false, grip2X: 0, grip2Y: 0, wingFlip: false, archery: false, drawLen: 30,
+  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, swapHands: false, grip2On: false, grip2X: 0, grip2Y: 0, classPoints: {}, wingFlip: false, archery: false, drawLen: 30,
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
   heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as BlowKind,
   heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
@@ -857,6 +859,25 @@ export const ITEM_PARAM_META: Meta[] = [
 ]
 export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]
 
+// ---------- Pontos per class (Chi, Pig, Ken) ----------
+// How an item sits in the hands depends on the body: Pig and Ken can each have their own Pontos (the numbers of the
+// Pontos group and the choices of the points editors); with none, they use the item's own, which are Chi's
+export type PointClass = 'chi' | 'pig' | 'fox'
+export const POINT_CLASSES = ['pig', 'fox'] as const
+const POINT_NUM_META = ITEM_PARAM_META.filter(m => m.group === 'Pontos')
+const POINT_BOOL_KEYS = ['handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip'] as const
+export const POINT_KEYS = [...POINT_NUM_META.map(m => m.key), ...POINT_BOOL_KEYS, 'pivotAt'] as (keyof ItemDef)[]
+export type PointSet = Partial<ItemDef>
+export type ClassPoints = Partial<Record<(typeof POINT_CLASSES)[number], PointSet>>
+export const pointsOf = (d: ItemDef): PointSet => Object.fromEntries(POINT_KEYS.map(k => [k, d[k]])) as PointSet
+/** The point class of a body's species ('pig', 'fox'; anything else is Chi's). */
+export const pointClassOf = (species: string | null | undefined): PointClass => species === 'pig' ? 'pig' : species === 'fox' ? 'fox' : 'chi'
+/** The item as a body of this class holds it: its own Pontos for Pig or Ken when it has them. */
+export function classItem(d: ItemDef, cls: PointClass): ItemDef {
+  const own = cls === 'chi' ? undefined : d.classPoints?.[cls]
+  return own ? { ...d, ...own } : d
+}
+
 // the "breaks after" defaults before v6 (weapons and instruments broke); a save with these numbers was never tuned
 const V5_DURABILITY: Partial<Record<ItemId, number>> = {
   pistol: 40, smg: 35, rifle: 45, pump: 45, sniper: 30, launcher: 50, grenade: 20, bow: 25,
@@ -921,6 +942,20 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the Campo harmônico (v9): an instrument that had every other scale on gets it too
   if (!(v >= 9) && out[id].instrument && (['primary', 'fifths', 'tension', 'spiral'] as InstrumentScaleId[]).every(k => out[id].scales.includes(k)) && !out[id].scales.includes('harmonic')) out[id].scales = cleanScales([...out[id].scales, 'harmonic'])!
   if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
+  // Pig's and Ken's Pontos: a whole set each, from the item's own (Chi's) with the saved values over them
+  if (s.classPoints && typeof s.classPoints === 'object') {
+    const cp: ClassPoints = {}
+    for (const c of POINT_CLASSES) {
+      const src = s.classPoints[c]
+      if (!src || typeof src !== 'object') continue
+      const set = pointsOf(out[id]) as Record<string, unknown>
+      POINT_NUM_META.forEach(m => { const n = src[m.key]; if (typeof n === 'number' && Number.isFinite(n)) set[m.key] = Math.min(m.max, Math.max(m.min, n)) })
+      POINT_BOOL_KEYS.forEach(k => { if (typeof src[k] === 'boolean') set[k] = src[k] })
+      if (PIVOT_PARTS.some(o => o.value === src.pivotAt)) set.pivotAt = src.pivotAt
+      cp[c] = set as PointSet
+    }
+    out[id].classPoints = cp
+  }
   // saved before instruments aimed instantly (v8): an untouched old Giro da mira takes the new default (0); custom numbers stay
   if (!(v >= 8) && s.turnRate === V7_TURN_RATE[id]) out[id].turnRate = DEFAULT_ITEMS[id].turnRate
 }
@@ -932,7 +967,7 @@ const ITEMS_VERSION = 11
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints',
 ])]
 function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)
@@ -972,6 +1007,20 @@ export function announceHeldItem(id: ItemId | null) {
   if (id === heldItem) return
   heldItem = id
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(HELD_EVENT, { detail: id }))
+}
+// The class of the main player's body (Chi, Pig, Ken), announced when it changes: the Itens panel's Pontos follow it
+let playerClass: PointClass = 'chi'
+const CLASS_EVENT = 'pigchicken-player-class'
+export function announcePlayerClass(cls: PointClass) {
+  if (cls === playerClass) return
+  playerClass = cls
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(CLASS_EVENT, { detail: cls }))
+}
+export const currentPlayerClass = (): PointClass => playerClass
+export function subscribePlayerClass(onChange: (cls: PointClass) => void) {
+  const handler = (e: Event) => onChange((e as CustomEvent<PointClass>).detail)
+  window.addEventListener(CLASS_EVENT, handler)
+  return () => window.removeEventListener(CLASS_EVENT, handler)
 }
 // what the main player holds right now (null: empty-handed, or the Pátio isn't running)
 export function currentHeldItem(): ItemId | null { return heldItem }

@@ -2,6 +2,7 @@
 
 // Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
 // picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
+import { cn } from "@/lib/utils"
 import { StepSelect } from "@/components/ui/step-select"
 import { PatioRange } from "@/components/ui/patio-range"
 import { PatioDualRange } from "@/components/ui/patio-dual-range"
@@ -9,7 +10,7 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
 import { AngleKnob, ComboWindowBar } from "./combo-controls"
@@ -62,6 +63,7 @@ const HEAVY_SHOCK: (keyof ItemDef)[] = ["heavyShockRange", "heavyShockTime"]
 const DECK_UNUSED: (keyof ItemDef)[] = ["returnDamage", "returnMin", "returnCharge", "returnPush", "returnCurveMin", "returnCurveMax", "fuse", "bounce"]
 // what Pig and Ken hit with when empty-handed (lib/pigchicken/combat.ts bareDef)
 const BARE_BLOWS: ItemId[] = ["chainBlow", "tailBlow"]
+const CLASS_LABEL: Record<PointClass, string> = { chi: "Chi", pig: "Pig", fox: "Ken" }
 const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "grip2X", "grip2Y", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
 // the arc a combo blow of this kind starts with: another blow of the same kind, the code's, or 150°
 const comboArc = (combo: ComboStep[], base: ItemDef, kind: BlowKind) =>
@@ -92,7 +94,11 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   }, [])
   // the main player equips an item while the panel is open: the dropdown jumps to it
   useEffect(() => subscribeHeldItem(id => { if (id) setSel(id) }), [])
+  // Pontos: one version per class (Chi, Pig, Ken), on the class of the main player's body
+  const [pcls, setPcls] = useState<PointClass>(currentPlayerClass)
+  useEffect(() => subscribePlayerClass(setPcls), [])
   const it = items[sel], base = DEFAULT_ITEMS[sel]
+  const pit = classItem(it, pcls), pbase = classItem(base, pcls)
   // the Gaiolas are one entry of the dropdown: the six models at once (sel is then any of them)
   const cages = CAGE_IDS.includes(sel)
   // items held at the hand (sports tools, consumables, a grenade charged in the hand) keep the hand's own pose
@@ -104,6 +110,15 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
     setItems(next)
   }
   const update = (fn: (d: ItemDef) => void) => edit(all => fn(all[sel]))
+  // an edit of the Pontos goes to the class shown: Chi's are the item's own; Pig's or Ken's become a whole set of
+  // their own (from Chi's, the first time). Anything else the edit touches is the item's
+  const updatePoints = (fn: (d: ItemDef) => void) => pcls === "chi" ? update(fn) : update(d => {
+    const v = classItem(d, pcls)
+    const view = { ...v }
+    fn(view)
+    for (const k of Object.keys(view) as (keyof ItemDef)[]) if (!POINT_KEYS.includes(k) && view[k] !== v[k]) (d as Record<string, unknown>)[k] = view[k]
+    d.classPoints = { ...d.classPoints, [pcls]: pointsOf(view) }
+  })
   return (
     <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
@@ -254,7 +269,15 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   </label>
                 </>
               )}
-              {g === "Pontos" && (isStaff(it) ? <StaffPoseEditor id={sel} item={it} onChange={update} /> : <ItemPointsEditor id={sel} item={it} base={base} onChange={update} />)}
+              {g === "Pontos" && (
+                <div role="radiogroup" aria-label="Classe" className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
+                  {(["chi", "pig", "fox"] as const).map(c => (
+                    <button key={c} type="button" role="radio" aria-checked={pcls === c} onClick={() => setPcls(c)}
+                      className={cn("h-8", pcls === c ? "bg-primary/25 text-white" : "text-[#93a79a] hover:text-white")}>{CLASS_LABEL[c]}</button>
+                  ))}
+                </div>
+              )}
+              {g === "Pontos" && (isStaff(it) ? <StaffPoseEditor id={sel} item={pit} onChange={updatePoints} /> : <ItemPointsEditor id={sel} item={pit} base={pbase} onChange={updatePoints} />)}
               {g === "Golpe forte" && (
                 <label className="flex items-center justify-between gap-3" title="O golpe forte é sempre o mesmo movimento; segure Atirar para carregar e solte para bater">
                   <span>Movimento</span>
@@ -315,15 +338,16 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               <div className="grid gap-field">
               {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(BARE_BLOWS.includes(sel) && m.key === "durability") && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: "Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui" } : it.deck && m.key === "returnCount" ? { ...m, label: "Cartas fora ao mesmo tempo", hint: "Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)" } : BARE_BLOWS.includes(sel) && (m.key === "meleeRange" || m.key === "heavyRange") ? { ...m, label: sel === "chainBlow" ? "Alcance da corrente" : "Alcance do rabo" } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
-                const v = it[m.key] as number, changed = v !== base[m.key]
+                const pts = g === "Pontos", src = pts ? pit : it, ref = pts ? pbase : base, up = pts ? updatePoints : update
+                const v = src[m.key] as number, changed = v !== ref[m.key]
                 const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
                 const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? "golpes" : m.unit
                 const display = m.key === "durability" && v === 0 ? "0 (nunca quebra)" : m.key === "refillTime" && v === 0 ? "0 (desligada)" : `${v}${unit ? ` ${unit}` : ""}`
                 const range = <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
                   display={display} changed={changed} hint={m.hint}
-                  onChange={n => update(d => { (d as Record<string, unknown>)[m.key] = n })}
-                  onReset={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })} />
+                  onChange={n => up(d => { (d as Record<string, unknown>)[m.key] = n })}
+                  onReset={() => up(d => { (d as Record<string, unknown>)[m.key] = ref[m.key] })} />
                 // under the combo window: its timer bar, listening to the blows only while this section is open
                 return m.key === "comboWindow" && open[g] ? <div key={m.key} className="grid gap-1">{range}<ComboWindowBar /></div> : range
               })}

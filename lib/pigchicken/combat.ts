@@ -2607,6 +2607,8 @@ export function createCombat() {
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
     get hoverSwaps() { return hover?.owned.cage ? cages.length >= CAGES_MAX : !room() && !inv.some(o => o.item === hover?.owned.item) },
     // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
+    // the class of the body it last stepped (Pig's and Ken's items have their own Pontos)
+    get species() { return lastBody?.species },
     get heavyCharging() { return !!heavyItem && heavyItem === (held() ?? BARE) },
     get heavyCharge() { return heavyItem && heavyItem === (held() ?? BARE) ? Math.min(1, heavyT / staffCharge(def())) : 0 },
     // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,

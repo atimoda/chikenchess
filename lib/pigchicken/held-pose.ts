@@ -2,7 +2,7 @@
 import type { Combat } from './combat'
 import type { ChickenEngine } from '../chicken/engine'
 import { ARCHERY_ART, ITEM_SVG } from './art'
-import { isStaff, itemRig } from './items'
+import { classItem, isStaff, itemRig, pointClassOf } from './items'
 import { aimElevation, staffPose } from './staff-pose'
 export function heldItemPose(combat: Combat, now: number, bow?: { x: number; stroke: number } | null, faceHint?: number): Parameters<ChickenEngine['setHeld']>[0] {
   const held = combat.held, eating = combat.consumption
@@ -13,7 +13,8 @@ export function heldItemPose(combat: Combat, now: number, bow?: { x: number; str
   if (held?.flying && !eating) return null
   const svg = ITEM_SVG[id]
   if (!svg) return null
-  const d = combat.item(id), sw = combat.swing, swinging = !!sw
+  // (held as this body's class holds it: Pig's and Ken's own Pontos)
+  const d = classItem(combat.item(id), pointClassOf(combat.species)), sw = combat.swing, swinging = !!sw
   const charge = swinging ? 0 : Math.max(combat.throwCharge, d.fireMode === 'charge' ? combat.fireCharge : 0)
   // "Arco e Flecha": Fire's charge draws the arrow instead of pulling the whole item back. The item stays on its rig,
   // held still by the back wing, and the wing's hand takes its point (the arrow's nock) back along the item; at the

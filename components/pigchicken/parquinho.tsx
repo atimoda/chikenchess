@@ -30,7 +30,7 @@ import type { NetChickMirror } from "@/components/chicken/online-chickens"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { INVENTORY_MAX, inventorySlotFromCode, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
-import { announceHeldItem, bowed, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { announceHeldItem, announcePlayerClass, bowed, classItem, pointClassOf, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
@@ -1053,7 +1053,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // (an item with a rig turns around its pivot: the line goes through the muzzle's height at the pivot)
       if (armed && tgt && (d.muzzleY || d.pivotY)) {
         for (let i = 0; i < 3; i++) {
-          const o = engine.heldPoint(aim.angle, d.pivotX, d.muzzleY)
+          const o = engine.heldPoint(aim.angle, classItem(d, pointClassOf(engine.speciesNow())).pivotX, d.muzzleY)
           const a = Math.atan2(tgt.y - o.y, tgt.x - o.x)
           aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
         }
@@ -1269,6 +1269,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the Itens panel follows the item the main player holds
       // (empty-handed, Pig and Ken hit with the chain and the tail: the panel opens on them)
       announceHeldItem(combat.held?.item ?? (body.species === 'pig' ? 'chainBlow' : body.species === 'fox' ? 'tailBlow' : null))
+      announcePlayerClass(pointClassOf(body.species))
       announceHeldScale(combat.held && combat.def().instrument ? combat.scale.id : null)
       // (and its preview is in this Pátio's key)
       setScaleStage(combat.music)
