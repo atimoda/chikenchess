@@ -2,7 +2,7 @@
 // the scale, the tempo and a chord progression; the conductor keeps the beat, says which chord is playing and
 // turns the aim into a note that always fits.
 
-import type { ZoneAmbience } from './zone-ambience'
+import { grooveOf, type ZoneAmbience } from './zone-ambience'
 
 export type ScaleId = 'majorPenta' | 'minorPenta' | 'major' | 'minor' | 'dorian' | 'lydian' | 'mixolydian' | 'harmonicMinor' | 'blues'
 export const SCALES: Record<ScaleId, { label: string; steps: number[] }> = {
@@ -35,7 +35,11 @@ export type Zone = {
   inKey?: InKeyRule
   // its percussion and bass (zone-ambience.ts); without it, the ones that follow the feel
   ambience?: ZoneAmbience
+  // variation blocks (sound-zones.ts): the zone is a cycle of them, each one a zone of its own that plays its first
+  // `beats` beats `reps` times and hands over to the next. The conductor plays the blocks, never the zone itself
+  blocks?: ZoneBlock[]
 }
+export type ZoneBlock = { zone: Zone; beats: number; reps: number }
 
 // the scenes' zones in the code: the key, scale and tempo each scene of the Parquinho starts with (in silence:
 // sound-zones.ts sceneZoneBase) and what "Predefinição" copies, with the ambience each one used to play
@@ -90,16 +94,31 @@ export function chordNotes(chord: number[], lo: number, hi: number) {
 export type PitchSet = 'chord' | 'scale'
 
 export function createConductor() {
-  let zone = ZONES[0], next: Zone | null = null
+  // family: the zone the map asked for; zone: what plays, the family itself or its current variation block
+  let family = ZONES[0], zone = family, next: Zone | null = null
   let time = 0 // seconds since start, on the zone's clock
   let beatPos = 0 // beats since start
   let lastBar = -1, lastBeat = -1, lastStep = -1
+  // a cycle of blocks: which one plays, how many times it has played, and the beat its current pass began on
+  // (always a bar line)
+  let block = 0, pass = 0, passStart = 0
+  let groove: number[] = [], grooveFor: Zone | null = null
   const events: { kind: 'bar' | 'beat' | 'step'; n: number }[] = []
 
   const spb = () => 60 / zone.bpm
+  const first = (z: Zone) => z.blocks?.[0]?.zone ?? z
+  const enter = (z: Zone, at: number) => { family = z; zone = first(z); block = 0; pass = 0; passStart = at }
+  // the bar of the progression: counted from the start of the pass in a cycle of blocks, else from the start
+  const progBar = (bar: number, blocks = !!family.blocks?.length, start = passStart) => (blocks ? Math.max(0, bar - Math.round(start / 4)) : bar)
+  const degreeAt = (z: Zone, bar: number) => z.progression[((bar % z.progression.length) + z.progression.length) % z.progression.length]
+  // how far each sixteenth of the bar sits from the rigid grid, in sixteenths (zone-ambience.ts grooveOf)
+  const grooveNow = () => { if (grooveFor !== zone) { grooveFor = zone; groove = grooveOf(zone.ambience, zone.feel) } return groove }
 
   return {
     get zone() { return zone },
+    // the zone the map asked for: the playing one, or the cycle of blocks it is a part of
+    get family() { return family },
+    get block() { return block },
     get beat() { return beatPos },
     get bar() { return Math.floor(beatPos / 4) },
     // 0 right on the beat, rising to 1 just before the next: for pulsing visuals
@@ -107,28 +126,58 @@ export function createConductor() {
     get time() { return time },
     events,
     // a new zone takes over on the next bar, so the change lands musically
-    setZone(z: Zone) { if (z.id !== zone.id && z.id !== next?.id) next = z },
+    setZone(z: Zone) { if (z.id !== family.id && z.id !== next?.id) next = z },
     get pending() { return next },
-    get degree() { return zone.progression[this.bar % zone.progression.length] },
-    chord(seventh = false) { return chordOn(zone, zone.progression[Math.floor(beatPos / 4) % zone.progression.length], seventh) },
+    get degree() { return degreeAt(zone, progBar(this.bar)) },
+    chord(seventh = false) { return chordOn(zone, degreeAt(zone, progBar(Math.floor(beatPos / 4))), seventh) },
     step(dt: number) {
       time += dt
       beatPos += dt / spb()
+      // a block's pass is over: it plays again or the next block takes over, on a bar line (what is left of a bar
+      // the pass cut short is skipped)
+      const span = family.blocks?.[block]
+      if (span && beatPos >= passStart + span.beats - 1e-9) {
+        const end = passStart + span.beats, over = beatPos - end
+        if (++pass >= span.reps) { pass = 0; block = (block + 1) % family.blocks!.length; zone = family.blocks![block].zone }
+        passStart = Math.ceil(end / 4 - 1e-9) * 4
+        beatPos = passStart + Math.max(0, over)
+      }
       const bar = Math.floor(beatPos / 4), beat = Math.floor(beatPos), st = Math.floor(beatPos * 4)
       if (bar !== lastBar) {
-        if (next) { zone = next; next = null }
+        if (next) { enter(next, bar * 4); next = null }
         lastBar = bar; events.push({ kind: 'bar', n: bar })
       }
       if (beat !== lastBeat) { lastBeat = beat; events.push({ kind: 'beat', n: beat }) }
       if (st !== lastStep) { lastStep = st; events.push({ kind: 'step', n: st }) }
     },
-    // seconds until the next sixteenth (with swing the off-beat eighths land late)
+    // the sixteenth that comes next, for what is scheduled ahead of its time (the ambience): the zone that will be
+    // playing by then (a block or a zone may take over on it), its step of the bar, the bar of its progression,
+    // its chord, the seconds until it and the length of its beat
+    ahead() {
+      let z = zone, blocks = !!family.blocks?.length, start = passStart
+      let st = Math.floor(beatPos * 4 + 1e-9) + 1, wait = (st / 4 - beatPos) * spb()
+      const span = family.blocks?.[block]
+      if (span && st / 4 >= passStart + span.beats - 1e-9) {
+        const end = passStart + span.beats
+        wait = (end - beatPos) * spb()
+        if (pass + 1 >= span.reps) z = family.blocks![(block + 1) % family.blocks!.length].zone
+        start = Math.ceil(end / 4 - 1e-9) * 4; st = start * 4
+      }
+      if (st % 16 === 0 && next) { z = first(next); blocks = !!next.blocks?.length; start = st / 4 }
+      const bar = progBar(Math.floor(st / 16), blocks, start)
+      return { zone: z, step: st % 16, bar, chord: chordOn(z, degreeAt(z, bar), true), wait: Math.max(0, wait), spb: 60 / z.bpm }
+    },
+    // seconds until the next point of the grid the notes are pulled to: the next sixteenth where the zone's groove
+    // puts it (its beat's microtiming, or the off-beat eighths late with the Balanço Swing); with Meio tempo, the
+    // next eighth
     toGrid(): number {
       const sub = beatPos * 4
-      let target = Math.ceil(sub - 1e-6)
-      if (zone.feel === 'swing' && target % 2 === 1) target += 0.33
-      if (zone.feel === 'half') target = Math.ceil(sub / 2 - 1e-6) * 2
-      return Math.max(0, (target - sub) / 4) * spb()
+      if (zone.feel === 'half') return Math.max(0, (Math.ceil(sub / 2 - 1e-6) * 2 - sub) / 4) * spb()
+      const g = grooveNow()
+      for (let k = Math.floor(sub - 1e-6); ; k++) {
+        const t = k + (g[((k % 16) + 16) % 16] ?? 0)
+        if (t >= sub - 1e-6) return Math.max(0, (t - sub) / 4) * spb()
+      }
     },
     // how close to a beat this moment is (s): a shot on the beat earns a bonus
     offBeat(): number {

@@ -4,6 +4,7 @@
 // and only the card under the pointer or focused moves, so a long catalogue costs one drawing a frame);
 // clicking one opens its parameters, with buttons to hear its shot and its two deaths, duplicate it, bring a code's
 // one back to its values or delete one made here. Saved in this browser; the songs take it live.
+import { StepSelect } from "@/components/ui/step-select"
 import { useEffect, useRef, useState } from "react"
 import { ArrowLeft, Copy, Trash2, Volume2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -229,9 +230,9 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                   {g === "Corpo" && (
                     <>
                       <label className="flex items-center justify-between gap-3"><span>Espécie (desenho)</span>
-                        <select value={v.species} onChange={e => { const sp = e.target.value as CatalogSpecies; update(d => { d.species = sp }) }} className={field}>
+                        <StepSelect value={v.species} onChange={e => { const sp = e.target.value as CatalogSpecies; update(d => { d.species = sp }) }} className={field}>
                           {CATALOG_SPECIES.map(sp => <option key={sp} value={sp}>{SPECIES[sp].name}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <label className="flex items-center justify-between gap-3"><span>Cor</span>
                         <input type="color" aria-label="Cor do alien" value={v.color} onChange={e => { const c = e.target.value; update(d => { d.color = c }) }} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
@@ -240,9 +241,9 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                   )}
                   {g === "Movimento" && (
                     <label className="flex items-center justify-between gap-3"><span>Modo</span>
-                      <select value={v.move} onChange={e => { const m = e.target.value as MoveMode; update(d => { d.move = m }) }} className={field}>
+                      <StepSelect value={v.move} onChange={e => { const m = e.target.value as MoveMode; update(d => { d.move = m }) }} className={field}>
                         {MOVE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                      </select>
+                      </StepSelect>
                     </label>
                   )}
                   {g === "Tiro" && (
@@ -256,53 +257,53 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                         </label>
                       )}
                       <label className="flex items-center justify-between gap-3"><span>Som de disparo</span>
-                        <select value={v.fire.voice} onChange={e => { const s = e.target.value as VoiceId | "none"; update(d => { d.fire.voice = s }) }} className={field}>
+                        <StepSelect value={v.fire.voice} onChange={e => { const s = e.target.value as VoiceId | "none"; update(d => { d.fire.voice = s }) }} className={field}>
                           <option value="none">Nenhum</option>
                           {(Object.keys(VOICE_LABELS) as VoiceId[]).map(s => <option key={s} value={s}>{VOICE_LABELS[s]}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                     </>
                   )}
                   {g === "Rebate" && (
                     <>
                       <label className="flex items-center justify-between gap-3" title="De quem são as transformações quando as notas dele são rebatidas"><span>Regra</span>
-                        <select value={v.rule ?? ""} onChange={e => { const r = e.target.value; update(d => { d.rule = (r || null) as RebateRule | null }) }} className={field}>
+                        <StepSelect value={v.rule ?? ""} onChange={e => { const r = e.target.value; update(d => { d.rule = (r || null) as RebateRule | null }) }} className={field}>
                           <option value="">A da música</option>
                           {REBATE_RULES.map(r => <option key={r.value} value={r.value} title={r.hint}>{r.label}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <label className="flex items-center justify-between gap-3" title="As notas rebatidas dele se encaixam nesta escala"><span>Escala</span>
-                        <select value={v.scale ?? ""} onChange={e => { const sc = e.target.value; update(d => { d.scale = (sc || null) as ScaleId | null }) }} className={field}>
+                        <StepSelect value={v.scale ?? ""} onChange={e => { const sc = e.target.value; update(d => { d.scale = (sc || null) as ScaleId | null }) }} className={field}>
                           <option value="">A da música</option>
                           {(Object.keys(SCALES) as ScaleId[]).map(sc => <option key={sc} value={sc}>{SCALES[sc].label}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       <label className="flex items-center justify-between gap-3" title="Percussão pura: rebater toca este tambor no lugar da nota"><span>Rebate vira batida</span>
-                        <select value={v.drum ?? ""} onChange={e => { const dr = e.target.value; update(d => { d.drum = (dr || null) as Drum | null }) }} className={field}>
+                        <StepSelect value={v.drum ?? ""} onChange={e => { const dr = e.target.value; update(d => { d.drum = (dr || null) as Drum | null }) }} className={field}>
                           <option value="">Não (toca a nota)</option>
                           {DRUM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                     </>
                   )}
                   {g === "Sons" && (
                     <>
                       <label className="flex items-center justify-between gap-3"><span>Morte física</span>
-                        <select value={v.death.physical.kind === "drum" ? v.death.physical.drum : ""} onChange={e => { const dr = e.target.value as Drum; update(d => { d.death.physical = { kind: "drum", drum: dr, vel: d.death.physical.vel } }) }} className={field}>
+                        <StepSelect value={v.death.physical.kind === "drum" ? v.death.physical.drum : ""} onChange={e => { const dr = e.target.value as Drum; update(d => { d.death.physical = { kind: "drum", drum: dr, vel: d.death.physical.vel } }) }} className={field}>
                           {DRUM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        </StepSelect>
                       </label>
                       {v.death.musical.kind === "notes" && (
                         <>
                           <label className="flex items-center justify-between gap-3"><span>Morte musical: voz</span>
-                            <select value={v.death.musical.voice} onChange={e => { const s = e.target.value as VoiceId; update(d => { if (d.death.musical.kind === "notes") d.death.musical.voice = s }) }} className={field}>
+                            <StepSelect value={v.death.musical.voice} onChange={e => { const s = e.target.value as VoiceId; update(d => { if (d.death.musical.kind === "notes") d.death.musical.voice = s }) }} className={field}>
                               {(Object.keys(VOICE_LABELS) as VoiceId[]).map(s => <option key={s} value={s}>{VOICE_LABELS[s]}</option>)}
-                            </select>
+                            </StepSelect>
                           </label>
                           <label className="flex items-center justify-between gap-3"><span>Morte musical: forma</span>
-                            <select value={v.death.musical.shape} onChange={e => { const s = e.target.value as "note" | "chord" | "arp"; update(d => { if (d.death.musical.kind === "notes") d.death.musical.shape = s }) }} className={field}>
+                            <StepSelect value={v.death.musical.shape} onChange={e => { const s = e.target.value as "note" | "chord" | "arp"; update(d => { if (d.death.musical.kind === "notes") d.death.musical.shape = s }) }} className={field}>
                               {SHAPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
+                            </StepSelect>
                           </label>
                         </>
                       )}
@@ -310,10 +311,10 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                   )}
                   {g === "Morto-vivo" && (
                     <label className="flex items-center justify-between gap-3" title="O pássaro em que ele volta quando as notas o trazem de volta"><span>Vira o pássaro</span>
-                      <select value={v.undead.bird ?? ""} onChange={e => { const b = e.target.value; update(d => { d.undead.bird = (b || null) as BirdId | null }) }} className={field}>
+                      <StepSelect value={v.undead.bird ?? ""} onChange={e => { const b = e.target.value; update(d => { d.undead.bird = (b || null) as BirdId | null }) }} className={field}>
                         <option value="">Um do lugar</option>
                         {BIRD_IDS.map(b => <option key={b} value={b}>{BIRDS[b].name}</option>)}
-                      </select>
+                      </StepSelect>
                     </label>
                   )}
                   <div className="grid gap-field">

@@ -18,7 +18,11 @@ const CHICKS_MAX = 16, CHICKS_BYTES = 1200
 const CHESTS_MAX = 64, CHESTS_BYTES = 4000
 // the Gaiolas each browser's chickens carry, as counters (the browser's lib/pigchicken/cages.ts)
 const CAGES_MAX = 4, CAGES_BYTES = 400
-const CAPS = { souls: 1, chicks: 1, chests: 1, cages: 1 }
+// the round of the Grade de blocos (the browser's lib/pigchicken/net-mine.ts)
+const MINE_BYTES = 120_000
+const CAPS = { souls: 1, chicks: 1, chests: 1, cages: 1, mine: 1, houses: 1 }
+// the house each of a browser's chickens is inside of (the browser's lib/pigchicken/house-rooms.ts)
+const HOUSES_MAX = 4, HOUSES_BYTES = 400
 const jsonSize = v => { try { return JSON.stringify(v).length } catch { return Infinity } }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 
@@ -46,6 +50,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "give"     { to, give }  the soul it lets go to the browser `to`, which asked for it; relayed to `to` only
 //   "chests"   { l, o? }  the Baús it opened (o: 1) or, the owner, the ones open in its world; relayed to everyone else
 //   "cages"    { l }      the Gaiolas each of its chickens carries (model, souls, limit); relayed to everyone else
+//   "mine"     { m }      the round of the Grade de blocos: the owner's, relayed to everyone else; from another browser, what its players did, relayed to the owner only
+//   "houses"   { l }      the house each of its chickens is inside of ('' outside); relayed to everyone else
 // Messages to the browser:
 //   "hello"    { pid, room, caps }  right after joining (caps: the newer messages this server relays)
 //   "room"     the room info below, whenever it changes
@@ -65,6 +71,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "give"     { pid, give }  the soul another browser gave this one
 //   "chests"   { pid, l, o? }  the Baús another browser opened, or the owner's open ones
 //   "cages"    { pid, l }     the Gaiolas another browser's chickens carry
+//   "mine"     { pid, m }     the owner's round of the Grade de blocos, or (to the owner) what another browser's players did to it
+//   "houses"   { pid, l }     the house each of another browser's chickens is inside of
 export class PatioRoom extends Room {
   maxClients = MAX_BROWSERS
   players = new Map() // sessionId -> player
@@ -103,6 +111,8 @@ export class PatioRoom extends Room {
     this.onMessage('give', (client, msg) => this.onDirect(client, msg, 'give', GIVE_BYTES))
     this.onMessage('chests', (client, msg) => this.onChests(client, msg))
     this.onMessage('cages', (client, msg) => this.onCages(client, msg))
+    this.onMessage('mine', (client, msg) => this.onMine(client, msg))
+    this.onMessage('houses', (client, msg) => this.onHouses(client, msg))
     this.setSimulationInterval(() => this.broadcastSnapshot(), TICK_MS)
   }
 
@@ -129,7 +139,7 @@ export class PatioRoom extends Room {
       state: new Map(), // slot -> latest chicken state
       sendOk: bucket(30, 40), chatOk: bucket(2, 4), profileOk: bucket(4, 8), layoutOk: bucket(4, 8),
       foesOk: bucket(15, 20), hitsOk: bucket(30, 60), spawnOk: bucket(2, 4), shotsOk: bucket(30, 40),
-      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16), chicksOk: bucket(15, 20), chestsOk: bucket(4, 8), cagesOk: bucket(6, 10),
+      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16), chicksOk: bucket(15, 20), chestsOk: bucket(4, 8), cagesOk: bucket(6, 10), mineOk: bucket(25, 40), housesOk: bucket(6, 10),
     }
     this.players.set(client.sessionId, p)
     this.settleOwner()
@@ -313,6 +323,22 @@ export class PatioRoom extends Room {
     const p = this.players.get(client.sessionId)
     if (!p || !p.cagesOk() || !Array.isArray(msg?.l) || msg.l.length > CAGES_MAX || jsonSize(msg.l) > CAGES_BYTES) return
     this.broadcast('cages', { pid: p.pid, l: msg.l }, { except: client })
+  }
+
+  // the round of the Grade de blocos: the owner's goes to everyone else; what another browser's players did, to the
+  // owner only. As it is: the browsers check what is in it.
+  onMine(client, msg) {
+    const p = this.players.get(client.sessionId), m = msg?.m
+    if (!p || !p.mineOk() || !m || typeof m !== 'object' || Array.isArray(m) || jsonSize(m) > MINE_BYTES) return
+    if (p.pid === this.ownerPid) { this.broadcast('mine', { pid: p.pid, m }, { except: client }); return }
+    this.byPid(this.ownerPid)?.client.send('mine', { pid: p.pid, m })
+  }
+
+  // the house each of a browser's chickens is inside of: to everyone else, as it is
+  onHouses(client, msg) {
+    const p = this.players.get(client.sessionId)
+    if (!p || !p.housesOk() || !Array.isArray(msg?.l) || msg.l.length > HOUSES_MAX || jsonSize(msg.l) > HOUSES_BYTES) return
+    this.broadcast('houses', { pid: p.pid, l: msg.l }, { except: client })
   }
 
   // a soul or a chick asked of one browser ("take") and its answer ("give"): only to the browser it names

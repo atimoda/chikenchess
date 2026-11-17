@@ -41,7 +41,7 @@ const DRUMS: Opt[] = [
 ]
 const VOICES: Opt[] = [
   { value: 'flute', label: 'Flauta' }, { value: 'sax', label: 'Sax' }, { value: 'trumpet', label: 'Trompete' }, { value: 'guitar', label: 'Violão' },
-  { value: 'violin', label: 'Violino' }, { value: 'keys', label: 'Teclado' }, { value: 'harp', label: 'Harpa' }, { value: 'bells', label: 'Sinos' },
+  { value: 'violin', label: 'Violino' }, { value: 'keys', label: 'Teclado' }, { value: 'harp', label: 'Harpa de Lira' }, { value: 'bells', label: 'Sinos' },
   { value: 'guzheng', label: 'Guzheng' }, { value: 'bass', label: 'Baixo' }, { value: 'chip', label: 'Chip' },
 ]
 export const TRANSFORMS: Record<TransformKind, TransformMeta> = {

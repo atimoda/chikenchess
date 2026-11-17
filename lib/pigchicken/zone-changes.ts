@@ -5,7 +5,7 @@
 import { DEGREE_COLORS, SCALES, ZONES, type Feel, type ScaleId } from './music'
 import { CHAIN_MAX, newTransform, type Transform, type TransformKind } from './transforms'
 import { BIRD_IDS, type BirdId } from './birds'
-import { BASS_IDS, BEAT_IDS, beatForFeel } from './zone-ambience'
+import { BASS_IDS, BEAT_IDS, beatForFeel, withBeat } from './zone-ambience'
 // type only: sound-zones imports this file
 import type { SoundZoneParams } from './sound-zones'
 
@@ -85,7 +85,7 @@ export const ZONE_STEP = {
     return { chain: [newTransform(CHAIN_STEPS[i + 1])] }
   },
   // the next beat or bass of the lists (silence first); a beat of its own goes back to the list
-  beat: (z: SoundZoneParams): Partial<SoundZoneParams> => { const { drums: _own, ...rest } = z.ambience; return { ambience: { ...rest, beat: z.ambience.drums ? z.ambience.beat : after(BEAT_IDS, z.ambience.beat) } } },
+  beat: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ ambience: withBeat(z.ambience, z.ambience.drums ? z.ambience.beat : after(BEAT_IDS, z.ambience.beat)) }),
   bass: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ ambience: { ...z.ambience, bass: after(BASS_IDS, z.ambience.bass) } }),
   color: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ color: ZONE_COLORS.includes(z.color) ? after(ZONE_COLORS, z.color) : ZONE_COLORS[0] }),
   change: (z: SoundZoneParams): Partial<SoundZoneParams> => ({ change: after(ZONE_CHANGE_IDS, z.change) }),
@@ -121,7 +121,7 @@ function flipMode(z: SoundZoneParams, relative: boolean): Partial<SoundZoneParam
 }
 
 // a new feel, and the percussion with it while it is one of the three that follow the feel (Reto, Swing, Meio tempo)
-const withFeel = (z: SoundZoneParams, feel: Feel): Partial<SoundZoneParams> => ({ feel, ambience: z.ambience.drums ? z.ambience : { ...z.ambience, beat: beatForFeel(z.ambience.beat, feel) } })
+const withFeel = (z: SoundZoneParams, feel: Feel): Partial<SoundZoneParams> => { const beat = beatForFeel(z.ambience.beat, feel); return { feel, ambience: z.ambience.drums || beat === z.ambience.beat ? z.ambience : withBeat(z.ambience, beat) } }
 
 export const ZONE_CHANGES: ZoneChange[] = [
   { id: 'random', label: 'Random', group: 'Geral', hint: 'Embaralha tom, escalas, andamento, balanço e progressão',

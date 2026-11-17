@@ -1,6 +1,7 @@
 // PigChicKen aim: which input owns the aim this frame and where it points. Pure functions, screen coordinates (y down).
 // Priority: right stick > mouse (after it moves) > on-screen right stick > left stick > movement keys > facing.
-// The movement keys aim in the 8 directions, only for a player without the mouse (see keysAimFor).
+// The movement keys aim in the 8 directions for a player without the mouse (see keysAimFor); a player with the mouse
+// gets them back after the mouse has been still for `keysAimRelease` seconds (0 = never).
 import { magnetVector } from '../chicken/analog-magnet'
 
 export type Stick = { x: number; y: number; mag: number }
@@ -28,6 +29,9 @@ export type Aim = {
 // The movement keys aim only for a player without the mouse (a keyboard with a mouse beside it aims with the mouse).
 // null devices (everything, as on the globe) include the mouse.
 export const keysAimFor = (devices: readonly string[] | null) => !!devices && !devices.includes('mouse')
+// A player with the mouse (not the globe's null list): the movement keys take the aim back from a mouse still for `idleS`
+// seconds; 0 turns it off and the mouse keeps the aim.
+export const keysAimAfterMouse = (devices: readonly string[] | null, idleS: number) => !!devices && devices.includes('mouse') && idleS > 0
 
 const TAU = Math.PI * 2
 const STEP = Math.PI / 4

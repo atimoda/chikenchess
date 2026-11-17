@@ -7,6 +7,7 @@
 // picked, right click takes one out; Delete, Ctrl+C / Ctrl+V at the cursor, Ctrl+Z / Ctrl+Shift+Z. A preview shows
 // the half circle around her at the cursor (or at the song's beat while it plays), and "Tocar daqui" plays the
 // draft in the temple from the cursor's bar.
+import { StepSelect } from "@/components/ui/step-select"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, ChevronUp, MessageSquare, Pause, Play, Plus, Redo2, Save, Square, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -363,12 +364,12 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
         {/* the song's settings and the tools */}
         <div className="flex flex-wrap items-center gap-field border-b border-white/10 px-3 py-2">
           <label className="flex items-center gap-1.5">bpm<input type="number" min={40} max={200} value={z.bpm} onChange={e => setZone({ bpm: Math.max(40, Math.min(200, Number(e.target.value) || z.bpm)) }, "bpm")} className={cn(field, "w-16")} /></label>
-          <select aria-label="Tom" title="Tom" value={((z.root % 12) + 12) % 12} onChange={e => { const pc = Number(e.target.value); const root = ROOTS.find(r => r % 12 === pc) ?? 60; commit(retune(draft, root, z.scale)) }} className={field}>
+          <StepSelect aria-label="Tom" title="Tom" value={((z.root % 12) + 12) % 12} onChange={e => { const pc = Number(e.target.value); const root = ROOTS.find(r => r % 12 === pc) ?? 60; commit(retune(draft, root, z.scale)) }} className={field}>
               {ROOTS.map(r => <option key={r} value={r % 12}>{keyName(r)}</option>)}
-          </select>
-          <select aria-label="Escala" title="Escala" value={z.scale} onChange={e => commit(retune(draft, z.root, e.target.value as ScaleId))} className={field}>
+          </StepSelect>
+          <StepSelect aria-label="Escala" title="Escala" value={z.scale} onChange={e => commit(retune(draft, z.root, e.target.value as ScaleId))} className={field}>
               {(Object.keys(SCALES) as ScaleId[]).map(k => <option key={k} value={k}>{SCALES[k].label}</option>)}
-          </select>
+          </StepSelect>
           <label className="flex items-center gap-1.5">Intro<input type="number" min={1} max={8} value={draft.introBars} onChange={e => setSong({ introBars: Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 1))) }, "intro")} className={cn(field, "w-12")} />comp.</label>
           <input type="color" aria-label="Cor" title="Cor" value={z.color} onChange={e => setZone({ color: e.target.value }, "color")} className="h-8 w-9 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
           <span className="mx-1 h-5 w-px bg-white/10" />
@@ -381,7 +382,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
           <button type="button" onClick={() => { const r = insertPause(draft, snapBeat(cursor, 4), 2); commit(r.song, { ...NOTHING, pauses: [r.index] }) }} className={btn} title="Abre 2 compassos no cursor e empurra o resto para depois"><Pause className="h-4 w-4" />Pausa</button>
           <button type="button" onClick={() => { const r = addLine(draft, { beat: cursor, who: "narrador", text: "", secs: 3, place: "banner", blip: true }); commit(r.song, { ...NOTHING, lines: [r.index] }) }} className={btn}><MessageSquare className="h-4 w-4" />Fala</button>
           <span className="mx-1 h-5 w-px bg-white/10" />
-          <select aria-label="Grade" value={grid} onChange={e => setGrid(Number(e.target.value))} className={field}>{GRIDS.map(g => <option key={g.v} value={g.v}>{g.label}</option>)}</select>
+          <StepSelect aria-label="Grade" value={grid} onChange={e => setGrid(Number(e.target.value))} className={field}>{GRIDS.map(g => <option key={g.v} value={g.v}>{g.label}</option>)}</StepSelect>
           <button type="button" onClick={() => setPpb(p => Math.max(8, Math.round(p / 1.4)))} className={btn} aria-label="Menos zoom"><ZoomOut className="h-4 w-4" /></button>
           <button type="button" onClick={() => setPpb(p => Math.min(120, Math.round(p * 1.4)))} className={btn} aria-label="Mais zoom"><ZoomIn className="h-4 w-4" /></button>
         </div>
@@ -532,10 +533,10 @@ function AlienBlock({ laneH: LANE_H, a, i, on, only, catalog, lanes, rowOf, xOf,
 
 function VariantSelect({ value, catalog, onChange, placeholder }: { value: string; catalog: Catalog; onChange: (id: string) => void; placeholder?: string }) {
   return (
-    <select value={value} onChange={e => e.target.value && onChange(e.target.value)} className={field}>
-      {placeholder && <option value="">{placeholder}</option>}
+    <StepSelect value={value} onChange={e => e.target.value && onChange(e.target.value)} className={field}>
+      {placeholder && <option value="" data-skip>{placeholder}</option>}
       {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>)}
-    </select>
+    </StepSelect>
   )
 }
 
@@ -550,10 +551,10 @@ function AlienInspector({ a, catalog, onChange, onDelete }: { a: SongAlien; cata
       <p className="text-[11px] text-[#93a79a]">{a.notes.length} notas, do compasso {Math.floor(first / 4) + 1} ao {Math.floor(last / 4) + 1}. Ctrl+clique põe nota, botão direito tira, arrastar uma nota a move.</p>
       <label className="grid gap-1">Variação<VariantSelect value={v.id} catalog={catalog} onChange={id => { const nv = variantFor(catalog, id, "jelly"); onChange(x => ({ ...x, species: nv.species, variant: nv.id })) }} /></label>
       <label className="grid gap-1">Movimento
-        <select value={a.move ?? ""} onChange={e => { const m = e.target.value as MoveMode | ""; onChange(x => { const y = { ...x }; if (m) y.move = m; else delete y.move; return y }) }} className={field}>
+        <StepSelect value={a.move ?? ""} onChange={e => { const m = e.target.value as MoveMode | ""; onChange(x => { const y = { ...x }; if (m) y.move = m; else delete y.move; return y }) }} className={field}>
           <option value="">Da variação ({moveLabel})</option>
           {MOVE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
+        </StepSelect>
       </label>
       <div className="grid grid-cols-2 gap-field">
         <label className="grid gap-1">Ângulo
@@ -577,10 +578,10 @@ function LineInspector({ l, catalog, grid, onChange, onDelete }: { l: SongLine; 
     <div className="grid gap-field">
       <h3 className="text-sm text-white">Fala</h3>
       <label className="grid gap-1">Quem fala
-        <select value={l.who} onChange={e => onChange({ who: e.target.value })} className={field}>
+        <StepSelect value={l.who} onChange={e => onChange({ who: e.target.value })} className={field}>
           {SPEAKERS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={`alien:${v.id}`}>{v.name}</option>)}</optgroup>)}
-        </select>
+        </StepSelect>
       </label>
       <label className="grid gap-1">Texto
         <textarea autoFocus={!l.text} value={l.text} maxLength={200} rows={3} onChange={e => onChange({ text: e.target.value }, "line-text")} className="rounded-md border border-white/15 bg-[#0b110e] p-2 text-xs text-white" />

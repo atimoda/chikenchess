@@ -5,7 +5,8 @@
 // souls, also on the floor: whoever takes it takes them too. Pure data and functions; the combat
 // (lib/pigchicken/combat.ts) fills them in and components/pigchicken/draw/cages.ts draws them.
 import type { ItemId } from './items'
-import type { Soul } from './souls'
+import type { BirdId } from './birds'
+import { CHICK_SOUL_COLOR, newSoul, originOf, type Soul, type SoulShot, type SoulSpecies } from './souls'
 
 export const CAGES_MAX = 3
 export const CAGE_CAP_MAX = 99
@@ -63,14 +64,16 @@ export function soulSpot(id: number): { u: number; v: number; face: 1 | -1 } {
 }
 
 // ---------- the swing of a hanging cage: a damped pendulum pushed by the camera ----------
-export type Sway = { a: number; v: number } // angle (rad, 0 hanging straight) and its speed
+// angle (rad, 0 hanging straight) and its speed. A positive angle hangs the cage to the left (as drawn):
+// it lags behind the camera's change of speed, so a camera speeding up to the right gives a positive angle
+export type Sway = { a: number; v: number }
 export const newSway = (): Sway => ({ a: 0, v: 0 })
 export const SWAY = { freq: 5.2, damp: 1.6, gain: 0.00035, max: 0.42, kick: 2.2 }
 // accel: how fast the camera's speed changes (px/s²): the cage lags behind it
 export function swayStep(s: Sway, accel: number, dt: number) {
   const steps = Math.max(1, Math.ceil(dt / 0.008)), h = dt / steps
   for (let i = 0; i < steps; i++) {
-    s.v += (-SWAY.freq * SWAY.freq * s.a - 2 * SWAY.damp * s.v - SWAY.gain * accel * SWAY.freq * SWAY.freq) * h
+    s.v += (-SWAY.freq * SWAY.freq * s.a - 2 * SWAY.damp * s.v + SWAY.gain * accel * SWAY.freq * SWAY.freq) * h
     s.a += s.v * h
   }
   if (Math.abs(s.a) > SWAY.max) { s.a = Math.sign(s.a) * SWAY.max; s.v *= -0.3 }
@@ -111,3 +114,18 @@ export function importCages(old: readonly CageMirror[] | undefined, next: readon
   })
 }
 export function stepCageMirror(m: CageMirror, dt: number) { if (m.flashT > 0 && (m.flashT -= dt) <= 0) { m.flashT = 0; m.flash = null } }
+
+// ---------- souls to show a cage as full as its limit (the Itens panel): always the same for the same count ----------
+const SAMPLE_SPECIES: SoulSpecies[] = ['horde', 'jelly', 'lantern', 'shell', 'twin', 'mini', 'drum', 'dragon']
+const SAMPLE_SHOTS: (SoulShot | null)[] = [null, 'wind', 'strings', 'keys', 'percussion']
+const SAMPLE_BIRDS: BirdId[] = ['pardal', 'bemtevi', 'sabia', 'canario', 'coruja']
+const SAMPLE_COLORS = ['#7bd88f', '#ff8fa3', '#ffd166', '#4cc9f0', '#c77dff', '#ff9f1c']
+/** `n` souls with the ids 1 to n: birds of every species, a dead one now and then and a chick in every seven */
+export function sampleSouls(n: number): Soul[] {
+  return Array.from({ length: Math.max(0, Math.min(CAGE_CAP_MAX, Math.round(n))) }, (_, k) => {
+    const id = k + 1
+    if (id % 7 === 4) return { ...newSoul(id, originOf('chick', 'alive'), CHICK_SOUL_COLOR, null), chick: id % 5 }
+    const origin = originOf(SAMPLE_SPECIES[id % SAMPLE_SPECIES.length], id % 5 === 0 ? 'dead' : 'alive', { shot: SAMPLE_SHOTS[id % SAMPLE_SHOTS.length] })
+    return newSoul(id, origin, SAMPLE_COLORS[id % SAMPLE_COLORS.length], SAMPLE_BIRDS[id % SAMPLE_BIRDS.length])
+  })
+}

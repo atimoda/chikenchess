@@ -7,8 +7,9 @@ import { RotateCcw, X } from "lucide-react"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
+import { PatioDualRange } from "@/components/ui/patio-dual-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, patioGround, patioHeight, patioInventoryLimit, patioSceneMusic, patioTemple, type PatioSettings } from "@/lib/pigchicken/patio-settings"
+import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioSceneMusic, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultPatioSettings } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
@@ -18,7 +19,13 @@ import { hourLabel } from "@/lib/pigchicken/sky"
 import { AuroraFields, CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
+// the zoom's slider runs on a log scale (each step the same proportion); its left end, below the floor, is the
+// whole Pátio
+const ZOOM_STEP = 0.05, ZOOM_LEFT = -3.4, ZOOM_RIGHT = Math.log2(PATIO_ZOOM.ceil)
+const zoomPct = (z: number) => `${Math.round(z * 100)}%`
+const zoomLabel = (z: PatioZoom) => `${z.min === 0 ? "Pátio inteiro" : zoomPct(z.min)} – ${zoomPct(z.max)}`
 
+// (the Grade de blocos has its own panel: components/pigchicken/mine-grid-panel.tsx)
 export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose }: {
   layout: PatioLayout; screens: number; canEdit: boolean
   onChange: (layout: PatioLayout) => void; onClose: () => void
@@ -26,7 +33,8 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
   const height = patioHeight(layout.settings)
   const ground = patioGround(layout.settings)
   // Padrão: what a new empty Pátio gets (the game's defaults file, the code's values where it has none)
-  const base = { screens: DEFAULT_PATIO_SETTINGS.screens ?? DEFAULT_PARQUINHO.screens, height: patioHeight(DEFAULT_PATIO_SETTINGS), ground: patioGround(DEFAULT_PATIO_SETTINGS), inventory: patioInventoryLimit(DEFAULT_PATIO_SETTINGS) }
+  const base = { screens: DEFAULT_PATIO_SETTINGS.screens ?? DEFAULT_PARQUINHO.screens, height: patioHeight(DEFAULT_PATIO_SETTINGS), ground: patioGround(DEFAULT_PATIO_SETTINGS), inventory: patioInventoryLimit(DEFAULT_PATIO_SETTINGS), zoom: DEFAULT_PATIO_SETTINGS.zoom }
+  const zoom = patioZoom(layout.settings)
   const inventory = patioInventoryLimit(layout.settings)
   const itemsLabel = `${inventory} ${inventory === 1 ? "item" : "itens"}`
   const set = (next: PatioSettings) => onChange({ ...layout, settings: { ...layout.settings, ...next } })
@@ -39,7 +47,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
     <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
         <h2 className="flex-1 text-sm text-white">Configurações do Pátio</h2>
-        {canEdit && <button type="button" aria-label="Padrão" onClick={() => set(base)} title="Padrão: volta largura, altura, espaço abaixo do chão e limite do inventário para o padrão do jogo" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><RotateCcw className="h-4 w-4" /></button>}
+        {canEdit && <button type="button" aria-label="Padrão" onClick={() => set(base)} title="Padrão: volta largura, altura, espaço abaixo do chão, limite do inventário e zoom para o padrão do jogo" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><RotateCcw className="h-4 w-4" /></button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -58,6 +66,14 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <PatioRange label="Limite do inventário" min={PATIO_INVENTORY.min} max={PATIO_INVENTORY.max} step={PATIO_INVENTORY.step} value={inventory}
             display={itemsLabel} onChange={v => set({ inventory: v })} onReset={() => set({ inventory: base.inventory })}
             hint="Quantos itens cada player carrega neste Pátio. Baixar o limite não tira itens de ninguém; só não cabem novos." />
+          <PatioDualRange label="Zoom" min={ZOOM_LEFT} max={ZOOM_RIGHT} step={ZOOM_STEP}
+            lo={zoom.min === 0 ? ZOOM_LEFT : Math.log2(zoom.min)} hi={Math.log2(zoom.max)} display={zoomLabel(zoom)}
+            onChange={(a, b) => {
+              const max = Math.round(2 ** b * 100) / 100
+              set({ zoom: { min: 2 ** a < PATIO_ZOOM.floor ? 0 : Math.min(max, Math.round(2 ** a * 100) / 100), max } })
+            }}
+            onReset={() => set({ zoom: base.zoom })}
+            hint="Até onde a câmera afasta (ponto da esquerda) e aproxima (ponto da direita). Na ponta esquerda, Pátio inteiro: afasta até o Pátio todo caber na tela." />
           <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Cada cena toca a sua zona (Campo, Noite, Feira…). Desligado, só as Zonas sonoras do mapa tocam; fora delas não há percussão nem drone.">
             <span>Zonas das cenas</span>
             <input type="checkbox" checked={patioSceneMusic(layout.settings)} onChange={e => {
@@ -65,8 +81,8 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
               onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, sceneMusic: false } })
             }} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
-          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="O Templo do Gongo (gongo, jukebox e os suportes de armas da entrada) e a Vila dos Telhados no fim do mundo. Desligado, as duas cenas ficam vazias.">
-            <span>Templo e Vila</span>
+          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Os terraços e a placa ao fundo da Vila dos Telhados, no fim do mundo. O Templo do Gongo e as casas da Vila são elementos do Modo editor.">
+            <span>Fundo da Vila</span>
             <input type="checkbox" checked={patioTemple(layout.settings)} onChange={e => {
               const { temple: _old, ...rest } = layout.settings ?? {}
               onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, temple: false } })
@@ -101,9 +117,10 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>Altura limite</dt><dd className="font-bold">{units(height)} u</dd>
           <dt>Espaço abaixo do chão</dt><dd className="font-bold">{ground} px</dd>
           <dt>Limite do inventário</dt><dd className="font-bold">{itemsLabel}</dd>
+          <dt>Zoom</dt><dd className="font-bold">{zoomLabel(zoom)}</dd>
           <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
           <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
-          <dt>Templo e Vila</dt><dd className="font-bold">{patioTemple(layout.settings) ? "Sim" : "Não"}</dd>
+          <dt>Fundo da Vila</dt><dd className="font-bold">{patioTemple(layout.settings) ? "Sim" : "Não"}</dd>
           <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
         </dl>
       )}

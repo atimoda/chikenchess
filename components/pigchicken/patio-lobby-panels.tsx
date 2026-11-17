@@ -7,6 +7,7 @@
 //   Playgrounds (Abrir): a new Pátio (a copy of the default, or an empty one), then three folding blocks: Destaques
 //   (the default and the Pátios an admin featured), Favoritos and Salvos (mine, or for the admin everyone's), with a
 //   star to favourite, delete, duplicate, "set as default" and the admin's Destaque.
+import { StepSelect } from "@/components/ui/step-select"
 import { useEffect, useMemo, useState } from "react"
 import { Award, Copy, Crown, FolderOpen, Home, Loader2, Plus, Save, Star, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
@@ -23,7 +24,8 @@ import { NewPatioGenerator } from "./new-patio-generator"
 import { usePatioLiveCounts, type PatioLiveCounts } from "@/lib/pigchicken/patio-live"
 
 export const DEFAULT_PATIO_NAME = "Pátio das Galinhas"
-const panelCls = "gap-3 overflow-y-auto rounded-xl border border-primary/30 bg-[#101713] p-4 font-mono text-xs text-[#dfe8df] shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+const panelCls = "rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs text-[#dfe8df] shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+const panelBody = "gap-3 p-4"
 const btn = "inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-white/20 px-2.5 hover:border-primary disabled:opacity-40 disabled:hover:border-white/20"
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "")
 
@@ -116,7 +118,7 @@ export function PatioSavePanel({ patio, remote, save, canEdit, canRename, rename
     setBusy(false)
   }
   return (
-    <FloatingPanel id="patio-save" aria-label="Salvar Pátio" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(360, vw - 24) - 12), y: 64, w: Math.min(360, vw - 24), h: Math.min(520, vh - 80) })} className={panelCls}>
+    <FloatingPanel id="patio-save" aria-label="Salvar Pátio" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(360, vw - 24) - 12), y: 64, w: Math.min(360, vw - 24), h: Math.min(520, vh - 80) })} bodyClassName={panelBody} className={panelCls}>
       <PanelHead title="Salvar Pátio" icon={<Save className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
 
       <label className="flex flex-col gap-1">
@@ -180,7 +182,7 @@ export function PatioSavePanel({ patio, remote, save, canEdit, canRename, rename
 
 export function PatioPersonPanel({ person, onClose }: { person: PatioPersonCard; onClose: () => void }) {
   return (
-    <FloatingPanel id="patio-person" aria-label={`Perfil de ${person.name}`} initial={(vw, vh) => { const w = Math.min(280, vw - 24); const left = vw - Math.min(360, vw - 24) - 12 - w - 8; return left >= 12 ? { x: left, y: 64, w, h: 260 } : { x: Math.max(12, vw - w - 12), y: Math.max(64, vh - 272), w, h: 260 } }} minH={200} className={panelCls}>
+    <FloatingPanel id="patio-person" aria-label={`Perfil de ${person.name}`} initial={(vw, vh) => { const w = Math.min(280, vw - 24); const left = vw - Math.min(360, vw - 24) - 12 - w - 8; return left >= 12 ? { x: left, y: 64, w, h: 260 } : { x: Math.max(12, vw - w - 12), y: Math.max(64, vh - 272), w, h: 260 } }} minH={200} bodyClassName={panelBody} className={panelCls}>
       <PanelHead title="Perfil" icon={<PersonAvatar person={person} size={24} />} onClose={onClose} />
       <p className="truncate text-sm font-bold text-white">{person.name}</p>
       <p className="text-[11px] text-[#ffd166]">{person.roles.join(" · ") || "Jogador"}</p>
@@ -305,7 +307,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   )
 
   return (
-    <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(580, vw - 24) - 12), y: 64, w: Math.min(580, vw - 24), h: Math.min(720, vh - 80) })} className={panelCls}>
+    <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(580, vw - 24) - 12), y: 64, w: Math.min(580, vw - 24), h: Math.min(720, vh - 80) })} bodyClassName={panelBody} className={panelCls}>
       <PanelHead title="Playgrounds" icon={<FolderOpen className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
       <div className="flex shrink-0 gap-2">
         <button type="button" onClick={() => onNew("default")} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
@@ -347,11 +349,11 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
             all={savedAll} onAll={setSavedAll} allHint={isAdmin ? "Todos os lobbies de todos, salvos e não salvos" : "Todos os Pátios salvos"}
             sort={savedSort} onSort={setSavedSort} loading={rows === null}
             extra={isAdmin && (
-              <select aria-label="Filtro" value={filter} onChange={e => setFilter(e.target.value as Filter)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
+              <StepSelect aria-label="Filtro" value={filter} onChange={e => setFilter(e.target.value as Filter)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
                 <option value="all">Salvos e não salvos</option>
                 <option value="saved">Só salvos</option>
                 <option value="unsaved">Só não salvos</option>
-              </select>
+              </StepSelect>
             )}
           >
             {saved.map(r => lobbyRow(r, "saved"))}
@@ -387,9 +389,9 @@ function ListBox({ title, open, onToggle, emptyText, all, onAll, allHint, sort, 
       <section aria-label={title} className="flex flex-col gap-1.5 px-4 pb-4">
         <div className="flex flex-wrap items-center justify-end gap-2">
           {onAll && <label className="mr-auto flex items-center gap-1.5 text-[11px]" title={allHint}><input type="checkbox" checked={!!all} onChange={e => onAll(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" /> Ver todos</label>}
-          <select aria-label={`Ordem de ${title}`} value={sort} onChange={e => onSort(e.target.value as Sort)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
+          <StepSelect aria-label={`Ordem de ${title}`} value={sort} onChange={e => onSort(e.target.value as Sort)} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
             {SORTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          </StepSelect>
           {extra}
         </div>
         {loading ? <p className="flex items-center gap-2 text-[11px] text-[#93a79a]"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando…</p>

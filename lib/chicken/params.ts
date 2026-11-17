@@ -18,6 +18,7 @@ export const CHICKEN_PARAMS = {
   clingTurnTime: 0.16,
   clingBend: 10,
   wallJump: 0.8,
+  clingDropDamage: 5,
   // Movimento
   maxSpeed: 1500,
   fallSideSpeed: 0.5,
@@ -84,6 +85,7 @@ export const CHICKEN_PARAMS = {
   shockingAirChargeTime: 2,
   shockingAirAfterTimeMultiplier: 2,
   shockingAirKneeBend: 90,
+  shockingAirFlapRate: 4,
   shockingBodyDepth: 12,
   shockingLegBend: 12,
   broodJumpFlaps: 1,

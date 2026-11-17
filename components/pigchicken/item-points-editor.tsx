@@ -4,6 +4,7 @@
 // it turns around (sitting on her shoulder or mouth), where the wing and the back wing hold it, and where the shot leaves.
 // With "Arco e Flecha" the bow and the arrow are drawn apart: the arrow sits with its nock on the wing's point, the
 // string bends to it, and a dashed line shows how far back the charge pulls it.
+import { StepSelect } from "@/components/ui/step-select"
 import { useMemo, useRef, useState } from "react"
 import { ARCHERY_ART, ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { PIVOT_PARTS, type ItemDef, type ItemId, type PivotPart } from "@/lib/pigchicken/items"
@@ -48,9 +49,9 @@ export function ItemPointsEditor({ id, item, base, onChange }: { id: ItemId; ite
     <div className="grid gap-field">
       <label className="flex items-center justify-between gap-3" title="A parte do corpo onde o eixo do item fica preso">
         <span>Eixo preso em</span>
-        <select value={item.pivotAt} onChange={e => { const v = e.target.value as PivotPart; onChange(d => { d.pivotAt = v }) }} className="h-8 w-44 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        <StepSelect value={item.pivotAt} onChange={e => { const v = e.target.value as PivotPart; onChange(d => { d.pivotAt = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
           {PIVOT_PARTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        </StepSelect>
       </label>
       <div className="flex flex-wrap gap-x-4 gap-y-[2px]">
         {(["hand", "back"] as const).map(k => {

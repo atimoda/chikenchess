@@ -7,6 +7,7 @@
 import { sunsetPowerLayout } from './example-patios'
 import { valleyLayout } from './example-valley'
 import { trainingLayout } from './example-training'
+import { minefieldLayout } from './example-minefield'
 import type { PatioLayout } from './layout'
 
 export const ADMIN_PROFILE_CODE = '7B23E26B10944F18'
@@ -16,4 +17,5 @@ export const EXAMPLE_PATIOS: ExamplePatio[] = [
   { id: '5e7a0c11-0001-4e5a-9c0d-ec5a3b1e0001', name: 'Pôr do sol com torres', layout: sunsetPowerLayout },
   { id: '5e7a0c11-0002-4e5a-9c0d-ec5a3b1e0002', name: 'Vales e ilhas no céu', layout: valleyLayout },
   { id: '5e7a0c11-0003-4e5a-9c0d-ec5a3b1e0003', name: 'Training room', layout: trainingLayout },
+  { id: '5e7a0c11-0004-4e5a-9c0d-ec5a3b1e0004', name: 'Campo minado', layout: minefieldLayout },
 ]

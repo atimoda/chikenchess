@@ -2,14 +2,14 @@
 // the Pátio's layout: adds the new ones, moves and resizes the ones that changed, removes the deleted ones. A loose item
 // (Item solto) puts its item in the world once; taken, it does not come back until the Pátio opens again (reset). A
 // rack deleted in the editor becomes a loose item with the same id, which keeps the item already there (and back). A dummy keeps its life
-// and stage while it is moved; a new total life keeps the share it had. Things past a narrow world's last scene
-// wait out of the world (they would land in the temple) and come back when the world is made wider.
+// and stage while it is moved; a new total life keeps the share it had. Things past a narrow world's end (the Vila's
+// last scene) wait out of the world and come back when the world is made wider.
 import { cageCap } from './cages'
 import type { Chest, Combat, Target } from './combat'
+import { isFixedKind, type Seat } from './fixed-instruments'
 import { DUMMY_DEFAULTS } from './dummies'
-import { SCENE_W } from './world'
-import { elementWorldX, type LayoutElement } from './layout'
-import { rackRespawnDelay } from './racks'
+import { worldEnd, type LayoutElement } from './layout'
+import { rackRefillLimit, rackRespawnDelay } from './racks'
 
 type Rack = Combat['racks'][number]
 const AWAY = -1e6
@@ -18,8 +18,12 @@ const AWAY = -1e6
 const DEVICES = {
   gong: { w: 130, h: 150, lift: 40 },
   jukebox: { w: 112, h: 214, lift: 4 },
+  resetstone: { w: 80, h: 110, lift: 4 },
 } as const
 export const deviceLabel = (kind: 'gong' | 'jukebox', id: string) => `${kind}:${id}`
+// the label of a Gongo, a Jukebox or a Recomeçar stone: the Gongo do Templo and the stone answer to the temple's own
+// labels ("gong", "reset"), the others to their element
+const labelOf = (el: LayoutElement) => el.kind === 'resetstone' ? 'reset' : el.kind === 'gong' && el.params.gong?.temple ? 'gong' : deviceLabel(el.kind === 'gong' ? 'gong' : 'jukebox', el.id)
 
 export function createLayoutSync(combat: Combat) {
   const targets = new Map<string, Target>()
@@ -27,6 +31,8 @@ export function createLayoutSync(combat: Combat) {
   const lastParams = new Map<string, string>()
   // the Baús: an open one stays open while it is moved or its params change (its new loot comes the next time)
   const chests = new Map<string, Chest>()
+  // the fixed instruments (the Harpa): whoever sits at one stays there while it is moved
+  const seats = new Map<string, Seat>()
   // each loose item's pickup in the world (undefined once taken) and where it was put
   const looses = new Map<string, { pickupId?: number; x: number; y: number; item: string }>()
   const activePickup = (id: number | undefined) => (id === undefined ? undefined : combat.pickups.find(p => p.id === id))
@@ -35,13 +41,20 @@ export function createLayoutSync(combat: Combat) {
   const dropPickup = (id: number | undefined) => { const p = activePickup(id); if (p) combat.pickups.splice(combat.pickups.indexOf(p), 1) }
 
   function sync(elements: LayoutElement[], screens: number) {
-    const end = screens * SCENE_W
+    const end = worldEnd(screens)
     const seen = new Set<string>()
     for (const el of elements) {
-      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox' && el.kind !== 'chest') continue
+      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox' && el.kind !== 'resetstone' && el.kind !== 'chest' && !isFixedKind(el.kind)) continue
       seen.add(el.id)
-      const cx = elementWorldX(el, screens) + el.w / 2, bottom = el.y + el.h
-      const inside = !!el.region || cx < end
+      const cx = el.x + el.w / 2, bottom = el.y + el.h
+      const inside = cx < end
+      if (isFixedKind(el.kind)) {
+        const face = el.params.flip ? -1 : 1
+        let s = seats.get(el.id)
+        if (!s) { s = combat.addSeat(el.id, el.kind, inside ? cx : AWAY, bottom, face); seats.set(el.id, s) }
+        s.x = inside ? cx : AWAY; s.y = bottom; s.face = face
+        continue
+      }
       if (el.kind === 'chest') {
         const params = el.params.chest!
         let c = chests.get(el.id)
@@ -77,28 +90,29 @@ export function createLayoutSync(combat: Combat) {
         const item = el.params.item!
         if (!r || r.item !== item) {
           if (r) combat.racks.splice(combat.racks.indexOf(r), 1)
-          combat.addRack(cx, item, bottom, el.params.respawnDelay, el.params.cageSouls)
+          combat.addRack(cx, item, bottom, el.params.respawnDelay, el.params.cageSouls, el.params.refillLimit)
           r = combat.racks[combat.racks.length - 1]
           racks.set(el.id, r)
           // the loose item it was (undone delete): it holds that item again
           const was = looses.get(el.id)
           if (was) {
             const kept = was.item === item ? activePickup(was.pickupId) : undefined
-            if (kept) { r.pickupId = kept.id; r.spawnX = cx; r.spawnY = bottom } else dropPickup(was.pickupId)
+            if (kept) { r.pickupId = kept.id; r.given = 1; r.spawnX = cx; r.spawnY = bottom } else dropPickup(was.pickupId)
             looses.delete(el.id)
           }
         }
         r.x = inside ? cx : AWAY; r.y = bottom
         r.respawnDelay = rackRespawnDelay(item, el.params.respawnDelay)
+        r.refillLimit = rackRefillLimit(el.params.refillLimit)
         // a Gaiola's limit here: the next ones come with it, and the one waiting takes it now
         r.cageSouls = el.params.cageSouls; setCageLimit(activePickup(r.pickupId), el.params.cageSouls)
         continue
       }
       let t = targets.get(el.id)
-      if (el.kind === 'gong' || el.kind === 'jukebox') {
+      if (el.kind === 'gong' || el.kind === 'jukebox' || el.kind === 'resetstone') {
         const dev = DEVICES[el.kind]
-        if (!t) { combat.addButton(cx, bottom - dev.lift, deviceLabel(el.kind, el.id), dev.w, dev.h); t = combat.targets[combat.targets.length - 1]; targets.set(el.id, t) }
-        t.w = dev.w; t.h = dev.h; t.y = bottom - dev.lift
+        if (!t) { combat.addButton(cx, bottom - dev.lift, labelOf(el), dev.w, dev.h); t = combat.targets[combat.targets.length - 1]; targets.set(el.id, t) }
+        t.w = dev.w; t.h = dev.h; t.y = bottom - dev.lift; t.label = labelOf(el)
         const x = inside ? cx : AWAY
         if (t.home !== x) { t.x = t.home = x; t.vx = 0 }
         continue
@@ -125,6 +139,7 @@ export function createLayoutSync(combat: Combat) {
     for (const [id, r] of racks) if (!seen.has(id)) { const i = combat.racks.indexOf(r); if (i >= 0) combat.racks.splice(i, 1); racks.delete(id) }
     for (const [id, l] of looses) if (!seen.has(id)) { dropPickup(l.pickupId); looses.delete(id) }
     for (const [id, c] of chests) if (!seen.has(id)) { const i = combat.chests.indexOf(c); if (i >= 0) combat.chests.splice(i, 1); chests.delete(id) }
+    for (const [id, s] of seats) if (!seen.has(id)) { const i = combat.seats.indexOf(s); if (i >= 0) combat.seats.splice(i, 1); seats.delete(id) }
   }
 
   // another Pátio opened: everything of the last one leaves (its dummies, racks, buttons, Baús and every item lying in the
@@ -133,7 +148,8 @@ export function createLayoutSync(combat: Combat) {
     for (const t of targets.values()) { const i = combat.targets.indexOf(t); if (i >= 0) combat.targets.splice(i, 1) }
     for (const r of racks.values()) { const i = combat.racks.indexOf(r); if (i >= 0) combat.racks.splice(i, 1) }
     for (const c of chests.values()) { const i = combat.chests.indexOf(c); if (i >= 0) combat.chests.splice(i, 1) }
-    targets.clear(); racks.clear(); looses.clear(); chests.clear(); lastParams.clear()
+    for (const s of seats.values()) { const i = combat.seats.indexOf(s); if (i >= 0) combat.seats.splice(i, 1) }
+    targets.clear(); racks.clear(); looses.clear(); chests.clear(); seats.clear(); lastParams.clear()
     combat.pickups.length = 0
   }
 

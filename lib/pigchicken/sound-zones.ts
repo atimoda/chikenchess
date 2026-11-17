@@ -2,7 +2,7 @@
 // the Faixas fixas element (lanes fixed to the map that force the note of anything rebated inside them) and the
 // "Rebate notas" collision (a surface the notes bounce off, playing through its own chain, the last item's or as
 // they are). All data: the layout stores them, combat asks what a point of the map plays.
-import { IN_KEY_RULES, SCALES, ZONES, NOTE_NAMES, type Feel, type InKeyRule, type ScaleId, type Zone } from './music'
+import { IN_KEY_RULES, SCALES, ZONES, NOTE_NAMES, type Feel, type InKeyRule, type ScaleId, type Zone, type ZoneBlock } from './music'
 import { fanLaneAt, fanLanes, fanNotes, type Fan, type FanContent } from './fan'
 import { CHAIN_MAX, TRANSFORMS, cleanTransform, degreeOf, type Transform } from './transforms'
 import { isBirdId, type BirdId } from './birds'
@@ -21,9 +21,21 @@ export function cleanChain(v: unknown): Transform[] {
 
 // ---------- Zona sonora ----------
 
-export type SoundZoneParams = {
+// the sequencer of a zone: its harmony, its rhythm and its bass. What a variation block has of its own
+export type ZoneSequence = { root: number; scale: ScaleId; chordScale: ScaleId; bpm: number; feel: Feel; progression: number[]; ambience: ZoneAmbience }
+// a variation block: a sequence that plays its first `beats` beats `reps` times before the next block takes over
+export type ZoneBlockParams = ZoneSequence & { beats: number; reps: number }
+export const ZONE_BLOCKS_MAX = 10
+export const ZONE_BLOCK_BEATS = { min: 1, max: 64, initial: 16 }
+export const ZONE_BLOCK_REPS = { min: 1, max: 16, initial: 1 }
+
+export type SoundZoneParams = ZoneSequence & {
   name: string
-  root: number; scale: ScaleId; chordScale: ScaleId; bpm: number; feel: Feel; progression: number[]; color: string
+  color: string
+  // variation blocks: the zone's own sequence is the first block and these are the others (up to 9), played in
+  // turn; beats and reps are the first block's span (absent: 16 beats, once). No blocks: the zone just plays
+  blocks?: ZoneBlockParams[]
+  beats?: number; reps?: number
   // the ambience's transformations: every note rebated inside it goes through them (the "ambiente" of the rule)
   chain: Transform[]
   // where zones overlap the higher one wins; any zone wins over the scene's
@@ -38,8 +50,6 @@ export type SoundZoneParams = {
   change: ZoneChangeId
   // "Dano só no tom" (music.ts): absent when off
   inKey?: InKeyRule
-  // its percussion and bass (zone-ambience.ts): silence by default
-  ambience: ZoneAmbience
 }
 export const ZONE_PRIORITY = { min: 1, max: 9 }
 export { ZONE_BPM, ZONE_LIFE }
@@ -54,21 +64,39 @@ export function defaultSoundZone(from: Zone = ZONES[1]): SoundZoneParams {
   }
 }
 
-export function normalizeSoundZone(raw: unknown): SoundZoneParams {
-  const d = defaultSoundZone()
-  if (!raw || typeof raw !== 'object') return d
-  const z = raw as Record<string, unknown>
+// a sequence as stored, cleaned; what is missing or wrong comes from `d`
+function cleanSequence(z: Record<string, unknown>, d: ZoneSequence): ZoneSequence {
   const feel = FEELS.includes(z.feel as Feel) ? (z.feel as Feel) : d.feel
   const prog = Array.isArray(z.progression) ? z.progression.filter(n => typeof n === 'number' && Number.isFinite(n)).map(n => clamp(Math.round(n as number), 0, 6)).slice(0, 16) : []
   return {
-    name: String(z.name ?? d.name).trim().slice(0, 40) || d.name,
     root: Math.round(clamp(num(z.root, d.root), 36, 84)),
     scale: isScale(z.scale) ? z.scale : d.scale,
     chordScale: isScale(z.chordScale) && SCALES[z.chordScale].steps.length === 7 ? z.chordScale : d.chordScale,
     bpm: Math.round(clamp(num(z.bpm, d.bpm), ZONE_BPM.min, ZONE_BPM.max)),
     feel,
     progression: prog.length ? prog : d.progression,
+    // saved before the ambience could be chosen: it keeps the percussion of its feel and the drone it played
+    ambience: z.ambience === undefined ? legacyAmbience(feel) : cleanAmbience(z.ambience),
+  }
+}
+const span = (z: Record<string, unknown>) => ({
+  beats: Math.round(clamp(num(z.beats, ZONE_BLOCK_BEATS.initial), ZONE_BLOCK_BEATS.min, ZONE_BLOCK_BEATS.max)),
+  reps: Math.round(clamp(num(z.reps, ZONE_BLOCK_REPS.initial), ZONE_BLOCK_REPS.min, ZONE_BLOCK_REPS.max)),
+})
+
+export function normalizeSoundZone(raw: unknown): SoundZoneParams {
+  const d = defaultSoundZone()
+  if (!raw || typeof raw !== 'object') return d
+  const z = raw as Record<string, unknown>
+  const seq = cleanSequence(z, d)
+  // a block that says nothing of the ambience is in silence (only a whole zone can be older than the ambience)
+  const blocks = (Array.isArray(z.blocks) ? z.blocks : []).filter(b => b && typeof b === 'object').slice(0, ZONE_BLOCKS_MAX - 1)
+    .map(b => { const r = b as Record<string, unknown>; return { ...cleanSequence({ ...r, ambience: r.ambience ?? SILENCE }, seq), ...span(r) } })
+  return {
+    name: String(z.name ?? d.name).trim().slice(0, 40) || d.name,
+    ...seq,
     color: typeof z.color === 'string' && COLOR.test(z.color) ? z.color : d.color,
+    ...(blocks.length ? { blocks, ...span(z) } : {}),
     chain: cleanChain(z.chain),
     priority: Math.round(clamp(num(z.priority, d.priority), ZONE_PRIORITY.min, ZONE_PRIORITY.max)),
     music: z.music !== false,
@@ -76,10 +104,44 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
     life: Math.round(clamp(num(z.life, 0), ZONE_LIFE.min, ZONE_LIFE.max)),
     change: isZoneChange(z.change) ? z.change : d.change,
     ...(IN_KEY_RULES.includes(z.inKey as InKeyRule) ? { inKey: z.inKey as InKeyRule } : {}),
-    // saved before the ambience could be chosen: it keeps the percussion of its feel and the drone it played
-    ambience: z.ambience === undefined ? legacyAmbience(feel) : cleanAmbience(z.ambience),
   }
 }
+
+// ---------- variation blocks ----------
+
+export const sequenceOf = (q: ZoneSequence): ZoneSequence => ({ root: q.root, scale: q.scale, chordScale: q.chordScale, bpm: q.bpm, feel: q.feel, progression: q.progression.slice(), ambience: q.ambience })
+// every block of a zone in order: its own sequence first
+export function zoneBlocks(p: SoundZoneParams): ZoneBlockParams[] {
+  return [{ ...sequenceOf(p), beats: p.beats ?? ZONE_BLOCK_BEATS.initial, reps: p.reps ?? ZONE_BLOCK_REPS.initial }, ...(p.blocks ?? [])]
+}
+export const zoneBlockCount = (p: SoundZoneParams) => 1 + (p.blocks?.length ?? 0)
+// block `i` changed (0: the zone's own sequence)
+export function setZoneBlock(p: SoundZoneParams, i: number, patch: Partial<ZoneBlockParams>): SoundZoneParams {
+  if (i <= 0) return normalizeSoundZone({ ...p, ...patch })
+  return normalizeSoundZone({ ...p, blocks: (p.blocks ?? []).map((b, k) => (k === i - 1 ? { ...b, ...patch } : b)) })
+}
+// a new block after block `i`, as a copy of it (`patch`: what is different in it); null when the zone is full
+export function addZoneBlock(p: SoundZoneParams, i: number, patch: Partial<ZoneBlockParams> = {}): SoundZoneParams | null {
+  const all = zoneBlocks(p)
+  if (all.length >= ZONE_BLOCKS_MAX) return null
+  const at = clamp(i, 0, all.length - 1), blocks = (p.blocks ?? []).slice()
+  blocks.splice(at, 0, { ...structuredClone(all[at]), ...patch })
+  return normalizeSoundZone({ ...p, beats: all[0].beats, reps: all[0].reps, blocks })
+}
+// block `i` taken out: the first one out makes the second the zone's own sequence; the last block left is a
+// zone with no blocks
+export function removeZoneBlock(p: SoundZoneParams, i: number): SoundZoneParams {
+  const all = zoneBlocks(p)
+  if (all.length < 2) return p
+  const rest = all.filter((_, k) => k !== clamp(i, 0, all.length - 1)), [head, ...blocks] = rest
+  const { blocks: _b, beats: _n, reps: _r, ...zone } = p
+  return normalizeSoundZone({ ...zone, ...sequenceOf(head), ...(blocks.length ? { blocks, beats: head.beats, reps: head.reps } : {}) })
+}
+// the block the panel is editing, heard alone while it is open (null: the whole cycle). Only this browser's
+// editing: nothing of it is saved
+let blockSolo: number | null = null
+export const zoneBlockSolo = () => blockSolo
+export const setZoneBlockSolo = (i: number | null) => { blockSolo = i }
 
 // a zone after its life ran out: changed by its pattern (the walls and the rest stay)
 export function applyZoneChange(z: SoundZoneParams, id: ZoneChangeId = z.change, rnd: () => number = Math.random): SoundZoneParams {
@@ -87,9 +149,29 @@ export function applyZoneChange(z: SoundZoneParams, id: ZoneChangeId = z.change,
 }
 
 // the conductor's zone for a Zona sonora element: its id names the element and what it sounds like, so the conductor
-// keeps it while it stays the same and takes an edited one on the next bar
-export function soundZoneOf(id: string, p: SoundZoneParams): Zone {
-  return { id: `zona:${id}:${p.root}:${p.scale}:${p.chordScale}:${p.bpm}:${p.feel}:${p.progression.join('.')}${p.inKey ? `:${p.inKey}` : ''}:${ambienceKey(p.ambience)}`, name: p.name, root: p.root, scale: p.scale, chordScale: p.chordScale, bpm: p.bpm, feel: p.feel, progression: p.progression, color: p.color, ...(p.inKey ? { inKey: p.inKey } : {}), ambience: p.ambience }
+// keeps it while it stays the same and takes an edited one on the next bar. A zone with variation blocks is a
+// cycle of zones, one per block; `solo` plays one of its blocks alone
+const seqKey = (q: ZoneSequence) => `${q.root}:${q.scale}:${q.chordScale}:${q.bpm}:${q.feel}:${q.progression.join('.')}`
+const zoneCache = new WeakMap<SoundZoneParams, Map<string, Zone>>()
+export function soundZoneOf(id: string, p: SoundZoneParams, solo: number | null = null): Zone {
+  const slot = `${id}|${solo ?? ''}`
+  let made = zoneCache.get(p)
+  if (!made) zoneCache.set(p, made = new Map())
+  const hit = made.get(slot)
+  if (hit) return hit
+  const one = (q: ZoneSequence, zid: string): Zone => ({ id: zid, name: p.name, root: q.root, scale: q.scale, chordScale: q.chordScale, bpm: q.bpm, feel: q.feel, progression: q.progression, color: p.color, ...(p.inKey ? { inKey: p.inKey } : {}), ambience: q.ambience })
+  const key = (q: ZoneSequence) => `${seqKey(q)}${p.inKey ? `:${p.inKey}` : ''}:${ambienceKey(q.ambience)}`
+  const all = zoneBlocks(p)
+  let zone: Zone
+  if (all.length < 2) zone = one(p, `zona:${id}:${key(p)}`)
+  else if (solo !== null && all[solo]) zone = one(all[solo], `zona:${id}:solo${solo}:${key(all[solo])}`)
+  else {
+    const fid = `zona:${id}:${all.map(b => `${key(b)}*${b.beats}x${b.reps}`).join('|')}`
+    const blocks: ZoneBlock[] = all.map((b, i) => ({ zone: one(b, `${fid}#${i}`), beats: b.beats, reps: b.reps }))
+    zone = { ...one(p, fid), blocks }
+  }
+  made.set(slot, zone)
+  return zone
 }
 
 // ---------- the scenes' own zones: Zonas sonoras stuck to the ground ----------

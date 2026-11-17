@@ -9,6 +9,7 @@ import type { Drum, VoiceId } from './synth'
 import type { NoteOut } from './transforms'
 import type { BirdId, UndeadMode } from './birds'
 import type { PerchState } from './bird-perch'
+import { boxTops } from './box-tops'
 
 // ---------- the two deaths ----------
 
@@ -81,7 +82,7 @@ export type UndeadState = {
   born: number // order of arrival (the oldest leaves first)
 }
 
-type Box = { l: number; t: number; r: number; b: number; solid?: boolean; occludedAt?: (x: number, y: number) => boolean }
+type Box = { l: number; t: number; r: number; b: number; solid?: boolean; occludedAt?: (x: number, y: number) => boolean; topsAt?: (x: number) => number[] }
 export type UndeadBody = { x: number; y: number; w: number; h: number; hp: number; deadT: number; flash: number; face: number }
 export type UndeadEnv = { boxes: Box[]; groundY: number; viewL: number; viewR: number; playing: boolean; rand: () => number }
 
@@ -104,8 +105,8 @@ export function undeadSize(b: Pick<UndeadBody, 'w' | 'h'>, u: UndeadState) { ret
 export function floorUnder(env: Pick<UndeadEnv, 'boxes' | 'groundY'>, x: number, y: number) {
   let best = env.groundY
   for (const b of env.boxes) {
-    if (!solidBox(b) || x < b.l || x > b.r || b.t < y - 1 || b.t >= best || b.occludedAt?.(x, b.t)) continue
-    best = b.t
+    if (!solidBox(b)) continue
+    for (const t of boxTops(b, x)) if (t >= y - 1 && t < best) best = t
   }
   return best
 }
@@ -184,8 +185,10 @@ export function stepUndead(b: UndeadBody, u: UndeadState, dt: number, env: Undea
     b.x = nx
     // leaving, it walks off the edges and falls
     if (edge) { const f = floorUnder(env, b.x, b.y - 4); if (f > b.y + 6) u.vy = 1 }
+    // on a gentle slope (a shaped floor) its feet follow the floor
+    else { const f = floorUnder(env, b.x, b.y - 4); if (Math.abs(f - b.y) <= 6) b.y = f }
     // a robot vacuum: now and then it turns for no reason
-    else if (u.phase === 'walk' && env.rand() < dt * 0.08) u.dir = u.dir === 1 ? -1 : 1
+    if (!edge && u.phase === 'walk' && env.rand() < dt * 0.08) u.dir = u.dir === 1 ? -1 : 1
   }
   b.face = u.dir
   return !gone

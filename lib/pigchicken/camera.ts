@@ -13,9 +13,23 @@ export type CameraOpts = { mode: CameraMode; worldX: number; viewW: number; worl
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
+// zoomed out past the world's width, the world stands in the middle of the screen
 export function cameraXRange(viewW: number, worldW: number, zoom = 1) {
-  const lo = viewW / (2 * zoom) - viewW / 2
-  return { lo, hi: Math.max(lo, worldW - viewW / 2 - viewW / (2 * zoom)) }
+  const lo = viewW / (2 * zoom) - viewW / 2, hi = worldW - viewW / 2 - viewW / (2 * zoom)
+  if (hi < lo) { const mid = worldW / 2 - viewW / 2; return { lo: mid, hi: mid } }
+  return { lo, hi }
+}
+
+// the zoom at which the whole world fits: its width (with the frame) across the screen and its height (ceiling to
+// floor) between the header and the ground's place at the foot of the screen
+export function wholeWorldZoom(viewW: number, worldW: number, viewH: number, worldH: number) {
+  return Math.min(viewW / Math.max(1, worldW), viewH / Math.max(1, worldH))
+}
+
+// the zoom the camera may use: a Pátio's range (min 0 = the whole Pátio), never farther out than the whole world
+export function zoomLimits(range: { min: number; max: number }, whole: number) {
+  const lo = Math.max(range.min, whole)
+  return { lo, hi: Math.max(lo, range.max) }
 }
 
 // next camera x (left edge of the view, in world pixels)

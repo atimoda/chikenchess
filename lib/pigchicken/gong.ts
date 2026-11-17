@@ -8,6 +8,9 @@ export type GongParams = {
   lamps: boolean // the little lamps of the strikes so far
   forget: number // seconds without a strike that clear the count (0 = never)
   stopHits: number // strikes during the song that stop it (0 = it never stops from here)
+  // the Gongo do Templo: its strikes run the Templo do Gongo (the aliens' campaign, or the song picked in a jukebox)
+  // in the scene around it, as the temple's fixed gong did; its own song, strikes and title are not used
+  temple: boolean
 }
 export const GONG_DEFAULT_SONG = 'teste'
 export const GONG_TITLE = 'BATA NO GONGO'
@@ -18,8 +21,13 @@ export const GONG_FORGET = { min: 0, max: 30 }
 // the box each one takes in the layout (its art, standing on the box's bottom)
 export const GONG_BOX = { w: 224, h: 270 }
 export const JUKEBOX_BOX = { w: 112, h: 214 }
+// the Recomeçar stone (Pedra Recomeçar): the stele on its plinth
+export const RESET_STONE_BOX = { w: 92, h: 124 }
+// where the Templo do Gongo had its gong, jukebox and stone (x from the scene's left edge): its campaign's scene is
+// placed so the Gongo do Templo stands at TEMPLE_SPOTS.gong in it
+export const TEMPLE_SPOTS = { gong: 560, jukebox: 1640, reset: 1770 }
 
-export const defaultGong = (song = GONG_DEFAULT_SONG): GongParams => ({ song, hits: 5, title: GONG_TITLE, lamps: true, forget: 0, stopHits: 3 })
+export const defaultGong = (song = GONG_DEFAULT_SONG): GongParams => ({ song, hits: 5, title: GONG_TITLE, lamps: true, forget: 0, stopHits: 3, temple: false })
 
 const int = (v: unknown, d: number, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : d)
 export function normalizeGong(raw: unknown): GongParams {
@@ -33,6 +41,7 @@ export function normalizeGong(raw: unknown): GongParams {
     lamps: typeof g.lamps === 'boolean' ? g.lamps : d.lamps,
     forget: int(g.forget, d.forget, GONG_FORGET.min, GONG_FORGET.max),
     stopHits: int(g.stopHits, d.stopHits, GONG_STOP_HITS.min, GONG_STOP_HITS.max),
+    temple: g.temple === true,
   }
 }
 

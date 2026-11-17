@@ -3,12 +3,13 @@
 // Pátio da Galinha: the game's playground where the player chicken is tuned. The panel edits a draft of
 // the central configuration (lib/chicken/config.ts) that the chicken here follows live; "Salvar no game"
 // (admin account only) saves it for every screen that draws the chicken.
+import { StepSelect } from "@/components/ui/step-select"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
-import { Bird, Bug, Crosshair, FolderOpen, Gamepad2, Ghost, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
+import { Bird, Bug, Crosshair, FolderOpen, Gamepad2, Ghost, Grid3x3, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -21,14 +22,18 @@ import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
 import { OnlineChickens, netColor, useNet, type NetChickMirror } from "./online-chickens"
-import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
-import { elementsInWorld, entryPortalIn, normalizeLayout, type LayoutElement, type PatioLayout } from "@/lib/pigchicken/layout"
+import { clearNetNotice, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, netCan, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic } from "@/lib/chicken/online-room"
+import { elementsInWorld, normalizeLayout, spawnPortalsIn, type LayoutElement, type PatioLayout } from "@/lib/pigchicken/layout"
+import { pickSpawn, spawnChances } from "@/lib/pigchicken/spawn-portals"
+import { MineGridLayer, useMineGrid } from "@/components/pigchicken/mine-grid-layer"
+import { MineRoundEnd } from "@/components/pigchicken/mine-round-end"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { getOnlineClient } from "@/lib/online/client"
 import { ChickenLayer, STICK, useChickenTouch, usePortrait, useTouchLayout } from "./chicken-layer"
 import { ChickenPortal, playPortalSound, type ChickenPortalWorld } from "./chicken-portal"
 import { portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { PatioPortals, type PatioPortalTravel } from "@/components/pigchicken/patio-portals"
+import { HouseDoors } from "@/components/pigchicken/house-doors"
 import { checkPatioTarget, MISSING_PATIO_TEXT, OFFLINE_PATIO_TEXT, targetLobbyId } from "@/lib/pigchicken/portal-links"
 import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
@@ -57,7 +62,9 @@ import { PatioEditor } from "@/components/pigchicken/patio-editor"
 import { LayerEyes, usePatioLayers } from "@/components/pigchicken/layer-eyes"
 import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
-import { patioGround, patioInventoryLimit, patioSceneMusic, patioScreens, patioTemple, patioWorldTop } from "@/lib/pigchicken/patio-settings"
+import { MineGridPanel } from "@/components/pigchicken/mine-grid-panel"
+import { patioGround, patioInventoryLimit, patioMineGrid, patioSceneMusic, patioScreens, patioTemple, patioWorldTop, patioZoom } from "@/lib/pigchicken/patio-settings"
+import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultCamera } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
@@ -66,7 +73,7 @@ import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigc
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
 import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
 import { PatioOpenPanel, PatioPersonPanel, PatioSavePanel, type PatioPersonCard } from "@/components/pigchicken/patio-lobby-panels"
-import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
+import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, KEYS_AIM_RELEASE_MAX, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 import {
   LOBBY_MAX, PLAYER_COLORS, addLocalPlayer, adoptDevices, assignDevice, createLobby, firstLocal, loadEntryMode, loadLobby, localPlayers, removePlayer,
   renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyPlayer, type LobbyResult, type LobbyState,
@@ -76,8 +83,10 @@ import { LobbySwitcher, LocalChickens, PlayersPanel, lookForNewPlayer, useInputD
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
 // The globe portal is the layout's entry portal (moved in the editor, never deleted); she starts just to its right,
-// clear of the ring
+// clear of the ring. Born at a Portal de nascimento instead, she comes out of its ring.
 const SPAWN_OFFSET = 110
+// the Modo editor turns itself off after this long with no edit to the map
+const EDITOR_IDLE_MS = 5 * 60_000
 
 
 function readDraft(): ChickenConfig | null {
@@ -137,6 +146,8 @@ export function ChickenPatio() {
   const [pqOpen, setPqOpen] = useState(false)
   // the Sun button: the current Pátio's settings (its limits)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // the grid button: the Grade de blocos' own panel
+  const [gridOpen, setGridOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
   const [scalesOpen, setScalesOpen] = useState(false)
   const [aliensOpen, setAliensOpen] = useState(false)
@@ -340,11 +351,14 @@ export function ChickenPatio() {
   useEffect(() => { setPatioLiveCounts({ [patio?.id ?? "default"]: playersHere }) }, [patio?.id, playersHere])
   // losing the permission (another Pátio, the owner changed it) closes the editor
   useEffect(() => { if (!access.canEdit) setEditorOn(false) }, [access.canEdit])
+  // when this browser last changed the map (the Modo editor's idle switch-off, below)
+  const lastEditAt = useRef(0)
   // Edit mode live: whoever may edit sends the layout to the lobby a moment after each change; the others' edits
   // arrive here (and the owner's saves move everyone's revision along)
   const sendTimer = useRef<number | null>(null)
   const lastSent = useRef("")
   const changeLayout = (layout: PatioLayout) => {
+    lastEditAt.current = Date.now()
     pl.changeLayout(layout)
     if (!netLive || !access.canEdit) return
     if (sendTimer.current) window.clearTimeout(sendTimer.current)
@@ -357,6 +371,23 @@ export function ChickenPatio() {
       sendNetLayout(layout)
     }, 300)
   }
+  // the Modo editor (panel or editing switch) turns itself off after EDITOR_IDLE_MS with no change to the map made
+  // here (changeLayout); the others' live edits do not count
+  const editorIdleWatch = (editorOn || editActive) && access.canEdit
+  useEffect(() => {
+    if (!editorIdleWatch) return
+    lastEditAt.current = Date.now()
+    let timer = 0
+    const check = () => {
+      const left = EDITOR_IDLE_MS - (Date.now() - lastEditAt.current)
+      if (left > 0) { timer = window.setTimeout(check, left); return }
+      setEditorOn(false)
+      setEditActive(false)
+      setToast("Modo editor desligado depois de 5 minutos sem edição.")
+    }
+    timer = window.setTimeout(check, EDITOR_IDLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [editorIdleWatch])
   const liveRef = useRef({ apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby })
   liveRef.current = { apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby }
   useEffect(() => {
@@ -372,21 +403,24 @@ export function ChickenPatio() {
   // Switching Pátio is leaving one world for another: every local chicken is sucked into this Pátio's entry portal
   // (their souls flying free with them), this Pátio closes for this browser (its online lobby is left before the other
   // one loads, so nothing of it reaches the next; the Parquinho's world ends with its id) and, once the other one is
-  // open (and drawn), they come out of its entry portal.
+  // open (and drawn), they come out of the portal drawn for them there (its entry portal or a Portal de nascimento).
   const entryRef = useRef<LayoutElement | null>(null)
+  const spawnRef = useRef<LayoutElement | null>(null)
+  // the Pátio (its key) where this browser's chickens were already born
+  const bornRef = useRef<string | null>(null)
   const travelling = useRef(false)
   // through: the portal (to another Pátio) they leave by, instead of the entry portal
   const travel = async <T,>(go: () => Promise<T>, through?: () => { x: number; y: number } | null): Promise<T> => {
     const actors = () => [...(engine ? [engine] : []), ...extraEngines.current.values()]
-    const centre = () => {
-      const box = worldRef.current?.getBoundingClientRect(), el = entryRef.current
+    const centre = (el: LayoutElement | null) => {
+      const box = worldRef.current?.getBoundingClientRect()
       return box && el ? { x: box.left + el.x + el.w / 2, y: box.top + el.y + el.h / 2 } : null
     }
-    const from = through?.() ?? centre()
+    const from = through?.() ?? centre(entryRef.current)
     if (travelling.current || !from || !actors().length) return go()
     travelling.current = true
     try {
-      for (const a of actors()) { portalGate(a, "patio").block(); a.setPortalEntry({ ...from, durationMs: PORTAL_TRANSITION_MS }) }
+      for (const a of actors()) { portalGate(a, spawnRef.current === entryRef.current ? "patio" : "patio-exit").block(); a.setPortalEntry({ ...from, durationMs: PORTAL_TRANSITION_MS }) }
       playPortalSound("enter")
       await new Promise(r => window.setTimeout(r, PORTAL_TRANSITION_MS))
       const leaving = patioKeyRef.current, wasOnline = getNetState().status !== "off"
@@ -396,7 +430,8 @@ export function ChickenPatio() {
       try { result = await go() } catch (err) { if (wasOnline) setRejoin(n => n + 1); throw err }
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
       if (wasOnline && patioKeyRef.current === leaving) setRejoin(n => n + 1)
-      const to = centre() ?? from
+      const to = centre(spawnRef.current) ?? from
+      bornRef.current = patioKeyRef.current
       for (const a of actors()) { portalGate(a, "patio").block(); a.arriveAtPortal({ ...to, durationMs: PORTAL_TRANSITION_MS }) }
       playPortalSound("arrive")
       return result
@@ -572,8 +607,37 @@ export function ChickenPatio() {
   const groundHeight = lifted ? 16 + STICK + 12 + STICK + 16 : patioGround(patio?.layout.settings)
   const pqWorld = useMemo(() => ({ ...pq, screens }), [pq, screens])
   // the entry portal (to the globe, and where she arrives) as the layout places it
-  const entry = useMemo(() => entryPortalIn(elementsInWorld(patio?.layout ?? { v: 0, elements: [] }, screens)), [patio?.layout, screens])
+  const spawnPortals = useMemo(() => spawnPortalsIn(elementsInWorld(patio?.layout ?? { v: 0, elements: [] }, screens)), [patio?.layout, screens])
+  // the houses, in the world's units: inside the ones a local player is in, the numbers of the Grade de blocos show
+  const mineHouses = useMemo(() => elementsInWorld(patio?.layout ?? { v: 0, elements: [] }, screens).filter(el => el.kind === "house"), [patio?.layout, screens])
+  const entry = spawnPortals[0]
   entryRef.current = entry
+  // where this browser's chickens are born: one of the Pátio's portals (the entry portal and the Portais de
+  // nascimento), drawn by their chances each time a Pátio opens and kept while it is open (unless it is deleted)
+  const spawnPick = useRef<{ key: string | null; id: string }>({ key: null, id: "" })
+  if (spawnPick.current.key !== patioKey || !spawnPortals.some(e => e.id === spawnPick.current.id)) {
+    spawnPick.current = { key: patioKey, id: spawnPortals[pickSpawn(spawnChances(spawnPortals), Math.random())]?.id ?? entry.id }
+  }
+  const spawn = spawnPortals.find(e => e.id === spawnPick.current.id) ?? entry
+  spawnRef.current = spawn
+  // asked by the drawn portal's ring once the world is ready: at a Portal de nascimento she comes out of the ring
+  // (once per Pátio opened; switching Pátio already brings them out of it)
+  const takeBirth = () => {
+    const key = patioKeyRef.current
+    if (!key || travelling.current || bornRef.current === key) return false
+    bornRef.current = key
+    return spawnRef.current?.kind === "spawn"
+  }
+  const patioActors = () => [...(engine ? [engine] : []), ...extraEngines.current.values()]
+  // the Grade de blocos (the Pátio Campo minado), while this Pátio has it on: its round in this browser. Turning it
+  // on and off is the creator's and the godparent's (and the admin's); the room's owner may also start it again.
+  const mineParams = patioMineGrid(patio?.layout.settings)
+  const mine = useMineGrid({ patioKey, params: mineParams, width: screens * SCENE_W, top: worldTop, ground: WORLD_GROUND_Y, portals: spawnPortals })
+  const canGrid = !!patio && (isAdmin || (!!creator && creator === (meId ?? (typeof window === "undefined" ? null : deviceId()))) || (!!meId && patio.godparentId === meId))
+  // with the round shared in the online Pátio (a game server that relays it), it is the lobby's owner's to start again
+  // the other browsers' chickens, as the shared round names them ('pid:slot')
+  const mineNetPlayers = netLive ? net.info!.players.filter(p => p.pid !== net.myPid).flatMap(p => Array.from({ length: p.chickens }, (_, slot) => ({ id: `${p.pid}:${slot}`, name: p.chickens > 1 ? `${p.name} ${slot + 1}` : p.name, color: netColor(p.color) }))) : []
+  const canResetGrid = netLive && netCan("mine") ? amOwner : canGrid || !netLive || amOwner
   const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: entry.x + entry.w / 2, groundY: entry.y + entry.h - 6, d: entry.w }), [entry])
 
   // the Modo editor docked at the right: the whole Pátio fits in the space left of it (its fixed layers too)
@@ -581,7 +645,10 @@ export function ChickenPatio() {
 
   return (
     <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]" style={dockInset ? { right: dockInset, contain: "layout" } : undefined}>
-      <header className="pointer-events-auto absolute inset-x-0 top-0 z-[120] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)]" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
+      {/* the header's strip, behind the world: a press between its buttons is not a shot. The buttons themselves are
+          in front of everything the world draws over the characters (front elements, the Grade de blocos' faces) */}
+      <div aria-hidden="true" data-chicken-ignore className="absolute inset-x-0 top-0 z-[120] h-14" />
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-[206] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)] [&>*]:pointer-events-auto" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
         {/* the same Globe button as the chess matches' header */}
         <Button
           asChild
@@ -644,6 +711,10 @@ export function ChickenPatio() {
         <button type="button" aria-label="Configurações do Pátio" aria-pressed={settingsOpen} title="Configurações do Pátio" onClick={() => setSettingsOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", settingsOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Sun className="h-4 w-4" />
         </button>
+        {/* the Grade de blocos: for whoever may change it and, while it is on, for everyone (the grid lit: it is on) */}
+        {(access.canEdit || !!mineParams) && <button type="button" aria-label="Grade de blocos" aria-pressed={gridOpen} title="Grade de blocos" onClick={() => setGridOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", gridOpen ? "border-[#ffd166]" : "border-white/15", mineParams ? "text-[#ffd166]" : gridOpen ? "text-white" : "text-[#b9c7b9]")}>
+          <Grid3x3 className="h-4 w-4" />
+        </button>}
         <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
@@ -674,7 +745,7 @@ export function ChickenPatio() {
       {/* the FPS counter (Camadas → Contador de FPS) */}
       <FpsCounter />
       {/* the avatars: one per local player, at the right end of that player's inventory (drawn by the Parquinho) */}
-      <div data-chicken-ignore className="pointer-events-none fixed z-[190] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
+      <div data-chicken-ignore className="pointer-events-none fixed z-[206] flex flex-col" style={{ top: INV_STACK.top + (invOffset?.y ?? 0), right: INV_STACK.right - (invOffset?.x ?? 0), gap: INV_STACK.rowGap }}>
         {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] }))].map(row => {
           const on = vestOpen && vestFor === row.id
           return (
@@ -692,14 +763,18 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} />
+      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
 
-      <ChickenLayer dropIn={false} fixedScale onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
-      <ChickenPortal engine={engine} id="patio" href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={() => [...(engine ? [engine] : []), ...extraEngines.current.values()]} />
+      <MineGridLayer pass={!!mineParams?.pass} engine={engine} extras={extraEngines} worldRef={worldRef} width={worldScenes(screens) * SCENE_W} opacity={patioLayers.layers.grid / 100} houses={mineHouses} />
+      <ChickenLayer dropIn={false} fixedScale controlsFront onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
+      <ChickenPortal engine={engine} id={spawn === entry ? "patio" : "patio-exit"} href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={patioActors} birth={spawn === entry ? takeBirth : undefined} />
+      {/* the Portais de nascimento: the same ring, leading nowhere; the one drawn for this visit is where they arrive */}
+      {spawnPortals.slice(1).map(el => <ChickenPortal key={el.id} engine={engine} id={el === spawn ? "patio" : el.id} href="/" world={{ host: worldRef, x: el.x + el.w / 2, groundY: el.y + el.h - 6, d: el.w }} enabled={false} actors={patioActors} birth={el === spawn ? takeBirth : undefined} />)}
       <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editing} onTravel={travelThroughPortal} />
+      <HouseDoors engine={engine} extras={extraEngines} elements={patio?.layout.elements} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={entry.x + entry.w / 2 + SPAWN_OFFSET} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} temple={patioTemple(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
@@ -725,7 +800,9 @@ export function ChickenPatio() {
           onClose={() => setOpenOpen(false)}
         />
       )}
+      {mineParams && <MineRoundEnd players={[{ id: "p1", name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] })), ...mineNetPlayers]} onReset={canResetGrid ? mine.reset : undefined} />}
       {settingsOpen && patio && <PatioSettingsPanel layout={patio.layout} screens={screens} canEdit={access.canEdit} onChange={changeLayout} onClose={() => setSettingsOpen(false)} />}
+      {gridOpen && patio && <MineGridPanel layout={patio.layout} canEdit={access.canEdit} canGrid={canGrid} onResetGrid={mineParams && canResetGrid ? mine.reset : undefined} onChange={changeLayout} onClose={() => setGridOpen(false)} />}
       {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {scalesOpen && <ScalesPanel onClose={() => setScalesOpen(false)} />}
@@ -743,15 +820,16 @@ export function ChickenPatio() {
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
           <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
-            <select aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
+            <StepSelect aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
               {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
+            </StepSelect>
           </label>
           <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
           <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
           <PqRange label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
           <PqRange label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
           <PqRange label="Mira parada volta para o movimento" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou" />
+          <PqRange label="Mouse parado devolve a mira ao teclado" unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : "0 (nunca)")} hint="Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse" />
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
           <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
           <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
@@ -845,11 +923,11 @@ function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; dr
     return (
       <label className="flex items-center justify-between gap-3">
         <span className={cn("min-w-0", changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
-        <select value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        <StepSelect value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
           <option value="">sem som</option>
           <option value="all">sorteio</option>
           {CHICKEN_SOUND_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-        </select>
+        </StepSelect>
       </label>
     )
   }

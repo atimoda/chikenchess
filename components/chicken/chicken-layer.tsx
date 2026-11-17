@@ -152,7 +152,9 @@ export function usePortrait() {
 // fixedScale: she keeps one size on every screen (a world in fixed units, such as the Pátio's) instead of shrinking on small ones
 // chickEngines: where the chicks that follow her are kept (the Pátio moves them with its camera); chickKey: a new value
 // brings a new flock (another Pátio), null holds it back (see ChickFlock)
-export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM, touch, dropAvoid, fixedScale = false, chickEngines, chickKey }: { dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number; touch?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean; chickEngines?: React.RefObject<Map<string, ChickenEngine>>; chickKey?: string | null }) {
+// controlsFront: the touch controls stand in front of what the world draws over the characters (the Pátio's front
+// elements and the Grade de blocos' faces) instead of behind her
+export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_GROUND_H, controlsBottom = CONTROLS_BOTTOM, touch, dropAvoid, fixedScale = false, chickEngines, chickKey, controlsFront = false }: { controlsFront?: boolean; dropIn?: boolean; onEngine?: (engine: ChickenEngine | null) => void; groundHeight?: number; controlsBottom?: number; touch?: boolean; dropAvoid?: (w: number) => [number, number][]; fixedScale?: boolean; chickEngines?: React.RefObject<Map<string, ChickenEngine>>; chickKey?: string | null }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<ChickenEngine | null>(null)
   const [mother, setMother] = useState<ChickenEngine | null>(null)
@@ -185,7 +187,7 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
 
   return (
     <>
-      {showTouch && <TouchControls set={set} bottom={controlsBottom} />}
+      {showTouch && <TouchControls set={set} bottom={controlsBottom} front={controlsFront} />}
       {editing && <TouchLayoutBar />}
       <div ref={hostRef} className="pointer-events-none fixed inset-0 z-[200]" />
       <ChickFlock lead={mother} groundHeight={groundHeight} engines={chickEngines ?? ownChicks} fixedScale={fixedScale} spawnKey={chickKey} />
@@ -205,7 +207,7 @@ const PAD_ACTIONS: readonly PadAction[] = ["run", "down", "jump"]
 // over. A finger that landed on Correr also drives the movement stick (drag = push the stick)
 type PadTouch = { origin: Set<PadAction>; over: Set<PadAction>; stick: boolean; sx: number; sy: number }
 
-function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boolean) => void; bottom: number }) {
+function TouchControls({ set, bottom, front }: { set: (action: ChickenAction, on: boolean) => void; bottom: number; front: boolean }) {
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const stickRef = useRef<HTMLDivElement>(null)
   const active = useRef<Partial<Record<ChickenAction, boolean>>>({})
@@ -315,7 +317,7 @@ function TouchControls({ set, bottom }: { set: (action: ChickenAction, on: boole
   )
 
   return (
-    <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[190] select-none" style={{ touchAction: "none" }}>
+    <div data-chicken-ignore className={`pointer-events-none fixed inset-0 select-none ${front ? "z-[206]" : "z-[190]"}`} style={{ touchAction: "none" }}>
       <Movable id="move" className="absolute" style={{ width: STICK, height: STICK, left: 20, bottom }}>
       <div
         ref={stickRef}

@@ -71,6 +71,36 @@ export type ChickenControls = {
   sound: boolean
   analog: ChickenAnalog
   inventory: { repeatDelay: number; repeatInterval: number }
+  wheel: ChickenWheel
+  harp: Record<ChickenInputType, Record<HarpAction, Slots>>
+}
+
+// The Harpa's own binds (a fixed instrument: sitting there she does not walk), edited apart from the actions above in
+// Controles → Instrumentos. They may reuse keys and buttons of the movement and of the other actions: a key here never
+// leaves the action that also has it. Read by components/pigchicken/parquinho.tsx (lib/pigchicken/instrument-binds.ts)
+export type HarpAction = 'sharp'
+export const HARP_ACTIONS: { key: HarpAction; label: string; keys: Slots; keys2: Slots; pad: Slots }[] = [
+  { key: 'sharp', label: 'Sustenido (segurar)', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b10', null, null] },
+]
+const harpOf = (raw: unknown, fallback: ChickenControls['harp']): ChickenControls['harp'] => {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, Record<string, unknown> | undefined>
+  const out = {} as ChickenControls['harp']
+  CHICKEN_INPUT_TYPES.forEach(t => {
+    out[t.id] = {} as Record<HarpAction, Slots>
+    HARP_ACTIONS.forEach(a => { out[t.id][a.key] = slots(r[t.id]?.[a.key], fallback[t.id][a.key], t.device === 'gamepad' ? 'Pad:' : 'Key:', t.slots) })
+  })
+  return out
+}
+
+// The mouse wheel: the action each direction does (null: none). By default up is Próximo item and down Item anterior;
+// in the Controles panel each one can be dragged to any action, as one more bind of it (the Pátio reads it)
+export type ChickenWheel = { up: ChickenAction | null; down: ChickenAction | null }
+export const DEFAULT_WHEEL: ChickenWheel = { up: 'nextItem', down: 'prevItem' }
+const isAction = (v: unknown): v is ChickenAction => typeof v === 'string' && CHICKEN_ACTIONS.some(a => a.key === v)
+const wheelOf = (raw: unknown, fallback: ChickenWheel): ChickenWheel => {
+  const w = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const dir = (v: unknown, d: ChickenAction | null) => v === null ? null : isAction(v) ? v : d
+  return { up: dir(w.up, fallback.up), down: dir(w.down, fallback.down) }
 }
 
 const STORE = 'chickenchess-chicken-controls-v1'
@@ -85,7 +115,8 @@ const isTouchMode = (v: unknown): v is ChickenTouchMode => v === 'on' || v === '
 function codeDefaultChickenControls(): ChickenControls {
   const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
   CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
-  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { repeatDelay: 1.5, repeatInterval: 0.3 } }
+  const harp = Object.fromEntries(CHICKEN_INPUT_TYPES.map(t => [t.id, Object.fromEntries(HARP_ACTIONS.map(a => [a.key, a[t.id].slice()]))])) as ChickenControls['harp']
+  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { repeatDelay: 1.5, repeatInterval: 0.3 }, wheel: { ...DEFAULT_WHEEL }, harp }
 }
 
 /** The game's default controls: the defaults file over the code fallback (a missing or invalid field keeps the code's). */
@@ -109,13 +140,15 @@ export function defaultChickenControls(): ChickenControls {
   }
   const inv = (file?.inventory ?? {}) as Partial<ChickenControls['inventory']>
   base.inventory = { repeatDelay: num(inv.repeatDelay, 0.2, 5, base.inventory.repeatDelay), repeatInterval: num(inv.repeatInterval, 0.1, 2, base.inventory.repeatInterval) }
+  base.wheel = wheelOf(file?.wheel, base.wheel)
+  base.harp = harpOf(file?.harp, base.harp)
   return base
 }
 
 /** The defaults file's content for a set of controls (what "Salvar no game" writes). */
 export function chickenControlsDefaultsFile(c: ChickenControls) {
   const pick = (type: ChickenInputType) => Object.fromEntries(CHICKEN_ACTIONS.map(a => [a.key, c[type][a.key].slice()]))
-  return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory } }
+  return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory }, wheel: { ...c.wheel }, harp: harpOf(c.harp, c.harp) }
 }
 
 // The binds of one action on one input type (the players panel reads a player's inputs through this)
@@ -154,6 +187,8 @@ export function loadChickenControls(): ChickenControls {
     if (isTouchMode(saved?.touch)) base.touch = saved.touch
     if (typeof saved?.touchRunGrab === 'boolean') base.touchRunGrab = saved.touchRunGrab
     if (typeof saved?.sound === 'boolean') base.sound = saved.sound
+    base.wheel = wheelOf(saved?.wheel, base.wheel)
+    base.harp = harpOf(saved?.harp, base.harp)
     const an = saved?.analog ?? {}
     const savedMagnet = num(an.magnetDeg, 0, 22.5, an.magnet === true ? 12 : 0)
     const movementMagnet = an.magnet === false ? 0 : savedMagnet

@@ -11,7 +11,7 @@ import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OUTLINE_PX, type MountainParams } from "@/lib/pigchicken/mountains"
 import { rng, shadeFaces, snowRegion } from "@/lib/pigchicken/mountain-draw"
-import { BACKDROP_BOTTOM, BACKDROP_PAD_L, BACKDROP_PAD_R, CLOUD_DEPTH, backdropLayerTop, FOREST_FAR, FOREST_NEAR, MOUNTAIN_RANGES, SUN_DEPTH, backdropLayerW, rangeRidge, type BackdropLayerId } from "@/lib/pigchicken/backdrop-layers"
+import { BACKDROP_BOTTOM, BACKDROP_PAD_L, BACKDROP_PAD_R, CLOUD_DEPTH, backdropLayerTop, FOREST_FAR, FOREST_NEAR, MOUNTAIN_RANGES, SUN_DEPTH, backdropCopies, backdropLayerW, rangeRidge, type BackdropLayerId } from "@/lib/pigchicken/backdrop-layers"
 import { cloudReach, cumulusClouds, softClouds, type CloudShape } from "@/lib/pigchicken/cloud-draw"
 import { CLOUDS_DEFAULT, type CloudParams } from "@/lib/pigchicken/clouds"
 import type { SnowfallParams } from "@/lib/pigchicken/snowfall"
@@ -105,12 +105,18 @@ function RadialSky({ look, left, width, top, height, cx }: { look: SkyLook; left
 // id: which one it is (the editor shows it alone while a Poste or Torre is being pinned to it)
 // top: how far up its box reaches (backdropLayerTop: 0, or above it for whatever is drawn higher); the drawing keeps
 // the world's y, so a taller box never moves it
-function Layer({ p, w, id, top = 0, children }: { p: number; w: number; id: BackdropLayerId; top?: number; children: React.ReactNode }) {
+// copies: how many times it repeats, mirrored, on each side (backdropCopies: only zoomed out past 50%); repeat: the
+// id of the part that repeats (by default all of it)
+function Layer({ p, w, id, top = 0, copies = 0, repeat, children }: { p: number; w: number; id: BackdropLayerId; top?: number; copies?: number; repeat?: string; children: React.ReactNode }) {
   const ref = useRef<SVGSVGElement>(null)
   useEffect(() => ref.current ? followParallax(ref.current, p) : undefined, [p])
+  const x0 = -copies * w, total = (2 * copies + 1) * w, all = `px-layer-${id}`
+  const sides = copies > 0 ? Array.from({ length: copies * 2 }, (_, i) => i < copies ? i - copies : i - copies + 1) : []
   return (
-    <svg ref={ref} aria-hidden="true" data-backdrop-layer={id} className="absolute" viewBox={`0 ${top} ${w} ${BOTTOM - top}`} style={{ left: -PAD_L, top, width: w, height: BOTTOM - top, overflow: "hidden" }}>
-      {children}
+    <svg ref={ref} aria-hidden="true" data-backdrop-layer={id} className="absolute" viewBox={`${x0} ${top} ${total} ${BOTTOM - top}`} style={{ left: -PAD_L + x0, top, width: total, height: BOTTOM - top, overflow: "hidden" }}>
+      {copies > 0 && !repeat ? <g id={all}>{children}</g> : children}
+      {/* odd copies mirrored, so each one meets its neighbour's edge */}
+      {sides.map(j => <use key={j} href={`#${repeat ?? all}`} transform={j % 2 ? `translate(${(j + 1) * w},0) scale(-1,1)` : `translate(${j * w},0)`} />)}
     </svg>
   )
 }
@@ -169,7 +175,9 @@ function rangeColor(look: SkyLook, p: number) {
 // mountains: Configurações do Pátio → Montanhas (shape, snow, tint); their light and haze come from the sky
 // clouds: Configurações do Pátio → Nuvens (amount, size, height, softness, wind, tint…); snowfall: → Neve caindo;
 // aurora: → Aurora (curtains of light at the sun's depth, behind the clouds)
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora }: { worldW: number; look?: SkyLook; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams }) {
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, zoomMin = 0.5 }: { worldW: number; look?: SkyLook; mountains?: MountainParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; zoomMin?: number }) {
+  // zoomed out far enough to see the whole world, the layers repeat past their ends
+  const copies = (p: number) => backdropCopies(worldW, p, zoomMin)
   const wSun = layerW(worldW, SUN_DEPTH), wCloud = layerW(worldW, CLOUD_DEPTH)
   const wTreesFar = layerW(worldW, FOREST_FAR.p), wTrees = layerW(worldW, FOREST_NEAR.p)
   const shapes = useMemo(() => ({
@@ -234,7 +242,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         backgroundImage: `url(${texture})`, backgroundSize: `${Math.round(1024 * look.textureLook.scale)}px ${Math.round(256 * look.textureLook.scale)}px`,
         mixBlendMode: look.textureLook.blend as React.CSSProperties["mixBlendMode"],
       }} />}
-      <Layer p={SUN_DEPTH} w={wSun} id="sun" top={sunTop}>
+      <Layer p={SUN_DEPTH} w={wSun} id="sun" top={sunTop} copies={look.stars > 0 && starPath ? copies(SUN_DEPTH) : 0} repeat="px-layer-sun-stars">
         <defs>
           <radialGradient id="px-sun">
             <stop offset="0" stopColor={look.sun.glowColor} stopOpacity={Math.min(1, 0.55 * look.sun.glow + 0.05)} />
@@ -258,7 +266,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
             <stop offset="1" stopColor={look.horizon} stopOpacity="0" />
           </radialGradient>
         </defs>
-        {look.stars > 0 && starPath && <path d={starPath} fill="#f4f1ff" opacity={look.stars * 0.85} />}
+        {look.stars > 0 && starPath && <g id="px-layer-sun-stars"><path d={starPath} fill="#f4f1ff" opacity={look.stars * 0.85} /></g>}
         {look.horizonGlow > 0 && <ellipse cx={sunX} cy={860} rx={1700 * look.sun.glowSize} ry={420 * Math.sqrt(look.sun.glowSize)} fill="url(#px-horizon)" opacity={look.horizonGlow} />}
         {look.moon.opacity > 0 && <>
           <circle cx={moonX} cy={look.moon.y} r={150} fill="url(#px-moon)" opacity={look.moon.opacity * 0.6} />
@@ -290,7 +298,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         const snowFill = mountains.snowTintAmount > 0 ? mix(lit, mountains.snowTint, mountains.snowTintAmount / 100) : lit
         const g = mountains.gradient / 100
         return (
-          <Layer key={r.i} p={r.p} w={r.w} id={`range${r.i}` as BackdropLayerId} top={backdropLayerTop(r.top - mountains.outline / 100 * MOUNTAIN_OUTLINE_PX)}>
+          <Layer key={r.i} p={r.p} w={r.w} id={`range${r.i}` as BackdropLayerId} copies={copies(r.p)} top={backdropLayerTop(r.top - mountains.outline / 100 * MOUNTAIN_OUTLINE_PX)}>
            <g opacity={mountains.opacity < 100 ? mountains.opacity / 100 : undefined}>
             {/* Degradê: darker at the tops, lighter at the feet */}
             {g > 0 && <defs><linearGradient id={`px-mg${r.i}`} gradientUnits="userSpaceOnUse" x1="0" y1={r.top} x2="0" y2={r.base}>
@@ -313,11 +321,11 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
         )
       })}
       {look.forest && <>
-        <Layer p={FOREST_FAR.p} w={wTreesFar} id="forestFar">
+        <Layer p={FOREST_FAR.p} w={wTreesFar} id="forestFar" copies={copies(FOREST_FAR.p)}>
           <path d={treeFar.trunks} fill={look.trees[0]} /><path d={treeFar.crowns} fill={look.trees[0]} />
           <rect x={0} y={FOREST_FAR.top} width={wTreesFar} height={BOTTOM - G + 42} fill={look.trees[0]} />
         </Layer>
-        <Layer p={FOREST_NEAR.p} w={wTrees} id="forestNear">
+        <Layer p={FOREST_NEAR.p} w={wTrees} id="forestNear" copies={copies(FOREST_NEAR.p)}>
           <path d={treeNear.trunks} fill={look.trees[1]} /><path d={treeNear.crowns} fill={look.trees[1]} />
         </Layer>
       </>}

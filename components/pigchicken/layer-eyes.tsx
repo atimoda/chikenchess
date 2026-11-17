@@ -21,10 +21,11 @@ import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { LAYERS_DEFAULT, LAYERS_SIZE as SIZE, sameLayers, type PatioLayers } from "@/lib/pigchicken/patio-layers"
 
 export type { PatioLayers }
-const SLIDERS: { key: "backdrop" | "zones" | "scale"; label: string }[] = [
+const SLIDERS: { key: "backdrop" | "zones" | "scale" | "grid"; label: string }[] = [
   { key: "backdrop", label: "Fundo" },
   { key: "zones", label: "Zonas" },
   { key: "scale", label: "Escalas (Visibilidade)" },
+  { key: "grid", label: "Grade" },
 ]
 
 // patioKey: which Pátio is open; saved: its layers. Entering a Pátio (or its saved layers changing) brings them back.

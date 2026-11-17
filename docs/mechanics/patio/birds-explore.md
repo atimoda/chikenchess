@@ -29,7 +29,7 @@ Pousam como antes (chance, tempo pousado, fuga de quem chega perto), agora em qu
 
 - **Gatilho:** a alma descansa no seu lugar junto do dono por um tempo que encolhe com a vontade de explorar: 20 s com `roam` 0 (na prática nunca sai) até 1 s com `roam` 1, vezes 0,7 a 1,3. A primeira saída depois de solta vem mais cedo (0,3 a 1 desse tempo). O tempo só corre enquanto ela está em descanso, não enquanto segue o dono.
 - **Saída:** sorteia um lugar livre a até `roamRange` px da cabeça do dono, voa até lá a 85% da sua velocidade, num arco suave, e pousa (34 px do pássaro vizinho no mesmo lugar). Sem lugar livre, tenta de novo em 4 s.
-- **Pousada:** fica parada, de asas fechadas, olhando para o dono, por `perchTime` segundos (vezes 0,7 a 1,3). Depois, com chance `roam`, vai para outro lugar (até 6 por saída); senão volta para o dono.
+- **Pousada:** fica parada, em pose de descanso (a asa recolhida junto ao corpo, sem ponta para fora; desde 16/11, v2.11.1, quadro próprio `SOUL_REST`, o mesmo das almas dentro da gaiola; antes era o quadro de asas para baixo do voo), olhando para o dono, por `perchTime` segundos (vezes 0,7 a 1,3). Depois, com chance `roam`, vai para outro lugar (até 6 por saída); senão volta para o dono.
 - **Volta na hora:** quando o dono fica a mais de 1,3 vez o `roamRange` dela, quando o lugar some (layout mudou) ou quando `roam` vira 0.
 - **Prioridades:** Callback, captura, portal e dono que saiu do jogo valem como antes e tiram a alma do lugar. Uma ajuda que exige ir a algum ponto (buscar munição, virar degrau) levanta a alma; terminada, ela volta ao lugar onde estava. Ajudas e atrapalhos continuam contando enquanto ela está fora, pelo alcance de cada um.
 - **Pintinho:** a alma pintinho não explora (`roam` 0).
@@ -59,7 +59,7 @@ Poder de algumas aves. O pássaro só solta quando há um boneco embaixo: na col
 - **Quem tem:** almas das espécies mini (a cada 8 s, dano 1), gêmeos (10 s, dano 2) e tambor (14 s, dano 4); pássaros vivos Pardal (10 s, dano 1) e Bem-te-vi (12 s, dano 2), e os mortos-vivos desses tipos. O intervalo varia de 0,7 a 1,3 vez; o primeiro vem mais cedo.
 - **Queda:** cai com gravidade (1500 px/s², até 1000 px/s), levando 30% da velocidade lateral do pássaro. Some em 6 s.
 - **Em inimigo ou Alvo de treino:** tira o `dano` em vida (alien, zumbi, morto-vivo que não é pássaro, alvo). No Pátio online o golpe segue o caminho dos outros golpes.
-- **Em galinha:** as galinhas não têm vida no Pátio, então o cagado dá um tranco pequeno (30 + 14 × dano px/s para o lado, metade disso para cima) e deixa uma mancha nas costas por 4 s, desenhada por cima dela. Os pintinhos nunca são atingidos.
+- **Em galinha:** as galinhas não têm vida no Pátio, então o cagado dá um tranco pequeno (30 + 14 × dano px/s para o lado, metade disso para cima) e deixa uma mancha nas costas por 4 s, desenhada por cima dela. Agarrada numa parede ou num teto, ela só é derrubada quando o dano somado chega a “Cair do grab após” ([Paredes, teto e fios](../chicken/climbing.md)); a mancha aparece de qualquer jeito. Os pintinhos nunca são atingidos.
 - **No chão ou numa plataforma:** deixa uma marca por 3 s.
 - **Poupar o dono** (`poopSpare`, na ficha): ligado, o cagado da alma nunca conta o dono (atravessa); desligado, o dono é um boneco como os outros. Almas vivas poupam por padrão; almas mortas não. Os outros players locais sempre contam.
 - **Pássaros vivos:** acertam galinhas, inimigos e alvos. **Pássaros mortos-vivos:** só galinhas.
@@ -68,7 +68,7 @@ Poder de algumas aves. O pássaro só solta quando há um boneco embaixo: na col
 
 ## No Pátio online
 
-Cada navegador decide sozinho onde as suas almas pousam e quando cagam; os outros veem as almas pela posição enviada, sem as asas fechadas. Cagados, manchas e marcas aparecem só no navegador que os gerou. O dano em inimigos compartilhados vai pelo aviso de golpe de sempre.
+Cada navegador decide sozinho onde as suas almas pousam e quando cagam; os outros veem as almas pela posição enviada, sem a pose de descanso. Cagados, manchas e marcas aparecem só no navegador que os gerou. O dano em inimigos compartilhados vai pelo aviso de golpe de sempre.
 
 ## Escopo
 

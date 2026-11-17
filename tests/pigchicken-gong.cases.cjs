@@ -7,7 +7,7 @@ const layout = loadTs('lib/pigchicken/layout.ts')
 const sync = loadTs('lib/pigchicken/layout-sync.ts')
 
 test('a Gongo saved comes back the same; odd values are cleaned and clamped', () => {
-  const g = { song: 'minha-musica', hits: 7, title: 'Toque!', lamps: false, forget: 6, stopHits: 0 }
+  const g = { song: 'minha-musica', hits: 7, title: 'Toque!', lamps: false, forget: 6, stopHits: 0, temple: true }
   assert.deepEqual(gong.normalizeGong(JSON.parse(JSON.stringify(g))), g)
   assert.deepEqual(gong.normalizeGong(null), gong.defaultGong())
   const odd = gong.normalizeGong({ song: 'Não Vale!', hits: 99, title: 'x'.repeat(80), lamps: 'sim', forget: -3, stopHits: 40 })

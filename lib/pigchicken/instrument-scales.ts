@@ -21,11 +21,22 @@
 //     or two rows of round notes around it (5 to 9 each), going up the zone's scale from the fifth in a zig-zag,
 //     left and right, from the bottom to the top, like a real handpan. The aim's point (direction and reach) on a
 //     note plays it clean; between the notes it is a slap (`isSlap`), a percussive hit that rings the nearest note.
+//   Cordas soltas: a harp's open strings going out of her shoulder in every direction, one note each (16 to 48 of
+//     them, 22 by default). The aim's direction picks the string (each owns an equal slice of the circle, the lowest
+//     pointing down, going up clockwise) and its reach says where along the string it is: under the string's start
+//     the note is flat (a semitone down), past its end sharp (a semitone up), in its middle a harmonic (an octave
+//     up). One string per letter (C D E F G A B), the lowest always a C; the zone's key tunes each letter like a
+//     harp's pedals (in G major the F strings sound F♯). How it is played (a pluck, the strings the aim crosses,
+//     the slide along a string): lib/pigchicken/strings-play.ts.
+//   Bateria: an acoustic kit's pieces as big round buttons around her, one per piece, where the kit's setup puts
+//     them (lib/pigchicken/drum-kit.ts, which also says how they are played). No pitch follows the aim: a hit's
+//     "note" is the piece's number on the General MIDI drum map.
 // Angles are screen radians (0 = right, π/2 = down, -π/2 = up).
 import { SCALES, chordOn, scaleNotes, type Conductor, type PitchSet, type Zone } from './music'
+import { DRUM_PIECES, drumKit, drumPiece, padAt } from './drum-kit'
 
-export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic' | 'hang'
-export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic', 'hang']
+export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic' | 'hang' | 'strings' | 'drums'
+export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic', 'hang', 'strings', 'drums']
 
 export const SECTORS = 12
 // reach below it: the inner ring ("a mira pela metade"); from it on: the outer ring ("a mira esticada inteira")
@@ -75,14 +86,19 @@ export function romanOf(root: number, key: number, minor: boolean, suffix: strin
   return (minor ? n.toLowerCase() : n) + (suffix === 'm' ? '' : suffix)
 }
 
+// Cordas soltas: how many strings, where a string starts and ends (fractions of the scale's radius, like the aim's
+// reach) and how wide the harmonic's window in its middle is
+export const STRINGS_MIN = 16, STRINGS_MAX = 48
+export const STRINGS_DEFAULT = { strings: 22, stringStart: 0.25, stringEnd: 0.85, harmonicWidth: 0.08 }
 // what the Escalas editor changes in a scale's shape (lib/pigchicken/scale-params.ts): where the round charts' inner ring
-// ends (it decides the ring the aim plays) and the empty middle of the charts and of the Campo harmônico (drawing only)
-export type ScaleShape = { ringSplit: number; hole: number }
+// ends (it decides the ring the aim plays), the empty middle of the charts and of the Campo harmônico (drawing only)
+// and the Cordas soltas' strings
+export type ScaleShape = { ringSplit: number; hole: number; strings: number; stringStart: number; stringEnd: number; harmonicWidth: number }
 
 export abstract class InstrumentScale {
   abstract readonly id: InstrumentScaleId
   abstract readonly label: string
-  shape: ScaleShape = { ringSplit: RING_SPLIT, hole: CHART_HOLE }
+  shape: ScaleShape = { ringSplit: RING_SPLIT, hole: CHART_HOLE, ...STRINGS_DEFAULT }
   // the chart's regions (empty for the primary scale, which keeps the leque)
   regions(): ScaleRegion[] { return [] }
   regionAt(_angle: number, _reach: number): ScaleRegion | null { return null }
@@ -414,8 +430,82 @@ export class HangScale extends InstrumentScale {
   degreeOf(music: Conductor, m: number) { return music.degreeOf(m) }
 }
 
+// Cordas soltas: a harp's open strings around her shoulder (see the top of the file)
+const NATURALS = [0, 2, 4, 5, 7, 9, 11] // C D E F G A B
+const LETTER_OF_PC = [0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6] // the letter LETTERS spells each pitch class with
+export const STRING_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+// the harp's pedals: how the zone's key (its 7-note scale, "Acordes de") tunes each letter, in semitones over the
+// natural note. One letter per degree, from the tonic's own letter up
+export function stringTuning(zone: Pick<Zone, 'root' | 'chordScale'>): number[] {
+  const own = SCALES[zone.chordScale]?.steps, steps = own?.length === 7 ? own : SCALES.major.steps
+  const root = pc(zone.root), first = LETTER_OF_PC[root], acc = [0, 0, 0, 0, 0, 0, 0]
+  steps.forEach((s, k) => { const L = (first + k) % 7; let d = pc(root + s - NATURALS[L]); if (d > 6) d -= 12; acc[L] = d })
+  return acc
+}
+// a string: its letter (0 = C … 6 = B), its note, where it points (the middle of its slice) and its name (F♯)
+export type HarpString = { index: number; letter: number; midi: number; angle: number; name: string; degree: number }
+// where the aim is on the strings: which one, how far along the radius (the aim's reach) and what that place plays
+export type StringZone = 'flat' | 'string' | 'harmonic' | 'sharp'
+export type StringTouch = { index: number; r: number; zone: StringZone }
+// semitones a string's place adds to its note: flat under its start, sharp past its end, an octave in its middle
+export const stringShift = (zone: StringZone) => (zone === 'flat' ? -1 : zone === 'sharp' ? 1 : zone === 'harmonic' ? 12 : 0)
+export class StringsScale extends InstrumentScale {
+  readonly id = 'strings' as const
+  readonly label = 'Cordas soltas'
+  get count() { return clampInt(this.shape.strings, STRINGS_MIN, STRINGS_MAX, STRINGS_DEFAULT.strings) }
+  // a string's slice: the lowest starts straight down and they go up clockwise, so the seam is at the ground
+  angleOf(i: number) { return Math.PI / 2 + ((i + 0.5) * TAU) / this.count }
+  stringAt(angle: number) {
+    const n = this.count, a = angle - Math.PI / 2
+    return Math.min(n - 1, Math.floor(((((a % TAU) + TAU) % TAU) / TAU) * n))
+  }
+  // the strings, low to high: one per letter from a C, three octaves and a C by default, around the item's octave
+  layout(music: Conductor, q: Pick<ToneQuery, 'octave'>): HarpString[] {
+    const n = this.count, acc = stringTuning(music.zone), low = 60 + 12 * q.octave - 12 * Math.floor((n - 1) / 14)
+    return Array.from({ length: n }, (_, i) => {
+      const L = i % 7, midi = low + 12 * Math.floor(i / 7) + NATURALS[L] + acc[L]
+      return { index: i, letter: L, midi, angle: this.angleOf(i), name: STRING_LETTERS[L] + (acc[L] > 0 ? '♯'.repeat(acc[L]) : '♭'.repeat(-acc[L])), degree: music.degreeOf(midi) + 1 }
+    })
+  }
+  touch(angle: number, reach: number): StringTouch {
+    const { stringStart: a, stringEnd: b, harmonicWidth: w } = this.shape, r = Math.max(0, reach)
+    const zone: StringZone = r < a ? 'flat' : r > b ? 'sharp' : Math.abs(r - (a + b) / 2) <= w / 2 ? 'harmonic' : 'string'
+    return { index: this.stringAt(angle), r, zone }
+  }
+  pool(music: Conductor, q: ToneQuery) { return this.layout(music, q).map(s => s.midi) }
+  noteFor(music: Conductor, q: ToneQuery) {
+    const t = this.touch(q.angle, q.reach)
+    return this.layout(music, q)[t.index].midi + stringShift(t.zone)
+  }
+  // arpeggios and phrases walk over the strings themselves, low to high
+  walk(music: Conductor, from: number, n: number, set: PitchSet, _angle: number, _reach: number, q?: ToneQuery) {
+    if (!q) return music.walk(from, n, set)
+    const pool = this.pool(music, q)
+    let i = pool.findIndex(m => m >= from)
+    if (i < 0) i = pool.length - 1
+    return pool[Math.max(0, Math.min(pool.length - 1, i + n))] ?? from
+  }
+  degreeOf(music: Conductor, m: number) { return music.degreeOf(m) }
+}
+
+// Bateria: the kit's pieces around her (see the top of the file). The "note" under the aim is the piece's General
+// MIDI number (the Caixa's between the pieces)
+export class DrumsScale extends InstrumentScale {
+  readonly id = 'drums' as const
+  readonly label = 'Bateria'
+  pool() { return DRUM_PIECES.map(p => p.gm).sort((a, b) => a - b) }
+  noteFor(_music: Conductor, q: ToneQuery) {
+    const r = Math.max(0, Math.min(1, q.reach))
+    return drumPiece(padAt(drumKit(), Math.cos(q.angle) * r, Math.sin(q.angle) * r, true)?.piece ?? 'snare').gm
+  }
+  walk(_music: Conductor, from: number) { return from }
+  degreeOf() { return 0 }
+}
+
+// the Cordas soltas themselves (the strings' own layout and touch, beyond what every scale answers)
+export const STRINGS_SCALE = new StringsScale()
 export const INSTRUMENT_SCALES: Record<InstrumentScaleId, InstrumentScale> = {
-  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(), harmonic: new HarmonicFieldScale(), hang: new HangScale(),
+  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(), harmonic: new HarmonicFieldScale(), hang: new HangScale(), strings: STRINGS_SCALE, drums: new DrumsScale(),
 }
 export const isInstrumentScaleId = (v: unknown): v is InstrumentScaleId => typeof v === 'string' && (INSTRUMENT_SCALE_IDS as string[]).includes(v)
 

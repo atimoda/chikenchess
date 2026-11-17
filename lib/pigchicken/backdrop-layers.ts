@@ -18,6 +18,15 @@ export const BACKDROP_PAD_L = 1600, BACKDROP_PAD_R = 4200
 // a layer's width in its own units: what the camera can reveal of it over the whole world
 export const backdropLayerW = (worldW: number, p: number) => Math.ceil(worldW * (1 - p)) + BACKDROP_PAD_L + BACKDROP_PAD_R
 
+// Zoomed out farther than 50% (Configurações do Pátio → Zoom), the camera may show the whole world at once, and a
+// layer slides past its ends: it then repeats, mirrored, this many times on each side (none for the usual range).
+// The farthest it slides with an end of the world in view: half the world, plus half of the widest screen.
+export function backdropCopies(worldW: number, p: number, zoomMin: number) {
+  if (zoomMin >= 0.5) return 0
+  const need = Math.max(p * worldW / 2 - BACKDROP_PAD_L, p * (worldW / 2 + 1800) - BACKDROP_PAD_R)
+  return need > 0 ? Math.ceil(need / backdropLayerW(worldW, p)) : 0
+}
+
 // how far up a layer's drawing reaches: it starts at the world's top (y = 0) and grows upward to hold anything drawn
 // higher (a tall range, the sun's glow), so only the Pátio's own frame ever cuts it, never the layer's box
 export const backdropLayerTop = (highestY: number) => Math.min(0, Math.floor(highestY) - 8)

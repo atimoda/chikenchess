@@ -10,7 +10,8 @@
     "scaleFade": 50,
     "scaleLines": 100,
     "scaleKeep": false,
-    "hitboxes": false
+    "hitboxes": false,
+    "grid": 60
   },
   "camera": {
     "camera": "follow",
@@ -19,6 +20,7 @@
     "lookAhead": 140,
     "lookAheadSpeed": 2.5,
     "aimRelease": 0,
+    "keysAimRelease": 5,
     "reticleDist": 200,
     "jumpShake": 3,
     "superJumpShake": 8,

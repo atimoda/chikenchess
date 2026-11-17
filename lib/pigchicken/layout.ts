@@ -8,34 +8,44 @@
 import { CAGE_SOULS_MAX, CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, isCage, type ItemId } from './items'
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
 import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, templeScene, villageScene, worldScenes } from './world'
-import { DEFAULT_PATIO_SETTINGS, PATIO_LOWEST_TOP, normalizePatioSettings, type PatioSettings } from './patio-settings'
+import { DEFAULT_PATIO_SETTINGS, PATIO_LOWEST_TOP, PATIO_SCREENS, normalizePatioSettings, type PatioSettings } from './patio-settings'
 import type { Box } from './combat'
-import { rackRespawnDelay } from './racks'
+import { outlineTops } from './box-tops'
+import { rackRefillLimit, rackRespawnDelay } from './racks'
 import { HOUSE_SIZE, housePreset, houseRoof, houseWallPolygon, newHouseSeed, normalizeHouse, type HouseParams } from './houses'
 import { createCollisionOcclusion, type CollisionMask } from '../chicken/collision-occlusion'
 import { TREE_SIZE, newTreeSeed, normalizeTree, treePreset, treeSurfaces, type TreeParams, type TreePoint } from './trees'
 import { normalizeTrampoline, type TrampolineParams } from './trampoline'
 import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge } from './village'
-import { VILLAGE_GROUND_ID, defaultSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
+import { VILLAGE_GROUND_ID, defaultSurface, fitSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
 import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from './power-lines'
 import { BACKDROP_DEPTH, isBackdropLayer, type BackdropLayerId } from './backdrop-layers'
-import { GONG_BOX, JUKEBOX_BOX, defaultGong, normalizeGong, type GongParams } from './gong'
+import { GONG_BOX, JUKEBOX_BOX, RESET_STONE_BOX, TEMPLE_SPOTS, defaultGong, normalizeGong, type GongParams } from './gong'
+import { BALUSTRADE_FLOOR, BALUSTRADE_SIZE, BUILDING_SIZE, buildingSurfaces, defaultBalustrade, defaultBuilding, normalizeBalustrade, normalizeBuilding, type BalustradeParams, type BuildingParams } from './buildings'
 import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
 import { CHEST_BOX, defaultChest, normalizeChest, type ChestParams } from './chests'
+import { DRUMKIT_BOX, HARP_BOX, isFixedKind } from './fixed-instruments'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
 // Vila's fixed ground (`terrain`) into a ground element. v6 seats the default portals on their starting platforms.
-// v7 puts the Hangdrum's rack at the end of the instruments' shelf of the default Pátio.
-export const LAYOUT_VERSION = 8
+// v7 puts the Hangdrum's rack at the end of the instruments' shelf of the default Pátio. v8: the Gaiola básica's
+// rack. v9: the Harpa's floating island over the first scene of the default Pátio. v10 brings that island down
+// (v9 had it above what a screen shows from the floor, the Harpa cut by the top of the view). v11: no more
+// scene-local positions: what stood in the Templo or the Vila (`region`) gets its world x, like everything else.
+// v12: the Templo do Gongo is made of elements (Prédios, Mureta com cerca, trees, the Gongo do Templo, the Recomeçar
+// stone, the Jukebox and its racks): a Pátio saved with the Templo gets them where its fixed drawing stood.
+export const LAYOUT_VERSION = 12
 // the widest world the Pátio offers (its width setting): the default layout covers it, a narrower world hides the rest
 export const LAYOUT_MAX_SCREENS = 8
 const FIRST_SCENE_PLATFORMS = SCENE_PLATFORMS[0]
 const TEMPLE_START_PLATFORM = FIRST_SCENE_PLATFORMS.find(p => p.x === 538)!
 const VILLAGE_START_PLATFORM = FIRST_SCENE_PLATFORMS.find(p => p.x === 1229)!
 const LEGACY_MAX_ELEMENTS = 1500
-// Reserve space to migrate both shortcut pairs, the Vila's ground and the entry portal without dropping elements.
-export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 6
+// Reserve space to migrate both shortcut pairs, the Vila's ground, the entry portal and the Templo's elements
+// (TEMPLE_ELEMENTS) without dropping any.
+const TEMPLE_ELEMENTS = 16
+export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 6 + TEMPLE_ELEMENTS
 
 // the layers, back to front. back: behind the platforms; scene: the platforms' own; behind: in front of the game's
 // things (dummies, racks, shots) but behind the characters; front: in front of the characters; frontGhost: in front,
@@ -53,7 +63,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'chalkboard', 'chest'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'building', 'balustrade', 'resetstone'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -62,9 +72,10 @@ export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: 'Solta
 export type ElementParams = {
   message?: string; maxHp?: number // dummy
   item?: ItemId; respawnDelay?: number // rack (and loose: its item), seconds after pickup
+  refillLimit?: number // rack: how many times it puts the item back after the first one (none: no limit)
   cageSouls?: number // rack and loose holding a Gaiola: how many souls fit in that one (none: the model's own)
   action?: HordeButton // button
-  seed?: number; flip?: boolean // trees
+  seed?: number; flip?: boolean // trees; a fixed instrument (the Harpa) turned the other way: its player on its right
   house?: HouseParams
   tree?: TreeParams
   trampoline?: TrampolineParams
@@ -72,18 +83,27 @@ export type ElementParams = {
   // a portal to another Pátio (lib/pigchicken/portal-links.ts): its lobby id or "default"; '' not chosen yet; absent:
   // it leads to its pair. portalTargetName: that Pátio's name when it was chosen (shown even after it is gone)
   portalTarget?: string; portalTargetName?: string
+  // the entry portal and the Portais de nascimento: the chance of being born at this one, in whole percents
+  // (lib/pigchicken/spawn-portals.ts; kept only while the Pátio has more than one of them)
+  spawnChance?: number
+  // "Bloco liberado": in a Pátio with the Grade de blocos, the block this portal stands in starts open, never hides
+  // a bomb and never closes again. Unset: on for the entry portal, off for a Portal de nascimento
+  freeBlock?: boolean
   zone?: SoundZoneParams // Zona sonora
   lanes?: LanesParams // Faixas fixas
   surface?: SurfaceParams // Chão (biome) and Parede (style): the outline's points
   power?: PowerParams // Poste de energia and Torre de transmissão: model, line, wires
-  gong?: GongParams // Gongo: its song, the strikes to start and stop it, its title
+  gong?: GongParams // Gongo: its song, the strikes to start and stop it, its title (or the Templo's campaign)
+  building?: BuildingParams // Prédio: its roof, storeys, columns, doors, lanterns (lib/pigchicken/buildings.ts)
+  balustrade?: BalustradeParams // Mureta com cerca: the courtyard's stone floor under it
   chalkboard?: ChalkboardParams // Quadro de lousa: its text and the ghost's move
   chest?: ChestParams // Baú: what opens it, what is inside, its rarity
 }
 
 export type LayoutElement = {
   id: string; kind: ElementKind
-  region?: 'temple' | 'village' // x is scene-local in these two regions
+  // only in layouts saved before v11: x was scene-local in these two scenes. normalizeLayout turns it into a world x
+  region?: 'temple' | 'village'
   x: number; y: number; w: number; h: number; rot: number
   layer: LayoutLayer; locked: boolean
   // she stands on it and bumps its sides · bullets stop at it · the instruments' notes stop at it
@@ -123,6 +143,8 @@ export type ElementDef = {
 export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   platform: { label: 'Plataforma', group: 'Plataformas', w: 230, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
   terrace: { label: 'Terraço do templo', group: 'Plataformas', w: 269, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
+  // the temple's white balustrade over a red wall: a floating floor along the top of the wall (lib/pigchicken/buildings.ts)
+  balustrade: { label: 'Mureta com cerca', group: 'Plataformas', ...BALUSTRADE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: BALUSTRADE_FLOOR + 8 },
   trampoline: { label: 'Trampolim', group: 'Plataformas', w: 230, h: 56, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 72, minH: 20 },
   pillar: { label: 'Pilar / parede', group: 'Plataformas', w: 96, h: 288, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
   pine: { label: 'Pinheiro', group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
@@ -134,9 +156,13 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   button: { label: 'Botão da horda', group: 'Botões', w: 40, h: 40, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 20 },
   tree: { label: 'Árvore', group: 'Árvores', ...TREE_SIZE, layer: 'scene', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 100, minH: 100 },
   house: { label: 'Casa', group: 'Casas', ...HOUSE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 100 },
+  // a hall in the Templo do Gongo's style: its roofs are floors (lib/pigchicken/buildings.ts)
+  building: { label: 'Prédio', group: 'Casas', ...BUILDING_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 120 },
   portal: { label: 'Par de portais', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
   // the lobby's entry (and way back to the globe): exactly one per Pátio, moved but never deleted or duplicated
   entry: { label: 'Portal de entrada', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: 150, minH: 150 },
+  // a Portal de nascimento: one more place to be born at, by its chance (spawn-portals.ts); it leads nowhere
+  spawn: { label: 'Portal de nascimento', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
   zone: { label: 'Zona sonora', group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
   lanes: { label: 'Faixas fixas', group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
   ground: { label: 'Chão', group: 'Chãos e paredes', w: 640, h: 200, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 24 },
@@ -148,11 +174,17 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   // a green chalkboard with a text in chalk; its ghost chicken shows a move while a player is near (chalkboard.ts)
   chalkboard: { label: 'Quadro de lousa', group: 'Treino', w: 420, h: 260, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 80 },
   jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
+  // the Recomeçar stone: strikes end the Templo's campaign (or the song playing) and clear its points
+  resetstone: { label: 'Pedra Recomeçar', group: 'Música', ...RESET_STONE_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: RESET_STONE_BOX.w, minH: RESET_STONE_BOX.h },
   // a chest the players open with Pegar (lib/pigchicken/chests.ts): free, with a key or by merit (the souls in their Gaiolas)
   chest: { label: 'Baú', group: 'Baús', ...CHEST_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: CHEST_BOX.w, minH: CHEST_BOX.h },
+  // a fixed instrument (lib/pigchicken/fixed-instruments.ts): the pedal harp and its stool; a player sits at it with Pegar
+  pedalharp: { label: 'Harpa', group: 'Música', ...HARP_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: HARP_BOX.w, minH: HARP_BOX.h },
+  // the acoustic drum kit and its throne
+  drumkit: { label: 'Bateria', group: 'Música', ...DRUMKIT_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: DRUMKIT_BOX.w, minH: DRUMKIT_BOX.h },
 }
 // the Gongo, the Jukebox and the Baú keep their art's size
-const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'gong' || kind === 'jukebox' || kind === 'chest'
+const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'resetstone' || kind === 'chest' || isFixedKind(kind)
 // Postes and Torres: their wires join the next one of the same model and line (lib/pigchicken/power-lines.ts)
 export const isPowerElement = (kind: ElementKind): kind is 'pole' | 'tower' => kind === 'pole' || kind === 'tower'
 // what may stand in a parallax depth of its own: the scenery (not the game's things, the music or the entry)
@@ -188,6 +220,8 @@ export function createElement(kind: ElementKind, cx: number, cy: number, params:
 
 export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'house') return { house: housePreset('cliff', newHouseSeed()) }
+  if (kind === 'building') return { building: defaultBuilding() }
+  if (kind === 'balustrade') return { balustrade: defaultBalustrade() }
   if (kind === 'tree') return { tree: treePreset('pine', newTreeSeed()) }
   if (kind === 'dummy') return { message: DUMMY_DEFAULTS.message, maxHp: DUMMY_DEFAULTS.maxHp }
   if (kind === 'rack' || kind === 'loose') return { item: WEAPON_IDS[0] }
@@ -201,6 +235,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'gong') return { gong: defaultGong() }
   if (kind === 'chalkboard') return { chalkboard: defaultChalkboard() }
   if (kind === 'chest') return { chest: defaultChest() }
+  if (isFixedKind(kind)) return { flip: false }
   return {}
 }
 
@@ -262,6 +297,11 @@ export function entryPortalElement(): LayoutElement {
 export function entryPortalIn(shown: LayoutElement[]): LayoutElement {
   return shown.find(e => e.kind === 'entry') ?? entryPortalElement()
 }
+// every portal she may be born at, in the world: the entry portal first, then the Portais de nascimento in the
+// layout's order
+export function spawnPortalsIn(shown: LayoutElement[]): LayoutElement[] {
+  return [entryPortalIn(shown), ...shown.filter(e => e.kind === 'spawn')]
+}
 // a Pátio with nothing in it but the entry portal, with the game's default settings for a new one
 // (data/pigchicken/default-patio.json: no Templo do Gongo nor Vila at the end until "Salvar no game" says otherwise)
 export function emptyLayout(): PatioLayout {
@@ -289,6 +329,41 @@ export function duplicatePortalPair(portal: LayoutElement, elements: LayoutEleme
   const pair = [portal, partner].map(e => ({ ...structuredClone(e), id: newElementId('portal'), x: e.x + 32, y: e.y - 32, locked: false }))
   pair.forEach(e => { e.params.portalPairId = pair[0].id })
   return pair
+}
+
+// ---------- the Templo do Gongo as elements ----------
+// Where the temple's fixed drawing stood (until v12), from the scene's left edge L: the far hall and two trees in the
+// haze, the main hall with two roofs, the right pavilion with its pyramid, the pine and the plum tree in front, the
+// balustrade over the red wall (its floor is the old terrace), the Gongo do Templo, the jukebox, the Recomeçar stone
+// and five racks by the entrance. Back to front, in the order the drawing had.
+export const TEMPLE_ELEMENT_IDS = ['temple-far-pine', 'temple-far-blossom', 'temple-far-hall', 'temple-hall', 'temple-pavilion', 'temple-pine', 'temple-blossom', 'temple-wall', 'temple-gong', 'temple-jukebox', 'temple-reset', 'temple-rack-bat', 'temple-rack-pistol', 'temple-rack-smg', 'temple-rack-guitar', 'temple-rack-flute'] as const
+export function templeElements(L: number): LayoutElement[] {
+  const G = WORLD_GROUND_Y
+  const el = (raw: Partial<LayoutElement> & Pick<LayoutElement, 'id' | 'kind' | 'x' | 'y'>) => normalizeElement({ ...raw, x: r1(raw.x), y: r1(raw.y) })!
+  const tree = (id: string, kind: 'pine' | 'blossom', x: number, base: number, k: number, seed: number, far: boolean) => {
+    const w = TREE_BOX.w * k, h = TREE_BOX.h * k
+    return el({ id, kind, x: L + x - w / 2, y: base - h, w: r1(w), h: r1(h), layer: far ? 'back' : 'scene', opacity: far ? 0.6 : 1, params: { seed, flip: false } })
+  }
+  const hall = (id: string, x: number, y: number, w: number, h: number, building: Partial<BuildingParams>, layer: LayoutLayer = 'scene') =>
+    el({ id, kind: 'building', x: L + x, y, w, h, layer, solid: !building.haze, params: { building: { ...defaultBuilding(), ...building } } })
+  const fixed = (id: string, kind: ElementKind, cx: number, params: ElementParams = {}) => {
+    const d = ELEMENT_DEFS[kind]
+    return el({ id, kind, x: L + cx - d.w / 2, y: G - d.h, params })
+  }
+  return [
+    tree('temple-far-pine', 'pine', 1230, 800, 0.95, 31337, true),
+    tree('temple-far-blossom', 'blossom', 1560, 800, 0.9, 27183, true),
+    hall('temple-far-hall', 1176, 422, 488, 381, { roof: 'hip', storeys: 2, columns: 5, doors: 4, lanterns: 0, plaque: false, haze: true }, 'back'),
+    hall('temple-hall', 46, 352, 1228, 451, { roof: 'hip', storeys: 2, columns: 14, doors: 13, lanterns: 4, plaque: true }),
+    hall('temple-pavilion', 1530, 408, 400, 395, { roof: 'pyramid', storeys: 2, columns: 5, doors: 4, lanterns: 2, plaque: false }),
+    tree('temple-pine', 'pine', 110, 830, 0.95, 16180, false),
+    tree('temple-blossom', 'blossom', 1890, 830, 0.8, 14142, false),
+    el({ id: 'temple-wall', kind: 'balustrade', x: L, y: 800, w: SCENE_W, h: G - 800, params: { balustrade: { courtyard: true } } }),
+    fixed('temple-gong', 'gong', TEMPLE_SPOTS.gong, { gong: { ...defaultGong(), temple: true } }),
+    fixed('temple-jukebox', 'jukebox', TEMPLE_SPOTS.jukebox),
+    fixed('temple-reset', 'resetstone', TEMPLE_SPOTS.reset),
+    ...(['bat', 'pistol', 'smg', 'guitar', 'flute'] as ItemId[]).map((item, i) => fixed(`temple-rack-${item}`, 'rack', 60 + i * 90, { item, respawnDelay: rackRespawnDelay(item) })),
+  ]
 }
 
 // ---------- the default layout: the Pátio as the code always drew it ----------
@@ -325,7 +400,7 @@ export function defaultTrees(screens: number): TreeSeed[] {
 }
 
 // the consumables' racks: on the floor of the second scene, between the horde buttons and the dummies
-// the Hangdrum's rack: at the right end of the instruments' long shelf (first scene), after the Harpa
+// the Hangdrum's rack: at the right end of the instruments' long shelf (first scene), after the Harpa de Lira
 const SHELF = SCENE_PLATFORMS[0][0]
 function hangdrumRack(): LayoutElement {
   const d = ELEMENT_DEFS.rack, x = SHELF.x + SHELF.w - d.w - 4
@@ -335,6 +410,25 @@ function hangdrumRack(): LayoutElement {
 function cageRack(): LayoutElement {
   const d = ELEMENT_DEFS.rack, cx = SCENE_W * 0.0875
   return { id: 'rack-cage', kind: 'rack', x: r1(cx - d.w / 2), y: r1(WORLD_GROUND_Y - d.h), w: d.w, h: d.h, rot: 0, layer: d.layer, locked: false, solid: d.solid, shots: d.shots, notes: false, hidden: false, opacity: 1, params: { item: 'cage', respawnDelay: rackRespawnDelay('cage') } }
+}
+// the Harpa (lib/pigchicken/fixed-instruments.ts) on its floating island: over the middle of the first scene,
+// between the two high platforms of the portals and a little under them (a step down from either one, a jump up
+// from the instruments' shelf); a flat top with lower rims and a rocky belly, like the islands of "Vales e ilhas
+// no céu". Low enough for the whole Harpa to show from the floor on a desktop screen (some 840 px over the floor
+// under the header), and its belly high enough to walk under it on the shelf
+export const HARP_ISLAND = { cx: FIRST_SCENE_PLATFORMS[2].x + FIRST_SCENE_PLATFORMS[2].w + (FIRST_SCENE_PLATFORMS[3].x - FIRST_SCENE_PLATFORMS[2].x - FIRST_SCENE_PLATFORMS[2].w) / 2, top: WORLD_GROUND_Y - 560, w: 380, t: 70 }
+// where v9 had it (the same island, 800 over the floor and 120 thick)
+const HARP_ISLAND_V9 = { ...HARP_ISLAND, top: WORLD_GROUND_Y - 800, t: 120 }
+function harpIsland(at = HARP_ISLAND): LayoutElement[] {
+  const { cx, top: y, w, t } = at, l = cx - w / 2, r = cx + w / 2
+  const { points, ...box } = fitSurface([
+    [l, y + 16], [l + w * 0.07, y], [r - w * 0.07, y], [r, y + 16],
+    [r - w * 0.06, y + t * 0.45], [cx + w * 0.22, y + t * 0.8], [cx + w * 0.05, y + t], [cx - w * 0.2, y + t * 0.85], [l + w * 0.1, y + t * 0.5],
+  ], 40, 24)
+  return [
+    normalizeElement({ id: 'harp-island', kind: 'ground', ...box, hard: true, params: { surface: { style: 'meadow', points } } })!,
+    normalizeElement({ id: 'harp', kind: 'pedalharp', x: cx + 30 - HARP_BOX.w / 2, y: y - HARP_BOX.h })!,
+  ]
 }
 function consumableRacks(): LayoutElement[] {
   const d = ELEMENT_DEFS.rack
@@ -384,12 +478,16 @@ export function defaultLayout(trees: TreeSeed[] = defaultTrees(LAYOUT_MAX_SCREEN
   const rack = ELEMENT_DEFS.rack
   WEAPON_IDS.forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, G - rack.h, rack.w, rack.h, { item: id })) })
   INSTRUMENT_IDS.filter(id => id !== 'hangdrum').forEach((id, i) => { const cx = SCENE_W * (0.14 + i * 0.105); out.push(base('rack', `rack-${id}`, cx - rack.w / 2, SHELF_TOP - rack.h, rack.w, rack.h, { item: id })) })
-  out.push(hangdrumRack(), ...consumableRacks(), cageRack())
+  out.push(hangdrumRack(), ...consumableRacks(), cageRack(), ...harpIsland())
   // the horde buttons on the second scene
   HORDE_BUTTONS.forEach((id, i) => { const cx = SCENE_W * (1.06 + i * 0.09); out.push(base('button', `btn-${id}`, cx - 20, G - 46 - 40, 40, 40, { action: id })) })
   // the training dummies, each with its own tip
   ;[1.7, 2.0, 2.4, 2.8, 3.2].forEach((f, i) => { const d = ELEMENT_DEFS.dummy; out.push(base('dummy', `dummy-${i}`, SCENE_W * f - d.w / 2, G - d.h, d.w, d.h, { message: dummyTip(i), maxHp: DUMMY_DEFAULTS.maxHp })) })
-  return { v: LAYOUT_VERSION, elements: [villageGroundElement(), ...out, ...villageHouses(), ...shortcutPortals(), entryPortalElement()] }
+  // the code's Pátio is all of its 8 screens wide, the Templo and the Vila after them (at their world x, like the rest)
+  const elements = [villageGroundElement(), ...out, ...villageHouses(), ...shortcutPortals(), entryPortalElement()]
+  detachRegions(elements, LAYOUT_MAX_SCREENS, false)
+  elements.splice(1, 0, ...templeElements(templeScene(LAYOUT_MAX_SCREENS) * SCENE_W))
+  return { v: LAYOUT_VERSION, elements, settings: { screens: LAYOUT_MAX_SCREENS } }
 }
 
 // ---------- cleaning what comes from storage, the database or another player ----------
@@ -417,11 +515,17 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   } else if (kind === 'rack') {
     params.item = RACK_ITEM_IDS.includes(p.item as ItemId) ? (p.item as ItemId) : WEAPON_IDS[0]
     params.respawnDelay = rackRespawnDelay(params.item, typeof p.respawnDelay === 'number' ? p.respawnDelay : undefined)
+    const refill = rackRefillLimit(p.refillLimit)
+    if (refill !== undefined) params.refillLimit = refill
     if (isCage(params.item) && typeof p.cageSouls === 'number' && Number.isFinite(p.cageSouls)) params.cageSouls = Math.round(clamp(p.cageSouls, 1, CAGE_SOULS_MAX))
   } else if (kind === 'button') {
     params.action = HORDE_BUTTONS.includes(p.action as HordeButton) ? (p.action as HordeButton) : 'aliens'
   } else if (kind === 'house') {
     params.house = normalizeHouse(p.house)
+  } else if (kind === 'building') {
+    params.building = normalizeBuilding(p.building)
+  } else if (kind === 'balustrade') {
+    params.balustrade = normalizeBalustrade(p.balustrade)
   } else if (kind === 'tree') {
     params.tree = normalizeTree(p.tree)
   } else if (kind === 'trampoline') {
@@ -435,6 +539,9 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
       params.portalTarget = target
       if (target && typeof p.portalTargetName === 'string' && p.portalTargetName.trim()) params.portalTargetName = p.portalTargetName.slice(0, 60)
     }
+  } else if (kind === 'entry' || kind === 'spawn') {
+    if (typeof p.spawnChance === 'number' && Number.isFinite(p.spawnChance)) params.spawnChance = Math.round(clamp(p.spawnChance, 0, 100))
+    if (typeof p.freeBlock === 'boolean') params.freeBlock = p.freeBlock
   } else if (kind === 'pine' || kind === 'blossom') {
     params.seed = Math.floor(clamp(num(p.seed, 1), 0, 2 ** 31))
     params.flip = !!p.flip
@@ -452,6 +559,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.chalkboard = normalizeChalkboard(p.chalkboard)
   } else if (kind === 'chest') {
     params.chest = normalizeChest(p.chest)
+  } else if (isFixedKind(kind)) {
+    params.flip = !!p.flip
   }
   const music = isMusicElement(kind)
   // in a depth of its own it is only scenery: no collisions of any kind
@@ -462,7 +571,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
   const region = depth === 0 && (e.region === 'temple' || e.region === 'village') ? e.region : undefined
   const x = region
     ? clamp(r1(num(e.x, 0)), -w / 2, SCENE_W - w / 2 - 0.1)
-    : r1(clamp(num(e.x, 0), -2000, SCENE_W * worldScenes(LAYOUT_MAX_SCREENS)))
+    : r1(clamp(num(e.x, 0), -2000, SCENE_W * (worldScenes(LAYOUT_MAX_SCREENS) + LEGACY_REGION_SCENES)))
   return {
     id, kind, ...(region ? { region } : {}),
     x, y: r1(clamp(num(e.y, 0), PATIO_LOWEST_TOP, WORLD_GROUND_Y + 200)),
@@ -543,6 +652,23 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
     if (seen.has(rack.id)) rack.id = newElementId('rack')
     seen.add(rack.id); elements.push(rack)
   }
+  // the default Pátio saved before the Harpa (v9): its island and the Harpa on it join once, unless it already has one
+  if (isDefault && !(typeof v === 'number' && v >= 9) && !elements.some(e => e.kind === 'pedalharp') && elements.length + 2 <= LAYOUT_MAX_ELEMENTS) {
+    for (const el of harpIsland()) {
+      if (seen.has(el.id)) el.id = newElementId(el.kind)
+      seen.add(el.id); elements.push(el)
+    }
+  }
+  // the default Pátio saved with the island where v9 had it: untouched, the island and its Harpa come down
+  if (isDefault && v === 9) {
+    const [was, wasHarp] = harpIsland(HARP_ISLAND_V9), [now, nowHarp] = harpIsland()
+    const same = (a: LayoutElement | undefined, b: LayoutElement) => !!a && a.kind === b.kind && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h
+    const island = elements.find(e => e.id === was.id), harp = elements.find(e => e.id === wasHarp.id)
+    if (same(island, was) && same(harp, wasHarp)) {
+      elements[elements.indexOf(island!)] = now
+      elements[elements.indexOf(harp!)] = { ...harp!, y: nowHarp.y }
+    }
+  }
   // saved before v5: the Vila's fixed ground (with its edited ridge, `terrain`) becomes the first element, so it is
   // drawn and collides behind everything else in its layer, as before
   if (!(typeof v === 'number' && v >= 5)) {
@@ -556,7 +682,21 @@ export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | 
     if (seen.has(entry.id)) entry.id = newElementId('entry')
     elements.push(entry)
   }
-  const settings = normalizePatioSettings((raw as { settings?: unknown }).settings)
+  let settings = normalizePatioSettings((raw as { settings?: unknown }).settings)
+  // saved before v11 (or anything still scene-local): every element gets the world x it had at the width it was shown
+  if (!(typeof v === 'number' && v >= 11) || elements.some(e => e.region)) {
+    const screens = settings?.screens ?? legacyScreens()
+    if (detachRegions(elements, screens, !(typeof v === 'number' && v >= 11)) && settings?.screens === undefined) settings = { ...settings, screens }
+  }
+  // saved before v12 with the Templo do Gongo on: its elements join where its fixed drawing stood (the Templo's scene
+  // at the width it was shown), behind everything else, so the Pátio looks and plays as before
+  if (!(typeof v === 'number' && v >= 12) && settings?.temple !== false && elements.length + TEMPLE_ELEMENTS <= LAYOUT_MAX_ELEMENTS) {
+    const screens = settings?.screens ?? legacyScreens()
+    const temple = templeElements(templeScene(screens) * SCENE_W)
+    for (const el of temple) { if (seen.has(el.id)) el.id = newElementId(el.kind); seen.add(el.id) }
+    elements.splice(elements[0]?.id === VILLAGE_GROUND_ID ? 1 : 0, 0, ...temple)
+    if (settings?.screens === undefined) settings = { ...settings, screens }
+  }
   return { v: LAYOUT_VERSION, elements, ...(settings ? { settings } : {}) }
 }
 
@@ -581,7 +721,6 @@ export function elementBounds(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' | 'r
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y }
 }
 
-export const TEMPLE_PLATFORM_DEPTH = LAYOUT_MAX_ELEMENTS + 1
 export const layoutCollisionDepth = (el: LayoutElement, index: number) =>
   1 + LAYERS.indexOf(el.layer) * (LAYOUT_MAX_ELEMENTS + 1) + index
 export const occludesColliders = (el: LayoutElement) =>
@@ -613,31 +752,63 @@ export function elementFloorLine(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' |
   return [left, top, right].map(p => `${r1(p[0] - b.x)},${r1(p[1] - b.y)}`).join(' ')
 }
 
-// Existing Parquinho positions stay fixed. The appended scenes keep local positions when its width changes.
-function regionOrigin(region: LayoutElement['region'], screens: number) {
-  if (region === 'village') return villageScene(screens) * SCENE_W
-  if (region === 'temple') return templeScene(screens) * SCENE_W
-  return 0
-}
-
-export const elementWorldX = (el: LayoutElement, screens: number) => el.x + regionOrigin(el.region, screens)
-
+// Every element has its own world x: none follows the Templo or the Vila when the Pátio's width changes. A narrower
+// world hides (but keeps) what is past its end, the Templo's and the Vila's scenes included, and shows it again where it
+// was when the world is made wider.
+export const worldEnd = (screens: number) => worldScenes(screens) * SCENE_W
 export function elementsInWorld(layout: PatioLayout, screens: number) {
-  const end = screens * SCENE_W
-  return layout.elements.flatMap(el => {
-    if (el.region) return [{ ...el, x: elementWorldX(el, screens) }]
-    return el.depth || el.x + el.w / 2 < end ? [el] : []
-  })
+  const end = worldEnd(screens)
+  return layout.elements.filter(el => el.depth || el.x + el.w / 2 < end)
 }
 
+// where an element moved or put in the editor is kept: its world x, its centre inside the world
 export function storeElementPosition(el: LayoutElement, screens: number): LayoutElement {
-  // in a depth of its own its x is a layer's, not the world's: it never belongs to the Templo or the Vila
-  if (el.depth) { const { region: _r, ...rest } = el; return rest }
-  const cx = Math.min(el.x + el.w / 2, worldScenes(screens) * SCENE_W - 0.1)
-  const region = cx >= regionOrigin('village', screens) ? 'village' : cx >= regionOrigin('temple', screens) ? 'temple' : undefined
-  const { region: _old, ...base } = el
-  return { ...base, x: cx - el.w / 2 - regionOrigin(region, screens), ...(region ? { region } : {}) }
+  const { region: _r, ...rest } = el
+  if (el.depth) return rest
+  const cx = Math.min(el.x + el.w / 2, worldEnd(screens) - 0.1)
+  return { ...rest, x: cx - el.w / 2 }
 }
+
+// ---------- v11: the Templo's and the Vila's elements leave their scenes ----------
+// Before v11 an element put in the Templo or the Vila kept an x local to that scene (`region`) and followed it when the
+// Pátio's width changed, and the rest showed only up to the Parquinho's end (the Templo's scene). Now everything shows
+// up to the world's end, the Templo and the Vila included. `screens`: the width the layout was shown at.
+// - each scene-local element gets the world x it had at that width;
+// - (legacy: true) the Parquinho's elements past its end, which a narrower width hid, move by the Templo's and the
+//   Vila's two scenes, so they stay hidden (instead of turning up on the Templo and the Vila) and keep their order.
+// Changes `elements` in place; true when anything moved.
+const LEGACY_REGION_SCENES = 2
+function legacyOrigin(region: LayoutElement['region'], screens: number) {
+  return region === 'village' ? villageScene(screens) * SCENE_W : region === 'temple' ? templeScene(screens) * SCENE_W : 0
+}
+export function detachRegions(elements: LayoutElement[], screens: number, legacy = true): boolean {
+  const end = screens * SCENE_W
+  let moved = false
+  elements.forEach((el, i) => {
+    if (el.region) {
+      const { region, ...rest } = el
+      elements[i] = el.depth ? rest : { ...rest, x: r1(el.x + legacyOrigin(region, screens)) }
+      moved = true
+    } else if (legacy && !el.depth && el.x + el.w / 2 >= end) {
+      elements[i] = { ...el, x: r1(el.x + LEGACY_REGION_SCENES * SCENE_W) }
+      moved = true
+    }
+  })
+  return moved
+}
+
+// the width a layout saved without its own was shown at: this browser's old "Largura do mundo" (the game's default
+// on the server or in the tests)
+function legacyScreens(): number {
+  try {
+    const raw = typeof window === 'undefined' ? null : window.localStorage.getItem('pigchicken-parquinho-v1')
+    const saved = raw ? (JSON.parse(raw) as { screens?: unknown }).screens : undefined
+    if (typeof saved === 'number' && Number.isFinite(saved)) return Math.round(clamp(saved, PATIO_SCREENS.min, PATIO_SCREENS.max))
+  } catch { /* storage unavailable */ }
+  return DEFAULT_PATIO_SETTINGS.screens ?? LEGACY_DEFAULT_SCREENS
+}
+// the Parquinho's own default width (lib/pigchicken/settings.ts, CODE_PARQUINHO.screens)
+const LEGACY_DEFAULT_SCREENS = 4
 
 export function treeWorldSurfaces(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h' | 'rot'>, tree: TreeParams) {
   const angle = el.rot * Math.PI / 180
@@ -657,16 +828,20 @@ export function layoutBoxes(elements: LayoutElement[]): Box[] {
   const out: Box[] = []
   const occlusion = createCollisionOcclusion(layoutCollisionMasks(elements))
   elements.forEach((e, index) => {
-    const solid = e.solid && e.kind !== 'house' && e.kind !== 'trampoline'
+    const solid = e.solid && e.kind !== 'house' && e.kind !== 'building' && e.kind !== 'trampoline'
     if (ELEMENT_DEFS[e.kind].entity || (!solid && !e.shots && !e.notes && !e.rebate)) return
     const b = elementBounds(e)
-    const box: Box = { l: b.x, t: b.y, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid, shots: e.shots, notes: e.notes }
+    // the Mureta com cerca: what falls lands on its floor (the top of the wall), not on the balustrade
+    const top = e.kind === 'balustrade' ? b.y + BALUSTRADE_FLOOR : b.y
+    const box: Box = { l: b.x, t: top, r: b.x + b.w, b: Math.min(b.y + b.h, G), solid, shots: e.shots, notes: e.notes }
     if (e.rebate) box.rebate = e.rebate
     const occluded = occlusion?.forBox(layoutCollisionDepth(e, index), box)
     // a shaped one (Chão, Parede) only meets what is inside its outline
     const outline = elementOutline(e)
     const occludedAt = outline ? (x: number, y: number) => !polygonContains(outline, x, y) || !!occluded?.(x, y) : occluded
     if (occludedAt) box.occludedAt = occludedAt
+    // and what falls on it lands on the lines of the outline that face up, not on the top of the box around it
+    if (outline) box.topsAt = x => outlineTops(outline, x).filter(t => t <= box.b && !occluded?.(x, t))
     out.push(box)
   })
   return out
@@ -687,19 +862,23 @@ export const sameLayout = (a: PatioLayout | null, b: PatioLayout | null) => JSON
 // the top of a solid element over the span [l, r]: its highest point there (a ramp's sloped edge, else its top)
 function surfaceTop(el: LayoutElement, l: number, r: number): number {
   const b = elementBounds(el)
+  if (el.kind === 'balustrade') return b.y + BALUSTRADE_FLOOR
   const line = elementFloorLine(el)
   const outline = elementOutline(el)
-  const roof = el.kind === 'house' && el.params.house ? houseRoof(el.params.house).map(([x, y]) => [x * el.w / 100, y * el.h / 100])
-    : outline ? [...outline, outline[0]].map(([x, y]) => [x - b.x, y - b.y]) : null
-  if (!line && !roof) return b.y
-  const pts = (roof ?? line!.split(' ').map(p => p.split(',').map(Number))).map(([x, y]) => [b.x + x, b.y + y] as const)
-  const xs = [l, r, ...pts.map(p => p[0]).filter(x => x > l && x < r)]
+  const roofs = el.kind === 'house' && el.params.house ? [houseRoof(el.params.house).map(([x, y]) => [x * el.w / 100, y * el.h / 100])]
+    : el.kind === 'building' && el.params.building ? buildingSurfaces(el.params.building, el.w, el.h)
+    : outline ? [[...outline, outline[0]].map(([x, y]) => [x - b.x, y - b.y])] : null
+  if (!line && !roofs?.length) return b.y
   let best = Infinity
-  for (const x of xs) {
-    for (let i = 1; i < pts.length; i++) {
-      const [ax, ay] = pts[i - 1], [bx, by] = pts[i]
-      if (x < Math.min(ax, bx) || x > Math.max(ax, bx) || ax === bx) continue
-      best = Math.min(best, ay + ((x - ax) / (bx - ax)) * (by - ay))
+  for (const roof of roofs ?? [line!.split(' ').map(p => p.split(',').map(Number))]) {
+    const pts = roof.map(([x, y]) => [b.x + x, b.y + y] as const)
+    const xs = [l, r, ...pts.map(p => p[0]).filter(x => x > l && x < r)]
+    for (const x of xs) {
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i]
+        if (x < Math.min(ax, bx) || x > Math.max(ax, bx) || ax === bx) continue
+        best = Math.min(best, ay + ((x - ax) / (bx - ax)) * (by - ay))
+      }
     }
   }
   return Number.isFinite(best) ? best : b.y
@@ -723,7 +902,7 @@ export function layoutFloorBelow(elements: LayoutElement[], x: number, y: number
     if (!el.solid || ELEMENT_DEFS[el.kind].entity) continue
     const b = elementBounds(el)
     if (x < b.x || x > b.x + b.w) continue
-    const top = el.kind === 'house' || isSurfaceElement(el.kind) ? surfaceTop(el, x, x) : b.y
+    const top = el.kind === 'house' || el.kind === 'building' || el.kind === 'balustrade' || isSurfaceElement(el.kind) ? surfaceTop(el, x, x) : b.y
     if (top >= y && top < floor) floor = top
   }
   return floor

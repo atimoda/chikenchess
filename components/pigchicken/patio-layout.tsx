@@ -3,7 +3,7 @@
 // The Pátio drawn from its layout (lib/pigchicken/layout.ts): each layer's scenery (platforms, trees) and the
 // invisible floors and walls the chicken's engine reads (`data-chicken-platforms`). The game's own things
 // (dummies, racks, buttons) are drawn on the game's canvas (parquinho.tsx) and only placed from here.
-import { memo, useEffect, useMemo, useRef } from "react"
+import { memo, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import { ELEMENT_DEFS, elementBounds, elementCorners, elementFloorLine, elementOutline, isHard, layoutCollisionDepth, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
 import { houseSurfaces, normalizeHouse } from "@/lib/pigchicken/houses"
 import { TRAMPOLINE_DEFAULTS, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
@@ -12,20 +12,27 @@ import { followCamera, followDepth } from "@/lib/pigchicken/live-camera"
 import { PowerArt, PowerFloors, PowerLines } from "./power-art"
 import { TreeArt, TreeStyles } from "./patio-trees"
 import { SceneryRegion } from "./scenery-region"
-import { HouseArt } from "./house-art"
+import { HouseArt, PlacedHouseArt } from "./house-art"
+import { houseRooms, roomFloorSlab } from "@/lib/pigchicken/house-rooms"
+import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { CustomTreeArt, CustomTreeStyles } from "./tree-art"
 import { SceneryWindStyles } from "./scenery-wind-bend"
 import { LanesArt, ZoneArt } from "./sound-zone-art"
 import { SurfaceArt } from "./surface-art"
 import { ChalkboardArt } from "./chalkboard-art"
+import { BalustradeArt, BuildingArt } from "./building-art"
+import { BALUSTRADE_FLOOR, buildingSurfaces, normalizeBalustrade, normalizeBuilding } from "@/lib/pigchicken/buildings"
 
 // one element's art filling its box
-export const ElementArt = memo(function ElementArt({ el, worldX, editing }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h"> & { depth?: number }; worldX?: number; editing?: boolean }) {
+// placed: the element as it stands in the Pátio (a house there opens when someone goes in), not a preview of it
+export const ElementArt = memo(function ElementArt({ el, worldX, editing, placed }: { el: Pick<LayoutElement, "kind" | "params" | "w" | "h"> & { depth?: number; id?: string }; worldX?: number; editing?: boolean; placed?: boolean }) {
   if ((el.kind === "pole" || el.kind === "tower") && el.params.power) return <PowerArt kind={el.kind} power={el.params.power} w={el.w} depth={el.depth} />
   if (el.kind === "zone") return el.params.zone ? <ZoneArt zone={el.params.zone} /> : null
   if (el.kind === "lanes") return el.params.lanes ? <LanesArt lanes={el.params.lanes} w={el.w} h={el.h} editing={editing} /> : null
   if (el.kind === "chalkboard") return el.params.chalkboard ? <ChalkboardArt board={el.params.chalkboard} w={el.w} h={el.h} /> : null
-  if (el.kind === "house") return <HouseArt house={el.params.house ?? normalizeHouse(null)} />
+  if (el.kind === "house") return placed && el.id ? <PlacedHouseArt id={el.id} house={el.params.house ?? normalizeHouse(null)} /> : <HouseArt house={el.params.house ?? normalizeHouse(null)} />
+  if (el.kind === "building") return <BuildingArt building={el.params.building ?? normalizeBuilding(null)} w={el.w} h={el.h} />
+  if (el.kind === "balustrade") return <BalustradeArt balustrade={el.params.balustrade ?? normalizeBalustrade(null)} w={el.w} h={el.h} />
   if ((el.kind === "ground" || el.kind === "wall") && el.params.surface) return <SurfaceArt surface={el.params.surface} w={el.w} h={el.h} />
   if (el.kind === "tree" && el.params.tree) return <CustomTreeArt tree={el.params.tree} worldX={worldX} />
   if (el.kind === "trampoline") {
@@ -85,7 +92,7 @@ export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, 
               outline: el.hidden ? "2px dashed rgba(255,255,255,0.5)" : undefined,
             }}
           >
-            <ElementArt el={el} editing={editing} worldX={el.kind === "tree" || el.kind === "pine" || el.kind === "blossom" ? el.x + el.w / 2 : undefined} />
+            <ElementArt el={el} editing={editing} placed worldX={el.kind === "tree" || el.kind === "pine" || el.kind === "blossom" ? el.x + el.w / 2 : undefined} />
           </SceneryRegion>
         )
         return el.depth ? <DepthLayer key={el.id} depth={el.depth} pinned={!!el.backdrop}>{art}</DepthLayer> : art
@@ -115,6 +122,14 @@ const TreeCollider = memo(function TreeCollider({ id, x, y, w, h, rot, tree, dep
     data-chicken-walls={walls || undefined} data-chicken-nearby className="absolute" />
 })
 
+// a Prédio: its roofs' top edges and eaves are one-way floors (lib/pigchicken/buildings.ts)
+const BuildingCollider = memo(function BuildingCollider({ id, x, y, w, h, building, depth }: Pick<LayoutElement, 'id' | 'x' | 'y' | 'w' | 'h'> & { building: NonNullable<LayoutElement['params']['building']>; depth: number }) {
+  const lines = useMemo(() => buildingSurfaces(building, w, h)
+    .map(points => points.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')).join('|'), [building, w, h])
+  if (!lines) return null
+  return <div data-chicken-id={id} data-chicken-depth={depth} data-chicken-world-box={`${x},${y},${w},${h}`} data-chicken-line={lines} data-chicken-nearby className="absolute" />
+})
+
 // a closed outline (a Chão or Parede, or any "Objeto duro"): the engine reads its edges as floors (facing up),
 // walls (steep) and ceilings (facing down); `data-chicken-hard` makes all of them solid and blocks walking through
 const ShapeCollider = memo(function ShapeCollider({ id, outline, hard, depth }: { id: string; outline: [number, number][]; hard: boolean; depth: number }) {
@@ -128,6 +143,24 @@ const ShapeCollider = memo(function ShapeCollider({ id, outline, hard, depth }: 
   }, [outline])
   return <div data-chicken-id={id} data-chicken-depth={depth} data-chicken-world-box={box} data-chicken-shape={shape} data-chicken-hard={hard || undefined} data-chicken-nearby className="absolute" />
 })
+
+// The rooms of the houses with someone of this browser inside (lib/pigchicken/house-rooms.ts): a hard ground floor
+// and the storeys' one-way floors, read only by the engines of whoever is in that room (`data-chicken-room`; its
+// walls and ceiling are her engine's limits, see parquinho.tsx). Nothing in front hides them.
+const ROOM_DEPTH = 1e9
+function HouseRoomColliders({ elements }: { elements: LayoutElement[] }) {
+  const open = useSyncExternalStore(houseRoomsStore.subscribe, () => houseRoomsStore.open, () => houseRoomsStore.open)
+  const rooms = useMemo(() => (open.size ? houseRooms(elements).filter(room => open.has(room.id)) : []), [elements, open])
+  return <>{rooms.map(room => {
+    const { l, t, r, b } = room.room, w = roomFloorSlab(room)
+    return [
+      <div key={`${room.id}:ground`} data-chicken-room={room.id} data-chicken-id={`room:${room.id}:ground`} data-chicken-depth={ROOM_DEPTH}
+        data-chicken-world-box={`${w.l},${w.t},${w.r - w.l},${w.b - w.t}`} data-chicken-shape={`0,0 ${w.r - w.l},0 ${w.r - w.l},${w.b - w.t} 0,${w.b - w.t}`} data-chicken-hard data-chicken-nearby className="absolute" />,
+      room.floors.length > 0 && <div key={`${room.id}:floors`} data-chicken-room={room.id} data-chicken-id={`room:${room.id}:floors`} data-chicken-depth={ROOM_DEPTH}
+        data-chicken-world-box={`${l},${t},${r - l},${b - t}`} data-chicken-line={room.floors.map(y => `0,${(y - t).toFixed(2)} ${(r - l).toFixed(2)},${(y - t).toFixed(2)}`).join("|")} data-chicken-nearby className="absolute" />,
+    ]
+  })}</>
+}
 
 // what she stands on: one invisible box per solid element (its turned bounds); a sloped one is a ramp, a one-way
 // floor along its upper edges. The ids stay the elements' own, so standing on one survives edits.
@@ -149,6 +182,9 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
             data-chicken-bounce={`${el.params.trampoline.strength},${el.params.trampoline.angle}`} data-chicken-nearby className="absolute" />
         }
         if (el.kind === "house" && el.params.house) return <HouseCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} house={el.params.house} depth={depth} />
+        if (el.kind === "building" && el.params.building) return <BuildingCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} building={el.params.building} depth={depth} />
+        // the Mureta com cerca: a floating floor along the top of its wall, under the balustrade
+        if (el.kind === "balustrade") return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${el.x},${el.y},${el.w},${el.h}`} data-chicken-line={`0,${BALUSTRADE_FLOOR} ${el.w},${BALUSTRADE_FLOOR}`} data-chicken-nearby className="absolute" />
         const outline = elementOutline(el) ?? (isHard(el) ? elementCorners(el) : null)
         if (outline) return <ShapeCollider key={el.id} id={el.id} outline={outline} hard={isHard(el)} depth={depth} />
         const b = elementBounds(el)
@@ -156,17 +192,19 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
         return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${b.x},${b.y},${b.w},${b.h}`} data-chicken-line={line ?? undefined} className="absolute" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />
       })}
       <PowerFloors elements={elements} />
+      <HouseRoomColliders elements={elements} />
     </div>
   )
 })
 
 // a full-screen layer above or below the chicken whose world element follows the camera
 // filter: the sky's light on the scenery (Configurações do Pátio → Céu e luz)
+// (its filter changes softly: the scenery goes dark while someone is inside a house, components/pigchicken/house-dusk.tsx)
 export function FollowLayer({ z, opacity = 1, width, filter = "none", children }: { z: number; opacity?: number; width: number; filter?: string; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => (ref.current ? followCamera(ref.current) : undefined), [])
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: z, opacity, filter: filter === "none" ? undefined : filter }}>
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: z, opacity, filter: filter === "none" ? undefined : filter, transition: "filter 280ms ease" }}>
       <div ref={ref} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
         {children}
       </div>

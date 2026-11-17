@@ -59,8 +59,8 @@ test('an unsaved lobby counts 30 days from its last edit or play; server errors 
   assert.equal(online.unsavedDaysLeft({ createdAt: iso(now - 40 * day), lastEditedAt: iso(now - 10 * day), lastPlayedAt: iso(now - 2 * day) }, now), 28)
   assert.equal(online.unsavedDaysLeft({ createdAt: iso(now - 90 * day), lastEditedAt: iso(now - 90 * day), lastPlayedAt: null }, now), 0)
   const err = (message, code = 'P0001') => ({ message, code })
-  assert.equal(online.isPatioConflict(err('PATIO_CONFLICT', '40001')), true)
-  assert.match(online.patioErrorMessage(err('PATIO_CONFLICT', '40001')), /outra versão/)
+  assert.equal(online.isPatioConflict(err('PATIO_CONFLICT', 'PT409')), true)
+  assert.match(online.patioErrorMessage(err('PATIO_CONFLICT', 'PT409')), /outra versão/)
   assert.match(online.patioErrorMessage(err('Could not find the function public.patio_lobby_save', 'PGRST202')), /migração/)
   assert.match(online.patioErrorMessage(new TypeError('Failed to fetch')), /Sem conexão/)
   assert.match(online.patioErrorMessage(err('PATIO_RENAME_FORBIDDEN', '42501')), /padrinho/)
@@ -75,4 +75,13 @@ test('live player counts reach the Abrir lists through one small store', () => {
   live.setPatioLiveCounts({ a: 4 })
   assert.equal(calls, 1)
   assert.deepEqual(live.getPatioLiveCounts(), { a: 4 })
+})
+
+// SQLSTATE 40001 makes PostgREST retry the whole RPC with no limit: a conflict raised with it loops inside the server
+// (16/11: hundreds of patio_lobby_save calls a second). Conflicts use PT409 since 202611160002_conflict_errcode.sql.
+test('no migration after the conflict fix raises SQLSTATE 40001 again', () => {
+  const fs = require('node:fs'), path = require('node:path')
+  const dir = path.join(__dirname, '../supabase/migrations')
+  const later = fs.readdirSync(dir).filter(f => f.endsWith('.sql') && f > '202611160002')
+  for (const f of later) assert.doesNotMatch(fs.readFileSync(path.join(dir, f), 'utf8'), /errcode\s*=\s*'40001'/i, f)
 })
