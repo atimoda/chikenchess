@@ -12,7 +12,7 @@ import { WORLD_GROUND_Y } from './world'
 type El = Pick<LayoutElement, 'id' | 'kind' | 'x' | 'y' | 'w' | 'h' | 'rot' | 'hidden' | 'opacity' | 'depth' | 'backdrop' | 'params'>
 
 // what counts as an object, and how much of its top the birds use (% of its width, centred)
-const OBJECTS: Partial<Record<ElementKind, number>> = { pole: 50, tower: 40, chalkboard: 90, gong: 60, jukebox: 70, chest: 70, dummy: 60 }
+const OBJECTS: Partial<Record<ElementKind, number>> = { pole: 50, tower: 40, chalkboard: 90, gong: 60, jukebox: 70, vitrola: 70, chest: 70, dummy: 60 }
 const PLATFORMS: ElementKind[] = ['platform', 'terrace', 'pillar', 'wall']
 export const PERCH_PLACE = {
   minLen: 14, // px: a line shorter than this holds no bird

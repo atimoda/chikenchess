@@ -59,6 +59,7 @@
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
+| Pátio: fases de notas por zona (pedido, várias zonas ao mesmo tempo, recusa, meta de precisão e corações, parar), Jukebox, Vitrola toca-discos e Gongo como sequenciadores, Debug da fase de notas | [Fases de notas por zona](docs/mechanics/patio/note-stages.md) |
 | Pátio: zonas (nome, gravidade dos planetas, câmera lenta e raio-x), camadas (olho), tags das zonas, música ambiente (drone e percussão), zonas das cenas, paredes com vida | [Zonas e camadas](docs/mechanics/patio/zones.md) |
 | Pátio: ritmos das zonas: microtempo (swing) de cada ritmo, timbres gravados, variações, grade com notas arrastáveis, blocos de variação, knobs do painel | [Ritmos das zonas](docs/mechanics/patio/rhythms.md) |
 | Admin e catálogos locais | [Admin](docs/mechanics/admin.md) |

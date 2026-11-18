@@ -111,6 +111,16 @@ test('a note nobody rebates is missed; the peck only cancels it', () => {
   assert.equal(p.noteShots.length, 0)
 })
 
+test("the Filhote's piu cancels a note like the peck", () => {
+  const c = createCombat()
+  c.fireNoteShot({ x: 400, y: -400, vx: 0, vy: 0, midi: 62, color: '#fff', size: 8, glow: 0.5, arriveAt: c.music.time + 1, source: 'test' })
+  c.bullets.push({ x: 402, y: -400, vx: 0, vy: 0, dist: 0, damage: 0, pierce: 0, hits: new Set(), size: 4, drop: 0, range: 9999, item: 'piu', t: 0, explode: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0, ring: 0, ghost: true, by: 'p2' })
+  step(c)
+  assert.deepEqual(c.noteEvents.map(e => [e.kind, e.player]), [['parry', 'p2']])
+  assert.equal(c.noteShots.length, 0)
+  assert.ok(!c.bullets.some(b => b.item === 'piu'), 'the piu stops there')
+})
+
 test('a rebated note that hits an alien fills its harmony: two of them turn it into a bird', () => {
   const c = createCombat()
   c.targets.push({ id: 99, kind: 'alien', home: 0, x: 400, y: 20, w: 48, h: 40, hp: 30, maxHp: 30, flash: 0, wobble: 0, vx: 0, deadT: 0, face: 1, state: 'fly', animT: 0, data: { kind: 'temple', species: 'jelly', color: '#c77dff' } })
@@ -144,33 +154,34 @@ test('the five movements: in to touch her, across, round her, in waves, or still
   assert.ok(pathAt(still, 5, 0.5).dy < -500, 'and off it goes when its notes are done')
 })
 
-function stageRig(over = {}) {
+const stageReq = (over = {}) => ({ song: TEST_SONG, owner: 'p1', zone: 'z', zoneName: 'Z', by: 'jukebox', goal: stageLib.GOAL_DEFAULT, record: true, again: '', ...over })
+function stageRig(over = {}, req = {}) {
   const st = createNoteStage()
   const conductor = music.createConductor()
   const targets = [], fired = [], sounds = [], events = []
   const io = (extra = {}) => ({
     targets, music: conductor, sceneL: 1920, sceneW: 1920, groundY: 930, inside: true, center: { x: 2900, y: 860 },
-    discHit: false, resetHit: false, busy: false, events: events.splice(0), fire: n => fired.push(n), clearShots() {},
+    resetHit: false, events: events.splice(0), fire: n => fired.push(n), clearShots() {},
     incoming: 0, fx: { burst() {}, text() {} }, push() {}, sound: s => sounds.push(s), ...over, ...extra,
   })
   const tick = (dt = 1 / 60, extra = {}) => {
-    conductor.setZone(st.music?.zone ?? conductor.zone)
     conductor.step(dt)
     st.step(dt, io(extra))
   }
-  return { st, conductor, targets, fired, sounds, events, tick }
+  const begin = (r = {}) => st.start(io(), stageReq({ ...req, ...r }))
+  return { st, conductor, targets, fired, sounds, events, tick, begin, io }
 }
 
 test('the disc plays the song: its clock starts after the intro, aliens come in and fire their notes in time', () => {
-  const { st, conductor, targets, fired, tick } = stageRig()
-  tick(1 / 60, { discHit: true })
+  const { st, conductor, targets, fired, tick, begin } = stageRig()
+  begin(); tick()
   assert.equal(st.state.phase, 'playing')
   for (let i = 0; i < 60 * 6 && Number.isNaN(st.state.t0); i++) tick()
-  assert.equal(conductor.zone.id, TEST_SONG.music.zone.id)
+  assert.equal(st.clock.zone.id, TEST_SONG.music.zone.id)
   const spb = 60 / TEST_SONG.music.zone.bpm
   // beat 0 is a bar line, after the intro bars
   while (conductor.time < st.state.t0) tick()
-  const into = conductor.beat % 4
+  const into = st.clock.beat % 4
   assert.ok(into < (1 / 60) / spb + 1e-6 || 4 - into < 1e-6, `on the bar line (${into})`)
   // run the song; every note it fires should reach the ring in its lane when the song wants it
   const first = TEST_SONG.aliens[0]
@@ -190,7 +201,7 @@ test('the disc plays the song: its clock starts after the intro, aliens come in 
 test("a note's flight takes it to the ring, in the lane of its pitch, at its time", () => {
   const firedAt = []
   const rig = stageRig({ fire: n => { firedAt.push(rig.conductor.time); rig.fired.push(n) } })
-  rig.tick(1 / 60, { discHit: true })
+  rig.begin(); rig.tick()
   while (rig.fired.length < 6) rig.tick()
   rig.fired.forEach((n, i) => {
     const t = n.arriveAt - firedAt[i]
@@ -202,8 +213,8 @@ test("a note's flight takes it to the ring, in the lane of its pitch, at its tim
 })
 
 test('rebates score with the combo, misses lower the afinação, an alien that comes in touches her', () => {
-  const { st, conductor, targets, fired, events, tick } = stageRig()
-  tick(1 / 60, { discHit: true })
+  const { st, conductor, targets, fired, events, tick, begin } = stageRig()
+  begin(); tick()
   while (fired.length < 3) tick()
   const shot = n => ({ ...n, id: 0, state: 'incoming', t: 0 })
   events.push({ kind: 'rebate', shot: shot(fired[0]), grade: 'perfect', off: 0, player: 'p1', midi: fired[0].midi })
@@ -224,8 +235,8 @@ test('rebates score with the combo, misses lower the afinação, an alien that c
 })
 
 test('aliens shot down or turned into birds score and fire no more; the song ends when they are all gone', () => {
-  const { st, conductor, targets, fired, tick } = stageRig()
-  tick(1 / 60, { discHit: true })
+  const { st, conductor, targets, fired, tick, begin } = stageRig()
+  begin(); tick()
   const spb = 60 / TEST_SONG.music.zone.bpm
   while (st.state.aliens.length === 0) tick()
   const a = targets.find(t => t.id === st.state.aliens[0].id)
@@ -245,29 +256,136 @@ test('aliens shot down or turned into birds score and fire no more; the song end
   assert.ok(conductor.time > st.state.t0 + 30 * spb)
 })
 
-test('notes that get through can lose the song; the reset stone stops it; the campaign keeps the disc quiet', () => {
-  const { st, fired, events, tick } = stageRig()
-  tick(1 / 60, { discHit: true })
+test('notes that get through can lose the song; the reset stone stops it', () => {
+  const { st, fired, events, tick, begin } = stageRig()
+  begin(); tick()
   while (fired.length < 1) tick()
   for (let k = 0; k < Math.ceil(1 / stageLib.AFINA_MISS); k++) events.push({ kind: 'miss', shot: { ...fired[0], id: 0, state: 'missed', t: 0 } })
   tick()
   assert.equal(st.state.phase, 'failed')
+  assert.equal(st.takeResult().end, 'afina')
   const b = stageRig()
-  b.tick(1 / 60, { discHit: true })
+  b.begin(); b.tick()
   for (let k = 0; k < stageLib.RESET_NEED; k++) b.tick(1 / 60, { resetHit: true })
   assert.equal(b.st.state.phase, 'idle')
-  const c = stageRig()
-  c.tick(1 / 60, { discHit: true, busy: true })
-  assert.equal(c.st.state.phase, 'idle')
-  assert.ok(c.sounds.some(s => s.kind === 'dull'))
+  const r = b.st.takeResult()
+  assert.equal(r.end, 'stopped'); assert.equal(r.ok, false)
+  assert.equal(b.st.takeResult(), null, 'handed over once')
+})
+
+test('the hearts of the goal: a touch takes one (then none for a moment); none left loses the song', () => {
+  const { st, conductor, tick, begin, sounds } = stageRig({}, { goal: { minAccuracy: 0, hearts: 3 } })
+  begin(); tick()
+  assert.equal(st.state.hearts, 3)
+  const spb = 60 / TEST_SONG.music.zone.bpm
+  while (Number.isNaN(st.state.t0)) tick()
+  while (conductor.time < st.state.t0 + (6 + stageLib.AFTER_BEATS) * spb + 0.05) tick()
+  assert.equal(st.state.hearts, 2)
+  assert.ok(st.state.invuln > 0)
+  assert.ok(sounds.some(s => s.kind === 'hurt'))
+
+  const one = stageRig({}, { goal: { minAccuracy: 0, hearts: 1 } })
+  one.begin(); one.tick()
+  for (let i = 0; i < 60 * 30 && one.st.state.phase === 'playing'; i++) one.tick()
+  assert.equal(one.st.state.phase, 'failed')
+  const r = one.st.takeResult()
+  assert.equal(r.end, 'hearts'); assert.equal(r.ok, false)
+  assert.equal(one.st.state.banner.sub, 'Os aliens te derrubaram.')
+})
+
+test('the least accuracy of the goal: a song played to the end below it is lost', () => {
+  const play = goal => {
+    const rig = stageRig({}, { goal })
+    rig.begin(); rig.tick()
+    for (let i = 0; i < 60 * 40 && rig.st.state.phase === 'playing'; i++) {
+      rig.targets.forEach(t => { if (t.data?.note && t.state !== 'converted') { t.state = 'converted'; t.deadT = 0.001 } })
+      rig.tick()
+    }
+    return rig.st.takeResult()
+  }
+  const easy = play({ minAccuracy: 0, hearts: 3 })
+  assert.equal(easy.ok, true); assert.equal(easy.end, 'done')
+  const hard = play({ minAccuracy: 0.5, hearts: 3 })
+  assert.equal(hard.ok, false); assert.equal(hard.end, 'accuracy')
+})
+
+test('leaving the zone of the song for a while loses it; coming back in time keeps it', () => {
+  const { st, tick, begin } = stageRig()
+  begin(); tick()
+  for (let t = 0; t < 2; t += 1 / 60) tick(1 / 60, { inside: false })
+  tick()
+  assert.equal(st.state.phase, 'playing', 'back in time')
+  for (let t = 0; t < 2.6; t += 1 / 60) tick(1 / 60, { inside: false })
+  assert.equal(st.state.phase, 'failed')
+  assert.equal(st.takeResult().end, 'left')
+})
+
+test("a stage keeps its own zone's clock, on the Pátio's time", () => {
+  const { st, conductor, tick, begin } = stageRig()
+  const zoneBefore = conductor.zone.id
+  begin()
+  for (let i = 0; i < 60 * 8 && Number.isNaN(st.state.t0); i++) tick()
+  assert.equal(conductor.zone.id, zoneBefore, "the Pátio's clock is left alone")
+  assert.equal(st.clock.zone.id, TEST_SONG.music.zone.id)
+  assert.ok(near(st.clock.time, conductor.time, 1e-9))
+  // a snapshot carries the beat over
+  const c2 = music.createConductor()
+  c2.restore(st.clock.snapshot())
+  assert.equal(c2.zone.id, st.clock.zone.id)
+  assert.ok(near(c2.beat, st.clock.beat, 1e-9))
+})
+
+const { createNoteStages } = loadTs('lib/pigchicken/note-stages.ts')
+function stagesRig() {
+  const stages = createNoteStages()
+  const conductor = music.createConductor()
+  const targets = []
+  const ioOf = () => ({
+    targets, music: conductor, sceneL: 1920, sceneW: 1920, groundY: 930, inside: true, center: { x: 2900, y: 860 },
+    resetHit: false, events: [], fire() {}, clearShots() {}, incoming: 0, fx: { burst() {}, text() {} }, push() {}, sound() {},
+  })
+  const tick = (dt = 1 / 60) => { conductor.step(dt); stages.step(dt, ioOf) }
+  return { stages, tick }
+}
+
+test('one stage per zone, several zones at once; a draft takes the place of a draft; halts by zone or device, never a bomb', () => {
+  const { stages, tick } = stagesRig()
+  assert.equal(stages.request(stageReq({ zone: 'a', device: 'jukebox:1' })), 'ok')
+  assert.equal(stages.request(stageReq({ zone: 'a', device: 'vitrola:2' })), 'busy', 'queued there already')
+  tick()
+  assert.equal(stages.request(stageReq({ zone: 'a' })), 'busy', 'playing there')
+  assert.equal(stages.request(stageReq({ zone: 'b', owner: 'p2', by: 'vitrola', device: 'vitrola:2' })), 'ok')
+  assert.equal(stages.request(stageReq({ zone: 'c', by: 'bomba' }), true), 'busy', 'blocked')
+  tick()
+  assert.equal(stages.playing.length, 2)
+  assert.notEqual(stages.at('a').source, stages.at('b').source)
+  assert.equal(stages.ownedBy('p2'), stages.at('b'))
+  assert.equal(stages.bySource(stages.at('a').source), stages.at('a'))
+  // halt by device
+  stages.halt({ device: 'jukebox:1' }); tick()
+  assert.equal(stages.at('a'), null)
+  const res = stages.takeResults()
+  assert.equal(res.length, 1); assert.equal(res[0].end, 'stopped'); assert.equal(res[0].request.zone, 'a')
+  // a bomb's song is never stopped from outside
+  assert.equal(stages.request(stageReq({ zone: 'c', by: 'bomba' })), 'ok'); tick()
+  stages.halt({ zone: 'c' }); tick()
+  assert.ok(stages.at('c'), 'still playing')
+  // the editor's draft takes the place of its own draft
+  assert.equal(stages.request(stageReq({ zone: 'd', by: 'editor', draft: true, record: false })), 'ok'); tick()
+  const first = stages.at('d')
+  assert.equal(stages.request(stageReq({ zone: 'd', by: 'editor', draft: true, record: false, from: 8 })), 'ok'); tick()
+  assert.notEqual(stages.at('d'), first)
+  assert.equal(stages.at('d').state.from, 8)
+  stages.halt({ draft: true }); tick()
+  assert.equal(stages.at('d'), null)
 })
 
 test("the stage's note rule: the fan by where the note is around her, or the note sequenced", () => {
-  const { st, tick } = stageRig()
-  tick(1 / 60, { discHit: true })
+  const { st, tick, begin } = stageRig()
+  begin(); tick()
   const c = st.state.center
   const ang = fan.fanAngleOf(TEST_SONG.fan, 81)
-  const shot = { x: c.x + Math.cos(ang) * 70, y: c.y + Math.sin(ang) * 70, midi: 62, source: 'stage' }
+  const shot = { x: c.x + Math.cos(ang) * 70, y: c.y + Math.sin(ang) * 70, midi: 62, source: st.source }
   assert.equal(st.noteFor(shot), 81)
   assert.equal(st.noteFor({ ...shot, source: 'other' }), null)
   assert.equal(accuracy({ perfect: 2, good: 1, fora: 1, miss: 1 }, 5), (2 + 0.6 + 0.2) / 5)

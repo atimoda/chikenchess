@@ -1,7 +1,8 @@
 "use client"
 
-// The jukebox's panel (it opens when she strikes the jukebox in the temple): a grid of covers, the old campaign's
-// disc first, then the songs; the one picked is the one the gong starts. Under the grid, the picked one's numbers
+// The panel of a Jukebox or a Vitrola toca-discos (it opens when she strikes one): a grid of covers, the old
+// campaign's disc first, then the songs; the one picked is that sequencer's own, the one its Tocar (or the Gongo of
+// its zone) plays. Under the grid, the picked one's numbers
 // (bpm, key, length, record) and its buttons: Tocar (now), Editar (the timeline), Salvar como, Nova música, and for
 // the ones made here their cover's style and Excluir; Gerar de MIDI opens the generator. A line says where the songs are kept
 // (this browser, or the account), and the admin can list everyone's songs, hear one or copy it.
@@ -13,7 +14,7 @@ import { listAllSongs, songApi, songErrorMessage, subscribeSyncState, syncState,
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
 import {
-  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, deleteSong, keyName, loadLibrary, newSong, nowPlaying, openMidiGenerator, openSongEditor, pickSong, playDraft, playSongNow, saveSongAs, stopSongNow,
+  CAMPAIGN, CAMPAIGN_ID, COVER_PALETTES, COVER_STYLES, clock, currentJukebox, deleteSong, keyName, loadLibrary, newSong, openMidiGenerator, openSongEditor, pickOf, pickSong, playDraft, playSongNow, playingOn, saveSongAs, stopSongNow,
   songSeconds, subscribeLibrary, updateSong, type Library, type LibrarySong,
 } from "@/lib/pigchicken/song-library"
 import { loadCatalog } from "@/lib/pigchicken/alien-catalog"
@@ -42,12 +43,13 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
   const [lib, setLib] = useState<Library>(() => loadLibrary())
   const [naming, setNaming] = useState<string | null>(null)
   useEffect(() => subscribeLibrary(setLib), [])
-  // a song (or the campaign) playing: Tocar turns into Parar
-  const [playing, setPlaying] = useState(() => !!nowPlaying.id || nowPlaying.campaign)
+  // the sequencer whose panel this is; its song (or the campaign) playing: Tocar turns into Parar
+  const [device] = useState(currentJukebox)
+  const [playing, setPlaying] = useState(() => playingOn(device))
   useEffect(() => {
-    const id = window.setInterval(() => setPlaying(!!nowPlaying.id || nowPlaying.campaign), 200)
+    const id = window.setInterval(() => setPlaying(playingOn(device)), 200)
     return () => window.clearInterval(id)
-  }, [])
+  }, [device])
   const online = useOnline()
   const isAdmin = isAdminUser(online.user)
   const [sync, setSync] = useState(syncState)
@@ -65,9 +67,10 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
     setBusy(`${s.ownerId}/${s.id}`)
     try { const got = await songApi.get(s.id, s.ownerId); if (!got?.song) setAllNote("Essa música não está mais lá."); return got?.song ?? null } catch (e) { setAllNote(songErrorMessage(e)); return null } finally { setBusy(null) }
   }
-  const picked = lib.songs.find(s => s.id === lib.picked) ?? null
-  const isCampaign = lib.picked === CAMPAIGN_ID
-  const record = lib.records[lib.picked]
+  const pick = pickOf(lib, device)
+  const picked = lib.songs.find(s => s.id === pick) ?? null
+  const isCampaign = pick === CAMPAIGN_ID
+  const record = lib.records[pick]
 
   const stats: [string, string][] = isCampaign
     ? [["Fases", String(STAGES.length)], ["bpm", `${STAGE_MUSIC[0].zone.bpm}–${STAGE_MUSIC[STAGE_MUSIC.length - 1].zone.bpm}`], ["Tom", "Ré, Lá, Dó, Sol"], ["Recorde", "—"]]
@@ -95,11 +98,11 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <FloatingPanel id="pigchicken-jukebox" aria-label="Jukebox" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(520, vw - 24) - 12), y: 64, w: Math.min(520, vw - 24), h: Math.min(720, vh - 104) })} minW={300}
+    <FloatingPanel id="pigchicken-jukebox" aria-label={device?.startsWith("vitrola:") ? "Vitrola toca-discos" : "Jukebox"} initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(520, vw - 24) - 12), y: 64, w: Math.min(520, vw - 24), h: Math.min(720, vh - 104) })} minW={300}
       className="rounded-[22px] border-2 bg-[#07130d] font-mono text-xs text-[#dfe8df] shadow-[0_0_24px_rgba(57,255,136,0.25),0_20px_60px_rgba(0,0,0,0.6)]" style={{ borderColor: NEON }}>
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <Disc3 className="h-4 w-4" style={{ color: NEON }} />
-        <h2 className="min-w-0 flex-1 truncate text-sm text-white">Jukebox</h2>
+        <h2 className="min-w-0 flex-1 truncate text-sm text-white">{device?.startsWith("vitrola:") ? "Vitrola toca-discos" : "Jukebox"}</h2>
         <button type="button" aria-label="Fechar jukebox" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -116,9 +119,9 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
         {/* the screen: a grid of covers */}
         <div role="listbox" aria-label="Músicas" className="m-3 grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2 rounded-xl border border-white/10 bg-black/60 p-2">
           {[null, ...lib.songs].map(s => {
-            const id = s?.id ?? CAMPAIGN_ID, on = id === lib.picked
+            const id = s?.id ?? CAMPAIGN_ID, on = id === pick
             return (
-              <button key={id} type="button" role="option" aria-selected={on} onClick={() => { pickSong(id); setNaming(null) }}
+              <button key={id} type="button" role="option" aria-selected={on} onClick={() => { pickSong(id, device); setNaming(null) }}
                 className={cn("grid min-w-0 gap-1 rounded-lg border p-1 text-left transition-colors", on ? "bg-white/5" : "border-transparent hover:border-white/25")}
                 style={on ? { borderColor: s?.music.zone.color ?? CAMPAIGN.color } : undefined}>
                 <Cover song={s} size={88} className="w-full" />
@@ -139,8 +142,8 @@ export function JukeboxPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex flex-wrap gap-1.5 px-4 pb-3">
           {playing
-            ? <button type="button" onClick={() => { stopSongNow(); setPlaying(false) }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: "#ff6b5b" }}><Square className="h-4 w-4" />Parar</button>
-            : <button type="button" onClick={() => { playSongNow(lib.picked); onClose() }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: NEON }}><Play className="h-4 w-4" />Tocar</button>}
+            ? <button type="button" onClick={() => { stopSongNow(device); setPlaying(false) }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: "#ff6b5b" }}><Square className="h-4 w-4" />Parar</button>
+            : <button type="button" onClick={() => { playSongNow(pick, device); onClose() }} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c]" style={{ background: NEON }}><Play className="h-4 w-4" />Tocar</button>}
           {!isCampaign && <button type="button" onClick={() => setNaming(n => (n === null ? `${picked?.name ?? "Música"} 2` : null))} aria-expanded={naming !== null} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Save className="h-4 w-4" />Salvar como</button>}
           {picked && <button type="button" onClick={() => openSongEditor(picked.id)} title={picked.builtin ? "Esta é do jogo: salve as mudanças com outro nome" : undefined} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Pencil className="h-4 w-4" />Editar</button>}
           <button type="button" onClick={() => openSongEditor(newSong(lib).id)} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary"><Plus className="h-4 w-4" />Nova música</button>

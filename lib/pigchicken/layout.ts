@@ -20,7 +20,7 @@ import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge } from './village
 import { VILLAGE_GROUND_ID, defaultSurface, fitSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
 import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from './power-lines'
 import { BACKDROP_DEPTH, isBackdropLayer, type BackdropLayerId } from './backdrop-layers'
-import { GONG_BOX, JUKEBOX_BOX, RESET_STONE_BOX, TEMPLE_SPOTS, defaultGong, normalizeGong, type GongParams } from './gong'
+import { GONG_BOX, JUKEBOX_BOX, RESET_STONE_BOX, TEMPLE_SPOTS, VITROLA_BOX, defaultGong, defaultPlayer, normalizeGong, normalizePlayer, type GongParams, type PlayerParams } from './gong'
 import { BALUSTRADE_FLOOR, BALUSTRADE_SIZE, BUILDING_SIZE, buildingSurfaces, defaultBalustrade, defaultBuilding, normalizeBalustrade, normalizeBuilding, type BalustradeParams, type BuildingParams } from './buildings'
 import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
 import { CHEST_BOX, defaultChest, normalizeChest, type ChestParams } from './chests'
@@ -63,7 +63,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'building', 'balustrade', 'resetstone'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'building', 'balustrade', 'resetstone'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -93,7 +93,8 @@ export type ElementParams = {
   lanes?: LanesParams // Faixas fixas
   surface?: SurfaceParams // Chão (biome) and Parede (style): the outline's points
   power?: PowerParams // Poste de energia and Torre de transmissão: model, line, wires
-  gong?: GongParams // Gongo: its song, the strikes to start and stop it, its title (or the Templo's campaign)
+  gong?: GongParams // Gongo: the strikes to start and stop the song of its zone's sequencer (or the Templo's campaign)
+  player?: PlayerParams // Jukebox and Vitrola toca-discos: the goal of the songs they play (least accuracy, hearts)
   building?: BuildingParams // Prédio: its roof, storeys, columns, doors, lanterns (lib/pigchicken/buildings.ts)
   balustrade?: BalustradeParams // Mureta com cerca: the courtyard's stone floor under it
   chalkboard?: ChalkboardParams // Quadro de lousa: its text and the ghost's move
@@ -169,11 +170,13 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   wall: { label: 'Parede', group: 'Chãos e paredes', w: 72, h: 320, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 12, minH: 24 },
   pole: { label: 'Poste de energia', group: 'Energia', w: 120, h: 440, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 16, minH: 60 },
   tower: { label: 'Torre de transmissão', group: 'Energia', w: 380, h: 920, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 100 },
-  // the guitar hero mode anywhere: the Gongo plays its song after its strikes, the Jukebox lets her pick one
+  // the guitar hero mode anywhere: the Jukebox and the Vitrola let her pick a song and play it; the Gongo presses
+  // Tocar on the one of its zone after its strikes
   gong: { label: 'Gongo', group: 'Música', ...GONG_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GONG_BOX.w, minH: GONG_BOX.h },
   // a green chalkboard with a text in chalk; its ghost chicken shows a move while a player is near (chalkboard.ts)
   chalkboard: { label: 'Quadro de lousa', group: 'Treino', w: 420, h: 260, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 80 },
-  jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
+  jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
+  vitrola: { label: 'Vitrola toca-discos', group: 'Música', ...VITROLA_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: VITROLA_BOX.w, minH: VITROLA_BOX.h },
   // the Recomeçar stone: strikes end the Templo's campaign (or the song playing) and clear its points
   resetstone: { label: 'Pedra Recomeçar', group: 'Música', ...RESET_STONE_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: RESET_STONE_BOX.w, minH: RESET_STONE_BOX.h },
   // a chest the players open with Pegar (lib/pigchicken/chests.ts): free, with a key or by merit (the souls in their Gaiolas)
@@ -184,7 +187,7 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   drumkit: { label: 'Bateria', group: 'Música', ...DRUMKIT_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: DRUMKIT_BOX.w, minH: DRUMKIT_BOX.h },
 }
 // the Gongo, the Jukebox and the Baú keep their art's size
-const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'resetstone' || kind === 'chest' || isFixedKind(kind)
+const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'vitrola' || kind === 'resetstone' || kind === 'chest' || isFixedKind(kind)
 // Postes and Torres: their wires join the next one of the same model and line (lib/pigchicken/power-lines.ts)
 export const isPowerElement = (kind: ElementKind): kind is 'pole' | 'tower' => kind === 'pole' || kind === 'tower'
 // what may stand in a parallax depth of its own: the scenery (not the game's things, the music or the entry)
@@ -233,6 +236,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (isSurfaceElement(kind)) return { surface: defaultSurface(kind) }
   if (isPowerElement(kind)) return { power: defaultPower(kind) }
   if (kind === 'gong') return { gong: defaultGong() }
+  if (kind === 'jukebox' || kind === 'vitrola') return { player: defaultPlayer() }
   if (kind === 'chalkboard') return { chalkboard: defaultChalkboard() }
   if (kind === 'chest') return { chest: defaultChest() }
   if (isFixedKind(kind)) return { flip: false }
@@ -555,6 +559,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.power = normalizePower(kind, p.power)
   } else if (kind === 'gong') {
     params.gong = normalizeGong(p.gong)
+  } else if (kind === 'jukebox' || kind === 'vitrola') {
+    params.player = normalizePlayer(p.player)
   } else if (kind === 'chalkboard') {
     params.chalkboard = normalizeChalkboard(p.chalkboard)
   } else if (kind === 'chest') {

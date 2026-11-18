@@ -106,25 +106,22 @@ test('pauses and lines are kept when saved, and cleaned', () => {
 // the stage, driven like the game
 function rig(sg) {
   const st = stageLib.createNoteStage()
-  st.setSongs([sg])
   const conductor = music.createConductor()
   const targets = [], fired = [], sounds = []
-  const tick = (dt = 1 / 60, extra = {}) => {
-    conductor.setZone(st.music?.zone ?? conductor.zone)
-    conductor.step(dt)
-    st.step(dt, {
-      targets, music: conductor, sceneL: 1920, sceneW: 1920, groundY: 930, inside: true, center: { x: 2900, y: 860 },
-      discHit: false, resetHit: false, busy: false, events: [], fire: n => fired.push(n), clearShots() {},
-      incoming: 0, fx: { burst() {}, text() {} }, push() {}, sound: s => sounds.push(s), ...extra,
-    })
-  }
-  return { st, conductor, targets, fired, sounds, tick }
+  const io = (extra = {}) => ({
+    targets, music: conductor, sceneL: 1920, sceneW: 1920, groundY: 930, inside: true, center: { x: 2900, y: 860 },
+    resetHit: false, events: [], fire: n => fired.push(n), clearShots() {},
+    incoming: 0, fx: { burst() {}, text() {} }, push() {}, sound: s => sounds.push(s), ...extra,
+  })
+  const tick = (dt = 1 / 60, extra = {}) => { conductor.step(dt); st.step(dt, io(extra)) }
+  const begin = (over = {}) => st.start(io(), { song: sg, owner: 'p1', zone: 'z', zoneName: 'Z', by: 'jukebox', goal: stageLib.GOAL_DEFAULT, record: true, again: '', ...over })
+  return { st, conductor, targets, fired, sounds, tick, begin }
 }
 
 test('the lines are said on their beat, typed letter by letter with a blip; a silent pause quiets the background', () => {
   const sg = { ...song(), aliens: [{ species: 'jelly', notes: [{ beat: 12, midi: 62 }] }], pauses: [{ beat: 0, bars: 2, silent: true }], lines: [{ beat: 1, who: 'gongo', text: 'Bem-vinda ao templo', secs: 3, place: 'balao', blip: true }] }
   const r = rig(sg)
-  r.tick(1 / 60, { discHit: true })
+  r.begin(); r.tick()
   for (let i = 0; i < 60 * 8 && Number.isNaN(r.st.state.t0); i++) r.tick()
   const spb = 60 / sg.music.zone.bpm
   while (r.conductor.time < r.st.state.t0 + 0.5 * spb) r.tick()
@@ -142,8 +139,8 @@ test('the lines are said on their beat, typed letter by letter with a blip; a si
 
 test('"Tocar daqui": the draft from a bar, the aliens before it don\'t come, and no record', () => {
   const sg = song()
-  const r = rig(lib.BUILTIN_SONGS[0])
-  r.st.playDraft(sg, 17.5) // from bar 5 (beat 16)
+  const r = rig(sg)
+  r.begin({ by: 'editor', record: false, draft: true, from: 17.5 }) // from bar 5 (beat 16)
   r.tick()
   assert.equal(r.st.state.phase, 'playing'); assert.equal(r.st.state.from, 16); assert.equal(r.st.state.draft, true)
   for (let i = 0; i < 60 * 8 && Number.isNaN(r.st.state.t0); i++) r.tick()

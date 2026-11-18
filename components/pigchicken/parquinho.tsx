@@ -62,7 +62,7 @@ import { AMMO_AROUND_SCALE, AMMO_HUD_R, ammoLook, aroundVisibility, newAmmoView,
 import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { dropScaleStage, setScaleStage } from "@/lib/pigchicken/scale-preview"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
-import { createLayoutSync } from "@/lib/pigchicken/layout-sync"
+import { createLayoutSync, deviceLabel, isSequencerLabel } from "@/lib/pigchicken/layout-sync"
 import { SceneryVisibilityStyles } from "./scenery-region"
 import { graphicsQuality, subscribeQuality } from "@/lib/quality"
 import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken/platform-geometry"
@@ -74,10 +74,11 @@ import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { HouseDusk, useHouseDuskFilter } from "@/components/pigchicken/house-dusk"
 import { GONG_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
-import { accuracy, createNoteStage, type NoteStageSound } from "@/lib/pigchicken/note-stage"
-import { drawNoteShots, drawNoteStageHud, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
-import { CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, onStopSong, openJukebox, recordScore, subscribeLibrary } from "@/lib/pigchicken/song-library"
-import { newGongRun, stepGong, strikeGong, type GongParams, type GongRun } from "@/lib/pigchicken/gong"
+import { GOAL_DEFAULT, type NoteStage, type NoteStageIO, type NoteStageSound, type StageBy, type StageRequest } from "@/lib/pigchicken/note-stage"
+import { createNoteStages } from "@/lib/pigchicken/note-stages"
+import { drawNoteShots, drawNoteStageHud, drawStageDebug, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
+import { CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, onStopSong, openJukebox, pickOf, recordScore, subscribeLibrary, type DraftRequest } from "@/lib/pigchicken/song-library"
+import { defaultPlayer, newGongRun, stepGong, strikeGong, type GongParams, type GongRun, type PlayerParams } from "@/lib/pigchicken/gong"
 import { drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { BuildingStyles } from "@/components/pigchicken/building-art"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
@@ -261,7 +262,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, patioKey = null, zoomRange, itemGlow }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; patioKey?: string | null; zoomRange?: PatioZoom; itemGlow?: ItemGlow }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, stageDebug = false, patioKey = null, zoomRange, itemGlow }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; stageDebug?: boolean; patioKey?: string | null; zoomRange?: PatioZoom; itemGlow?: ItemGlow }) {
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -294,6 +295,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   scaleKeepRef.current = scaleKeep
   const hitboxesRef = useRef(hitboxes)
   hitboxesRef.current = hitboxes
+  // Camadas → Debug da fase de notas
+  const stageDebugRef = useRef(stageDebug)
+  stageDebugRef.current = stageDebug
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const ghostHostRef = useRef<HTMLDivElement>(null)
   // the inventory wheel has its own canvas, above the chicken
@@ -684,39 +688,40 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the temple's mini-game (its state is plain data, stepped with the beats: ready to be shared in multiplayer)
     const temple = createTemple(Math.floor(Math.random() * 2 ** 31))
     templeDraw.temple = temple
-    // the note stage (the guitar hero mode): the jukebox by the reset stone picks the song, the gong plays it
-    const stage = createNoteStage()
+    // the fases de notas (the guitar hero mode): each one asked for by a Jukebox or a Vitrola (its Tocar, or the Gongo
+    // of its zone), the song editor or a bomb, bound to the zone where it began; several play at once in different
+    // zones, each on its zone's own clock (lib/pigchicken/note-stages.ts)
+    const stages = createNoteStages()
     // the aliens' catalogue (saved in this browser): the song's aliens take their variations from it
     let catalog = loadCatalog()
-    stage.setCatalog(catalog)
+    stages.setCatalog(catalog)
     templeDraw.catalog = catalog
-    const unsubCatalog = subscribeCatalog(c => { catalog = c; templeDraw.catalog = c; stage.setCatalog(c) })
-    // the jukebox's library: the songs and the one picked (the campaign's disc, or a song the gong starts)
+    const unsubCatalog = subscribeCatalog(c => { catalog = c; templeDraw.catalog = c; stages.setCatalog(c) })
+    // the songs' library: the songs and each sequencer's pick (the campaign's disc, or a song)
     let library = loadLibrary()
-    const useLibrary = (l: typeof library) => { library = l; templeDraw.library = l; stage.setSongs(l.songs); if (l.picked !== CAMPAIGN_ID) stage.select(l.picked) }
+    const useLibrary = (l: typeof library) => { library = l; templeDraw.library = l }
     useLibrary(library)
     const unsubLibrary = subscribeLibrary(useLibrary)
-    // "Tocar" in the jukebox's panel: the song starts now
-    let playRequest: string | null = null, jukeRing = 9
-    // where a song plays: in the temple (leaving it loses the song), or anywhere ("free": started by a Gongo or a
-    // Jukebox of the layout, or with no Gongo do Templo). jukeFrom: the jukebox struck last (its button's label)
-    let jukeFrom = "jukebox", requestFree = false, stageFree = false, stageGongX: number | undefined, wasStageOn = false
-    let anchor: { free: boolean; gongX?: number } | null = null
-    const unsubPlay = onPlaySong(id => { playRequest = id; requestFree = jukeFrom !== "jukebox" })
-    // the jukebox's Parar: the song stops; the campaign is put back at rest (as the reset stone does)
-    let stopRequest = false, campaignStop = 0
-    const unsubStop = onStopSong(() => { stopRequest = true })
+    // "Tocar" in a sequencer's panel (device: whose panel it is): its song starts now
+    let playRequest: { id: string; device: string | null } | null = null, jukeRing = 9
+    const unsubPlay = onPlaySong((id, device) => { playRequest = { id, device } })
+    // a sequencer's Parar: its song stops; the campaign is put back at rest (as the reset stone does)
+    let stopRequest: { device: string | null } | null = null, campaignStop = 0
+    const unsubStop = onStopSong(device => { stopRequest = { device } })
     // the Gongos of the layout (by element id): their settings and their strikes so far
     const gongSet = new Map<string, GongParams>(), gongRuns = new Map<string, GongRun>()
-    // the song editor's "Tocar daqui" and "Parar"
-    const unsubDraft = onPlayDraft(r => (r === "stop" ? stage.halt() : stage.playDraft(r.song, r.from)))
-    templeDraw.stage = stage
-    combat.setNoteEnv(shot => stage.noteEnv(shot))
+    // the Jukeboxes and Vitrolas of the layout (by their button's label): the goal of the songs they play
+    const playerSet = new Map<string, PlayerParams>()
+    // the song editor's "Tocar daqui" and "Parar"; the Gongo do Templo asking for the song of its zone
+    let draftRequest: DraftRequest | null = null, templeSongAsked = false
+    const unsubDraft = onPlayDraft(r => { draftRequest = r })
+    templeDraw.stages = stages
+    combat.setNoteEnv(shot => stages.noteEnv(shot))
     const templeSounds: TempleSound[] = []
     const stageSounds: NoteStageSound[] = []
     let templeShown = ""
     // dev only: lets the test scripts reach the combat and the temple
-    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStage: stage, __chickenEngine: engine })
+    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStages: stages, __chickenEngine: engine })
     const drone = createDrone()
     let zoneShown: Zone | null = null, zoneBanner = 0
     let clockOff: number | null = null
@@ -805,6 +810,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         layoutSync.sync(syncedElements, S.screens)
         gongSet.clear()
         for (const el of syncedElements) if (el.kind === "gong" && el.params.gong && !el.params.gong.temple) gongSet.set(el.id, el.params.gong)
+        playerSet.clear()
+        for (const el of syncedElements) if (el.kind === "jukebox" || el.kind === "vitrola") playerSet.set(deviceLabel(el.kind, el.id), el.params.player ?? defaultPlayer())
         for (const id of [...gongRuns.keys()]) if (!gongSet.has(id)) { gongRuns.delete(id); templeDraw.gongs.delete(`gong:${id}`) }
         const nextBoxes = layoutBoxes(shown)
         shotRooms = new Map(houseRooms(shown).map(room => [room.id, { id: room.id, ...roomShotWalls(room), rect: room.room }]))
@@ -1164,12 +1171,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const scene = { l: sceneL, r: sceneL + SCENE_W }
       for (const asked of net.frame(now)) spawnEnemies(asked)
       for (const request of trainingSpawns?.current.splice(0) ?? []) spawnEnemies({ what: request.kind === "alien" ? "alien" : "zombie", x: request.x, y: request.y, ...scene })
-      let gongHit = false, resetHit = false, discHit = false
+      let gongHit = false, resetHit = false
       const gongStrikes: string[] = []
       combat.pressed.splice(0).forEach(id => {
         if (id === "gong") gongHit = true
         else if (id === "reset") resetHit = true
-        else if (id === "jukebox" || id.startsWith("jukebox:")) { jukeFrom = id; templeDraw.jukeLast = id; jukeRing = 0; openJukebox() }
+        else if (isSequencerLabel(id)) { templeDraw.jukeLast = id; jukeRing = 0; openJukebox(id) }
         else if (id.startsWith("gong:")) gongStrikes.push(id.slice(5))
         else if (id === "aliens") spawnEnemies({ what: "aliens", x: body.x, y: body.y, p: horde.pattern, ...scene })
         else if (id === "zombies") spawnEnemies({ what: "zombies", x: body.x, y: body.y, n: horde.zombies, ...scene })
@@ -1390,90 +1397,155 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the Recomeçar stone she struck: the one nearest to her
       const resetStone = resetHit ? combat.targets.filter(t => t.label === "reset" && t.x > -1e5).sort((a, b) => Math.abs(a.x - body.x) - Math.abs(b.x - body.x))[0] : undefined
       const events = combat.music.events.splice(0)
-      // the note stage first: while its song plays, the gong is dull and the reset stone stops the song
-      const stageOn = stage.active
       jukeRing += dt; templeDraw.jukeRing = jukeRing
-      // what the gong (or Tocar) starts: the song picked, or the campaign
-      const songPicked = library.picked !== CAMPAIGN_ID && stage.select(library.picked)
-      let startCampaign = false
-      const campaignOn = temple.state.phase === "intro" || temple.state.phase === "playing"
-      if (playRequest !== null) {
-        const id = playRequest
-        playRequest = null
-        if (id === CAMPAIGN_ID) startCampaign = !stageOn
-        else if (stage.select(id) && !stageOn) { discHit = true; anchor = { free: requestFree || !hasTemple } }
-        requestFree = false
+      for (const [k, v] of templeDraw.refused) { if (v > 1) templeDraw.refused.delete(k); else templeDraw.refused.set(k, v + dt) }
+      // ---------- the fases de notas ----------
+      // the zone of a point: the Zona sonora of the map that plays there (the blocks of the Grade de blocos are some),
+      // else its scene's own (the scene's whole stretch, even with the scenes' zones off)
+      const zoneOf = (x: number, y: number) => {
+        const z = zoneAt(playZones, x, y, true)
+        if (z) return { key: z.id, name: z.zone.name }
+        const sc = Math.max(0, Math.min(sceneAt(x), worldScenes(S.screens) - 1))
+        return { key: `cena${sc}`, name: `Cena ${sc + 1}` }
       }
-      // Parar, in the jukebox's panel
+      // the local players' bodies (whose fan a song is) and engines (an alien that touches one nudges it)
+      const bodies = new Map<string, { x: number; y: number; scale: number }>([["p1", body]])
+      extras?.current?.forEach((eng, id) => { const xs = eng.getMotionState(); bodies.set(id, { x: xs.x + camX, y: xs.y - camY, scale: xs.scale }) })
+      const bodyOf = (pid: string) => bodies.get(pid) ?? body
+      const engineOf = (pid: string) => (pid === "p1" ? engine : extras?.current?.get(pid) ?? engine)
+      const nearestPlayer = (x: number) => [...bodies].sort((a, b) => Math.abs(a[1].x - x) - Math.abs(b[1].x - x))[0][0]
+      const p1Zone = zoneOf(body.x, body.y - 90 * body.scale)
+      // the sequencers (Jukebox, Vitrola) and the zone each one stands in
+      const sequencers = combat.targets.filter(t => t.kind === "button" && isSequencerLabel(t.label) && t.x > -1e5)
+      const zoneOfTarget = (t: { x: number; y: number; h: number }) => zoneOf(t.x, t.y - t.h / 2)
+      // the sequencer of a zone for a Gongo: the one in its zone (the nearest), else one in its scene's own zone
+      const sequencerFor = (g: { x: number; y: number; h: number }) => {
+        const near = (list: typeof sequencers) => list.sort((a, b) => Math.abs(a.x - g.x) - Math.abs(b.x - g.x))[0] ?? null
+        const z = zoneOfTarget(g).key, sc = `cena${Math.max(0, Math.min(sceneAt(g.x), worldScenes(S.screens) - 1))}`
+        return near(sequencers.filter(t => zoneOfTarget(t).key === z)) ?? near(sequencers.filter(t => zoneOfTarget(t).key === sc))
+      }
+      const goalOf = (label: string | undefined) => { const p = (label && playerSet.get(label)) || defaultPlayer(); return { minAccuracy: p.minAccuracy / 100, hearts: p.hearts } }
+      // the Templo's campaign keeps the zone of its scene for itself while it plays
+      const campaignOn = temple.state.phase === "intro" || temple.state.phase === "playing"
+      const templeKey = templeGong ? zoneOfTarget(templeGong).key : null
+      let startCampaign = false
+      const refuse = (label: string | undefined) => { if (label) templeDraw.refused.set(label, 0); playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
+      // a sequencer plays a song (its own pick, or the one asked): the campaign's disc starts the campaign
+      const playOn = (dev: (typeof sequencers)[number], songId: string, owner: string, by: StageBy, gongX?: number) => {
+        const z = zoneOfTarget(dev)
+        if (songId === CAMPAIGN_ID) { if (templeKey && stages.busy(templeKey)) refuse(dev.label); else startCampaign = true; return }
+        const song = library.songs.find(x => x.id === songId)
+        if (!song) return
+        const vitrola = dev.label?.startsWith("vitrola:")
+        const again = by === "gongo" ? "Bata no gongo para tocar de novo." : vitrola ? "Bata na vitrola para tocar de novo." : "Bata na jukebox para tocar de novo."
+        const req: StageRequest = { song, owner, zone: z.key, zoneName: z.name, by: vitrola && by === "jukebox" ? "vitrola" : by, device: dev.label, goal: goalOf(dev.label), record: true, again, gongX }
+        if (stages.request(req, campaignOn && z.key === templeKey) === "busy") refuse(dev.label)
+      }
+      // Tocar, in a sequencer's panel (with no sequencer known: the nearest to her)
+      if (playRequest !== null) {
+        const r = playRequest
+        playRequest = null
+        const dev = sequencers.find(t => t.label === r.device) ?? [...sequencers].sort((a, b) => Math.abs(a.x - body.x) - Math.abs(b.x - body.x))[0]
+        if (dev) playOn(dev, r.id, "p1", "jukebox")
+        else if (r.id === CAMPAIGN_ID) startCampaign = !(templeKey && stages.busy(templeKey))
+      }
+      // Parar, in a sequencer's panel: its song, else the campaign
       if (stopRequest) {
-        stopRequest = false
-        if (stageOn) stage.halt()
+        const r = stopRequest
+        stopRequest = null
+        if (stages.playing.some(x => x.request?.device === r.device)) stages.halt({ device: r.device ?? undefined })
         else if (campaignOn) campaignStop = 3
       }
-      // the Gongos of the layout: their strikes start their own song, or stop it while it plays
+      // the song editor: its draft from a beat, in the zone she is in (over its own draft), or stop it
+      if (draftRequest) {
+        const r = draftRequest
+        draftRequest = null
+        if (r === "stop") stages.halt({ draft: true })
+        else if (stages.request({ song: r.song, owner: "p1", zone: p1Zone.key, zoneName: p1Zone.name, by: "editor", goal: GOAL_DEFAULT, record: false, again: "", from: r.from, draft: true }, campaignOn && p1Zone.key === templeKey) === "busy") refuse(undefined)
+      }
+      // the Gongo do Templo asked for the song of its zone's sequencer (its strikes counted in the Templo)
+      const templeSeq = templeGong ? sequencerFor(templeGong) : null
+      const templePick = templeSeq ? pickOf(library, templeSeq.label) : CAMPAIGN_ID
+      if (templeSongAsked) { templeSongAsked = false; if (templeSeq && templeGong) playOn(templeSeq, templePick, nearestPlayer(templeGong.x), "gongo", templeGong.x) }
+      // the Gongos of the layout: their strikes press Tocar on the sequencer of their zone, or (while a song plays in
+      // it) stop that song
       for (const id of gongStrikes) {
         const p = gongSet.get(id), g = combat.targets.find(t => t.label === `gong:${id}`)
         if (!p || !g) continue
         const run = gongRuns.get(id) ?? newGongRun()
         gongRuns.set(id, run)
-        if (campaignOn) { run.ring = 0; templeSounds.push({ kind: "gongDull" }); continue }
-        const out = strikeGong(run, p, stageOn)
+        const gz = zoneOfTarget(g).key
+        if (campaignOn && gz === templeKey) { run.ring = 0; templeSounds.push({ kind: "gongDull" }); continue }
+        const there = stages.at(gz), playingHere = !!there && there.request?.by !== "bomba"
+        const out = strikeGong(run, p, playingHere)
         if (out === "dull") playNoteStageSound({ kind: "dull" }, mixGain("effects"))
-        else if (stageOn) {
+        else if (playingHere) {
           playNoteStageSound({ kind: "reset", hit: out === "stop" ? p.stopHits : run.stops, need: p.stopHits }, mixGain("effects"))
-          if (out === "stop") stage.halt()
+          if (out === "stop") stages.halt({ zone: gz })
         } else {
           templeSounds.push({ kind: "gong", hit: out === "start" ? p.hits : run.hits, need: p.hits })
-          if (out === "count") combat.addText(g.x, g.y - 190, `${run.hits}/${p.hits}`, "#ffd166", 22)
-          else if (stage.select(p.song)) { discHit = true; anchor = { free: true, gongX: g.x } }
-          else combat.addText(g.x, g.y - 190, "SEM MÚSICA", "#ff6b5b", 18)
+          if (out === "start") {
+            const dev = sequencerFor(g)
+            if (dev) playOn(dev, pickOf(library, dev.label), nearestPlayer(g.x), "gongo", g.x)
+            else playNoteStageSound({ kind: "dull" }, mixGain("effects"))
+          }
         }
       }
       for (const [id, p] of gongSet) {
         const run = gongRuns.get(id) ?? newGongRun()
         gongRuns.set(id, run)
         stepGong(run, p, dt)
-        templeDraw.gongs.set(`gong:${id}`, { ring: run.ring, waiting: !stageOn && !campaignOn, hits: run.hits, need: p.hits, label: p.title, lamps: p.lamps })
+        const g = combat.targets.find(t => t.label === `gong:${id}`)
+        const busy = g ? stages.busy(zoneOfTarget(g).key) || (campaignOn && zoneOfTarget(g).key === templeKey) : false
+        templeDraw.gongs.set(`gong:${id}`, { ring: run.ring, waiting: !busy, hits: run.hits, need: p.hits, lamps: p.lamps })
       }
-      // the gong that speaks in the song's balloons: the one that started it, else the Gongo nearest to her
-      const speakingGong = stageFree ? stageGongX ?? combat.targets.filter(t => t.label?.startsWith("gong:")).sort((a, b) => Math.abs(a.x - body.x) - Math.abs(b.x - body.x))[0]?.x : undefined
-      stage.step(dt, {
-        targets: combat.targets, music: combat.music, sceneL: tL, sceneW: SCENE_W, groundY: G, inside: inTemple || stageFree, gongX: speakingGong,
-        center: { x: body.x, y: body.y - stage.song.fan.centerY * body.scale },
-        discHit, resetHit: resetHit && stageOn, busy: temple.state.phase === "intro" || temple.state.phase === "playing",
-        events: combat.noteEvents.splice(0), fire: n => { combat.fireNoteShot(n) }, clearShots: src => combat.clearNoteShots(src),
-        incoming: combat.noteShots.filter(n => n.state === "incoming" && n.source === "stage").length,
-        fx: { burst: combat.burst, text: combat.addText },
-        push: dir => engine.impulse(dir * 260, -200),
-        sound: e => stageSounds.push(e),
-      })
+      // the stone struck stops the song of its zone (not a bomb's)
+      const resetZone = resetStone ? zoneOfTarget(resetStone).key : null
+      const resetTaken = !!resetZone && !!stages.at(resetZone) && stages.at(resetZone)?.request?.by !== "bomba"
+      // what each stage needs: its owner's fan, whether its owner is in its zone, its own shots
+      const noteEvents = combat.noteEvents.splice(0)
+      const gongNear = (x: number) => combat.targets.filter(t => t.label === "gong" || t.label?.startsWith("gong:")).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0]?.x
+      const stageIo = (st: NoteStage | null, r?: StageRequest): NoteStageIO => {
+        const req = r ?? st?.request ?? null, owner = req?.owner ?? "p1", b = bodyOf(owner)
+        const fan = (r?.song ?? st?.song)?.fan
+        const center = { x: b.x, y: b.y - (fan?.centerY ?? 0) * b.scale }
+        const src = st?.source
+        return {
+          targets: combat.targets, music: combat.music, sceneL: tL, sceneW: SCENE_W, groundY: G,
+          inside: !!req && zoneOf(b.x, b.y - 90 * b.scale).key === req.zone, gongX: req?.gongX ?? gongNear(center.x),
+          center, resetHit: resetTaken && !!st && st.zone === resetZone, events: noteEvents,
+          fire: n => { combat.fireNoteShot(n) }, clearShots: src => combat.clearNoteShots(src),
+          incoming: src ? combat.noteShots.filter(n => n.state === "incoming" && n.source === src).length : 0,
+          fx: { burst: combat.burst, text: combat.addText },
+          push: dir => engineOf(owner).impulse(dir * 260, -200),
+          sound: e => stageSounds.push(e),
+        }
+      }
+      stages.step(dt, stageIo)
       stageSounds.splice(0).forEach(e => playNoteStageSound(e, mixGain("effects")))
-      if (stageOn && gongHit) { gongHit = false; playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
       // a new record: the song's best score is kept (and the banner says so)
-      if (stage.state.phase === "done" && stage.state.t === 0 && !stage.state.draft) {
-        const s = stage.state
-        if (recordScore(stage.song.id, s.score, accuracy(s.counts, s.fired)) && s.banner) s.banner.title += " · novo recorde!"
+      for (const r of stages.takeResults()) {
+        if (!r.ok || !r.request.record) continue
+        const st = stages.all.find(x => x.request === r.request)
+        if (recordScore(r.request.song.id, r.score, r.accuracy) && st?.state.banner) st.state.banner.title += " · novo recorde!"
       }
-      if (stageOn) resetHit = false
-      // a song just began: where it plays (the editor's Tocar daqui follows the jukebox struck last)
-      if (stage.active && !wasStageOn) {
-        const a = anchor ?? { free: jukeFrom !== "jukebox" || !hasTemple }
-        stageFree = a.free; stageGongX = a.gongX
-      }
-      wasStageOn = stage.active
-      anchor = null
-      if (!stage.active) { stageFree = false; stageGongX = undefined }
+      // the Gongo do Templo is dull while a song plays in its zone
+      if (gongHit && templeKey && stages.busy(templeKey)) { gongHit = false; playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
+      if (resetTaken) resetHit = false
       const forcedReset = campaignStop > 0
       if (forcedReset) campaignStop--
-      // the editor's playhead
-      nowPlaying.id = stage.active ? stage.song.id : null
-      nowPlaying.beat = stage.beatAt(combat.music.time, combat.music.secondsPerBeat())
-      nowPlaying.draft = stage.state.draft
+      // the editor's playhead (its draft, else her song), the sequencers playing
+      const mine = stages.playing.find(x => x.request?.draft) ?? stages.ownedBy("p1") ?? stages.at(p1Zone.key)
+      nowPlaying.id = mine ? mine.song.id : null
+      nowPlaying.beat = mine?.clock ? mine.beatAt(mine.clock.time, mine.clock.secondsPerBeat()) : NaN
+      nowPlaying.draft = !!mine?.request?.draft
+      nowPlaying.devices = stages.playing.flatMap(x => (x.request?.device ? [x.request.device] : []))
+      const songPicked = templePick !== CAMPAIGN_ID && library.songs.some(x => x.id === templePick)
       const io: TempleIO = {
         targets: combat.targets, music: combat.music, sceneL: tL, gongX: templeGong?.x, resetX: resetStone?.x, groundY: G, inside: inTemple, body: { x: body.x, y: body.y, scale: body.scale }, boxes,
         gongHit, resetHit: resetHit || forcedReset, firePressed: input.firePressed,
         // a song picked: the gong's strikes start it (on the next frame, through the stage)
-        song: songPicked ? () => { playRequest = library.picked; requestFree = false } : undefined, start: startCampaign, beats: events.filter(e => e.kind === "beat").map(e => e.n),
+        song: songPicked ? () => { templeSongAsked = true } : undefined, start: startCampaign, beats: events.filter(e => e.kind === "beat").map(e => e.n),
         fx: { burst: combat.burst, text: combat.addText },
         hurt: dir => engine.impulse(dir * 420, -380),
         sound: e => templeSounds.push(e),
@@ -1485,7 +1557,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       nowPlaying.campaign = tp === "intro" || tp === "playing"
       if (tp !== templeShown) { templeShown = tp; if (worldRef.current) worldRef.current.dataset.temple = tp }
       // the undead wait for the song (or the gong's campaign) to end before leaving; she rides the ones standing
-      combat.setPlaying(stage.active || tp === "intro" || tp === "playing")
+      combat.setPlaying(stages.any || tp === "intro" || tp === "playing")
       const riders = worldRef.current?.querySelector<HTMLElement>("[data-undead-riders]")
       if (riders) syncRiders(riders, combat.undead)
       // a cleared stage: fireworks over the temple
@@ -1498,7 +1570,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
       // ---------- music: the zone of the scene she is in sets key, scale and tempo; ambience on its beat ----------
       // (in the temple: the stage's music, or the temple at rest)
-      const templeMusic = stage.music ?? temple.music
+      // (her zone's song, or the temple: its campaign or at rest)
+      const here = stages.at(p1Zone.key)
+      const templeMusic = here?.music ?? temple.music
       const groundNow = [sceneZonesRef.current, sceneEdgesRef.current, sceneMusicRef.current, S.screens]
       if (groundNow.some((v, i) => v !== groundOf[i])) {
         groundOf = groundNow
@@ -1514,12 +1588,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       // the zone she is in: a Zona sonora of the map wins over the scene's (not over a song playing in the temple)
       // a song a Gongo or a Jukebox of the layout started plays wherever she goes, like the temple's inside it
-      const musicHere = inTemple || (stageFree && stage.active)
+      const musicHere = inTemple || !!here
       const inZone = templeMusic && musicHere ? null : zoneAt(playZones, body.x, body.y - 90 * body.scale, true)
       combat.setZoneBirds(inZone?.zone.birds ?? null)
       // with the scenes' zones off (Configurações do Pátio), outside a Zona sonora there is no ambience at all
       const zone = inZone ? soundZoneOf(inZone.id, inZone.zone, zoneBlockSolo()) : musicHere ? templeMusic?.zone ?? TEMPLE_IDLE : NO_SCENE_ZONE
       combat.music.setZone(zone)
+      // back in the zone of a song playing: the Pátio's clock follows that song's own (its bars and beats)
+      if (here?.clock && combat.music.family.id === here.song.music.zone.id && Math.abs(combat.music.beat - here.clock.beat) > 1e-3) combat.music.restore(here.clock.snapshot())
       combat.setQuantize(S.quantize)
       setMusicVolumes(mixGain("notes"), mixGain("ambience"))
       if (combat.music.family !== zoneShown) { zoneShown = combat.music.family; zoneBanner = 2.5 }
@@ -1532,7 +1608,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const clockFix = clockOff - clockGap
       events.forEach(e => {
         if (mixGain("ambience") <= 0) return
-        if (e.kind === "bar" && !stage.silent) {
+        if (e.kind === "bar" && !here?.silent) {
           // the temple keeps its drone; a zone plays the sustained voice it chose, if any
           const z = combat.music.zone, voice = templeZone ? { tone: "saw" as const, vol: 1, oct: 0 } : ambienceDrone(z.ambience ?? legacyAmbience(z.feel))
           if (voice) { const d = droneOf(z, combat.music.chord()); drone.set(d.root + 12 * voice.oct, d.fifth, d.third, voice.tone, voice.vol) }
@@ -1542,13 +1618,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (e.kind === "beat") { const p = combat.music.pending; if (p) for (const z of p.blocks?.map(b => b.zone) ?? [p]) preloadKit(ambienceKit(z.ambience ?? legacyAmbience(z.feel))) }
         if (e.kind === "step") {
           // a pause in total silence: no background
-          if (templeZone) { if (!stage.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }
+          if (templeZone) { if (!here?.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }
           // a zone's ambience is scheduled one sixteenth ahead (the Templo's own music plays on the sixteenth)
           const up = combat.music.ahead()
           if (!up.zone.id.startsWith("templo")) ambience(up.zone, up.step, up.bar, up.chord, up.spb, up.wait + clockFix)
         }
       })
-      if (mixGain("ambience") <= 0 || stage.silent) drone.set(null)
+      if (mixGain("ambience") <= 0 || here?.silent) drone.set(null)
 
       // ---------- sound ----------
       setWeaponVolume(mixGain("weapons"))
@@ -1589,9 +1665,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawFreedSouls(ctx, combat, camX, view, extraList.length ? colorsRef.current : null, netPlayers ? pid => { const p = netPlayers.find(q => q.pid === pid); return p ? PLAYER_COLORS[p.color % PLAYER_COLORS.length] : undefined } : undefined)
       drawPoops(ctx, combat, camX, view)
       drawTempleShots(ctx, temple, camX, view)
-      drawStageFan(ctx, stage, combat.noteShots, camX, combat.music.time, combat.music.beatPhase)
+      for (const st of stages.all) drawStageFan(ctx, st, combat.noteShots, camX, combat.music.time, st.clock?.beatPhase ?? combat.music.beatPhase)
       drawNoteShots(ctx, combat.noteShots, camX, view)
-      drawStageTalk(ctx, stage, camX)
+      for (const st of stages.all) drawStageTalk(ctx, st, camX)
       ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
       drawSwing(ctx, combat, origin, "back", screenView)
@@ -1825,8 +1901,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       // the Templo's HUD at the top, below the small inventories' rows when other local players show theirs there
       const hudTop = barBottom && !extraList.length ? INV_STACK.top : INV_TOP + INV_SIZE + 12
-      drawTempleHud(ctx, temple, combat.music, inTemple && !stage.active, hudTop)
-      drawNoteStageHud(ctx, stage, hudTop)
+      drawTempleHud(ctx, temple, combat.music, inTemple && !stages.any, hudTop)
+      // one panel for each song playing (the ended ones keep their banner a moment)
+      let stageTop = hudTop
+      for (const st of stages.all) { drawNoteStageHud(ctx, st, stageTop); if (st.active) stageTop += 66 }
+      if (stageDebugRef.current) drawStageDebug(ctx, stages.all, st.height - groundHRef.current)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
         const h = combat.held
@@ -1886,7 +1965,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setBounds(null)
       drone.set(null)
       templeDraw.temple = null
-      templeDraw.stage = null
+      templeDraw.stages = null
       if (worldRef.current) delete worldRef.current.dataset.temple
       document.body.classList.remove("pigchicken-play", "pigchicken-bag-hover", "pigchicken-seated")
       document.body.classList.remove('pigchicken-camera-mode', 'pigchicken-camera-dragging')

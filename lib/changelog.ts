@@ -7,8 +7,22 @@ const RECENT = [
   {
     version: '2.14.0',
     date: '18/11/2026',
-    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você',
+    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você; fases de notas por zona, com meta de precisão e corações, e a Vitrola toca-discos',
     groups: [
+      { title: 'Pátio: fases de notas por zona', items: [
+        'Cada música agora toca na zona onde começou (a Zona sonora ali, ou a cena). Zonas diferentes podem tocar músicas diferentes ao mesmo tempo, cada uma no seu tempo; você ouve a da zona onde está.',
+        'Uma zona toca uma música por vez: pedir outra ali não interrompe nada, o aparelho treme, pisca em vermelho e faz um som abafado.',
+        'Sair da zona da música por 2,5 s perde a música.',
+        'As notas vêm para o leque de quem começou a música: quem estava mais perto do Gongo, ou quem apertou Tocar.',
+        'A Jukebox e a Vitrola têm uma meta no Editar: Precisão mínima (padrão: nenhuma) e Corações (padrão 3). Os corações aparecem antes do nome da música; cada alien que chega em você tira um, com 1,4 s de proteção. Sem corações, ou terminando abaixo da precisão mínima, a música se perde.',
+        'O piu do Filhote anula notas como a Bicada.',
+        'Cada Jukebox e cada Vitrola guarda a sua música escolhida.',
+      ] },
+      { title: 'Pátio: Gongo e Vitrola toca-discos', items: [
+        'Elemento novo no grupo Música do Modo editor: Vitrola toca-discos, com corneta dourada. Funciona como a Jukebox, e a manivela gira enquanto a música toca.',
+        'O Gongo não tem mais música própria: ao completar as batidas, aperta Tocar na Jukebox ou Vitrola mais perto dele, na zona dele. Saíram os campos Música e Título do Editar dele. Sobre ele aparece só a contagem (0/5), sempre visível.',
+        'Nova caixa “Debug da fase de notas” em Camadas, que mostra o estado de cada música tocando: zona, batida, corações, afinação, acertos e precisão contra a meta.',
+      ] },
       { title: 'Pátio: tambores e pentes', items: [
         'Cada arma mostra as balas que ainda tem num HUD pequeno ao lado da mira, com um desenho por arma: tambor de revólver na Pistola, tambor de cartuchos na Escopeta, anel em trios na Submetralhadora, arcos dos lados no Rifle, uma fileira em arco na Sniper, os flancos no Lança-foguetes e um leque de flechas embaixo da mira no Arco. As balas vazias ficam só no contorno.',
         'A cada tiro a bala do HUD pula para fora e cai; na Pistola e na Escopeta o tambor gira uma câmara. No Arco, as flechas saem da direita para a esquerda, a próxima recua enquanto você carrega e sobe um pouco ao soltar. Na recarga as balas vão acendendo.',

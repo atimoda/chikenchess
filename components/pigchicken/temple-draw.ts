@@ -316,11 +316,10 @@ function drawDragon(ctx: Ctx, g: Target, x: number, flash: string | null, look: 
 export function drawGong(ctx: Ctx, g: Target, x: number, temple: Temple) {
   const s = temple.state
   const waiting = s.phase === "idle" || s.phase === "cleared" || s.phase === "failed" || s.phase === "victory"
-  const label = s.phase === "idle" ? "BATA NO GONGO" : s.phase === "cleared" ? `FASE ${s.stage + 2}: BATA NO GONGO` : s.phase === "failed" ? "TENTAR DE NOVO" : "JOGAR DE NOVO"
-  drawGongTotem(ctx, g, x, { ring: s.gongRing, waiting, hits: s.gongHits, need: s.gongNeed, label, lamps: true })
+  drawGongTotem(ctx, g, x, { ring: s.gongRing, waiting, hits: s.gongHits, need: s.gongNeed, lamps: true })
 }
-// the totem itself (the temple's, or a Gongo placed in the Modo editor): its strikes so far, its label ("" = none)
-export type GongLook = { ring: number; waiting: boolean; hits: number; need: number; label: string; lamps: boolean }
+// the totem itself (the temple's, or a Gongo placed in the Modo editor): its strikes so far and its count
+export type GongLook = { ring: number; waiting: boolean; hits: number; need: number; lamps: boolean }
 export function drawGongTotem(ctx: Ctx, g: Target, x: number, look: GongLook) {
   const t = performance.now() / 1000
   const ground = g.y + 40, cy = g.y - 72, R = 58
@@ -367,14 +366,12 @@ export function drawGongTotem(ctx: Ctx, g: Target, x: number, look: GongLook) {
       ctx.fillStyle = i < look.hits ? "#ffd166" : "rgba(255,255,255,0.18)"
       ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill()
     }
-    const label = look.label
-    if (!label) return
-    // the label rests right on top of the frame's top beam, between its two gold knobs
-    ctx.font = "bold 12px ui-monospace, monospace"; ctx.textAlign = "center"
-    const w = Math.min(148, ctx.measureText(label).width + 14)
-    ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x - w / 2, ground - 252, w, 18)
-    ctx.fillStyle = "#ffd166"; ctx.fillText(label, x, ground - 239, w - 10)
   }
+  // its count, always: strikes so far over the strikes it takes, on the frame's top beam between its gold knobs
+  ctx.font = "bold 14px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"
+  const count = `${look.hits}/${look.need}`, w = ctx.measureText(count).width + 14
+  ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(x - w / 2, ground - 254, w, 20)
+  ctx.fillStyle = "#ffd166"; ctx.fillText(count, x, ground - 239)
 }
 
 // the reset stone (Recomeçar): a carved stele on a little plinth; it glows teal when there is a game to end
