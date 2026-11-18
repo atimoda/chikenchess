@@ -321,7 +321,7 @@ test('a Pátio keeps its own Camadas: cleaned, in range, Escalas up to 3x', () =
   const settings = loadTs('lib/pigchicken/patio-settings.ts')
   const s = settings.normalizePatioSettings({ layers: { backdrop: 140, zones: -3, scale: 42.6, scaleSize: 9, scaleFade: 'x', scaleLines: 30, scaleKeep: true, hitboxes: true } })
   // (grid: the Grade de blocos' own layer, 60 when nothing is saved)
-  assert.deepEqual(s.layers, { backdrop: 100, zones: 0, grid: 60, scale: 43, scaleSize: 3, scaleFade: 50, scaleLines: 30, scaleKeep: true, hitboxes: true })
+  assert.deepEqual(s.layers, { backdrop: 100, zones: 0, grid: 60, scale: 43, scaleSize: 3, scaleFade: 50, scaleLines: 30, scaleKeep: true, hitboxes: true, stageDebug: false })
   assert.equal(settings.normalizePatioSettings({ layers: { grid: 130 } }).layers.grid, 100)
   assert.equal(settings.normalizePatioSettings({ layers: 'nope' }), undefined)
 })

@@ -54,19 +54,18 @@ test('its notes: a second one at its interval and each again after its echo', ()
 // ---------- in the stage ----------
 function stageWith(alien) {
   const song = { ...stageLib.TEST_SONG, id: 'cat-test', aliens: [alien] }
-  stageLib.SONGS.push(song)
   const st = stageLib.createNoteStage()
-  st.state.song = stageLib.SONGS.length - 1
   const conductor = music.createConductor()
   const targets = [], fired = []
   const io = (extra = {}) => ({
     targets, music: conductor, sceneL: 1920, sceneW: 1920, groundY: 930, inside: true, center: { x: 2900, y: 860 },
-    discHit: false, resetHit: false, busy: false, events: [], fire: n => fired.push(n), clearShots() {},
+    resetHit: false, events: [], fire: n => fired.push(n), clearShots() {},
     incoming: 0, fx: { burst() {}, text() {} }, push() {}, sound() {}, ...extra,
   })
-  const tick = (extra = {}) => { conductor.setZone(st.music?.zone ?? conductor.zone); conductor.step(1 / 60); st.step(1 / 60, io(extra)) }
-  tick({ discHit: true })
-  const done = () => { stageLib.SONGS.pop() }
+  const tick = (extra = {}) => { conductor.step(1 / 60); st.step(1 / 60, io(extra)) }
+  st.start(io(), { song: song, owner: 'p1', zone: 'z', zoneName: 'Z', by: 'jukebox', goal: stageLib.GOAL_DEFAULT, record: true, again: '' })
+  tick()
+  const done = () => {}
   return { st, targets, fired, tick, done }
 }
 const notes = [{ beat: 0, midi: 62 }, { beat: 1, midi: 64 }, { beat: 2, midi: 66 }]

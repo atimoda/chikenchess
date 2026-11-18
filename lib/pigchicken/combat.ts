@@ -2352,7 +2352,7 @@ export function createCombat() {
     return bestAbs === Infinity ? angle : angle + best * Math.min(1, force)
   }
 
-  // the notes in flight, once per world step: incoming ones the peck cancels, ones that reach a player or come too
+  // the notes in flight, once per world step: incoming ones the peck and the piu cancel, ones that reach a player or come too
   // late are missed; rebated ones fill the harmony of the first alien or zombie they meet
   function stepNoteShots(dt: number, ctx: StepCtx) {
     for (let i = noteShots.length - 1; i >= 0; i--) {
@@ -2362,6 +2362,13 @@ export function createCombat() {
       n.t += dt; n.x += n.vx * dt; n.y += n.vy * dt
       if (n.state === 'incoming') {
         if (parryAt(n.x, n.y, n.size, n.color)) { noteEvents.push({ kind: 'parry', shot: n, player: parriedBy }); noteShots.splice(i, 1); continue }
+        // the Filhote's piu cancels it too, like the peck (the piu's note stops there)
+        const pi = bullets.findIndex(b => b.item === 'piu' && Math.hypot(b.x - n.x, b.y - n.y) < b.size + n.size + 6)
+        if (pi >= 0) {
+          puffs.push({ x: n.x, y: n.y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: n.color }); sound('puff', null)
+          noteEvents.push({ kind: 'parry', shot: n, player: bullets[pi].by ?? '' })
+          bullets.splice(pi, 1); noteShots.splice(i, 1); continue
+        }
         // it can still be rebated a little after it should have arrived (it flies on into her): touching a player
         // only counts once it is past the good window
         const late = music.time - n.arriveAt

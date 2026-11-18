@@ -135,16 +135,18 @@ export function normalizeSong(raw: unknown): LibrarySong | null {
 
 // ---------- the library in this browser ----------
 
-const STORE = 'pigchicken-songs-v1', PICK = 'pigchicken-song-pick-v1', RECORDS = 'pigchicken-song-records-v1'
+const STORE = 'pigchicken-songs-v1', PICK = 'pigchicken-song-pick-v1', PICKS = 'pigchicken-song-picks-v1', RECORDS = 'pigchicken-song-records-v1'
 export const LIBRARY_EVENT = 'pigchicken-songs'
 const EVENT = LIBRARY_EVENT
 export type SongRecord = { score: number; accuracy: number }
-export type Library = { songs: LibrarySong[]; picked: string; records: Record<string, SongRecord> }
+// picked: the one picked last (what a Jukebox or a Vitrola never picked from plays); picks: each one's own (by its
+// button's label)
+export type Library = { songs: LibrarySong[]; picked: string; picks: Record<string, string>; records: Record<string, SongRecord> }
 
 const read = (k: string) => { try { return JSON.parse(window.localStorage.getItem(k) || 'null') } catch { return null } }
 const write = (k: string, v: unknown) => { try { window.localStorage.setItem(k, JSON.stringify(v)) } catch { /* ignore */ } }
 
-export function mergeLibrary(saved: unknown, picked: unknown, records: unknown): Library {
+export function mergeLibrary(saved: unknown, picked: unknown, records: unknown, picks: unknown = null): Library {
   const mine = Array.isArray(saved) ? saved.map(normalizeSong).filter((s): s is LibrarySong => !!s && !BUILTIN_SONGS.some(b => b.id === s.id)) : []
   const songs = [...BUILTIN_SONGS, ...mine]
   const ids = new Set([CAMPAIGN_ID, ...songs.map(s => s.id)])
@@ -152,16 +154,25 @@ export function mergeLibrary(saved: unknown, picked: unknown, records: unknown):
   if (records && typeof records === 'object') for (const [k, v] of Object.entries(records as Record<string, Partial<SongRecord>>)) {
     if (ids.has(k) && v && typeof v.score === 'number') rec[k] = { score: Math.max(0, Math.round(v.score)), accuracy: clamp(num(v.accuracy, 0), 0, 1) }
   }
-  return { songs, picked: typeof picked === 'string' && ids.has(picked) ? picked : CAMPAIGN_ID, records: rec }
+  const own: Record<string, string> = {}
+  if (picks && typeof picks === 'object') for (const [k, v] of Object.entries(picks as Record<string, unknown>)) if (typeof v === 'string' && ids.has(v)) own[k] = v
+  return { songs, picked: typeof picked === 'string' && ids.has(picked) ? picked : CAMPAIGN_ID, picks: own, records: rec }
 }
-export function loadLibrary(): Library { return mergeLibrary(read(STORE), read(PICK), read(RECORDS)) }
+export function loadLibrary(): Library { return mergeLibrary(read(STORE), read(PICK), read(RECORDS), read(PICKS)) }
+// what a sequencer (by its button's label) plays: its own pick, else the one picked last
+export const pickOf = (lib: Pick<Library, 'picked' | 'picks'>, device?: string | null) => (device && lib.picks[device]) || lib.picked
 function changed() { window.dispatchEvent(new CustomEvent(EVENT)) }
 export function subscribeLibrary(onChange: (l: Library) => void) {
   const handler = () => onChange(loadLibrary())
   window.addEventListener(EVENT, handler)
   return () => window.removeEventListener(EVENT, handler)
 }
-export function pickSong(id: string) { write(PICK, id); changed() }
+// a pick: the one picked last, and the sequencer's own (the one whose panel is open, if none is named)
+export function pickSong(id: string, device: string | null = jukeboxDevice) {
+  write(PICK, id)
+  if (device) write(PICKS, { ...((read(PICKS) ?? {}) as Record<string, string>), [device]: id })
+  changed()
+}
 // the songs saved here, as they are (the sync writes through this, so what it brings is not sent back)
 export function writeMine(songs: LibrarySong[]) { write(STORE, songs.filter(s => !s.builtin).map(s => ({ ...s, builtin: undefined }))); changed() }
 const saveMine = (songs: LibrarySong[], touched: string | null) => {
@@ -221,7 +232,7 @@ export function deleteSong(lib: Library, id: string) {
   if (!s || s.builtin) return
   markPending(id, true)
   saveMine(lib.songs.filter(x => x.id !== id), null)
-  if (lib.picked === id) pickSong(CAMPAIGN_ID)
+  if (lib.picked === id) pickSong(CAMPAIGN_ID, null)
 }
 // a better score is kept as the song's record (true: a new record)
 export function recordScore(id: string, score: number, accuracy: number): boolean {
@@ -234,11 +245,14 @@ export function recordScore(id: string, score: number, accuracy: number): boolea
 
 // ---------- asking the game ----------
 
-// the jukebox was struck: open the songs' panel; the panel asks the game to play a song now
+// a Jukebox or a Vitrola was struck: open the songs' panel for it (by its button's label); the panel asks the game to
+// play a song now on it
 const OPEN = 'pigchicken-jukebox', PLAY = 'pigchicken-song-play'
-export const openJukebox = () => window.dispatchEvent(new CustomEvent(OPEN))
+let jukeboxDevice: string | null = null
+export const currentJukebox = () => jukeboxDevice
+export const openJukebox = (device: string | null = null) => { jukeboxDevice = device; window.dispatchEvent(new CustomEvent(OPEN)) }
 export const onOpenJukebox = (fn: () => void) => { window.addEventListener(OPEN, fn); return () => window.removeEventListener(OPEN, fn) }
-export const playSongNow = (id: string) => window.dispatchEvent(new CustomEvent(PLAY, { detail: id }))
+export const playSongNow = (id: string, device: string | null = jukeboxDevice) => window.dispatchEvent(new CustomEvent(PLAY, { detail: { id, device } }))
 // "Gerar de MIDI": the generator's panel
 const MIDI = 'pigchicken-song-midi'
 export const openMidiGenerator = () => window.dispatchEvent(new CustomEvent(MIDI))
@@ -259,15 +273,21 @@ export const onPlayDraft = (fn: (r: DraftRequest) => void) => {
   window.addEventListener(DRAFT, h)
   return () => window.removeEventListener(DRAFT, h)
 }
-// what the stage plays now (the game writes it each frame; the editor's playhead and the jukebox's Parar read it;
-// campaign: the Campanha do Gongo is on)
-export const nowPlaying: { id: string | null; beat: number; draft: boolean; campaign: boolean } = { id: null, beat: NaN, draft: false, campaign: false }
-// the jukebox's Parar: the song (or the campaign) stops now
+// what plays now (the game writes it each frame; the editor's playhead and the jukebox's Parar read it): the song of
+// her fan (or of her zone), the sequencers whose song plays, and whether the Campanha do Gongo is on
+export const nowPlaying: { id: string | null; beat: number; draft: boolean; campaign: boolean; devices: string[] } = { id: null, beat: NaN, draft: false, campaign: false, devices: [] }
+// whether a sequencer's panel shows Parar
+export const playingOn = (device: string | null) => nowPlaying.campaign || (device ? nowPlaying.devices.includes(device) : !!nowPlaying.id)
+// the jukebox's Parar: its song (or the campaign) stops now
 const STOP = 'pigchicken-song-stop'
-export const stopSongNow = () => window.dispatchEvent(new CustomEvent(STOP))
-export const onStopSong = (fn: () => void) => { window.addEventListener(STOP, fn); return () => window.removeEventListener(STOP, fn) }
-export const onPlaySong = (fn: (id: string) => void) => {
-  const h = (e: Event) => fn(String((e as CustomEvent).detail))
+export const stopSongNow = (device: string | null = jukeboxDevice) => window.dispatchEvent(new CustomEvent(STOP, { detail: device }))
+export const onStopSong = (fn: (device: string | null) => void) => {
+  const h = (e: Event) => fn(((e as CustomEvent).detail as string | null) ?? null)
+  window.addEventListener(STOP, h)
+  return () => window.removeEventListener(STOP, h)
+}
+export const onPlaySong = (fn: (id: string, device: string | null) => void) => {
+  const h = (e: Event) => { const d = (e as CustomEvent).detail as { id: string; device: string | null } | string; if (typeof d === 'string') fn(d, null); else fn(String(d.id), d.device ?? null) }
   window.addEventListener(PLAY, h)
   return () => window.removeEventListener(PLAY, h)
 }

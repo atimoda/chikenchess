@@ -1,4 +1,4 @@
-// Keeps the game's own things (training dummies, item racks, loose items, horde buttons, Gongos, Jukeboxes and Baús) in step with
+// Keeps the game's own things (training dummies, item racks, loose items, horde buttons, Gongos, Jukeboxes, Vitrolas and Baús) in step with
 // the Pátio's layout: adds the new ones, moves and resizes the ones that changed, removes the deleted ones. A loose item
 // (Item solto) puts its item in the world once; taken, it does not come back until the Pátio opens again (reset). A
 // rack deleted in the editor becomes a loose item with the same id, which keeps the item already there (and back). A dummy keeps its life
@@ -14,17 +14,22 @@ import { pressRules, withPressRules } from './button-limit'
 
 type Rack = Combat['racks'][number]
 const AWAY = -1e6
-// a Gongo or a Jukebox is a button the game draws: its label says which element it is; the box is where a strike
-// counts (the gong's disc and frame, the jukebox's cabinet) and y is where the art's ground sits above it
+// a Gongo, a Jukebox or a Vitrola is a button the game draws: its label says which element it is; the box is where a
+// strike counts (the gong's disc and frame, the jukebox's cabinet, the vitrola's case and horn) and y is where the
+// art's ground sits above it
 const DEVICES = {
   gong: { w: 130, h: 150, lift: 40 },
   jukebox: { w: 112, h: 214, lift: 4 },
+  vitrola: { w: 130, h: 180, lift: 4 },
   resetstone: { w: 80, h: 110, lift: 4 },
 } as const
-export const deviceLabel = (kind: 'gong' | 'jukebox', id: string) => `${kind}:${id}`
-// the label of a Gongo, a Jukebox or a Recomeçar stone: the Gongo do Templo and the stone answer to the temple's own
-// labels ("gong", "reset"), the others to their element
-const labelOf = (el: LayoutElement) => el.kind === 'resetstone' ? 'reset' : el.kind === 'gong' && el.params.gong?.temple ? 'gong' : deviceLabel(el.kind === 'gong' ? 'gong' : 'jukebox', el.id)
+export type DeviceKind = 'gong' | 'jukebox' | 'vitrola'
+export const deviceLabel = (kind: DeviceKind, id: string) => `${kind}:${id}`
+// a sequencer's button: a Jukebox or a Vitrola toca-discos
+export const isSequencerLabel = (label: string | undefined) => !!label && (label === 'jukebox' || label.startsWith('jukebox:') || label.startsWith('vitrola:'))
+// the label of a Gongo, a Jukebox, a Vitrola or a Recomeçar stone: the Gongo do Templo and the stone answer to the
+// temple's own labels ("gong", "reset"), the others to their element
+const labelOf = (el: LayoutElement) => el.kind === 'resetstone' ? 'reset' : el.kind === 'gong' && el.params.gong?.temple ? 'gong' : deviceLabel(el.kind === 'gong' ? 'gong' : el.kind === 'vitrola' ? 'vitrola' : 'jukebox', el.id)
 
 export function createLayoutSync(combat: Combat) {
   const targets = new Map<string, Target>()
@@ -45,7 +50,7 @@ export function createLayoutSync(combat: Combat) {
     const end = worldEnd(screens)
     const seen = new Set<string>()
     for (const el of elements) {
-      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox' && el.kind !== 'resetstone' && el.kind !== 'chest' && !isFixedKind(el.kind)) continue
+      if (el.kind !== 'dummy' && el.kind !== 'rack' && el.kind !== 'loose' && el.kind !== 'button' && el.kind !== 'gong' && el.kind !== 'jukebox' && el.kind !== 'vitrola' && el.kind !== 'resetstone' && el.kind !== 'chest' && !isFixedKind(el.kind)) continue
       seen.add(el.id)
       const cx = el.x + el.w / 2, bottom = el.y + el.h
       const inside = cx < end
@@ -110,7 +115,7 @@ export function createLayoutSync(combat: Combat) {
         continue
       }
       let t = targets.get(el.id)
-      if (el.kind === 'gong' || el.kind === 'jukebox' || el.kind === 'resetstone') {
+      if (el.kind === 'gong' || el.kind === 'jukebox' || el.kind === 'vitrola' || el.kind === 'resetstone') {
         const dev = DEVICES[el.kind]
         if (!t) { combat.addButton(cx, bottom - dev.lift, labelOf(el), dev.w, dev.h); t = combat.targets[combat.targets.length - 1]; targets.set(el.id, t) }
         t.w = dev.w; t.h = dev.h; t.y = bottom - dev.lift; t.label = labelOf(el)

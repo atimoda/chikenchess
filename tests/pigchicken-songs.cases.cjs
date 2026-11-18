@@ -92,12 +92,26 @@ test('the cover is drawn from the sequence: a dot per note, inside the record (S
   assert.ok(art.dots.every(d => d.color === s.music.zone.color))
 })
 
-test('the stage plays the song picked in the library; the gong starts it, or the campaign when that is picked', () => {
-  const st = stageLib.createNoteStage()
-  const mine = { ...lib.BUILTIN_SONGS[0], id: 'outra', name: 'Outra' }
-  st.setSongs([lib.BUILTIN_SONGS[0], mine])
-  assert.equal(st.select('outra'), true); assert.equal(st.song.id, 'outra')
-  assert.equal(st.select('nope'), false); assert.equal(st.song.id, 'outra')
+test('each sequencer keeps its own pick (else the one picked last); the Gongo do Templo asks for it, or the campaign plays', () => {
+  store.clear()
+  let l = lib.loadLibrary()
+  lib.saveSongAs(l, l.songs[0], 'Outra')
+  lib.openJukebox('vitrola:v1')
+  lib.pickSong('teste')
+  l = lib.loadLibrary()
+  assert.equal(lib.pickOf(l, 'vitrola:v1'), 'teste', 'its own pick')
+  assert.equal(lib.pickOf(l, 'jukebox:j1'), 'teste', 'one never picked from plays the one picked last')
+  lib.pickSong('outra', 'jukebox:j1'); l = lib.loadLibrary()
+  assert.equal(lib.pickOf(l, 'jukebox:j1'), 'outra')
+  assert.equal(lib.pickOf(l, 'vitrola:v1'), 'teste', 'the other keeps its own')
+  assert.equal(lib.mergeLibrary([], 'teste', {}, { 'jukebox:x': 'nope' }).picks['jukebox:x'], undefined, 'a pick of a song gone is dropped')
+  // the panel asks the game with the sequencer it was opened for
+  let play = null
+  const off = lib.onPlaySong((id, device) => { play = { id, device } })
+  lib.playSongNow('outra')
+  assert.deepEqual(play, { id: 'outra', device: 'vitrola:v1' })
+  off()
+  lib.openJukebox(null)
   // the temple: with a song picked, the gong's strikes call it instead of starting the campaign
   const t = temple.createTemple(7), conductor = music.createConductor(), targets = []
   let asked = 0

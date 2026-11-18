@@ -11,6 +11,7 @@
     "scaleLines": 100,
     "scaleKeep": false,
     "hitboxes": false,
+    "stageDebug": false,
     "grid": 60
   },
   "camera": {
