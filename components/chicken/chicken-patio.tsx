@@ -19,6 +19,8 @@ import {
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { CLASS_FACTOR_KEYS, CLASS_FACTOR_MAX, CLASS_IDS, defaultClasses, type ClassId } from "@/lib/chicken/species"
 import { Knob } from "@/components/knob"
+import { useSaveConfirm } from "@/components/admin/save-confirm"
+import { diffValues } from "@/lib/admin/save-diff"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
@@ -594,7 +596,11 @@ export function ChickenPatio() {
     setStatus(null)
   }
 
+  // "Salvar no game" asks first, with every change against the saved version
+  const [confirmSave, saveConfirmation] = useSaveConfirm()
   const save = async () => {
+    const changes = diffValues(normalizeChickenConfig(saved.config), normalizeChickenConfig(draft), chickenChangeLabel)
+    if (!(await confirmSave(changes, "Grava a configuração central dos personagens: vale na hora para todas as telas e para todo mundo."))) return
     setSaving(true)
     setStatus(null)
     try {
@@ -911,6 +917,7 @@ export function ChickenPatio() {
             {isAdmin && (
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 px-4 py-3">
                 {status && <span role="status" className={cn("min-w-0 text-[11px]", status.kind === "error" ? "text-red-300" : "text-[#8a9a8a]")}>{status.text}</span>}
+                {saveConfirmation}
                 <button type="button" disabled={!dirty || saving} onClick={() => void save()} title="Grava a configuração central da galinha: vale na hora para todas as telas e para todo mundo" className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50">{saving ? "Salvando…" : "Salvar no game"}</button>
               </div>
             )}
@@ -927,6 +934,15 @@ function Group({ title, open, onToggle, children }: { title: string; open: boole
       <div className="grid gap-field px-4 pb-4">{children}</div>
     </PatioDisclosure>
   )
+}
+
+// a change of the central configuration in words: the setting's label, Pig's and Ken's factors, the look's parts
+const PARAM_LABEL: Record<string, string> = Object.fromEntries(CHICKEN_PARAM_META.map(m => [m.key, m.label]))
+function chickenChangeLabel([part, a, b, c]: string[]) {
+  if (part === "params") return PARAM_LABEL[a] ?? a
+  if (part === "classes") return `${CLASS_NAME[a as ClassId] ?? a} › ${b === "airJumps" ? PARAM_LABEL.airJumps : `${PARAM_LABEL[c] ?? c} (fator)`}`
+  if (part === "look") return `Visual › ${a}`
+  return [part, a, b, c].filter(Boolean).join(" › ")
 }
 
 // a row of the Ajustes panel: the chicken's value, then Pig's and Ken's

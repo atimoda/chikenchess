@@ -1,8 +1,10 @@
 "use client"
 
-// "Salvar no game": shown only to admins; writes a game defaults file through the local Admin and shows the result.
+// "Salvar no game": shown only to admins; shows what changes and asks first, then writes a game defaults file
+// through the local Admin and shows the result.
 import { useEffect, useState } from "react"
-import { watchAdminSession } from "@/lib/admin/game-defaults-client"
+import { SaveCancelled, watchAdminSession, withSaveConfirm } from "@/lib/admin/game-defaults-client"
+import { useSaveConfirm } from "./save-confirm"
 import { cn } from "@/lib/utils"
 
 export function useIsAdmin() {
@@ -14,6 +16,8 @@ export function useIsAdmin() {
 export function SaveToGameButton({ path, save, className }: { path: string; save: () => Promise<void>; className?: string }) {
   const admin = useIsAdmin()
   const [state, setState] = useState<{ busy: boolean; message?: string; error?: boolean }>({ busy: false })
+  // before writing, the changes against the file as the game has it now, to confirm
+  const [confirm, confirmation] = useSaveConfirm()
   if (!admin) return null
   return (
     <span className={cn("flex min-w-0 flex-wrap items-center gap-2", className)}>
@@ -23,13 +27,14 @@ export function SaveToGameButton({ path, save, className }: { path: string; save
         title={`Grava em ${path} (Admin local); publique com commit e deploy`}
         onClick={() => {
           setState({ busy: true })
-          save().then(
+          withSaveConfirm(changes => confirm(changes, `Grava em ${path}. Para publicar, faça commit e deploy.`), save).then(
             () => setState({ busy: false, message: `Salvo em ${path}. Faça commit e deploy para publicar.` }),
-            (error: Error) => setState({ busy: false, message: error.message, error: true }),
+            (error: Error) => setState(error instanceof SaveCancelled ? { busy: false } : { busy: false, message: error.message, error: true }),
           )
         }}
         className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50"
       >{state.busy ? "Salvando…" : "Salvar no game"}</button>
+      {confirmation}
     </span>
   )
 }

@@ -1,7 +1,8 @@
 import { isAdminUser } from './access'
 import { getOnlineClient } from '../online/client'
 import { chickenControlsDefaultsFile, type ChickenControls } from '../chicken/controls'
-import { itemsDefaultsFile, type ItemDef, type ItemId } from '../pigchicken/items'
+import { DEFAULT_ITEMS, ITEM_PARAM_META, itemsDefaultsFile, itemsOver, type ItemDef, type ItemId } from '../pigchicken/items'
+import { diffValues, type SaveChange } from './save-diff'
 import { soulsFile, type SoulEntry } from '../pigchicken/soul-library'
 import { scalesDefaultsFile, type ScaleParams } from '../pigchicken/scale-params'
 import type { InstrumentScaleId } from '../pigchicken/instrument-scales'
@@ -22,6 +23,28 @@ export function watchAdminSession(onChange: (admin: boolean) => void) {
   return () => data.subscription.unsubscribe()
 }
 
+// The confirmation before a save writes: it gets every change against the file as the game reads it now and says
+// whether to go on. Set by the button for the length of its save (one save at a time)
+type ConfirmSave = (changes: SaveChange[]) => Promise<boolean>
+let confirmHook: ConfirmSave | null = null
+export class SaveCancelled extends Error { constructor() { super('Cancelado.') } }
+/** Runs a save asking `confirm` with the changes before writing; a "no" rejects with SaveCancelled. */
+export async function withSaveConfirm<T>(confirm: ConfirmSave, run: () => Promise<T>): Promise<T> {
+  confirmHook = confirm
+  try { return await run() } finally { confirmHook = null }
+}
+
+// how each file is compared (as the game reads it, so keys a file lacks are not news) and its changes named
+const ITEM_KEY_LABEL: Record<string, string> = Object.fromEntries(ITEM_PARAM_META.map(m => [m.key, m.label]))
+const CLASS_WORD: Record<string, string> = { pig: 'Pig', fox: 'Ken' }
+const FILE_DIFF: Record<string, { read?: (file: unknown) => unknown; label?: (path: string[]) => string }> = {
+  'pigchicken-items': {
+    read: file => itemsDefaultsFile(itemsOver(file)),
+    label: ([id, key, cls, sub]) => [DEFAULT_ITEMS[id as ItemId]?.name ?? id,
+      ...(key === 'classPoints' ? [`Pontos do ${CLASS_WORD[cls] ?? cls}`, ITEM_KEY_LABEL[sub] ?? sub] : [ITEM_KEY_LABEL[key] ?? key])].filter(Boolean).join(' › '),
+  },
+}
+
 // value: the file's new content, or how to make it from the content it has now
 async function saveAdminFile(id: string, value: unknown) {
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -34,10 +57,16 @@ async function saveAdminFile(id: string, value: unknown) {
   const current = await fetch(url, { cache: 'no-store', headers }).catch(() => null)
   const payload = await current?.json().catch(() => null)
   if (!current?.ok || typeof payload?.revision !== 'string') throw new Error(payload?.error || 'Salvamento local indisponível. Rode npm run admin:dev.')
+  const next = typeof value === 'function' ? value(payload.value) : value
+  if (confirmHook) {
+    const how = FILE_DIFF[id] ?? {}
+    const changes = diffValues(how.read ? how.read(payload.value) : payload.value, how.read ? how.read(next) : next, how.label)
+    if (!(await confirmHook(changes))) throw new SaveCancelled()
+  }
   const response = await fetch(url, {
     method: 'PUT', cache: 'no-store',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ revision: payload.revision, value: typeof value === 'function' ? value(payload.value) : value }),
+    body: JSON.stringify({ revision: payload.revision, value: next }),
   })
   const saved = await response.json().catch(() => null)
   if (!response.ok) throw new Error(saved?.error || 'Não deu para salvar no game.')
