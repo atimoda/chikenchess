@@ -67,7 +67,7 @@ export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom'
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
-export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: 'Soltar aliens', pattern: 'Padrão dos aliens', zombies: 'Soltar zumbis', zcount: 'Quantidade de zumbis' }
+export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: 'Aliens', pattern: 'Padrão dos aliens', zombies: 'Zumbis', zcount: 'Quantidade de zumbis' }
 
 export type ElementParams = {
   message?: string; maxHp?: number // dummy

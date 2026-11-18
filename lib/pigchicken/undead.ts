@@ -10,6 +10,7 @@ import type { NoteOut } from './transforms'
 import type { BirdId, UndeadMode } from './birds'
 import type { PerchState } from './bird-perch'
 import { boxTops } from './box-tops'
+import { lookSpecies } from './enemies'
 
 // ---------- the two deaths ----------
 
@@ -36,7 +37,8 @@ export function deathSoundsFor(data: unknown): DeathSounds {
   const d = data as { kind?: string; species?: string; death?: DeathSounds } | undefined
   // an alien of the catalogue carries its own
   if (d?.death?.physical && d.death.musical) return d.death
-  return (d?.kind === 'temple' && d.species && DEATH_SOUNDS[d.species]) || DEATH_SOUNDS.horde
+  const sp = lookSpecies(d)
+  return (sp && DEATH_SOUNDS[sp]) || DEATH_SOUNDS.horde
 }
 
 // what a death plays over the chord now (times from the grid)

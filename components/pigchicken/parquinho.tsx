@@ -33,7 +33,7 @@ import { announceHeldItem, bowed, curvePower, loadItems, nextArp, saveItems, sub
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
-import { ALIEN_PATTERNS } from "@/lib/pigchicken/enemies"
+import { ALIEN_PATTERNS, alienPattern } from "@/lib/pigchicken/alien-patterns"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
 import { audioTime, createDrone, playBass, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
 import { SILENCE, ambienceDrone, ambienceKit, bassNotes, beatHits, grooveOf, legacyAmbience } from "@/lib/pigchicken/zone-ambience"
@@ -1133,7 +1133,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const spawnEnemies = (s: NetSpawn) => {
         if (net.follower) { net.requestSpawn(s); return }
         const bounds = { l: s.l, r: s.r }
-        if (s.what === "aliens") combat.spawnAliens(G, s.x, bounds)
+        if (s.what === "aliens") combat.spawnAliens(G, s.x, bounds, alienPattern(s.p))
         else if (s.what === "zombies") combat.spawnZombies(G, s.x, s.n ?? horde.zombies, bounds)
         else if (s.what === "alien") {
           const species = CATALOG_SPECIES[Math.floor(Math.random() * CATALOG_SPECIES.length)]
@@ -1151,13 +1151,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         else if (id === "reset") resetHit = true
         else if (id === "jukebox" || id.startsWith("jukebox:")) { jukeFrom = id; templeDraw.jukeLast = id; jukeRing = 0; openJukebox() }
         else if (id.startsWith("gong:")) gongStrikes.push(id.slice(5))
-        else if (id === "aliens") spawnEnemies({ what: "aliens", x: body.x, y: body.y, ...scene })
+        else if (id === "aliens") spawnEnemies({ what: "aliens", x: body.x, y: body.y, p: horde.pattern, ...scene })
         else if (id === "zombies") spawnEnemies({ what: "zombies", x: body.x, y: body.y, n: horde.zombies, ...scene })
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
         else if (id === "pattern") horde.pattern = (horde.pattern + 1) % ALIEN_PATTERNS.length
       })
-      buttonLabels.aliens = "SOLTAR ALIENS"; buttonLabels.pattern = `PADRÃO: ${ALIEN_PATTERNS[horde.pattern].label.toUpperCase()}`
-      buttonLabels.zombies = "SOLTAR ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
+      buttonLabels.aliens = "ALIENS"; buttonLabels.pattern = `PADRÃO: ${alienPattern(horde.pattern).label.toUpperCase()}`
+      buttonLabels.zombies = "ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
       // Register every local player before the shared projectile update, including its owner.
       // (id: the local player each one is, for what their souls flying free do to them; the chicks have none)
       const playerOf = new Map([[engine, "p1"] as const, ...Array.from(extras?.current?.entries() ?? [], ([id, e]) => [e, id] as const)])
