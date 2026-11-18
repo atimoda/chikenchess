@@ -3030,6 +3030,18 @@ export function createCombat() {
     get effects() { return effects as readonly Effect[] },
     get consumption() { return consumption },
     predictThrow,
+    // the note the held instrument would play now (the space ring's next note, lib/pigchicken/note-hud.ts): its scale
+    // degree's colour and whether the aim is between the Hangdrum's notes (a slap). null: no instrument in the wing
+    get aimTone() {
+      const h = held(), d = def()
+      if (!h || !d.instrument) return null
+      const t = tones(d), m = t.note()
+      return { color: t.color(m), slap: t.slap() }
+    },
+    // how far the wait until the next shot still is (1 just after a shot, 0: it may go): the Granada's ring
+    get cadence() { return Math.max(0, Math.min(1, cooldown * Math.max(0.1, def().rate))) },
+    // Atirar held on the last step
+    get firing() { return prevFire },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
     booms, tracers, sounds, songs, critters, music,

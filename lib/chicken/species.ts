@@ -51,6 +51,9 @@ export const CHICK_FACTORS: Partial<Record<NumKey, number>> = {
   headSnapTime: 0.7,
   // the head bobs much less walking and running
   headLead: 0.35,
+  // the head stays back much less before it shoots forward (its steps are long for its size: at the chicken's 0.7 it
+  // leaned back ~44° on every step)
+  headLag: 0.45,
   runHeadTilt: 0.35,
   bodyRock: 0.6,
   // a lighter body: falls a little slower at the top speed

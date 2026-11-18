@@ -23,6 +23,50 @@ test('a Pátio kept in this browser keeps how it stands with the database copy',
   assert.equal(store.localPatios().length, 0)
 })
 
+test('the default Pátio kept at /patio and by its lobby id is one copy: a change to either reaches both', () => {
+  memory.clear()
+  const id = 'c6bd934e-6b41-40d9-9afc-92a233ee56a3'
+  assert.equal(store.hasKeptPatio(null), false); assert.equal(store.hasKeptPatio(id), false)
+  store.keepPatio({ ...store.loadDefaultPatio(), revision: 100, dbId: id })
+  store.keepPatio({ ...store.loadPatio(id), revision: 150, name: 'Pátio padrão' })
+  assert.equal(store.loadDefaultPatio().revision, 150)
+  // saved at /patio: the copy by id follows, and so does the next new Pátio
+  store.keepPatio({ ...store.loadDefaultPatio(), revision: 189, dirty: false })
+  assert.equal(store.loadPatio(id).revision, 189); assert.equal(store.loadPatio(id).name, 'Pátio padrão')
+  // another lobby never copies into the default
+  const other = '3f1d2c4b-1111-4222-8333-444455556666'
+  store.keepPatio({ ...store.loadPatio(other), revision: 3 })
+  assert.equal(store.loadDefaultPatio().revision, 189)
+  assert.equal(store.hasKeptPatio(null), true); assert.equal(store.hasKeptPatio(other), true)
+})
+
+test('a full storage makes room by dropping copies the database already has, oldest first, never unsaved ones', () => {
+  memory.clear()
+  const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333']
+  const at = ['2026-11-01T00:00:00.000Z', '2026-11-02T00:00:00.000Z']
+  const base = store.loadDefaultPatio()
+  memory.set('chickenchess:patio:v1:' + ids[0], JSON.stringify({ layout: base.layout, revision: 5, dirty: false, updatedAt: at[1] }))
+  memory.set('chickenchess:patio:v1:' + ids[1], JSON.stringify({ layout: base.layout, revision: 5, dirty: false, updatedAt: at[0] }))
+  memory.set('chickenchess:patio:v1:' + ids[2], JSON.stringify({ layout: base.layout, revision: 0, dirty: true, updatedAt: at[0] }))
+  // room for one more kept Pátio than there is now
+  const size = () => [...memory].reduce((n, [k, v]) => n + k.length + v.length, 0)
+  const limit = size() + 100
+  const real = globalThis.window.localStorage
+  globalThis.window.localStorage = { ...real, get length() { return memory.size }, setItem(k, v) {
+    const before = memory.get(k)
+    memory.set(k, String(v))
+    if (size() > limit) { if (before == null) memory.delete(k); else memory.set(k, before); throw new Error('QuotaExceededError') }
+  } }
+  const warn = console.warn; console.warn = () => {}
+  try {
+    const fresh = store.newPatio('device:me')
+    store.keepPatio({ ...fresh, dirty: true })
+    assert.equal(store.loadPatio(fresh.id).dirty, true) // it was written
+    assert.equal(memory.has('chickenchess:patio:v1:' + ids[1]), false) // the oldest saved copy made room
+    assert.equal(memory.has('chickenchess:patio:v1:' + ids[2]), true) // unsaved changes stay
+  } finally { globalThis.window.localStorage = real; console.warn = warn }
+})
+
 test('the default Pátio is the admin\'s alone, also when opened by its lobby id', () => {
   const me = 'u-ana', id = '3f1d2c4b-1111-4222-8333-444455556666'
   access.setPatioInfo({ lobbyId: id, creatorId: me, me, isAdmin: false })

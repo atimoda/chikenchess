@@ -95,13 +95,28 @@ test('a round: the same seed draws the same bombs, the chance holds, and a free 
   assert.equal(M.mineCell(full, -1, 0), null)
 })
 
-test('the side is the state of the block the body is in; between blocks it stays what it was', () => {
+test('the side is the state of the block the body is in; out of the blocks it is open unless closed blocks are all around', () => {
   const grid = M.createMineGrid(geo(), { bombs: 0, seed: 1, free: [{ c: 0, r: 0 }] })
   assert.equal(M.mineSideAt(grid, 160, 800, 'closed'), 'open')
   assert.equal(M.mineSideAt(grid, 160 + 320, 800, 'open'), 'closed')
+  // the gap beside an open block is the open side, whatever side she had (x0 is 16: (0,0) ends at 304)
   assert.equal(M.mineSideAt(grid, 310, 800, 'open'), 'open')
-  assert.equal(M.mineSideAt(grid, 310, 800, 'closed'), 'closed')
-  assert.equal(M.mineSideAt(grid, -50, 800, 'closed'), 'closed')
+  assert.equal(M.mineSideAt(grid, 310, 800, 'closed'), 'open')
+  // between two closed blocks she keeps her side: (1,0) ends at 624, (2,0) starts at 656
+  assert.equal(M.mineSideAt(grid, 640, 800, 'closed'), 'closed')
+  assert.equal(M.mineSideAt(grid, 640, 800, 'open'), 'open')
+  // ...and where four closed blocks meet (rows 0 and 1 meet at y 642 to 610)
+  assert.equal(M.mineSideAt(grid, 640, 625, 'closed'), 'closed')
+  // over the open block's corner where the gaps cross
+  assert.equal(M.mineSideAt(grid, 310, 625, 'closed'), 'open')
+  // outside the grid: beside it and over its top row
+  assert.equal(M.mineSideAt(grid, -50, 800, 'closed'), 'open')
+  assert.equal(M.mineSideAt(grid, 7700, 800, 'closed'), 'open')
+  const top = M.mineCellRect(grid.geo, 1, grid.geo.rows - 1)
+  assert.equal(M.mineSideAt(grid, 480, top.y - 3, 'closed'), 'open')
+  // the gap between two closed blocks of the top row opens over the grid
+  assert.equal(M.mineSideAt(grid, 640, top.y + 10, 'closed'), 'closed')
+  assert.equal(M.mineSideAt(grid, 640, top.y - 10, 'closed'), 'open')
   // within the thickness of a closed block's walls: (1,0) starts at x 336 and its walls are 12 thick
   assert.equal(M.mineSideAt(grid, 340, 800, 'open'), 'open')
   assert.equal(M.mineSideAt(grid, 349, 800, 'open'), 'closed')
@@ -312,6 +327,13 @@ test('"Cantos em octógono": the cut goes from none to a regular octagon, and th
   assert.equal(M.mineSideAt(grid, 330 + k / 2 + 4, 300 + k / 2 + 4, 'open'), 'open')
   assert.equal(M.mineSideAt(grid, 330 + k / 2 + 12, 300 + k / 2 + 12, 'open'), 'closed')
   assert.equal(M.mineSideAt(grid, 340, 310, 'open'), 'open')
+  // a cut corner keeps the side only with closed blocks all around it: the top row's top corners open over the grid
+  assert.equal(M.mineSideAt(grid, 340, 310, 'closed'), 'open')
+  assert.equal(M.mineSideAt(grid, 340, 590, 'closed'), 'closed')
+  // ...and a corner beside an open block is the open side
+  const beside = M.createMineGrid(g, { bombs: 0, seed: 1, free: [{ c: 0, r: 1 }] })
+  assert.equal(M.mineSideAt(beside, 340, 590, 'closed'), 'open') // (0,1) is at this corner of (1,1)...
+  assert.equal(M.mineSideAt(beside, 620, 590, 'closed'), 'closed') // ...not at this one
   // someone a block closes around is put inside its room, off the slanted walls too
   const moved = M.mineRoomClamp(g, 1, 1, 332, 302, 17)
   assert.ok(M.mineBlockContains(g, 1, 1, moved.x, moved.y, 16.9))

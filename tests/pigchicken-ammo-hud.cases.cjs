@@ -103,3 +103,79 @@ test('the Granada never runs out nor reloads; the Pandeiro still has its magazin
   throwOne(t)
   assert.equal(t.held.ammo, DEFAULT_ITEMS.tambourine.mag - 1)
 })
+
+// ---------- the space ring of the instruments and the throwing items (lib/pigchicken/note-hud.ts) ----------
+const { noteLook, noteSlot, noteLit, nextNote, rosetteRings, fieldAt, newNoteView, stepNoteView, SPECIAL_CARDS } = loadTs('lib/pigchicken/note-hud.ts')
+const { burstsAlone } = loadTs('lib/pigchicken/cards.ts')
+const nframe = (look, owned, ammo, over = {}) => ({ owned, look, ammo, reload: 0, refill: 0, amount: 1, charge: 0, firing: false, color: null, slap: false, aim: 0, spin: 0, cadence: 0, away: [], out: 0, special: null, wake: false, ...over })
+
+test('each instrument class and each throwing item has its own ring; weapons with a pente and the fixed instruments have none', () => {
+  const styles = Object.fromEntries(['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum', 'cardsBlue', 'cardsRed', 'boomerang', 'mjolnir', 'odinstaff', 'hook', 'grenade', 'bat'].map(id => [id, noteLook(id, DEFAULT_ITEMS[id]).style]))
+  assert.deepEqual(styles, { flute: 'dots', sax: 'bars', trumpet: 'trios', guitar: 'rosette', violin: 'strokes', keys: 'keys', tambourine: 'jingles', harp: 'lyre', hangdrum: 'fields', cardsBlue: 'cards', cardsRed: 'cards', boomerang: 'wings', mjolnir: 'coil', odinstaff: 'coil', hook: 'links', grenade: 'pulse', bat: 'blocks' })
+  for (const id of ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'bow', 'pedalharp', 'drumkit', 'maryjane', 'passagua']) assert.equal(noteLook(id, DEFAULT_ITEMS[id]), null, id)
+  for (const id of INSTRUMENT_IDS) assert.equal(noteLook(id, DEFAULT_ITEMS[id]).n, Math.min(60, DEFAULT_ITEMS[id].mag), id)
+  assert.equal(noteLook('trumpet', DEFAULT_ITEMS.trumpet).group, 3)
+  assert.equal(noteLook('guitar', DEFAULT_ITEMS.guitar).group, 5)
+  assert.equal(noteLook('keys', DEFAULT_ITEMS.keys).group, 4)
+  assert.deepEqual(rosetteRings(60).map(r => r[0]), [15, 20, 25])
+  assert.equal(noteLook('boomerang', DEFAULT_ITEMS.boomerang).n, 2)
+  // the special cards are the deck's own: the ones that burst alone
+  assert.deepEqual(SPECIAL_CARDS, [...Array(14).keys()].filter(burstsAlone))
+})
+
+test('the Trompete\'s phrases sit in two side arcs, the Harpa de Lira\'s strings under the reticle', () => {
+  const tr = noteLook('trumpet', DEFAULT_ITEMS.trumpet)
+  for (let j = 0; j < 12; j++) assert.ok(Math.cos(noteSlot(tr, j).a) < 0, `slot ${j} on the left`)
+  for (let j = 12; j < 24; j++) assert.ok(Math.cos(noteSlot(tr, j).a) > 0, `slot ${j} on the right`)
+  const harp = noteLook('harp', DEFAULT_ITEMS.harp)
+  const first = noteSlot(harp, 0), last = noteSlot(harp, 11)
+  assert.ok(Math.cos(first.a) < 0 && Math.cos(last.a) > 0 && Math.sin(first.a) > 0 && Math.sin(last.a) > 0)
+  // the Hangdrum: the field the aim points at
+  assert.equal(fieldAt(-Math.PI / 2), 0); assert.equal(fieldAt(0), 2); assert.equal(fieldAt(Math.PI / 2), 4)
+})
+
+test('lit notes: loaded, coming back with the gradual reload, a full reload lighting them one by one, the violin draining', () => {
+  const fl = noteLook('flute', DEFAULT_ITEMS.flute)
+  assert.equal(noteLit(fl, 9, 10, 0, 0, 1), 1)
+  assert.equal(noteLit(fl, 10, 10, 0, 0.5, 1), 0.5)
+  assert.equal(noteLit(fl, 11, 10, 0, 0.5, 1), 0)
+  assert.equal(noteLit(fl, 29, 0, 0.5, 0, 1), 1)
+  assert.equal(noteLit(fl, 30, 0, 0.5, 0, 1), 0)
+  assert.equal(nextNote(10), 9)
+  const gt = noteLook('guitar', DEFAULT_ITEMS.guitar)
+  assert.equal(noteLit(gt, 13, 10, 0, 0.25, 4), 0.25, 'the Violão brings four back together')
+  const vi = noteLook('violin', DEFAULT_ITEMS.violin)
+  assert.ok(Math.abs(noteLit(vi, 2, 2.4, 0, 0, 1) - 0.4) < 1e-9)
+})
+
+test('a shot lets the notes float off; Próxima variação and a new item sweep the ring on; cards leave and come back', () => {
+  const fl = noteLook('flute', DEFAULT_ITEMS.flute), owned = {}, v = newNoteView()
+  stepNoteView(v, nframe(fl, owned, 60), 0.016)
+  assert.ok(v.sweep >= 0, 'a new item sweeps on')
+  for (let i = 0; i < 40; i++) stepNoteView(v, nframe(fl, owned, 60), 0.016)
+  assert.equal(v.sweep, -1)
+  stepNoteView(v, nframe(fl, owned, 58, { color: '#7bd88f' }), 0.016)
+  assert.equal(v.bits.length, 2)
+  assert.equal(v.bits[0].color, '#7bd88f', 'the note takes its degree\'s colour')
+  assert.ok(Math.hypot(v.bits[0].vx, v.bits[0].vy) > 0 && v.bits[0].vy <= 0.6, 'it floats, it does not fall')
+  stepNoteView(v, nframe(fl, owned, 58, { wake: true }), 0.016)
+  assert.ok(v.sweep >= 0)
+  const deck = noteLook('cardsRed', DEFAULT_ITEMS.cardsRed), d = {}, w = newNoteView()
+  stepNoteView(w, nframe(deck, d, 0), 0.016)
+  stepNoteView(w, nframe(deck, d, 0, { away: [0, 1] }), 0.016)
+  assert.equal(w.bits.filter(b => b.kind === 'card').length, 2)
+  stepNoteView(w, nframe(deck, d, 0, { away: [1] }), 0.016)
+  assert.ok(w.flash[0] > 0, 'the card back in the deck flashes')
+})
+
+test('the combat says the note under the aim, the cadence and whether Atirar is held', () => {
+  const c = createCombat()
+  c.give('flute')
+  step(c)
+  const tone = c.aimTone
+  assert.ok(tone && /^#/.test(tone.color) && tone.slap === false)
+  step(c, { fire: true, firePressed: true })
+  assert.equal(c.firing, true)
+  assert.ok(c.cadence > 0)
+  c.give('pistol')
+})

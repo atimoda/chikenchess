@@ -8,7 +8,7 @@
 //   (the default and the Pátios an admin featured), Favoritos and Salvos (mine, or for the admin everyone's), with a
 //   star to favourite, delete, duplicate, "set as default" and the admin's Destaque.
 import { StepSelect } from "@/components/ui/step-select"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Award, Copy, Crown, FolderOpen, Home, Loader2, Plus, Save, Star, Trash2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
@@ -216,8 +216,11 @@ function sortRows(rows: PatioLobbyInfo[], sort: Sort, live: PatioLiveCounts) {
   return [...rows].sort(by[sort])
 }
 
-export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNew, onLogin, onDeleted, onFavoriteCurrent, onClose }: {
+export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNew, onLogin, onDeleted, onFavoriteCurrent, onClose, refreshKey = 0 }: {
   currentId: string | null
+  // changes when the open Pátio reaches the database for the first time or gets a name: the lists are read again
+  // (only while this panel is open: closed, it is not mounted and asks nothing)
+  refreshKey?: number
   me: string | null
   isAdmin: boolean
   isAccount: boolean
@@ -253,6 +256,8 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   // the generator of a Pátio "do zero" (Empty or Basic biome)
   const [generator, setGenerator] = useState(false)
   const local = useMemo(() => { void tick; return localPatios() }, [tick])
+  const seenRefresh = useRef(refreshKey)
+  useEffect(() => { if (refreshKey !== seenRefresh.current) { seenRefresh.current = refreshKey; setTick(t => t + 1) } }, [refreshKey])
   const all = savedAll || favAll
   useEffect(() => {
     if (server || !patioOnlineAvailable()) { setGuestFeatured([]); return }

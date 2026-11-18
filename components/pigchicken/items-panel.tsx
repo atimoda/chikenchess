@@ -132,7 +132,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Golpes">
             <option value="peck">{items.peck.name} (Chi sem item)</option>
             <option value="wing">{items.wing.name} (Chi sem item)</option>
-            <option value="piu">{items.piu.name} (filhote sem item)</option>
+            <option value="piu">{items.piu.name} (kid sem item)</option>
             <option value="chainBlow">{items.chainBlow.name} (Pig sem item)</option>
             <option value="tailBlow">{items.tailBlow.name} (Ken sem item)</option>
           </optgroup>

@@ -19,7 +19,7 @@ const COLUMNS: { key: keyof MineStats; label: string; hint: string }[] = [
   { key: "disarmed", label: "Desarmes", hint: "Bombas desarmadas" },
   { key: "installed", label: "Instaladas", hint: "Bombas instaladas" },
   { key: "kills", label: "Mortes", hint: "Mortes pelas bombas que instalou ou detonou" },
-  { key: "deaths", label: "Filhote", hint: "Vezes que virou Filhote" },
+  { key: "deaths", label: "Kids", hint: "Vezes que virou kid" },
 ]
 
 export function MineRoundEnd({ players, onReset }: { players: { id: string; name: string; color: string }[]; onReset?: () => void }) {
