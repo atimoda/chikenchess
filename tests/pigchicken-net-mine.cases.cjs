@@ -109,6 +109,7 @@ test('what arrives is checked: a browser speaks only for its own players, and a 
   assert.deepEqual(state.l, [[0, 1, 0, 0, 0, -1, 0], [2, 2, -1, 1, 0, -1, -1]])
   assert.deepEqual(state.e, [{ kind: 'boom', c: 1, r: 1, owner: '2:0', contained: false, cells: [{ c: 1, r: 1 }] }, { kind: 'end' }])
   assert.deepEqual(state.k, ['2:0'])
+  assert.deepEqual(N.cleanMineState({ n: 1, c: 5, r: 4, l: [], e: [{ kind: 'clear', c: 2, r: 1, by: '2:0' }] }).e, [{ kind: 'clear', c: 2, r: 1, by: '2:0' }])
   assert.equal(N.mineSameShape(R.mineRound(grid(1)), { n: 1, c: 6, r: 4, l: [] }), false)
 })
 

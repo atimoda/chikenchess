@@ -25,6 +25,7 @@ export type MineFace = 'top' | 'bottom' | 'left' | 'right' | MineCorner
 export type MineEvent =
   | { kind: 'flag'; c: number; r: number; by: string; bomb: boolean } // bomb: there really is one under it
   | { kind: 'doubt'; c: number; r: number; by: string }
+  | { kind: 'clear'; c: number; r: number; by: string } // the doubt solved by the notes: nothing marked any more
   | { kind: 'open'; c: number; r: number; by: string; lost: boolean } // lost: a disarmed bomb went with it
   // contained: the flag was up again in time, the walls held and the block stays closed; cells: where it kills
   | { kind: 'boom'; c: number; r: number; by?: string; owner?: string; contained: boolean; cells: MineSpot[] }
@@ -32,7 +33,8 @@ export type MineEvent =
   | { kind: 'disarm' | 'arm' | 'take' | 'install' | 'detonator'; c: number; r: number; by: string }
   | { kind: 'end' }
 
-// s the notes do not count after a flag goes up: what is left of the burst that raised it must not start the doubt
+// s the notes do not count after a flag goes up (what is left of the burst that raised it must not start the doubt)
+// and after a doubt is cleared (nor raise the flag again)
 export const MINE_FLAG_HOLD = 1.5
 // the angle the blue grows along when it starts at this wall
 const FACE_TURN: Record<MineFace, number> = { bottom: 0, bl: 45, left: 90, tl: 135, top: 180, tr: 225, right: 270, br: 315 }
@@ -143,13 +145,20 @@ export function mineNote(round: MineRound, rules: MineRules, at: MineSpot, side:
     st.doubts++
     return [{ kind: 'doubt', c: at.c, r: at.r, by }]
   }
+  if (cell.hold > 0) return []
   cell.by.note = by
   const next = Math.min(1, cell.gauge + 1 / rules.toFlag)
   turnFor(cell, rules, next, face ? FACE_TURN[face] : null)
   cell.gauge = next; st.music++
   if (next < 1 - 1e-9) return []
+  // in doubt, the blue full takes the doubt away and leaves the block with nothing marked, back at grey
+  if (cell.doubt) {
+    st.solved++
+    cell.doubt = false; cell.gauge = 0; cell.yellow = 0; cell.hold = MINE_FLAG_HOLD
+    if (rules.turn === 'first') cell.turn = null
+    return [{ kind: 'clear', c: at.c, r: at.r, by }]
+  }
   cell.gauge = 1
-  if (cell.doubt) st.solved++
   cell.flag = true; cell.doubt = false; cell.yellow = 0; cell.hold = MINE_FLAG_HOLD
   st.flags++
   if (cell.bomb) st.flagsOnBomb++

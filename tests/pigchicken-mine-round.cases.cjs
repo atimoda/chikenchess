@@ -125,10 +125,16 @@ test('a flag takes no shot; notes over it fill the yellow, and the doubt takes s
   assert.deepEqual(notes(rd, 1, 0, 1, 'open', 'b'), [{ kind: 'doubt', c: 1, r: 0, by: 'b' }])
   const k = cell(rd, 1, 0)
   assert.deepEqual([k.flag, k.doubt, k.gauge, k.yellow], [false, true, 0, 0])
-  // in doubt: notes raise the flag again (the doubt is solved), or shots open it
-  assert.deepEqual(kinds(notes(rd, 1, 0, 4, 'open', 'b')), ['flag'])
+  // in doubt: the blue full takes the doubt away and leaves nothing marked (the doubt is solved), or shots open it
+  assert.deepEqual(notes(rd, 1, 0, 4, 'open', 'b'), [{ kind: 'clear', c: 1, r: 0, by: 'b' }])
+  assert.deepEqual([k.flag, k.doubt, k.gauge, k.yellow], [false, false, 0, 0])
   assert.equal(rd.stats.b.doubts, 1)
   assert.equal(rd.stats.b.solved, 1)
+  // what is left of the burst that cleared it does not count; then notes raise the flag from grey as usual
+  assert.deepEqual(notes(rd, 1, 0, 6), [])
+  assert.equal(k.gauge, 0)
+  R.mineTick(rd, R.MINE_FLAG_HOLD)
+  assert.deepEqual(kinds(notes(rd, 1, 0, 4)), ['flag'])
   R.mineTick(rd, 5)
   notes(rd, 1, 0, 4)
   assert.deepEqual(kinds(R.mineShot(rd, rules, { c: 1, r: 0 }, 100, 's')), ['open'])
@@ -240,11 +246,13 @@ test('the detonator: only in doubt, it counts down for all; a key stops it, the 
   assert.equal(R.mineBombUse(rd.grid, { c: 1, r: 0 }, { key: false, crouch: false }), null) // already counting
   assert.deepEqual(R.mineTick(rd, 4), [])
   assert.equal(cell(rd, 1, 0).fuse, 6)
-  // (1,0): a key stops it; (2,0): the flag goes up again in time; (3,0): nothing
+  // (1,0): a key stops it; (2,0): the doubt cleared and the flag up again in time; (3,0): nothing
   assert.deepEqual(kinds(R.mineUseBomb(rd, rules, { c: 1, r: 0 }, 'disarm', 'k')), ['disarm'])
   assert.equal(cell(rd, 1, 0).fuse, null)
-  notes(rd, 2, 0, 4)
-  const ev = R.mineTick(rd, 6)
+  assert.deepEqual(kinds(notes(rd, 2, 0, 4)), ['clear'])
+  assert.deepEqual(R.mineTick(rd, R.MINE_FLAG_HOLD), [])
+  assert.deepEqual(kinds(notes(rd, 2, 0, 4)), ['flag'])
+  const ev = R.mineTick(rd, 6 - R.MINE_FLAG_HOLD)
   assert.deepEqual(ev.map(e => [e.kind, e.c, e.contained, e.owner, e.cells.map(k => `${k.c},${k.r}`).join(' ')]), [['boom', 2, true, 'd', '2,0'], ['boom', 3, false, 'd', '3,0']])
   const held = cell(rd, 2, 0)
   assert.deepEqual([held.open, held.flag, held.bomb, held.fuse], [false, true, false, null])
