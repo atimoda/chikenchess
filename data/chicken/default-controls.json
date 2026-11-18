@@ -78,7 +78,7 @@
   "touchRunGrab": true,
   "sound": true,
   "analog": {"deadzoneL":0.25,"deadzoneR":0.25,"magnet":false,"magnetDeg":0,"magnetRestoreDeg":12,"aimMagnetDeg":0},
-  "inventory": {"repeatDelay":1.5,"repeatInterval":0.3},
+  "inventory": {"repeatDelay":1.5,"repeatInterval":0.3,"align":"split"},
   "wheel": {"up":"nextItem","down":"prevItem"},
   "variations": {"nextItem":false,"prevItem":false,"nextInstrument":false,"nextWeapon":false,"nextUtility":false},
   "harp": {"keys":{"sharp":["Key:ShiftLeft",null,null]},"keys2":{"sharp":["Key:ShiftRight",null]},"pad":{"sharp":["Pad:b10",null,null]}}

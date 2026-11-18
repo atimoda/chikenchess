@@ -30,6 +30,8 @@ export type NetShot =
   // a special) and a staff thrown that comes back ('hm': from where, its angle, speed and how far it goes)
   | { k: 'z'; i: ItemId; p: number[]; s: number }
   | { k: 'hm'; i: ItemId; x: number; y: number; a: number; sp: number; rg: number }
+  // the Corrente-gancho's hook thrown ('gk': from where, to where it stops, its speed and l: 1 when it latched there)
+  | { k: 'gk'; i: ItemId; x: number; y: number; tx: number; ty: number; sp: number; l: number }
   // a deck's card (lib/pigchicken/cards.ts; c: its id in the browser that threw it): thrown ('cd': its rank, from
   // where, to where, its speed and, for a music deck, its note's colour), on its way back to its owner ('cb') and
   // burst ('cx': where, the burst's radius and, for a music deck, the note it plays, its colour and voice)
@@ -39,7 +41,8 @@ export type NetShot =
 
 // what spawns are asked of the owner (the horde buttons and the editor's training enemies), with the scene they are
 // for: the horde moves inside it whoever is watching
-export type NetSpawn = { what: 'aliens' | 'zombies' | 'alien' | 'zombie'; x: number; y: number; l: number; r: number; n?: number }
+// n: how many zombies; p: the horde's pattern (its place in ALIEN_PATTERNS, lib/pigchicken/alien-patterns.ts)
+export type NetSpawn = { what: 'aliens' | 'zombies' | 'alien' | 'zombie'; x: number; y: number; l: number; r: number; n?: number; p?: number }
 
 // one enemy per entry: [id, kind, x, y, w, h, hp, maxHp, face, state, animT, deadT, harmony, stun, tint, flash, angle, data?, shock?]
 // data: only when it changed (0 holds its place when only the shock follows); shock: [left, total, power] while shocked
@@ -97,7 +100,7 @@ export function exportFoes(targets: readonly Target[], pid: number, cache: FoeCa
       let fid = cache.fids.get(f)
       if (fid === undefined) { fid = netIdFor(pid, cache.nextFid++); cache.fids.set(f, fid) }
       fs[fid] = [r1(f.x), r1(f.y), f.dir, r1(f.targetY), r1(f.speed), f.cols, f.gap, f.total, f.l ?? NaN, f.r ?? NaN].map(v => (Number.isFinite(v) ? v : -1e9))
-      out = { kind: 'alien', fid, col: data.col, row: data.row, color: data.color }
+      out = { kind: 'alien', fid, col: data.col, row: data.row, color: data.color, ...(typeof data.species === 'string' ? { species: data.species } : {}) }
     }
     let sig: string
     if (t.kind === 'undead' && data) {
@@ -148,7 +151,7 @@ export function importFoes(targets: Target[], msg: NetFoes, formations: Map<numb
       const d = data as AnyData & { fid: number }
       const f = formations.get(d.fid)
       if (!f) continue
-      data = { kind: 'alien', f, col: d.col, row: d.row, color: d.color }
+      data = { kind: 'alien', f, col: d.col, row: d.row, color: d.color, ...(typeof d.species === 'string' && d.species.length <= 24 ? { species: d.species } : {}) }
     }
     let t = byNet.get(id)
     if (!t) {
@@ -235,6 +238,11 @@ export function cleanShot(s: unknown, items: Record<string, unknown>): NetShot |
     const n = o.n as { m?: unknown; c?: unknown; v?: unknown } | undefined
     return { k: 'cx', i: o.i as ItemId, c: o.c as number, x: o.x as number, y: o.y as number, rd: Math.max(0, Math.min(1000, o.rd as number)), ...(n && typeof n === 'object' && num(n.m) && typeof n.c === 'string' && typeof n.v === 'string' ? { n: { m: n.m as number, c: n.c, v: n.v } } : {}) }
   }
+  if (o.k === 'gk' && all('x', 'y', 'tx', 'ty', 'sp')) {
+    // (never further than a hook can go)
+    const dx = (o.tx as number) - (o.x as number), dy = (o.ty as number) - (o.y as number), d = Math.hypot(dx, dy), k = d > 6000 ? 6000 / d : 1
+    return { k: 'gk', i: o.i as ItemId, x: o.x as number, y: o.y as number, tx: (o.x as number) + dx * k, ty: (o.y as number) + dy * k, sp: Math.max(100, Math.min(6000, o.sp as number)), l: o.l ? 1 : 0 }
+  }
   if (o.k === 'hm' && all('x', 'y', 'a', 'sp', 'rg')) return { k: 'hm', i: o.i as ItemId, x: o.x as number, y: o.y as number, a: o.a as number, sp: Math.max(100, Math.min(4000, o.sp as number)), rg: Math.max(0, Math.min(6000, o.rg as number)) }
   return null
 }
@@ -242,5 +250,5 @@ export function cleanShot(s: unknown, items: Record<string, unknown>): NetShot |
 export function cleanSpawn(s: unknown): NetSpawn | null {
   const o = s as NetSpawn | null
   if (!o || typeof o !== 'object' || !['aliens', 'zombies', 'alien', 'zombie'].includes(o.what) || ![o.x, o.y, o.l, o.r].every(num)) return null
-  return { what: o.what, x: o.x, y: o.y, l: o.l, r: Math.max(o.l + 100, o.r), n: num(o.n) ? Math.max(1, Math.min(24, Math.round(o.n!))) : undefined }
+  return { what: o.what, x: o.x, y: o.y, l: o.l, r: Math.max(o.l + 100, o.r), n: num(o.n) ? Math.max(1, Math.min(24, Math.round(o.n!))) : undefined, p: num(o.p) ? Math.max(0, Math.min(31, Math.round(o.p!))) : undefined }
 }

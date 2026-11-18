@@ -1,0 +1,104 @@
+# Personagens: Pig e Ken
+
+Comportamento atual (17/11, v2.13.0). Vale no globo e em todos os modos do Pátio (local, online, Modo editor), para cada player local.
+
+## O que existe
+
+- **Três protagonistas:** Chi (a galinha, hoje a raça Caipira), **Pig** (porco, o tanque) e **Ken** (raposa, o algoz). Pig e Ken são raças do Vestiário, como as galinhas: escolher a raça troca todas as peças do visual (`lib/chicken/beast-art.ts`, registradas em `LOOK_ART` por `lib/chicken/look-art.ts`).
+- **Classe da espécie:** cada raça pertence a uma classe (`variantClass`): galinha, porco ou raposa. O cartão da raça mostra “classe Galinha / Porco / Raposa” (antes mostrava Leve, Média ou Ornamental). A classe define o movimento; a raça, só o visual.
+- **Estilos:** Pig em Rosa (o padrão), Hampshire (preto com cinta branca) e Mangalica (lã cacheada, orelhas caídas). Ken em dez espécies de raposa: vermelha (o padrão), prateada, marmorizada, do-ártico, cinzenta, corsac, tibetana, feneco, do-deserto (*Vulpes macrotis*) e orelhas-de-morcego. Cada espécie muda pelagem, tamanho das orelhas, máscara e manchas.
+- **Liberados e raridade:** Pig Rosa e Ken vermelho vêm liberados, como a Caipira; os outros estilos são conquista (meio apagados, mas testáveis no Vestiário). Raridades em `BREED_RARITY` (`lib/chicken/rarity.ts`).
+
+## Movimento por classe
+
+- **Um conjunto por classe:** todas as galinhas usam os parâmetros configurados (os da Caipira); os porcos e as raposas usam esses mesmos parâmetros vezes os fatores da classe (padrões do código em `PIG_FACTORS`/`FOX_FACTORS`/`CODE_CLASS` de `lib/chicken/species.ts`, editáveis no painel Ajustes). O motor escolhe a classe pelo corpo do visual (`variantClass(look.torso)`) e recalcula ao trocar de raça; um pintinho (espécie dada) não muda.
+- **Painel Ajustes** (botão “Ajustes do personagem”): cada linha tem o valor da galinha (a base) e, à direita, as colunas **Pig** e **Ken** com um knob cada: o fator sobre o valor da galinha (0 a 5; 0 desliga, como os dedos, a escalada e as batidas de asa do Pig). A vida também é fator (Chi 100: Ken ×2, Pig ×3). **Pulos no ar** é a exceção: nas colunas é o número de pulos, num campo numérico (Pig 0, Ken 1; a galinha 99 = sem limite). Duplo clique num knob ou campo volta ao valor salvo; o knob fica âmbar quando difere dele. Os fatores ficam em `classes` da configuração central (`lib/chicken/config.ts`, `normalizeClasses` em `species.ts`), entram no rascunho, em Desfazer, Padrão e “Salvar no game”, e valem na hora; configurações salvas antes recebem os fatores do código. Interruptores e sons não têm coluna de classe. O cabeçalho fixo do painel mostra Chi, Pig e Ken.
+- **Pig:** 15% maior; caminhada ×0,78, corrida ×0,75 e arrancada fraca e longa; acelera (×0,36) e freia (×0,56) devagar; pouco controle no ar (×0,45); pulo ×0,65 e super pulo ×0,65; gravidade ×1,35 e queda rápida ×1,5; desliza pouco (atrito ×2,44). Sem pulo no ar, sem planar e sem escalar: não agarra paredes, teto nem a parte de baixo de plataformas.
+- **Ken:** 5% maior; caminhada ×0,96 e corrida ×0,875 (mais rápido que Pig, mais lento que a galinha); arrancada forte e curta; acelera ×1,56, freia ×3,33 e controla no ar ×1,64 (o “controle”); pulo ×1,15, super pulo ×1,1, gravidade ×1,15; desliza longe (atrito ×0,62); recua mirando mais rápido (×1,5); salto de parede ×1,15. **Um pulo no ar** (pulo duplo) e **Planagem**: segurar Pulo no ar usa a queda planando da galinha com o divisor dobrado (queda bem lenta), e Cima/Baixo mudam a intensidade com os mesmos ajustes do voo. Ainda escala paredes como a galinha; o rabo girando como hélice e o quique da parede vêm na etapa de habilidades.
+- **Pulos no ar:** parâmetro novo `airJumps` (Ajustes → Voo, “Pulos no ar (máximo)”): quantos pulos o boneco dá no ar antes de pousar. A galinha tem 99 (sem limite, como antes); a classe fixa Ken em 1 e Pig em 0.
+
+## Habilidades (etapa 3, parcial)
+
+- **Correntada (Pig) e Rabada (Ken):** com a mão vazia, Golpe e Atirar deixam de ser asa e Bicada. Seguem o padrão dos bastões (`docs/mechanics/patio/staffs.md`): **Golpe** dá o golpe rápido, no combo; **Atirar** arma o golpe forte, que carrega enquanto o botão fica apertado (`heavyCharge`) e sai ao soltar. Os números são as fichas virtuais `chainBlow` (Correntada) e `tailBlow` (Rabada) em `lib/pigchicken/items.ts`, editáveis no painel Itens (grupo Golpes, no topo da lista, com Bicada e Asa “(Chi sem item)”, “Correntada (Pig sem item)” e “Rabada (Ken sem item)”; com a mão vazia, o painel abre e segue nelas, como segue o item segurado; só os grupos Golpe, Combo, Golpe forte e Rebate, com “Alcance da corrente/do rabo” e sem “Quebra depois de”): a corrente alcança mais (110, forte 130) e empurra mais (380, forte 760); o rabo varre arcos maiores (220°, forte 300°). Cancelar a carga: Golpe, Arremesso, segurar um item, interface que bloqueia Atirar. A galinha continua com asa e Bicada.
+- **Animação:** a Correntada usa o braço da frente (com a algema e a corrente). A Rabada não mexe o braço: o rabo do Ken gira por baixo e para a frente (até 150°) e volta, no tempo do golpe (`swing.bare` em `rigSwing`, `tailBlow` no motor).
+- **Guarda (Pig):** Chocar no chão trava a mira (como na galinha) e, enquanto ele está chocando no chão, empurrões de explosões e golpes não o movem. Fora da Guarda, Pig sofre 35% do empurrão e Ken 80% (`knockbackTaken`). A redução de 60% do dano de frente vem com a vida (etapa 4).
+- **Bote (Ken) e Investida (Pig):** Chocar + Pulo é o salto carregado da galinha com outros números da classe: o Bote é mais longo e mais baixo (impulso lateral ×1,5, vertical ×0,7); a Investida sai quase reta pelo chão (lateral ×1,6, vertical ×0,15). O dano ao cair em cima de alguém vem com a vida.
+- **Espreita (Ken):** por enquanto é o Chocar da galinha (abaixa, anda devagar e trava a mira). Os aliens deixarem de mirar nele ainda não está feito.
+- **Ainda não feitos:** Pisão (onda ao pousar da queda rápida do Pig), Embalo (Pig jogando longe quem encosta na velocidade máxima), quique do Ken (0,35 s agarrado e salto para o outro lado), e o rabo em seis ossos.
+
+## Vida (etapa 4)
+
+- **Quanto:** parâmetro `maxHp`: galinha 100 (a base do jogo), Ken 200 e Pig 300 pelo fator da classe (×2 e ×3, editáveis nas colunas Pig e Ken do painel Ajustes). Pintinhos (bots) não têm vida.
+- **O que tira:** explosões que acertam o boneco (o dano que a explosão já calculava para o empurrão) e a mordida de zumbi no boneco deste navegador (15). Tiros e golpes de outros jogadores ainda não acertam jogadores (fica para a arena).
+- **Guarda do Pig:** chocando no chão, o dano que vem da frente cai `guardBlock`% (60).
+- **Volta sozinha:** `regenDelay` s sem tomar dano (6) e ela volta a `regenRate`% da vida cheia por segundo (8).
+- **Barra:** uma barrinha sobre a cabeça, verde acima de 50%, âmbar acima de 25% e vermelha abaixo; aparece quando falta vida e some 2 s depois de encher. Não espelha com o boneco.
+- **Vida zero:** vira filhote (ver abaixo) e recupera a vida toda para quando voltar a adulto.
+- **Não verificado no navegador:** a barra e o dano em jogo (o painel do navegador estava oculto e o laço do jogo não roda assim); conferido por tipos.
+
+## Filhote (etapa 5)
+
+- **Gatilho:** a vida do boneco deste navegador chega a zero (`hurt` no motor chama `setOnDown`). Ele vira o filhote da classe dele, na hora e no mesmo lugar: pintinho (galinhas), leitão (porcos) ou raposinha (raposas), com a vida cheia guardada para quando voltar a adulto.
+- **Arte:** leitão e raposinha no traço do pintinho (`lib/chicken/baby-art.ts`): cabeça e corpo redondos, olho de conta com brilho, sem boca nem contorno, em pé. O motor usa a espécie `chick` (tamanho e movimento do pintinho) com a arte do filhote (`setSpecies('chick')` + `setArt`).
+- **Estilos (skins):** 7 leitões (rosa, branco, malhado, manchas cinza, ruivo pintado, caramelo, preto), 10 raposinhas (uma por espécie de raposa) e os pintinhos realistas. O filhote começa no estilo mais parecido com o adulto (Pig Hampshire → leitão preto, Mangalica → caramelo, cada raposa → a raposinha dela, galinhas → pintinho amarelo-claro).
+- **Imortal:** filhote não perde vida.
+- **Itens caem ao virar filhote** (17/11): no quadro em que vira filhote, todos os itens do inventário e todas as Gaiolas (com as almas dentro) caem no chão, sorteados em volta dele até `babyDropSpread` px de cada lado (padrão 140; Ajustes → Vida → “Filhote: espalhada dos itens”), saltando um pouco; ninguém pega por 1 s. Se estava sentado num instrumento fixo, levanta antes. Entrar num Pátio já como filhote também derruba o que ele tiver.
+- **O que carrega:** no máximo 1 arma de fogo, 1 instrumento, 1 utilitário e 1 Gaiola. Pegar outro do mesmo grupo troca: o novo entra e o antigo cai ao lado. Bastões e itens de golpe (Taco, Passaguá, Martelo de Thor, Cajado de Odin, Boomerang, baralhos) não são pegos pelo filhote. Só cabe uma Gaiola: pegar outra com Usar troca a da frente.
+- **Mãos:** atira com a arma de fogo, toca o instrumento e usa o utilitário normalmente. Golpe com item na mão não faz nada; Arremesso não faz nada.
+- **Piu piu** (mão vazia, Atirar ou Golpe): no lugar da Bicada, o filhote pia e solta uma nota pequena na direção da mira (ficha virtual `piu` em `lib/pigchicken/items.ts`; painel Itens → Golpes → “Piu piu (filhote sem item)”, só com Bônus musical por nota 5, velocidade 520, alcance 240, tamanho 4 e queda 0). A nota é do acorde do momento, mais aguda mirando para cima, e soa na voz Passarinho (sintetizada; ainda não há sample de pintinho na biblioteca de cantos). Não fere: dá harmonia ao que acerta, como a nota de um instrumento, e enche a barra de outro filhote (não a dele). No máximo 4 pios por segundo. No online, a nota aparece para os outros sem som de tiro. Vale para pintinho, leitão e raposinha.
+- **Volta a adulto:** a **barra de música** (roxa, sobre a cabeça) enche com as notas que acertam o filhote: notas rebatidas (tiros-nota dos aliens no guitar hero e assobios dos pássaros, devolvidos com um golpe) e notas de instrumentos de outros jogadores (as dele mesmo não contam). Cada nota enche `1 / babyNotes` (padrão 4 notas, em `params.ts`). Cheia, ele volta a ser o adulto do visual dele.
+- **Fica salvo neste navegador** (`chickenchess:baby:v1`): voltar ao globo e entrar em outro Pátio mantém o filhote, com a barra onde estava. Ainda não é salvo na conta (fica para depois, com o servidor).
+- **Vestiário:** enquanto é filhote, o Vestiário mostra só a aba Filhote, com os estilos de filhote da classe dele; a prévia mostra o filhote. A conta admin nunca fica presa no filhote (18/11): o Vestiário abre na aba Filhote, mas mantém as abas Raças, Cabeça, Penas, Corpo, Pernas e Acessórios; escolher uma raça ou peça ali tira o filhote e deixa o personagem adulto com esse visual, em qualquer espécie.
+- **Escopo:** o boneco deste navegador (Player 1), no globo e no Pátio. Outros players locais e o online ainda não viram filhote; a captura pelo Passaguá é a etapa 6.
+
+## Tamanho (escala rebaseada)
+
+- O ajuste **Tamanho** (`scale`; antes “Tamanho da galinha”) passa a valer 1 no tamanho normal: o motor desenha o rig a `SCALE_BASE` (0,5) vezes o valor. O padrão do código vai de 0,55 para 1, que é o tamanho que a galinha tinha com 0,5.
+- Configurações salvas antes (no servidor, no cache do navegador ou no rascunho do Pátio) não têm `scaleBase` e são lidas com o valor dividido por 0,5: quem usava 0,5 passa a ver 1, sem mudar o tamanho na tela. Ao salvar, o novo formato leva `scaleBase`.
+- Faixa do ajuste: 0,5 a 6. Pig e Ken somam o tamanho da classe (×1,15 e ×1,05).
+
+## Corpo de mamífero (ajustes de animação)
+
+Pig, Ken e os filhotes deles (leitão e raposinha) usam o rig da galinha, mas com estes ajustes (`beast()` no motor):
+
+- **Cabeça:** sem a cabeça parada no ar que dá o bote para a frente a cada passo; andando, ela acompanha o corpo com um balanço leve. Parado, olha em volta bem menos (25% do pescoço, 30% da cabeça) e mais devagar.
+- **Braços:** nunca batem como asas (pulo, voo, carga do shocking jump); na queda rápida sobem só um pouco (30°). O braço não estica como asa: no golpe chega a no máximo 1,3× o comprimento, e segurando item fica entre 0,7× e 1,35×.
+- **Dois braços (`lib/chicken/arm-rig.ts`):** cada braço tem ombro, cotovelo e punho (dois ossos) e é redesenhado a cada quadro, dobrando no cotovelo para alcançar o ponto da mão, sem esticar além do comprimento. As poses de repouso são as da arte de referência: no Pig, o braço da frente cai na frente do corpo e o de trás cruza a barriga, com a algema no punho e o pedaço de corrente pendurado; no Ken, o da frente cai com o punho fechado e o de trás fica com a mão no quadril. O braço de trás é desenhado depois do tronco e o da frente por último (`armB`/`armF`). As asas continuam no rig, invisíveis, e dizem onde cada mão deve estar:
+  - **Mão que segura:** vai ao ponto de toque do item (a mão do rig de pontos, a mão no bastão), à mão de um item carregado nela ou, sem item e nos golpes, à ponta da asa.
+  - **Segunda mão:** vai ao segundo ponto do item (“Asa de trás segura o item”), à segunda mão no bastão (“Segunda mão no bastão”, ponto `grip2X`/`grip2Y`, arrastável no editor do bastão; ao ligar começa 20 u depois da mão principal) ou, sem isso, fica na pose de repouso.
+  - **“Segurar com a outra mão” (`swapHands`):** o braço de trás segura o item e o da frente vira a segunda mão. Vale para qualquer item; galinhas ignoram estas opções (têm uma asa à vista).
+  - **Golpe forte com a outra mão:** da carga (Atirar segurado) até o fim do golpe forte, o braço que não segura o item no golpe rápido assume o golpe. A asa invisível e o item passam para o ombro desse braço (deslizando em ~0,1 s), então a carga e o arco giram em torno dele; o outro braço fica em repouso ou na segunda mão. Vale para itens (bastões) e para a Correntada forte do Pig; a Rabada forte do Ken é do rabo e não muda. Com “Segurar com a outra mão”, o golpe forte volta para o braço da frente. Só visual: alcance e acerto do golpe não mudam.
+- **Golpes:** a Rabada leva o rabo do repouso até o ângulo do golpe (`TAIL_REST_DEG` 117°) e volta. Carregando o golpe forte com a mão vazia (`setBareCharge`), o Pig leva o braço com a corrente para trás e para cima (até 140°) e o Ken arma o rabo para cima (70°); com a carga cheia, os dois tremem.
+- **Itens:** seguram os itens mais baixo que a galinha (`wing.holdDrop`: Pig 16, Ken 24 unidades), para não cobrir o rosto.
+- **Pernas no ar:** penduradas, sem dobrar para dentro do corpo; pés (casco, pata) sem curvar (`toeCurl` 0 na classe).
+- **Corrida e Chocar:** a cabeça quase não inclina correndo (×0,25), o corpo inclina menos (Pig ×0,5, Ken ×0,7) e o Chocar afunda metade (Guarda, Espreita).
+- **Planagem do Ken:** com Pulo seguro no ar, o rabo sobe por trás (150°) e gira como hélice (achata e espelha ~3,5 vezes por segundo).
+- **Vida ao trocar de classe:** a barra mantém a mesma fração ao trocar de raça (100 → 200 → 300).
+- Conferido no navegador quadro a quadro: andar, correr, pulo, planagem, Chocar, agachar, Correntada, Rabada e a raposinha andando e pulando.
+
+## Vestiário
+
+- Aba **Raças**: seções Galinhas, Galos, Porcos e Raposas.
+- Abas de peças (Cabeça, Penas, Corpo, Pernas): só aparecem as peças da mesma classe do visual atual. Com um porco ou raposa, as seções com uma peça só (crista, barbela, bico, pescoço) somem; dá para combinar cabeça, corpo, braço, rabo e pernas entre estilos da mesma classe.
+
+## Hit-area (desde 18/11, v2.14.0)
+
+- **O que é:** a caixa do corpo de cada classe (Chi, Pig, Ken e Filhote), em unidades do desenho (pés em 0, frente para a direita), multiplicada pela escala do boneco no jogo (`lib/chicken/body-frame.ts`, `bodyBox`). É o que explosões, notas em voo, cartas dos baralhos, cagados e almas soltas acertam, e a caixa em que as notas enchem a barra do filhote. A camada Hit-boxes desenha essa mesma caixa (ciano). Cada classe guarda também a altura da barra de vida sobre os pés.
+- **Valores:** Largura, Altura, Deslocamento para a frente (acompanha o lado para onde o boneco olha), Deslocamento para cima e Altura da barra de vida. Padrão de todas as classes: 90 × 200, sem deslocamento, barra a 240 (o que o jogo sempre usou); o Filhote tem 80 de largura (a caixa que já enchia a barra dele). Faixas: largura 10–400, altura 10–500, deslocamentos −200 a 200, barra 0–600.
+- **Editor (só admin):** botão **Hit-area** no cabeçalho do Vestiário. Ligado, a prévia mostra a caixa e a barra de vida da classe escolhida (abas Chi, Pig, Ken, Filhote; abre na classe do boneco atual), com a arte dessa classe: o visual atual se for da mesma classe, senão Caipira, Pig Rosa ou Ken vermelho; o Filhote usa o filhote da classe do visual atual. Arrastar a caixa move; a bolinha da borda direita muda a largura (simétrica); a bolinha do topo, a altura; a barra, a altura dela. Os números ao lado também editam. Classe ou valor diferente do salvo fica em âmbar; **Padrão** volta a classe escolhida ao padrão.
+- **Salvar:** os valores ficam no rascunho da configuração central (`frames`, junto com params, visual e fatores de classe), valem na hora para os bonecos deste navegador, e o **Salvar no game** do editor é o mesmo do painel Ajustes: confirma a lista de mudanças (as da hit-area aparecem como “Hit-area › Classe › Valor”) e grava tudo para todo mundo. Configurações salvas antes não têm `frames` e usam o padrão.
+- **Fora do escopo por enquanto:** o alcance de Pegar, a mordida dos zumbis e os acertos do Templo e do Taiko continuam com medidas próprias, iguais para todas as classes.
+
+## Desenho no esqueleto da galinha
+
+- Os dois usam o mesmo esqueleto e as mesmas animações da galinha (`lib/chicken/engine.ts`): o corpo, a cabeça, o braço da frente no lugar da asa (segura os itens), o braço de trás no lugar da asa de trás, o rabo e as duas pernas com joelho.
+- **Arte:** decalcada da versão “Game / Flat” de referência, sem contorno, virada para a direita. Cada desenho é feito nos pixels da referência e levado às unidades do rig por uma transformação por espécie (Pig: escala 0,287; Ken: 0,27), com o ombro do braço da frente no ombro do rig.
+- **Mão por personagem:** `wing.hand` diz onde fica a ponta do braço em repouso (o casco do Pig, o punho do Ken). O motor usa essa ponta para segurar itens, girar e esticar o braço, golpear e arremessar, no lugar da ponta da asa da galinha.
+- **Olhos próprios:** `face.ownEyes` esconde o olho, a pupila e a pálpebra da galinha; os olhos fazem parte da cabeça desenhada (ainda sem piscar nem seguir a mira).
+- **Pernas próprias:** `legs.shape` engrossa a coxa, a canela e o pé, troca os dedos por um casco (Pig) ou pata (Ken) e desloca cada perna ao longo do corpo. As articulações e a animação são as da galinha.
+- **Pig:** colete vermelho, algemas nos dois pulsos; a do braço da frente tem um pedaço de corrente partida pendurado (parado, ainda sem física). Rabinho enrolado.
+- **Ken:** máscara creme, botas e luvas escuras, rabo grande com a ponta creme em zigue-zague (parado, balançando só como a cauda da galinha).
+
+## Ainda não implementado
+
+Planejado e aprovado na prévia, em etapas: Pisão e Embalo do Pig, quique e rabo-hélice do Ken, Espreita fora da mira dos aliens, captura pelo Passaguá e o rabo do Ken em seis ossos.

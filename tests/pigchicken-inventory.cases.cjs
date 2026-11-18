@@ -635,3 +635,60 @@ test('a Pegar press that comes only from Correr takes new items but never equips
   step(c, { grab: true, grabHeld: true, grabRun: true })
   assert.ok(names(c).includes('rifle'))
 })
+
+test('the group switches (Próximo instrumento / arma / utilitário) repeat while held, with the quick switch delay and interval', () => {
+  const { groupSwitchStep, newGroupSwitchRepeat } = loadTs('lib/pigchicken/inventory.ts')
+  // without a repeat state: only the press
+  assert.equal(groupSwitchStep({ nextWeapon: true }, {}), 1)
+  assert.equal(groupSwitchStep({ nextWeapon: true }, { nextWeapon: true }), null)
+  assert.equal(groupSwitchStep({ nextInstrument: true, nextUtility: true }, {}), 0)
+  const r = newGroupSwitchRepeat(), hits = []
+  let prev = {}
+  for (let i = 0; i < 180; i++) {
+    const act = { nextUtility: true }
+    const g = groupSwitchStep(act, prev, r, 1 / 60, 1.5, 0.3)
+    if (g !== null) { assert.equal(g, 2); hits.push(+(i / 60).toFixed(2)) }
+    prev = act
+  }
+  assert.deepEqual(hits, [0, 1.5, 1.8, 2.1, 2.4, 2.7])
+  // letting go starts over; another group pressed while one is held restarts the count for it
+  assert.equal(groupSwitchStep({}, prev, r, 1 / 60, 1.5, 0.3), null)
+  assert.equal(r.group, null)
+  assert.equal(groupSwitchStep({ nextInstrument: true }, {}, r, 1 / 60, 0.5, 0.3), 0)
+  assert.equal(groupSwitchStep({ nextInstrument: true, nextWeapon: true }, { nextInstrument: true }, r, 0.4, 0.5, 0.3), 1)
+  assert.equal(groupSwitchStep({ nextInstrument: true, nextWeapon: true }, { nextInstrument: true, nextWeapon: true }, r, 0.4, 0.5, 0.3), null)
+  assert.equal(groupSwitchStep({ nextInstrument: true, nextWeapon: true }, { nextInstrument: true, nextWeapon: true }, r, 0.2, 0.5, 0.3), 1)
+  // the weapon let go, the instrument still held: no repeat until it is pressed again
+  assert.equal(groupSwitchStep({ nextInstrument: true }, { nextInstrument: true, nextWeapon: true }, r, 1, 0.5, 0.3), null)
+  assert.equal(groupSwitchStep({ nextInstrument: true }, { nextInstrument: true }, r, 1, 0.5, 0.3), null)
+})
+
+test('the big bar lines up split (default), centred, left or right; the small rows do not change', () => {
+  const was = globalThis.window
+  globalThis.window = { innerHeight: 800, matchMedia: () => ({ matches: true }) }
+  const { invGeom, BAR } = loadTs('components/pigchicken/draw/hud.ts')
+  globalThis.window = was
+  const groups = [0, 0, 1, 1, 2, 2], W = 1400, H = 800
+  const ends = g => g.xs.map(x => g.x + x)
+  const center = invGeom(0, groups, true, undefined, W, H, false, 0, 'center')
+  assert.equal(Math.round(center.x + center.w / 2), W / 2)
+  const left = invGeom(0, groups, true, undefined, W, H, false, 0, 'left')
+  assert.equal(left.x, BAR.side)
+  assert.equal(left.rest.dir, 1)
+  const right = invGeom(0, groups, true, undefined, W, H, false, 0, 'right')
+  assert.equal(right.x + right.w, W - BAR.side)
+  const split = invGeom(0, groups, true, undefined, W, H, false, 0, 'split')
+  const xs = ends(split)
+  assert.equal(xs[0], BAR.side, 'instruments against the left edge')
+  assert.equal(xs[5] + split.size, W - BAR.side, 'the rest against the right edge')
+  assert.ok(xs[2] - (xs[1] + split.size) > W / 2, 'a wide gap between the halves')
+  assert.deepEqual(xs.slice(2).map(x => x - xs[2]), ends(right).slice(2).map(x => x - ends(right)[2]), 'the right half keeps its spacing')
+  assert.equal(split.rest.x, xs[2], 'effects left of the weapons half')
+  // only instruments: all on the left; none: all on the right
+  const onlyRight = invGeom(0, [1, 2], true, undefined, W, H, false, 0, 'split')
+  assert.equal(onlyRight.x + onlyRight.w, W - BAR.side)
+  const onlyLeft = invGeom(0, [0, 0], true, undefined, W, H, false, 0, 'split')
+  assert.equal(onlyLeft.x, BAR.side)
+  // the small rows ignore the alignment
+  assert.deepEqual(invGeom(1, groups, false, undefined, W, H, false, 0, 'split'), invGeom(1, groups, false, undefined, W, H, false, 0, 'center'))
+})

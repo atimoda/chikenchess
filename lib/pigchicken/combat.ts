@@ -25,11 +25,13 @@ import type { WeaponSound } from './sfx'
 import { rackRefillLimit, rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, netIdFor, type NetHit, type NetShot } from './net-world'
 import { TAKE_WAIT, glideSoulMirror, importSouls, soulFromWho, soulWho, type NetGive, type NetSoulWho, type NetTake, type SoulMirror } from './net-souls'
-import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
+import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type AlienPatternDef, type EnemyEnv } from './enemies'
 import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
+import { arcAngle, assistPick, blendAngle, magnetSteer, type Magnet } from './aim-assist'
 import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
 import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
+import { HOOK_ARRIVE, HOOK_ARRIVE_TARGET, HOOK_KEEP, HOOK_REEL, HOOK_STEP, hookCast, hookPullSpeed, pullDelta, pullStep, spinRate, type HookHit } from './grapple'
 import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
 import { STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
 import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, type FixedKind, type Seat } from './fixed-instruments'
@@ -193,6 +195,16 @@ export type Card = {
   id: number; rank: number; x: number; y: number; tx: number; ty: number; phase: CardPhase; t: number; seed: number; speed: number; angle: number
   item: ItemId; owned: Owned; owner: string; fuse?: number; note?: NoteInfo; remote?: boolean; net: number; home?: { x: number; y: number }
 }
+// the Corrente-gancho's hook (lib/pigchicken/grapple.ts): out along the aim from its owner's hand (hx, hy: where the
+// chain starts this frame), latched and pulling (`hit`: on the world, her to the anchor (ax, ay); on someone, them to
+// her, the hook riding on them at (ox, oy) from their middle), or reeling back to her hand. pull: the pull's speed;
+// t: s in this phase; best / stall: how close the pull got and for how long it has not got closer.
+// remote: another browser's (it only shows: out to where it latched over there, held a moment, back home)
+export type Hook = {
+  x: number; y: number; hx: number; hy: number; angle: number; speed: number; left: number; phase: 'out' | 'pull' | 'back'
+  owned: Owned; owner: string; hit: HookHit | null; ax: number; ay: number; ox: number; oy: number
+  pull: number; damage: number; t: number; best: number; stall: number; scale: number; flew?: boolean; room?: ShotRoom; remote?: boolean; latched?: boolean; home?: { x: number; y: number }
+}
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean; room?: ShotRoom }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 // undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
@@ -246,7 +258,8 @@ export const PUFF_LIFE = 0.4
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
 export type { Swing } from './swing'
 
-export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
+// species: her class's species ('pig', 'fox'): an empty hand of theirs hits with the chain or the tail
+export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; species?: string }
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
@@ -317,8 +330,8 @@ export function createCombat() {
   let effects: Effect[] = []
   // id: the local player it is (the souls act on their owner through it); the chicks have none
   // push(vx, vy, damage): damage is what the blow does, for a bird grabbed on a wall (lib/chicken/grab-damage.ts);
-  // without it the push always takes it off
-  let blastActors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[] = []
+  // without it the push always takes it off. v: its velocity now (the Corrente-gancho's pull keeps it at its speed)
+  let blastActors: { id?: string; box: BlastBox; v?: { x: number; y: number }; push: (vx: number, vy: number, damage?: number) => void }[] = []
   // other catchable birds in the world (the chicks that follow her): where they are (world px, their middle and
   // size) and what to do when the Passaguá catches one (the Parquinho removes it)
   let catchables: Catchable[] = []
@@ -357,6 +370,12 @@ export function createCombat() {
   const bolts: Bolt[] = [], flights: Flight[] = []
   // the cards of the decks out in the world: flying, floating where they were thrown to, or on their way back
   const cards: Card[] = []
+  // the Corrente-gancho's hooks out in the world, each local player's hand (where the chain starts) and the angle of
+  // the chain spinning in it while Atirar charges
+  const hooks: Hook[] = []
+  const hands = new Map<string, { x: number; y: number }>(), spins = new Map<string, number>()
+  // the targets a hook is pulling this frame: their blast motion is the pull's, not the fall's
+  const hooked = new Set<Target>()
   let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; cageSouls?: number; refillLimit?: number; given: number }[] = []
@@ -459,6 +478,54 @@ export function createCombat() {
       color: (m: number) => DEGREE_COLORS[sc.degreeOf(music, m, angle, reach) % DEGREE_COLORS.length],
     }
   }
+  // ---------- Aim Assist (lib/pigchicken/aim-assist.ts) ----------
+  // each player's scale drawing in the world: its middle (her shoulder) and radius (setScaleFan)
+  const scaleFans = new Map<string, { x: number; y: number; r: number }>()
+  // where an instrument's shot leaving `from` at `speed` goes: toward the enemy standing in the cell of its scale the
+  // aim (angle, reach) is on, by the item's Aim Assist (an enemy's reach is its distance from her over the drawing's
+  // radius, so a cell goes on past the drawing like the aim does); with nobody there, where the aim is.
+  // p: how far it turned (the spread shrinks as much: 100% goes right at it)
+  function assistAim(d: ItemDef, from: { x: number; y: number }, speed: number, angle = aimAngle, reach?: number): { angle: number; p: number } {
+    const p = d.instrument ? Math.max(0, Math.min(1, (d.aimAssist ?? 0) / 100)) : 0
+    if (!(p > 0)) return { angle, p: 0 }
+    const sc = scaleOf(held(), d)
+    const q = (a: number, r: number) => ({ angle: a, reach: r, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending, hang: hangOf(d) })
+    const cell = sc.cellAt(music, q(angle, reach ?? (sc.id === 'strings' ? stringReach() : aimReach)))
+    if (!cell) return { angle, p: 0 }
+    const fan = scaleFans.get(active) ?? { x: from.x, y: from.y, r: 0 }
+    const list: { x: number; y: number }[] = []
+    for (const t of targets) {
+      if (!alive(t) || t.kind === 'button' || (t.kind === 'undead' && (t.data as UndeadState).bird)) continue
+      const x = t.x, y = t.y - t.h / 2
+      if (Math.hypot(x - from.x, y - from.y) <= d.range) list.push({ x, y })
+    }
+    const cellOf = (o: { x: number; y: number }) => sc.cellAt(music, q(Math.atan2(o.y - fan.y, o.x - fan.x), fan.r > 0 ? Math.min(1, Math.hypot(o.x - fan.x, o.y - fan.y) / fan.r) : aimReach))
+    const pick = assistPick(list, cell, cellOf, aimPoint ?? from)
+    if (!pick) return { angle, p: 0 }
+    const to = arcAngle(pick.x - from.x, pick.y - from.y, speed, d.drop * gravityAt(from.x, from.y))
+    return { angle: blendAngle(angle, to, p), p }
+  }
+  // ---------- Bullet Magnetism: the aliens whose variation pulls (lib/pigchicken/alien-catalog.ts), once per step ----------
+  let magnetCache: (Magnet & { id: number })[] | null = null
+  function magnetList() {
+    if (magnetCache) return magnetCache
+    magnetCache = []
+    for (const t of targets) {
+      const m = Number((t.data as { magnet?: unknown } | undefined)?.magnet) || 0
+      if (m > 0 && t.kind === 'alien' && alive(t)) magnetCache.push({ id: t.id, x: t.x, y: t.y - t.h / 2, m })
+    }
+    return magnetCache
+  }
+  // bends something flying toward the alien that pulls it (skip: the ones it already went through)
+  function magnetize(o: { x: number; y: number; vx: number; vy: number }, dt: number, skip?: Set<number>) {
+    let ms = magnetList()
+    if (!ms.length) return
+    if (skip?.size) ms = ms.filter(m => !skip.has(m.id))
+    const v = magnetSteer(o.vx, o.vy, o.x, o.y, ms, dt)
+    if (v) { o.vx = v.vx; o.vy = v.vy }
+  }
+  // the violin's beam on the wall of a closed block: time since the last note it counted there, per player
+  const beamWall = new Map<string, number>()
   const critters: Critter[] = []
   let quantizeAll = true
   const conv = { birds: 0, people: 0, harmonized: 0, undeadBirds: 0 }
@@ -499,7 +566,11 @@ export function createCombat() {
     return true
   }
   const useKey = () => { spend(isKey) }
-  const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
+  // an empty hand: the wing, or Pig's chain (Correntada) and Ken's tail (Rabada)
+  const bareDef = (): ItemDef => lastBody?.species === 'pig' ? items.chainBlow : lastBody?.species === 'fox' ? items.tailBlow : items.wing
+  // the strong blow charged with an empty hand (Pig, Ken) has no item: this stands in for it
+  const BARE: Owned = { item: 'wing', ammo: 0, durability: 0 }
+  const def = (): ItemDef => { const h = held(); return h ? items[h.item] : bareDef() }
   // a Gaiola is born empty with its model's limit (cap: this one's own, a rack's or a loose item's)
   const fresh = (item: ItemId, cap?: number): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability, ...(items[item].cageSouls > 0 ? { cage: newCage(cageCap(cap, items[item].cageSouls)) } : {}) })
 
@@ -626,7 +697,149 @@ export function createCombat() {
     return stop < 0 ? path : path.slice(0, stop + 1)
   }
   // the charge of a staff's Atirar fills in its strong blow's time, or in its throw's when it is one that comes back
-  const staffCharge = (d: ItemDef) => Math.max(0.05, d.returnThrow ? d.returnCharge : d.heavyCharge)
+  const staffCharge = (d: ItemDef) => Math.max(0.05, d.grapple ? d.hookCharge : d.returnThrow ? d.returnCharge : d.heavyCharge)
+
+  // ---------- Corrente-gancho (lib/pigchicken/grapple.ts) ----------
+  // what the hook latches on at (x, y), thrown by `owner`: a live enemy, undead or dummy (a mirror of another
+  // browser's, a button or one with a full shield only hold it like a wall), another local player, or the world
+  // (the floor, a wall, a platform, an object)
+  function hookHitAt(x: number, y: number, owner: string, ctx: StepCtx): HookHit | null {
+    for (const t of targets) {
+      if (!alive(t) || Math.abs(x - t.x) > t.w / 2 + 6 || y < t.y - t.h - 6 || y > t.y + 6) continue
+      if (t.kind === 'button' || t.mirror || (t.shield ?? 0) >= 1) return { kind: 'world' }
+      return { kind: 'target', id: t.id }
+    }
+    for (const a of blastActors) if (a.id && a.id !== owner && x >= a.box.l && x <= a.box.r && y >= a.box.t && y <= a.box.b) return { kind: 'player', id: a.id }
+    if (y >= ctx.groundY || solidAt(ctx.boxes, x, y)) return { kind: 'world' }
+    return null
+  }
+  // where the hook would latch if thrown now from `from` (the orange dot): null when the item in her wing is not a
+  // Corrente-gancho ready in her hand, or nothing is in its reach
+  function predictHook(from: { x: number; y: number }, ctx: StepCtx) {
+    const h = held(), d = def()
+    if (!h || !d.grapple || h.out || (swing && swing.t < swing.time)) return null
+    const c = hookCast(from, aimAngle, d.hookRange, (x, y) => hookHitAt(x, y, active, shotRooms.get(active) ?? ctx))
+    return c.hit ? c : null
+  }
+  // Atirar let go: the hook leaves her hand where she aims, its pull as strong as the chain was spun
+  function throwHook(h: Owned, d: ItemDef, from: { x: number; y: number }, charge: number, ctx: StepCtx) {
+    const room = shotRooms.get(active)
+    hooks.push({
+      x: from.x, y: from.y, hx: from.x, hy: from.y, angle: aimAngle, speed: d.hookSpeed, left: d.hookRange, phase: 'out', owned: h, owner: active,
+      hit: null, ax: 0, ay: 0, ox: 0, oy: 0, pull: hookPullSpeed(d, charge), damage: d.hookDamage, t: 0, best: Infinity, stall: 0, scale: lastBody?.scale ?? 1, room,
+    })
+    leaves(h, d)
+    sound('throw', null)
+    if (netOn) {
+      const c = hookCast(from, aimAngle, d.hookRange, (x, y) => hookHitAt(x, y, active, room ?? ctx))
+      netShots.push({ k: 'gk', i: h.item, x: Math.round(from.x), y: Math.round(from.y), tx: Math.round(c.x), ty: Math.round(c.y), sp: d.hookSpeed, l: c.hit ? 1 : 0 })
+    }
+  }
+  // the hook latches on what it touched
+  function latchHook(k: Hook, hit: HookHit) {
+    k.phase = 'pull'; k.t = 0; k.best = Infinity; k.stall = 0; k.hit = hit
+    burst(k.x, k.y, 6, '#9d9ca8', 150, 2)
+    sound('block', null)
+    if (hit.kind === 'world') { k.ax = k.x; k.ay = k.y; return }
+    if (hit.kind === 'target') {
+      const t = targets.find(o => o.id === hit.id)
+      if (!t) { k.phase = 'back'; return }
+      k.ox = k.x - t.x; k.oy = k.y - (t.y - t.h / 2)
+      hitTarget(t, k.damage, 0, k.x, k.y, 'impact')
+      if (!alive(t)) k.phase = 'back'
+      return
+    }
+    const a = actorOf(hit.id)
+    if (!a) { k.phase = 'back'; return }
+    k.ox = k.x - (a.box.l + a.box.r) / 2; k.oy = k.y - (a.box.t + a.box.b) / 2
+  }
+  // the pull is over: a pulled player keeps a part of her speed, a pulled target falls from where it is (a zombie or
+  // an undead stays there; an alien goes back to its row and a dummy to its post, as after a blast)
+  function unhook(k: Hook) {
+    if (k.phase !== 'pull' || !k.hit) { k.phase = 'back'; return }
+    const hit = k.hit
+    if (hit.kind === 'world' || hit.kind === 'player') {
+      const a = actorOf(hit.kind === 'world' ? k.owner : hit.id)
+      if (a?.v) a.push(-a.v.x * (1 - HOOK_KEEP), -a.v.y * (1 - HOOK_KEEP))
+    } else {
+      const t = targets.find(o => o.id === hit.id)
+      if (t?.blast) { t.blast.vx = 0; t.blast.vy = 0; if (t.kind === 'zombie' || t.kind === 'undead') t.blast.x = 0 }
+    }
+    k.phase = 'back'; k.t = 0
+  }
+  // she lets go of her hooks (Atirar pressed again while one is out)
+  function releaseHooks(owner: string) { for (const k of hooks) if (!k.remote && k.owner === owner && k.phase !== 'back') unhook(k) }
+  // each hook: out until it latches or its reach ends, pulling while latched, then reeling back to her hand
+  function stepHooks(frameDt: number, ctx: StepCtx) {
+    hooked.clear()
+    for (let i = hooks.length - 1; i >= 0; i--) {
+      const k = hooks[i], d = items[k.owned.item], dt = frameDt * timeAt(k.x, k.y)
+      const hand = k.remote ? k.home! : bodyOf(k.owner) ? hands.get(k.owner) ?? null : null
+      // its owner is gone: it falls where it is
+      if (!hand) { hooks.splice(i, 1); arrives(k.owned); if (!k.remote && !k.owned.out) pickups.push({ id: nextId++, owned: k.owned, x: k.x, y: k.y, vy: 0, resting: false, noPick: 0.3 }); continue }
+      k.hx = hand.x; k.hy = hand.y; k.t += dt
+      if (k.phase === 'out') {
+        for (let left = k.speed * dt; left > 0 && k.phase === 'out'; left -= HOOK_STEP) {
+          const s = Math.min(HOOK_STEP, left, Math.max(0, k.left))
+          k.x += Math.cos(k.angle) * s; k.y += Math.sin(k.angle) * s; k.left -= s
+          if (k.remote) { if (k.left <= 0) { k.phase = k.latched ? 'pull' : 'back'; k.t = 0 } continue }
+          const hit = hookHitAt(k.x, k.y, k.owner, k.room ?? ctx)
+          if (hit) latchHook(k, hit)
+          else if (k.left <= 0) { k.phase = 'back'; k.t = 0 }
+        }
+        continue
+      }
+      if (k.phase === 'pull') {
+        // another browser's: it only holds a moment where it latched
+        if (k.remote) { if (k.t >= 0.35) { k.phase = 'back'; k.t = 0 } continue }
+        const hit = k.hit!
+        if (hit.kind === 'world') {
+          const me = actorOf(k.owner), her = bodyOf(k.owner)
+          if (!me || !her) { k.phase = 'back'; continue }
+          // her feet go to the hook: on top of a platform or an object she lands on it; on a wall or a ceiling her body
+          // stops against it first and the pull lets go
+          const feet = { x: her.x, y: her.y }, to = { x: k.ax, y: k.ay - 4 }
+          const r = pullStep(Math.hypot(to.x - feet.x, to.y - feet.y), k.best, k.stall, k.t, dt, HOOK_ARRIVE * her.scale * 0.4, d.hookTime)
+          k.best = r.best; k.stall = r.stall
+          // (she also is there once she flew and landed at the hook's height or above it)
+          if (!her.grounded) k.flew = true
+          if (r.done || (her.grounded && k.flew && her.y <= k.ay + 12)) { unhook(k); continue }
+          const dv = pullDelta(feet, to, k.pull, me.v ?? { x: her.vx, y: 0 })
+          me.push(dv.x, dv.y)
+          continue
+        }
+        if (hit.kind === 'player') {
+          const a = actorOf(hit.id)
+          if (!a) { k.phase = 'back'; continue }
+          const mid = { x: (a.box.l + a.box.r) / 2, y: (a.box.t + a.box.b) / 2 }
+          k.x = mid.x + k.ox; k.y = mid.y + k.oy
+          const r = pullStep(Math.hypot(hand.x - mid.x, hand.y - mid.y), k.best, k.stall, k.t, dt, HOOK_ARRIVE_TARGET, d.hookTime)
+          k.best = r.best; k.stall = r.stall
+          if (r.done) { unhook(k); continue }
+          const dv = pullDelta(mid, hand, k.pull, a.v ?? { x: 0, y: 0 })
+          a.push(dv.x, dv.y)
+          continue
+        }
+        const t = targets.find(o => o.id === hit.id)
+        if (!t || !alive(t)) { k.phase = 'back'; k.t = 0; continue }
+        const mid = { x: t.x, y: t.y - t.h / 2 }, dist = Math.hypot(hand.x - mid.x, hand.y - mid.y)
+        const r = pullStep(dist, k.best, k.stall, k.t, dt, HOOK_ARRIVE_TARGET, d.hookTime)
+        k.best = r.best; k.stall = r.stall
+        if (r.done) { k.x = mid.x + k.ox; k.y = mid.y + k.oy; unhook(k); continue }
+        // it moves on its blast motion, which the pull drives this frame (no fall, no drag)
+        const m = t.blast ??= { x: 0, y: 0, vx: 0, vy: 0 }
+        const s = Math.min(k.pull * dt, Math.max(0, dist - HOOK_ARRIVE_TARGET * 0.5)), ux = (hand.x - mid.x) / (dist || 1), uy = (hand.y - mid.y) / (dist || 1)
+        t.x += ux * s; t.y += uy * s; m.x += ux * s; m.y += uy * s; m.vx = 0; m.vy = 0
+        hooked.add(t)
+        k.x = t.x + k.ox; k.y = t.y - t.h / 2 + k.oy
+        continue
+      }
+      // back: the chain reels in to her hand
+      const dx = hand.x - k.x, dy = hand.y - k.y, dist = Math.hypot(dx, dy), s = d.hookSpeed * HOOK_REEL * dt
+      if (dist <= s + 4) { hooks.splice(i, 1); arrives(k.owned); if (!k.remote) sound('catch', null); continue }
+      k.x += (dx / dist) * s; k.y += (dy / dist) * s
+    }
+  }
 
   // a training dummy takes a hit: it loses life and breaks a stage at a time; wrecked, it only rattles and shows its tip again
   function hurtDummy(t: Target, damage: number, pushX: number, x: number, y: number) {
@@ -784,6 +997,12 @@ export function createCombat() {
     addText(t.x, top - 60, t.kind === 'alien' ? 'virou passarinho!' : 'curado!', '#7bdff2')
   }
   let lastBody: Body | null = null
+  // damage to this browser's own player (setHurt): a zombie's bite takes ZOMBIE_BITE of its health
+  let hurtSelf: ((amount: number, fromX: number) => void) | null = null
+  const ZOMBIE_BITE = 15
+  // the Filhotes here (lib/chicken/baby.ts): the notes that reach one fill its music bar (not its own notes)
+  let babies: { by?: string; box: BlastBox; fill: () => void }[] = []
+  const babyAt = (x: number, y: number, r: number, by?: string) => babies.find(b => b.by !== by && x + r > b.box.l && x - r < b.box.r && y + r > b.box.t && y - r < b.box.b)
 
   // ---------- the undead ----------
   const harmonyNow = () => { const z = music.zone; return { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() } }
@@ -921,7 +1140,15 @@ export function createCombat() {
 
   // One slot per type; consumables can top up their existing stack.
   // A Gaiola is always offered: it hangs with the others, or takes the place of the one in front.
-  const canTake = (p: Pickup) => p.noPick <= 0 && (!!p.owned.cage || !inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
+  // the Filhotes among the local players (lib/chicken/baby.ts): one firearm, one instrument, one utility and one Gaiola
+  // at most (a new one of a group takes the place of the one it had, which falls); no staff (Taco, Passaguá, Martelo,
+  // Cajado, Boomerang, baralhos): it never hits
+  const babyHere = new Set<string>()
+  const isBabyNow = () => babyHere.has(active)
+  const babyRefuses = (item: ItemId) => isBabyNow() && !isCage(item) && (isStaff(items[item]) || (ownGroup(item) === 1 && items[item].mag <= 0))
+  const canTake = (p: Pickup) => p.noPick <= 0 && !babyRefuses(p.owned.item) && (!!p.owned.cage || !inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
+  // when the Filhote's piu can sound again
+  let piuCool = 0
 
   // ---------- Gaiolas (lib/pigchicken/cages.ts) ----------
   // the souls on their way to a cage (caught, called back, asked of another browser) keep their place in it
@@ -946,7 +1173,7 @@ export function createCombat() {
   // the one that was there falls to the floor with its souls; Golpe and Pegar held while passing never swap
   function takeCage(p: Pickup, swap: boolean) {
     const cage = p.owned.cage!
-    if (cages.length >= CAGES_MAX) {
+    if (cages.length >= (isBabyNow() ? 1 : CAGES_MAX)) {
       if (!swap) return false
       const old = cages[0]
       old.cage!.enterT = Infinity
@@ -974,6 +1201,15 @@ export function createCombat() {
       sound('equip', stack.item)
       addText(p.x, p.y - 30, `+${amount} ${items[stack.item].name}`, '#7bdff2')
       return true
+    }
+    // a Filhote with an item of that group already: the new one takes its place and the old one falls
+    const same = isBabyNow() ? inv.findIndex(o => groupOf(o) === ownGroup(p.owned.item)) : -1
+    if (same >= 0) {
+      const old = inv[same]
+      if (same === cur) stopBeam()
+      inv.splice(same, 1)
+      if (cur > same || cur >= inv.length + 1) cur = Math.max(0, cur - 1)
+      pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
     }
     if (!room()) return false
     const wasHeld = held()
@@ -1172,6 +1408,25 @@ export function createCombat() {
     }
   }
 
+  // ---------- the Filhote's piu ----------
+  // a peep of the bird voice on a note of the chord (higher aiming up), and that note flying off a little way: it
+  // gives a little harmony to what it reaches and fills the music bar of another Filhote
+  function piu(at: { x: number; y: number }, angle: number) {
+    const d = items.piu
+    const midi = music.noteFor(angle, 'chord', d.octave, d.span)
+    out.note(d.voice, midi, 0, d.noteLen, 0.55)
+    const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    const b: Bullet = {
+      x: at.x, y: at.y, vx: Math.cos(angle) * d.speed, vy: Math.sin(angle) * d.speed, dist: 0, damage: d.damage, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      item: 'piu', t: 0, explode: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
+      note: { midi, color, sym: NOTE_SYMBOLS[0], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }, ring: 0, ghost: true,
+    }
+    b.by = active
+    bullets.push(b)
+    if (netOn) netShots.push(shotOf(b))
+    burst(at.x, at.y, 3, color, 90, 2)
+  }
+
   // ---------- Cordas soltas: the strings (lib/pigchicken/strings-play.ts) ----------
   // plucks string `index` at `r` along the radius, `at` s from now: its note sounds from nothing (whatever that
   // string was sounding stops and its note in flight goes away) and flies off along the string
@@ -1192,8 +1447,9 @@ export function createCombat() {
     if (out.pluck) sound = out.pluck(voice, midi, at, d.noteLen, vel, vibOf(d))
     else out.note(voice, midi, at, d.noteLen, vel, undefined, vibOf(d))
     const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    const way = assistAim(d, muzzle, d.speed, str.angle, r).angle
     const b: Bullet = {
-      x: muzzle.x, y: muzzle.y, vx: Math.cos(str.angle) * d.speed, vy: Math.sin(str.angle) * d.speed, dist: 0, damage: d.damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      x: muzzle.x, y: muzzle.y, vx: Math.cos(way) * d.speed, vy: Math.sin(way) * d.speed, dist: 0, damage: d.damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
       item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
       note: { midi, color, sym: NOTE_SYMBOLS[index % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice }, ring: d.ringNotes, ghost: true,
     }
@@ -1278,10 +1534,11 @@ export function createCombat() {
       notes.forEach((m, i) => out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d), undefined, vibOf(d)))
     }
     const speed = d.speed * power
+    const aim = assistAim(d, muzzle, speed)
     const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
     for (let i = 0; i < n; i++) {
       const u = n === 1 ? rand(-0.5, 0.5) : i / (n - 1) - 0.5 + rand(-0.3, 0.3) / n
-      const a = aimAngle + u * spreadDeg * DEG
+      const a = aim.angle + u * spreadDeg * (1 - aim.p) * DEG
       const b: Bullet = {
         x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage: damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
         item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
@@ -1296,10 +1553,17 @@ export function createCombat() {
       b.by = active
       // instant shots travel their whole way now and leave a tracer
       if (d.hitscan && ctx) {
-        let guard = 0
-        while (!stepBullet(b, 1 / 240, ctx) && guard++ < 2000) { /* travel */ }
-        tracers.push({ x1: mx, y1: my, x2: b.x, y2: b.y, life: 0.12 })
-        if (netOn) netShots.push({ k: 't', i: b.item, x1: mx, y1: my, x2: b.x, y2: b.y })
+        // (a line per stretch: a note that bounces off a wall draws its way, not a line straight to where it ended)
+        let guard = 0, sx = mx, sy = my, dirX = Math.sign(b.vx), dirY = Math.sign(b.vy)
+        const line = (x2: number, y2: number) => {
+          tracers.push({ x1: sx, y1: sy, x2, y2, life: 0.12 })
+          if (netOn) netShots.push({ k: 't', i: b.item, x1: sx, y1: sy, x2, y2 })
+          sx = x2; sy = y2
+        }
+        while (!stepBullet(b, 1 / 240, ctx) && guard++ < 2000) {
+          if (Math.sign(b.vx) !== dirX || Math.sign(b.vy) !== dirY) { line(b.x, b.y); dirX = Math.sign(b.vx); dirY = Math.sign(b.vy) }
+        }
+        line(b.x, b.y)
       } else {
         bullets.push(b)
         if (netOn) netShots.push(shotOf(b))
@@ -1358,6 +1622,15 @@ export function createCombat() {
         chainCards(s.x, s.y, s.rd)
         continue
       }
+      if (s.k === 'gk') {
+        const dx = s.tx - s.x, dy = s.ty - s.y
+        hooks.push({
+          x: s.x, y: s.y, hx: s.x, hy: s.y, angle: Math.atan2(dy, dx), speed: s.sp, left: Math.hypot(dx, dy), phase: 'out', owned: fresh(s.i), owner: '',
+          hit: null, ax: s.tx, ay: s.ty, ox: 0, oy: 0, pull: 0, damage: 0, t: 0, best: Infinity, stall: 0, scale: 1, remote: true, latched: s.l === 1, home: { x: s.x, y: s.y },
+        })
+        if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
+        continue
+      }
       if (s.k === 'hm') {
         flights.push({ x: s.x, y: s.y, vx: Math.cos(s.a) * s.sp, vy: Math.sin(s.a) * s.sp, angle: s.a, spin: (Math.cos(s.a) >= 0 ? 1 : -1) * 24, owned: fresh(s.i), owner: '', back: false, left: s.rg, speed: s.sp, damage: 0, push: 0, hits: new Set(), remote: true, home: { x: s.x, y: s.y }, dir: launchDir(s.a, items[s.i].returnCurveMin), launch: s.a, reach: s.rg, side: curveSide(s.a), bend: curveSide(s.a) * Math.max(0, items[s.i].returnCurveMin) * DEG })
         if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
@@ -1375,7 +1648,7 @@ export function createCombat() {
         // its note, softer than one's own
         if (note && near && heard < 4) out.note(note.voice, note.midi, 0, d.noteLen, 0.4)
       }
-      if (near && heard++ < 4 && !d.instrument) sounds.push({ kind: s.k === 'th' ? 'throw' : 'shot', item: s.k === 'th' ? null : s.i })
+      if (near && heard++ < 4 && !d.instrument && s.i !== 'piu') sounds.push({ kind: s.k === 'th' ? 'throw' : 'shot', item: s.k === 'th' ? null : s.i })
     }
   }
 
@@ -1574,6 +1847,8 @@ export function createCombat() {
     const { boxes, groundY } = b.room ?? ctx
     const px = b.x, py = b.y
     b.t += dt
+    // (a grenade lying on the ground stays there)
+    if (!(b.fuse > 0 && !b.drop)) magnetize(b, dt, b.hits)
     if (b.drop) b.vy += b.drop * gravityAt(b.x, b.y) * dt
     b.x += b.vx * dt; b.y += b.vy * dt
     b.dist += Math.hypot(b.x - px, b.y - py)
@@ -1581,6 +1856,13 @@ export function createCombat() {
     if (b.fuse > 0 && b.t >= b.fuse) return gone(b.x, b.y)
     if (b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
+    // an instrument's note that reaches a Filhote (not the one who played it) fills its music bar
+    if (b.note && !b.room) {
+      for (let k = 1; k <= steps; k++) {
+        const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps, baby = babyAt(x, y, b.size, b.by)
+        if (baby) { baby.fill(); burst(x, y, 6, b.note.color, 140, 2); return true }
+      }
+    }
     // swept test against targets: points along the step's segment inside the target's box
     for (const t of b.room ? [] : targets) {
       if (t.deadT > 0 || b.hits.has(t.id)) continue
@@ -1614,6 +1896,8 @@ export function createCombat() {
         // the wall of a closed block of the Grade de blocos: the note counts there (one the zone's "Só notas do tom"
         // leaves out only glances off) and, with "Notas quicam nas paredes", bounces
         let mw = wall || zw || b.room ? null : mine?.note(lx, ly, x, y, dry || b.remote || !music.fits(b.note.midi) ? null : b.by ?? null) ?? null
+        // a note that bursts on hitting (the Teclado's) bursts on the wall, like a rocket, instead of going on or bouncing
+        if (mw && b.explode > 0 && b.fuse <= 0) { b.x = lx; b.y = ly; return gone(lx, ly) }
         if (mw && !mw.bounce) mw = null
         if (!wall && !zw && !mw) continue
         b.x = lx; b.y = ly
@@ -1727,7 +2011,7 @@ export function createCombat() {
   // a blow pressed while the last one is still going interrupts it and the new one starts right away (with no
   // interval, every note of a song can be hit), unless the item says not to: then it waits for the move to end
   function canSwing(wing: boolean) {
-    const d = wing ? items.wing : def()
+    const d = wing ? bareDef() : def()
     return d.meleeInterrupt || !swing || swing.t >= swing.time
   }
   // an item only for hitting with blows to count (the taco): a blow needs one loaded and not reloading
@@ -1736,7 +2020,7 @@ export function createCombat() {
   function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
   // heavy: the strong blow, with the share of the charge it was let go with (0..1)
   function melee(wing: boolean, scale: number, heavy: number | null = null) {
-    const d = wing ? items.wing : def()
+    const d = wing ? bareDef() : def()
     const strong = heavy !== null
     const own = wing ? null : held()
     if (own && d.meleeOnly && d.mag > 0) {
@@ -1961,7 +2245,7 @@ export function createCombat() {
       const off = music.time - n.arriveAt, grade = judgeNote(off)
       // what it plays: the sequenced note through the ambience (the stage's fan, the map's lanes and zone) and the
       // item's chain of transformations, in the order the note's rule says
-      const d = sw.wing ? items.wing : def()
+      const d = sw.wing ? bareDef() : def()
       const env = noteEnv?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? null
       const voice: VoiceId = d.instrument ? d.voice : 'bells'
       const seq: NoteOut = { midi: n.midi, at: 0, dur: grade === 'fora' ? 0.2 : 0.4, vel: grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25, voice }
@@ -2045,6 +2329,7 @@ export function createCombat() {
     for (let i = noteShots.length - 1; i >= 0; i--) {
       const n = noteShots[i]
       const px = n.x, py = n.y
+      if (n.state === 'rebated') magnetize(n, dt)
       n.t += dt; n.x += n.vx * dt; n.y += n.vy * dt
       if (n.state === 'incoming') {
         if (parryAt(n.x, n.y, n.size, n.color)) { noteEvents.push({ kind: 'parry', shot: n, player: parriedBy }); noteShots.splice(i, 1); continue }
@@ -2083,6 +2368,9 @@ export function createCombat() {
       }
       const tuned = laneRetune(n.x, n.y)
       if (tuned !== null && tuned !== n.midi) { n.midi = tuned; n.color = DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
+      // a rebated note that reaches a Filhote fills its music bar
+      const baby = babyAt(n.x, n.y, n.size)
+      if (baby) { baby.fill(); burst(n.x, n.y, 8, n.color, 160, 3); noteShots.splice(i, 1); continue }
       const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie' || (t.kind === 'undead' && !(t.data as UndeadState).bird)) && t.deadT <= 0 && t.state !== 'converted' &&
         n.x + n.size > t.x - t.w / 2 && n.x - n.size < t.x + t.w / 2 && n.y + n.size > t.y - t.h && n.y - n.size < t.y)
       if (hit) {
@@ -2097,11 +2385,15 @@ export function createCombat() {
 
   // the violin: a held note in a beam from the muzzle to the first thing it meets; its pitch follows the aim and the chord
   function stepBeam(d: ItemDef, h: Owned, dt: number, muzzle: { x: number; y: number }, ctx: StepCtx) {
-    const dx = Math.cos(aimAngle), dy = Math.sin(aimAngle)
-    let x = muzzle.x, y = muzzle.y, hit: Target | null = null
+    const way = assistAim(d, muzzle, d.speed).angle
+    const dx = Math.cos(way), dy = Math.sin(way)
+    let x = muzzle.x, y = muzzle.y, hit: Target | null = null, lx = x, ly = y, onWall = false
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
       if (y >= ctx.groundY || boxAt(ctx.boxes, x, y, d.instrument)) break
+      // the wall of a closed block of the Grade de blocos: the beam stops on it
+      if (mine && !shotRooms.has(active) && mine.note(lx, ly, x, y, null)) { onWall = true; break }
+      lx = x; ly = y
       hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && !(t.kind === 'undead' && (t.data as UndeadState).bird) && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
@@ -2113,6 +2405,17 @@ export function createCombat() {
     else if (Math.abs(pitch - beamMidi) > 0.005) { beamHeld.setPitch(pitch); beamMidi = pitch }
     beamHeld?.setVolume?.(noteVol(d))
     // bend: semitones the aim's tremolo is bending it right now; vib: its "Vibrato natural" depth in cents (the beam's wave shows both)
+    // on a block's wall it counts as a note there every sixteenth (the first one at once), as the notes it plays
+    // would (one the zone leaves out only glances off)
+    if (onWall) {
+      const since = (beamWall.get(active) ?? Infinity) + dt, every = Math.max(0.05, music.secondsPerBeat() / 4)
+      if (since >= every) {
+        if (music.fits(midi)) mine?.note(lx, ly, x, y, active)
+        burst(lx, ly, 3, color, 120, 2)
+        beamWall.set(active, since >= 2 * every ? 0 : since - every)
+      } else beamWall.set(active, since)
+      x = lx; y = ly
+    } else beamWall.delete(active)
     beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null, bend: tremBend, vib: d.vibratoDepth }
     h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
@@ -2131,7 +2434,7 @@ export function createCombat() {
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
   }
-  function stopBeam() { beamHeld?.stop(); beamHeld = null; beam = null }
+  function stopBeam() { beamHeld?.stop(); beamHeld = null; beam = null; beamWall.delete(active) }
 
   // ---------- what the souls flying free do for and against their owners (lib/pigchicken/soul-acts.ts) ----------
   // each owner's fall (a step in the air needs to know she is falling); what a soul did to a player: the sway of
@@ -2408,13 +2711,28 @@ export function createCombat() {
     onBite: (t, at) => {
       const px = at?.x ?? playerX, py = at?.y ?? playerY
       // the bitten one is this browser's chicken: it counts here
-      if (px === playerX && py === playerY) kills.bites++
+      if (px === playerX && py === playerY) { kills.bites++; hurtSelf?.(ZOMBIE_BITE, t.x) }
       addText(px, py - 150, 'mordida!', '#ff6b5b'); burst(px + (t.face > 0 ? -20 : 20), py - 80, 10, '#ff6b5b', 200, 3); sound('bite', null)
     },
   })
 
   return {
-    setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
+    setBlastActors(actors: { id?: string; box: BlastBox; v?: { x: number; y: number }; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
+    /** What damage to this browser's own player does (its health, lib/chicken/engine.ts): a zombie's bite. */
+    setHurt(fn: ((amount: number, fromX: number) => void) | null) { hurtSelf = fn },
+    /** The Filhotes the notes can reach: each note that does fills a share of its music bar. */
+    setBabies(list: { by?: string; box: BlastBox; fill: () => void }[]) { babies = list },
+    /** Whether the local player `id` is a Filhote (what it can carry and do). */
+    setBaby(id: string, on: boolean) { if (on) babyHere.add(id); else babyHere.delete(id) },
+    /** The active player becomes a Filhote: every item and Gaiola she had falls around her, up to `spread` px away. */
+    dropAll(spread: number) {
+      standUp()
+      stopBeam(); peck = null; peckPrep = 0; swing = null; heavyItem = null; heavyT = 0; consumption = null; reloadT = 0; chargeT = 0; burstLeft = 0
+      const at = lastBody ?? { x: 0, y: floorY }
+      const fling = (o: Owned) => pickups.push({ id: nextId++, owned: o, x: at.x + rand(-spread, spread), y: at.y - 40, vy: -rand(260, 460), resting: false, noPick: 1 })
+      inv.splice(0).forEach(fling); cur = 0
+      for (const o of cages.splice(0)) { o.cage!.enterT = Infinity; fling(o) }
+    },
     setCatchables(list: Catchable[]) { catchables = list },
     /** a little cloud where something left (another browser's chick that is no longer there) */
     puff(x: number, y: number) { cloud(x, y) },
@@ -2589,11 +2907,19 @@ export function createCombat() {
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
     get hoverSwaps() { return hover?.owned.cage ? cages.length >= CAGES_MAX : !room() && !inv.some(o => o.item === hover?.owned.item) },
     // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
-    get heavyCharging() { return !!heavyItem && heavyItem === held() },
-    get heavyCharge() { return heavyItem && heavyItem === held() ? Math.min(1, heavyT / staffCharge(def())) : 0 },
+    // the class of the body it last stepped (Pig's and Ken's items have their own Pontos)
+    get species() { return lastBody?.species },
+    get heavyCharging() { return !!heavyItem && heavyItem === (held() ?? BARE) },
+    get heavyCharge() { return heavyItem && heavyItem === (held() ?? BARE) ? Math.min(1, heavyT / staffCharge(def())) : 0 },
     // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,
     // how bright the sky is from a special (0..1) and where a throw that comes back would fly if let go now
     bolts, flights,
+    // the Corrente-gancho (lib/pigchicken/grapple.ts): its hooks out in the world, where it would latch if thrown now
+    // (the orange dot), and the angle of the chain spinning in her hand while Atirar charges
+    get hooks() { return hooks as readonly Hook[] },
+    predictHook,
+    get hookSpin() { return spins.get(active) ?? 0 },
+    get hookSpinning() { return !!heavyItem && heavyItem === held() && def().grapple },
     // the cards of the decks out in the world (lib/pigchicken/cards.ts)
     get cards() { return cards as readonly Card[] },
     // the card a deck throws next (its place in CARD_RANKS), or null: not a deck, or all its cards are away
@@ -2615,6 +2941,8 @@ export function createCombat() {
     get detune() { return detuneNow() },
     // the aim's reach (0..1) for the current player, set by the page before step; the loudness it gives the held item
     // (kind: what that reach is: the pointer's place, a stick's push or nothing; the Cordas soltas read it)
+    // where this player's scale drawing is in the world (her shoulder) and its radius: the Aim Assist's cells
+    setScaleFan(fan: { x: number; y: number; r: number } | null) { if (fan && [fan.x, fan.y, fan.r].every(Number.isFinite)) scaleFans.set(active, { ...fan }); else scaleFans.delete(active) },
     setAimReach(r: number, kind: AimKind = 'none') { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1; aimKind = kind },
     // the Cordas soltas for the current player: where along the strings her aim is (the aim's reach) and how long
     // ago string `i` was plucked (s; Infinity: not yet)
@@ -2734,7 +3062,8 @@ export function createCombat() {
     setView(l: number, r: number) { view = { l, r } },
     pressed, kills,
     // bounds: the scene the horde is for (by default the one on screen here); the aliens keep to it
-    spawnAliens(groundY: number, playerX: number, bounds?: { l: number; r: number }) { spawnAlienRow(targets, env(groundY, playerX, 0, bounds)) },
+    // pattern: which aliens, in how many rows and columns (lib/pigchicken/alien-patterns.ts; the Fileira by default)
+    spawnAliens(groundY: number, playerX: number, bounds?: { l: number; r: number }, pattern?: AlienPatternDef) { spawnAlienRow(targets, env(groundY, playerX, 0, bounds), pattern) },
     spawnZombies(groundY: number, playerX: number, count: number, bounds?: { l: number; r: number }) { spawnZombies(targets, env(groundY, playerX, 0, bounds), count) },
     // ---------- online (lib/pigchicken/net-world-sync.ts) ----------
     // follower: report hits on the owner's enemies to fn instead of applying them (null: this browser decides)
@@ -2859,8 +3188,9 @@ export function createCombat() {
     },
 
     // world: false steps only the current player's loadout (another local player in the same frame)
-    step(frameDt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
+    step(frameDt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number }; hand?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      magnetCache = null
       // her own hands (aim, cooldowns, swings, charges) live on the time of the Zona she is in; the world below goes
       // thing by thing, each on the time of where it is, and the music keeps the frame's
       let dt = frameDt * timeAt(body.x, body.y - 60 * body.scale)
@@ -2889,6 +3219,8 @@ export function createCombat() {
       if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
       // her hammer is out flying: the wing waits for it (she can still change items). With one of two Boomerangs or
       // some of a deck's cards away she still hits and throws the rest, but the item itself is not thrown (Arremesso)
+      // the Corrente-gancho out: a press on Atirar lets go of it and the chain comes back
+      if (held()?.flying && items[held()!.item].grapple && input.firePressed) releaseHooks(active)
       if (held()?.flying) input = { ...input, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false }
       else if (held()?.out) input = { ...input, throwHeld: false, throwReleased: false }
       const d = def()
@@ -2925,6 +3257,7 @@ export function createCombat() {
       } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0; tremReach = null }
 
       lastBody = body
+      hands.set(active, opts.hand ?? opts.throwOrigin ?? origin)
       if (world) { music.step(frameDt); bonusTextT = Math.max(0, bonusTextT - frameDt); clock += frameDt; skyFlash = Math.max(0, skyFlash - frameDt * 2.2) }
       // the arpeggio starts over after a pause
       if (!input.fire) { arpIdle += dt; if (arpIdle > 0.6) arpStep = 0 } else arpIdle = 0
@@ -2987,10 +3320,11 @@ export function createCombat() {
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
       // starts again as if the button had just been pressed.
       const hNow = held()
-      if (input.melee && meleeCool <= 0 && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
+      // a Filhote never hits: Golpe with the hand empty is its piu (below)
+      if (input.melee && meleeCool <= 0 && !isBabyNow() && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
       // a strong blow being charged is called off by Golpe (the quick blow comes out instead), by another item in
       // the wing and by a Throw
-      if (heavyItem && (heavyCancel || input.melee || heavyItem !== hNow || input.throwHeld)) { heavyItem = null; heavyT = 0 }
+      if (heavyItem && (heavyCancel || input.melee || heavyItem !== (hNow ?? BARE) || input.throwHeld)) { heavyItem = null; heavyT = 0 }
       if (hNow && !dNow.consumable && !dNow.meleeOnly && dNow.mag !== 0 && swing && swing.t < swing.time) {
         fireResume = input.fire ? hNow : null
         input = { ...input, fire: false, firePressed: false }
@@ -3082,7 +3416,24 @@ export function createCombat() {
       }
       const canFire = body.state !== 'slide' || d.slideFire
       if (effects.length) { effects.forEach(e => { e.left -= dt }); effects = effects.filter(e => e.left > 0) }
-      if (!h) {
+      piuCool = Math.max(0, piuCool - dt)
+      if (!h && isBabyNow()) {
+        // the Filhote's empty hand: Atirar or Golpe peeps a small note that flies a little way
+        if ((input.firePressed || input.melee) && !input.cancelFire && piuCool <= 0 && body.state !== 'held' && !body.state.startsWith('portal')) {
+          piu(opts.peckOrigin ?? origin, targetAngle)
+          piuCool = 1 / Math.max(0.2, items.piu.rate)
+        }
+      } else if (!h && bareDef() !== items.wing) {
+        // Pig and Ken with empty hands: Atirar is the strong blow of the chain or the tail, like a staff's
+        const bd = bareDef()
+        if (input.cancelFire || body.state === 'held' || body.state.startsWith('portal')) { heavyItem = null; heavyT = 0 }
+        else if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { heavyItem = BARE; heavyT = 0 }
+        else if (heavyItem === BARE && input.fire) { if (meleeCool <= 0) heavyT += dt }
+        else if (heavyItem === BARE) {
+          if (meleeCool <= 0 && canSwing(true)) melee(true, body.scale, Math.min(1, heavyT / staffCharge(bd)))
+          heavyItem = null; heavyT = 0
+        }
+      } else if (!h) {
         if (!input.cancelFire && !input.melee && body.state !== 'held' && !body.state.startsWith('portal')) {
           if (input.firePressed && peckCool <= 0 && meleeCool <= 0 && !peck) peckPrep = dt
           else if (input.fire && peckPrep > 0) peckPrep += dt
@@ -3107,10 +3458,15 @@ export function createCombat() {
           if (heavyItem === h && cooldown <= 0 && throwCard(h, sd, opts.throwOrigin ?? origin)) cooldown = Math.max(0.05, sd.deckGap)
         }
         else if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
-        else if (heavyItem === h && input.fire) { if (meleeCool <= 0) heavyT += dt }
+        else if (heavyItem === h && input.fire) {
+          if (meleeCool <= 0) heavyT += dt
+          // the Corrente-gancho: the chain spins in her hand, faster as the charge fills
+          if (sd.grapple) spins.set(active, ((spins.get(active) ?? 0) + dt * spinRate(Math.min(1, heavyT / staffCharge(sd)))) % (Math.PI * 2))
+        }
         else if (heavyItem === h) {
-          // one that comes back is thrown instead (the Martelo de Thor)
-          if (sd.returnThrow) launch(h, sd, opts.throwOrigin ?? origin, Math.min(1, heavyT / staffCharge(sd)))
+          // one that comes back is thrown instead (the Martelo de Thor); the Corrente-gancho throws its hook
+          if (sd.grapple) throwHook(h, sd, opts.throwOrigin ?? origin, Math.min(1, heavyT / staffCharge(sd)), { boxes, groundY })
+          else if (sd.returnThrow) launch(h, sd, opts.throwOrigin ?? origin, Math.min(1, heavyT / staffCharge(sd)))
           else if (meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else melee(false, body.scale, Math.min(1, heavyT / staffCharge(sd))) }
           heavyItem = null; heavyT = 0
         }
@@ -3300,6 +3656,7 @@ export function createCombat() {
         f.x += f.vx * dt; f.y += f.vy * dt
         touch()
       }
+      if (world) stepHooks(frameDt, { boxes, groundY })
       if (world) stepCards(dt, { boxes, groundY })
       if (world) for (let i = bolts.length - 1; i >= 0; i--) { bolts[i].t += dt; if (bolts[i].t >= bolts[i].life) bolts.splice(i, 1) }
 
@@ -3464,7 +3821,8 @@ export function createCombat() {
 
       targets.forEach(t => {
         if (!t.blast || t.mirror) return
-        stepBlastMotion(t.blast, tdt(t))
+        // (one a hook is pulling moves only with the pull)
+        if (!hooked.has(t)) stepBlastMotion(t.blast, tdt(t))
         t.x += t.blast.x; t.y += t.blast.y
       })
 

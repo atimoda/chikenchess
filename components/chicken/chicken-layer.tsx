@@ -6,7 +6,8 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, 
 import { ChevronsUp, Egg, Footprints, Gamepad2 } from "lucide-react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { ChickFlock } from "./chick-flock"
-import { refreshChickenConfig } from "@/lib/chicken/config"
+import { getChickenConfig, refreshChickenConfig, subscribeChickenConfig } from "@/lib/chicken/config"
+import { babyArt, defaultBabySkin, getBaby, setBaby, subscribeBaby, type BabyState } from "@/lib/chicken/baby"
 import { loadChickenControls, setTouchMoveStick, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
 import { magnetVector } from "@/lib/chicken/analog-magnet"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
@@ -182,6 +183,22 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
   }, [dropIn, fixedScale])
 
   useEffect(() => { engineRef.current?.setGroundHeight(groundHeight) }, [groundHeight])
+
+  // the Filhote (lib/chicken/baby.ts): at zero health she becomes the baby of her class, and stays one (here, on the
+  // globe and in any other Pátio) until her music bar is full
+  useEffect(() => {
+    const engine = mother
+    if (!engine) return
+    const apply = (b: BabyState) => {
+      if (b.on) { engine.setSpecies("chick"); engine.setArt(babyArt(getChickenConfig().look, b.skin)); engine.setMeter(b.bar) }
+      else { engine.setSpecies(undefined); engine.setArt(null); engine.setMeter(null) }
+    }
+    apply(getBaby())
+    engine.setOnDown(() => setBaby({ on: true, skin: defaultBabySkin(getChickenConfig().look), bar: 0 }))
+    const offBaby = subscribeBaby(apply)
+    const offLook = subscribeChickenConfig(() => { if (getBaby().on) apply(getBaby()) })
+    return () => { offBaby(); offLook(); engine.setOnDown(null) }
+  }, [mother])
 
   const set = (action: ChickenAction, on: boolean) => engineRef.current?.setVirtual(action, on)
 

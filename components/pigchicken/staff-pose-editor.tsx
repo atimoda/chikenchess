@@ -26,7 +26,7 @@ const PAD = 14
 export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: ItemDef; onChange: (fn: (d: ItemDef) => void) => void }) {
   const gripRef = useRef<SVGSVGElement>(null), bodyRef = useRef<SVGSVGElement>(null)
   const [which, setWhich] = useState<Which>("carry")
-  const [drag, setDrag] = useState<"grip" | "hand" | "tip" | null>(null)
+  const [drag, setDrag] = useState<"grip" | "grip2" | "hand" | "tip" | null>(null)
   const art = ITEM_SVG[id], box = ITEM_BOX[id] ?? [-10, -10, 100, 20]
   const chicken = useMemo(() => LOOK_ART.layers(LOOK_ART.breedLook(LOOK_ART.BREEDS[0].id)), [])
   if (!art) return null
@@ -47,8 +47,9 @@ export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: Item
   }
   const f = FIELDS[which], cur = poses[which], other = poses[which === "carry" ? "wind" : "carry"]
   const moveGrip = (e: React.PointerEvent) => {
-    const p = drag === "grip" ? at(gripRef.current, e) : null
-    if (p) onChange(d => { d.gripX = clamp(snap(p.x), -200, 200); d.gripY = clamp(snap(p.y), -200, 200) })
+    const p = drag === "grip" || drag === "grip2" ? at(gripRef.current, e) : null
+    if (p && drag === "grip2") onChange(d => { d.grip2X = clamp(snap(p.x), -200, 200); d.grip2Y = clamp(snap(p.y), -200, 200) })
+    else if (p) onChange(d => { d.gripX = clamp(snap(p.x), -200, 200); d.gripY = clamp(snap(p.y), -200, 200) })
   }
   const moveBody = (e: React.PointerEvent) => {
     const p = drag === "hand" || drag === "tip" ? at(bodyRef.current, e) : null
@@ -61,8 +62,8 @@ export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: Item
     }
   }
   const stop = () => setDrag(null)
-  const grab = (k: "grip" | "hand" | "tip") => (e: React.PointerEvent<SVGGElement>) => { e.preventDefault(); e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId); setDrag(k) }
-  const ball = (k: "grip" | "hand" | "tip", x: number, y: number, r: number, color: string, title: string) => (
+  const grab = (k: "grip" | "grip2" | "hand" | "tip") => (e: React.PointerEvent<SVGGElement>) => { e.preventDefault(); e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId); setDrag(k) }
+  const ball = (k: "grip" | "grip2" | "hand" | "tip", x: number, y: number, r: number, color: string, title: string) => (
     <g style={{ cursor: drag === k ? "grabbing" : "grab" }} onPointerDown={grab(k)}>
       <title>{title}</title>
       <circle cx={x} cy={y} r={r * 1.9} fill="transparent" />
@@ -77,6 +78,7 @@ export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: Item
         className="h-24 w-full touch-none select-none rounded-md border border-white/10 bg-[#a9bcb1]">
         <g dangerouslySetInnerHTML={{ __html: art }} style={{ pointerEvents: "none" }} />
         {ball("grip", item.gripX, item.gripY, 3.2, HAND, `Mão da asa: ${item.gripX}, ${item.gripY}`)}
+        {item.grip2On && ball("grip2", item.grip2X, item.grip2Y, 3.2, "#ffd166", `Segunda mão: ${item.grip2X}, ${item.grip2Y}`)}
       </svg>
       <div className="flex gap-field">
         {(Object.keys(FIELDS) as Which[]).map(k => (
@@ -100,6 +102,14 @@ export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: Item
       <label className="flex items-center gap-2" title="Espelha a asa que segura o bastão ao longo do comprimento, para não ficar de cabeça para baixo quando gira muito">
         <input type="checkbox" checked={item.wingFlip} onChange={e => { const v = e.target.checked; onChange(d => { d.wingFlip = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
         <span>Inverter asa (vertical)</span>
+      </label>
+      <label className="flex items-center gap-2" title="Pig e Ken: o item fica na mão de trás, e a da frente vira a segunda mão">
+        <input type="checkbox" checked={item.swapHands} onChange={e => { const v = e.target.checked; onChange(d => { d.swapHands = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
+        <span>Segurar com a outra mão (dois braços)</span>
+      </label>
+      <label className="flex items-center gap-2" title="Pig e Ken: a outra mão também segura o bastão, no ponto “Segunda mão no bastão”">
+        <input type="checkbox" checked={item.grip2On} onChange={e => { const v = e.target.checked; onChange(d => { d.grip2On = v; if (v && !d.grip2X && !d.grip2Y) { d.grip2X = d.gripX + 20; d.grip2Y = d.gripY } }) }} className="h-4 w-4 accent-[var(--primary)]" />
+        <span>Segunda mão no bastão (dois braços)</span>
       </label>
     </div>
   )

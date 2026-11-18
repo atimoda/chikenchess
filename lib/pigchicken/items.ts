@@ -14,11 +14,11 @@ export type PathShow = 'off' | 'hold' | 'holdAim' | 'always'
 export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
-export type ItemId = 'wing' | 'peck' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
+export type ItemId = 'wing' | 'peck' | 'piu' | 'chainBlow' | 'tailBlow' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key' | 'boomerang' | 'cardsRed' | 'cardsBlue'
   | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
-  | 'goldkey' | 'minebomb'
+  | 'goldkey' | 'minebomb' | 'hook'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // what an instrument's tremolo follows: the aim turning, or the aim moving along the string (nearer / farther)
@@ -142,6 +142,7 @@ export type ItemDef = {
   arpRate: number // notes per second of the arpeggio / phrase on one press (burst and auto)
   noteLen: number // s each note sounds
   wave: number // px the note sways sideways as it flies
+  aimAssist: number // %: a shot turns toward the enemy in the scale's cell the aim is on (lib/pigchicken/aim-assist.ts); 0 = off
   quantize: boolean // pull the sound to the next sixteenth (at most quantWindow)
   quantWindow: number // ms
   beatBonus: number // harmony multiplier for a shot on the beat
@@ -204,6 +205,15 @@ export type ItemDef = {
   // itself stays where it is, held by the back wing (lib/pigchicken/held-pose.ts)
   archery: boolean
   drawLen: number
+  // two-armed characters (Pig, Ken): the item is held by the back arm instead of the front one, which becomes the
+  // second hand (lib/chicken/arm-rig.ts)
+  swapHands: boolean
+  // a staff's second hand: the point of its drawing the other hand holds (else that hand rests)
+  grip2On: boolean
+  grip2X: number
+  grip2Y: number
+  // Pig's and Ken's own Pontos (how they hold it: pivot, hands, staff pose, which hand); absent, they use these
+  classPoints: ClassPoints
   wingFlip: boolean // the wings that hold it are flipped vertically (mirrored along their length), for poses that turn them upside down
   // a staff (an item only for hitting: taco, passaguá): how she carries it. The wing's hand grips the point `grip` of
   // its drawing; that point sits at (staffX, staffY) from her shoulder (rig units, x to her front, y down) with the
@@ -279,6 +289,19 @@ export type ItemDef = {
   deckBig: number
   deckTouch: number
   deckGap: number
+  // the Corrente-gancho (lib/pigchicken/grapple.ts): Atirar held spins a length of chain (charging up to `hookCharge`
+  // s) and letting go throws the hook straight where she aims, at `hookSpeed` px/s, up to `hookRange` px. It latches
+  // on the first thing it touches: a wall, a floor or an object pulls her to the hook; a character, an enemy or a
+  // dummy is pulled to her instead (hurt by `hookDamage`). The pull goes at `hookPull` px/s at full charge
+  // (`hookPullMin` of it with no charge) and lets go after `hookTime` s at most
+  grapple: boolean
+  hookRange: number
+  hookSpeed: number
+  hookCharge: number
+  hookPull: number
+  hookPullMin: number
+  hookDamage: number
+  hookTime: number
 }
 // what a special sounds and looks like: thunder (a bolt from the sky and its rumble) or lightning (long crackling arcs)
 export type SpecialKind = 'thunder' | 'lightning'
@@ -302,10 +325,10 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
+  aimAssist: 0, quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, cageSouls: 0, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
-  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false, archery: false, drawLen: 30,
+  pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, swapHands: false, grip2On: false, grip2X: 0, grip2Y: 0, classPoints: {}, wingFlip: false, archery: false, drawLen: 30,
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
   heavyDamage: 30, heavyRange: 80, heavyArc: 170, heavyCooldown: 0.15, heavyTime: 0.4, heavyPush: 500, heavyKind: 'down' as BlowKind,
   heavyCharge: 1, heavyReachMax: 1.5, heavySizeMax: 1.6, heavyTrailWidth: 34, heavyTrailTime: 0.3, heavyTrailWisps: 6, heavyTrailOpacity: 0.8,
@@ -313,6 +336,7 @@ const NO_MUSIC = {
   specialCooldown: 0, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 20, specialKind: 'thunder' as SpecialKind,
   returnThrow: false, returnDamage: 30, returnRange: 700, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 500, returnCurveMin: 0, returnCurveMax: 0,
   returnCount: 1, deck: false, deckLeash: 700, deckBig: 2, deckTouch: 26, deckGap: 0.2,
+  grapple: false, hookRange: 900, hookSpeed: 2400, hookCharge: 0.6, hookPull: 1500, hookPullMin: 0.6, hookDamage: 8, hookTime: 1.5,
 }
 
 // a rebate chain from [kind, mode, n?] steps (always happening)
@@ -416,6 +440,22 @@ const WING: ItemDef = {
   rebateChain: chain(['dynamics', 'soft']), rebateSnap: 25, rebateSnapForce: 0.5,
 }
 
+// Pig's chain (Correntada) and Ken's tail (Rabada): what an empty hand does for those classes, like a staff with
+// nothing in the wing. Golpe is the quick blow in the combo; Atirar arms the strong blow, charged while held and let go
+// to hit. The chain reaches further and pushes harder; the tail sweeps wider arcs, behind her too.
+const CHAIN_BLOW: ItemDef = {
+  ...WING, id: 'chainBlow', name: 'Correntada', mag: 0, length: 0,
+  meleeDamage: 12, meleeRange: 110, meleeArc: 150, combo: swingCombo(150, 150, 190), meleeTime: 0.2, meleePush: 380,
+  trailWidth: 22, trailColor: '#9d9ca8', trailWisps: 4,
+  heavyDamage: 34, heavyRange: 130, heavyArc: 200, heavyTime: 0.45, heavyPush: 760, heavyTrailWidth: 34,
+}
+const TAIL_BLOW: ItemDef = {
+  ...WING, id: 'tailBlow', name: 'Rabada', mag: 0, length: 0,
+  meleeDamage: 10, meleeRange: 92, meleeArc: 220, combo: swingCombo(220, 220, 260), meleeTime: 0.15, meleePush: 240,
+  trailWidth: 26, trailColor: '#fae4c8', trailWisps: 5,
+  heavyDamage: 28, heavyRange: 104, heavyArc: 300, heavyTime: 0.36, heavyPush: 520, heavyTrailWidth: 38,
+}
+
 // Taco: only for hitting (no shots). A baseball bat: a wide arc, a quick blow, a long reach; a rebate goes off
 // faster with a wooden "tok", and its chain keeps the note and only accents it (the neutral taco). It has 8 blows
 // in a row (its "bullets"), which come back one every half second, or all at once when it is emptied
@@ -486,11 +526,29 @@ const CARDS_BLUE: ItemDef = {
   explodeRadius: 110, explodeDamage: 40, explodePush: 500,
   instrument: true, voice: 'bells', pitchSet: 'scale', octave: 1, span: 2, noteLen: 0.6, stun: 0.3, turnRate: 0, scales: ['primary'],
 }
+// Corrente-gancho: an iron shackle on her wrist, a length of chain and a big hook (lib/pigchicken/grapple.ts). Golpe
+// swings the hook; Atirar held spins the chain over her head and letting go throws the hook where she aims: it
+// latches on a wall, a floor or an object and pulls her to it, or on a character, an enemy or a dummy and pulls it to
+// her. Made with the Pig in mind; every class can use it
+const HOOK: ItemDef = {
+  ...BAT, id: 'hook', name: 'Corrente-gancho', family: 'Esportivos', mag: 0, refillTime: 0, weight: 0.95,
+  length: 70, meleeDamage: 16, meleeRange: 72, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.2, meleePush: 320, throwDamage: 16,
+  trailWidth: 22, trailColor: '#d9d7e0', gripX: 0, staffX: 30, staffY: 18, staffAngle: 82, windX: 4, windY: -64, windAngle: -90,
+  rebateTok: true, rebateSpeed: 1.2,
+  grapple: true, hookRange: 900, hookSpeed: 2400, hookCharge: 0.6, hookPull: 1500, hookPullMin: 0.6, hookDamage: 8, hookTime: 1.5,
+}
 const PECK: ItemDef = {
   ...WING, id: 'peck', name: 'Bicada', family: 'Sem item',
   meleeDamage: 12, meleeRange: 85, meleeArc: 160, meleeCooldown: 0.1, meleeTime: 0.16, meleePush: 220,
   chargeTime: 0.12, peckPull: 38,
   rebateChain: [],
+}
+// the Filhote's empty hand (Atirar or Golpe): a peep that lets out a small note, which flies a little way and gives
+// a little harmony (Projétil: Bônus musical por nota, speed, reach, size; Disparo: Cadência)
+const PIU: ItemDef = {
+  ...PECK, id: 'piu', name: 'Piu piu', family: 'Sem item',
+  rate: 4, damage: 5, speed: 520, range: 240, size: 4, drop: 0, pierce: 0, noteLen: 0.16, voice: 'bird', octave: 1, span: 1,
+  meleeDamage: 0, meleePush: 0, meleeCooldown: 0,
 }
 
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
@@ -636,11 +694,11 @@ const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: 'Voadeira', cage
 
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
-  wing: WING, peck: PECK, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
+  wing: WING, peck: PECK, piu: PIU, chainBlow: CHAIN_BLOW, tailBlow: TAIL_BLOW, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY, boomerang: BOOMERANG, cardsRed: CARDS_RED, cardsBlue: CARDS_BLUE,
   cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
-  goldkey: GOLD_KEY, minebomb: MINE_BOMB,
+  goldkey: GOLD_KEY, minebomb: MINE_BOMB, hook: HOOK,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
@@ -651,7 +709,7 @@ export const INSTRUMENT_WEAPON: Partial<Record<ItemId, ItemId>> = {
 export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3, key: 9, goldkey: 9, minebomb: 10 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
-export const SPORTS_IDS: ItemId[] = ['bat', 'passagua', 'boomerang']
+export const SPORTS_IDS: ItemId[] = ['bat', 'passagua', 'boomerang', 'hook']
 // magic weapons: staffs like the sports tools (held in the wing, Golpe / Atirar): the ones whose blows shock, and
 // the decks of cards that burst
 export const MAGIC_IDS: ItemId[] = ['mjolnir', 'odinstaff', 'cardsRed', 'cardsBlue']
@@ -672,7 +730,7 @@ export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 export const FIXED_IDS: ItemId[] = ['pedalharp', 'drumkit']
 // the items a rack can hold
 export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS, ...CAGE_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck']
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck', 'piu', 'chainBlow', 'tailBlow']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
@@ -743,6 +801,8 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'drawLen', label: 'Puxada da flecha', min: 0, max: 120, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Quanto a asa puxa a flecha para trás com a carga cheia' },
   { key: 'gripX', label: 'Mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a mão da asa segura' },
   { key: 'gripY', label: 'Mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
+  { key: 'grip2X', label: 'Segunda mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a outra mão segura (personagens de dois braços, com “Segunda mão” ligada)' },
+  { key: 'grip2Y', label: 'Segunda mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
   { key: 'staffX', label: 'Posição no corpo X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Onde a mão fica, a partir do ombro; positivo é para a frente dela' },
   { key: 'staffY', label: 'Posição no corpo Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Negativo sobe' },
   { key: 'staffAngle', label: 'Inclinação', min: -360, max: 360, step: 1, unit: '°', group: 'Pontos', hint: '0 = apontando para a frente dela; −90 = para cima' },
@@ -782,6 +842,13 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'deckBig', label: 'Explosão do 7 e do Ás', min: 1, max: 4, step: 0.1, unit: '×', group: 'Baralho', hint: 'Raio da explosão das duas cartas que explodem sozinhas ao chegar, em vezes o Raio da explosão' },
   { key: 'deckTouch', label: 'Área de contato', min: 4, max: 120, step: 2, unit: 'px', group: 'Baralho', hint: 'Raio em volta da carta: quem encosta nele faz a carta explodir' },
   { key: 'deckGap', label: 'Intervalo entre cartas', min: 0.05, max: 2, step: 0.05, unit: 's', group: 'Baralho', hint: 'Com Atirar segurado, sai uma carta a cada intervalo' },
+  { key: 'hookRange', label: 'Alcance', min: 100, max: 3000, step: 20, unit: 'px', group: 'Gancho', hint: 'Até onde o gancho vai; a bolinha laranja só aparece quando há onde grudar dentro dele' },
+  { key: 'hookSpeed', label: 'Velocidade do gancho', min: 300, max: 6000, step: 50, unit: 'px/s', group: 'Gancho' },
+  { key: 'hookCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.05, unit: 's', group: 'Gancho', hint: 'Quanto girar a corrente até a força máxima do puxão' },
+  { key: 'hookPull', label: 'Força do puxão', min: 200, max: 4000, step: 50, unit: 'px/s', group: 'Gancho', hint: 'Velocidade de quem é puxado, com a carga cheia' },
+  { key: 'hookPullMin', label: 'Puxão sem carga', min: 0.1, max: 1, step: 0.05, unit: '×', group: 'Gancho', hint: 'Parte da força com um toque rápido' },
+  { key: 'hookDamage', label: 'Dano ao grudar', min: 0, max: 100, step: 1, group: 'Gancho', hint: 'Em quem o gancho fisga' },
+  { key: 'hookTime', label: 'Tempo máximo do puxão', min: 0.2, max: 5, step: 0.1, unit: 's', group: 'Gancho', hint: 'Depois disso o gancho solta e a corrente volta' },
   { key: 'shockRange', label: 'Alcance do choque', min: 0, max: 800, step: 10, unit: 'px', group: 'Choque', hint: 'Distância que o raio pula de um para o próximo; 0 = sem choque' },
   { key: 'shockJumps', label: 'Pulos do raio', min: 0, max: 20, step: 1, group: 'Choque', hint: 'Quantos o raio alcança além dos que levaram o golpe' },
   { key: 'shockTime', label: 'Duração do choque', min: 0.05, max: 3, step: 0.05, unit: 's', group: 'Choque', hint: 'Quanto tempo tremem e ficam parados' },
@@ -806,6 +873,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'throwMin', label: 'Força mínima', min: 0, max: 2500, step: 25, unit: 'px/s', group: 'Arremesso', hint: 'Só tocar no botão' },
   { key: 'throwSpeed', label: 'Força máxima', min: 200, max: 2500, step: 50, unit: 'px/s', group: 'Arremesso' },
   { key: 'throwCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.1, unit: 's', group: 'Arremesso' },
+  { key: 'aimAssist', label: 'Aim Assist', min: 0, max: 100, step: 5, unit: '%', group: 'Música', hint: 'O tiro vai para o inimigo que estiver na mesma célula da escala que a mira (100% exatamente nele); sem inimigo na célula, vai onde a mira está. 0 = desligado' },
   { key: 'octave', label: 'Registro (oitava)', min: -3, max: 3, step: 1, group: 'Música', hint: '0 = perto do Dó central' },
   { key: 'span', label: 'Extensão da mira', min: 0.5, max: 4, step: 0.5, unit: 'oitavas', group: 'Música', hint: 'De apontar pra baixo até pra cima' },
   { key: 'arpRate', label: 'Velocidade do arpejo', min: 2, max: 24, step: 1, unit: 'notas/s', group: 'Música' },
@@ -832,6 +900,26 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'effectRamp', label: 'Tempo da arrancada', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Efeito', hint: 'Com curva ease: quanto leva até a velocidade final' },
 ]
 export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]
+
+// ---------- Pontos per class (Chi, Pig, Ken) ----------
+// How an item sits in the hands depends on the body: Pig and Ken can each have their own Pontos (the numbers of the
+// Pontos group and the choices of the points editors); with none, the other one's, and with neither, Chi's
+export type PointClass = 'chi' | 'pig' | 'fox'
+export const POINT_CLASSES = ['pig', 'fox'] as const
+const POINT_NUM_META = ITEM_PARAM_META.filter(m => m.group === 'Pontos')
+const POINT_BOOL_KEYS = ['handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip'] as const
+export const POINT_KEYS = [...POINT_NUM_META.map(m => m.key), ...POINT_BOOL_KEYS, 'pivotAt'] as (keyof ItemDef)[]
+export type PointSet = Partial<ItemDef>
+export type ClassPoints = Partial<Record<(typeof POINT_CLASSES)[number], PointSet>>
+export const pointsOf = (d: ItemDef): PointSet => Object.fromEntries(POINT_KEYS.map(k => [k, d[k]])) as PointSet
+/** The point class of a body's species ('pig', 'fox'; anything else is Chi's). */
+export const pointClassOf = (species: string | null | undefined): PointClass => species === 'pig' ? 'pig' : species === 'fox' ? 'fox' : 'chi'
+/** The item as a body of this class holds it: its own Pontos for Pig or Ken when it has them; with none, the other
+ * one's (both have arms, and hold things almost the same way); with neither, Chi's (the item's own). */
+export function classItem(d: ItemDef, cls: PointClass): ItemDef {
+  const own = cls === 'chi' ? undefined : d.classPoints?.[cls] ?? d.classPoints?.[cls === 'pig' ? 'fox' : 'pig']
+  return own ? { ...d, ...own } : d
+}
 
 // the "breaks after" defaults before v6 (weapons and instruments broke); a save with these numbers was never tuned
 const V5_DURABILITY: Partial<Record<ItemId, number>> = {
@@ -871,7 +959,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'wingFlip', 'archery', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   // saved before "Arco e Flecha" (v11): a bow whose points were never touched takes the new ones (both wings on it)
   if (id === 'bow' && !(v >= 11) && !s.handOn && !s.backOn && !s.pivotX && !s.pivotY) (['pivotX', 'handOn', 'handX', 'handY', 'backOn', 'backX', 'backY'] as const).forEach(k => { (out.bow as Record<string, unknown>)[k] = DEFAULT_ITEMS.bow[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
@@ -897,6 +985,20 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the Campo harmônico (v9): an instrument that had every other scale on gets it too
   if (!(v >= 9) && out[id].instrument && (['primary', 'fifths', 'tension', 'spiral'] as InstrumentScaleId[]).every(k => out[id].scales.includes(k)) && !out[id].scales.includes('harmonic')) out[id].scales = cleanScales([...out[id].scales, 'harmonic'])!
   if (typeof s.trailColor === 'string' && /^#[0-9a-f]{6}$/i.test(s.trailColor)) out[id].trailColor = s.trailColor
+  // Pig's and Ken's Pontos: a whole set each, from the item's own (Chi's) with the saved values over them
+  if (s.classPoints && typeof s.classPoints === 'object') {
+    const cp: ClassPoints = {}
+    for (const c of POINT_CLASSES) {
+      const src = s.classPoints[c]
+      if (!src || typeof src !== 'object') continue
+      const set = pointsOf(out[id]) as Record<string, unknown>
+      POINT_NUM_META.forEach(m => { const n = src[m.key]; if (typeof n === 'number' && Number.isFinite(n)) set[m.key] = Math.min(m.max, Math.max(m.min, n)) })
+      POINT_BOOL_KEYS.forEach(k => { if (typeof src[k] === 'boolean') set[k] = src[k] })
+      if (PIVOT_PARTS.some(o => o.value === src.pivotAt)) set.pivotAt = src.pivotAt
+      cp[c] = set as PointSet
+    }
+    out[id].classPoints = cp
+  }
   // saved before instruments aimed instantly (v8): an untouched old Giro da mira takes the new default (0); custom numbers stay
   if (!(v >= 8) && s.turnRate === V7_TURN_RATE[id]) out[id].turnRate = DEFAULT_ITEMS[id].turnRate
 }
@@ -908,9 +1010,10 @@ const ITEMS_VERSION = 11
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay',
+  'gliss', 'fretless', 'meleeInterrupt', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints',
 ])]
-function itemsOver(file: unknown): Record<ItemId, ItemDef> {
+/** The items a defaults file gives (the code's, with the file over them). */
+export function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   const out = structuredClone(CODE_ITEMS)
   if (file && typeof file === 'object') ITEM_IDS.forEach(id => {
     const s = (file as Record<string, unknown>)[id]
@@ -948,6 +1051,20 @@ export function announceHeldItem(id: ItemId | null) {
   if (id === heldItem) return
   heldItem = id
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(HELD_EVENT, { detail: id }))
+}
+// The class of the main player's body (Chi, Pig, Ken), announced when it changes: the Itens panel's Pontos follow it
+let playerClass: PointClass = 'chi'
+const CLASS_EVENT = 'pigchicken-player-class'
+export function announcePlayerClass(cls: PointClass) {
+  if (cls === playerClass) return
+  playerClass = cls
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(CLASS_EVENT, { detail: cls }))
+}
+export const currentPlayerClass = (): PointClass => playerClass
+export function subscribePlayerClass(onChange: (cls: PointClass) => void) {
+  const handler = (e: Event) => onChange((e as CustomEvent<PointClass>).detail)
+  window.addEventListener(CLASS_EVENT, handler)
+  return () => window.removeEventListener(CLASS_EVENT, handler)
 }
 // what the main player holds right now (null: empty-handed, or the Pátio isn't running)
 export function currentHeldItem(): ItemId | null { return heldItem }

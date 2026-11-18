@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.14.0',
     date: '18/11/2026',
-    title: 'Tambores e pentes das armas: na mira e em volta da galinha',
+    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você',
     groups: [
       { title: 'Pátio: tambores e pentes', items: [
         'Cada arma mostra as balas que ainda tem num HUD pequeno ao lado da mira, com um desenho por arma: tambor de revólver na Pistola, tambor de cartuchos na Escopeta, anel em trios na Submetralhadora, arcos dos lados no Rifle, uma fileira em arco na Sniper, os flancos no Lança-foguetes e um leque de flechas embaixo da mira no Arco. As balas vazias ficam só no contorno.',
@@ -16,16 +16,70 @@ const RECENT = [
         'No painel Câmera de Mira, “Tambores e pentes” tem os checkboxes “Em volta” e “Na mira”, os dois ligados por padrão, salvos só para você.',
         'A Granada agora tem pente infinito: não acaba nem recarrega, só respeita a cadência. O Pandeiro continua com o pente dele.',
       ] },
+      { title: 'Pátio: Próxima variação', items: [
+        'Ação nova “Próxima variação” no painel Controles, na tecla Q (Próxima arma fica sem tecla no teclado e continua no RB). Com um instrumento na mão ela passa para a próxima escala, voltando à primeira depois da última.',
+        'Próximo item, Item anterior e a rodinha do mouse agora vão direto para o próximo item, sem passar pelas escalas. Para voltar ao jeito antigo, marque “Incluir variações” na frente da ação no painel Controles. Próximo instrumento ganhou “Incluir escalas” (passa pelas escalas do instrumento da mão antes do próximo), e Próxima arma e Próximo utilitário ganharam “Incluir tambores” e “Incluir tipos”, que ainda não mudam nada.',
+      ] },
+      { title: 'Pátio: instrumentos', items: [
+        'Novo ajuste “Aim Assist” (Itens → Música, de 0 a 100%, desligado por padrão) em cada instrumento. Ao tocar, se houver um inimigo na mesma célula da escala em que a mira está (a faixa do leque, a região do gráfico, o pedaço da espiral, a casa do campo harmônico, a nota do hang ou a corda), o tiro vira para ele: em 100% vai exatamente nele, sem espalhamento; em 50% vai até a metade do caminho. Sem inimigo na célula, o tiro vai onde a mira está. A célula continua além do desenho, na mesma direção. Vale para as notas, os acordes, o feixe do violino e as cordas; a Bateria não tem.',
+        'O tiro do Teclado agora estoura na parede do bloco fechado em que acerta, como o foguete, em vez de atravessar os blocos e estourar longe dali. O traço do tiro termina onde ele estourou; e uma nota que quica numa parede desenha o caminho com o quique, em vez de uma linha reta até onde parou.',
+        'O feixe do Violino agora para na parede de um bloco fechado e enche a barra de música dele: conta uma nota a cada semicolcheia enquanto fica ali (só do lado aberto, como as outras notas).',
+      ] },
+      { title: 'Aliens: Bullet Magnetism', items: [
+        'Parâmetro novo “Bullet Magnetism” (painel Aliens → Corpo, de 0 a 100%) em cada variação: o alien puxa para si os tiros e as notas rebatidas que passam perto, mais quanto mais perto passam, e as notas fazem uma curva no caminho. Em 100% ele suga todos os tiros da tela; com mais de um em 100%, o mais perto do tiro leva.',
+        'Cada espécie veio com o seu valor, em média perto de 20%: os grandes e lentos puxam mais (Casco 30%, Dragão 25%), os pequenos e rápidos quase nada (Mini 0%). Alguns exageram: Bronze 60%, Baixo 55% e Bumbo 50%.',
+        'Variação nova “Ímã” (Casco): puxa 100%, suga todas as notas da tela e tem vida 400 para durar mais.',
+      ] },
+      { title: 'Pátio: inventário', items: [
+        'Opção nova em Controles → Inventário para alinhar a barra de itens de baixo: Centralizado (como era), Separado (instrumentos no canto esquerdo, armas e utilitários no canto direito), Esquerda ou Direita. Separado é o novo padrão. Arrastar um item de um lado para o outro continua mudando o grupo dele.',
+        'Próximo instrumento, Próxima arma e Próximo utilitário agora repetem a troca enquanto o botão fica segurado, como Próximo item e Item anterior: troca na hora, de novo depois de “Repetir troca após segurar” e depois a cada “Intervalo entre trocas”. Antes esses atalhos (Tab, Q, F, LB, RB e B no padrão) trocavam uma vez só por aperto.',
+        'Na Câmera de Mira saiu o aviso sobre zona morta e ímã dos analógicos.',
+      ] },
+      { title: 'Vestiário', items: [
+        'A conta admin não fica mais presa no filhote: o Vestiário abre na aba Filhote, mas mantém as abas Raças e peças, e escolher uma raça ou peça volta a adulto com esse visual, em qualquer espécie.',
+        'Saiu o aviso “meio apagado: ainda não liberado (dá pra testar)” do rodapé do Vestiário.',
+        'Novo botão Hit-area no Vestiário (só admin): mostra sobre a prévia a caixa do corpo e a barra de vida de Chi, Pig, Ken e Filhote. Arraste a caixa, a borda, o topo e a barra, ou digite os números, e grave com Salvar no game, que mostra a lista do que muda antes. A caixa é o que explosões, notas, cartas e cagados acertam, e é a mesma da camada Hit-boxes.',
+      ] },
+      { title: 'Pátio: Corrente-gancho', items: [
+        'Item novo nos Esportivos (painel Itens, suportes do Modo editor e Baú): uma algema de ferro no pulso, um pedaço de corrente e um gancho grande na ponta. Pensado para o Pig, mas qualquer personagem pode usar.',
+        'Segure Atirar e o braço sobe girando a corrente com o gancho, cada vez mais rápido. Ao soltar, o gancho voa reto para onde você mira, puxando a corrente atrás de si.',
+        'Se o gancho bate numa parede, num chão, numa plataforma ou num objeto, ele gruda e puxa você até lá; em cima de uma plataforma, você aterrissa nela. Quanto mais tempo girando, mais forte o puxão.',
+        'Se fisga um alien, um zumbi, um morto-vivo, um boneco de treino ou outro player deste aparelho, ele leva um pouco de dano e é puxado até você. O zumbi fica onde foi puxado; o alien volta para a fileira e o boneco de treino para o lugar, como depois de uma explosão.',
+        'Enquanto mira com o gancho na mão, uma bolinha laranja mostra onde ele vai grudar. Sem nada ao alcance (900 px), a bolinha não aparece.',
+        'Apertar Atirar de novo com o gancho fora solta o gancho na hora, e a corrente volta para a mão. Golpe dá uma pancada com o gancho, com combo, como os outros esportivos.',
+        'No Pátio online, os outros players veem a corrente indo e voltando.',
+      ] },
     ],
   },
   {
     version: '2.13.0',
     date: '17/11/2026',
-    title: 'Zonas com gravidade dos planetas, câmera lenta e raio-x; zonas sonoras: cada ritmo com o balanço dele (o samba deixa de ser grade rígida), instrumentos gravados por ritmo, variações de cada ritmo, notas da batida arrastáveis no tempo e até 10 blocos de variação por zona, com Volume e BPM em knobs; modo editor: Shift trava o arraste na horizontal ou na vertical, o elemento acompanha o ponteiro em qualquer zoom e o zoom funciona com o mouse em cima de um elemento; galinha: Chocar agarrada na parede e no teto, e asas batendo na carga do shocking jump no ar; Grade de blocos: a colisão dos Cantos em octógono segue o contorno desenhado e a Bomba é um feixe de dinamite com timer, e cada bloco é também uma Zona sonora com ritmos sorteados; o Templo do Gongo montado com elementos do Modo editor (Prédio, Mureta com cerca, Gongo do Templo); suportes de item com Limite de reposição; a roda do mouse arrastável para qualquer ação nos Controles; o X do gamepad abre Baús e senta nos instrumentos fixos; e binds próprias da Harpa e da Bateria no painel Controles, com o sustenido no L3; com as três gaiolas ocupadas, uma gaiola do chão só é trocada com um aperto inteiro de Pegar em cima dela; Configurações do Pátio ganham a categoria Mata (Mata ao longe e Mata perto); o Passaguá fica sempre na primeira casa dos utilitários; contador de almas das gaiolas só em texto branco; sem menu do navegador no botão direito dos botões; e chãos novos Lua e Marte no Modo editor; na partida, aviso ao tentar um lance que deixaria o próprio rei sob ataque; guia de pássaros reais: 30 aves com cantos gravados, a ave que inspira cada alma, receita na ficha e canto real das almas soltas',
+    title: 'Zonas com gravidade dos planetas, câmera lenta e raio-x; zonas sonoras: cada ritmo com o balanço dele (o samba deixa de ser grade rígida), instrumentos gravados por ritmo, variações de cada ritmo, notas da batida arrastáveis no tempo e até 10 blocos de variação por zona, com Volume e BPM em knobs; modo editor: Shift trava o arraste na horizontal ou na vertical, o elemento acompanha o ponteiro em qualquer zoom e o zoom funciona com o mouse em cima de um elemento; galinha: Chocar agarrada na parede e no teto, e asas batendo na carga do shocking jump no ar; Grade de blocos: a colisão dos Cantos em octógono segue o contorno desenhado e a Bomba é um feixe de dinamite com timer, e cada bloco é também uma Zona sonora com ritmos sorteados; o Templo do Gongo montado com elementos do Modo editor (Prédio, Mureta com cerca, Gongo do Templo); suportes de item com Limite de reposição; a roda do mouse arrastável para qualquer ação nos Controles; o X do gamepad abre Baús e senta nos instrumentos fixos; e binds próprias da Harpa e da Bateria no painel Controles, com o sustenido no L3; com as três gaiolas ocupadas, uma gaiola do chão só é trocada com um aperto inteiro de Pegar em cima dela; Configurações do Pátio ganham a categoria Mata (Mata ao longe e Mata perto); o Passaguá fica sempre na primeira casa dos utilitários; contador de almas das gaiolas só em texto branco; Configurações do Pátio ganham Brilho dos itens, com coluna de luz, contorno aceso e cor escolhida; sem menu do navegador no botão direito dos botões; e chãos novos Lua e Marte no Modo editor; na partida, aviso ao tentar um lance que deixaria o próprio rei sob ataque; guia de pássaros reais: 30 aves com cantos gravados, a ave que inspira cada alma, receita na ficha e canto real das almas soltas; o botão Padrão da horda alterna entre a Fileira e as formações das fases do Templo; e personagens novos Pig (porco) e Ken (raposa) no Vestiário, com 3 estilos de porco e 10 espécies de raposa',
     groups: [
-      { title: 'Pátio: Próxima variação', items: [
-        'Ação nova “Próxima variação” no painel Controles, na tecla Q (Próxima arma fica sem tecla no teclado e continua no RB). Com um instrumento na mão ela passa para a próxima escala, voltando à primeira depois da última.',
-        'Próximo item, Item anterior e a rodinha do mouse agora vão direto para o próximo item, sem passar pelas escalas. Para voltar ao jeito antigo, marque “Incluir variações” na frente da ação no painel Controles. Próximo instrumento ganhou “Incluir escalas” (passa pelas escalas do instrumento da mão antes do próximo), e Próxima arma e Próximo utilitário ganharam “Incluir tambores” e “Incluir tipos”, que ainda não mudam nada.',
+      { title: 'Filhote', items: [
+        'Ao virar filhote, todos os itens e gaiolas caem espalhados em volta (a espalhada é ajustável no Ajustes, no novo grupo Vida, junto com vida, regeneração e Guarda).',
+        'O filhote carrega 1 arma de fogo, 1 instrumento, 1 utilitário e 1 gaiola, e pode atirar; pegar outro do mesmo tipo troca.',
+        'Com a mão vazia, o filhote faz o Piu piu: pia e solta uma notinha que vai pouco longe e dá um pouco de harmonia, sem dano.',
+      ] },
+      { title: 'Vestiário', items: [
+        'A janela do Vestiário agora pode ser movida e redimensionada como os outros painéis; estreita, a prévia fica acima das abas.',
+      ] },
+      { title: 'Salvar no game', items: [
+        'Antes de gravar, todo Salvar no game mostra a lista do que muda (antes → depois) e pede confirmação. No painel Itens, ele grava todas as armas e instrumentos de uma vez.',
+      ] },
+      { title: 'Personagens: Pig e Ken', items: [
+        'Dois personagens novos ao lado da galinha: Pig, o porco de colete com algemas e corrente partida, e Ken, a raposa. No Vestiário, a aba Raças ganhou as seções Porcos e Raposas, e escolher um deles troca o visual inteiro. Eles andam, pulam, seguram itens, golpeiam e atiram com o mesmo esqueleto e as mesmas animações da galinha; o movimento próprio de cada um vem depois.',
+        'Pig vem em Rosa, Hampshire e Mangalica. Ken vem em dez espécies de raposa: vermelha, prateada, marmorizada, do-ártico, cinzenta, corsac, tibetana, feneco, do-deserto e orelhas-de-morcego. Pig Rosa e Ken vermelho vêm liberados; os outros são conquista.',
+        'Cada raça mostra a classe da espécie (Galinha, Porco ou Raposa) no lugar de Leve, Média ou Ornamental, e as abas de peças só oferecem peças da mesma classe do visual atual.',
+        'Cada classe tem o seu movimento, igual para todos os estilos dela. Pig é maior, mais lento para começar e para parar, pula baixo e pesado, não pula no ar e não escala paredes. Ken é um pouco mais lento que a galinha e mais rápido que Pig, responde na hora, controla bem no ar, pula alto, tem um pulo duplo e plana bem devagar segurando Pulo no ar, com Cima e Baixo mudando a intensidade como no voo da galinha.',
+        'No painel Ajustes, colunas Chi, Pig e Ken ao lado de cada ajuste, com knobs dos fatores de cada classe sobre o valor da galinha (Pulos no ar como número), salvos junto com a configuração do jogo.',
+        'O ajuste Tamanho (antes “Tamanho da galinha”; o botão agora é “Ajustes do personagem”) vale 1 no tamanho normal (antes era 0,5), sem mudar o tamanho na tela: configurações salvas antes são convertidas ao abrir. Ajuste novo em Voo: Pulos no ar (máximo).',
+        'Sem item na mão, Pig bate com a corrente (Correntada) e Ken com o rabo (Rabada): Golpe dá o golpe rápido, no combo, e Atirar carrega o golpe forte e solta ao largar o botão, como nos bastões. A corrente alcança e empurra mais; o rabo varre arcos maiores e gira por baixo do Ken. Os números ficam no painel Itens, nas fichas Correntada e Rabada.',
+        'Chocando no chão, Pig fica firme (Guarda): explosões e golpes não o empurram. Fora disso, Pig sofre só 35% do empurrão e Ken 80%. Chocar + Pulo vira Bote no Ken (salto longo e baixo) e Investida no Pig (carga quase reta pelo chão).',
+        'Os bonecos ganharam vida: galinha 100, Ken 200 e Pig 300. Explosões e mordidas de zumbi tiram vida, a Guarda do Pig corta 60% do dano que vem de frente, e depois de 6 segundos sem dano ela volta aos poucos. Uma barrinha sobre a cabeça aparece quando falta vida.',
+        'Com a vida a zero, o boneco vira filhote da classe dele: pintinho, leitão ou raposinha, no traço do pintinho. O filhote é imortal, só toca instrumentos e usa Usar, e volta a adulto quando a barra de música roxa enche com 4 notas que o acertam: notas rebatidas dos aliens e dos pássaros ou notas dos instrumentos de outros jogadores. Ele continua filhote ao voltar ao globo e em outro Pátio, e no Vestiário só troca de estilo entre os filhotes da classe dele (7 leitões e 10 raposinhas).',
+        'Pig, Ken e os filhotes deles se movem como mamíferos: sem a cabeça de galinha dando bote a cada passo, sem bater os braços como asas, pernas penduradas no pulo, braço que não estica e itens seguros mais baixo, longe do rosto. Na Planagem, o rabo do Ken sobe e gira como hélice.',
+        'Pig e Ken têm braços com cotovelo, nas poses da arte planejada (o Pig com o braço cruzando a barriga, o Ken com a mão no quadril), e as duas mãos seguram o item nos pontos dele. Nos itens, “Segurar com a outra mão” troca a mão que segura, e o bastão ganhou “Segunda mão no bastão”, com o ponto da outra mão arrastável. O golpe forte do Pig e do Ken, com item ou com a corrente, é carregado e dado com a outra mão. No painel Itens, a Correntada e a Rabada (golpe rápido, combo e golpe forte) aparecem quando o Pig ou o Ken está de mão vazia, no lugar da Bicada, e mostram só os ajustes de golpe. Na lista do painel Itens, Bicada, Asa, Correntada e Rabada ficam juntas no grupo Golpes, no topo. Os Pontos de cada item (como o boneco segura: eixo, mãos, pose do bastão) têm uma versão para Chi, Pig e Ken, com abas no painel que já abrem na classe do seu boneco; enquanto só um dos dois (Pig ou Ken) foi ajustado, o outro segue esse ajuste. O rabo do Ken acompanha o ângulo da Rabada, e carregando o golpe forte o Pig arma a corrente para trás e o Ken arma o rabo, tremendo quando a carga enche.',
       ] },
       { title: 'Partida', items: [
         'Na campanha e no online, tentar um lance que deixaria o próprio rei sob ataque (mover uma peça cravada, levar o rei para uma casa atacada ou não sair do cheque) mostra por 3 segundos o aviso “Você não pode deixar seu rei sob ataque.”, com a peça tremendo e o som de bloqueio. Antes, o lance era só ignorado.',
@@ -64,6 +118,12 @@ const RECENT = [
         'Segurar Shift enquanto arrasta um elemento mantém o movimento reto: só na horizontal ou só na vertical, conforme a direção em que o ponteiro andou mais. Apertar ou soltar o Shift no meio do arraste já vale, sem precisar mexer o mouse.',
         'Com zoom diferente de 100%, o elemento arrastado ou redimensionado fica embaixo do ponteiro. Antes ele andava mais rápido que o mouse com zoom-in e mais devagar com zoom-out. Dar zoom no meio do arraste também mantém o elemento no ponteiro.',
         'O zoom (segurando a tecla da câmera e rolando) e o panorama da câmera passam a funcionar com o mouse em cima de um elemento do editor, selecionado ou não. Antes a área de clique do elemento bloqueava a câmera.',
+        'Na paleta, a Mureta com cerca cabe na caixinha, com a cerca e o muro inteiros em miniatura. Antes o desenho saía da caixa e cobria os cards de baixo.',
+        'Os botões da horda aparecem na paleta como são no Pátio: o poste com o botão vermelho (Aliens, Zumbis) ou azul (Padrão dos aliens, Quantidade de zumbis), no lugar do quadradinho com “!”.',
+      ] },
+      { title: 'Pátio: botões da horda', items: [
+        'Os botões “Soltar aliens” e “Soltar zumbis” passam a se chamar só ALIENS e ZUMBIS, no Pátio e na paleta do Modo editor.',
+        'O botão Padrão agora troca a formação dos aliens: Fileira (a de sempre) e as formações das fases do Templo do Gongo, Despertar (águas-vivas coloridas), Lanternas, Couraça, Gêmeos e Tambores, com os aliens e a vida de cada fase. Na horda todas andam como a Fileira, de lado e descendo nas bordas; mergulhos, bombas e o tambor no compasso continuam só no Templo. No online, o padrão escolhido vale para quem apertou ALIENS.',
       ] },
       { title: 'Pátio: mira com teclado e mouse', items: [
         'Voltou a devolução da mira ao teclado: com teclado e mouse no mesmo player, depois de 5 segundos com o mouse parado as teclas de movimento voltam a mirar nas 8 direções; mexer o mouse pega a mira de volta. O tempo fica em Câmera de Mira → “Mouse parado devolve a mira ao teclado”; 0 deixa a mira sempre com o mouse, como estava.',
@@ -100,6 +160,9 @@ const RECENT = [
       { title: 'Pátio: Mata do fundo', items: [
         'Configurações do Pátio ganham a categoria Mata, com Mata ao longe e Mata perto separadas: mostrar ou esconder cada fileira, Sortear forma, Densidade, Tamanho, Pinheiros (quantos pinheiros entre as copas redondas) e Cor. Padrão volta às fileiras de sempre.',
         'Em Céu e luz, a caixa “Mata ao longe” passou a se chamar “Mata”, porque esconde as duas fileiras de uma vez.',
+      ] },
+      { title: 'Pátio: brilho dos itens', items: [
+        'Configurações do Pátio ganham “Brilho dos itens”: cada item caído no chão ganha uma coluna de luz subindo dele, um contorno aceso em volta e uma luz no chão embaixo. Em 0 fica desligado (o padrão, como antes); valores baixos são bem suaves e 100% é o feixe alto e forte. O quadrado de cor ao lado do controle muda a cor do brilho, dourada por padrão. Vale para todos os itens do Pátio, inclusive as gaiolas no chão (só a coluna de luz), e é salvo com o Pátio, no local e no online.',
       ] },
       { title: 'Pátio: Passaguá', items: [
         'Ao pegar o Passaguá, ele vai sempre para a primeira casa dos utilitários no inventário, e os utilitários pegos depois entram atrás dele. Só sai dali se você arrastá-lo para outra casa.',

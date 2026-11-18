@@ -17,7 +17,7 @@ import { isFreeBlock, isSpawnPortal, rebalanceSpawnPortals, setSpawnChance, spaw
 import { cn } from "@/lib/utils"
 import {
   ELEMENT_DEFS, HARD_KINDS, HORDE_BUTTONS, canHaveDepth, isMusicElement, isPowerElement, isSurfaceElement, defaultParams, HORDE_BUTTON_LABELS, LAYERS, LAYER_HINTS, LAYER_LABELS, createElement, elementBounds, elementsInWorld, layoutFloorBelow, occludesColliders,
-  looseFromRack, newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, elementLabel, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type LayoutElement, type PatioLayout,
+  looseFromRack, newElementId, normalizeElement, settleLayoutInWorld, storeElementPosition, createPortalPair, elementLabel, LAYOUT_MAX_ELEMENTS, portalPartner, duplicatePortalPair, type ElementKind, type ElementParams, type HordeButton, type LayoutElement, type PatioLayout,
 } from "@/lib/pigchicken/layout"
 import { isFixedKind } from "@/lib/pigchicken/fixed-instruments"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
@@ -50,7 +50,7 @@ import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-plac
 import { CHALK_TEXT_MAX, DEMO_IDS, GHOST_OFFSET, GHOST_REACH, TRAINING_DEMOS, chalkboardForDemo, type ChalkboardParams, type DemoId } from "@/lib/pigchicken/chalkboard"
 import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, GONG_TITLE_MAX, defaultGong, type GongParams } from "@/lib/pigchicken/gong"
 import { BUILDING_COLUMNS, BUILDING_LANTERNS, BUILDING_ROOFS, defaultBuilding, type BuildingParams } from "@/lib/pigchicken/buildings"
-import { BuildingArt } from "./building-art"
+import { BalustradeArt, BuildingArt } from "./building-art"
 import { loadLibrary, subscribeLibrary } from "@/lib/pigchicken/song-library"
 import { EditorDock, useEditorDocked } from "./editor-dock"
 
@@ -977,12 +977,29 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "chest") return <ChestThumb rarity={entry.params?.chest?.rarity ?? "simple"} />
   if (entry.kind === "spawn") return <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#7cc4ff] bg-blue-950/60 shadow-[0_0_6px_#408cff]"><span className="h-2 w-2 rounded-full bg-[#ffd166]" /></span>
   if (entry.kind === "chalkboard") return <span aria-hidden="true" className="block h-7 w-11 rounded-[3px] border-[3px] border-[#7a4f27] bg-[#2f5b3f]" />
-  if (entry.kind === "button") return <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-[#7bdff2] bg-[#123] text-[9px] text-[#7bdff2]">!</span>
+  // the Mureta com cerca draws in its own units (posts, floor, wall): drawn at its size, scaled down into the card
+  if (entry.kind === "balustrade") { const k = Math.min(48 / d.w, 34 / d.h); return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><BalustradeArt balustrade={{ courtyard: false }} w={d.w} h={d.h} /></span> }
+  if (entry.kind === "button") return <HordeButtonThumb action={entry.params?.action ?? "aliens"} />
   const m = entry.params?.power ? POWER_MODELS[entry.params.power.model] : null
   const w = m?.w ?? d.w, h = m?.h ?? d.h
   const k = Math.min(48 / w, (m ? 44 : 34) / h)
   // the postes and torres take the sky's silhouette colour: light here, on the dark card
   return <span className="relative block" style={{ width: w * k, height: h * k, ...(m ? { ["--patio-sil" as string]: "#dfe8df" } : {}) }}><ElementArt el={{ kind: entry.kind, params: previewParams(entry), w: w * k, h: h * k }} editing /></span>
+}
+
+// a horde button on its card, as it stands in the Pátio (drawButton in draw/creatures.ts): the post, the dark base
+// and the cap, red for the ones that call a horde, blue for the ones that set it up
+function HordeButtonThumb({ action }: { action: HordeButton }) {
+  const cap = action === "aliens" || action === "zombies" ? "#d6453d" : "#4cc9f0"
+  return (
+    <svg aria-hidden="true" viewBox="-25 -11 50 54" className="h-9 w-8">
+      <rect x="-4" y="14" width="8" height="29" fill="#3a3f4a" />
+      <ellipse cx="0" cy="6" rx="24" ry="12" fill="#23262d" />
+      <rect x="-19" y="0" width="38" height="6" fill={cap} />
+      <ellipse cx="0" cy="0" rx="19" ry="10" fill={cap} />
+      <ellipse cx="0" cy="6" rx="19" ry="4" fill={cap} />
+    </svg>
+  )
 }
 
 // the Harpa on its card: the column, the curved neck, the soundboard and a few strings

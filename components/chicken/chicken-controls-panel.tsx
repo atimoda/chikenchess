@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronRight, Gamepad2, Keyboard, Mouse, X, type LucideIcon } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import {
-  CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, HARP_ACTIONS, KEYBOARD_INPUT_TYPES, VARIATION_ACTIONS, type HarpAction, PAD_STYLE_LABELS, type PadStyle, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames, padStyleAt,
+  CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, HARP_ACTIONS, INVENTORY_ALIGNS, KEYBOARD_INPUT_TYPES, VARIATION_ACTIONS, type HarpAction, PAD_STYLE_LABELS, type PadStyle, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames, padStyleAt,
   readGamepadTokens, saveChickenControls, setChickenControlsListening, subscribeChickenControls,
   type ChickenAction, type ChickenControls, type ChickenInputType, type ChickenTouchMode,
 } from "@/lib/chicken/controls"
@@ -357,6 +357,11 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
         </section>
         <section className="grid gap-field">
           <h3 className="mb-1.5 font-mono text-xs uppercase tracking-wider text-primary">Inventário</h3>
+          <div role="radiogroup" aria-label="Alinhamento do inventário" className="flex flex-wrap gap-field">
+            {INVENTORY_ALIGNS.map(m => (
+              <button key={m.value} type="button" role="radio" aria-checked={controls.inventory.align === m.value} onClick={() => update(c => { c.inventory.align = m.value })} className={cn("h-7 rounded border px-3 text-xs transition-colors", controls.inventory.align === m.value ? "border-primary bg-primary/20 text-white" : "border-white/15 bg-black/30 hover:border-primary/60")}>{m.label}</button>
+            ))}
+          </div>
           <div className="grid gap-field">
           <PatioRange label="Repetir troca após segurar" min={0.2} max={5} step={0.1} value={controls.inventory.repeatDelay}
             display={`${controls.inventory.repeatDelay.toFixed(1)} s`} onChange={v => update(c => { c.inventory.repeatDelay = v })} />

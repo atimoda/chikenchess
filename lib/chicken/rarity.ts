@@ -9,7 +9,13 @@ export const RARITY_LABEL: Record<Rarity, string> = { comum: 'Comum', incomum: '
 export const RARITY_COLOR: Record<Rarity, string> = { comum: '#9aa3ad', incomum: '#3fcf6b', rara: '#3d8bff', epica: '#b45cff', lendaria: '#ff9f1a' }
 
 // each breed's rarity; its parts are as rare as the breed unless listed in ITEM_RARITY
-export const BREED_RARITY: Record<string, Rarity> = { caipira: 'comum', angola: 'rara', onagadori: 'lendaria' }
+export const BREED_RARITY: Record<string, Rarity> = {
+  caipira: 'comum', angola: 'rara', onagadori: 'lendaria',
+  'porco-rosa': 'comum', 'porco-hampshire': 'incomum', 'porco-mangalica': 'rara',
+  'raposa-vermelha': 'comum', 'raposa-cinzenta': 'incomum', 'raposa-corsac': 'incomum', 'raposa-deserto': 'incomum',
+  'raposa-prateada': 'rara', 'raposa-artico': 'rara', 'raposa-tibetana': 'rara',
+  'raposa-marmorizada': 'epica', 'raposa-feneco': 'epica', 'raposa-morcego': 'epica',
+}
 // exceptions per part (slot:variant)
 export const ITEM_RARITY: Partial<Record<`${ChickenSlot}:${string}`, Rarity>> = {
   'legs:angola': 'incomum',

@@ -2,11 +2,21 @@
 // so any part can be combined with any other. Flat folk style: no outlines.
 export type ChickenSlot = 'comb' | 'face' | 'beak' | 'wattle' | 'neck' | 'torso' | 'wing' | 'tail' | 'legs'
 export type ChickenLook = Record<ChickenSlot, string>
+import { BEAST_BREEDS } from './beast-art'
+import { armMarkup, type ArmsSpec } from './arm-rig'
 export type LegColors = { drum: string; shank: string }
 // One variant of a part. Extra fields per slot: face.lid (eyelid color), wing.back (far wing color), beak.mouth (the mouth point),
 // tail.swing (how much the tail follows the body), legs.front/back (leg stroke colors), wing.backPath (the far wing's
 // outline, else the chicken's WING), face.eye / face.pupil (eye colors, else the chicken's light eye; a chick's is dark), face.eyeAt (the eye's middle).
-export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number] }
+// wing.hand: the near limb's tip in rest pose (rig units; else the chicken's wing tip), where held items sit;
+// wing.backSvg / backOffset / backFront: the other arm drawn whole (not a flat shape), where it rests from the near
+// one, and drawn in front of the body (Pig, Ken);
+// wing.holdDrop: how much lower than the chicken's shoulder held items sit (Pig and Ken have their heads lower);
+// face.ownEyes: the face draws its own eyes (the engine's eye, pupil and blinking lid are hidden);
+// legs.shape: legs drawn another way (Pig, Ken): stroke widths of thigh, lower leg and shin, a foot drawn at the toe
+// joint in place of the toes ('FILL' is replaced by the shank color), and each leg moved along the body.
+export type LegShape = { thigh: number; tib: number; shin: number; foot?: string; dxFront?: number; dxBack?: number }
+export type ChickenArtVariant = { label: string; svg?: string; lid?: string; back?: any; swing?: number; front?: LegColors; mouth?: [number, number]; backPath?: string; eye?: string; pupil?: string; eyeAt?: [number, number]; hand?: [number, number]; holdDrop?: number; arms?: ArmsSpec; backSvg?: string; backOffset?: [number, number]; backFront?: boolean; ownEyes?: boolean; shape?: LegShape }
 // a whole set of parts, one variant per slot (a bird drawn apart from the chickens' catalog, such as a chick)
 export type ChickenArtSet = Record<ChickenSlot, ChickenArtVariant>
 
@@ -79,30 +89,46 @@ export const LOOK_ART = (() => {
     { id: 'torso', label: 'Corpo', tab: 'corpo' },
     { id: 'legs', label: 'Pernas e pés', tab: 'pernas' }
   ];
-  const BREEDS = [
-    { id: 'caipira', label: 'Caipira', cat: 'galinhas', klass: 'media' },
-    { id: 'angola', label: "Galinha-d'angola", cat: 'galinhas', klass: 'leve' },
-    { id: 'onagadori', label: 'Onagadori', cat: 'galos', klass: 'cauda_longa' }
+  // Pig and Ken (beast-art.ts) are breeds too: every part of theirs joins the catalog under the breed's id
+  BEAST_BREEDS.forEach(b => { (Object.keys(b.parts) as ChickenSlot[]).forEach(sl => { art[sl][b.id] = b.parts[sl]; }); });
+  const BREEDS: { id: string; label: string; cat: string; klass: string }[] = [
+    { id: 'caipira', label: 'Caipira', cat: 'galinhas', klass: 'galinha' },
+    { id: 'angola', label: "Galinha-d'angola", cat: 'galinhas', klass: 'galinha' },
+    { id: 'onagadori', label: 'Onagadori', cat: 'galos', klass: 'galinha' },
+    ...BEAST_BREEDS.map(b => ({ id: b.id, label: b.label, cat: b.cat, klass: b.klass }))
   ];
   const breedLook = (id: string): ChickenLook => { const l = {} as ChickenLook; SLOTS.forEach(s => { l[s.id] = art[s.id][id] ? id : Object.keys(art[s.id])[0]; }); return l; };
 
   // rest-pose leg drawing for thumbnails (the live rig poses its own legs)
-  function staticLeg(hx: number, c: LegColors) {
+  function staticLeg(hx: number, c: LegColors, sh?: LegShape, dx = 0) {
+    if (sh) {
+      hx += dx;
+      const k = [hx + 12, -60], a = [hx + 2, -30], f = [hx, -4];
+      return '<path d="M' + hx + ' -88 L ' + k[0] + ' ' + k[1] + ' L ' + a[0] + ' ' + a[1] + '" stroke="' + c.drum + '" stroke-width="' + sh.thigh + '" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>' +
+        '<path d="M' + a[0] + ' ' + a[1] + ' L ' + f[0] + ' ' + f[1] + '" stroke="' + c.shank + '" stroke-width="' + sh.shin + '" stroke-linecap="round" fill="none"></path>' +
+        (sh.foot ? '<g transform="translate(' + f[0] + ' ' + (f[1] - 2) + ')">' + sh.foot.split('FILL').join(c.shank) + '</g>' : '');
+    }
     const k = [hx + 21, -67], a = [hx, -46], f = [hx, -3];
     return '<path d="M' + hx + ' -88 L ' + k[0] + ' ' + k[1] + ' L ' + a[0] + ' ' + a[1] + '" stroke="' + c.drum + '" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>' +
       '<path d="M' + a[0] + ' ' + a[1] + ' L ' + f[0] + ' ' + f[1] + ' M' + f[0] + ' ' + f[1] + ' l15 2 M' + f[0] + ' ' + f[1] + ' l10 4 M' + f[0] + ' ' + f[1] + ' l-9 2" stroke="' + c.shank + '" stroke-width="4.5" stroke-linecap="round" fill="none"></path>';
   }
-  function headSvg(look: ChickenLook) {
-    return (art.comb[look.comb].svg ?? '') + (art.face[look.face].svg ?? '') + (art.beak[look.beak].svg ?? '') + (art.wattle[look.wattle].svg ?? '') +
-      '<circle cx="51" cy="-192" r="4.6" fill="#fff8e1"></circle><circle cx="52.5" cy="-192" r="2.8" fill="#1f1a17"></circle>';
+  // a look's parts, each one the variant it names (or the slot's first)
+  const resolve = (look: ChickenLook) => Object.fromEntries(SLOTS.map(s => [s.id, art[s.id][look[s.id]] ?? Object.values(art[s.id])[0]])) as ChickenArtSet;
+  function headOf(A: ChickenArtSet) {
+    return (A.comb.svg ?? '') + (A.face.svg ?? '') + (A.beak.svg ?? '') + (A.wattle.svg ?? '') +
+      (A.face.ownEyes ? '' : A.face.eyeAt ? '<circle cx="' + A.face.eyeAt[0] + '" cy="' + A.face.eyeAt[1] + '" r="4.6" fill="' + (A.face.eye ?? '#fff8e1') + '"></circle>' : '<circle cx="51" cy="-192" r="4.6" fill="#fff8e1"></circle><circle cx="52.5" cy="-192" r="2.8" fill="#1f1a17"></circle>');
+  }
+  const headSvg = (look: ChickenLook) => headOf(resolve(look));
+  const backOf = (wing: ChickenArtVariant) => '<g transform="translate(' + (wing.backOffset ?? [-4, -2]).join(' ') + ')">' + (wing.backSvg ?? '<path d="' + (wing.backPath ?? WING) + '" fill="' + wing.back + '"></path>') + '</g>';
+  // a whole set of parts (a breed's, or a bird's own such as a Filhote's) in rest pose, as SVG markup
+  function composeSet(A: ChickenArtSet) {
+    const legs = A.legs, wing = A.wing;
+    return staticLeg(-26, legs.back as LegColors, legs.shape, legs.shape?.dxBack) + staticLeg(-14, legs.front as LegColors, legs.shape, legs.shape?.dxFront) +
+      (wing.backFront || wing.arms ? '' : backOf(wing)) +
+      (A.tail.svg ?? '') + (A.torso.svg ?? '') + (wing.backFront ? backOf(wing) : '') + (wing.arms ? armMarkup(wing.arms.back, ...wing.arms.back.rest) : '') + (A.neck.svg ?? '') + headOf(A) + (wing.svg ?? '') + (wing.arms ? armMarkup(wing.arms.front, ...wing.arms.front.rest) : '');
   }
   // whole chicken in rest pose, as SVG markup (thumbnails, avatar)
-  function compose(look: ChickenLook) {
-    const legs = art.legs[look.legs], wing = art.wing[look.wing];
-    return staticLeg(-26, legs.back as LegColors) + staticLeg(-14, legs.front as LegColors) +
-      '<g transform="translate(-4 -2)"><path d="M-34 -124 C -10 -130, 22 -128, 34 -118 C 40 -100, 32 -80, 12 -72 C -10 -66, -36 -74, -44 -92 C -48 -108, -46 -120, -34 -124 Z" fill="' + wing.back + '"></path></g>' +
-      (art.tail[look.tail].svg ?? '') + (art.torso[look.torso].svg ?? '') + (art.neck[look.neck].svg ?? '') + headSvg(look) + (wing.svg ?? '');
-  }
+  const compose = (look: ChickenLook) => composeSet(resolve(look));
   // the same chicken in two layers, for a drawing that poses the near wing itself: everything but that wing, and the wing
   function layers(look: ChickenLook) {
     const wing = art.wing[look.wing].svg ?? '', whole = compose(look);
@@ -111,5 +137,5 @@ export const LOOK_ART = (() => {
   // where each part sits in rest pose, for cropped thumbnails
   const VIEW: Record<ChickenSlot, string> = { comb: '14 -238 70 70', face: '22 -214 50 50', beak: '40 -210 44 44', wattle: '34 -200 44 58', neck: '-10 -196 76 104', wing: '-56 -136 102 80', tail: '-120 -180 120 120', torso: '-76 -160 140 110', legs: '-50 -100 80 106' };
   const TAIL_VIEW: Record<string, string> = { onagadori: '-350 -180 360 190' };
-  return { art, SLOTS, BREEDS, breedLook, compose, layers, headSvg, VIEW, TAIL_VIEW, WING };
+  return { art, SLOTS, BREEDS, breedLook, compose, composeSet, layers, headSvg, VIEW, TAIL_VIEW, WING };
 })()

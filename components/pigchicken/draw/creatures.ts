@@ -2,7 +2,7 @@
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
 import { TIP_TIME, type Combat } from "@/lib/pigchicken/combat"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
-import { ALIEN_FRAMES, ALIEN_PIXEL, ZOMBIE_TIMES, type EnemyData } from "@/lib/pigchicken/enemies"
+import { ALIEN_FRAMES, ALIEN_PIXEL, ZOMBIE_TIMES, lookSpecies, type EnemyData } from "@/lib/pigchicken/enemies"
 import { drawTempleAlien } from "@/components/pigchicken/temple-draw"
 import { BIRDS, UNDEAD_EYE, birdColors, type BirdType } from "@/lib/pigchicken/birds"
 import { undeadSize, type UndeadState } from "@/lib/pigchicken/undead"
@@ -68,7 +68,7 @@ export function drawUndead(ctx: Ctx, g: Combat["targets"][number], x: number, be
   // the alien drawn grey on a small canvas of its own (a filter on the whole scene costs too much per pixel drawn)
   const art = greyArt(Math.ceil(Math.max(g.w, g.h) * 2.4), a => {
     const proxy = { ...g, kind: "alien" as const, y: g.h / 2, deadT: 0, flash: 0, data: u.look }
-    if ((u.look as { kind?: string } | undefined)?.kind === "temple") drawTempleAlien(a, proxy, 0, beatPhase, 0, beat, null)
+    if (lookSpecies(u.look)) drawTempleAlien(a, proxy, 0, beatPhase, 0, beat, null)
     else drawAlien(a, proxy, 0)
   }, g.flash > 0 ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.22)")
   ctx.save()

@@ -9,6 +9,7 @@ import { wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
 import { drawItem, type Ctx } from "./shared"
 import { stageWidth } from "@/lib/stage-size"
+import { type InventoryAlign } from "@/lib/chicken/controls"
 
 export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
   const d = combat.def(), armed = !!combat.held && d.mag > 0 && !d.meleeOnly
@@ -192,29 +193,48 @@ export const desktopPointer = typeof window !== "undefined" ? window.matchMedia(
 // small windows show none
 export const SMALL_SCREEN_W = 768
 export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof window === "undefined" || stageWidth() >= SMALL_SCREEN_W)
-// where a player's bar sits. bottom: the first player's big bar, at the bottom on the right (desktop and tablet).
+// where a player's bar sits. bottom: the first player's big bar at the bottom of the screen (desktop and tablet).
 // Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
 // but the first on desktop and tablet; everyone on a phone held upright)
 // groups: each shown slot's group (Combat.inventoryGroups). The page's invisible slot buttons use the same numbers.
-// labels: the big bar shows each group's key left of its first slot. The big bar is centred on the screen: the
+// labels: the big bar shows each group's key left of its first slot. align (Controles → Inventário) places the big
+// bar: split, the instruments at the left edge and the weapons and utilities at the right one (xs then span the whole
+// screen); center, centred on the screen; left / right, against that edge. The groups keep their order: the
 // instruments, then the weapons, then the utilities (xs are from the bar's left end). When it does not fit even with
-// the smallest slots, it slides so the held slot (cur) sits as near the centre as the bar's ends allow
-export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false, cur = 0) {
+// the smallest slots, it slides so the held slot (cur) sits as near the centre as the bar's ends allow.
+// rest: where the circles of the effects whose item has left the bar start, and which way they go (-1 left, 1 right)
+export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false, cur = 0, align: InventoryAlign = "center") {
   if (!bottom) {
     const size = fitSize(groups, W - invRight - ROW.margin, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
     const { xs, w } = barSlots(groups, size, ROW.gap, ROW.groupGap)
-    return { x: Math.round(W - invRight - w + (offset?.x ?? 0)), y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false, lead: 0 }
+    const x = Math.round(W - invRight - w + (offset?.x ?? 0))
+    return { x, y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false, lead: 0, rest: { x: x + (xs[0] ?? 0), dir: -1 as const } }
   }
   const lead = labels ? BAR.label : 0, room = W - BAR.side * 2
   const size = fitSize(groups, room, BAR.size, BAR.minSize, BAR.gap, BAR.groupGap, lead)
-  const { xs, w } = barSlots(groups, size, BAR.gap, BAR.groupGap, lead)
-  let x = (W - w) / 2
+  let { xs, w } = barSlots(groups, size, BAR.gap, BAR.groupGap, lead)
+  let x = align === "left" ? BAR.side : align === "right" ? W - BAR.side - w : (W - w) / 2
+  // split: the instruments stay at the left edge and the rest goes to the right one (both halves present only)
+  const right = align === "split" ? groups.findIndex(g => g !== 0) : -1
   if (w > room) {
     const at = xs[Math.max(0, Math.min(cur, xs.length - 1))] ?? 0
     x = Math.min(BAR.side, Math.max(W - BAR.side - w, W / 2 - at - size / 2))
+  } else if (align === "split") {
+    x = right === 0 ? W - BAR.side - w : BAR.side
+    if (right > 0) {
+      const shift = room - w
+      xs = xs.map((sx, i) => i >= right ? sx + shift : sx); w = room
+    }
   }
   const y = H - BAR.bottom - BAR.tab - size
-  return { x: Math.round(x + (offset?.x ?? 0)), y: Math.round(y + (offset?.y ?? 0)), size, gap: BAR.gap, groupGap: BAR.groupGap, xs, w, tabs: true, lead }
+  const bx = Math.round(x + (offset?.x ?? 0)), last = xs.length - 1
+  // the effects' circles: left of the first group's key; with the bar against the left edge, right of its end; split,
+  // left of the weapons' half
+  const atLeft = align === "left" || (align === "split" && right !== 0)
+  const rest = right > 0 && w <= room ? { x: bx + xs[right] - lead, dir: -1 as const }
+    : atLeft && last >= 0 ? { x: bx + xs[last] + size, dir: 1 as const }
+    : { x: bx + (xs[0] ?? 0) - lead, dir: -1 as const }
+  return { x: bx, y: Math.round(y + (offset?.y ?? 0)), size, gap: BAR.gap, groupGap: BAR.groupGap, xs, w, tabs: true, lead, rest }
 }
 // the slot under a point along a bar (px from its left end): the nearest one, and whether the point is on its right half
 export function barSlotAt(xs: readonly number[], size: number, x: number): { slot: number; after: boolean } {
@@ -278,16 +298,14 @@ export function drawArpGlyph(ctx: Ctx, arp: Arp, cx: number, top: number, big: b
 // labels: each group's key (Próximo instrumento / arma / utilitário), shown left of the group's first slot on the
 // big bar (null: none)
 // Returns the arpeggiator glyphs drawn over its instruments (the item and the area a click turns to its next option).
-export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null) {
+export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null, align: InventoryAlign = "center") {
   const glyphs: { item: ItemId; box: { l: number; r: number; t: number; b: number } }[] = []
   const slots = combat.inventory, groups = combat.inventoryGroups
   // no item at all: the bar hides (not even the empty slot shows)
   const empty = !slots.some(Boolean), n = empty ? 0 : slots.length
   const showLabels = !empty && bottom && !!labels?.some(Boolean)
-  const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels, combat.current), { size, gap } = g
+  const g = invGeom(row, groups, bottom, offset, undefined, undefined, showLabels, combat.current, align), { size, gap } = g
   const x0 = g.x, y = g.y
-  // the effects' circles go left of the bar (of its first group's key, on the big bar)
-  const restX = x0 + (g.xs[0] ?? 0) - g.lead
   // the slot numbers (keys 1-9, then 0 for slot ten) are the first player's, with a mouse
   const numbers = g.tabs && row === 0 && showKeyHints()
   const r = Math.max(3, Math.round(size * (bottom ? 0.16 : 0.15)))
@@ -421,7 +439,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   let ring = 0
   running.forEach((e, item) => {
     if (slots.some(o => o?.item === item)) return
-    const er = size / 2 - 2, cx = restX - (color && row > 0 ? 18 : 8) - er - ring++ * (er * 2 + 6), cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
+    const er = size / 2 - 2, cx = g.rest.x + g.rest.dir * ((color && row > 0 ? 18 : 8) + er + ring++ * (er * 2 + 6)), cy = y + size / 2, k = Math.max(0, Math.min(1, e.left / Math.max(0.01, e.total)))
     const tint = effectTint(e.look)
     ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(cx, cy, er, 0, Math.PI * 2); ctx.fill()
     ctx.save(); ctx.translate(cx, cy); drawItem(ctx, item, er * 1.3, er * 1.3); ctx.restore()

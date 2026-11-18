@@ -2,7 +2,7 @@
 
 Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). Código: ação `nextVariation` e `ChickenControls.variations` em `lib/chicken/controls.ts`; checkboxes em `components/chicken/chicken-controls-panel.tsx`; leitura em `components/pigchicken/parquinho.tsx` (`variationPress`, `pickVariations`, `groupVariations`); efeito em `lib/pigchicken/combat.ts` (`FrameInput.variation`, `pickVariations`, `groupVariations`). Testes: `tests/chicken-touch.cases.cjs` (bind, migração e checkboxes) e `tests/pigchicken-inventory.cases.cjs` (trocas).
 
-## Próxima variação (17/11, v2.13.0)
+## Próxima variação (18/11, v2.14.0)
 
 - **Bind:** ação nova **Próxima variação** no grupo de itens do painel Controles, logo depois de Próximo utilitário. Padrão **Q** no Primary keyboard; Secondary keyboard e gamepad começam sem bind. **Próxima arma** perde o Q (fica sem tecla no Primary keyboard; RB no gamepad continua).
 - **Migração** (marca `variationBind`, uma vez): Próxima arma só perde o Q se ainda estiver só com ele; Próxima variação só recebe o Q se nenhuma ação de nenhum teclado o usa. Binds personalizados ficam como estão.

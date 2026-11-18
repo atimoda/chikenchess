@@ -2,6 +2,7 @@
 
 // Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
 // picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
+import { cn } from "@/lib/utils"
 import { StepSelect } from "@/components/ui/step-select"
 import { PatioRange } from "@/components/ui/patio-range"
 import { PatioDualRange } from "@/components/ui/patio-dual-range"
@@ -9,7 +10,7 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, isStaff, loadItems, saveItems, subscribeHeldItem, subscribeItems, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
 import { AngleKnob, ComboWindowBar } from "./combo-controls"
@@ -44,9 +45,16 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   // the Boomerang and the decks: staffs thrown that come back, with no shock; a deck's cards burst (Explosão), the
   // blue one's in a note (Música)
   boomerang: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música", "Choque", "Especial"],
+  // the Corrente-gancho: a staff whose Atirar throws the hook (Gancho), with no shock
+  hook: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música", "Choque", "Especial"],
   cardsRed: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Música", "Choque", "Especial"],
   cardsBlue: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Choque", "Especial"],
   wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito"],
+  // Pig's chain and Ken's tail: only their blows (quick, in the combo, and strong), and the notes they rebate
+  // the Filhote's piu: only its note (Projétil)
+  piu: ["Disparo", "Munição", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Golpe", "Golpe forte", "Combo", "Rebate", "Bicada", "Música"],
+  chainBlow: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música"],
+  tailBlow: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
   // a key only opens Baús: it has no effect, just its slap and its throw
   ...Object.fromEntries(KEY_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
@@ -57,7 +65,12 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
 const HEAVY_SHOCK: (keyof ItemDef)[] = ["heavyShockRange", "heavyShockTime"]
 // what a deck does not use: its cards fly straight to the reticle with no charge and only burst (no fuse)
 const DECK_UNUSED: (keyof ItemDef)[] = ["returnDamage", "returnMin", "returnCharge", "returnPush", "returnCurveMin", "returnCurveMax", "fuse", "bounce"]
-const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
+// what Pig and Ken hit with when empty-handed (lib/pigchicken/combat.ts bareDef)
+const BARE_BLOWS: ItemId[] = ["chainBlow", "tailBlow"]
+// what the Filhote's piu note has of a projectile
+const PIU_KEYS: (keyof ItemDef)[] = ["speed", "drop", "damage", "range", "size"]
+const CLASS_LABEL: Record<PointClass, string> = { chi: "Chi", pig: "Pig", fox: "Ken" }
+const STAFF_POINTS: (keyof ItemDef)[] = ["gripX", "gripY", "grip2X", "grip2Y", "staffX", "staffY", "staffAngle", "windX", "windY", "windAngle"]
 // the arc a combo blow of this kind starts with: another blow of the same kind, the code's, or 150°
 const comboArc = (combo: ComboStep[], base: ItemDef, kind: BlowKind) =>
   combo.find(c => c.kind === kind)?.arc ?? base.combo.find(c => c.kind === kind)?.arc ?? 150
@@ -80,14 +93,18 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   // opens on the item the main player holds; empty-handed, on the Bicada (what she attacks with then)
   const [sel, setSel] = useState<ItemId>(() => currentHeldItem() ?? "peck")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, "Golpe forte": true, Combo: true, Bicada: true, Pontos: true, "Arremesso que volta": true, Choque: true, Especial: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, "Golpe forte": true, Combo: true, Bicada: true, Pontos: true, "Arremesso que volta": true, Gancho: true, Choque: true, Especial: true })
   useEffect(() => {
     setItems(loadItems())
     return subscribeItems(setItems)
   }, [])
   // the main player equips an item while the panel is open: the dropdown jumps to it
   useEffect(() => subscribeHeldItem(id => { if (id) setSel(id) }), [])
+  // Pontos: one version per class (Chi, Pig, Ken), on the class of the main player's body
+  const [pcls, setPcls] = useState<PointClass>(currentPlayerClass)
+  useEffect(() => subscribePlayerClass(setPcls), [])
   const it = items[sel], base = DEFAULT_ITEMS[sel]
+  const pit = classItem(it, pcls), pbase = classItem(base, pcls)
   // the Gaiolas are one entry of the dropdown: the six models at once (sel is then any of them)
   const cages = CAGE_IDS.includes(sel)
   // items held at the hand (sports tools, consumables, a grenade charged in the hand) keep the hand's own pose
@@ -99,12 +116,28 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
     setItems(next)
   }
   const update = (fn: (d: ItemDef) => void) => edit(all => fn(all[sel]))
+  // an edit of the Pontos goes to the class shown: Chi's are the item's own; Pig's or Ken's become a whole set of
+  // their own (from Chi's, the first time). Anything else the edit touches is the item's
+  const updatePoints = (fn: (d: ItemDef) => void) => pcls === "chi" ? update(fn) : update(d => {
+    const v = classItem(d, pcls)
+    const view = { ...v }
+    fn(view)
+    for (const k of Object.keys(view) as (keyof ItemDef)[]) if (!POINT_KEYS.includes(k) && view[k] !== v[k]) (d as Record<string, unknown>)[k] = view[k]
+    d.classPoints = { ...d.classPoints, [pcls]: pointsOf(view) }
+  })
   return (
     <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <StepSelect aria-label="Item" value={cages ? CAGE_IDS[0] : sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+          <optgroup label="Golpes">
+            <option value="peck">{items.peck.name} (Chi sem item)</option>
+            <option value="wing">{items.wing.name} (Chi sem item)</option>
+            <option value="piu">{items.piu.name} (filhote sem item)</option>
+            <option value="chainBlow">{items.chainBlow.name} (Pig sem item)</option>
+            <option value="tailBlow">{items.tailBlow.name} (Ken sem item)</option>
+          </optgroup>
           <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Armas"><option value="peck">{items.peck.name} (sem item)</option>{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Instrumentos fixos">{FIXED_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
@@ -112,13 +145,12 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Chaves">{KEY_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Grade de blocos">{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value={CAGE_IDS[0]}>Gaiolas</option>
-          <option value="wing">{items.wing.name}</option>
         </StepSelect>
         <button type="button" onClick={() => edit(all => (cages ? CAGE_IDS : [sel]).forEach(id => Object.assign(all[id], structuredClone(DEFAULT_ITEMS[id]))))} title={cages ? "Volta as gaiolas para os valores do código" : "Volta este item para os valores do código"} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {cages ? <CagesView items={items} onChange={(id, souls) => edit(all => { all[id].cageSouls = souls })} /> : ITEM_PARAM_GROUPS.filter(g => g !== "Gaiola" && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || (isStaff(it) && !it.returnThrow)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
+        {cages ? <CagesView items={items} onChange={(id, souls) => edit(all => { all[id].cageSouls = souls })} /> : ITEM_PARAM_GROUPS.filter(g => g !== "Gaiola" && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || ((isStaff(it) || sel === "chainBlow" || sel === "tailBlow") && !it.returnThrow && !it.grapple)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Gancho" || it.grapple) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g === "Golpe" && isStaff(it) ? "Golpe rápido" : g}</summary>
             <div className="grid gap-field px-4 pb-4">
@@ -244,7 +276,15 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   </label>
                 </>
               )}
-              {g === "Pontos" && (isStaff(it) ? <StaffPoseEditor id={sel} item={it} onChange={update} /> : <ItemPointsEditor id={sel} item={it} base={base} onChange={update} />)}
+              {g === "Pontos" && (
+                <div role="radiogroup" aria-label="Classe" className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
+                  {(["chi", "pig", "fox"] as const).map(c => (
+                    <button key={c} type="button" role="radio" aria-checked={pcls === c} onClick={() => setPcls(c)}
+                      className={cn("h-8", pcls === c ? "bg-primary/25 text-white" : "text-[#93a79a] hover:text-white")}>{CLASS_LABEL[c]}</button>
+                  ))}
+                </div>
+              )}
+              {g === "Pontos" && (isStaff(it) ? <StaffPoseEditor id={sel} item={pit} onChange={updatePoints} /> : <ItemPointsEditor id={sel} item={pit} base={pbase} onChange={updatePoints} />)}
               {g === "Golpe forte" && (
                 <label className="flex items-center justify-between gap-3" title="O golpe forte é sempre o mesmo movimento; segure Atirar para carregar e solte para bater">
                   <span>Movimento</span>
@@ -304,16 +344,17 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 </label>
               )}
               <div className="grid gap-field">
-              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: "Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui" } : it.deck && m.key === "returnCount" ? { ...m, label: "Cartas fora ao mesmo tempo", hint: "Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)" } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
-                const v = it[m.key] as number, changed = v !== base[m.key]
-                const label = m === DOSES ? m.label : it.instrument && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(BARE_BLOWS.includes(sel) && m.key === "durability") && !(sel === "piu" && !PIU_KEYS.includes(m.key)) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(m.key === "aimAssist" && it.scales.every(sc => sc === "drums")) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: "Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui" } : it.deck && m.key === "returnCount" ? { ...m, label: "Cartas fora ao mesmo tempo", hint: "Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)" } : BARE_BLOWS.includes(sel) && (m.key === "meleeRange" || m.key === "heavyRange") ? { ...m, label: sel === "chainBlow" ? "Alcance da corrente" : "Alcance do rabo" } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
+                const pts = g === "Pontos", src = pts ? pit : it, ref = pts ? pbase : base, up = pts ? updatePoints : update
+                const v = src[m.key] as number, changed = v !== ref[m.key]
+                const label = m === DOSES ? m.label : (it.instrument || sel === "piu") && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
                 const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? "golpes" : m.unit
                 const display = m.key === "durability" && v === 0 ? "0 (nunca quebra)" : m.key === "refillTime" && v === 0 ? "0 (desligada)" : `${v}${unit ? ` ${unit}` : ""}`
                 const range = <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
                   display={display} changed={changed} hint={m.hint}
-                  onChange={n => update(d => { (d as Record<string, unknown>)[m.key] = n })}
-                  onReset={() => update(d => { (d as Record<string, unknown>)[m.key] = base[m.key] })} />
+                  onChange={n => up(d => { (d as Record<string, unknown>)[m.key] = n })}
+                  onReset={() => up(d => { (d as Record<string, unknown>)[m.key] = ref[m.key] })} />
                 // under the combo window: its timer bar, listening to the blows only while this section is open
                 return m.key === "comboWindow" && open[g] ? <div key={m.key} className="grid gap-1">{range}<ComboWindowBar /></div> : range
               })}

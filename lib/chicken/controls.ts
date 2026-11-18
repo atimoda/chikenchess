@@ -72,7 +72,7 @@ export type ChickenControls = {
   touchRunGrab: boolean
   sound: boolean
   analog: ChickenAnalog
-  inventory: { repeatDelay: number; repeatInterval: number }
+  inventory: ChickenInventoryControls
   wheel: ChickenWheel
   harp: Record<ChickenInputType, Record<HarpAction, Slots>>
   variations: ChickenVariations
@@ -91,6 +91,24 @@ export const DEFAULT_VARIATIONS: ChickenVariations = { nextItem: false, prevItem
 const variationsOf = (raw: unknown, fallback: ChickenVariations): ChickenVariations => {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   return Object.fromEntries(VARIATION_ACTIONS.map(({ key }) => [key, typeof r[key] === 'boolean' ? r[key] : fallback[key]])) as ChickenVariations
+}
+
+// Inventário: the repeat of the item switches while held (seconds) and where the first player's big bar sits at the
+// bottom of the screen: split (instruments on the left, weapons and utilities on the right; the default), centred,
+// all on the left or all on the right (components/pigchicken/draw/hud.ts → invGeom)
+export type InventoryAlign = 'split' | 'center' | 'left' | 'right'
+export const INVENTORY_ALIGNS: { value: InventoryAlign; label: string }[] = [
+  { value: 'center', label: 'Centralizado' }, { value: 'split', label: 'Separado' }, { value: 'left', label: 'Esquerda' }, { value: 'right', label: 'Direita' },
+]
+export type ChickenInventoryControls = { repeatDelay: number; repeatInterval: number; align: InventoryAlign }
+export const DEFAULT_INVENTORY: ChickenInventoryControls = { repeatDelay: 1.5, repeatInterval: 0.3, align: 'split' }
+const isInventoryAlign = (v: unknown): v is InventoryAlign => INVENTORY_ALIGNS.some(a => a.value === v)
+const inventoryOf = (raw: unknown, fallback: ChickenInventoryControls): ChickenInventoryControls => {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    repeatDelay: num(r.repeatDelay, 0.2, 5, fallback.repeatDelay), repeatInterval: num(r.repeatInterval, 0.1, 2, fallback.repeatInterval),
+    align: isInventoryAlign(r.align) ? r.align : fallback.align,
+  }
 }
 
 // The Harpa's own binds (a fixed instrument: sitting there she does not walk), edited apart from the actions above in
@@ -134,7 +152,7 @@ function codeDefaultChickenControls(): ChickenControls {
   const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
   CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
   const harp = Object.fromEntries(CHICKEN_INPUT_TYPES.map(t => [t.id, Object.fromEntries(HARP_ACTIONS.map(a => [a.key, a[t.id].slice()]))])) as ChickenControls['harp']
-  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { repeatDelay: 1.5, repeatInterval: 0.3 }, wheel: { ...DEFAULT_WHEEL }, harp, variations: { ...DEFAULT_VARIATIONS } }
+  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { ...DEFAULT_INVENTORY }, wheel: { ...DEFAULT_WHEEL }, harp, variations: { ...DEFAULT_VARIATIONS } }
 }
 
 /** The game's default controls: the defaults file over the code fallback (a missing or invalid field keeps the code's). */
@@ -156,8 +174,7 @@ export function defaultChickenControls(): ChickenControls {
     deadzoneL: num(an.deadzoneL, 0, 0.9, d.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, d.deadzoneR),
     magnet: magnetDeg > 0, magnetDeg, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, d.magnetRestoreDeg), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, d.aimMagnetDeg),
   }
-  const inv = (file?.inventory ?? {}) as Partial<ChickenControls['inventory']>
-  base.inventory = { repeatDelay: num(inv.repeatDelay, 0.2, 5, base.inventory.repeatDelay), repeatInterval: num(inv.repeatInterval, 0.1, 2, base.inventory.repeatInterval) }
+  base.inventory = inventoryOf(file?.inventory, base.inventory)
   base.wheel = wheelOf(file?.wheel, base.wheel)
   base.harp = harpOf(file?.harp, base.harp)
   base.variations = variationsOf(file?.variations, base.variations)
@@ -219,11 +236,7 @@ export function loadChickenControls(): ChickenControls {
       deadzoneL: num(an.deadzoneL, 0, 0.9, base.analog.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, base.analog.deadzoneR),
       magnet: movementMagnet > 0, magnetDeg: movementMagnet, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, savedMagnet > 0 ? savedMagnet : 12), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, 0),
     }
-    const inventory = saved?.inventory ?? {}
-    base.inventory = {
-      repeatDelay: num(inventory.repeatDelay, 0.2, 5, base.inventory.repeatDelay),
-      repeatInterval: num(inventory.repeatInterval, 0.1, 2, base.inventory.repeatInterval),
-    }
+    base.inventory = inventoryOf(saved?.inventory, base.inventory)
     // controls saved before X became run (01/11): X leaves brood and takes RB's place in run
     if (!saved?.padXRun) {
       base.pad.down = base.pad.down.map(t => t === 'Pad:b2' ? null : t)

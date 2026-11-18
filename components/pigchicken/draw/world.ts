@@ -5,6 +5,7 @@ import { type InputDeviceId } from "@/lib/chicken/input-devices"
 import { type Combat, type Pickup } from "@/lib/pigchicken/combat"
 import { type Catalog } from "@/lib/pigchicken/alien-catalog"
 import { nearestPoint } from "@/lib/pigchicken/eyes"
+import { lookSpecies } from "@/lib/pigchicken/enemies"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Temple } from "@/lib/pigchicken/temple"
@@ -23,6 +24,9 @@ import { CAGE_WORLD_SCALE, drawCageOnFloor } from "./cages"
 import { cageArt } from "@/lib/pigchicken/cage-art"
 import { drawBolts, drawFlights, drawShocked, drawSkyFlash, drawXray } from "./shock"
 import { drawCards } from "./cards"
+import { drawItemBeam, drawItemOutline } from "./item-glow"
+import { itemGlowLook, ITEM_GLOW_OFF, type ItemGlow } from "@/lib/pigchicken/item-glow"
+import { drawHooks } from "./hook"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
 // gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the jukebox struck last (its ring)
@@ -55,7 +59,8 @@ export const grabLabel = (c: ChickenControls, devices: readonly InputDeviceId[] 
 // the keys shown left of each inventory group on the big bar: Próximo instrumento, Próxima arma, Próximo utilitário
 export const groupBindLabels = (c: ChickenControls, devices: readonly InputDeviceId[] | null) =>
   (["nextInstrument", "nextWeapon", "nextUtility"] as const).map(a => bindLabel(c, devices, a).toUpperCase() || null)
-export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
+// glow: Configurações do Pátio → Brilho dos itens, over every item lying on the floor
+export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect, glow: ItemGlow = ITEM_GLOW_OFF) {
   const visible = (x: number, y: number, w = 160, h = 240) => intersectsView({ x: x - w / 2, y: y - h, w, h }, view, 32)
   const X = (x: number) => x - camX
   const t = performance.now() / 1000
@@ -69,9 +74,12 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
   })
   combat.chests.forEach(c => { if (visible(c.x, c.y + 40, 320, 520)) drawChest(ctx, c, X(c.x), t) })
   combat.seats.forEach(s => { if (!visible(s.x, s.y + 40, 320, 520)) return; if (s.kind === 'drumkit') drawDrumKit(ctx, s, X(s.x), p => combat.seatPulse(s, p)); else drawHarp(ctx, s, X(s.x)) })
+  const glowLook = itemGlowLook(glow.amount)
   combat.pickups.forEach(p => {
-    if (!visible(p.x, p.y + 40)) return
+    if (!visible(p.x, p.y + 40, 160, glowLook ? glowLook.beamH + 40 : 240)) return
     const x = X(p.x), y = p.y - 14 - Math.sin(t * 3 + p.id) * 3
+    // its column of light (behind it), breathing a little
+    if (glowLook) drawItemBeam(ctx, x, p.y, glowLook, glow.color, 0.92 + 0.08 * Math.sin(t * 2.2 + p.id * 1.7))
     // a Gaiola stands on the floor with whoever is in it (its own image: ./cages.ts)
     const cage = p.owned.cage
     if (cage) {
@@ -91,6 +99,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     // the item grab would take: a blue outline and the key to press
     // blue: grab takes it; grey: grab swaps it in (no room for it) or, when she already carries one, equips hers
     const mark = pickupMarks.get(p)
+    if (glowLook) drawItemOutline(ctx, p.owned.item, 64, 34, glow.color, glow.amount)
     if (mark) {
       ctx.filter = `drop-shadow(2px 0 0 ${mark.c}) drop-shadow(-2px 0 0 ${mark.c}) drop-shadow(0 2px 0 ${mark.c}) drop-shadow(0 -2px 0 ${mark.c})`
       drawItem(ctx, p.owned.item, 64, 34); ctx.filter = "none"
@@ -104,10 +113,11 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
   })
   combat.critters.forEach(c => { if (!visible(c.x, c.y + 60)) return; if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
   drawFlights(ctx, combat, camX, view)
+  drawHooks(ctx, combat, camX, view)
   drawCards(ctx, combat, camX, view)
   const drawTarget = (ctx: Ctx, g: Combat["targets"][number], x: number) => {
     if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }
-    if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
+    if (g.kind === "alien" && lookSpecies(g.data)) { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }

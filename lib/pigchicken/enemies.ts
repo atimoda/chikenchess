@@ -32,14 +32,25 @@ export const ALIEN_FRAMES = [
 export const ALIEN_PIXEL = 4
 export const ALIEN_COLORS = ['#c77dff', '#4cc9f0', '#f72585', '#ffd166', '#7bd88f']
 
-export type AlienPattern = 'row'
-export const ALIEN_PATTERNS: { id: AlienPattern; label: string }[] = [{ id: 'row', label: 'Fileira' }]
+// a horde's pattern: its columns, the spacing and, row by row, which alien fills it (lib/pigchicken/alien-patterns.ts
+// lists them for the Padrão button). species: drawn as that alien of the temple (else the horde's pixel alien)
+export type AlienRowDef = { species?: string; hp: number; w: number; h: number; color: string }
+export type AlienPatternDef = { id: string; label: string; cols: number; gap: number; rows: AlienRowDef[] }
+export const HORDE_ROW: AlienPatternDef = {
+  id: 'row', label: 'Fileira', cols: 6, gap: 70,
+  rows: [0, 1, 2].map(r => ({ hp: 30, w: ALIEN_FRAMES[0][0].length * ALIEN_PIXEL, h: ALIEN_FRAMES[0].length * ALIEN_PIXEL, color: ALIEN_COLORS[r % ALIEN_COLORS.length] })),
+}
+/** the temple species an alien is drawn as (the temple's own, the catalogue's, or a horde row of the temple's patterns) */
+export function lookSpecies(data: unknown): string | undefined {
+  const d = data as { kind?: string; species?: string } | null | undefined
+  return (d?.kind === 'temple' || d?.kind === 'alien') && typeof d.species === 'string' && d.species ? d.species : undefined
+}
 
 // a formation: every alien of a horde keeps its slot in it
 // l, r: the scene it keeps to (where it was called); without them, the part of the world on screen
 type Formation = { x: number; y: number; dir: number; targetY: number; speed: number; cols: number; gap: number; total: number; l?: number; r?: number }
 export type EnemyData =
-  | { kind: 'alien'; f: Formation; col: number; row: number; color: string }
+  | { kind: 'alien'; f: Formation; col: number; row: number; color: string; species?: string }
   | { kind: 'zombie'; speed: number; bit: boolean; race: string; hue: number }
   // the temple's aliens (lib/pigchicken/temple.ts moves them; here they only blink and die)
   | { kind: 'temple'; species: string; color: string }
@@ -66,17 +77,16 @@ export const ZOMBIE_RACES = [
 
 function zombieRace() { return ZOMBIE_RACES[Math.floor(Math.random() * ZOMBIE_RACES.length)] }
 
-export function spawnAlienRow(targets: Target[], env: EnemyEnv, cols = 6, rows = 3) {
-  const gap = 70
+export function spawnAlienRow(targets: Target[], env: EnemyEnv, pattern: AlienPatternDef = HORDE_ROW) {
+  const { cols, gap, rows } = pattern
   const width = (cols - 1) * gap
-  const f: Formation = { x: (env.viewL + env.viewR) / 2 - width / 2, y: -rows * gap - 40, dir: 1, targetY: 130, speed: 80, cols, gap, total: cols * rows, l: env.viewL, r: env.viewR }
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    const w = ALIEN_FRAMES[0][0].length * ALIEN_PIXEL, h = ALIEN_FRAMES[0].length * ALIEN_PIXEL
-    targets.push({
-      id: nextId++, kind: 'alien', home: 0, x: f.x + c * gap, y: f.y + r * gap, w, h, hp: 30, maxHp: 30, flash: 0, wobble: 0, vx: 0, deadT: 0,
-      face: 1, state: 'fly', animT: Math.random(), data: { kind: 'alien', f, col: c, row: r, color: ALIEN_COLORS[r % ALIEN_COLORS.length] },
+  const f: Formation = { x: (env.viewL + env.viewR) / 2 - width / 2, y: -rows.length * gap - 40, dir: 1, targetY: 130, speed: 80, cols, gap, total: cols * rows.length, l: env.viewL, r: env.viewR }
+  rows.forEach((row, r) => {
+    for (let c = 0; c < cols; c++) targets.push({
+      id: nextId++, kind: 'alien', home: 0, x: f.x + c * gap, y: f.y + r * gap, w: row.w, h: row.h, hp: row.hp, maxHp: row.hp, flash: 0, wobble: 0, vx: 0, deadT: 0,
+      face: 1, state: 'fly', animT: Math.random(), data: { kind: 'alien', f, col: c, row: r, color: row.color, ...(row.species ? { species: row.species } : {}) },
     })
-  }
+  })
 }
 
 export function spawnZombies(targets: Target[], env: EnemyEnv, count: number) {

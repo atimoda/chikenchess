@@ -28,6 +28,7 @@ export type AlienVariant = {
   color: string
   size: number // ×, of the species' size
   hp: number; points: number
+  magnet: number // Bullet Magnetism, %: how hard it pulls the players' shots and rebated notes toward itself (lib/pigchicken/aim-assist.ts)
   move: MoveMode
   zig: { amp: number; period: number } // zigue-zague: px to each side, beats per wave
   turn: number // espiral: degrees round her
@@ -55,11 +56,14 @@ const MOVES: MoveMode[] = ['straight', 'zigzag', 'pass', 'spiral', 'still']
 
 // ---------- the code's ----------
 
+// each species' Bullet Magnetism (%): the big, slow ones pull more, the small and quick ones hardly at all
+export const SPECIES_MAGNET: Record<CatalogSpecies, number> = { jelly: 15, lantern: 20, shell: 30, twin: 10, mini: 0, drum: 20, dragon: 25 }
+
 // a species as it was before the catalogue (the test song's aliens)
 export function baseVariant(sp: CatalogSpecies): AlienVariant {
   const d = SPECIES[sp]
   return {
-    id: sp, name: d.name, species: sp, color: d.color, size: 1, hp: d.hp, points: d.points,
+    id: sp, name: d.name, species: sp, color: d.color, size: 1, hp: d.hp, points: d.points, magnet: SPECIES_MAGNET[sp],
     move: 'straight', zig: { amp: 60, period: 2 }, turn: 90, pass: 220, after: 2,
     shot: { size: 11, glow: 0.7, color: 'degree', speed: 260, trail: 0.3, harmony: 0, echo: 0 },
     fire: { voice: 'bells', vel: 0.07 }, rule: null, scale: null, drum: null,
@@ -83,28 +87,30 @@ const drumDeath = (drum: Drum, vel = 0.9) => ({ kind: 'drum' as const, drum, vel
 export const BUILTIN_VARIANTS: AlienVariant[] = [
   ...CATALOG_SPECIES.map(baseVariant),
   // Água-viva
-  variant('jelly', 'jelly-sino', 'Sino', { color: '#7bdff2', shot: { color: '#7bdff2', glow: 1, size: 9 }, fire: { voice: 'bells', vel: 0.12 }, death: { physical: drumDeath('wood'), musical: { kind: 'notes', voice: 'bells', shape: 'arp', octave: 2, vel: 0.5 } } }),
-  variant('jelly', 'jelly-baixo', 'Baixo', { color: '#5a4fcf', size: 1.25, hp: 45, shot: { size: 18, speed: 170, glow: 0.5 }, fire: { voice: 'bass', vel: 0.14 }, death: { physical: drumDeath('kick', 1), musical: { kind: 'notes', voice: 'bass', shape: 'note', octave: 0, vel: 0.7 } } }),
-  variant('jelly', 'jelly-neon', 'Neon', { color: '#7bd88f', move: 'zigzag', zig: { amp: 80, period: 2 }, shot: { glow: 1, trail: 1 } }),
+  variant('jelly', 'jelly-sino', 'Sino', { magnet: 20, color: '#7bdff2', shot: { color: '#7bdff2', glow: 1, size: 9 }, fire: { voice: 'bells', vel: 0.12 }, death: { physical: drumDeath('wood'), musical: { kind: 'notes', voice: 'bells', shape: 'arp', octave: 2, vel: 0.5 } } }),
+  variant('jelly', 'jelly-baixo', 'Baixo', { magnet: 55, color: '#5a4fcf', size: 1.25, hp: 45, shot: { size: 18, speed: 170, glow: 0.5 }, fire: { voice: 'bass', vel: 0.14 }, death: { physical: drumDeath('kick', 1), musical: { kind: 'notes', voice: 'bass', shape: 'note', octave: 0, vel: 0.7 } } }),
+  variant('jelly', 'jelly-neon', 'Neon', { magnet: 8, color: '#7bd88f', move: 'zigzag', zig: { amp: 80, period: 2 }, shot: { glow: 1, trail: 1 } }),
   // Lanterna
-  variant('lantern', 'lantern-flauta', 'Flauta', { color: '#ffd166', after: 0.5, shot: { size: 7, speed: 330 }, fire: { voice: 'flute', vel: 0.1 }, death: { musical: { kind: 'notes', voice: 'flute', shape: 'arp', octave: 1, vel: 0.55 } } }),
-  variant('lantern', 'lantern-brasa', 'Brasa', { color: '#ff4d2d', shot: { color: '#ff6b35', glow: 0.9, echo: 1, trail: 0.6 }, death: { physical: drumDeath('crash', 0.6) } }),
-  variant('lantern', 'lantern-papel', 'Papel', { color: '#f4f1e8', move: 'pass', pass: 200, shot: { size: 9, glow: 0.4 }, fire: { voice: 'harp', vel: 0.08 }, death: { musical: { kind: 'notes', voice: 'harp', shape: 'note', octave: 1, vel: 0.5 } } }),
+  variant('lantern', 'lantern-flauta', 'Flauta', { magnet: 15, color: '#ffd166', after: 0.5, shot: { size: 7, speed: 330 }, fire: { voice: 'flute', vel: 0.1 }, death: { musical: { kind: 'notes', voice: 'flute', shape: 'arp', octave: 1, vel: 0.55 } } }),
+  variant('lantern', 'lantern-brasa', 'Brasa', { magnet: 25, color: '#ff4d2d', shot: { color: '#ff6b35', glow: 0.9, echo: 1, trail: 0.6 }, death: { physical: drumDeath('crash', 0.6) } }),
+  variant('lantern', 'lantern-papel', 'Papel', { magnet: 5, color: '#f4f1e8', move: 'pass', pass: 200, shot: { size: 9, glow: 0.4 }, fire: { voice: 'harp', vel: 0.08 }, death: { musical: { kind: 'notes', voice: 'harp', shape: 'note', octave: 1, vel: 0.5 } } }),
   // Casco
-  variant('shell', 'shell-taiko', 'Taiko', { hp: 160, shot: { size: 16, speed: 200, glow: 0.6 }, death: { physical: drumDeath('taiko', 1) }, drum: null }),
-  variant('shell', 'shell-bronze', 'Bronze', { color: '#cd7f32', rule: 'travada', shot: { color: '#e9c46a' }, fire: { voice: 'bells', vel: 0.1 }, death: { physical: drumDeath('crash', 0.9) } }),
+  variant('shell', 'shell-taiko', 'Taiko', { magnet: 33, hp: 160, shot: { size: 16, speed: 200, glow: 0.6 }, death: { physical: drumDeath('taiko', 1) }, drum: null }),
+  // Ímã: pulls every shot and rebated note on the screen to itself (100%), so it holds a lot more harmony
+  variant('shell', 'shell-ima', 'Ímã', { color: '#d62828', size: 1.3, hp: 400, points: 1500, magnet: 100, shot: { color: '#e5e5e5', glow: 0.8 }, fire: { voice: 'bells', vel: 0.1 }, death: { physical: drumDeath('crash', 1) } }),
+  variant('shell', 'shell-bronze', 'Bronze', { magnet: 60, color: '#cd7f32', rule: 'travada', shot: { color: '#e9c46a' }, fire: { voice: 'bells', vel: 0.1 }, death: { physical: drumDeath('crash', 0.9) } }),
   // Gêmeos
-  variant('twin', 'twin-tercas', 'Terças', { color: '#4cc9f0', shot: { harmony: 2 } }),
-  variant('twin', 'twin-eco', 'Eco', { color: '#b5179e', shot: { echo: 0.5, trail: 0.5 } }),
+  variant('twin', 'twin-tercas', 'Terças', { magnet: 12, color: '#4cc9f0', shot: { harmony: 2 } }),
+  variant('twin', 'twin-eco', 'Eco', { magnet: 8, color: '#b5179e', shot: { echo: 0.5, trail: 0.5 } }),
   // Mini
   variant('mini', 'mini-chocalho', 'Chocalho', { color: '#ffd166', shot: { size: 6, echo: 0.25 }, fire: { voice: 'none', vel: 0 }, drum: 'shaker', death: { physical: drumDeath('shaker', 0.9) } }),
-  variant('mini', 'mini-faisca', 'Faísca', { color: '#f9f871', shot: { size: 5, speed: 480, glow: 1, color: '#fff3b0', trail: 0.8 } }),
+  variant('mini', 'mini-faisca', 'Faísca', { magnet: 3, color: '#f9f871', shot: { size: 5, speed: 480, glow: 1, color: '#fff3b0', trail: 0.8 } }),
   // Tambor: percussion only, a rebate is a beat
-  variant('drum', 'drum-palmas', 'Palmas', { color: '#f4a261', drum: 'clap', fire: { voice: 'none', vel: 0 }, death: { physical: drumDeath('clap', 1) } }),
+  variant('drum', 'drum-palmas', 'Palmas', { magnet: 15, color: '#f4a261', drum: 'clap', fire: { voice: 'none', vel: 0 }, death: { physical: drumDeath('clap', 1) } }),
   variant('drum', 'drum-caixa', 'Caixa', { color: '#e5e5e5', drum: 'snare', fire: { voice: 'none', vel: 0 }, death: { physical: drumDeath('snare', 1) } }),
-  variant('drum', 'drum-bumbo', 'Bumbo', { color: '#7a1c1c', size: 1.2, drum: 'kick', fire: { voice: 'none', vel: 0 }, shot: { size: 15, speed: 220 }, death: { physical: drumDeath('kick', 1) } }),
+  variant('drum', 'drum-bumbo', 'Bumbo', { magnet: 50, color: '#7a1c1c', size: 1.2, drum: 'kick', fire: { voice: 'none', vel: 0 }, shot: { size: 15, speed: 220 }, death: { physical: drumDeath('kick', 1) } }),
   // Dragão
-  variant('dragon', 'dragon-fogo', 'Fogo', { color: '#ff6b35', scale: 'harmonicMinor', shot: { color: '#ff6b35', glow: 1, trail: 0.8 } }),
+  variant('dragon', 'dragon-fogo', 'Fogo', { magnet: 33, color: '#ff6b35', scale: 'harmonicMinor', shot: { color: '#ff6b35', glow: 1, trail: 0.8 } }),
   variant('dragon', 'dragon-jade', 'Jade', { color: '#6ee7b7', scale: 'majorPenta', shot: { color: '#6ee7b7' }, fire: { voice: 'bells', vel: 0.1 }, death: { musical: { kind: 'notes', voice: 'bells', shape: 'arp', octave: 1, vel: 0.5 } } }),
 ]
 export const BUILTIN_BY_ID: Record<string, AlienVariant> = Object.fromEntries(BUILTIN_VARIANTS.map(v => [v.id, v]))
@@ -116,6 +122,7 @@ export const VARIANT_NUMBERS: VariantNumber[] = [
   { path: 'size', label: 'Tamanho', min: 0.5, max: 2, step: 0.05, unit: '×', group: 'Corpo' },
   { path: 'hp', label: 'Vida', min: 1, max: 400, step: 1, group: 'Corpo' },
   { path: 'points', label: 'Pontos', min: 0, max: 2000, step: 10, group: 'Corpo' },
+  { path: 'magnet', label: 'Bullet Magnetism', min: 0, max: 100, step: 1, unit: '%', group: 'Corpo', hint: 'Puxa para ele os tiros e as notas rebatidas que passam perto, mais quanto mais perto; 100% suga todos da tela' },
   { path: 'after', label: 'Tempos até encostar', min: 0, max: 8, step: 0.5, group: 'Movimento', hint: 'Depois da última nota, quanto falta para encostar nela (os que vêm até ela)' },
   { path: 'zig.amp', label: 'Zigue-zague: largura', min: 0, max: 200, step: 5, unit: 'px', group: 'Movimento' },
   { path: 'zig.period', label: 'Zigue-zague: período', min: 0.25, max: 8, step: 0.25, unit: 'tempos', group: 'Movimento' },
@@ -226,7 +233,7 @@ export function variantFor(c: Catalog, id: string | undefined, species: Species)
 // what an alien of this variation carries in its target's data (the combat reads its deaths and its undead from it)
 export function variantData(v: AlienVariant) {
   return {
-    kind: 'temple' as const, species: v.species, color: v.color, variant: v.id, size: v.size,
+    kind: 'temple' as const, species: v.species, color: v.color, variant: v.id, size: v.size, magnet: v.magnet / 100,
     death: v.death, undead: v.undead,
   }
 }

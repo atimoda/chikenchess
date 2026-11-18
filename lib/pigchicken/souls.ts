@@ -6,6 +6,7 @@
 // Pure data and functions; the combat (lib/pigchicken/combat.ts) fills it in.
 import type { BirdId } from './birds'
 import type { CageState } from './cages'
+import { lookSpecies } from './enemies'
 
 export type SoulSpecies = 'horde' | 'jelly' | 'lantern' | 'shell' | 'twin' | 'mini' | 'drum' | 'dragon' | 'chick'
 export type SoulState = 'alive' | 'dead'
@@ -30,10 +31,10 @@ export const CHICK_SOUL_COLOR = '#ffd23f'
 
 // the species of an alien by its data (the temple's and the songs' carry theirs; the rows' aliens are the horde)
 export function soulSpecies(data: unknown): SoulSpecies {
-  const d = data as { kind?: string; species?: string } | null | undefined
-  if (d?.kind !== 'temple' || !d.species) return 'horde'
-  if (d.species === 'dragonHead') return 'dragon'
-  return (SPECIES as readonly string[]).includes(d.species) && d.species !== 'chick' ? d.species as SoulSpecies : 'horde'
+  const sp = lookSpecies(data)
+  if (!sp) return 'horde'
+  if (sp === 'dragonHead') return 'dragon'
+  return (SPECIES as readonly string[]).includes(sp) && sp !== 'chick' ? sp as SoulSpecies : 'horde'
 }
 
 const ITEM_SHOT: Record<string, SoulShot> = {
