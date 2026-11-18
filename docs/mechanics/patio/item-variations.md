@@ -38,3 +38,20 @@ Código: estado e geometria puros em `lib/pigchicken/ammo-hud.ts` (`ammoLook`, `
 - **Opções:** painel **Ajustes** (até 18/11, Câmera de Mira) → “Tambores e pentes”: “Em volta” e “Na mira”, ambos ligados por padrão. Ficam salvos neste navegador para cada pessoa e não entram no Salvar no game.
 - **Granada:** pente infinito (`ItemDef.infiniteAmmo`, só no código): não gasta nem recarrega, só respeita a cadência; uma Granada salva vazia volta cheia. O inventário e a linha de estado não mostram a contagem dela. O Pandeiro, que herda da Granada, continua com pente.
 - Vale para todos os players locais (cada um com a sua retícula e o seu ombro), no Parquinho, no Templo e na Vila.
+
+## Mira espacial dos instrumentos e itens (18/11, v2.14.0)
+
+Código: estado e geometria puros em `lib/pigchicken/note-hud.ts` (`noteLook`, `noteSlot`, `noteLit`, `stepNoteView`); desenho em `components/pigchicken/draw/note-hud.ts` (`drawNoteHud`, `drawNoteBits`); ligação em `drawAmmo` de `components/pigchicken/parquinho.tsx` (um `NoteView` por player); do combate vêm `aimTone` (cor do grau da nota sob a mira e se é slap), `cadence` e `firing`, além de `reloading`, `Owned.refill`, `fireCharge`, `heavyCharge`, `cards`, `Owned.out`, `special(o)` e `hookSpin`. Testes: `tests/pigchicken-ammo-hud.cases.cjs`.
+
+- **Onde:** só na mira, em volta da retícula (raio de 32 px), junto da retícula e do disco de volume; some com ela sobre botões e painéis. Não há anel em volta do ombro (ali fica o leque da escala). Liga e desliga com o mesmo “Na mira” de Ajustes → Tambores e pentes.
+- **Aparência:** traço de neon fino com halo da mesma cor e sombra escura por baixo; vazio é só o trilho apagado. Instrumentos em ciano; a próxima nota (e o grupo que um toque gasta: a frase do Trompete, o rasgueado do Violão, o acorde do Teclado, o arpejo do Sax) na cor do grau sob a mira. Sem números.
+- **Tiro:** o que um tiro gasta se solta do anel e flutua para fora até sumir (sem gravidade); na Harpa de Lira a nota vai para o centro. Até 6 por quadro.
+- **Recarga:** a recarga gradual enche o próximo segmento (no Violão, quatro juntos); a recarga cheia acende do primeiro ao último.
+- **Próxima variação** e pegar o item fazem uma varredura que religa o anel em 0,5 s.
+- **Por classe:**
+  - Flauta: anel de pontos. Sax: barras radiais; segurando, um cursor vai e volta pelas quatro da ponta. Trompete: dois arcos laterais em trios. Violão: roseta de três anéis (15, 20 e 25 em 60 notas), com uma onda a cada rasgueado. Violino: quatro arcadas que escoam com o feixe, com cabeça branca e poeira. Teclado: teclas brancas e pretas em anel, com onda de choque a cada acorde. Pandeiro: aro com um par de platinelas por pandeiro; a carga corre pelo aro e o arremesso abre dez pontos em roda. Harpa de Lira: lira com as cordas embaixo da mira; a carga sobe um ponto pela próxima corda mudando de cor, e a corda vibra ao soltar. Hangdrum: oito campos em volta do ding com os pontos das notas; o campo na direção da mira ondula e o slap faz o anel tremer em branco.
+  - Baralhos (vermelho e azul): leque de 14 cartas na ordem do baralho; a próxima levantada (no azul, na cor do grau), as que estão longe em contorno tracejado, flash na volta. O 7 e o Ás (as que estouram sozinhas) brilham mais e tremem.
+  - Boomerang: duas meias-luas; a que vai sair engrossa com a carga, a que está longe fica tracejada com um ponto girando. Martelo de Thor e Cajado de Odin: bobina de 12 segmentos com o especial (faíscas quando pronto, descarga ao usar); anel interno tracejado com o martelo longe, ou a carga do golpe forte.
+  - Corrente-gancho: só enquanto carrega, dez elos girando com a corrente (ponto laranja com a carga cheia); ao soltar, esticam na direção da mira. Granada: só enquanto carrega (barras crescendo) e na cadência depois do arremesso. Taco: oito blocos dos golpes.
+- **Fora:** Harpa de pedais, Bateria, consumíveis, Passaguá, Bicada e Piu piu.
+- Vale para todos os players locais, no Parquinho, no Templo e na Vila.

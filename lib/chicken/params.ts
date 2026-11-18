@@ -52,6 +52,9 @@ export const CHICKEN_PARAMS = {
   bodyRock: 2.5,
   bodySway: 1.5,
   headLead: 1,
+  // walking, how far back the head stays (locked in the air) before it shoots forward, in neck lengths: the most it
+  // leans back (0.7 ≈ 44°)
+  headLag: 0.7,
   headSnapTime: 0.06,
   // Agachar e slide
   crouchDepth: 20,

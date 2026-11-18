@@ -6,7 +6,7 @@ import type { BirdSpecies } from './species'
 
 export type FrameClass = 'chi' | 'pig' | 'ken' | 'baby'
 export const FRAME_CLASSES: FrameClass[] = ['chi', 'pig', 'ken', 'baby']
-export const FRAME_LABEL: Record<FrameClass, string> = { chi: 'Chi', pig: 'Pig', ken: 'Ken', baby: 'Filhote' }
+export const FRAME_LABEL: Record<FrameClass, string> = { chi: 'Chi', pig: 'Pig', ken: 'Ken', baby: 'Kids' }
 /** w: width; h: height (up from the feet); x: forward shift of the box's middle; y: lift of its bottom; bar: height of the health bar over the feet. */
 export type BodyFrame = { w: number; h: number; x: number; y: number; bar: number }
 export type BodyFrames = Record<FrameClass, BodyFrame>

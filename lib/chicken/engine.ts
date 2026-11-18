@@ -1899,7 +1899,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       k = 20
     } else if (st === 'walk' || ((st === 'crouch' || st === 'cling') && speed > 5)) {
       // head locks in place; when a foot lands it shoots forward to where the body will be next, never back
-      const A = headAnchor, reach = NECK_LEN * 0.7 * R.scale
+      const A = headAnchor, reach = NECK_LEN * clamp(R.headLag, 0.05, 0.9) * R.scale
       if (A.x === null) { A.x = A.from = A.to = S.x; A.t = 1; A.lastContact = S.x }
       const lag = (S.x - A.x) * S.face
       if (contact || lag > reach) {

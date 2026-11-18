@@ -51,7 +51,7 @@
 | Pátio: Guia de pássaros (aves reais, a ave que inspira cada alma, cantos gravados e créditos, canto real das almas soltas) | [Guia de pássaros](docs/mechanics/patio/bird-guide.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução, Cordas soltas da harpa), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
-| Pátio: Próxima variação (escala, tambor), os checkboxes “Incluir variações” das trocas de item, tambores e pentes das armas (na mira e em volta) e a Granada de pente infinito | [Variações dos itens](docs/mechanics/patio/item-variations.md) |
+| Pátio: Próxima variação (escala, tambor), os checkboxes “Incluir variações” das trocas de item, tambores e pentes das armas (na mira e em volta), a mira espacial dos instrumentos e itens e a Granada de pente infinito | [Variações dos itens](docs/mechanics/patio/item-variations.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |

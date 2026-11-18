@@ -65,7 +65,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
   const baby = useSyncExternalStore(subscribeBaby, getBaby, () => NO_BABY)
   const babySkin = baby.skin ?? defaultBabySkin(look)
   const cur = baby.on && !admin ? "filhote" : !baby.on && tab === "filhote" ? "racas" : tab
-  const tabs = baby.on ? [{ id: "filhote", label: "Filhote" }, ...(admin ? TABS : [])] : TABS
+  const tabs = baby.on ? [{ id: "filhote", label: "Kids" }, ...(admin ? TABS : [])] : TABS
   const pick = (l: ChickenLook) => { if (baby.on) setBaby({ on: false }); onChange(l) }
   // the Hit-area editor (admin): the class it edits starts as the one on screen
   const [editFrames, setEditFrames] = useState(false)
@@ -107,9 +107,9 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
     const klass = babyClassOf(look)
     body = (
       <section className="grid gap-3 border-b border-white/10 px-4 py-3.5">
-        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">Filhote</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">Kids</h3>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2.5">
-          {babySkins(klass).map(k => card(k.id, "green", "comum", false, babySkin === k.id, svg("-90 -210 180 220", LOOK_ART.composeSet(babyArt(look, k.id))), k.label, `Filhote: ${k.label}`, () => setBaby({ skin: k.id })))}
+          {babySkins(klass).map(k => card(k.id, "green", "comum", false, babySkin === k.id, svg("-90 -210 180 220", LOOK_ART.composeSet(babyArt(look, k.id))), k.label, `Kids: ${k.label}`, () => setBaby({ skin: k.id })))}
         </div>
       </section>
     )

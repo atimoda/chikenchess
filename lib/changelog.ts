@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.14.0',
     date: '18/11/2026',
-    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você; botão Camadas no painel do Modo editor e elementos trancados deixam o clique passar para os de trás; Prédios no fundo do Pátio (cidade, skyline flat, torres de código e data-centers) e duas árvores novas na Mata; Cor da dúvida na Grade de blocos; mesa do Suporte de item vira plataforma e contagem regressiva da reposição; painel Personagem (com a miniatura do seu boneco e a coluna Filhote) separado de Ajustes, limites do inventário por categoria e Golpe rápido de volta nos filhotes; botões do cabeçalho do Pátio centralizados no desktop; zonas das cenas embaixo do chão, pisáveis: um slam (cair de um pulo segurando Chocar) troca o valor pisado, com transição de painel de aeroporto; fases de notas por zona, com meta de precisão e corações, e a Vitrola toca-discos',
+    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo kid; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você; botão Camadas no painel do Modo editor e elementos trancados deixam o clique passar para os de trás; Prédios no fundo do Pátio (cidade, skyline flat, torres de código e data-centers) e duas árvores novas na Mata; Cor da dúvida na Grade de blocos; mesa do Suporte de item vira plataforma e contagem regressiva da reposição; painel Personagem (com a miniatura do seu boneco e a coluna Kids) separado de Ajustes, limites do inventário por categoria e Golpe rápido de volta nos kids; botões do cabeçalho do Pátio centralizados no desktop; zonas das cenas embaixo do chão, pisáveis: um slam (cair de um pulo segurando Chocar) troca o valor pisado, com transição de painel de aeroporto; fases de notas por zona, com meta de precisão e corações, e a Vitrola toca-discos; Pátio abre sem mostrar antes uma cópia antiga e o Playgrounds aberto mostra na hora o Pátio recém-salvo',
     groups: [
       { title: 'Pátio: Prédios no fundo', items: [
         'Categoria nova “Prédios” nas Configurações do Pátio, logo depois de Mata: até quatro fileiras de prédios ao fundo, cada uma criada a partir de um modelo (Cidade, Skyline flat, Torres de código ou Data-center) e salva com o Pátio, em todos os modos.',
@@ -26,7 +26,7 @@ const RECENT = [
         'Sair da zona da música por 2,5 s perde a música.',
         'As notas vêm para o leque de quem começou a música: quem estava mais perto do Gongo, ou quem apertou Tocar.',
         'A Jukebox e a Vitrola têm uma meta no Editar: Precisão mínima (padrão: nenhuma) e Corações (padrão 3). Os corações aparecem antes do nome da música; cada alien que chega em você tira um, com 1,4 s de proteção. Sem corações, ou terminando abaixo da precisão mínima, a música se perde.',
-        'O piu do Filhote anula notas como a Bicada.',
+        'O piu do kid anula notas como a Bicada.',
         'Cada Jukebox e cada Vitrola guarda a sua música escolhida.',
       ] },
       { title: 'Pátio: Gongo e Vitrola toca-discos', items: [
@@ -42,6 +42,12 @@ const RECENT = [
         'A Granada agora tem pente infinito: não acaba nem recarrega, só respeita a cadência. O Pandeiro continua com o pente dele.',
         'Na recarga, a mira não mostra mais o círculo girando, em nenhum item: as balas acendendo no tambor ou pente e o clique seco ao tentar atirar já mostram que está recarregando.',
       ] },
+      { title: 'Pátio: mira espacial dos instrumentos e itens', items: [
+        'Os instrumentos e os itens que atiram ganham um anel de neon em volta da mira, com um desenho por classe: pontos na Flauta, barras com o arpejo indo e voltando no Sax, trios nos lados no Trompete, roseta de três anéis no Violão, quatro arcadas que escoam com o feixe no Violino, teclado em anel no Teclado, aro com platinelas no Pandeiro, lira de 12 cordas na Harpa de Lira e oito campos de nota no Hangdrum.',
+        'A nota que sai se solta do anel e flutua até sumir, e a próxima acende na cor do grau sob a mira. As notas que voltam sozinhas enchem o anel aos poucos, e Próxima variação (Q) faz o anel religar numa varredura.',
+        'Baralhos: leque de 14 cartas sobre a mira, a próxima levantada e as que estão longe só em contorno; o 7 e o Ás brilham mais e tremem. Boomerang: duas meias-luas, uma por asa. Martelo de Thor e Cajado de Odin: bobina do especial, com faíscas quando está pronto, e o anel interno do martelo na mão ou da carga do golpe forte. Corrente-gancho: elos girando enquanto carrega. Granada: pulso da carga e da cadência. Taco: oito blocos dos golpes.',
+        'Usa o mesmo checkbox “Na mira” de Tambores e pentes.',
+      ] },
       { title: 'Pátio: Próxima variação', items: [
         'Ação nova “Próxima variação” no painel Controles, na tecla Q (Próxima arma fica sem tecla no teclado e continua no RB). Com um instrumento na mão ela passa para a próxima escala, voltando à primeira depois da última.',
         'Próximo item, Item anterior e a rodinha do mouse agora vão direto para o próximo item, sem passar pelas escalas. Para voltar ao jeito antigo, marque “Incluir variações” na frente da ação no painel Controles. Próximo instrumento ganhou “Incluir escalas” (passa pelas escalas do instrumento da mão antes do próximo), e Próxima arma e Próximo utilitário ganharam “Incluir tambores” e “Incluir tipos”, que ainda não mudam nada.',
@@ -56,15 +62,18 @@ const RECENT = [
         'O feixe do Violino agora para na parede de um bloco fechado e enche a barra de música dele: conta uma nota a cada semicolcheia enquanto fica ali (só do lado aberto, como as outras notas).',
       ] },
       { title: 'Pátio: painéis Personagem e Ajustes', items: [
-        'O antigo painel Ajustes virou Personagem, com as mesmas características dos personagens (colunas Chi, Pig e Ken). O botão dele no cabeçalho mostra a miniatura do seu próprio boneco com a skin atual, inclusive de filhote.',
+        'O antigo painel Ajustes virou Personagem, com as mesmas características dos personagens (colunas Chi, Pig e Ken). O botão dele no cabeçalho mostra a miniatura do seu próprio boneco com a skin atual, inclusive de kid.',
         'Novo painel Ajustes, logo ao lado, só com os ajustes universais: Notas no ritmo (quantizar), Tambores e pentes (Em volta, Na mira), que saíram da Câmera de Mira, e Debug.',
         'Grupo novo Inventário em Personagem: o máximo de instrumentos, armas e utilitários que cada personagem carrega (0 a 30, padrão 30), com valor próprio para Chi, Pig e Ken. Com a categoria cheia, Pegar só troca pelo item da mão se ele for da mesma categoria; senão aparece “Limite de instrumentos/armas/utilitários” sobre o item. O Limite do inventário do Pátio continua valendo para o total.',
-        'Coluna nova Fil (Filhote) em Personagem, ao lado de Chi, Pig e Ken: o movimento e o tamanho do filhote (e dos pintinhos que seguem a galinha) por fator sobre a galinha, e quantos itens de cada categoria ele carrega (padrão 1 de cada).',
-        'Grupo Filhote em Personagem com uma caixa para cada limitação, todas ligadas como antes: Imortal, Itens caem ao virar filhote, Não pega bastões nem armas de golpe, Só uma Gaiola, Não arremessa, Mão vazia pia, Sem cacarejo e Campo minado: só instrumentos e bombas. Notas para crescer e Espalhada dos itens vieram para esse grupo.',
-        'O Golpe rápido voltou para os filhotes: com item na mão ele golpeia, e de mão vazia dá a bicada. A caixa “Sem Golpe rápido” traz de volta o jeito antigo (Golpe pia).',
+        'Coluna nova Kids em Personagem, ao lado de Chi, Pig e Ken: o movimento e o tamanho do kid (e dos pintinhos que seguem a galinha) por fator sobre a galinha, e quantos itens de cada categoria ele carrega (padrão 1 de cada).',
+        'Grupo Kids em Personagem com uma caixa para cada limitação, todas ligadas como antes: Imortal, Itens caem ao virar kid, Não pega bastões nem armas de golpe, Só uma Gaiola, Não arremessa, Mão vazia pia, Sem cacarejo e Campo minado: só instrumentos e bombas. Notas para crescer e Espalhada dos itens vieram para esse grupo.',
+        'Os filhotes agora se chamam Kids em toda a interface: a coluna e o grupo em Personagem, a aba do Vestiário, a Hit-area, o placar do Campo minado e o Piu piu no painel Itens.',
+        'Parâmetro novo “Cabeça fica para trás (máximo)” em Personagem → Andar (corpo e cabeça): o quanto a cabeça fica para trás andando antes do bote para a frente. Nos Kids o padrão ficou bem menor, então o pintinho não joga mais a cabeça tanto para trás a cada passo.',
+        'O Golpe rápido voltou para os kids: com item na mão ele golpeia, e de mão vazia dá a bicada. A caixa “Sem Golpe rápido” traz de volta o jeito antigo (Golpe pia).',
       ] },
       { title: 'Pátio: Grade de blocos', items: [
         'Cor nova “Cor da dúvida” no grupo Cores do painel Grade de blocos, laranja claro por padrão (duplo clique volta a ele): pinta as notas que caem numa bandeira, a barra que enche até a dúvida e a interrogação.',
+        'Sair de um bloco fechado por qualquer caminho (por uma plataforma que atravessa a parede, escalando o vão para fora da grade) agora troca a vista para o lado de fora: o vão ao lado de um bloco aberto, o espaço acima da grade e as margens contam como lado aberto. Só o vão entre blocos fechados mantém o lado que você tinha.',
       ] },
       { title: 'Aliens: Bullet Magnetism', items: [
         'Parâmetro novo “Bullet Magnetism” (painel Aliens → Corpo, de 0 a 100%) em cada variação: o alien puxa para si os tiros e as notas rebatidas que passam perto, mais quanto mais perto passam, e as notas fazem uma curva no caminho. Em 100% ele suga todos os tiros da tela; com mais de um em 100%, o mais perto do tiro leva.',
@@ -77,9 +86,9 @@ const RECENT = [
         'Na Câmera de Mira saiu o aviso sobre zona morta e ímã dos analógicos.',
       ] },
       { title: 'Vestiário', items: [
-        'A conta admin não fica mais presa no filhote: o Vestiário abre na aba Filhote, mas mantém as abas Raças e peças, e escolher uma raça ou peça volta a adulto com esse visual, em qualquer espécie.',
+        'A conta admin não fica mais presa no kid: o Vestiário abre na aba Kids, mas mantém as abas Raças e peças, e escolher uma raça ou peça volta a adulto com esse visual, em qualquer espécie.',
         'Saiu o aviso “meio apagado: ainda não liberado (dá pra testar)” do rodapé do Vestiário.',
-        'Novo botão Hit-area no Vestiário (só admin): mostra sobre a prévia a caixa do corpo e a barra de vida de Chi, Pig, Ken e Filhote. Arraste a caixa, a borda, o topo e a barra, ou digite os números, e grave com Salvar no game, que mostra a lista do que muda antes. A caixa é o que explosões, notas, cartas e cagados acertam, e é a mesma da camada Hit-boxes.',
+        'Novo botão Hit-area no Vestiário (só admin): mostra sobre a prévia a caixa do corpo e a barra de vida de Chi, Pig, Ken e Kids. Arraste a caixa, a borda, o topo e a barra, ou digite os números, e grave com Salvar no game, que mostra a lista do que muda antes. A caixa é o que explosões, notas, cartas e cagados acertam, e é a mesma da camada Hit-boxes.',
       ] },
       { title: 'Pátio: Corrente-gancho', items: [
         'Item novo nos Esportivos (painel Itens, suportes do Modo editor e Baú): uma algema de ferro no pulso, um pedaço de corrente e um gancho grande na ponta. Pensado para o Pig, mas qualquer personagem pode usar.',
@@ -111,6 +120,12 @@ const RECENT = [
       ] },
       { title: 'Pátio: cabeçalho', items: [
         'No desktop, os botões do Modo editor até a Grade de blocos ficam centralizados na tela. Quando não cabem centralizados, ficam a um botão de distância dos outros grupos. No celular nada muda.',
+      ] },
+      { title: 'Pátio: abrir e salvar Pátios', items: [
+        'Ao abrir o Pátio padrão, não aparece mais por um instante uma versão antiga dele antes da atual: a cópia guardada no navegador em /patio e a do link do Pátio agora são a mesma.',
+        'Um Pátio que este navegador ainda não conhece abre direto como ele é, em vez de mostrar antes o Pátio padrão.',
+        'Quando o armazenamento do navegador enche, as cópias de Pátios que já estão salvos no servidor dão lugar, e o Pátio aberto continua sendo guardado.',
+        'Com o painel Playgrounds aberto, um Pátio novo aparece na lista assim que é salvo ou ganha nome.',
       ] },
     ],
   },

@@ -89,6 +89,8 @@ import type { ChickenLook } from "@/lib/chicken/look-art"
 import { LobbySwitcher, LocalChickens, PlayersPanel, lookForNewPlayer, useInputDevices } from "./players-panel"
 
 const DRAFT = "chickenchess:chicken-patio-draft:v1"
+// while the open Pátio is still coming from the database: an empty world, never the code's old default one
+const NO_ELEMENTS: LayoutElement[] = []
 // The globe portal is the layout's entry portal (moved in the editor, never deleted); she starts just to its right,
 // clear of the ring. Born at a Portal de nascimento instead, she comes out of its ring.
 const SPAWN_OFFSET = 110
@@ -282,6 +284,16 @@ export function ChickenPatio() {
   const patioLayers = usePatioLayers(patio?.id ?? "default", patio?.layout.settings?.layers)
   useEffect(() => () => clearSceneryWind(), [patio?.id])
   useEffect(() => { void pl.load(lobbyFromUrl()) }, [])
+  // the Playgrounds lists read again when the open Pátio is saved to the database for the first time or named (only
+  // the open panel reads them; the minute's autosave changes neither, so it asks nothing)
+  const [listRefresh, setListRefresh] = useState(0)
+  const listSeen = useRef<{ id: string | null; saved: boolean; name: string | null } | null>(null)
+  useEffect(() => {
+    const now = patio ? { id: patio.id, saved: patio.revision > 0, name: patio.name } : null
+    const was = listSeen.current
+    listSeen.current = now
+    if (now && was && was.id === now.id && (was.saved !== now.saved || was.name !== now.name)) setListRefresh(n => n + 1)
+  }, [patio?.id, patio?.revision, patio?.name])
   // a Pátio made here before signing in (its creator is this browser) is mine once I sign in, until it is saved
   const creator = patio && patio.revision === 0 && patio.creatorId === (typeof window === "undefined" ? null : deviceId()) ? (meId ?? patio.creatorId) : patio?.creatorId ?? null
   const editors = pl.remote?.editors
@@ -807,20 +819,20 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} forest={patio?.layout.settings?.forest} skyline={patio?.layout.settings?.skyline} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
+      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements ?? NO_ELEMENTS} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} forest={patio?.layout.settings?.forest} skyline={patio?.layout.settings?.skyline} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
 
       <MineGridLayer pass={!!mineParams?.pass} engine={engine} extras={extraEngines} worldRef={worldRef} width={worldScenes(screens) * SCENE_W} opacity={patioLayers.layers.grid / 100} houses={mineHouses} />
       <ChickenLayer dropIn={false} fixedScale controlsFront onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
       <ChickenPortal engine={engine} id={spawn === entry ? "patio" : "patio-exit"} href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={patioActors} birth={spawn === entry ? takeBirth : undefined} />
       {/* the Portais de nascimento: the same ring, leading nowhere; the one drawn for this visit is where they arrive */}
       {spawnPortals.slice(1).map(el => <ChickenPortal key={el.id} engine={engine} id={el === spawn ? "patio" : el.id} href="/" world={{ host: worldRef, x: el.x + el.w / 2, groundY: el.y + el.h - 6, d: el.w }} enabled={false} actors={patioActors} birth={el === spawn ? takeBirth : undefined} />)}
-      <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements} screens={screens} editing={editing} onTravel={travelThroughPortal} />
-      <HouseDoors engine={engine} extras={extraEngines} elements={patio?.layout.elements} screens={screens} editing={editing} />
+      <PatioPortals engine={engine} extras={extraEngines} worldRef={worldRef} elements={patio?.layout.elements ?? NO_ELEMENTS} screens={screens} editing={editing} onTravel={travelThroughPortal} />
+      <HouseDoors engine={engine} extras={extraEngines} elements={patio?.layout.elements ?? NO_ELEMENTS} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} stageDebug={patioLayers.layers.stageDebug} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements ?? NO_ELEMENTS} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} stageDebug={patioLayers.layers.stageDebug} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
       {/* the trees in front of her (half see-through) */}
-      <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
+      <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements ?? NO_ELEMENTS} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
         me={meId ?? deviceId()} signedIn={!!meId} soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })}
         layersOpen={layersOpen} onLayers={() => setLayersOpen(v => !v)} />}
@@ -846,7 +858,7 @@ export function ChickenPatio() {
           currentId={patio?.id ?? null} me={meId} isAdmin={isAdmin} isAccount={isAccount}
           onOpen={switchLobby} onNew={startNewPatio} onLogin={online.openLogin}
           onDeleted={async id => { if (id === patio?.id) await switchLobby(null, false); forgetPatio(id) }}
-          onFavoriteCurrent={pl.favorite}
+          onFavoriteCurrent={pl.favorite} refreshKey={listRefresh}
           onClose={() => setOpenOpen(false)}
         />
       )}
@@ -949,7 +961,7 @@ export function ChickenPatio() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             {/* the class columns: the chicken's value on the left, Pig's, Ken's and the Filhote's factors over it on the right */}
             <div className={cn(ROW, "sticky top-0 z-30 border-b border-white/10 bg-[#101713] px-4 py-1.5 text-center text-[10px] uppercase tracking-wider text-[#8a9a8a]")}>
-              <span className="text-left">Chi</span><span>Pig</span><span>Ken</span><span title="Filhote (e os pintinhos que seguem a galinha)">Fil</span>
+              <span className="text-left">Chi</span><span>Pig</span><span>Ken</span><span title="Kids (e os pintinhos que seguem a galinha)">Kids</span>
             </div>
             <Group title="Visual" open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
               <button type="button" onClick={() => setVestOpen(true)} className="h-8 justify-self-start rounded-md border border-white/20 px-3 hover:border-primary">Abrir o vestiário (raças e partes)</button>
@@ -994,7 +1006,7 @@ function chickenChangeLabel([part, a, b, c]: string[]) {
 
 // a row of the Personagem panel: the chicken's value, then Pig's, Ken's and the Filhote's
 const ROW = "grid grid-cols-[minmax(0,1fr)_40px_40px_40px] items-center gap-2"
-const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken", chick: "Filhote" }
+const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken", chick: "Kids" }
 
 function ParamRow({ meta, draft, saved, onChange, onClass }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void }) {
   const value = draft.params[meta.key] ?? defaultChickenConfig().params[meta.key]

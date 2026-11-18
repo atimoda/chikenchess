@@ -7,13 +7,15 @@
 // applied) everything keeps working in this browser.
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type NewPatioKind, type PatioRecord } from "@/lib/pigchicken/patio-store"
+import { hasKeptPatio, keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type NewPatioKind, type PatioRecord } from "@/lib/pigchicken/patio-store"
 import {
   favoritePatioLobby, fetchDefaultPatio, fetchPatioLobby, isPatioConflict, isPatioOffline, isPatioServerMissing, patioErrorMessage,
   patioOnlineAvailable, playedPatioLobby, renamePatioLobby, savePatioLobby, setDefaultPatioLobby, type PatioLobby,
 } from "@/lib/pigchicken/patio-online"
 
 export const AUTOSAVE_MS = 60_000
+// how long a Pátio this browser has never kept waits for the database before its fallback copy shows
+const HOLD_MS = 4000
 
 export type PatioSaveState =
   | { kind: "idle" | "saving" | "saved" | "local" | "error"; text: string }
@@ -77,12 +79,16 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
   }, [flushKeep])
 
   // ---------- opening a lobby: this browser's copy at once, then the database's ----------
+  // A Pátio this browser has no copy of waits for the database (an empty world meanwhile) instead of showing a copy
+  // of the default one; offline, not in the database, or after HOLD_MS without an answer, that copy stands.
   const loadSeq = useRef(0)
   const played = useRef(new Set<string>())
   const load = useCallback(async (id: string | null) => {
     const seq = ++loadSeq.current
     const local = loadPatio(id)
-    put(local)
+    const hold = patioOnlineAvailable() && !hasKeptPatio(id)
+    const showLocal = () => { if (seq === loadSeq.current && !cur.current) put(local) }
+    if (hold) { cur.current = null; setPatio(null); window.setTimeout(showLocal, HOLD_MS) } else put(local)
     savedJson.current = null
     if (!local.dirty && local.revision > 0) markSaved(local.layout)
     setRemote(null)
@@ -103,7 +109,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
         if (d.dirty && ctx.current.isAdmin) return // the admin's unsaved changes to it stay
         keepPatio({ ...d, layout: def.layout, name: def.name, creatorId: def.creatorId, godparentId: def.godparentId, revision: def.revision, dbId: def.id, dirty: false })
       }).catch(() => {})
-      if (!row) return // not in the database yet: this browser's copy stands
+      if (!row) { showLocal(); return } // not in the database yet: this browser's copy stands
       const base = cur.current ?? local
       const mine = base.edited && base.dirty
       const stale = mine && base.revision !== row.revision
@@ -119,6 +125,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
       if (stale) setSave({ kind: "conflict", text: "Este Pátio foi salvo em outro lugar depois das suas mudanças neste navegador.", remote: row })
       if (ctx.current.isAccount && !played.current.has(row.id)) { played.current.add(row.id); playedPatioLobby(row.id).then(() => fetchPatioLobby(row.id, row.revision)).then(r => { if (r && cur.current?.dbId === r.id) setRemote(r) }).catch(() => {}) }
     } catch (e) {
+      showLocal()
       if (seq === loadSeq.current && !isPatioServerMissing(e)) setSave({ kind: "local", text: patioErrorMessage(e) })
     }
   }, [])

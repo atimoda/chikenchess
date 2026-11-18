@@ -85,16 +85,67 @@ export function newPatio(creatorId: string, kind: NewPatioKind = 'default'): Pat
 }
 // a Pátio this browser keeps (null: it only knows it from the database, or not at all)
 export const keptPatio = (id: string) => read(id)
+// this browser has its own copy of that Pátio (null: the default one)
+export const hasKeptPatio = (id: string | null) => { try { return storage()?.getItem(KEY + (id ?? 'default')) != null } catch { return false } }
 export const newPatioId = uuid
 
+// Writing a kept copy. A full storage (each Pátio opened is kept: tens of KB each) made the write fail without a
+// word, so this browser went on showing an old copy before the database's. Now copies the database already has
+// (saved, no pending changes), oldest first, make room; the ones with changes not saved yet are never dropped.
+function evictable(keep: string[]): string[] {
+  const s = storage()
+  if (!s) return []
+  const out: { key: string; at: string }[] = []
+  try {
+    for (let i = 0; i < s.length; i++) {
+      const k = s.key(i)
+      if (!k?.startsWith(KEY)) continue
+      const id = k.slice(KEY.length)
+      if (id === 'default' || keep.includes(id)) continue
+      try {
+        const v = JSON.parse(s.getItem(k) ?? 'null') as Partial<PatioRecord> | null
+        if (v && v.dirty !== true && Number.isInteger(v.revision) && (v.revision as number) > 0) out.push({ key: id, at: typeof v.updatedAt === 'string' ? v.updatedAt : '' })
+      } catch { out.push({ key: id, at: '' }) } // unreadable: nothing to lose
+    }
+  } catch { /* blocked */ }
+  return out.sort((a, b) => a.at.localeCompare(b.at)).map(e => e.key)
+}
+function writeKept(key: string, json: string, keep: string[]): boolean {
+  const s = storage()
+  if (!s) return false
+  let victims: string[] | null = null
+  for (;;) {
+    try { s.setItem(KEY + key, json); return true } catch (e) {
+      victims ??= evictable([key, ...keep])
+      const victim = victims.shift()
+      if (!victim) { console.warn('[patio] could not keep this Pátio in this browser', e); return false }
+      try { s.removeItem(KEY + victim) } catch { return false }
+    }
+  }
+}
+// the database row the kept default Pátio is (null: none yet)
+function keptDefaultDbId(): string | null {
+  try {
+    const v = JSON.parse(storage()?.getItem(KEY + 'default') ?? 'null') as { dbId?: unknown } | null
+    return isPatioId(v?.dbId) ? v.dbId : null
+  } catch { return null }
+}
+
+// The default Pátio is one database row reached two ways: /patio (kept as "default") and its lobby id (a link, a
+// portal, a list). Both copies are the same Pátio, so a change to one is written to the other too; before, saving
+// in one left the other old, and opening it showed that old copy until the database answered.
 export function keepPatio(rec: PatioRecord): PatioRecord {
   const next = { ...rec, edited: true, updatedAt: new Date().toISOString() }
-  try {
-    storage()?.setItem(KEY + (rec.id ?? 'default'), JSON.stringify({
-      layout: next.layout, creatorId: next.creatorId, name: next.name, godparentId: next.godparentId, updatedAt: next.updatedAt,
-      revision: next.revision, dirty: next.dirty, dbId: next.dbId,
-    }))
-  } catch { /* full or blocked */ }
+  const key = rec.id ?? 'default'
+  const twin = rec.id === null
+    ? (isPatioId(rec.dbId) && storage()?.getItem(KEY + rec.dbId) != null ? rec.dbId : null)
+    : (keptDefaultDbId() === rec.id ? 'default' : null)
+  const json = JSON.stringify({
+    layout: next.layout, creatorId: next.creatorId, name: next.name, godparentId: next.godparentId, updatedAt: next.updatedAt,
+    revision: next.revision, dirty: next.dirty, dbId: next.dbId,
+  })
+  writeKept(key, json, twin ? [twin] : [])
+  if (twin) writeKept(twin, json, [key])
   return next
 }
 

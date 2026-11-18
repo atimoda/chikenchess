@@ -188,3 +188,12 @@ test('the Filhote has its own column (the chick class): factors, one of each inv
   // the limits' defaults: all on but the quick blow (it came back)
   assert.deepEqual(['babyImmortal', 'babyDropItems', 'babyNoStaffs', 'babyOneCage', 'babyNoThrow', 'babyNoMelee', 'babyPiu', 'babyMute', 'babyMineHands'].map(k => CHICKEN_PARAMS[k]), [true, true, true, true, true, false, true, true, true])
 })
+
+test('how far back the head stays walking is a parameter; the Kids lean back much less', () => {
+  const { speciesParams } = loadTs('lib/chicken/species.ts')
+  const { CHICKEN_PARAMS } = loadTs('lib/chicken/params.ts')
+  assert.equal(CHICKEN_PARAMS.headLag, 0.7)
+  const kid = speciesParams('chick', CHICKEN_PARAMS)
+  assert.ok(Math.abs(kid.headLag - 0.315) < 1e-9)
+  assert.ok(Math.asin(kid.headLag) * 180 / Math.PI < 20, 'under 20° back')
+})

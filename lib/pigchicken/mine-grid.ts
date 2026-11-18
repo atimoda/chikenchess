@@ -195,14 +195,28 @@ export const bombsAround = (grid: MineGrid, c: number, r: number) => mineNeighbo
 // ---------- sides ----------
 
 export type MineSide = 'open' | 'closed'
-// the side of whoever is at (x, y): the state of the block they are in; between blocks, outside the grid and within
-// the thickness of a closed block's walls (where nobody fits, but a point beside a wall can fall) they keep the side
-// they had
+// the side of whoever is at (x, y), worked out from where they are every time, whatever way they got there: in a
+// block, its state; within the thickness of a closed block's walls (where nobody fits, but a point beside a wall can
+// fall) they keep the side they had. Out of the blocks (the gap, a cut corner, outside the grid) it is the open side,
+// unless every block around that spot is closed: only there (between two closed blocks, where Trocar de bloco leaves
+// her, or where four of them meet) they keep the side they had. Outside the grid counts as open.
 export function mineSideAt(grid: MineGrid, x: number, y: number, last: MineSide): MineSide {
   const g = grid.geo, at = mineCellAt(g, x, y)
-  if (!at) return last
-  if (grid.cells[mineIndex(g, at.c, at.r)].open) return 'open'
-  return mineBlockContains(g, at.c, at.r, x, y, mineWallThickness(g)) ? 'closed' : last
+  if (at) {
+    if (grid.cells[mineIndex(g, at.c, at.r)].open) return 'open'
+    return mineBlockContains(g, at.c, at.r, x, y, mineWallThickness(g)) ? 'closed' : last
+  }
+  return mineBlocksAround(g, x, y).every(s => mineCell(grid, s.c, s.r)?.open === false) ? last : 'open'
+}
+// the blocks around a point out of the blocks (some may be outside the grid): the two beside a stretch of the gap,
+// the four where two stretches cross, and the block of a cut corner with the three around that corner
+export function mineBlocksAround(g: MineGeo, x: number, y: number): MineSpot[] {
+  const u = x - g.x0, v = g.ground - y, c = Math.floor(u / g.step), r = Math.floor(v / g.step)
+  const inCol = u - c * g.step <= g.cell, inRow = v - r * g.step <= g.cell
+  // in a block's box but not in the block: one of its cut corners
+  const cols = inCol ? (inRow ? (u - c * g.step < g.cell / 2 ? [c - 1, c] : [c, c + 1]) : [c]) : [c, c + 1]
+  const rows = inRow ? (inCol ? (v - r * g.step < g.cell / 2 ? [r - 1, r] : [r, r + 1]) : [r]) : [r, r + 1]
+  return cols.flatMap(cc => rows.map(rr => ({ c: cc, r: rr })))
 }
 // a point of a block brought inside its room, `inset` from its edges (someone a block closed around)
 export function mineRoomClamp(g: MineGeo, c: number, r: number, x: number, y: number, inset: number) {

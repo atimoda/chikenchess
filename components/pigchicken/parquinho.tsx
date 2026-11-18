@@ -59,6 +59,8 @@ import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { mineZoneBoxes } from "@/lib/pigchicken/mine-zones"
 import { drawScaleFan, SCALE_FAN_R, seatedFanSize } from "@/components/pigchicken/draw/scale-fan"
 import { drawAmmoAround, drawAmmoDrops, drawAmmoHud } from "@/components/pigchicken/draw/ammo-hud"
+import { drawNoteBits, drawNoteHud } from "@/components/pigchicken/draw/note-hud"
+import { NOTE_HUD_R, newNoteView, noteLook, stepNoteView, type NoteView } from "@/lib/pigchicken/note-hud"
 import { AMMO_AROUND_SCALE, AMMO_HUD_R, ammoLook, aroundVisibility, newAmmoView, stepAmmoView, type AmmoView } from "@/lib/pigchicken/ammo-hud"
 import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { dropScaleStage, setScaleStage } from "@/lib/pigchicken/scale-preview"
@@ -626,6 +628,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const scaleStandby = new Map<string, StandbyState>()
     // the weapons' tambor / pente, per player: what they saw last frame, Próxima variação pressed, where the reticle is
     const ammoViews = new Map<string, AmmoView>()
+    const noteViews = new Map<string, NoteView>()
     const ammoWake = new Map<string, boolean>()
     const ammoAt = new Map<string, { x: number; y: number }>()
     let aim: Aim | null = null
@@ -1807,10 +1810,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const around = S.ammoAround && !eng.getMotionState().held ? { x: o.x, y: o.y, scale: es.scale * AMMO_AROUND_SCALE, alpha: 1, after: sp.standbyAfter, fade: sp.fadeTime } : null
         const hud = S.ammoHud && at ? { x: at.x, y: at.y, R: AMMO_HUD_R, alpha: 1 } : null
         stepAmmoView(v, { owned: h ?? null, look, ammo: h?.ammo ?? 0, reload, draw: combat.fireCharge, wake: !!ammoWake.get(id), hud, around }, dt)
+        // the instruments and the throwing items: their neon ring at the reticle (lib/pigchicken/note-hud.ts)
+        let nv = noteViews.get(id)
+        if (!nv) noteViews.set(id, nv = newNoteView())
+        const nl = h && !look && S.ammoHud ? noteLook(h.item, d) : null
+        const tone = nl?.deg ? combat.aimTone : null
+        stepNoteView(nv, {
+          owned: h ?? null, look: nl, ammo: h?.ammo ?? 0, reload, refill: h && d.refillTime > 0 ? (h.refill ?? 0) / d.refillTime : 0, amount: d.refillAmount,
+          charge: Math.max(combat.fireCharge, combat.heavyCharge), firing: combat.firing, color: tone?.color ?? null, slap: !!tone?.slap, aim: combat.aimAngle,
+          spin: combat.hookSpin, cadence: combat.cadence, away: h && nl?.style === "cards" ? combat.cards.filter(c => c.owned === h).map(c => c.rank) : [],
+          out: h ? h.out ?? 0 : 0, special: h ? combat.special(h) : null, wake: !!ammoWake.get(id),
+        }, dt)
         ammoWake.delete(id)
         if (around) drawAmmoAround(ctx, v, o.x, o.y, around.scale, aroundVisibility(v, sp.standbyAfter, sp.fadeTime), reload, d.shellReload)
         if (hud) drawAmmoHud(ctx, v, hud.x, hud.y, hud.R, 1, reload, d.shellReload)
         drawAmmoDrops(ctx, v)
+        if (at && nl) { drawNoteHud(ctx, nv, at.x, at.y, NOTE_HUD_R); drawNoteBits(ctx, nv, at.x, at.y, NOTE_HUD_R) }
       }
       drawAmmo("p1", engine)
       if (charge > 0) { const from = engine.heldPoint(combat.throwAngle, 0, 0); drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY }))) }
