@@ -185,6 +185,14 @@ export function createConductor() {
       return Math.abs(ph) * spb()
     },
     secondsPerBeat: spb,
+    // the whole clock as it is now, and putting one back (a fase de notas keeps its zone's own clock: a copy of the
+    // Pátio's taken when it starts, and the Pátio's follows it again when she comes back into that zone); putting
+    // one back makes no events of its own
+    snapshot(): ConductorSnapshot { return { family, zone, next, time, beatPos, block, pass, passStart } },
+    restore(s: ConductorSnapshot) {
+      family = s.family; zone = s.zone; next = s.next; time = s.time; beatPos = s.beatPos; block = s.block; pass = s.pass; passStart = s.passStart
+      lastBar = Math.floor(beatPos / 4); lastBeat = Math.floor(beatPos); lastStep = Math.floor(beatPos * 4)
+    },
     // the note the aim plays: pointing higher plays higher, always inside the chord (or the scale)
     noteFor(angle: number, set: PitchSet, octave: number, span = 2) {
       const pool = this.aimPool(set, octave, span)
@@ -223,6 +231,7 @@ export function createConductor() {
 }
 
 export type Conductor = ReturnType<typeof createConductor>
+export type ConductorSnapshot = { family: Zone; zone: Zone; next: Zone | null; time: number; beatPos: number; block: number; pass: number; passStart: number }
 
 export const NOTE_NAMES = ['Dó', 'Dó♯', 'Ré', 'Mi♭', 'Mi', 'Fá', 'Fá♯', 'Sol', 'Lá♭', 'Lá', 'Si♭', 'Si']
 const LETTERS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']

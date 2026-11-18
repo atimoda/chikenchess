@@ -127,11 +127,6 @@ export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: nu
     ;[[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ux, uy]) => line(rx + ux * gap, ry + uy * gap, rx + ux * (gap + 8), ry + uy * (gap + 8)))
     ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill()
   }
-  if (combat.reloading) {
-    const at = end && d.reticle !== "laser" && (showLand || (d.reticle !== "impact" && d.reticle !== "grenade")) ? end : { x: rx, y: ry }
-    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(at.x, at.y, 18, -Math.PI / 2, -Math.PI / 2 + combat.reloading * Math.PI * 2); ctx.stroke()
-  }
   ctx.restore()
 }
 

@@ -82,41 +82,53 @@ export const FOX_FACTORS: Partial<Record<NumKey, number>> = {
 // configuration: a factor over the chicken's value for every number, and the jumps in the air set outright (the
 // chicken's 99 means no limit). Factor 0 turns a thing off: Pig's toes, climbing and flaps; the health is a factor
 // of Chi's 100 (Ken 200, Pig 300)
-export type ClassId = 'pig' | 'fox'
-export const CLASS_IDS: ClassId[] = ['pig', 'fox']
-export type ClassTuning = { factors: Record<NumKey, number>; airJumps: number }
+// 'chick': the Filhote's column (and the chicks that follow her: the same species)
+export type ClassId = 'pig' | 'fox' | 'chick'
+export const CLASS_IDS: ClassId[] = ['pig', 'fox', 'chick']
+// the counts each class sets outright instead of by a factor (the jumps in the air, the inventory's limits per
+// category), with their own top
+export const CLASS_COUNT_KEYS = ['airJumps', 'invInstruments', 'invWeapons', 'invUtilities'] as const
+export type ClassCountKey = (typeof CLASS_COUNT_KEYS)[number]
+export const CLASS_COUNT_MAX: Record<ClassCountKey, number> = { airJumps: 99, invInstruments: 30, invWeapons: 30, invUtilities: 30 }
+export const isClassCount = (k: string): k is ClassCountKey => (CLASS_COUNT_KEYS as readonly string[]).includes(k)
+export type ClassTuning = { factors: Record<NumKey, number> } & Record<ClassCountKey, number>
 export type ClassesTuning = Record<ClassId, ClassTuning>
 export const CLASS_FACTOR_MAX = 5
-// every number a class scales (all the chicken's numbers but the jumps in the air and the scale's marker)
+// every number a class scales (all the chicken's numbers but the counts and the scale's marker)
 export const CLASS_FACTOR_KEYS = (Object.keys(CHICKEN_PARAMS) as (keyof ChickenParams)[])
-  .filter((k): k is NumKey => typeof CHICKEN_PARAMS[k] === 'number' && k !== 'airJumps' && k !== 'scaleBase')
-const CODE_CLASS: Record<ClassId, { factors: Partial<Record<NumKey, number>>; airJumps: number }> = {
+  .filter((k): k is NumKey => typeof CHICKEN_PARAMS[k] === 'number' && !isClassCount(k) && k !== 'scaleBase')
+const CODE_CLASS: Record<ClassId, { factors: Partial<Record<NumKey, number>> } & Partial<Record<ClassCountKey, number>>> = {
   pig: { factors: { ...PIG_FACTORS, toeCurl: 0, maxHp: 3, climbSpeed: 0, jumpFlaps: 0, broodJumpFlaps: 0, flyFallDivisor: 0, flyUpFallAtten: 0, flyDownFallAtten: 0 }, airJumps: 0 },
   fox: { factors: { ...FOX_FACTORS, toeCurl: 0, maxHp: 2, jumpFlaps: 0, broodJumpFlaps: 0 }, airJumps: 1 },
+  // the Filhote carries one instrument, one weapon and one utility (a new one takes the place of the old)
+  chick: { factors: CHICK_FACTORS, invInstruments: 1, invWeapons: 1, invUtilities: 1 },
 }
-/** Pig's and Ken's tuning as it comes in the code. */
+/** Pig's, Ken's and the Filhote's tuning as it comes in the code (a count not set: the chicken's). */
 export function defaultClasses(): ClassesTuning {
   const out = {} as ClassesTuning
   for (const id of CLASS_IDS) {
     const c = CODE_CLASS[id]
-    out[id] = { factors: Object.fromEntries(CLASS_FACTOR_KEYS.map(k => [k, c.factors[k] ?? 1])) as Record<NumKey, number>, airJumps: c.airJumps }
+    out[id] = { factors: Object.fromEntries(CLASS_FACTOR_KEYS.map(k => [k, c.factors[k] ?? 1])) as Record<NumKey, number>, ...Object.fromEntries(CLASS_COUNT_KEYS.map(k => [k, c[k] ?? CHICKEN_PARAMS[k]])) } as ClassTuning
   }
   return out
 }
 const DEFAULT_CLASSES = defaultClasses()
-/** A saved tuning made whole and safe: every factor a number from 0 to CLASS_FACTOR_MAX, the air jumps 0 to 99. */
+/** A saved tuning made whole and safe: every factor a number from 0 to CLASS_FACTOR_MAX, every count 0 to its top. */
 export function normalizeClasses(raw: unknown): ClassesTuning {
   const out = defaultClasses()
   if (!raw || typeof raw !== 'object') return out
   for (const id of CLASS_IDS) {
-    const src = (raw as Record<string, unknown>)[id] as { factors?: Record<string, unknown>; airJumps?: unknown } | undefined
+    const src = (raw as Record<string, unknown>)[id] as ({ factors?: Record<string, unknown> } & Partial<Record<ClassCountKey, unknown>>) | undefined
     if (!src || typeof src !== 'object') continue
     const f = src.factors && typeof src.factors === 'object' ? src.factors : {}
     for (const k of CLASS_FACTOR_KEYS) {
       const v = f[k]
       if (typeof v === 'number' && Number.isFinite(v)) out[id].factors[k] = Math.round(Math.max(0, Math.min(CLASS_FACTOR_MAX, v)) * 100) / 100
     }
-    if (typeof src.airJumps === 'number' && Number.isFinite(src.airJumps)) out[id].airJumps = Math.round(Math.max(0, Math.min(99, src.airJumps)))
+    for (const k of CLASS_COUNT_KEYS) {
+      const v = src[k]
+      if (typeof v === 'number' && Number.isFinite(v)) out[id][k] = Math.round(Math.max(0, Math.min(CLASS_COUNT_MAX[k], v)))
+    }
   }
   return out
 }
@@ -128,12 +140,14 @@ export function speciesParams(species: BirdSpecies | undefined, base: ChickenPar
   if (species === 'pig' || species === 'fox') {
     const c = classes[species] ?? DEFAULT_CLASSES[species]
     for (const k of CLASS_FACTOR_KEYS) (out as any)[k] = (base[k] as number) * (c.factors[k] ?? 1)
-    out.airJumps = c.airJumps
+    for (const k of CLASS_COUNT_KEYS) out[k] = c[k] ?? base[k]
     // a fly divisor under 1 would make the flaps speed the fall up (Pig's 0: no slowing at all)
     out.flyFallDivisor = Math.max(1, out.flyFallDivisor)
     return out
   }
-  for (const [k, f] of Object.entries(CHICK_FACTORS) as [NumKey, number][]) (out as any)[k] = (base[k] as number) * f
+  const c = classes.chick ?? DEFAULT_CLASSES.chick
+  for (const k of CLASS_FACTOR_KEYS) (out as any)[k] = (base[k] as number) * (c.factors[k] ?? 1)
+  for (const k of CLASS_COUNT_KEYS) out[k] = c[k] ?? base[k]
   // never fewer than one flap after a jump, never less than one (stable) jump in the air
   out.jumpFlaps = Math.max(1, Math.round(out.jumpFlaps))
   out.broodJumpFlaps = Math.max(1, Math.round(out.broodJumpFlaps))
@@ -141,6 +155,6 @@ export function speciesParams(species: BirdSpecies | undefined, base: ChickenPar
   out.flyFallDivisor = Math.max(1.05, out.flyFallDivisor)
   // (the setting's own top)
   out.shockingAirFlapRate = Math.min(15, out.shockingAirFlapRate)
-  out.volume = 0
+  if (base.babyMute) out.volume = 0
   return out
 }

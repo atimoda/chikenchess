@@ -9,7 +9,7 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
-import { Bird, Bug, Crosshair, Feather, FolderOpen, Gamepad2, Ghost, Grid3x3, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
+import { Bird, Crosshair, Feather, FolderOpen, Gamepad2, Ghost, Grid3x3, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -17,7 +17,7 @@ import {
   setChickenConfigPreview, subscribeChickenConfig, type ChickenConfig, type SavedChickenConfig,
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
-import { CLASS_FACTOR_KEYS, CLASS_FACTOR_MAX, CLASS_IDS, defaultClasses, type ClassId } from "@/lib/chicken/species"
+import { CLASS_COUNT_MAX, CLASS_FACTOR_KEYS, CLASS_FACTOR_MAX, CLASS_IDS, defaultClasses, isClassCount, type ClassId } from "@/lib/chicken/species"
 import { Knob } from "@/components/knob"
 import { useSaveConfirm } from "@/components/admin/save-confirm"
 import { diffValues } from "@/lib/admin/save-diff"
@@ -39,7 +39,7 @@ import { portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { PatioPortals, type PatioPortalTravel } from "@/components/pigchicken/patio-portals"
 import { HouseDoors } from "@/components/pigchicken/house-doors"
 import { checkPatioTarget, MISSING_PATIO_TEXT, OFFLINE_PATIO_TEXT, targetLobbyId } from "@/lib/pigchicken/portal-links"
-import { ChickenHeadIcon, ChickenVestiario, type FramesEdit } from "./chicken-vestiario"
+import { ChickenBodyIcon, ChickenHeadIcon, ChickenVestiario, type FramesEdit } from "./chicken-vestiario"
 import { FRAME_KEYS, FRAME_LABEL, type FrameClass } from "@/lib/chicken/body-frame"
 import { cn } from "@/lib/utils"
 import { stageInset, subscribeStageInset } from "@/lib/stage-size"
@@ -67,6 +67,7 @@ import { CAMERA_MODES } from "@/lib/pigchicken/camera"
 import { PatioEditor } from "@/components/pigchicken/patio-editor"
 import { LayerEyes, usePatioLayers } from "@/components/pigchicken/layer-eyes"
 import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
+import { withSceneZone } from "@/lib/pigchicken/sound-zones"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
 import { MineGridPanel } from "@/components/pigchicken/mine-grid-panel"
 import { patioGround, patioItemGlow, patioInventoryLimit, patioMineGrid, patioSceneMusic, patioScreens, patioTemple, patioWorldTop, patioZoom } from "@/lib/pigchicken/patio-settings"
@@ -119,8 +120,12 @@ export function ChickenPatio() {
   // same first render on the server and in the browser; the cached and saved versions come in the effect
   const [saved, setSaved] = useState<SavedChickenConfig>(() => ({ config: defaultChickenConfig(), revision: 0, updatedAt: null }))
   const [draft, setDraft] = useState<ChickenConfig>(defaultChickenConfig)
+  // Personagem (the characters' tuning, by class) and Ajustes (the universal ones)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [tuningOpen, setTuningOpen] = useState(false)
   const [controlsOpen, setControlsOpen] = useState(false)
+  // the Camadas panel: the header's eye and the Modo editor palette's button
+  const [layersOpen, setLayersOpen] = useState(false)
   // a phone held upright: the whole scene moves up and the touch controls get the ground below it to themselves
   const showTouch = useChickenTouch(), portrait = usePortrait()
   const lifted = showTouch && portrait
@@ -585,10 +590,11 @@ export function ChickenPatio() {
     setStatus(null)
   }
   const setParam = (key: ChickenParamKey, value: unknown) => update(c => { (c.params as Record<string, unknown>)[key] = value })
-  // Pig's and Ken's columns: a factor over the chicken's value, or (the jumps in the air) the number itself
+  // Pig's and Ken's columns: a factor over the chicken's value, or (the jumps in the air, the inventory) the count itself
   const setClass = (id: ClassId, key: ChickenParamKey, value: number) => update(c => {
     c.classes ??= defaultClasses()
-    if (key === "airJumps") c.classes[id].airJumps = value
+    c.classes[id] ??= defaultClasses()[id]
+    if (isClassCount(key)) c.classes[id][key] = value
     else (c.classes[id].factors as Record<string, number>)[key] = value
   })
   const replaceDraft = (next: ChickenConfig) => {
@@ -671,7 +677,10 @@ export function ChickenPatio() {
       {/* the header's strip, behind the world: a press between its buttons is not a shot. The buttons themselves are
           in front of everything the world draws over the characters (front elements, the Grade de blocos' faces) */}
       <div aria-hidden="true" data-chicken-ignore className="absolute inset-x-0 top-0 z-[120] h-14" />
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-[206] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)] [&>*]:pointer-events-auto" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
+      <header className="pointer-events-none @container absolute inset-x-0 top-0 z-[206] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)] [&>*]:pointer-events-auto" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
+        {/* on a wide screen (the header's own width, so the docked Modo editor counts) three groups: this one, the
+            centered one (Editar to Grade de blocos) and the rest; on a narrower one, the same row as on a phone */}
+        <div className="contents pointer-events-none! [&>*]:pointer-events-auto @min-[1100px]:flex @min-[1100px]:min-w-0 @min-[1100px]:flex-1 @min-[1100px]:basis-0 @min-[1100px]:items-center @min-[1100px]:gap-2">
         {/* the same Globe button as the chess matches' header */}
         <Button
           asChild
@@ -702,8 +711,11 @@ export function ChickenPatio() {
           if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
           else openPatioLobby(target.patioId === "default" ? null : target.patioId)
         }} />
+        </div>
         {/* on a phone the buttons scroll sideways instead of pushing the avatar off screen */}
-        <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden @min-[1100px]:contents">
+        {/* centered on the screen; when it does not fit, one button's room from the rest */}
+        <div className="contents [&>*]:shrink-0 @min-[1100px]:mx-7 @min-[1100px]:flex @min-[1100px]:shrink-0 @min-[1100px]:items-center @min-[1100px]:gap-2">
         <div className="relative">
           <button
             type="button"
@@ -725,7 +737,7 @@ export function ChickenPatio() {
             </div>
           )}
         </div>
-        <LayerEyes {...patioLayers} onSave={patio && access.canEdit ? layers => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined} />
+        <LayerEyes {...patioLayers} open={layersOpen} onOpenChange={setLayersOpen} onSave={patio && access.canEdit ? layers => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined} />
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Users className="h-4 w-4" />
           {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
@@ -738,6 +750,8 @@ export function ChickenPatio() {
         {(access.canEdit || !!mineParams) && <button type="button" aria-label="Grade de blocos" aria-pressed={gridOpen} title="Grade de blocos" onClick={() => setGridOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", gridOpen ? "border-[#ffd166]" : "border-white/15", mineParams ? "text-[#ffd166]" : gridOpen ? "text-white" : "text-[#b9c7b9]")}>
           <Grid3x3 className="h-4 w-4" />
         </button>}
+        </div>
+        <div className="contents [&>*]:shrink-0 [&>*]:pointer-events-auto @min-[1100px]:pointer-events-none! @min-[1100px]:flex @min-[1100px]:flex-1 @min-[1100px]:basis-0 @min-[1100px]:items-center @min-[1100px]:justify-end @min-[1100px]:gap-2">
         <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false); setBirdsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Swords className="h-4 w-4" />
         </button>
@@ -759,13 +773,17 @@ export function ChickenPatio() {
         <button type="button" aria-label="Controles" title="Controles" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Ajustes do personagem" aria-pressed={panelOpen} title="Ajustes do personagem" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Personagem" aria-pressed={panelOpen} title="Personagem" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border transition-colors hover:border-primary", panelOpen ? "border-primary" : "border-white/15")}>
+          <ChickenBodyIcon look={draft.look} className="h-8 w-8" />
+        </button>
+        <button type="button" aria-label="Ajustes" aria-pressed={tuningOpen} title="Ajustes" onClick={() => setTuningOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", tuningOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
         </button>
         <VolumeButton />
         <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>
+        </div>
         </div>
       </header>
       {/* the FPS counter (Camadas → Contador de FPS) */}
@@ -789,7 +807,7 @@ export function ChickenPatio() {
 
 
       {/* the world (ground included) is in fixed units: the same size on every screen, only the crop changes */}
-      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} forest={patio?.layout.settings?.forest} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
+      <ParquinhoWorld screens={screens} worldRef={worldRef} debug={pq.debug} elements={patio?.layout.elements} editing={editing} worldTop={worldTop} groundHeight={groundHeight} backdrop={patioLayers.layers.backdrop / 100} sky={patio?.layout.settings?.sky} mountains={patio?.layout.settings?.mountains} forest={patio?.layout.settings?.forest} skyline={patio?.layout.settings?.skyline} clouds={patio?.layout.settings?.clouds} snowfall={patio?.layout.settings?.snowfall} aurora={patio?.layout.settings?.aurora} temple={patioTemple(patio?.layout.settings)} zoomMin={patioZoom(patio?.layout.settings).min} />
 
       <MineGridLayer pass={!!mineParams?.pass} engine={engine} extras={extraEngines} worldRef={worldRef} width={worldScenes(screens) * SCENE_W} opacity={patioLayers.layers.grid / 100} houses={mineHouses} />
       <ChickenLayer dropIn={false} fixedScale controlsFront onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
@@ -800,14 +818,20 @@ export function ChickenPatio() {
       <HouseDoors engine={engine} extras={extraEngines} elements={patio?.layout.elements} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={patio?.layout.elements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} stageDebug={patioLayers.layers.stageDebug} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
-        me={meId ?? deviceId()} signedIn={!!meId} soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })} />}
+        me={meId ?? deviceId()} signedIn={!!meId} soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })}
+        layersOpen={layersOpen} onLayers={() => setLayersOpen(v => !v)} />}
       {/* the "Zonas sonoras" layer outside the editor: only shown, the tags do not change anything */}
       {patioLayers.layers.zones > 0 && !(editing && patio && access.canEdit) && (
-        <MusicZonesLayer elements={elementsInWorld({ v: 1, elements: patio?.layout.elements ?? [] }, screens)} screens={screens} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} editable={false} opacity={patioLayers.layers.zones / 100} />
+        <MusicZonesLayer elements={elementsInWorld({ v: 1, elements: patio?.layout.elements ?? [] }, screens)} screens={screens} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} editable={false} opacity={patioLayers.layers.zones / 100}
+          onSlam={patio && access.canEdit ? (scene, zone) => {
+            const settings = { ...patio.layout.settings, sceneZones: withSceneZone(patio.layout.settings?.sceneZones, scene, zone) }
+            if (!settings.sceneZones) delete settings.sceneZones
+            changeLayout({ ...patio.layout, settings })
+          } : undefined} />
       )}
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
@@ -842,7 +866,7 @@ export function ChickenPatio() {
         <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
             <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
-            <button type="button" aria-label="Padrão" title="Padrão: volta tudo para o padrão do jogo" onClick={() => { const next = { ...DEFAULT_PARQUINHO, debug: pq.debug }; setPq(next); saveParquinho(next) }} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
+            <button type="button" aria-label="Padrão" title="Padrão: volta tudo para o padrão do jogo" onClick={() => { const next = { ...DEFAULT_PARQUINHO, debug: pq.debug, quantize: pq.quantize, ammoAround: pq.ammoAround, ammoHud: pq.ammoHud }; setPq(next); saveParquinho(next) }} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
             <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
@@ -860,19 +884,33 @@ export function ChickenPatio() {
           <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
           <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
           <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
-          <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
-          <div className="flex flex-col gap-1.5 text-xs">
-            <span>Tambores e pentes</span>
-            <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Em volta</span><input type="checkbox" checked={pq.ammoAround} onChange={e => setPqValue("ammoAround", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
-            <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Na mira</span><input type="checkbox" checked={pq.ammoHud} onChange={e => setPqValue("ammoHud", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
-          </div>
           <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end" />
+          </div>
+        </FloatingPanel>
+      )}
+      {/* Ajustes: the universal ones (the same for every character); saved in this browser, the admin's go with the camera's defaults */}
+      {tuningOpen && (
+        <FloatingPanel id="patio-tuning" aria-label="Ajustes" initial={(vw, vh) => { const w = Math.min(320, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(320, vh - 80) } }} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+          <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
+            <h2 className="flex-1 text-sm text-white">Ajustes</h2>
+            <button type="button" aria-label="Padrão" title="Padrão: volta estes ajustes para o padrão do jogo" onClick={() => setPq(prev => { const next = { ...prev, debug: DEFAULT_PARQUINHO.debug, quantize: DEFAULT_PARQUINHO.quantize, ammoAround: DEFAULT_PARQUINHO.ammoAround, ammoHud: DEFAULT_PARQUINHO.ammoHud }; saveParquinho(next); return next })} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
+            <button type="button" aria-label="Fechar" onClick={() => setTuningOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
+            <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+            <div className="flex flex-col gap-1.5 text-xs">
+              <span>Tambores e pentes</span>
+              <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Em volta</span><input type="checkbox" checked={pq.ammoAround} onChange={e => setPqValue("ammoAround", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+              <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Na mira</span><input type="checkbox" checked={pq.ammoHud} onChange={e => setPqValue("ammoHud", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+            </div>
+            <label className="flex items-center justify-between gap-3 text-xs" title="A linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas"><span>Debug</span><input type="checkbox" checked={pq.debug} onChange={e => setPqValue("debug", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+            <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end" />
           </div>
         </FloatingPanel>
       )}
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} editLayout />
 
-      {/* the confirmation of the central configuration's Salvar no game (Ajustes and the Vestiário's Hit-area) */}
+      {/* the confirmation of the central configuration's Salvar no game (Personagem and the Vestiário's Hit-area) */}
       {saveConfirmation}
       {vestOpen && (vestPlayer?.look
         ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} />
@@ -899,20 +937,19 @@ export function ChickenPatio() {
       )}
 
       {panelOpen && (
-        <FloatingPanel id="chicken-tuning" aria-label="Ajustes do personagem" initial={(vw, vh) => { const w = Math.min(480, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={340} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <FloatingPanel id="chicken-tuning" aria-label="Personagem" initial={(vw, vh) => { const w = Math.min(530, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={380} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-            <h2 className="flex-1 text-sm text-white">Ajustes</h2>
+            <h2 className="flex-1 text-sm text-white">Personagem</h2>
             {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
             <button type="button" aria-label="Desfazer" title="Desfazer: volta à versão salva no game" disabled={!dirty} onClick={() => replaceDraft(saved.config)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-45 disabled:hover:border-white/15"><Undo2 className="h-4 w-4" /></button>
             <button type="button" aria-label="Padrão" title="Padrão: volta todos os valores para os que vêm no código do jogo" onClick={() => replaceDraft(defaultChickenConfig())} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
-            <button type="button" aria-label="Debug" aria-pressed={pq.debug} onClick={() => setPqValue("debug", !pq.debug)} title="Debug: a linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas" className={cn("inline-flex h-8 w-8 items-center justify-center rounded-md border hover:border-primary", pq.debug ? "border-primary bg-primary/15 text-white" : "border-white/15")}><Bug className="h-4 w-4" /></button>
-            <button type="button" aria-label="Fechar ajustes" onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+            <button type="button" aria-label="Fechar" onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {/* the class columns: the chicken's value on the left, Pig's and Ken's factors over it on the right */}
+            {/* the class columns: the chicken's value on the left, Pig's, Ken's and the Filhote's factors over it on the right */}
             <div className={cn(ROW, "sticky top-0 z-30 border-b border-white/10 bg-[#101713] px-4 py-1.5 text-center text-[10px] uppercase tracking-wider text-[#8a9a8a]")}>
-              <span className="text-left">Chi</span><span>Pig</span><span>Ken</span>
+              <span className="text-left">Chi</span><span>Pig</span><span>Ken</span><span title="Filhote (e os pintinhos que seguem a galinha)">Fil</span>
             </div>
             <Group title="Visual" open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
               <button type="button" onClick={() => setVestOpen(true)} className="h-8 justify-self-start rounded-md border border-white/20 px-3 hover:border-primary">Abrir o vestiário (raças e partes)</button>
@@ -949,15 +986,15 @@ function Group({ title, open, onToggle, children }: { title: string; open: boole
 const PARAM_LABEL: Record<string, string> = Object.fromEntries(CHICKEN_PARAM_META.map(m => [m.key, m.label]))
 function chickenChangeLabel([part, a, b, c]: string[]) {
   if (part === "params") return PARAM_LABEL[a] ?? a
-  if (part === "classes") return `${CLASS_NAME[a as ClassId] ?? a} › ${b === "airJumps" ? PARAM_LABEL.airJumps : `${PARAM_LABEL[c] ?? c} (fator)`}`
+  if (part === "classes") return `${CLASS_NAME[a as ClassId] ?? a} › ${isClassCount(b) ? PARAM_LABEL[b] : `${PARAM_LABEL[c] ?? c} (fator)`}`
   if (part === "look") return `Visual › ${a}`
   if (part === "frames") return `Hit-area › ${FRAME_LABEL[a as FrameClass] ?? a} › ${FRAME_KEYS.find(k => k.key === b)?.label ?? b}`
   return [part, a, b, c].filter(Boolean).join(" › ")
 }
 
-// a row of the Ajustes panel: the chicken's value, then Pig's and Ken's
-const ROW = "grid grid-cols-[minmax(0,1fr)_40px_40px] items-center gap-2"
-const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken" }
+// a row of the Personagem panel: the chicken's value, then Pig's, Ken's and the Filhote's
+const ROW = "grid grid-cols-[minmax(0,1fr)_40px_40px_40px] items-center gap-2"
+const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken", chick: "Filhote" }
 
 function ParamRow({ meta, draft, saved, onChange, onClass }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void }) {
   const value = draft.params[meta.key] ?? defaultChickenConfig().params[meta.key]
@@ -994,15 +1031,16 @@ function ParamRow({ meta, draft, saved, onChange, onClass }: { meta: ChickenPara
   )
 }
 
-// Pig's or Ken's cell: a knob with the factor over the chicken's value; the jumps in the air are a count of their own
+// Pig's or Ken's cell: a knob with the factor over the chicken's value; the counts (the jumps in the air, the
+// inventory's limits) are a number of their own
 function ClassCell({ id, meta, draft, saved, onClass }: { id: ClassId; meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void }) {
   const name = `${meta.label}: ${CLASS_NAME[id]}`
   // (a draft kept from before the classes were saved with it has none)
-  const now = (draft.classes ?? defaultClasses())[id], before = (saved.classes ?? defaultClasses())[id]
-  if (meta.key === "airJumps") {
-    const v = now.airJumps, was = before.airJumps
-    return <input type="number" aria-label={name} title={name} min={0} max={99} step={1} value={v}
-      onChange={e => { const x = Math.round(Number(e.target.value)); if (Number.isFinite(x)) onClass(id, meta.key, Math.max(0, Math.min(99, x))) }}
+  const now = draft.classes?.[id] ?? defaultClasses()[id], before = saved.classes?.[id] ?? defaultClasses()[id]
+  if (isClassCount(meta.key)) {
+    const max = CLASS_COUNT_MAX[meta.key], v = now[meta.key] ?? defaultClasses()[id][meta.key], was = before[meta.key] ?? defaultClasses()[id][meta.key]
+    return <input type="number" aria-label={name} title={name} min={0} max={max} step={1} value={v}
+      onChange={e => { const x = Math.round(Number(e.target.value)); if (Number.isFinite(x)) onClass(id, meta.key, Math.max(0, Math.min(max, x))) }}
       onDoubleClick={() => onClass(id, meta.key, was)}
       className={cn("h-10 w-10 rounded-md border border-white/15 bg-[#0b110e] text-center tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none", v !== was && "text-amber-300")} />
   }

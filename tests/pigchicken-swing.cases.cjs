@@ -223,6 +223,23 @@ test('an item can turn the interruption off: a blow pressed mid-move then waits 
 
 // Golpe with Atirar held: the blow interrupts firing and a held Atirar fires again once it ends
 const armedWith = (id) => { const c = createCombat(); c.give(id); step(c, { slot: 1 }); return c }
+
+test('point-and-click Golpe: on by default, the reach of the next blow, null when the item turns it off', () => {
+  assert.ok(Object.values(DEFAULT_ITEMS).every(d => d.pointClick === true))
+  const c = createCombat()
+  const items = structuredClone(DEFAULT_ITEMS)
+  c.setItems(items)
+  step(c)
+  const w = items.wing, first = w.combo[0]
+  assert.equal(c.pointClickReach(1), w.meleeRange * first.reach, 'empty hand: the wing alone')
+  const armed = armedWith('pistol')
+  const p = DEFAULT_ITEMS.pistol
+  assert.equal(armed.pointClickReach(2), p.meleeRange * p.combo[0].reach + p.length * 2 * p.combo[0].reach, 'the item reaches its length further')
+  items.wing.pointClick = false
+  c.setItems(items)
+  assert.equal(c.pointClickReach(1), null)
+})
+
 const ammo = (c) => c.inventory[0].ammo
 const hold = (c, s, extra = {}) => { for (let t = 0; t < s; t += 0.016) step(c, { fire: true, ...extra }) }
 

@@ -22,11 +22,12 @@
 | Galinha: controles, teclado, gamepad e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
 | Galinha: controles de toque no celular (posição dos botões, deslizar entre botões, Correr com analógico, Throw ao soltar, avatar no canto) | [Controles de toque](docs/mechanics/chicken/touch.md) |
 | Pintinhos: espécie de ave menor, estilos de cor, bots que seguem a galinha, captura como almas e Pátio online | [Pintinhos](docs/mechanics/chicken/chicks.md) |
-| Personagens Pig (porco) e Ken (raposa): raças do Vestiário, estilos, classe da espécie, desenho no esqueleto da galinha | [Personagens](docs/mechanics/chicken/characters.md) |
+| Personagens Pig (porco) e Ken (raposa): raças do Vestiário, estilos, classe da espécie, desenho no esqueleto da galinha; painéis Personagem e Ajustes; limites do inventário por categoria | [Personagens](docs/mechanics/chicken/characters.md) |
 | Pátio: mundo, limites e botão Sol, parallax, portais, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
 | Pátio: Vila dos Telhados, criador de casas, pisos das fachadas, entrar nas casas pela porta (cômodo, andares, fachada que esconde quem está dentro, tiros que ficam no cômodo) | [Vila e casas](docs/mechanics/patio/houses.md) |
 | Pátio: espaço abaixo do chão, Salvar no game (Configurações do Pátio, Camadas, Câmera de Mira, Volume, Ajustes) ícones do cabeçalho dos painéis e botão de próximo item dos dropdowns | [Padrões do jogo](docs/mechanics/patio/game-defaults.md) |
 | Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, Item solto | [Editor do Pátio](docs/mechanics/patio/editor.md) |
+| Pátio: Suportes de item (tempo e limite de reposição, contador, mesa como plataforma e pouso dos itens) | [Suportes de item](docs/mechanics/patio/racks.md) |
 | Pátio: arrastar no Modo editor (Shift reto, qualquer zoom), zoom e panorama sobre elementos, camada de seleção presa à câmera | [Arraste e câmera no Modo editor](docs/mechanics/patio/editor-camera.md) |
 | Pátio: Portais de nascimento (vários lugares para nascer, chance de cada um, sorteio ao entrar) | [Portais de nascimento](docs/mechanics/patio/spawn-portals.md) |
 | Pátio: Grade de blocos do Campo minado (blocos fechados e abertos, bombas, vão, paredes, lado aberto e fechado, trocar de bloco) | [Grade de blocos](docs/mechanics/patio/mine-grid.md) |
@@ -39,6 +40,7 @@
 | Pátio: aurora no céu (Configurações do Pátio → Aurora) | [Aurora](docs/mechanics/patio/aurora.md) |
 | Pátio: brilho dos itens caídos no chão (Configurações do Pátio → Brilho dos itens: coluna de luz, contorno aceso, cor) | [Brilho dos itens](docs/mechanics/patio/item-glow.md) |
 | Pátio: mata do fundo (Configurações do Pátio → Mata: Mata ao longe e Mata perto) | [Mata](docs/mechanics/patio/forest.md) |
+| Pátio: prédios do fundo (Configurações do Pátio → Prédios: fileiras, modelos, data-centers) | [Prédios](docs/mechanics/patio/skyline.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: alinhamento da barra do inventário (Separado, Centralizado, Esquerda, Direita) e trocas de item que repetem enquanto segura | [Barra do inventário](docs/mechanics/patio/inventory-bar.md) |
@@ -59,6 +61,7 @@
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |
+| Pátio: fases de notas por zona (pedido, várias zonas ao mesmo tempo, recusa, meta de precisão e corações, parar), Jukebox, Vitrola toca-discos e Gongo como sequenciadores, Debug da fase de notas | [Fases de notas por zona](docs/mechanics/patio/note-stages.md) |
 | Pátio: zonas (nome, gravidade dos planetas, câmera lenta e raio-x), camadas (olho), tags das zonas, música ambiente (drone e percussão), zonas das cenas, paredes com vida | [Zonas e camadas](docs/mechanics/patio/zones.md) |
 | Pátio: ritmos das zonas: microtempo (swing) de cada ritmo, timbres gravados, variações, grade com notas arrastáveis, blocos de variação, knobs do painel | [Ritmos das zonas](docs/mechanics/patio/rhythms.md) |
 | Admin e catálogos locais | [Admin](docs/mechanics/admin.md) |
@@ -86,7 +89,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 26 KB |
 | [Galinha: paredes, teto, plataformas por baixo e fios](docs/mechanics/chicken/climbing.md) | 17 KB |
 | [Pintinhos: espécie, estilos, IA de seguir, captura e online](docs/mechanics/chicken/chicks.md) | 6 KB |
-| [Personagens: Pig e Ken](docs/mechanics/chicken/characters.md) | 4 KB |
+| [Personagens: Pig e Ken](docs/mechanics/chicken/characters.md) | 23 KB |
 | [Criativo e persistência](docs/mechanics/creative.md) | 14 KB |
 | [Editor de variações](docs/mechanics/editor.md) | 15 KB |
 | [Kits: revisões e reconstruções por campanha](docs/mechanics/kit-revisions.md) | 29 KB |
@@ -118,6 +121,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: Rodada do Campo minado](docs/mechanics/patio/mine-round.md) | 11 KB |
 | [Pátio: salvar/abrir, Playgrounds, Destaques](docs/mechanics/patio/lobbies.md) | 10 KB |
 | [Pátio: Baú e Chave](docs/mechanics/patio/chests.md) | 6 KB |
+| [Pátio: Suportes de item](docs/mechanics/patio/racks.md) | 4 KB |
 | [Pátio: instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) | 14 KB |
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 7 KB |

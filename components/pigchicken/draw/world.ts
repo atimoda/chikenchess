@@ -7,12 +7,13 @@ import { type Catalog } from "@/lib/pigchicken/alien-catalog"
 import { nearestPoint } from "@/lib/pigchicken/eyes"
 import { lookSpecies } from "@/lib/pigchicken/enemies"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { RACK_ITEM_START, rackCountdown } from "@/lib/pigchicken/racks"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Temple } from "@/lib/pigchicken/temple"
-import { type NoteStage } from "@/lib/pigchicken/note-stage"
-import { drawJukebox } from "@/components/pigchicken/note-stage-draw"
+import type { NoteStages } from "@/lib/pigchicken/note-stages"
+import { drawJukebox, drawVitrola } from "@/components/pigchicken/note-stage-draw"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
-import { CAMPAIGN, type Library } from "@/lib/pigchicken/song-library"
+import { CAMPAIGN, pickOf, type Library } from "@/lib/pigchicken/song-library"
 import { drawGong, drawGongTotem, drawResetStone, drawTempleAlien, type GongLook } from "@/components/pigchicken/temple-draw"
 import { lookTargets, drawBird, drawUndead, drawPerson, drawButton, drawAlien, drawZombie, drawDummy, drawDummyTip } from "./creatures"
 import { drawNote, drawPuff } from "./effects"
@@ -29,8 +30,9 @@ import { itemGlowLook, ITEM_GLOW_OFF, type ItemGlow } from "@/lib/pigchicken/ite
 import { drawHooks } from "./hook"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
-// gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the jukebox struck last (its ring)
-export const templeDraw: { temple: Temple | null; stage: NoteStage | null; charges: Map<number, number>; library: Library | null; catalog: Catalog | null; jukeRing: number; jukeLast: string; gongs: Map<string, GongLook> } = { temple: null, stage: null, charges: new Map(), library: null, catalog: null, jukeRing: 9, jukeLast: "jukebox", gongs: new Map() }
+// gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the sequencer struck last (its
+// ring); refused: the seconds since each sequencer (by its label) had a song refused, its zone busy
+export const templeDraw: { temple: Temple | null; stages: NoteStages | null; charges: Map<number, number>; library: Library | null; catalog: Catalog | null; jukeRing: number; jukeLast: string; gongs: Map<string, GongLook>; refused: Map<string, number> } = { temple: null, stages: null, charges: new Map(), library: null, catalog: null, jukeRing: 9, jukeLast: "jukebox", gongs: new Map(), refused: new Map() }
 
 // the hint over the items the local players can grab (set every frame): the first player to stand on one shows theirs
 export const pickupMarks = new Map<Pickup, { c: string; t: string }>()
@@ -71,6 +73,9 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
     ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
+    // waiting to put its item back: the time left, where the item appears
+    const left = rackCountdown(r)
+    if (left) { ctx.textBaseline = "top"; ctx.fillText(left, x, groundY - RACK_ITEM_START); ctx.textBaseline = "alphabetic" }
   })
   combat.chests.forEach(c => { if (visible(c.x, c.y + 40, 320, 520)) drawChest(ctx, c, X(c.x), t) })
   combat.seats.forEach(s => { if (!visible(s.x, s.y + 40, 320, 520)) return; if (s.kind === 'drumkit') drawDrumKit(ctx, s, X(s.x), p => combat.seatPulse(s, p)); else drawHarp(ctx, s, X(s.x)) })
@@ -122,10 +127,14 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label?.startsWith("gong:")) { const look = templeDraw.gongs.get(g.label); if (look) drawGongTotem(ctx, g, x, look); return }
-    if (g.kind === "button" && (g.label === "jukebox" || g.label?.startsWith("jukebox:"))) {
-      const st = templeDraw.stage, lib = templeDraw.library
-      const picked = lib?.songs.find(x => x.id === (st?.active ? st.song.id : lib.picked)) ?? null
-      drawJukebox(ctx, g, x, { cover: coverCanvas(picked, 96, templeDraw.catalog ?? undefined), playing: !!st?.active, color: picked?.music.zone.color ?? CAMPAIGN.color, beatPhase: combat.music.beatPhase, ring: g.label === templeDraw.jukeLast ? templeDraw.jukeRing : 9 })
+    if (g.kind === "button" && (g.label === "jukebox" || g.label?.startsWith("jukebox:") || g.label?.startsWith("vitrola:"))) {
+      // its song while it plays (on its own zone's beat), else its pick
+      const st = templeDraw.stages?.playing.find(s => s.request?.device === g.label) ?? null, lib = templeDraw.library
+      const picked = lib?.songs.find(x => x.id === (st ? st.song.id : pickOf(lib, g.label))) ?? null
+      const clock = st?.clock ?? combat.music, ring = g.label === templeDraw.jukeLast ? templeDraw.jukeRing : 9, err = templeDraw.refused.get(g.label!)
+      const color = st?.song.music.zone.color ?? picked?.music.zone.color ?? CAMPAIGN.color
+      if (g.label!.startsWith("vitrola:")) drawVitrola(ctx, g, x, { playing: !!st, beatPhase: clock.beatPhase, beat: clock.beat, ring, err, color })
+      else drawJukebox(ctx, g, x, { cover: coverCanvas(picked, 96, templeDraw.catalog ?? undefined), playing: !!st, color, beatPhase: clock.beatPhase, ring, err })
       return
     }
     if (g.kind === "zombie") { drawZombie(ctx, g, x); return }

@@ -4,7 +4,7 @@
 // invisible floors and walls the chicken's engine reads (`data-chicken-platforms`). The game's own things
 // (dummies, racks, buttons) are drawn on the game's canvas (parquinho.tsx) and only placed from here.
 import { memo, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
-import { ELEMENT_DEFS, elementBounds, elementCorners, elementFloorLine, elementOutline, isHard, layoutCollisionDepth, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
+import { ELEMENT_DEFS, elementBounds, elementCorners, elementFloorLine, elementOutline, isHard, layoutCollisionDepth, rackTable, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
 import { houseSurfaces, normalizeHouse } from "@/lib/pigchicken/houses"
 import { TRAMPOLINE_DEFAULTS, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
@@ -175,6 +175,11 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
           const tree = el.params.tree
           if (!tree.climbTrunk && !tree.walkBranches && !tree.walkCrown) return null
           return <TreeCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} rot={el.rot} tree={tree} depth={depth} />
+        }
+        // a Suporte de item's table: a platform to stand on and climb
+        if (el.kind === "rack") {
+          const t = rackTable(el)
+          return <div key={el.id} data-chicken-id={el.id} data-chicken-depth={depth} data-chicken-world-box={`${t.x},${t.y},${t.w},${t.h}`} className="absolute" style={{ left: t.x, top: t.y, width: t.w, height: t.h }} />
         }
         if (!el.solid || ELEMENT_DEFS[el.kind].entity) return null
         if (el.kind === "trampoline" && el.params.trampoline) {

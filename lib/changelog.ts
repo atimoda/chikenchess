@@ -7,23 +7,64 @@ const RECENT = [
   {
     version: '2.14.0',
     date: '18/11/2026',
-    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você',
+    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você; botão Camadas no painel do Modo editor e elementos trancados deixam o clique passar para os de trás; Prédios no fundo do Pátio (cidade, skyline flat, torres de código e data-centers) e duas árvores novas na Mata; Cor da dúvida na Grade de blocos; mesa do Suporte de item vira plataforma e contagem regressiva da reposição; painel Personagem (com a miniatura do seu boneco e a coluna Filhote) separado de Ajustes, limites do inventário por categoria e Golpe rápido de volta nos filhotes; botões do cabeçalho do Pátio centralizados no desktop; zonas das cenas embaixo do chão, pisáveis: um slam (cair de um pulo segurando Chocar) troca o valor pisado, com transição de painel de aeroporto; fases de notas por zona, com meta de precisão e corações, e a Vitrola toca-discos',
     groups: [
+      { title: 'Pátio: Prédios no fundo', items: [
+        'Categoria nova “Prédios” nas Configurações do Pátio, logo depois de Mata: até quatro fileiras de prédios ao fundo, cada uma criada a partir de um modelo (Cidade, Skyline flat, Torres de código ou Data-center) e salva com o Pátio, em todos os modos.',
+        'Cada fileira ajusta tudo: Profundidade (de quase junto do chão até atrás das montanhas), Elevação, Névoa, Altura e Largura com as suas variações, Densidade, Vãos, Aglomerado (grupos com os mais altos no meio), Recuos no topo, Anexos, Lateral (uma face estreita de topo inclinado), Coisas no teto e Antenas.',
+        'A fachada tem sete padrões: janelas, grade de linhas, listras verticais, listras horizontais, misturado, código (janelas de app com barra de três bolinhas e linhas de texto) e servidores (racks com luzinhas), com tamanho e espaço das janelas, contraste, luzes acesas e as cores da parede, da fachada e das luzes. Largos e altos, os prédios viram data-centers enormes.',
+        'A cor de cada fileira vem do céu na profundidade dela, como as montanhas, e as mais distantes ficam mais claras com a névoa. “Sortear forma” desenha outros prédios com os mesmos ajustes.',
+        'Cada fileira tem “Posição”, que escolhe entre quais montanhas e fileiras da Mata ela fica (por exemplo “Entre as Montanhas 1 e 2”), para pôr um data-center no meio das cordilheiras sem procurar a Profundidade certa.',
+      ] },
+      { title: 'Pátio: árvores novas na Mata', items: [
+        'Na Mata (Mata ao longe e Mata perto), duas formas novas de árvore: Copas em nuvem, altas e contornadas por montinhos, e Guarda-chuvas, de copa larga e achatada dobrada pelo vento, com a ponta curvada e tronco grosso em Y.',
+        'O controle Pinheiros virou quatro: Pinheiros, Copas redondas, Copas em nuvem e Guarda-chuvas, em proporção entre si (cada um mostra a parte das árvores que tem). Com os valores de antes, as fileiras continuam iguais.',
+      ] },
+      { title: 'Pátio: fases de notas por zona', items: [
+        'Cada música agora toca na zona onde começou (a Zona sonora ali, ou a cena). Zonas diferentes podem tocar músicas diferentes ao mesmo tempo, cada uma no seu tempo; você ouve a da zona onde está.',
+        'Uma zona toca uma música por vez: pedir outra ali não interrompe nada, o aparelho treme, pisca em vermelho e faz um som abafado.',
+        'Sair da zona da música por 2,5 s perde a música.',
+        'As notas vêm para o leque de quem começou a música: quem estava mais perto do Gongo, ou quem apertou Tocar.',
+        'A Jukebox e a Vitrola têm uma meta no Editar: Precisão mínima (padrão: nenhuma) e Corações (padrão 3). Os corações aparecem antes do nome da música; cada alien que chega em você tira um, com 1,4 s de proteção. Sem corações, ou terminando abaixo da precisão mínima, a música se perde.',
+        'O piu do Filhote anula notas como a Bicada.',
+        'Cada Jukebox e cada Vitrola guarda a sua música escolhida.',
+      ] },
+      { title: 'Pátio: Gongo e Vitrola toca-discos', items: [
+        'Elemento novo no grupo Música do Modo editor: Vitrola toca-discos, com corneta dourada. Funciona como a Jukebox, e a manivela gira enquanto a música toca.',
+        'O Gongo não tem mais música própria: ao completar as batidas, aperta Tocar na Jukebox ou Vitrola mais perto dele, na zona dele. Saíram os campos Música e Título do Editar dele. Sobre ele aparece só a contagem (0/5), sempre visível.',
+        'Nova caixa “Debug da fase de notas” em Camadas, que mostra o estado de cada música tocando: zona, batida, corações, afinação, acertos e precisão contra a meta.',
+      ] },
       { title: 'Pátio: tambores e pentes', items: [
         'Cada arma mostra as balas que ainda tem num HUD pequeno ao lado da mira, com um desenho por arma: tambor de revólver na Pistola, tambor de cartuchos na Escopeta, anel em trios na Submetralhadora, arcos dos lados no Rifle, uma fileira em arco na Sniper, os flancos no Lança-foguetes e um leque de flechas embaixo da mira no Arco. As balas vazias ficam só no contorno.',
         'A cada tiro a bala do HUD pula para fora e cai; na Pistola e na Escopeta o tambor gira uma câmara. No Arco, as flechas saem da direita para a esquerda, a próxima recua enquanto você carrega e sobe um pouco ao soltar. Na recarga as balas vão acendendo.',
         'Em volta da galinha, o pente aparece como um anel de balas (na Escopeta, um tambor de metal) quando você pega a arma, aperta Próxima variação (Q) ou recarrega, e some no mesmo tempo das escalas. Atirando logo em seguida dá para ver o anel girar e a bala cair.',
         'No painel Câmera de Mira, “Tambores e pentes” tem os checkboxes “Em volta” e “Na mira”, os dois ligados por padrão, salvos só para você.',
         'A Granada agora tem pente infinito: não acaba nem recarrega, só respeita a cadência. O Pandeiro continua com o pente dele.',
+        'Na recarga, a mira não mostra mais o círculo girando, em nenhum item: as balas acendendo no tambor ou pente e o clique seco ao tentar atirar já mostram que está recarregando.',
       ] },
       { title: 'Pátio: Próxima variação', items: [
         'Ação nova “Próxima variação” no painel Controles, na tecla Q (Próxima arma fica sem tecla no teclado e continua no RB). Com um instrumento na mão ela passa para a próxima escala, voltando à primeira depois da última.',
         'Próximo item, Item anterior e a rodinha do mouse agora vão direto para o próximo item, sem passar pelas escalas. Para voltar ao jeito antigo, marque “Incluir variações” na frente da ação no painel Controles. Próximo instrumento ganhou “Incluir escalas” (passa pelas escalas do instrumento da mão antes do próximo), e Próxima arma e Próximo utilitário ganharam “Incluir tambores” e “Incluir tipos”, que ainda não mudam nada.',
       ] },
+      { title: 'Pátio: clique direito point and click', items: [
+        'O botão direito do mouse agora é point and click no Golpe: clicando num ponto fora do alcance, ela anda até lá e dá o golpe nele ao chegar, em vez de golpear o ar. Dentro do alcance o golpe sai na hora, como antes. Vale para todas as armas, instrumentos, bastões e a mão vazia (Asa, Correntada e Rabada).',
+        'Cada item tem a opção “Clique direito: point and click” no painel Itens, no grupo Golpe (Golpe rápido nos bastões), ligada por padrão. Desligada, o botão direito volta a ser o golpe comum. Andar, outro Golpe ou trocar para um item com a opção desligada cancela a ida.',
+      ] },
       { title: 'Pátio: instrumentos', items: [
         'Novo ajuste “Aim Assist” (Itens → Música, de 0 a 100%, desligado por padrão) em cada instrumento. Ao tocar, se houver um inimigo na mesma célula da escala em que a mira está (a faixa do leque, a região do gráfico, o pedaço da espiral, a casa do campo harmônico, a nota do hang ou a corda), o tiro vira para ele: em 100% vai exatamente nele, sem espalhamento; em 50% vai até a metade do caminho. Sem inimigo na célula, o tiro vai onde a mira está. A célula continua além do desenho, na mesma direção. Vale para as notas, os acordes, o feixe do violino e as cordas; a Bateria não tem.',
         'O tiro do Teclado agora estoura na parede do bloco fechado em que acerta, como o foguete, em vez de atravessar os blocos e estourar longe dali. O traço do tiro termina onde ele estourou; e uma nota que quica numa parede desenha o caminho com o quique, em vez de uma linha reta até onde parou.',
         'O feixe do Violino agora para na parede de um bloco fechado e enche a barra de música dele: conta uma nota a cada semicolcheia enquanto fica ali (só do lado aberto, como as outras notas).',
+      ] },
+      { title: 'Pátio: painéis Personagem e Ajustes', items: [
+        'O antigo painel Ajustes virou Personagem, com as mesmas características dos personagens (colunas Chi, Pig e Ken). O botão dele no cabeçalho mostra a miniatura do seu próprio boneco com a skin atual, inclusive de filhote.',
+        'Novo painel Ajustes, logo ao lado, só com os ajustes universais: Notas no ritmo (quantizar), Tambores e pentes (Em volta, Na mira), que saíram da Câmera de Mira, e Debug.',
+        'Grupo novo Inventário em Personagem: o máximo de instrumentos, armas e utilitários que cada personagem carrega (0 a 30, padrão 30), com valor próprio para Chi, Pig e Ken. Com a categoria cheia, Pegar só troca pelo item da mão se ele for da mesma categoria; senão aparece “Limite de instrumentos/armas/utilitários” sobre o item. O Limite do inventário do Pátio continua valendo para o total.',
+        'Coluna nova Fil (Filhote) em Personagem, ao lado de Chi, Pig e Ken: o movimento e o tamanho do filhote (e dos pintinhos que seguem a galinha) por fator sobre a galinha, e quantos itens de cada categoria ele carrega (padrão 1 de cada).',
+        'Grupo Filhote em Personagem com uma caixa para cada limitação, todas ligadas como antes: Imortal, Itens caem ao virar filhote, Não pega bastões nem armas de golpe, Só uma Gaiola, Não arremessa, Mão vazia pia, Sem cacarejo e Campo minado: só instrumentos e bombas. Notas para crescer e Espalhada dos itens vieram para esse grupo.',
+        'O Golpe rápido voltou para os filhotes: com item na mão ele golpeia, e de mão vazia dá a bicada. A caixa “Sem Golpe rápido” traz de volta o jeito antigo (Golpe pia).',
+      ] },
+      { title: 'Pátio: Grade de blocos', items: [
+        'Cor nova “Cor da dúvida” no grupo Cores do painel Grade de blocos, laranja claro por padrão (duplo clique volta a ele): pinta as notas que caem numa bandeira, a barra que enche até a dúvida e a interrogação.',
       ] },
       { title: 'Aliens: Bullet Magnetism', items: [
         'Parâmetro novo “Bullet Magnetism” (painel Aliens → Corpo, de 0 a 100%) em cada variação: o alien puxa para si os tiros e as notas rebatidas que passam perto, mais quanto mais perto passam, e as notas fazem uma curva no caminho. Em 100% ele suga todos os tiros da tela; com mais de um em 100%, o mais perto do tiro leva.',
@@ -48,6 +89,28 @@ const RECENT = [
         'Enquanto mira com o gancho na mão, uma bolinha laranja mostra onde ele vai grudar. Sem nada ao alcance (900 px), a bolinha não aparece.',
         'Apertar Atirar de novo com o gancho fora solta o gancho na hora, e a corrente volta para a mão. Golpe dá uma pancada com o gancho, com combo, como os outros esportivos.',
         'No Pátio online, os outros players veem a corrente indo e voltando.',
+      ] },
+      { title: 'Modo editor', items: [
+        'Botão Camadas (olho) no painel do Modo editor, à direita de Zonas: abre e fecha o mesmo painel Camadas do olho do cabeçalho.',
+        'Um elemento trancado (cadeado) não atrapalha mais o clique: clicar, arrastar ou dar dois cliques em cima dele pega o elemento que está atrás ou em volta, e o contorno de passar o mouse aparece nesse de trás. Assim dá para alcançar uma camada de trás trancando a da frente, sem tirá-la do lugar. Onde não há nada além dele, o clique ainda seleciona o trancado, para destrancar.',
+      ] },
+      { title: 'Pátio: Suporte de item', items: [
+        'A mesa do Suporte de item agora é uma plataforma: dá para pousar e andar em cima dela, escalar as laterais e descer com Agachar + Pulo, como nas outras plataformas. Andando pelo chão você continua atravessando a mesa e pegando o item como antes.',
+        'Os itens também pousam no tampo das mesas: o que você larga, arremessa ou sai de um baú para em cima da mesa, e com suportes empilhados o item de cada um cai entre as pernas dele e fica em cima da mesa de baixo, em vez de todos irem parar no chão.',
+        'Enquanto um suporte espera para repor o item, aparece no lugar onde o item nasce a contagem regressiva até ele voltar, de 0,1 em 0,1 s, no mesmo texto do nome do item.',
+        'No Modo editor, um suporte (ou outro elemento) com Gravidade que cai em cima de um suporte para no tampo da mesa dele, em vez de atravessar até o chão. Soltar da paleta em cima de um suporte também apoia na mesa.',
+      ] },
+      { title: 'Pátio: botão Aliens', items: [
+        'O botão ALIENS ganhou limite de uso, no Editar do botão no Modo editor: “Limite de apertos” (1 a 50 ou ∞) a cada “A cada” (5 s a 10 min), por padrão 10 por minuto. Atingido o limite, o botão fica cinza e mostra embaixo a contagem regressiva até poder ser apertado de novo, como o Suporte de item.',
+        '“Intervalo mínimo” entre um aperto e o próximo, de 0,1 a 3 s (padrão 0,3 s): o botão fica cinza nesse intervalo.',
+      ] },
+      { title: 'Pátio: zonas das cenas pisáveis', items: [
+        'A faixa com a zona de cada cena saiu de cima do chão e ficou logo embaixo dele, com a linha de cima encostada no limite do chão principal: o cenário fica livre e a faixa marca onde o chão termina.',
+        'Os parâmetros da faixa agora são pisáveis: cair de um pulo no chão segurando Chocar (um slam), com qualquer personagem e qualquer player local, passa o parâmetro que ficou embaixo para o próximo valor da lista, como um clique nele no Modo editor. O andamento sobe de 10 em 10 e volta ao mínimo depois do máximo; o nome da zona não muda. Vale para quem pode editar o Pátio, dentro e fora do Modo editor, com a camada Zonas visível, e fica salvo no Pátio como uma mudança pelo painel.',
+        'Quando um valor das tags das zonas muda (pelo slam, pelo clique ou pelas paredes com vida), o texto antigo desce dentro da própria tag e o novo entra por cima, como num painel de aeroporto.',
+      ] },
+      { title: 'Pátio: cabeçalho', items: [
+        'No desktop, os botões do Modo editor até a Grade de blocos ficam centralizados na tela. Quando não cabem centralizados, ficam a um botão de distância dos outros grupos. No celular nada muda.',
       ] },
     ],
   },

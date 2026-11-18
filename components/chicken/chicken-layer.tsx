@@ -194,7 +194,8 @@ export function ChickenLayer({ dropIn = true, onEngine, groundHeight = CHICKEN_G
       else { engine.setSpecies(undefined); engine.setArt(null); engine.setMeter(null) }
     }
     apply(getBaby())
-    engine.setOnDown(() => setBaby({ on: true, skin: defaultBabySkin(getChickenConfig().look), bar: 0 }))
+    // (a Filhote that is not immortal and falls again keeps its skin, and its music bar starts over)
+    engine.setOnDown(() => setBaby(getBaby().on ? { bar: 0 } : { on: true, skin: defaultBabySkin(getChickenConfig().look), bar: 0 }))
     const offBaby = subscribeBaby(apply)
     const offLook = subscribeChickenConfig(() => { if (getBaby().on) apply(getBaby()) })
     return () => { offBaby(); offLook(); engine.setOnDown(null) }

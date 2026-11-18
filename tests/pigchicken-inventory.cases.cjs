@@ -692,3 +692,26 @@ test('the big bar lines up split (default), centred, left or right; the small ro
   // the small rows ignore the alignment
   assert.deepEqual(invGeom(1, groups, false, undefined, W, H, false, 0, 'split'), invGeom(1, groups, false, undefined, W, H, false, 0, 'center'))
 })
+
+test('each category has its own limit, from her class (Personagem → Inventário): over it nothing new comes in', () => {
+  const c = createCombat()
+  const feet = { x: 0, y: 1000, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0, invLimits: [1, 2, 30] }
+  const at = (over = {}) => c.step(1 / 60, feet, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...over }, [], 1000, () => {}, { world: true })
+  at()
+  c.give('flute'); c.give('sax'); c.give('pistol'); c.give('smg'); c.give('rifle'); c.give('key')
+  assert.deepEqual(names(c), ['flute', 'pistol', 'smg', 'key', null], 'one instrument, two weapons; the Pátio still has room')
+  // Pegar a new instrument while holding a weapon: refused, with a word over it
+  c.addPickup(0, 'guitar', 1000)
+  at(); at({ grab: true })
+  assert.ok(!names(c).includes('guitar'))
+  assert.ok(c.pickups.some(p => p.owned.item === 'guitar'))
+  assert.ok(c.texts.some(t => t.text === 'Limite de instrumentos'))
+  // holding the instrument, Pegar trades it (her one instrument falls)
+  at({ slot: 1 }); assert.equal(c.held.item, 'flute')
+  at(); at({ grab: true })
+  assert.deepEqual(names(c).filter(n => n !== null).slice(0, 1), ['guitar'])
+  assert.ok(c.pickups.some(p => p.owned.item === 'flute'))
+  // without her class's limits (a body that brings none) only the Pátio's counts
+  const free = createCombat(); free.give('flute'); free.give('sax')
+  assert.deepEqual(names(free), ['flute', 'sax', null])
+})

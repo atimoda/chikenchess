@@ -22,7 +22,7 @@ import { CAGES_MAX, CAGE_DENY, bringFront, cageCap, cageRoom, cageSouls, cageWit
 import { CONSUMABLE_LIMITS, DEFAULT_ITEMS, INSTRUMENT_WEAPON, bowed, hangOf, isCage, isKey, isMineItem, isStaff, pizzicato, type AccelCurve, type EffectLook, type ItemDef, type ItemId } from './items'
 import { FIRST_IN_GROUP, INVENTORY_MAX, arrivalScale, clampInventoryLimit, groupStep, scaleStep, insertSorted, itemGroup, moveToSlot, wrapSlot, type ItemGroup } from './inventory'
 import type { WeaponSound } from './sfx'
-import { rackRefillLimit, rackRespawnDelay } from './racks'
+import { RACK_ITEM_START, rackRefillLimit, rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, netIdFor, type NetHit, type NetShot } from './net-world'
 import { TAKE_WAIT, glideSoulMirror, importSouls, soulFromWho, soulWho, type NetGive, type NetSoulWho, type NetTake, type SoulMirror } from './net-souls'
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type AlienPatternDef, type EnemyEnv } from './enemies'
@@ -41,6 +41,7 @@ import { NO_EFFECTS, type ZoneEffects } from './zone-physics'
 import { chordOn, createConductor, DEGREE_COLORS, NOTE_SYMBOLS, SCALES, type PitchSet } from './music'
 import type { Drum, Held, Vibrato, VoiceId } from './synth'
 import { cleanDummyParams, dummyAnswerMidi, dummyStage, DUMMY_STAGE_MAX, type DummyParams } from './dummies'
+import { canPress, press as pressButton, stepPress, type ButtonPress } from './button-limit'
 
 export type AimKind = 'point' | 'stick' | 'none'
 // a string sounding on the Cordas soltas: its sound and its note in flight, the string's own note with the octave
@@ -214,6 +215,8 @@ export type Target = {
   face: number; state: string; animT: number; label?: string; data?: unknown
   // instruments: the harmony bar (full at maxHp converts), how long it stays still, its answer's cooldown, the tint of the last note
   harmony?: number; stun?: number; answerCool?: number; tint?: string
+  // a horde button with a limit (lib/pigchicken/button-limit.ts): its presses and the gap between them
+  press?: ButtonPress
   // the share of each hit it blocks (1 = immune right now): the temple's drums between beats, the dragon's head
   shield?: number
   // training dummies: their own params, the stage they are in, how long the tip bubble shows, the crack's jolt
@@ -259,7 +262,8 @@ export type FloatText = { x: number; y: number; text: string; life: number; colo
 export type { Swing } from './swing'
 
 // species: her class's species ('pig', 'fox'): an empty hand of theirs hits with the chain or the tail
-export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; species?: string }
+// invLimits: the most items of each category she carries (instruments, weapons, utilities; Personagem → Inventário)
+export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; species?: string; invLimits?: readonly number[] }
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
@@ -300,6 +304,11 @@ const CHEST_REACH_X = 30
 export const pickupReach = (scale: number) => ({ x: (46 * scale + 10) * 1.15, y: 60 * scale + 20 })
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
+// the Filhote's limits that the combat applies (Personagem → Filhote; lib/chicken/params.ts has the defaults)
+export type BabyRules = { noStaffs: boolean; oneCage: boolean; noMelee: boolean; piu: boolean }
+export const BABY_RULES: BabyRules = { noStaffs: true, oneCage: true, noMelee: false, piu: true }
+// a Pegar refused by the category's limit (Personagem → Inventário)
+const CATEGORY_FULL: Record<ItemGroup, string> = { 0: 'Limite de instrumentos', 1: 'Limite de armas', 2: 'Limite de utilitários' }
 const DEG = Math.PI / 180
 // a combo for an item that has none (never in the game: every item has one)
 const DEFAULT_COMBO = comboOf(110)
@@ -551,6 +560,14 @@ export function createCombat() {
   // Passaguá goes to the first slot of the utilities instead, and stays there unless the player drags it away
   const takeIn = (o: Owned) => { o.group = ownGroup(o.item); return insertSorted(inv, o, groupOf, FIRST_IN_GROUP.has(o.item)) }
   const room = () => inv.length < limit
+  // the most of a category a player carries (her class's, from her body each step; none known: only the Pátio's
+  // limit), and how many of it a list has (by the item's own category: dragging it to another group does not count)
+  const capOf = (b: Body | null | undefined, g: ItemGroup) => { const n = b?.invLimits?.[g]; return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.round(n)) : INVENTORY_MAX }
+  const countIn = (list: readonly Owned[], g: ItemGroup) => list.reduce((n, o) => n + (ownGroup(o.item) === g ? 1 : 0), 0)
+  // a free slot for a new item: the Pátio's limit and its category's (items already carried past them stay)
+  const roomFor = (item: ItemId) => { const g = ownGroup(item); return room() && countIn(inv, g) < capOf(lastBody, g) }
+  // grab with no room for it: it takes the place of the held one, unless that would put its category past its limit
+  const swapFits = (item: ItemId) => { const h = held(), g = ownGroup(item); return !!h && !h.out && (ownGroup(h.item) === g || countIn(inv, g) < capOf(lastBody, g)) }
   // the slots shown on the bar and the wheel: her items, plus the empty one while there is room
   const shown = (): (Owned | null)[] => room() ? [...inv, null] : inv.slice()
   // the held item leaves (broke, thrown): her hands are empty (the empty slot, at the end)
@@ -579,10 +596,18 @@ export function createCombat() {
     for (let i = 0; i < n; i++) { const a = rand(0, Math.PI * 2), v = rand(speed * 0.3, speed); sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rand(0.25, 0.5), max: 0.5, color, size }) }
   }
 
+  // a button can be pressed: its limit allows it (lib/pigchicken/button-limit.ts), or, without one, 0.3 s after the last press
+  const buttonFree = (t: Target) => t.flash <= 0 && (!t.press || canPress(t.press))
   function hitTarget(t: Target, damage: number, pushX: number, x: number, y: number, by: SoulWeapon | null = null) {
     if (t.deadT > 0 || damage <= 0) return
     // a button: any hit presses it
-    if (t.kind === 'button') { if (t.flash <= 0) { t.flash = 0.3; pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null) } return }
+    if (t.kind === 'button') {
+      if (!buttonFree(t)) return
+      // with a limit: pressed down for a moment, then greyed out for the rest of its gap
+      if (t.press) { pressButton(t.press); t.flash = Math.min(0.12, t.press.gap) } else t.flash = 0.3
+      pressed.push(t.label ?? ''); burst(x, y, 6, '#7bdff2', 140, 2); sound('button', null)
+      return
+    }
     // the owner's enemy: it shows the hit here and the owner decides what it does
     if (t.mirror && reportHit && t.net !== undefined) {
       t.flash = 0.12
@@ -1145,7 +1170,11 @@ export function createCombat() {
   // Cajado, Boomerang, baralhos): it never hits
   const babyHere = new Set<string>()
   const isBabyNow = () => babyHere.has(active)
-  const babyRefuses = (item: ItemId) => isBabyNow() && !isCage(item) && (isStaff(items[item]) || (ownGroup(item) === 1 && items[item].mag <= 0))
+  // which of the Filhote's limits are on (Personagem → Filhote; how many of each category: its column's Inventário)
+  let babyRules: BabyRules = { ...BABY_RULES }
+  const babyRefuses = (item: ItemId) => isBabyNow() && babyRules.noStaffs && !isCage(item) && (isStaff(items[item]) || (ownGroup(item) === 1 && items[item].mag <= 0))
+  // a Filhote with its category full: the new one takes the place of the one it had of it, which falls
+  const babySwaps = (item: ItemId) => { const g = ownGroup(item); return isBabyNow() && inv.some(o => ownGroup(o.item) === g) && countIn(inv, g) >= capOf(lastBody, g) }
   const canTake = (p: Pickup) => p.noPick <= 0 && !babyRefuses(p.owned.item) && (!!p.owned.cage || !inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
   // when the Filhote's piu can sound again
   let piuCool = 0
@@ -1173,7 +1202,7 @@ export function createCombat() {
   // the one that was there falls to the floor with its souls; Golpe and Pegar held while passing never swap
   function takeCage(p: Pickup, swap: boolean) {
     const cage = p.owned.cage!
-    if (cages.length >= (isBabyNow() ? 1 : CAGES_MAX)) {
+    if (cages.length >= (isBabyNow() && babyRules.oneCage ? 1 : CAGES_MAX)) {
       if (!swap) return false
       const old = cages[0]
       old.cage!.enterT = Infinity
@@ -1202,8 +1231,8 @@ export function createCombat() {
       addText(p.x, p.y - 30, `+${amount} ${items[stack.item].name}`, '#7bdff2')
       return true
     }
-    // a Filhote with an item of that group already: the new one takes its place and the old one falls
-    const same = isBabyNow() ? inv.findIndex(o => groupOf(o) === ownGroup(p.owned.item)) : -1
+    // a Filhote with its category full: the new one takes the place of the first of it, which falls
+    const same = babySwaps(p.owned.item) ? inv.findIndex(o => ownGroup(o.item) === ownGroup(p.owned.item)) : -1
     if (same >= 0) {
       const old = inv[same]
       if (same === cur) stopBeam()
@@ -1211,7 +1240,7 @@ export function createCombat() {
       if (cur > same || cur >= inv.length + 1) cur = Math.max(0, cur - 1)
       pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
     }
-    if (!room()) return false
+    if (!roomFor(p.owned.item)) return false
     const wasHeld = held()
     if (equip) { stopBeam(); peck = null; peckPrep = 0 }
     const limit = CONSUMABLE_LIMITS[p.owned.item]
@@ -2323,7 +2352,7 @@ export function createCombat() {
     return bestAbs === Infinity ? angle : angle + best * Math.min(1, force)
   }
 
-  // the notes in flight, once per world step: incoming ones the peck cancels, ones that reach a player or come too
+  // the notes in flight, once per world step: incoming ones the peck and the piu cancel, ones that reach a player or come too
   // late are missed; rebated ones fill the harmony of the first alien or zombie they meet
   function stepNoteShots(dt: number, ctx: StepCtx) {
     for (let i = noteShots.length - 1; i >= 0; i--) {
@@ -2333,6 +2362,13 @@ export function createCombat() {
       n.t += dt; n.x += n.vx * dt; n.y += n.vy * dt
       if (n.state === 'incoming') {
         if (parryAt(n.x, n.y, n.size, n.color)) { noteEvents.push({ kind: 'parry', shot: n, player: parriedBy }); noteShots.splice(i, 1); continue }
+        // the Filhote's piu cancels it too, like the peck (the piu's note stops there)
+        const pi = bullets.findIndex(b => b.item === 'piu' && Math.hypot(b.x - n.x, b.y - n.y) < b.size + n.size + 6)
+        if (pi >= 0) {
+          puffs.push({ x: n.x, y: n.y, t: 0, life: PUFF_LIFE, seed: Math.random(), color: n.color }); sound('puff', null)
+          noteEvents.push({ kind: 'parry', shot: n, player: bullets[pi].by ?? '' })
+          bullets.splice(pi, 1); noteShots.splice(i, 1); continue
+        }
         // it can still be rebated a little after it should have arrived (it flies on into her): touching a player
         // only counts once it is past the good window
         const late = music.time - n.arriveAt
@@ -2429,7 +2465,7 @@ export function createCombat() {
       hit.tint = color
       if (Math.random() < dt * 10) sparks.push({ x, y, vx: rand(-60, 60), vy: rand(-120, -30), life: 0.4, max: 0.4, color, size: 3 })
       if ((hit.answerCool ?? 0) <= 0 && hit.kind !== 'dummy' && hit.kind !== 'button') harmonize(hit, 0.0001, 0, x, y, note, d.stun, h.item)
-      if (hit.kind === 'button' && hit.flash <= 0) hitTarget(hit, 1, 0, x, y)
+      if (hit.kind === 'button' && buttonFree(hit)) hitTarget(hit, 1, 0, x, y)
       if (!hit.dummy && (hit.harmony ?? 0) >= hit.maxHp) { markSoul(hit, note, h.item); fullHarmony(hit, note) }
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
@@ -2582,7 +2618,8 @@ export function createCombat() {
     for (const p of pickups) {
       if (p.owned.cage || !p.resting || p.noPick > 0 || Math.hypot(p.x - her.x, p.y - her.y) < SOUL_ACT.fetch.near * her.scale || racks.some(r => r.pickupId === p.id) || freed.some(o => o.job?.item === p)) continue
       const has = hers.find(o => o.item === p.owned.item)
-      if (has ? has.ammo >= (CONSUMABLE_LIMITS[has.item] ?? 0) : hers.length >= limit) continue
+      const g = ownGroup(p.owned.item)
+      if (has ? has.ammo >= (CONSUMABLE_LIMITS[has.item] ?? 0) : hers.length >= limit || countIn(hers, g) >= capOf(f.owner === active ? lastBody : loadouts.get(f.owner)?.lastBody, g)) continue
       const d = Math.hypot(p.x - f.x, p.y - f.y)
       if (d < near) { near = d; best = p }
     }
@@ -2724,6 +2761,8 @@ export function createCombat() {
     setBabies(list: { by?: string; box: BlastBox; fill: () => void }[]) { babies = list },
     /** Whether the local player `id` is a Filhote (what it can carry and do). */
     setBaby(id: string, on: boolean) { if (on) babyHere.add(id); else babyHere.delete(id) },
+    /** Which of the Filhote's limits are on (Personagem → Filhote). */
+    setBabyRules(rules: Partial<BabyRules>) { babyRules = { ...BABY_RULES, ...rules } },
     /** The active player becomes a Filhote: every item and Gaiola she had falls around her, up to `spread` px away. */
     dropAll(spread: number) {
       standUp()
@@ -2865,6 +2904,15 @@ export function createCombat() {
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
     get kick() { return kick },
     get swing() { return swing },
+    // the reach of the next Golpe (the held item's, or the empty hand's blow) when its point-and-click is on (right
+    // button, Itens → Golpe): the Pátio walks her toward a clicked point farther than this before the blow; null: off
+    pointClickReach(scale: number) {
+      const h = held(), d = h ? items[h.item] : bareDef()
+      if (!d.pointClick || seated) return null
+      const order = d.combo.length ? d.combo : DEFAULT_COMBO
+      const step = order[Math.max(0, nextCombo(swingCombo, swingGap, d.comboWindow, order.length)) % order.length]
+      return d.meleeRange * step.reach + (h ? d.length * scale * step.reach : 0)
+    },
     get puffs() { return puffs as readonly Puff[] },
     get parryZones() { return [...parryZones.values()] },
     // a damaging note or projectile at (x, y), radius r: a peck defending there cancels it in a little cloud
@@ -2905,7 +2953,7 @@ export function createCombat() {
     get hover() { return hover },
     get hoverOwned() { return hoverOwned },
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
-    get hoverSwaps() { return hover?.owned.cage ? cages.length >= CAGES_MAX : !room() && !inv.some(o => o.item === hover?.owned.item) },
+    get hoverSwaps() { return hover?.owned.cage ? cages.length >= CAGES_MAX : !(hover ? roomFor(hover.owned.item) : room()) && !inv.some(o => o.item === hover?.owned.item) },
     // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
     // the class of the body it last stepped (Pig's and Ken's items have their own Pontos)
     get species() { return lastBody?.species },
@@ -3009,7 +3057,7 @@ export function createCombat() {
       for (let k = 0; k < n; k++) {
         const stack = inv.find(o => o.item === item)
         if (stack) { stack.ammo = Math.min(CONSUMABLE_LIMITS[item] ?? 1, stack.ammo + 1); continue }
-        if (!room()) return
+        if (!roomFor(item)) return
         if (takeIn({ ...fresh(item), ammo: 1 }) <= cur) cur++
       }
     },
@@ -3026,7 +3074,7 @@ export function createCombat() {
       peck = null; peckPrep = 0
       const stack = inv.find(o => o.item === item)
       if (stack) { if (CONSUMABLE_LIMITS[item]) stack.ammo = Math.min(CONSUMABLE_LIMITS[item]!, stack.ammo + 1); return }
-      if (!room()) return
+      if (!roomFor(item)) return
       stopBeam(); cur = takeIn(fresh(item)); sound('equip', item)
     },
     setItems(next: Record<ItemId, ItemDef>) {
@@ -3321,7 +3369,7 @@ export function createCombat() {
       // starts again as if the button had just been pressed.
       const hNow = held()
       // a Filhote never hits: Golpe with the hand empty is its piu (below)
-      if (input.melee && meleeCool <= 0 && !isBabyNow() && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
+      if (input.melee && meleeCool <= 0 && !(isBabyNow() && babyRules.noMelee) && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
       // a strong blow being charged is called off by Golpe (the quick blow comes out instead), by another item in
       // the wing and by a Throw
       if (heavyItem && (heavyCancel || input.melee || heavyItem !== (hNow ?? BARE) || input.throwHeld)) { heavyItem = null; heavyT = 0 }
@@ -3417,9 +3465,9 @@ export function createCombat() {
       const canFire = body.state !== 'slide' || d.slideFire
       if (effects.length) { effects.forEach(e => { e.left -= dt }); effects = effects.filter(e => e.left > 0) }
       piuCool = Math.max(0, piuCool - dt)
-      if (!h && isBabyNow()) {
-        // the Filhote's empty hand: Atirar or Golpe peeps a small note that flies a little way
-        if ((input.firePressed || input.melee) && !input.cancelFire && piuCool <= 0 && body.state !== 'held' && !body.state.startsWith('portal')) {
+      if (!h && isBabyNow() && babyRules.piu) {
+        // the Filhote's empty hand: Atirar (and Golpe, while it has no quick blow) peeps a small note that flies a little way
+        if ((input.firePressed || (input.melee && babyRules.noMelee)) && !input.cancelFire && piuCool <= 0 && body.state !== 'held' && !body.state.startsWith('portal')) {
           piu(opts.peckOrigin ?? origin, targetAngle)
           piuCool = 1 / Math.max(0.2, items.piu.rate)
         }
@@ -3696,7 +3744,7 @@ export function createCombat() {
       const grabNow = fullCage ? cageSwap : !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
       // an item offered at her body (to take or to equip) goes before a Baú
       const itemOffered = !!hover || !!hoverOwned
-      if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || room() || (held() && !held()!.out) || inv.some(o => o.item === hover!.owned.item))) {
+      if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || roomFor(hover.owned.item) || swapFits(hover.owned.item) || babySwaps(hover.owned.item) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
         pickups.splice(at, 1)
         const picked = pickUp(g, !meleePickup)
@@ -3707,6 +3755,8 @@ export function createCombat() {
           heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
         }
       }
+      // no room in its category and nothing of it in her wing to trade: a word over it says why it stays
+      else if (input.grab && hover && !hover.owned.cage && !hoverOwned && room()) addText(hover.x, hover.y - 30, CATEGORY_FULL[ownGroup(hover.owned.item)], '#c9ced6')
       else if (input.grab && hoverOwned && !input.grabRun) {
         // the same item is in her inventory: grab equips it (the one on the floor stays);
         // not when the press is Correr's own key, so running over her items never swaps the one in her hand
@@ -3746,7 +3796,7 @@ export function createCombat() {
           const active = pickups.find(p => p.id === r.pickupId)
           if (active) {
             if (r.spawnX !== r.x || r.spawnY !== r.y) {
-              active.x = r.x; active.y = (r.y ?? groundY) - 60; active.vy = 0; active.resting = false
+              active.x = r.x; active.y = (r.y ?? groundY) - RACK_ITEM_START; active.vy = 0; active.resting = false
               r.spawnX = r.x; r.spawnY = r.y
             }
             r.t = 0; return
@@ -3760,7 +3810,7 @@ export function createCombat() {
         if (r.t + 1e-9 >= r.respawnDelay) {
           r.pickupId = nextId++; r.given++
           r.spawnX = r.x; r.spawnY = r.y
-          pickups.push({ id: r.pickupId, owned: fresh(r.item, r.cageSouls), x: r.x, y: (r.y ?? groundY) - 60, vy: 0, resting: false, noPick: 0 }); r.t = 0
+          pickups.push({ id: r.pickupId, owned: fresh(r.item, r.cageSouls), x: r.x, y: (r.y ?? groundY) - RACK_ITEM_START, vy: 0, resting: false, noPick: 0 }); r.t = 0
         }
       })
 
@@ -3812,6 +3862,7 @@ export function createCombat() {
         if (t.kind !== 'dummy' && t.kind !== 'button') return
         const dt = tdt(t)
         t.flash = Math.max(0, t.flash - dt)
+        if (t.press) stepPress(t.press, dt)
         if (t.kind === 'button') return
         t.wobble *= Math.pow(0.02, dt)
         t.x += t.vx * dt; t.vx *= Math.pow(0.004, dt)

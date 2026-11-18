@@ -22,6 +22,7 @@ export type MineGridParams = {
   fuse: number // the detonator's time, s
   startBombs: number // bombs in the inventory of whoever is born on the closed side
   grey: string; blue: string; red: string // the seesaw's colours
+  orange: string // "Cor da dúvida": the notes over a flag, their bar and the question mark
   wallOpacity: number // "Opacidade das paredes": how opaque the closed blocks are drawn, whole percents
   corner: number // "Cantos em octógono": how much of each block's corners is cut, whole percents (100: a regular octagon)
   zones: MineZoneParams // "Blocos são zonas sonoras" (mine-zone-params.ts, mine-zones.ts)
@@ -34,7 +35,7 @@ export const MINE_NOTES = { min: 4, max: 200, step: 1, default: 24 } as const
 export const MINE_DAMAGE = { min: 0, max: 5000, step: 50, default: 600 } as const
 export const MINE_FUSE = { min: 0, max: 60, step: 1, default: 10 } as const
 export const MINE_START_BOMBS = { min: 0, max: 10, step: 1, default: 2 } as const
-export const MINE_COLORS = { grey: '#8f98a3', blue: '#4d9bff', red: '#ff5a5a' } as const
+export const MINE_COLORS = { grey: '#8f98a3', blue: '#4d9bff', red: '#ff5a5a', orange: '#ffb366' } as const
 export const MINE_CELL = { min: 120, max: 960, step: 8, default: 288 } as const
 export const MINE_GAP = { min: 0, max: 200, step: 4, default: 32 } as const
 export const MINE_BOMBS = { min: 0, max: 60, step: 1, default: 15 } as const
@@ -62,7 +63,7 @@ export function normalizeMineGrid(raw: unknown): MineGridParams | undefined {
     pass: p.pass !== false, bombs: snap(num(p.bombs, d.bombs), MINE_BOMBS),
     blockNotes: p.blockNotes === true, toFlag: snap(num(p.toFlag, d.toFlag), MINE_NOTES), toOpen: snap(num(p.toOpen, d.toOpen), MINE_DAMAGE), insideBreaks: p.insideBreaks !== false, toDoubt: snap(num(p.toDoubt, d.toDoubt), MINE_NOTES),
     turn: turnOf(p.turn), fuse: snap(num(p.fuse, d.fuse), MINE_FUSE), startBombs: snap(num(p.startBombs, d.startBombs), MINE_START_BOMBS),
-    grey: color(p.grey, d.grey), blue: color(p.blue, d.blue), red: color(p.red, d.red),
+    grey: color(p.grey, d.grey), blue: color(p.blue, d.blue), red: color(p.red, d.red), orange: color(p.orange, d.orange),
     wallOpacity: snap(num(p.wallOpacity, d.wallOpacity), MINE_WALL_OPACITY), corner: snap(num(p.corner, d.corner), MINE_CORNER),
     zones: normalizeMineZones(p.zones),
   }

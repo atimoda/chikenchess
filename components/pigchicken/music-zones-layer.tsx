@@ -1,12 +1,14 @@
 "use client"
 
-// The "Zonas sonoras" layer (the header's eye, or the editor palette's button): each scene's own zone in a band on
-// its floor, each Zona sonora painted with its colour, the surfaces that rebate notes outlined in gold and the fixed
+// The "Zonas sonoras" layer (the header's eye, or the editor palette's button): each scene's own zone in a band right
+// under the main ground (its top against the ground's line), stepped on by slams (zone-slam.ts: falling onto the
+// ground holding Chocar moves the tag under the player to its next value, for whoever may edit the Pátio), each Zona sonora painted with its colour, the surfaces that rebate notes outlined in gold and the fixed
 // lanes' notes, all over the world and following the camera. The zones' labels are their tags (zone-tags.tsx):
 // editable in the editor, only shown otherwise. Outside the editor the zones show as they play now (with the changes
 // their walls made and their life). In the editor the limits are dragged: the sides of each Zona sonora and the
 // line between two scenes' zones.
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
+import { onZoneSlam, sceneAtX, tagUnder, type TagSpan, type ZoneTagKey, nextZoneTag } from "@/lib/pigchicken/zone-slam"
 import { elementBounds, type LayoutElement } from "@/lib/pigchicken/layout"
 import { followCamera, liveCamera } from "@/lib/pigchicken/live-camera"
 import { cn } from "@/lib/utils"
@@ -108,13 +110,15 @@ function BlockZones({ screens, sceneZones, sceneEdges }: { screens: number; scen
 }
 
 // sceneMusic: false when the Pátio turned the scenes' own zones off (their strips are not shown)
-export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, onSceneEdge = noop, onResizeZones = noop, opacity = 1 }: {
+// onSlam: a slam stepped on a scene's tag (only for whoever may edit the Pátio: without it slams change nothing)
+export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, onSceneEdge = noop, onResizeZones = noop, onSlam, opacity = 1 }: {
   elements: LayoutElement[]; screens: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; editable: boolean
   // a dragged limit: between scene - 1 and scene, at world x; or the zones' new boxes
   onSceneEdge?: (scene: number, x: number, step: string) => void; onResizeZones?: (changes: ZoneResize[], step: string) => void
   onZone?: (el: LayoutElement, zone: SoundZoneParams, step?: string) => void
   onScene?: (scene: number, zone: SoundZoneParams, step?: string) => void
   onOpenZone?: (el: LayoutElement) => void; onOpenScene?: (scene: number) => void
+  onSlam?: (scene: number, zone: SoundZoneParams, step: string) => void
   // how strongly the layer shows (the layers menu's Zonas slider)
   opacity?: number
 }) {
@@ -126,6 +130,22 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
   // where each scene's zone starts and ends (a Pátio may move the limits between them)
   const xs = sceneEdgeList(sceneEdges, screens)
   const zoneEls = elements.filter(e => e.kind === "zone" && e.params.zone)
+  // a slam at world x: the scene's strip under it, the tag under it measured where it is drawn, and its next value
+  const slam = useRef({ onSlam, sceneZones, xs, temple, sceneMusic })
+  useEffect(() => { slam.current = { onSlam, sceneZones, xs, temple, sceneMusic } })
+  useEffect(() => onZoneSlam(x => {
+    const { onSlam: save, sceneZones: zones, xs: edges, temple: t, sceneMusic: on } = slam.current
+    const s = sceneAtX(edges, x), origin = ref.current
+    if (!save || !on || s < 0 || s === t || !origin) return
+    const o = origin.getBoundingClientRect(), z = liveCamera.zoom || 1
+    const tags: TagSpan[] = Array.from(origin.querySelectorAll<HTMLElement>(`[data-scene-strip="${s}"] [data-zone-tag]`), el => {
+      const r = el.getBoundingClientRect()
+      return { key: el.dataset.zoneTag as ZoneTagKey, l: (r.left - o.left) / z, r: (r.right - o.left) / z, top: (r.top - o.top) / z }
+    })
+    const tag = tagUnder(tags, x)
+    const next = tag && nextZoneTag(sceneZoneParams(zones, s), tag.key)
+    if (next) save(s, next, `slam:${s}:${tag.key}:${Math.round(performance.now())}`)
+  }), [])
   return (
     <div aria-label="Zonas" className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
       <div ref={ref} className="absolute left-0 top-0">
@@ -134,7 +154,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
           if (s === temple) {
             const z = TEMPLE_IDLE
             return (
-              <div key={s} className="absolute" style={{ left: s * SCENE_W, top: WORLD_GROUND_Y - 30, width: SCENE_W, height: 30, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
+              <div key={s} className="absolute" style={{ left: s * SCENE_W, top: WORLD_GROUND_Y, width: SCENE_W, height: 30, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
                 <span className="absolute left-3 top-1 whitespace-nowrap font-mono text-[13px] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]" style={{ color: z.color }}>Cena {s + 1} · {zoneLabel(z)}</span>
               </div>
             )
@@ -142,8 +162,8 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
           if (!sceneMusic) return null
           const z = sceneZoneParams(sceneZones, s)
           return (
-            <div key={s} className="absolute" style={{ left: xs[s], top: WORLD_GROUND_Y - 32, width: xs[s + 1] - xs[s], height: 32, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
-              <div className="absolute left-2 top-0.5 flex max-w-[calc(100%-16px)] flex-wrap gap-1">
+            <div key={s} className="absolute" style={{ left: xs[s], top: WORLD_GROUND_Y, width: xs[s + 1] - xs[s], height: 32, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
+              <div data-scene-strip={s} className="absolute left-2 top-0.5 flex max-w-[calc(100%-16px)] flex-wrap gap-1">
                 <ZoneTags zone={z} scene sceneLabel={`Cena ${s + 1}`} editable={editable} onChange={(zone, step) => onScene(s, zone, step && `${step}:cena${s}`)} onOpen={() => onOpenScene(s)} />
               </div>
             </div>
@@ -152,7 +172,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
         <BlockZones screens={screens} sceneZones={sceneZones} sceneEdges={sceneEdges} />
         {/* the limit between two scenes' zones, from the ground to over the tallest ceiling */}
         {editable && sceneMusic && Array.from({ length: Math.max(0, screens - 1) }, (_, i) => i + 1).map(s => (
-          <div key={`limite${s}`} className="absolute border-l border-dashed border-white/40" style={{ left: xs[s], top: WORLD_GROUND_Y - LIMIT_H, height: LIMIT_H, width: 0 }}>
+          <div key={`limite${s}`} className="absolute border-l border-dashed border-white/40" style={{ left: xs[s], top: WORLD_GROUND_Y - LIMIT_H, height: LIMIT_H + 32, width: 0 }}>
             <LimitHandle axis="x" origin={ref} title={`Arrastar o limite entre as zonas das cenas ${s} e ${s + 1}`} style={{ left: -6, top: 0, bottom: 0, width: 12 }} onMove={(x, step) => onSceneEdge(s, x, step)} />
           </div>
         ))}

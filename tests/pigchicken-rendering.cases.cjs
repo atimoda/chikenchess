@@ -117,14 +117,13 @@ test('optional trajectories wake for visible paths/landings and preserve the bow
   assert.equal(trajectoryVisible('hold', true, false), true)
   assert.equal(trajectoryVisible('always', false, false), true)
   for (const kind of ['laser', 'bow', 'impact', 'grenade']) {
-    assert.equal(needsTrajectory(kind, false, false, false), false, kind)
-    assert.equal(needsTrajectory(kind, true, false, false), true, kind)
+    assert.equal(needsTrajectory(kind, false, false), false, kind)
+    assert.equal(needsTrajectory(kind, true, false), true, kind)
   }
-  assert.equal(needsTrajectory('impact', false, true, false), true)
-  assert.equal(needsTrajectory('grenade', false, true, false), true)
-  assert.equal(needsTrajectory('laser', false, true, false), false)
-  assert.equal(needsTrajectory('bow', false, false, true), true)
-  assert.equal(needsTrajectory('impact', false, false, true), false)
+  assert.equal(needsTrajectory('impact', false, true), true)
+  assert.equal(needsTrajectory('grenade', false, true), true)
+  assert.equal(needsTrajectory('laser', false, true), false)
+  assert.equal(needsTrajectory('bow', false, true), false)
 })
 
 test('canvas budget limits touch/lite devices while retaining the desktop DPR cap', () => {

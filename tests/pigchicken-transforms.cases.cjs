@@ -201,7 +201,7 @@ test("in the stage the fan fixes the note and the taco ornaments it (unless the 
   st.state.phase = 'playing'
   const c = st.state.center
   const ang = fan.fanAngleOf(stageLib.TEST_SONG.fan, 74)
-  const shot = { x: c.x + Math.cos(ang) * 70, y: c.y + Math.sin(ang) * 70, midi: 62, source: 'stage' }
+  const shot = { x: c.x + Math.cos(ang) * 70, y: c.y + Math.sin(ang) * 70, midi: 62, source: st.source }
   const env = st.noteEnv(shot)
   assert.equal(env.base, 74)
   assert.equal(env.rule, 'ambiente-taco')

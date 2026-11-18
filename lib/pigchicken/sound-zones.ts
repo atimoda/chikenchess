@@ -193,6 +193,13 @@ export function soundZoneOf(id: string, p: SoundZoneParams, solo: number | null 
 export type SceneZones = Record<string, SoundZoneParams>
 export const sceneZoneBase = (s: number) => defaultSoundZone(ZONES[((s % ZONES.length) + ZONES.length) % ZONES.length])
 export const sceneZoneParams = (zones: SceneZones | undefined, s: number) => zones?.[String(s)] ?? sceneZoneBase(s)
+// the scenes' zones with one set (null: back to the scene's own, in silence); undefined when none is left
+export function withSceneZone(zones: SceneZones | undefined, scene: number, zone: SoundZoneParams | null): SceneZones | undefined {
+  const out = { ...zones }
+  if (zone) out[String(scene)] = asSceneZone(zone)
+  else delete out[String(scene)]
+  return Object.keys(out).length ? out : undefined
+}
 // what a scene's zone keeps of a Zona sonora: no walls and no priority of its own
 export const asSceneZone = (z: SoundZoneParams): SoundZoneParams => ({ ...z, life: 0, priority: 1 })
 export function normalizeSceneZones(raw: unknown, maxScene: number): SceneZones | undefined {

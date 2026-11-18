@@ -10,7 +10,7 @@ import { StepSelect } from "@/components/ui/step-select"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Eye, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PortalTargetFields } from "./portal-target-fields"
 import { isFreeBlock, isSpawnPortal, rebalanceSpawnPortals, setSpawnChance, spawnChances, spawnPortalsOf } from "@/lib/pigchicken/spawn-portals"
@@ -23,6 +23,7 @@ import { isFixedKind } from "@/lib/pigchicken/fixed-instruments"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_STEPS, RACK_REFILL_MAX } from "@/lib/pigchicken/racks"
+import { pressRules, PRESS_GAP, PRESS_LIMIT_MAX, PRESS_WINDOW_STEPS } from "@/lib/pigchicken/button-limit"
 import { CAGE_IDS, CAGE_SOULS_MAX, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, MINE_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, isCage, loadItems, type ItemId } from "@/lib/pigchicken/items"
 import { addChestItem, CHEST_GLOW, CHEST_RARITIES, defaultChest, type ChestRarity } from "@/lib/pigchicken/chests"
 import { ChestFields, ItemOptGroups } from "./chest-fields"
@@ -35,7 +36,7 @@ import { BackdropPin, type BackdropScene } from "./backdrop-pin"
 import { ELEMENT_DEPTH, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, dropLinks, linkedTo, spreadPower, toggleLink, type PowerParams } from "@/lib/pigchicken/power-lines"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES } from "@/lib/pigchicken/music"
-import { asSceneZone, defaultSoundZone, moveSceneEdge, sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
+import { defaultSoundZone, moveSceneEdge, sceneZoneParams, type SceneZones, type SoundZoneParams, withSceneZone } from "@/lib/pigchicken/sound-zones"
 import { LanesFields, SoundZoneFields, SurfaceRebateFields } from "./sound-zone-panels"
 import { MusicZonesLayer, type ZoneResize } from "./music-zones-layer"
 import { DepthLayer, ElementArt } from "./patio-layout"
@@ -48,10 +49,9 @@ import { SurfacePoints } from "./surface-points"
 import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
 import { CHALK_TEXT_MAX, DEMO_IDS, GHOST_OFFSET, GHOST_REACH, TRAINING_DEMOS, chalkboardForDemo, type ChalkboardParams, type DemoId } from "@/lib/pigchicken/chalkboard"
-import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, GONG_TITLE_MAX, defaultGong, type GongParams } from "@/lib/pigchicken/gong"
+import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, PLAYER_ACCURACY, PLAYER_HEARTS, defaultGong, defaultPlayer, type GongParams, type PlayerParams } from "@/lib/pigchicken/gong"
 import { BUILDING_COLUMNS, BUILDING_LANTERNS, BUILDING_ROOFS, defaultBuilding, type BuildingParams } from "@/lib/pigchicken/buildings"
 import { BalustradeArt, BuildingArt } from "./building-art"
-import { loadLibrary, subscribeLibrary } from "@/lib/pigchicken/song-library"
 import { EditorDock, useEditorDocked } from "./editor-dock"
 
 const UI = "header, aside, button, input, select, textarea, a, label, [data-chicken-ignore], [role='dialog']"
@@ -98,7 +98,9 @@ const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 // soundLayer: the "Zonas sonoras" layer (shared with the header's eye), editable here
 // active: the switch in the panel's title; off, the panel stays open and its cards still place elements, but the
 // elements cannot be selected, moved or edited and the Pátio plays as outside the editor
-export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, active = true, onActive, palette = true, me, signedIn = false }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, layersOpen = false, onLayers, active = true, onActive, palette = true, me, signedIn = false }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void
+  // the header's Camadas panel (layer-eyes.tsx), opened from the palette too
+  layersOpen?: boolean; onLayers?: () => void
   // who makes a Pátio new from a portal's Destino (the account, or this browser) and whether it may be saved/named
   me: string; signedIn?: boolean }) {
   const history = useHistory(layout, onChange)
@@ -146,10 +148,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }, [commit, screens])
   // a scene's own zone, saved in the Pátio's settings (null: back to the scene's own, in silence)
   const setSceneZone = useCallback((scene: number, zone: SoundZoneParams | null, step?: string) => {
-    const cur = layoutRef.current, zones = { ...cur.settings?.sceneZones }
-    if (zone) zones[String(scene)] = asSceneZone(zone)
-    else delete zones[String(scene)]
-    const settings = { ...cur.settings, sceneZones: Object.keys(zones).length ? zones : undefined }
+    const cur = layoutRef.current
+    const settings = { ...cur.settings, sceneZones: withSceneZone(cur.settings?.sceneZones, scene, zone) }
     if (!settings.sceneZones) delete settings.sceneZones
     commit({ ...cur, settings }, step)
   }, [commit])
@@ -284,9 +284,32 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }, [select])
 
   // ---------- gestures on the selected element: move, resize, turn ----------
-  const begin = (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => {
+  // A locked element does not hold the click: a press, a double click or the hover on it go to the first unlocked
+  // element under the pointer (behind it, or around it inside its box), the way to reach a layer behind without
+  // moving the one in front. Only with nothing else there does it take the click itself (to be selected and
+  // unlocked). While wiring, a locked pole or tower of the selected one's kind still takes it.
+  const through = useCallback((el: LayoutElement, x: number, y: number) => {
+    if (!el.locked || (linkingRef.current && el.id !== selectedRef.current && layoutRef.current.elements.find(e => e.id === selectedRef.current)?.kind === el.kind)) return el
+    for (const n of document.elementsFromPoint(x, y)) {
+      const id = n.getAttribute("data-patio-hit")
+      if (!id || id === el.id || n.hasAttribute("data-locked")) continue
+      const hit = layoutRef.current.elements.find(e => e.id === id)
+      if (hit) return hit
+    }
+    return el
+  }, [])
+  const passed = useRef<Element | null>(null)
+  const peek = useCallback((el: LayoutElement, e: React.PointerEvent | null) => {
+    const box = e?.currentTarget as Element | undefined
+    const to = e && !gesture.current ? through(el, e.clientX, e.clientY) : el
+    const node = to === el ? null : document.querySelector(`[data-patio-hit="${CSS.escape(to.id)}"]`)
+    if (passed.current !== node) { passed.current?.removeAttribute("data-under"); node?.setAttribute("data-under", ""); passed.current = node }
+    if (box) { if (node) box.setAttribute("data-through", to.id === selectedRef.current ? "move" : "pick"); else box.removeAttribute("data-through") }
+  }, [through])
+  const begin = (kind: Gesture["kind"], at: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault(); e.stopPropagation()
+    const el = kind === "move" ? through(at, e.clientX, e.clientY) : at
     // wiring: another pole or tower of the same kind is wired to the selected one (or unwired); a new wire moves
     // the selection to it, to go on with the line
     const from = selectedRef.current
@@ -387,8 +410,12 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         [data-patio-hit] { cursor: pointer; }
         [data-patio-hit]:hover { outline: 1px solid rgba(255,209,102,.7); outline-offset: 2px; }
         [data-patio-hit][data-sel] { outline: 2px solid #ffd166; outline-offset: 2px; cursor: move; }
-        [data-patio-hit][data-sel][data-locked] { outline-color: #9aa0a8; cursor: not-allowed; }
+        [data-patio-hit][data-sel][data-locked] { outline-color: #9aa0a8; cursor: default; }
         [data-patio-hit][data-link] { outline: 1px dashed rgba(123,223,242,.8); outline-offset: 2px; cursor: crosshair; }
+        [data-patio-hit][data-locked][data-through]:not([data-sel]):hover { outline: none; }
+        [data-patio-hit][data-locked][data-through="pick"] { cursor: pointer; }
+        [data-patio-hit][data-locked][data-through="move"] { cursor: move; }
+        [data-patio-hit][data-under]:not([data-sel]) { outline: 1px solid rgba(255,209,102,.7); outline-offset: 2px; }
         [data-patio-hit][data-link="on"] { outline: 2px solid #7bdff2; }
         .patio-corner { position: absolute; width: 28px; height: 28px; touch-action: none; display: grid; place-items: center; }
         .patio-corner span { width: 12px; height: 12px; border: 0 solid #ffd166; }
@@ -398,7 +425,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         <div ref={worldRef} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
           {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => {
             const link = linking && sel && el.id !== sel.id && el.kind === sel.kind ? (wired.has(el.id) ? "on" : "can") : undefined
-            const box = <HitBox key={el.id} el={el} selected={el.id === selected} link={link} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
+            const box = <HitBox key={el.id} el={el} selected={el.id === selected} link={link} begin={begin} onMove={onMove} onUp={onUp} edit={edit} through={through} peek={peek} />
             // in a parallax depth its handle slides with it
             return el.depth ? <DepthLayer key={el.id} depth={el.depth} pinned={!!el.backdrop}>{box}</DepthLayer> : box
           })}
@@ -438,7 +465,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
-        onScene={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
+        onScene={setSceneZone} onSlam={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
       {active && soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
         <SceneZonePanel key={scenePanel} scene={scenePanel} zones={layout.settings?.sceneZones} onChange={(zone, step) => setSceneZone(scenePanel, zone, step && `${step}:cena${scenePanel}`)}
           onReset={() => setSceneZone(scenePanel, null)} onClose={() => setScenePanel(null)} />
@@ -450,7 +477,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           return { ...createElement("tree", 0, 0, { tree: next.tree }), w: next.w, h: next.h }
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
-        soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer}
+        soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer} layersOpen={layersOpen} onLayers={onLayers}
         floorBelow={floorBelow} chestAt={chestAt} onInsert={insertInChest} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />}
       {palette && draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
@@ -465,10 +492,11 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
 }
 
 // one element's hit area (turned like it) with its corners when selected
-const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, edit }: {
+const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, edit, through, peek }: {
   el: LayoutElement; selected: boolean; link?: "on" | "can"
   begin: (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => void
   onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void; edit: (el: LayoutElement) => void
+  through: (el: LayoutElement, x: number, y: number) => LayoutElement; peek: (el: LayoutElement, e: React.PointerEvent | null) => void
 }) {
   const d = ELEMENT_DEFS[el.kind]
   return (
@@ -482,10 +510,11 @@ const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, e
       className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry" || el.kind === "spawn") && "z-[1]")}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
-      onPointerMove={onMove}
+      onPointerMove={e => { onMove(e); if (el.locked) peek(el, e) }}
+      onPointerLeave={() => peek(el, null)}
       onPointerUp={onUp}
       onPointerCancel={onUp}
-      onDoubleClick={e => { e.stopPropagation(); edit(el) }}
+      onDoubleClick={e => { e.stopPropagation(); edit(through(el, e.clientX, e.clientY)) }}
       onContextMenu={e => e.preventDefault()}
     >
       {selected && !el.locked && d.resizable && ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as [number, number][]).map(([sx, sy]) => (
@@ -805,6 +834,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
         </label>
       )}
       {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
+      {(el.kind === "jukebox" || el.kind === "vitrola") && <PlayerFields player={el.params.player ?? defaultPlayer()} onChange={(player, step) => set({ player }, step && `${step}:${el.id}`)} />}
       {el.kind === "building" && el.params.building && <BuildingFields building={el.params.building} onChange={(building, step) => set({ building }, step && `${step}:${el.id}`)} />}
       {el.kind === "balustrade" && el.params.balustrade && (
         <label className="flex items-center justify-between gap-3" title="O piso de pedra do pátio, embaixo do muro">
@@ -820,6 +850,25 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
           </StepSelect>
         </label>
       )}
+      {el.kind === "button" && el.params.action === "aliens" && (() => {
+        // how often it can be pressed (lib/pigchicken/button-limit.ts); double click: the default
+        const rules = pressRules(el.params)
+        const at = PRESS_WINDOW_STEPS.reduce((best, v, i) => Math.abs(v - rules.window) < Math.abs(PRESS_WINDOW_STEPS[best] - rules.window) ? i : best, 0)
+        return <>
+          <PatioRange label="Limite de apertos" min={1} max={PRESS_LIMIT_MAX + 1} value={rules.limit || PRESS_LIMIT_MAX + 1}
+            display={rules.limit || "∞"} onEnd={endSlider} onReset={() => set({ pressLimit: undefined })}
+            hint="Quantas vezes o botão pode ser apertado dentro do tempo abaixo. Atingido o limite, ele fica cinza até poder de novo. No fim da barra: sem limite."
+            onChange={v => set({ pressLimit: v > PRESS_LIMIT_MAX ? 0 : v }, `press-limit:${editSession}:${sliderGesture.current}`)} />
+          <PatioRange label="A cada" min={0} max={PRESS_WINDOW_STEPS.length - 1} value={at}
+            display={rules.window >= 60 ? `${(rules.window / 60).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} min` : `${rules.window} s`}
+            dimmed={!rules.limit} onEnd={endSlider} onReset={() => set({ pressWindow: undefined })}
+            onChange={i => set({ pressWindow: PRESS_WINDOW_STEPS[i] }, `press-window:${editSession}:${sliderGesture.current}`)} />
+          <PatioRange label="Intervalo mínimo" min={PRESS_GAP.min * 10} max={PRESS_GAP.max * 10} value={Math.round(rules.gap * 10)}
+            display={`${rules.gap.toLocaleString("pt-BR")} s`} onEnd={endSlider} onReset={() => set({ pressGap: undefined })}
+            hint="Tempo entre um aperto e o próximo; o botão fica cinza nesse intervalo."
+            onChange={v => set({ pressGap: v / 10 }, `press-gap:${editSession}:${sliderGesture.current}`)} />
+        </>
+      })()}
 
     </FloatingPanel>
   )
@@ -854,28 +903,14 @@ function ChalkboardFields({ board, onChange }: { board: ChalkboardParams; onChan
   </>
 }
 
-// a Gongo: the song it plays (picked here, not in the jukebox), the strikes, its title and how it forgets
+// a Gongo: the strikes that press Tocar on the sequencer of its zone (and stop its song), how it forgets them
 function GongFields({ gong, onChange }: { gong: GongParams; onChange: (gong: GongParams, step?: string) => void }) {
-  const [songs, setSongs] = useState(() => loadLibrary().songs)
-  useEffect(() => subscribeLibrary(l => setSongs(l.songs)), [])
   const set = (patch: Partial<GongParams>, step?: string) => onChange({ ...gong, ...patch }, step)
-  const known = songs.some(s => s.id === gong.song)
-  const temple = <label className="flex items-center gap-2" title="Bater nele joga o Templo do Gongo (a campanha dos aliens, ou a música escolhida na jukebox) na cena em volta dele">
+  const temple = <label className="flex items-center gap-2" title="Bater nele joga o Templo do Gongo (a campanha dos aliens, ou a música escolhida no aparelho da zona dele) na cena em volta dele">
     <input type="checkbox" checked={gong.temple} onChange={e => set({ temple: e.target.checked })} />Gongo do Templo</label>
   if (gong.temple) return temple
   return <>
     {temple}
-    <label className="grid gap-1">
-      <span>Música</span>
-      <StepSelect aria-label="Música do gongo" value={gong.song} onChange={e => set({ song: e.target.value })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
-        {!known && <option value={gong.song}>(música que não está nesta jukebox)</option>}
-        {songs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </StepSelect>
-    </label>
-    <label className="grid gap-1">
-      <span>Título</span>
-      <input aria-label="Título do gongo" maxLength={GONG_TITLE_MAX} value={gong.title} placeholder="Sem título" onChange={e => set({ title: e.target.value }, "gong-title")} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2" />
-    </label>
     <div className="grid gap-field">
       <PatioRange label="Batidas para começar" min={GONG_HITS.min} max={GONG_HITS.max} value={gong.hits} onChange={hits => set({ hits }, "gong-hits")} />
       <PatioRange label="Batidas para parar a música" min={GONG_STOP_HITS.min} max={GONG_STOP_HITS.max} value={gong.stopHits} display={gong.stopHits || "Não para"} onChange={stopHits => set({ stopHits }, "gong-stop")} />
@@ -883,6 +918,15 @@ function GongFields({ gong, onChange }: { gong: GongParams; onChange: (gong: Gon
     </div>
     <label className="flex items-center gap-2"><input type="checkbox" checked={gong.lamps} onChange={e => set({ lamps: e.target.checked })} />Lâmpadas das batidas</label>
   </>
+}
+
+// a Jukebox or a Vitrola toca-discos: what its songs ask (the least accuracy at the end, the hearts)
+function PlayerFields({ player, onChange }: { player: PlayerParams; onChange: (player: PlayerParams, step?: string) => void }) {
+  const set = (patch: Partial<PlayerParams>, step?: string) => onChange({ ...player, ...patch }, step)
+  return <div className="grid gap-field">
+    <PatioRange label="Precisão mínima" min={PLAYER_ACCURACY.min} max={PLAYER_ACCURACY.max} step={5} value={player.minAccuracy} display={player.minAccuracy ? `${player.minAccuracy}%` : "Nenhuma"} onChange={minAccuracy => set({ minAccuracy }, "player-accuracy")} />
+    <PatioRange label="Corações" min={PLAYER_HEARTS.min} max={PLAYER_HEARTS.max} value={player.hearts} onChange={hearts => set({ hearts }, "player-hearts")} />
+  </div>
 }
 
 // a Prédio: its roof, storeys, columns, doors, lanterns, plaque and haze
@@ -940,7 +984,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Treino", items: [{ key: "chalkboard", kind: "chalkboard", label: ELEMENT_DEFS.chalkboard.label }] },
-  { group: "Música", items: (["zone", "lanes", "gong", "jukebox", "resetstone", "pedalharp", "drumkit"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
+  { group: "Música", items: (["zone", "lanes", "gong", "jukebox", "vitrola", "resetstone", "pedalharp", "drumkit"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   // the Templo do Gongo's pieces: its halls and its gong
   { group: "Templo", items: [
     { key: "building-hall", kind: "building", label: "Prédio: salão", params: { building: defaultBuilding() } },
@@ -972,6 +1016,7 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "building") { const s = entry.size ?? ELEMENT_DEFS.building; return <span className="relative block h-9" style={{ aspectRatio: `${s.w} / ${s.h}` }}><BuildingArt building={entry.params?.building ?? defaultBuilding()} w={s.w} h={s.h} /></span> }
   if (entry.kind === "resetstone") return <span aria-hidden="true" className="relative block h-9 w-7"><span className="absolute inset-x-1 bottom-1 top-0 rounded-t-full bg-[#7c8892]" /><span className="absolute left-1/2 top-2.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#7bdff2]" /><span className="absolute inset-x-0 bottom-0 h-1.5 rounded-sm bg-[#6f695f]" /></span>
   if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
+  if (entry.kind === "vitrola") return <VitrolaThumb />
   if (entry.kind === "pedalharp") return <HarpThumb />
   if (entry.kind === "drumkit") return <DrumKitThumb />
   if (entry.kind === "chest") return <ChestThumb rarity={entry.params?.chest?.rarity ?? "simple"} />
@@ -998,6 +1043,23 @@ function HordeButtonThumb({ action }: { action: HordeButton }) {
       <rect x="-19" y="0" width="38" height="6" fill={cap} />
       <ellipse cx="0" cy="0" rx="19" ry="10" fill={cap} />
       <ellipse cx="0" cy="6" rx="19" ry="4" fill={cap} />
+    </svg>
+  )
+}
+
+// the Vitrola toca-discos on its card: the wooden case, the black record and the golden horn on its neck
+function VitrolaThumb() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 36 36" className="h-9 w-9">
+      <path d="M24 22 C30 17 30 11 23 9" stroke="#b9741f" strokeWidth="3" strokeLinecap="round" fill="none" />
+      <path d="M23 9 L12 3 C5 4 2 10 6 16 Z" fill="#e9a93c" stroke="#f6cf6b" strokeWidth="0.8" />
+      <path d="M21 9.5 L8 6 M21 9.5 L5 11 M21 9.5 L9 15" stroke="#8a4f14" strokeWidth="0.7" />
+      <rect x="6" y="23" width="24" height="10" rx="1" fill="#8a5130" />
+      <rect x="10" y="25" width="16" height="6" fill="#5e3219" />
+      <ellipse cx="18" cy="23" rx="12" ry="3" fill="#4a2611" />
+      <ellipse cx="17" cy="22.6" rx="8.5" ry="2" fill="#16161a" />
+      <ellipse cx="17" cy="22.6" rx="2" ry="0.6" fill="#e8582f" />
+      <path d="M30 28 L33 28 L33 31" stroke="#e7b94a" strokeWidth="1.4" strokeLinecap="round" fill="none" />
     </svg>
   )
 }
@@ -1057,12 +1119,13 @@ function PaletteSection({ title, children }: { title: string; children: React.Re
   </PatioDisclosure>
 }
 
-function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, floorBelow, chestAt, onInsert, onClose, undo, redo, canUndo, canRedo }: {
+function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, layersOpen, onLayers, floorBelow, chestAt, onInsert, onClose, undo, redo, canUndo, canRedo }: {
   active: boolean; onActive?: (on: boolean) => void
   onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
   bindTree: (tree: TreeParams) => PatioPlacementHandlers
   canAddScenery: boolean; hidden: boolean; draggingScenery: boolean
   soundLayer: boolean; onSoundLayer: () => void
+  layersOpen: boolean; onLayers?: () => void
   floorBelow: (x: number, y: number) => number
   chestAt: (clientX: number, clientY: number) => LayoutElement | null; onInsert: (chest: LayoutElement, item: ItemId) => void
   onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
@@ -1090,7 +1153,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       if (drag.entry.size) { el.w = drag.entry.size.w; el.h = drag.entry.size.h; el.x = p.x - el.w / 2; el.y = p.y - el.h / 2 }
       // dummies and racks stand on the floor right under where they were dropped
-      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "resetstone" || el.kind === "chest" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "vitrola" || el.kind === "resetstone" || el.kind === "chest" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       // postes and torres in their model's proportions, planted on the floor under where they were dropped
       if (el.params.power) {
@@ -1123,8 +1186,12 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
           <button type="button" className={TOOL} onClick={onClose} title="Sair do modo editor (=)" aria-label="Sair do modo editor"><X className="h-4 w-4" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-3 pt-2">
-          <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
-            aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas</button>
+          <div className="ml-4 flex gap-1.5">
+            <button type="button" className={cn(TOOL, "h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
+              aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas</button>
+            {onLayers && <button type="button" className={cn(TOOL, "h-8 w-auto gap-1.5 px-2", layersOpen && "border-primary text-primary")} title="Abre o painel Camadas"
+              aria-pressed={layersOpen} onClick={onLayers}><Eye size={16} /> Camadas</button>}
+          </div>
           <PaletteSection title="Casas">
             {housePreviews.map(house => {
               const size = houseDraftSize(house)

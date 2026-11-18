@@ -22,7 +22,7 @@ const TURN_LABELS: Record<string, string> = {
   180: "Azul de cima", 225: "Azul do canto de cima, à direita", 270: "Azul da direita", 315: "Azul do canto de baixo, à direita",
   random: "Aleatório", first: "Primeiro tiro determina o lado",
 }
-const COLOR_ROWS = [["grey", "Cor neutra"], ["blue", "Cor da música"], ["red", "Cor do dano"]] as const
+const COLOR_ROWS = [["grey", "Cor neutra"], ["blue", "Cor da música"], ["red", "Cor do dano"], ["orange", "Cor da dúvida"]] as const
 const MENU_ITEM = "cursor-pointer font-mono text-xs text-white focus:bg-white/10 focus:text-white"
 
 // the rhythms that go into the blocks' draw: "Todos" and each rhythm, by group, with a check on the chosen ones

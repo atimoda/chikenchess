@@ -1,5 +1,19 @@
 import { DEFAULT_ITEMS, type ItemId } from './items'
 
+// The Suporte de item's table (drawn in components/pigchicken/draw/world.ts): 76 wide, 56 from the floor to the top
+// of its board, which is 7 thick. Its item appears just under the board, so it falls between the legs onto the
+// floor, platform or table below, never onto its own table.
+export const RACK_TABLE = { w: 76, h: 56, board: 7 }
+export const RACK_ITEM_START = RACK_TABLE.h - RACK_TABLE.board - 1
+
+// While a rack waits to put its item back: the time left, in steps of 0.1 s rounded up ("1,5"), or null when it
+// holds its item, puts it back at once (no wait) or will not put it back any more (its "Limite de reposição").
+export function rackCountdown(r: { t: number; respawnDelay: number; pickupId?: number; refillLimit?: number; given: number }): string | null {
+  if (r.pickupId !== undefined || r.respawnDelay <= 0 || (r.refillLimit !== undefined && r.given > r.refillLimit)) return null
+  const tenths = Math.max(1, Math.ceil((r.respawnDelay - r.t) * 10 - 1e-6))
+  return (tenths / 10).toFixed(1).replace('.', ',')
+}
+
 export const RACK_DELAY_MAX = 300
 export const CAGE_RACK_DELAY = 20
 // How many times a rack puts its item back after the first one: 0 to this; none (the default, older layouts) is no limit.
