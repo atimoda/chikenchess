@@ -39,7 +39,8 @@ import { portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { PatioPortals, type PatioPortalTravel } from "@/components/pigchicken/patio-portals"
 import { HouseDoors } from "@/components/pigchicken/house-doors"
 import { checkPatioTarget, MISSING_PATIO_TEXT, OFFLINE_PATIO_TEXT, targetLobbyId } from "@/lib/pigchicken/portal-links"
-import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
+import { ChickenHeadIcon, ChickenVestiario, type FramesEdit } from "./chicken-vestiario"
+import { FRAME_KEYS, FRAME_LABEL, type FrameClass } from "@/lib/chicken/body-frame"
 import { cn } from "@/lib/utils"
 import { stageInset, subscribeStageInset } from "@/lib/stage-size"
 import { isChickenControlsListening, loadChickenControls } from "@/lib/chicken/controls"
@@ -616,6 +617,9 @@ export function ChickenPatio() {
     }
   }
 
+  // the Vestiário's Hit-area editor (admin): each class's frame in the same draft, saved by the same Salvar no game
+  const framesEdit: FramesEdit | undefined = isAdmin ? { value: draft.frames, saved: saved.config.frames, onChange: f => update(c => { c.frames = f }), onSave: () => void save(), saving, note: status?.text ?? null } : undefined
+
   const patioName = patio?.name ?? (patio?.id ? "Pátio sem nome" : "Pátio da Galinha")
   // the Pátio's limits (the Sun panel): its width in scenes (a Pátio saved before it had one keeps this browser's
   // old "Largura do mundo") and its ceiling; the Câmera de Mira settings with that width
@@ -864,9 +868,11 @@ export function ChickenPatio() {
       )}
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} editLayout />
 
+      {/* the confirmation of the central configuration's Salvar no game (Ajustes and the Vestiário's Hit-area) */}
+      {saveConfirmation}
       {vestOpen && (vestPlayer?.look
-        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} />
-        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} admin={isAdmin} />)}
+        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} />
+        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} />)}
 
       {playersOpen && lobby && (
         <PlayersPanel
@@ -917,7 +923,6 @@ export function ChickenPatio() {
             {isAdmin && (
               <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 px-4 py-3">
                 {status && <span role="status" className={cn("min-w-0 text-[11px]", status.kind === "error" ? "text-red-300" : "text-[#8a9a8a]")}>{status.text}</span>}
-                {saveConfirmation}
                 <button type="button" disabled={!dirty || saving} onClick={() => void save()} title="Grava a configuração central da galinha: vale na hora para todas as telas e para todo mundo" className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50">{saving ? "Salvando…" : "Salvar no game"}</button>
               </div>
             )}
@@ -942,6 +947,7 @@ function chickenChangeLabel([part, a, b, c]: string[]) {
   if (part === "params") return PARAM_LABEL[a] ?? a
   if (part === "classes") return `${CLASS_NAME[a as ClassId] ?? a} › ${b === "airJumps" ? PARAM_LABEL.airJumps : `${PARAM_LABEL[c] ?? c} (fator)`}`
   if (part === "look") return `Visual › ${a}`
+  if (part === "frames") return `Hit-area › ${FRAME_LABEL[a as FrameClass] ?? a} › ${FRAME_KEYS.find(k => k.key === b)?.label ?? b}`
   return [part, a, b, c].filter(Boolean).join(" › ")
 }
 

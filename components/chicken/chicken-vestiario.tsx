@@ -13,6 +13,14 @@ const NO_BABY: BabyState = { on: false, skin: null, bar: 0 }
 import { RARITIES, RARITY_COLOR, RARITY_LABEL, breedRarity, itemRarity, type Rarity } from "@/lib/chicken/rarity"
 import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
+import { FrameControls, FrameOverlay, frameView } from "./frame-editor"
+import type { BodyFrames, FrameClass } from "@/lib/chicken/body-frame"
+
+/** The admin's Hit-area editor: the central configuration's frames (draft and saved) and its Salvar no game. */
+export type FramesEdit = { value: BodyFrames; saved: BodyFrames; onChange: (f: BodyFrames) => void; onSave: () => void; saving: boolean; note: string | null }
+// the look each class shows in the editor when the current look is of another class
+const CLASS_LOOK: Record<Exclude<FrameClass, "baby">, string> = { chi: "caipira", pig: "porco-rosa", ken: "raposa-vermelha" }
+const lookFrame = (l: ChickenLook): FrameClass => { const k = variantClass(l.torso); return k === "porco" ? "pig" : k === "raposa" ? "ken" : "chi" }
 
 const UNLOCK = "chickenchess:chicken-vest-unlock-all:v1"
 type Src = "green" | "gold" | "red"
@@ -37,7 +45,7 @@ export function ChickenHeadIcon({ look }: { look: ChickenLook }) {
   return <svg viewBox="12 -232 70 70" aria-hidden="true" className="h-full w-full" dangerouslySetInnerHTML={{ __html: LOOK_ART.headSvg(look) }} />
 }
 
-export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean }) {
+export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false, frames }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean; frames?: FramesEdit }) {
   const [tab, setTab] = useState(() => (typeof window !== "undefined" && getBaby().on ? "filhote" : "racas"))
   const [unlockAll, setUnlockAll] = useState(false)
   useEffect(() => { try { setUnlockAll(window.localStorage.getItem(UNLOCK) === "1") } catch { /* storage unavailable */ } }, [])
@@ -51,6 +59,14 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
   const cur = baby.on && !admin ? "filhote" : !baby.on && tab === "filhote" ? "racas" : tab
   const tabs = baby.on ? [{ id: "filhote", label: "Filhote" }, ...(admin ? TABS : [])] : TABS
   const pick = (l: ChickenLook) => { if (baby.on) setBaby({ on: false }); onChange(l) }
+  // the Hit-area editor (admin): the class it edits starts as the one on screen
+  const [editFrames, setEditFrames] = useState(false)
+  const [fc, setFc] = useState<FrameClass>(() => baby.on ? "baby" : lookFrame(look))
+  const frameEdit = admin && frames && editFrames ? frames : null
+  const frameLook = fc === "baby" || lookFrame(look) === fc ? look : LOOK_ART.breedLook(CLASS_LOOK[fc])
+  const previewView = frameEdit ? (fc === "baby" ? "-90 -210 180 220" : fullView(frameLook)) : baby.on ? "-90 -210 180 220" : fullView(look)
+  const previewHtml = frameEdit ? (fc === "baby" ? LOOK_ART.composeSet(babyArt(look, babySkin)) : LOOK_ART.compose(frameLook)) : baby.on ? LOOK_ART.composeSet(babyArt(look, babySkin)) : LOOK_ART.compose(look)
+  const shownView = frameEdit ? frameView(previewView, frameEdit.value[fc]) : previewView
 
   // the photo's background takes a tint of the item's rarity; where it comes from only colors the small label
   const card = (key: string, src: Src, rarity: Rarity, locked: boolean, on: boolean, art: React.ReactNode, name: React.ReactNode, label: string, onPick: () => void, wide = false) => (
@@ -137,6 +153,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
     <FloatingPanel id="chicken-vestiario" data-chicken-ignore aria-label="Vestiário" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(740, vw - 24), h: vh - 104 })} minW={300} minH={320} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <h2 className="flex-1 text-sm text-white">Vestiário</h2>
+        {admin && frames && <button type="button" aria-pressed={editFrames} onClick={() => setEditFrames(v => !v)} className={cn("h-8 rounded-md border px-3", editFrames ? "border-[#4cc9f0] text-[#4cc9f0]" : "border-white/15 text-[#93a79a] hover:border-primary hover:text-white")}>Hit-area</button>}
         {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
         <button type="button" aria-label="Fechar vestiário" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
@@ -145,10 +162,11 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
       <div className="flex min-h-0 flex-1 flex-col @xl:flex-row">
         <div className="relative h-56 shrink-0 border-b border-primary/30 bg-[radial-gradient(120%_70%_at_50%_85%,rgba(31,211,154,0.09),transparent_70%)] @xl:h-auto @xl:w-[260px] @xl:border-b-0 @xl:border-r">
           <p className="absolute left-3.5 top-2.5 text-[10px] uppercase tracking-wider text-[#93a79a]">Prévia</p>
-          <div className="absolute inset-x-3 bottom-8 top-8">{baby.on ? svg("-90 -210 180 220", LOOK_ART.composeSet(babyArt(look, babySkin))) : svg(fullView(look), LOOK_ART.compose(look))}</div>
-          <div className="absolute inset-x-0 bottom-8 h-0.5 bg-primary/55" />
+          <div className="absolute inset-x-3 bottom-8 top-8">{svg(shownView, previewHtml)}{frameEdit && <FrameOverlay view={shownView} frame={frameEdit.value[fc]} onChange={f => frameEdit.onChange({ ...frameEdit.value, [fc]: f })} />}</div>
+          {!frameEdit && <div className="absolute inset-x-0 bottom-8 h-0.5 bg-primary/55" />}
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {frameEdit ? <div className="min-h-0 flex-1 overflow-y-auto"><FrameControls cls={fc} onClass={setFc} frames={frameEdit.value} saved={frameEdit.saved} onChange={frameEdit.onChange} onSave={frameEdit.onSave} saving={frameEdit.saving} note={frameEdit.note} /></div> : <>
           <nav role="tablist" className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/10 px-2.5 py-2">
             {tabs.map(t => (
               <button key={t.id} type="button" role="tab" aria-selected={cur === t.id} onClick={() => setTab(t.id)} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold", cur === t.id ? "bg-[#22302a] text-white shadow-[inset_0_0_0_1px_rgba(31,211,154,0.6)]" : "text-[#93a79a] hover:text-white")}>{t.label}</button>
@@ -162,6 +180,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
               {(["green", "gold", "red"] as Src[]).map(s => <span key={s} className="uppercase tracking-wider" style={{ color: SRC_COLOR[s] }}>{SRC_LABEL[s]}</span>)}
             </section>
           </div>
+          </>}
           <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 px-4 py-2.5">
             <p className="flex-1 text-[#93a79a]">{dirty ? "Visual alterado. “Salvar no game” em Ajustes grava para todas as telas." : "Visual igual ao salvo."}</p>
             <label className="flex items-center gap-2 text-[11px] text-[#93a79a]"><input type="checkbox" checked={unlockAll} onChange={e => toggleUnlock(e.target.checked)} className="accent-[var(--primary)]" />Tudo liberado (dev)</label>

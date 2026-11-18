@@ -5,13 +5,14 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
-    version: '2.13.1',
+    version: '2.14.0',
     date: '18/11/2026',
-    title: 'Admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”',
+    title: 'Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”',
     groups: [
       { title: 'Vestiário', items: [
         'A conta admin não fica mais presa no filhote: o Vestiário abre na aba Filhote, mas mantém as abas Raças e peças, e escolher uma raça ou peça volta a adulto com esse visual, em qualquer espécie.',
         'Saiu o aviso “meio apagado: ainda não liberado (dá pra testar)” do rodapé do Vestiário.',
+        'Novo botão Hit-area no Vestiário (só admin): mostra sobre a prévia a caixa do corpo e a barra de vida de Chi, Pig, Ken e Filhote. Arraste a caixa, a borda, o topo e a barra, ou digite os números, e grave com Salvar no game, que mostra a lista do que muda antes. A caixa é o que explosões, notas, cartas e cagados acertam, e é a mesma da camada Hit-boxes.',
       ] },
     ],
   },

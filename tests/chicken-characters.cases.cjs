@@ -134,3 +134,20 @@ test('items have Pontos per class: Pig and Ken use their own set when they have 
   const ok = I.itemsDefaultsFile({ ...I.DEFAULT_ITEMS, bat: withPig })
   assert.equal(I.itemsFileProblem(ok), null)
 })
+
+test('each class has its own hit-area: saved with the central config, the box follows the facing and the scale', () => {
+  const { defaultFrames, normalizeFrames, bodyBox, frameClassOf } = loadTs('lib/chicken/body-frame.ts')
+  const { normalizeChickenConfig } = loadTs('lib/chicken/config.ts')
+  // the boxes the game always used
+  assert.deepEqual(bodyBox(defaultFrames(), 'chicken', 100, 500, 1, 1), { l: 55, r: 145, t: 300, b: 500 })
+  assert.equal(frameClassOf('pig'), 'pig'); assert.equal(frameClassOf('fox'), 'ken'); assert.equal(frameClassOf('chick'), 'baby'); assert.equal(frameClassOf(undefined), 'chi')
+  // broken values fall back, out-of-range ones are clamped
+  const f = normalizeFrames({ pig: { w: 160, h: 'x', x: 20, y: 10, bar: 9999 } })
+  assert.deepEqual(f.pig, { w: 160, h: 200, x: 20, y: 10, bar: 600 })
+  assert.deepEqual(f.chi, defaultFrames().chi)
+  // forward shift flips with the facing; everything scales
+  assert.deepEqual(bodyBox(f, 'pig', 0, 0, 2, 1), { l: -120, r: 200, t: -420, b: -20 })
+  assert.deepEqual(bodyBox(f, 'pig', 0, 0, 2, -1), { l: -200, r: 120, t: -420, b: -20 })
+  // old saved configs have none: the defaults
+  assert.deepEqual(normalizeChickenConfig({ params: {}, look: {} }).frames, defaultFrames())
+})

@@ -7,6 +7,7 @@
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import { feedBaby, getBaby } from "@/lib/chicken/baby"
 import { getChickenConfig } from "@/lib/chicken/config"
+import { bodyBox } from "@/lib/chicken/body-frame"
 import { Search } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
@@ -1163,9 +1164,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const playerOf = new Map([[engine, "p1"] as const, ...Array.from(extras?.current?.entries() ?? [], ([id, e]) => [e, id] as const)])
       // a zombie biting this browser's chicken takes some of her health
       combat.setHurt((amount, fromX) => engine.hurt(amount, fromX - camX))
+      // each class's hit-area (lib/chicken/body-frame.ts, edited in the Vestiário)
+      const frames = getChickenConfig().frames
       combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? []), ...Array.from(chicks?.current?.values() ?? [])].map(eng => {
         const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
-        return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }
+        return { id: playerOf.get(eng), box: bodyBox(frames, st.species, x, y, st.scale, st.face), push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }
       }))
       if (perches.spans.length) {
         perches.camX = camX; perches.camY = camY - yr.lo; perches.restY = yr.lo; perches.time += dt
@@ -1265,7 +1268,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       p1Baby = babyOn
       if (babyOn) {
         input.throwHeld = false; input.throwReleased = false
-        combat.setBabies([{ by: "p1", box: { l: body.x - 40 * st.scale, r: body.x + 40 * st.scale, t: body.y - 200 * st.scale, b: body.y }, fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
+        combat.setBabies([{ by: "p1", box: bodyBox(getChickenConfig().frames, "chick", body.x, body.y, st.scale, st.face), fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
       } else combat.setBabies([])
       // the strong blow charged with an empty hand (Correntada, Rabada): the arm or the tail winds up
       engine.setBareCharge(!combat.held && combat.heavyCharging ? combat.heavyCharge : null)
@@ -1615,7 +1618,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (hitboxesRef.current) {
         drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
           const ms = eng.getMotionState(), es = eng.getState()
-          return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, box: { l: ms.x - 45 * ms.scale, r: ms.x + 45 * ms.scale, t: ms.y - 200 * ms.scale, b: ms.y } }
+          return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, box: bodyBox(getChickenConfig().frames, ms.species, ms.x, ms.y, ms.scale, ms.face) }
         }))
       }
       // the scale layer hides while a chicken is being dragged by the mouse/touch

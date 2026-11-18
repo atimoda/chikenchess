@@ -81,6 +81,14 @@ Pig, Ken e os filhotes deles (leitão e raposinha) usam o rig da galinha, mas co
 - Aba **Raças**: seções Galinhas, Galos, Porcos e Raposas.
 - Abas de peças (Cabeça, Penas, Corpo, Pernas): só aparecem as peças da mesma classe do visual atual. Com um porco ou raposa, as seções com uma peça só (crista, barbela, bico, pescoço) somem; dá para combinar cabeça, corpo, braço, rabo e pernas entre estilos da mesma classe.
 
+## Hit-area (desde 18/11, v2.14.0)
+
+- **O que é:** a caixa do corpo de cada classe (Chi, Pig, Ken e Filhote), em unidades do desenho (pés em 0, frente para a direita), multiplicada pela escala do boneco no jogo (`lib/chicken/body-frame.ts`, `bodyBox`). É o que explosões, notas em voo, cartas dos baralhos, cagados e almas soltas acertam, e a caixa em que as notas enchem a barra do filhote. A camada Hit-boxes desenha essa mesma caixa (ciano). Cada classe guarda também a altura da barra de vida sobre os pés.
+- **Valores:** Largura, Altura, Deslocamento para a frente (acompanha o lado para onde o boneco olha), Deslocamento para cima e Altura da barra de vida. Padrão de todas as classes: 90 × 200, sem deslocamento, barra a 240 (o que o jogo sempre usou); o Filhote tem 80 de largura (a caixa que já enchia a barra dele). Faixas: largura 10–400, altura 10–500, deslocamentos −200 a 200, barra 0–600.
+- **Editor (só admin):** botão **Hit-area** no cabeçalho do Vestiário. Ligado, a prévia mostra a caixa e a barra de vida da classe escolhida (abas Chi, Pig, Ken, Filhote; abre na classe do boneco atual), com a arte dessa classe: o visual atual se for da mesma classe, senão Caipira, Pig Rosa ou Ken vermelho; o Filhote usa o filhote da classe do visual atual. Arrastar a caixa move; a bolinha da borda direita muda a largura (simétrica); a bolinha do topo, a altura; a barra, a altura dela. Os números ao lado também editam. Classe ou valor diferente do salvo fica em âmbar; **Padrão** volta a classe escolhida ao padrão.
+- **Salvar:** os valores ficam no rascunho da configuração central (`frames`, junto com params, visual e fatores de classe), valem na hora para os bonecos deste navegador, e o **Salvar no game** do editor é o mesmo do painel Ajustes: confirma a lista de mudanças (as da hit-area aparecem como “Hit-area › Classe › Valor”) e grava tudo para todo mundo. Configurações salvas antes não têm `frames` e usam o padrão.
+- **Fora do escopo por enquanto:** o alcance de Pegar, a mordida dos zumbis e os acertos do Templo e do Taiko continuam com medidas próprias, iguais para todas as classes.
+
 ## Desenho no esqueleto da galinha
 
 - Os dois usam o mesmo esqueleto e as mesmas animações da galinha (`lib/chicken/engine.ts`): o corpo, a cabeça, o braço da frente no lugar da asa (segura os itens), o braço de trás no lugar da asa de trás, o rabo e as duas pernas com joelho.
