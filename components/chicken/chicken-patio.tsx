@@ -865,8 +865,8 @@ export function ChickenPatio() {
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} editLayout />
 
       {vestOpen && (vestPlayer?.look
-        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} />
-        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} />)}
+        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} />
+        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} admin={isAdmin} />)}
 
       {playersOpen && lobby && (
         <PlayersPanel

@@ -37,16 +37,20 @@ export function ChickenHeadIcon({ look }: { look: ChickenLook }) {
   return <svg viewBox="12 -232 70 70" aria-hidden="true" className="h-full w-full" dangerouslySetInnerHTML={{ __html: LOOK_ART.headSvg(look) }} />
 }
 
-export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void }) {
-  const [tab, setTab] = useState("racas")
+export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean }) {
+  const [tab, setTab] = useState(() => (typeof window !== "undefined" && getBaby().on ? "filhote" : "racas"))
   const [unlockAll, setUnlockAll] = useState(false)
   useEffect(() => { try { setUnlockAll(window.localStorage.getItem(UNLOCK) === "1") } catch { /* storage unavailable */ } }, [])
   const toggleUnlock = (v: boolean) => { setUnlockAll(v); try { window.localStorage.setItem(UNLOCK, v ? "1" : "0") } catch { /* ignore */ } }
   const owned = (v: string) => unlockAll || OWNED.has(v)
   const dirty = !sameLook(look, savedLook)
-  // a Filhote only changes to another baby of its class (lib/chicken/baby.ts)
+  // a Filhote only changes to another baby of its class (lib/chicken/baby.ts); the admin is never stuck in it:
+  // the other tabs stay, and picking a breed or a part makes it an adult with that look
   const baby = useSyncExternalStore(subscribeBaby, getBaby, () => NO_BABY)
   const babySkin = baby.skin ?? defaultBabySkin(look)
+  const cur = baby.on && !admin ? "filhote" : !baby.on && tab === "filhote" ? "racas" : tab
+  const tabs = baby.on ? [{ id: "filhote", label: "Filhote" }, ...(admin ? TABS : [])] : TABS
+  const pick = (l: ChickenLook) => { if (baby.on) setBaby({ on: false }); onChange(l) }
 
   // the photo's background takes a tint of the item's rarity; where it comes from only colors the small label
   const card = (key: string, src: Src, rarity: Rarity, locked: boolean, on: boolean, art: React.ReactNode, name: React.ReactNode, label: string, onPick: () => void, wide = false) => (
@@ -75,7 +79,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
   const svg = (view: string, html: string) => <svg viewBox={view} aria-hidden="true" className="h-full w-full" dangerouslySetInnerHTML={{ __html: html }} />
 
   let body: React.ReactNode
-  if (baby.on) {
+  if (cur === "filhote") {
     const klass = babyClassOf(look)
     body = (
       <section className="grid gap-3 border-b border-white/10 px-4 py-3.5">
@@ -85,7 +89,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
         </div>
       </section>
     )
-  } else if (tab === "racas") {
+  } else if (cur === "racas") {
     body = ([["galinhas", "Galinhas"], ["galos", "Galos"], ["porcos", "Porcos"], ["raposas", "Raposas"]] as const).map(([cat, title]) => {
       const list = LOOK_ART.BREEDS.filter(b => b.cat === cat)
       return (
@@ -96,14 +100,14 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
               {list.map(br => {
                 const l = LOOK_ART.breedLook(br.id)
                 const locked = LOOK_ART.SLOTS.some(s => !owned(l[s.id]))
-                return card(br.id, srcOf(br.id), breedRarity(br.id), locked, sameLook(look, l), svg(fullView(l), LOOK_ART.compose(l)), <>{br.label}<br /><small className="text-[#93a79a]">classe {KLASS[br.klass] ?? br.klass}</small></>, br.label, () => onChange(l), true)
+                return card(br.id, srcOf(br.id), breedRarity(br.id), locked, sameLook(look, l), svg(fullView(l), LOOK_ART.compose(l)), <>{br.label}<br /><small className="text-[#93a79a]">classe {KLASS[br.klass] ?? br.klass}</small></>, br.label, () => pick(l), true)
               })}
             </div>
           ) : <p className="rounded-[10px] border border-dashed border-white/15 p-3.5 text-center text-[#93a79a]">Em breve</p>}
         </section>
       )
     })
-  } else if (tab === "acessorios") {
+  } else if (cur === "acessorios") {
     body = (
       <section className="grid gap-3 border-b border-white/10 px-4 py-3.5">
         <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">Acessórios</h3>
@@ -114,7 +118,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
   } else {
     // parts of the same species class as the current look only: a fox's head never goes on a chicken
     const klass = variantClass(look.torso)
-    body = LOOK_ART.SLOTS.filter(s => s.tab === tab).map(slot => ({ slot, list: Object.entries(LOOK_ART.art[slot.id]).filter(([v]) => v === "none" ? klass === "galinha" : variantClass(v) === klass) })).filter(({ list }) => list.length > 1 || klass === "galinha").map(({ slot, list }) => (
+    body = LOOK_ART.SLOTS.filter(s => s.tab === cur).map(slot => ({ slot, list: Object.entries(LOOK_ART.art[slot.id]).filter(([v]) => v === "none" ? klass === "galinha" : variantClass(v) === klass) })).filter(({ list }) => list.length > 1 || klass === "galinha").map(({ slot, list }) => (
       <section key={slot.id} className="grid gap-3 border-b border-white/10 px-4 py-3.5">
         <h3 className="text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">{slot.label}</h3>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] gap-2.5">
@@ -122,7 +126,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
             const l = { ...look, [slot.id]: v }
             const view = slot.id === "tail" && LOOK_ART.TAIL_VIEW[v] ? LOOK_ART.TAIL_VIEW[v] : LOOK_ART.VIEW[slot.id]
             const art = slot.id === "tail" ? svg(view, it.svg ?? "") : svg(view, LOOK_ART.compose(l))
-            return card(v, srcOf(v), itemRarity(slot.id, v), !owned(v), look[slot.id] === v, art, it.label, `${slot.label}: ${it.label}`, () => onChange({ ...look, [slot.id as ChickenSlot]: v }))
+            return card(v, srcOf(v), itemRarity(slot.id, v), !owned(v), look[slot.id] === v, art, it.label, `${slot.label}: ${it.label}`, () => pick({ ...look, [slot.id as ChickenSlot]: v }))
           })}
         </div>
       </section>
@@ -146,8 +150,8 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <nav role="tablist" className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/10 px-2.5 py-2">
-            {(baby.on ? TABS.slice(0, 1).map(t => ({ ...t, label: "Filhote" })) : TABS).map(t => (
-              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold", tab === t.id ? "bg-[#22302a] text-white shadow-[inset_0_0_0_1px_rgba(31,211,154,0.6)]" : "text-[#93a79a] hover:text-white")}>{t.label}</button>
+            {tabs.map(t => (
+              <button key={t.id} type="button" role="tab" aria-selected={cur === t.id} onClick={() => setTab(t.id)} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold", cur === t.id ? "bg-[#22302a] text-white shadow-[inset_0_0_0_1px_rgba(31,211,154,0.6)]" : "text-[#93a79a] hover:text-white")}>{t.label}</button>
             ))}
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -156,7 +160,6 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
               {RARITIES.map(r => <span key={r}><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] align-[-1px]" style={{ background: RARITY_COLOR[r] }} />{RARITY_LABEL[r]}</span>)}
               <span className="basis-full" />
               {(["green", "gold", "red"] as Src[]).map(s => <span key={s} className="uppercase tracking-wider" style={{ color: SRC_COLOR[s] }}>{SRC_LABEL[s]}</span>)}
-              <span>meio apagado: ainda não liberado (dá pra testar)</span>
             </section>
           </div>
           <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 px-4 py-2.5">

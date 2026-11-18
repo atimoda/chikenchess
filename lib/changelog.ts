@@ -5,6 +5,17 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.13.1',
+    date: '18/11/2026',
+    title: 'Admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”',
+    groups: [
+      { title: 'Vestiário', items: [
+        'A conta admin não fica mais presa no filhote: o Vestiário abre na aba Filhote, mas mantém as abas Raças e peças, e escolher uma raça ou peça volta a adulto com esse visual, em qualquer espécie.',
+        'Saiu o aviso “meio apagado: ainda não liberado (dá pra testar)” do rodapé do Vestiário.',
+      ] },
+    ],
+  },
+  {
     version: '2.13.0',
     date: '17/11/2026',
     title: 'Zonas com gravidade dos planetas, câmera lenta e raio-x; zonas sonoras: cada ritmo com o balanço dele (o samba deixa de ser grade rígida), instrumentos gravados por ritmo, variações de cada ritmo, notas da batida arrastáveis no tempo e até 10 blocos de variação por zona, com Volume e BPM em knobs; modo editor: Shift trava o arraste na horizontal ou na vertical, o elemento acompanha o ponteiro em qualquer zoom e o zoom funciona com o mouse em cima de um elemento; galinha: Chocar agarrada na parede e no teto, e asas batendo na carga do shocking jump no ar; Grade de blocos: a colisão dos Cantos em octógono segue o contorno desenhado e a Bomba é um feixe de dinamite com timer, e cada bloco é também uma Zona sonora com ritmos sorteados; o Templo do Gongo montado com elementos do Modo editor (Prédio, Mureta com cerca, Gongo do Templo); suportes de item com Limite de reposição; a roda do mouse arrastável para qualquer ação nos Controles; o X do gamepad abre Baús e senta nos instrumentos fixos; e binds próprias da Harpa e da Bateria no painel Controles, com o sustenido no L3; com as três gaiolas ocupadas, uma gaiola do chão só é trocada com um aperto inteiro de Pegar em cima dela; Configurações do Pátio ganham a categoria Mata (Mata ao longe e Mata perto); o Passaguá fica sempre na primeira casa dos utilitários; contador de almas das gaiolas só em texto branco; sem menu do navegador no botão direito dos botões; e chãos novos Lua e Marte no Modo editor; na partida, aviso ao tentar um lance que deixaria o próprio rei sob ataque; guia de pássaros reais: 30 aves com cantos gravados, a ave que inspira cada alma, receita na ficha e canto real das almas soltas; personagens novos Pig (porco) e Ken (raposa) no Vestiário, com 3 estilos de porco e 10 espécies de raposa',
