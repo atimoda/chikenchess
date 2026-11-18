@@ -18,6 +18,7 @@ import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
 import { AuroraFields, CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
 import { ForestFields } from "./forest-fields"
+import { SkylineFields } from "./skyline-fields"
 import { ITEM_GLOW, ITEM_GLOW_COLOR } from "@/lib/pigchicken/item-glow"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
@@ -119,6 +120,10 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           {group("Mata", <ForestFields forest={layout.settings?.forest} skyForest={layout.settings?.sky?.forest !== false} onChange={forest => {
             const { forest: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: forest ? { ...rest, forest } : rest })
+          }} />)}
+          {group("Prédios", <SkylineFields skyline={layout.settings?.skyline} onChange={skyline => {
+            const { skyline: _old, ...rest } = layout.settings ?? {}
+            onChange({ ...layout, settings: skyline ? { ...rest, skyline } : rest })
           }} />)}
           {group("Nuvens", <CloudFields clouds={layout.settings?.clouds} skyClouds={layout.settings?.sky?.clouds} onChange={clouds => {
             const { clouds: _old, ...rest } = layout.settings ?? {}

@@ -10,6 +10,7 @@ import { followParallax, onCameraMove, watchCameraRegion } from "@/lib/pigchicke
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
 import { FOREST_DEFAULT, forestDraw, type ForestParams } from "@/lib/pigchicken/forest"
+import { trees } from "@/lib/pigchicken/forest-draw"
 import { MOUNTAINS_DEFAULT, MOUNTAIN_LIFT, MOUNTAIN_OUTLINE_PX, type MountainParams } from "@/lib/pigchicken/mountains"
 import { rng, shadeFaces, snowRegion } from "@/lib/pigchicken/mountain-draw"
 import { BACKDROP_BOTTOM, BACKDROP_PAD_L, BACKDROP_PAD_R, CLOUD_DEPTH, backdropLayerTop, FOREST_FAR, FOREST_NEAR, MOUNTAIN_RANGES, SUN_DEPTH, backdropCopies, backdropLayerW, rangeRidge, type BackdropLayerId } from "@/lib/pigchicken/backdrop-layers"
@@ -19,37 +20,13 @@ import type { SnowfallParams } from "@/lib/pigchicken/snowfall"
 import { Snowfall } from "./snowfall"
 import { auroraOpacity, type AuroraParams } from "@/lib/pigchicken/aurora"
 import { AuroraLayer } from "./aurora"
+import { skylineDepth, type SkylineParams, type SkylineRow } from "@/lib/pigchicken/skyline"
+import { skylineShapes, type SkylineShapes } from "@/lib/pigchicken/skyline-draw"
 
 const G = WORLD_GROUND_Y
 // the layers' reach, widths and depths are shared with the editor (Postes e Torres pinned to a layer)
 const BOTTOM = BACKDROP_BOTTOM, PAD_L = BACKDROP_PAD_L, PAD_R = BACKDROP_PAD_R
 const layerW = backdropLayerW
-
-// trees along a line: rounded crowns and pines (`pines`: their share, 0 to 1), as one silhouette path per colour
-function trees(w: number, seed: number, base: number, size: number, gap: number, pines = 0.45) {
-  const r = rng(seed)
-  let crowns = "", trunks = ""
-  for (let x = r() * gap; x < w; x += gap * (0.5 + r())) {
-    const h = size * (0.65 + r() * 0.6)
-    if (r() < pines) {
-      // a pine: three stacked triangles
-      const wd = h * 0.42
-      trunks += `M ${x - h * 0.03} ${base} L ${x - h * 0.03} ${base - h * 0.2} L ${x + h * 0.03} ${base - h * 0.2} L ${x + h * 0.03} ${base} Z `
-      for (let k = 0; k < 3; k++) {
-        const y0 = base - h * (0.15 + k * 0.27), y1 = y0 - h * 0.42, ww = wd * (1 - k * 0.25)
-        crowns += `M ${x - ww} ${y0} L ${x} ${y1} L ${x + ww} ${y0} Z `
-      }
-    } else {
-      // a round crown on a short trunk
-      const rr = h * 0.32
-      trunks += `M ${x - h * 0.035} ${base} L ${x - h * 0.035} ${base - h * 0.45} L ${x + h * 0.035} ${base - h * 0.45} L ${x + h * 0.035} ${base} Z `
-      crowns += `M ${x - rr} ${base - h * 0.55} a ${rr} ${rr * 0.9} 0 1 1 ${rr * 2} 0 a ${rr} ${rr * 0.9} 0 1 1 ${-rr * 2} 0 Z `
-      crowns += `M ${x - rr * 1.25} ${base - h * 0.42} a ${rr * 0.7} ${rr * 0.55} 0 1 1 ${rr * 1.4} 0 a ${rr * 0.7} ${rr * 0.55} 0 1 1 ${-rr * 1.4} 0 Z `
-      crowns += `M ${x - rr * 0.15} ${base - h * 0.42} a ${rr * 0.7} ${rr * 0.55} 0 1 1 ${rr * 1.4} 0 a ${rr * 0.7} ${rr * 0.55} 0 1 1 ${-rr * 1.4} 0 Z `
-    }
-  }
-  return { crowns, trunks }
-}
 
 // the sky's texture: a soft grain with long horizontal streaks, made once per strength, streaks and grain (0.5 is
 // the usual mix) as a small tile
@@ -108,7 +85,7 @@ function RadialSky({ look, left, width, top, height, cx }: { look: SkyLook; left
 // the world's y, so a taller box never moves it
 // copies: how many times it repeats, mirrored, on each side (backdropCopies: only zoomed out past 50%); repeat: the
 // id of the part that repeats (by default all of it)
-function Layer({ p, w, id, top = 0, copies = 0, repeat, children }: { p: number; w: number; id: BackdropLayerId; top?: number; copies?: number; repeat?: string; children: React.ReactNode }) {
+function Layer({ p, w, id, top = 0, copies = 0, repeat, children }: { p: number; w: number; id: BackdropLayerId | `skyline${number}`; top?: number; copies?: number; repeat?: string; children: React.ReactNode }) {
   const ref = useRef<SVGSVGElement>(null)
   useEffect(() => ref.current ? followParallax(ref.current, p) : undefined, [p])
   const x0 = -copies * w, total = (2 * copies + 1) * w, all = `px-layer-${id}`
@@ -173,19 +150,54 @@ function rangeColor(look: SkyLook, p: number) {
   return mix(b, c, (0.66 - p) / 0.18)
 }
 
+// a building row's wall by its depth: the mountains' colour where they are, the tree lines' nearer in; the Névoa
+// lightens it toward the haze the farther it is, and the Cor tints it
+function skylineColor(look: SkyLook, row: SkylineRow) {
+  const p = skylineDepth(row)
+  let c = p >= 0.48 ? rangeColor(look, p) : p >= 0.34 ? mix(look.ranges[2], look.trees[0], (0.48 - p) / 0.14) : mix(look.trees[0], look.trees[1], Math.min(1, (0.34 - p) / 0.14))
+  c = mix(c, look.haze, row.haze / 100 * Math.max(0, Math.min(1, (p - 0.15) / 0.75)) * 0.6 * Math.min(1, look.hazeAmount))
+  return row.wallAmount > 0 ? mix(c, row.wall, row.wallAmount / 100 * 0.85) : c
+}
+
+// one row of buildings (Configurações do Pátio → Prédios): the silhouettes, the facades in a lighter tone (or the
+// Cor da fachada), the lights, and the haze rising from their feet
+function SkylineArt({ s, row, w, look, id, haze }: { s: SkylineShapes; row: SkylineRow; w: number; look: SkyLook; id: string; haze: (w: number, id: string, top: number, o: number) => React.ReactNode }) {
+  const wall = skylineColor(look, row)
+  const light = mix("#ffffff", look.clouds.lit, 0.5)
+  const tone0 = mix(wall, light, row.contrast / 100 * 0.6)
+  const tone = row.faceAmount > 0 ? mix(tone0, row.face, row.faceAmount / 100) : tone0
+  const panel = mix(wall, tone, 0.45)
+  return <>
+    <path d={s.body} fill={wall} />
+    <rect x={0} y={s.feet - 1} width={w} height={BOTTOM - s.feet + 1} fill={wall} />
+    {s.antenna && <path d={s.antenna} stroke={wall} strokeWidth={2.5} fill="none" />}
+    {s.panel && <path d={s.panel} fill={panel} />}
+    {s.dots && <path d={s.dots} fill={row.lit > 0 ? row.light : tone} />}
+    {s.win && <path d={s.win} stroke={tone} strokeWidth={s.winH} strokeDasharray={s.winDash} fill="none" />}
+    {s.stripe && <path d={s.stripe} stroke={tone} strokeWidth={s.stripeW} fill="none" />}
+    {s.code && <path d={s.code} stroke={tone} strokeWidth={s.codeW} strokeLinecap="round" fill="none" />}
+    {s.slot && <path d={s.slot} stroke={tone} strokeWidth={s.slotH} strokeDasharray={s.slotDash} fill="none" />}
+    {s.litWin && <path d={s.litWin} stroke={row.light} strokeWidth={s.winH} strokeDasharray={s.winDash} fill="none" />}
+    {s.litCode && <path d={s.litCode} stroke={row.light} strokeWidth={s.codeW} strokeLinecap="round" fill="none" />}
+    {s.led && <path d={s.led} stroke={row.light} strokeWidth={s.slotH} strokeDasharray={s.ledDash} fill="none" />}
+    {row.haze > 0 && haze(w, id, s.feet - 160, row.haze / 100 * 0.7)}
+  </>
+}
+
 // mountains: Configurações do Pátio → Montanhas (shape, snow, tint); their light and haze come from the sky
 // clouds: Configurações do Pátio → Nuvens (amount, size, height, softness, wind, tint…); snowfall: → Neve caindo;
 // aurora: → Aurora (curtains of light at the sun's depth, behind the clouds); forest: → Mata (each tree line's
 // density, size, pines, shape and tint; Céu e luz → Mata still hides both)
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, forest = FOREST_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, zoomMin = 0.5 }: { worldW: number; look?: SkyLook; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; zoomMin?: number }) {
+// skyline: → Prédios (rows of buildings, each at its own depth among the ranges and the tree lines)
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, forest = FOREST_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, skyline, zoomMin = 0.5 }: { worldW: number; look?: SkyLook; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; skyline?: SkylineParams; zoomMin?: number }) {
   // zoomed out far enough to see the whole world, the layers repeat past their ends
   const copies = (p: number) => backdropCopies(worldW, p, zoomMin)
   const wSun = layerW(worldW, SUN_DEPTH), wCloud = layerW(worldW, CLOUD_DEPTH)
   const wTreesFar = layerW(worldW, FOREST_FAR.p), wTrees = layerW(worldW, FOREST_NEAR.p)
   const far = forestDraw("far", forest.far), near = forestDraw("near", forest.near)
   const shapes = useMemo(() => ({
-    treeFar: trees(wTreesFar, far.seed, G - 40, far.size, far.gap, far.pines), treeNear: trees(wTrees, near.seed, G - 6, near.size, near.gap, near.pines),
-  }), [wTreesFar, wTrees, far.seed, far.size, far.gap, far.pines, near.seed, near.size, near.gap, near.pines])
+    treeFar: trees(wTreesFar, far.seed, G - 40, far.size, far.gap, far.forms), treeNear: trees(wTrees, near.seed, G - 6, near.size, near.gap, near.forms),
+  }), [wTreesFar, wTrees, far.seed, far.size, far.gap, far.forms.join(), near.seed, near.size, near.gap, near.forms.join()])
   const treeFill = (i: 0 | 1) => { const l = i ? forest.near : forest.far; return l.tintAmount > 0 ? mix(look.trees[i], l.tint, l.tintAmount / 100 * 0.8) : look.trees[i] }
   const starPath = useMemo(() => stars(wSun, 5, look.starCount, look.starSize), [wSun, look.starCount, look.starSize])
   const { size: cSize, height: cHeight, spread: cSpread, shape: cShape, kind: cKind, puffs: cPuffs, detail: cDetail } = cloudSet
@@ -200,6 +212,11 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
     const snowD = snowRegion(rg, { amount: snow / 100, perPeak: snowPeaks, style: snowStyle, edge: snowEdge / 100, side: snowSide / 100 }, seed + 7)
     return { ...r, i, w, d: rg.d, line: rg.line, top: rg.top, base: r.base - up, hazeTop: r.hazeTop - up, shade: shadeFaces(rg, shadeStyle, BOTTOM, seed + 13), snow: snowD }
   }).sort((a, b) => b.p - a.p), [worldW, show, rangeCount, height, lift, rough, snow, snowEdge, shape, peak, shadeStyle, snowPeaks, snowStyle, snowSide])
+  const buildings = useMemo(() => (skyline?.rows ?? []).map((row, i) => {
+    if (!row.show) return null
+    const p = skylineDepth(row), w = layerW(worldW, p)
+    return { i, p, w, row, s: skylineShapes(w, row, 61 + i * 17 + row.shape * 101) }
+  }).filter(b => b !== null), [worldW, skyline])
   const rangeFill = (p: number) => mountains.tintAmount > 0 ? mix(rangeColor(look, p), mountains.tint, mountains.tintAmount / 100 * 0.8) : rangeColor(look, p)
   // the clouds' light, with the Nuvens tint and volume (how much the shaded underside shows)
   const cloudLit = cloudSet.tintAmount > 0 ? mix(look.clouds.lit, cloudSet.tint, cloudSet.tintAmount / 100) : look.clouds.lit
@@ -295,13 +312,13 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
           sun={[sunX, look.sun.y]} blur={cloudSet.soft * 0.1 * Math.max(0.6, cSize / 100)}
           fray={cKind === "cumulus" ? cDetail * 0.9 * Math.pow(cSize / 100, 0.8) : 0} grain={Math.sqrt(Math.max(0.3, cSize / 100))} />)}
       </CloudLayer>}
-      {ranges.map(r => {
+      {[...ranges.map(r => {
         const fill = rangeFill(r.p)
         // the snow takes the sun's light, or the colour chosen for it
         const lit = mix(fill, mix("#ffffff", look.clouds.lit, 0.4), 0.8)
         const snowFill = mountains.snowTintAmount > 0 ? mix(lit, mountains.snowTint, mountains.snowTintAmount / 100) : lit
         const g = mountains.gradient / 100
-        return (
+        return { p: r.p, node: (
           <Layer key={r.i} p={r.p} w={r.w} id={`range${r.i}` as BackdropLayerId} copies={copies(r.p)} top={backdropLayerTop(r.top - mountains.outline / 100 * MOUNTAIN_OUTLINE_PX)}>
            <g opacity={mountains.opacity < 100 ? mountains.opacity / 100 : undefined}>
             {/* Degradê: darker at the tops, lighter at the feet */}
@@ -322,17 +339,20 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
            </g>
             {haze(r.w, `px-h${r.i + 1}`, r.hazeTop, r.haze)}
           </Layer>
-        )
-      })}
-      {look.forest && <>
-        {forest.far.show && <Layer p={FOREST_FAR.p} w={wTreesFar} id="forestFar" copies={copies(FOREST_FAR.p)}>
+        ) }
+      }),
+      ...buildings.map(b => ({ p: b.p, node: <Layer key={`sk${b.i}`} p={b.p} w={b.w} id={`skyline${b.i}`} copies={copies(b.p)} top={backdropLayerTop(b.s.top)}>
+        <SkylineArt s={b.s} row={b.row} w={b.w} look={look} id={`px-sk${b.i}`} haze={haze} />
+      </Layer> })),
+      ...(look.forest ? [
+        { p: FOREST_FAR.p, node: forest.far.show && <Layer key="ff" p={FOREST_FAR.p} w={wTreesFar} id="forestFar" copies={copies(FOREST_FAR.p)}>
           <path d={treeFar.trunks} fill={treeFill(0)} /><path d={treeFar.crowns} fill={treeFill(0)} />
           <rect x={0} y={FOREST_FAR.top} width={wTreesFar} height={BOTTOM - G + 42} fill={treeFill(0)} />
-        </Layer>}
-        {forest.near.show && <Layer p={FOREST_NEAR.p} w={wTrees} id="forestNear" copies={copies(FOREST_NEAR.p)}>
+        </Layer> },
+        { p: FOREST_NEAR.p, node: forest.near.show && <Layer key="fn" p={FOREST_NEAR.p} w={wTrees} id="forestNear" copies={copies(FOREST_NEAR.p)}>
           <path d={treeNear.trunks} fill={treeFill(1)} /><path d={treeNear.crowns} fill={treeFill(1)} />
-        </Layer>}
-      </>}
+        </Layer> },
+      ] : [])].sort((a, b) => b.p - a.p).map(l => l.node)}
       {snowfall && snowfall.amount > 0 && <Snowfall snow={snowfall} color={mix("#ffffff", look.clouds.lit, 0.25)} />}
     </div>
   )

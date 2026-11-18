@@ -39,6 +39,7 @@
 | Pátio: aurora no céu (Configurações do Pátio → Aurora) | [Aurora](docs/mechanics/patio/aurora.md) |
 | Pátio: brilho dos itens caídos no chão (Configurações do Pátio → Brilho dos itens: coluna de luz, contorno aceso, cor) | [Brilho dos itens](docs/mechanics/patio/item-glow.md) |
 | Pátio: mata do fundo (Configurações do Pátio → Mata: Mata ao longe e Mata perto) | [Mata](docs/mechanics/patio/forest.md) |
+| Pátio: prédios do fundo (Configurações do Pátio → Prédios: fileiras, modelos, data-centers) | [Prédios](docs/mechanics/patio/skyline.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: alinhamento da barra do inventário (Separado, Centralizado, Esquerda, Direita) e trocas de item que repetem enquanto segura | [Barra do inventário](docs/mechanics/patio/inventory-bar.md) |
