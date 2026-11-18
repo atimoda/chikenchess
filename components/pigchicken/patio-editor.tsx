@@ -10,7 +10,7 @@ import { StepSelect } from "@/components/ui/step-select"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
+import { ArrowDownToLine, Copy, Eye, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PortalTargetFields } from "./portal-target-fields"
 import { isFreeBlock, isSpawnPortal, rebalanceSpawnPortals, setSpawnChance, spawnChances, spawnPortalsOf } from "@/lib/pigchicken/spawn-portals"
@@ -98,7 +98,9 @@ const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 // soundLayer: the "Zonas sonoras" layer (shared with the header's eye), editable here
 // active: the switch in the panel's title; off, the panel stays open and its cards still place elements, but the
 // elements cannot be selected, moved or edited and the Pátio plays as outside the editor
-export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, active = true, onActive, palette = true, me, signedIn = false }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, layersOpen = false, onLayers, active = true, onActive, palette = true, me, signedIn = false }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void
+  // the header's Camadas panel (layer-eyes.tsx), opened from the palette too
+  layersOpen?: boolean; onLayers?: () => void
   // who makes a Pátio new from a portal's Destino (the account, or this browser) and whether it may be saved/named
   me: string; signedIn?: boolean }) {
   const history = useHistory(layout, onChange)
@@ -450,7 +452,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           return { ...createElement("tree", 0, 0, { tree: next.tree }), w: next.w, h: next.h }
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
-        soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer}
+        soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer} layersOpen={layersOpen} onLayers={onLayers}
         floorBelow={floorBelow} chestAt={chestAt} onInsert={insertInChest} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />}
       {palette && draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
@@ -1057,12 +1059,13 @@ function PaletteSection({ title, children }: { title: string; children: React.Re
   </PatioDisclosure>
 }
 
-function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, floorBelow, chestAt, onInsert, onClose, undo, redo, canUndo, canRedo }: {
+function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, layersOpen, onLayers, floorBelow, chestAt, onInsert, onClose, undo, redo, canUndo, canRedo }: {
   active: boolean; onActive?: (on: boolean) => void
   onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
   bindTree: (tree: TreeParams) => PatioPlacementHandlers
   canAddScenery: boolean; hidden: boolean; draggingScenery: boolean
   soundLayer: boolean; onSoundLayer: () => void
+  layersOpen: boolean; onLayers?: () => void
   floorBelow: (x: number, y: number) => number
   chestAt: (clientX: number, clientY: number) => LayoutElement | null; onInsert: (chest: LayoutElement, item: ItemId) => void
   onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
@@ -1123,8 +1126,12 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
           <button type="button" className={TOOL} onClick={onClose} title="Sair do modo editor (=)" aria-label="Sair do modo editor"><X className="h-4 w-4" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-3 pt-2">
-          <button type="button" className={cn(TOOL, "ml-4 h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
-            aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas</button>
+          <div className="ml-4 flex gap-1.5">
+            <button type="button" className={cn(TOOL, "h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
+              aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas</button>
+            {onLayers && <button type="button" className={cn(TOOL, "h-8 w-auto gap-1.5 px-2", layersOpen && "border-primary text-primary")} title="Abre o painel Camadas"
+              aria-pressed={layersOpen} onClick={onLayers}><Eye size={16} /> Camadas</button>}
+          </div>
           <PaletteSection title="Casas">
             {housePreviews.map(house => {
               const size = houseDraftSize(house)

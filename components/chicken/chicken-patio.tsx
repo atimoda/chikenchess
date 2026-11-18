@@ -121,6 +121,8 @@ export function ChickenPatio() {
   const [draft, setDraft] = useState<ChickenConfig>(defaultChickenConfig)
   const [panelOpen, setPanelOpen] = useState(false)
   const [controlsOpen, setControlsOpen] = useState(false)
+  // the Camadas panel: the header's eye and the Modo editor palette's button
+  const [layersOpen, setLayersOpen] = useState(false)
   // a phone held upright: the whole scene moves up and the touch controls get the ground below it to themselves
   const showTouch = useChickenTouch(), portrait = usePortrait()
   const lifted = showTouch && portrait
@@ -725,7 +727,7 @@ export function ChickenPatio() {
             </div>
           )}
         </div>
-        <LayerEyes {...patioLayers} onSave={patio && access.canEdit ? layers => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined} />
+        <LayerEyes {...patioLayers} open={layersOpen} onOpenChange={setLayersOpen} onSave={patio && access.canEdit ? layers => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined} />
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Users className="h-4 w-4" />
           {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
@@ -804,7 +806,8 @@ export function ChickenPatio() {
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
-        me={meId ?? deviceId()} signedIn={!!meId} soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })} />}
+        me={meId ?? deviceId()} signedIn={!!meId} soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })}
+        layersOpen={layersOpen} onLayers={() => setLayersOpen(v => !v)} />}
       {/* the "Zonas sonoras" layer outside the editor: only shown, the tags do not change anything */}
       {patioLayers.layers.zones > 0 && !(editing && patio && access.canEdit) && (
         <MusicZonesLayer elements={elementsInWorld({ v: 1, elements: patio?.layout.elements ?? [] }, screens)} screens={screens} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} editable={false} opacity={patioLayers.layers.zones / 100} />

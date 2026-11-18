@@ -39,9 +39,18 @@ export function usePatioLayers(patioKey: string, saved: PatioLayers | undefined)
   return { layers, set, base }
 }
 
-// onSave: shown only to whoever may edit this Pátio
-export function LayerEyes({ layers, set, base, onSave }: ReturnType<typeof usePatioLayers> & { onSave?: (layers: PatioLayers) => void }) {
-  const [open, setOpen] = useState(false)
+// onSave: shown only to whoever may edit this Pátio. open/onOpenChange: held outside when something else opens the panel
+// too (the Modo editor palette's Camadas button)
+export function LayerEyes({ layers, set, base, onSave, open: openProp, onOpenChange }: ReturnType<typeof usePatioLayers> & {
+  onSave?: (layers: PatioLayers) => void; open?: boolean; onOpenChange?: (open: boolean) => void
+}) {
+  const [openOwn, setOpenOwn] = useState(false)
+  const open = openProp ?? openOwn
+  const setOpen = (next: boolean | ((v: boolean) => boolean)) => {
+    const value = typeof next === "function" ? next(open) : next
+    if (openProp === undefined) setOpenOwn(value)
+    onOpenChange?.(value)
+  }
   const DEFAULT = base
   const changed = !sameLayers(layers, base)
   const fps = useFramePreferences()
