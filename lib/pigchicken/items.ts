@@ -141,6 +141,7 @@ export type ItemDef = {
   arpRate: number // notes per second of the arpeggio / phrase on one press (burst and auto)
   noteLen: number // s each note sounds
   wave: number // px the note sways sideways as it flies
+  aimAssist: number // %: a shot turns toward the enemy in the scale's cell the aim is on (lib/pigchicken/aim-assist.ts); 0 = off
   quantize: boolean // pull the sound to the next sixteenth (at most quantWindow)
   quantWindow: number // ms
   beatBonus: number // harmony multiplier for a shot on the beat
@@ -301,7 +302,7 @@ export const TRAIL_CREAM = '#fff4dc'
 // defaults that keep weapons out of the music block
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
-  quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
+  aimAssist: 0, quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
   hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, cageSouls: 0, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, wingFlip: false, archery: false, drawLen: 30,
@@ -805,6 +806,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'throwMin', label: 'Força mínima', min: 0, max: 2500, step: 25, unit: 'px/s', group: 'Arremesso', hint: 'Só tocar no botão' },
   { key: 'throwSpeed', label: 'Força máxima', min: 200, max: 2500, step: 50, unit: 'px/s', group: 'Arremesso' },
   { key: 'throwCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.1, unit: 's', group: 'Arremesso' },
+  { key: 'aimAssist', label: 'Aim Assist', min: 0, max: 100, step: 5, unit: '%', group: 'Música', hint: 'O tiro vai para o inimigo que estiver na mesma célula da escala que a mira (100% exatamente nele); sem inimigo na célula, vai onde a mira está. 0 = desligado' },
   { key: 'octave', label: 'Registro (oitava)', min: -3, max: 3, step: 1, group: 'Música', hint: '0 = perto do Dó central' },
   { key: 'span', label: 'Extensão da mira', min: 0.5, max: 4, step: 0.5, unit: 'oitavas', group: 'Música', hint: 'De apontar pra baixo até pra cima' },
   { key: 'arpRate', label: 'Velocidade do arpejo', min: 2, max: 24, step: 1, unit: 'notas/s', group: 'Música' },

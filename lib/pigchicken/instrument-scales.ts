@@ -114,6 +114,9 @@ export abstract class InstrumentScale {
   abstract degreeOf(music: Conductor, m: number, angle: number, reach: number): number
   // the aim falls between the notes: a percussive hit instead of the clean note (only the Hangdrum has gaps)
   isSlap(_music: Conductor, _q: ToneQuery): boolean { return false }
+  // the cell of the drawing the aim is on (the one the layer lights): two aims in the same cell give the same key.
+  // The Aim Assist compares an enemy's place with the aim's. Empty: the scale has no cells the aim picks
+  cellAt(music: Conductor, q: ToneQuery): string { return `n${this.noteFor(music, q)}${this.isSlap(music, q) ? 's' : ''}` }
 }
 
 // Escala primária: the leque as it always was (the zone's chord or scale, by how high the aim points)
@@ -143,6 +146,7 @@ export abstract class ChartScale extends InstrumentScale {
     const k = sectorAt(angle), ring = ringAt(reach, this.shape.ringSplit)
     return this.regions().find(r => r.sector === k && r.ring === ring) ?? this.regions()[0]
   }
+  cellAt(_music: Conductor, q: ToneQuery) { return `r${sectorAt(q.angle)}:${ringAt(q.reach, this.shape.ringSplit)}` }
   private notesOf(r: ScaleRegion, set: PitchSet, lo: number, hi: number) {
     return set === 'chord' ? pcNotes(r.root, r.chord, lo, hi) : pcNotes(r.root, r.steps, lo, hi)
   }
@@ -273,6 +277,7 @@ export class SpiralScale extends InstrumentScale {
     const lay = this.layout(music, q), i = this.pieceAt(lay, q.angle, q.reach)
     return i >= 0 ? lay.pieces[i].midi : music.noteFor(q.angle, q.set, q.octave, q.span)
   }
+  cellAt(music: Conductor, q: ToneQuery) { return `p${this.pieceAt(this.layout(music, q), q.angle, q.reach)}` }
   // arpeggios and phrases walk inside the zone's chord or scale, as on the leque
   walk(music: Conductor, from: number, n: number, set: PitchSet) { return music.walk(from, n, set) }
   degreeOf(music: Conductor, m: number) { return music.degreeOf(m) }
@@ -318,6 +323,7 @@ export class HarmonicFieldScale extends InstrumentScale {
   house(music: Conductor, angle: number) {
     return fieldHouses(music.zone)[houseAt(angle, fieldTurn(music.zone.root))]
   }
+  cellAt(music: Conductor, q: ToneQuery) { return `h${houseAt(q.angle, fieldTurn(music.zone.root))}` }
   // "Da escala da zona": the key's own scale (its chord scale), the same 7 notes in every house
   private notesOf(music: Conductor, h: FieldHouse, set: PitchSet, lo: number, hi: number) {
     const z = music.zone
@@ -419,6 +425,8 @@ export class HangScale extends InstrumentScale {
     return lay.fields[this.touch(lay, q.angle, q.reach).index].midi
   }
   isSlap(music: Conductor, q: ToneQuery) { return this.touch(this.layout(music, q), q.angle, q.reach).slap }
+  // a note, or the gap nearest it
+  cellAt(music: Conductor, q: ToneQuery) { const t = this.touch(this.layout(music, q), q.angle, q.reach); return `${t.slap ? 'g' : 'f'}${t.index}` }
   // arpeggios and phrases walk over the hang's own notes, low to high (a real hang has only these)
   walk(music: Conductor, from: number, n: number, set: PitchSet, _angle: number, _reach: number, q?: ToneQuery) {
     if (!q) return music.walk(from, n, set)
@@ -477,6 +485,8 @@ export class StringsScale extends InstrumentScale {
     const t = this.touch(q.angle, q.reach)
     return this.layout(music, q)[t.index].midi + stringShift(t.zone)
   }
+  // a string's whole slice (its flat, harmonic and sharp places too)
+  cellAt(_music: Conductor, q: ToneQuery) { return `s${this.stringAt(q.angle)}` }
   // arpeggios and phrases walk over the strings themselves, low to high
   walk(music: Conductor, from: number, n: number, set: PitchSet, _angle: number, _reach: number, q?: ToneQuery) {
     if (!q) return music.walk(from, n, set)
@@ -500,6 +510,8 @@ export class DrumsScale extends InstrumentScale {
   }
   walk(_music: Conductor, from: number) { return from }
   degreeOf() { return 0 }
+  // the pieces do not follow the aim
+  cellAt() { return '' }
 }
 
 // the Cordas soltas themselves (the strings' own layout and touch, beyond what every scale answers)

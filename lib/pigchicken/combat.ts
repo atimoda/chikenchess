@@ -28,6 +28,7 @@ import { TAKE_WAIT, glideSoulMirror, importSouls, soulFromWho, soulWho, type Net
 import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
 import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
+import { arcAngle, assistPick, blendAngle, magnetSteer, type Magnet } from './aim-assist'
 import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
 import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
 import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
@@ -452,6 +453,54 @@ export function createCombat() {
       color: (m: number) => DEGREE_COLORS[sc.degreeOf(music, m, angle, reach) % DEGREE_COLORS.length],
     }
   }
+  // ---------- Aim Assist (lib/pigchicken/aim-assist.ts) ----------
+  // each player's scale drawing in the world: its middle (her shoulder) and radius (setScaleFan)
+  const scaleFans = new Map<string, { x: number; y: number; r: number }>()
+  // where an instrument's shot leaving `from` at `speed` goes: toward the enemy standing in the cell of its scale the
+  // aim (angle, reach) is on, by the item's Aim Assist (an enemy's reach is its distance from her over the drawing's
+  // radius, so a cell goes on past the drawing like the aim does); with nobody there, where the aim is.
+  // p: how far it turned (the spread shrinks as much: 100% goes right at it)
+  function assistAim(d: ItemDef, from: { x: number; y: number }, speed: number, angle = aimAngle, reach?: number): { angle: number; p: number } {
+    const p = d.instrument ? Math.max(0, Math.min(1, (d.aimAssist ?? 0) / 100)) : 0
+    if (!(p > 0)) return { angle, p: 0 }
+    const sc = scaleOf(held(), d)
+    const q = (a: number, r: number) => ({ angle: a, reach: r, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending, hang: hangOf(d) })
+    const cell = sc.cellAt(music, q(angle, reach ?? (sc.id === 'strings' ? stringReach() : aimReach)))
+    if (!cell) return { angle, p: 0 }
+    const fan = scaleFans.get(active) ?? { x: from.x, y: from.y, r: 0 }
+    const list: { x: number; y: number }[] = []
+    for (const t of targets) {
+      if (!alive(t) || t.kind === 'button' || (t.kind === 'undead' && (t.data as UndeadState).bird)) continue
+      const x = t.x, y = t.y - t.h / 2
+      if (Math.hypot(x - from.x, y - from.y) <= d.range) list.push({ x, y })
+    }
+    const cellOf = (o: { x: number; y: number }) => sc.cellAt(music, q(Math.atan2(o.y - fan.y, o.x - fan.x), fan.r > 0 ? Math.min(1, Math.hypot(o.x - fan.x, o.y - fan.y) / fan.r) : aimReach))
+    const pick = assistPick(list, cell, cellOf, aimPoint ?? from)
+    if (!pick) return { angle, p: 0 }
+    const to = arcAngle(pick.x - from.x, pick.y - from.y, speed, d.drop * gravityAt(from.x, from.y))
+    return { angle: blendAngle(angle, to, p), p }
+  }
+  // ---------- Bullet Magnetism: the aliens whose variation pulls (lib/pigchicken/alien-catalog.ts), once per step ----------
+  let magnetCache: (Magnet & { id: number })[] | null = null
+  function magnetList() {
+    if (magnetCache) return magnetCache
+    magnetCache = []
+    for (const t of targets) {
+      const m = Number((t.data as { magnet?: unknown } | undefined)?.magnet) || 0
+      if (m > 0 && t.kind === 'alien' && alive(t)) magnetCache.push({ id: t.id, x: t.x, y: t.y - t.h / 2, m })
+    }
+    return magnetCache
+  }
+  // bends something flying toward the alien that pulls it (skip: the ones it already went through)
+  function magnetize(o: { x: number; y: number; vx: number; vy: number }, dt: number, skip?: Set<number>) {
+    let ms = magnetList()
+    if (!ms.length) return
+    if (skip?.size) ms = ms.filter(m => !skip.has(m.id))
+    const v = magnetSteer(o.vx, o.vy, o.x, o.y, ms, dt)
+    if (v) { o.vx = v.vx; o.vy = v.vy }
+  }
+  // the violin's beam on the wall of a closed block: time since the last note it counted there, per player
+  const beamWall = new Map<string, number>()
   const critters: Critter[] = []
   let quantizeAll = true
   const conv = { birds: 0, people: 0, harmonized: 0, undeadBirds: 0 }
@@ -1185,8 +1234,9 @@ export function createCombat() {
     if (out.pluck) sound = out.pluck(voice, midi, at, d.noteLen, vel, vibOf(d))
     else out.note(voice, midi, at, d.noteLen, vel, undefined, vibOf(d))
     const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    const way = assistAim(d, muzzle, d.speed, str.angle, r).angle
     const b: Bullet = {
-      x: muzzle.x, y: muzzle.y, vx: Math.cos(str.angle) * d.speed, vy: Math.sin(str.angle) * d.speed, dist: 0, damage: d.damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      x: muzzle.x, y: muzzle.y, vx: Math.cos(way) * d.speed, vy: Math.sin(way) * d.speed, dist: 0, damage: d.damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
       item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
       note: { midi, color, sym: NOTE_SYMBOLS[index % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice }, ring: d.ringNotes, ghost: true,
     }
@@ -1271,10 +1321,11 @@ export function createCombat() {
       notes.forEach((m, i) => out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d), undefined, vibOf(d)))
     }
     const speed = d.speed * power
+    const aim = assistAim(d, muzzle, speed)
     const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
     for (let i = 0; i < n; i++) {
       const u = n === 1 ? rand(-0.5, 0.5) : i / (n - 1) - 0.5 + rand(-0.3, 0.3) / n
-      const a = aimAngle + u * spreadDeg * DEG
+      const a = aim.angle + u * spreadDeg * (1 - aim.p) * DEG
       const b: Bullet = {
         x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage: damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
         item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
@@ -1289,10 +1340,17 @@ export function createCombat() {
       b.by = active
       // instant shots travel their whole way now and leave a tracer
       if (d.hitscan && ctx) {
-        let guard = 0
-        while (!stepBullet(b, 1 / 240, ctx) && guard++ < 2000) { /* travel */ }
-        tracers.push({ x1: mx, y1: my, x2: b.x, y2: b.y, life: 0.12 })
-        if (netOn) netShots.push({ k: 't', i: b.item, x1: mx, y1: my, x2: b.x, y2: b.y })
+        // (a line per stretch: a note that bounces off a wall draws its way, not a line straight to where it ended)
+        let guard = 0, sx = mx, sy = my, dirX = Math.sign(b.vx), dirY = Math.sign(b.vy)
+        const line = (x2: number, y2: number) => {
+          tracers.push({ x1: sx, y1: sy, x2, y2, life: 0.12 })
+          if (netOn) netShots.push({ k: 't', i: b.item, x1: sx, y1: sy, x2, y2 })
+          sx = x2; sy = y2
+        }
+        while (!stepBullet(b, 1 / 240, ctx) && guard++ < 2000) {
+          if (Math.sign(b.vx) !== dirX || Math.sign(b.vy) !== dirY) { line(b.x, b.y); dirX = Math.sign(b.vx); dirY = Math.sign(b.vy) }
+        }
+        line(b.x, b.y)
       } else {
         bullets.push(b)
         if (netOn) netShots.push(shotOf(b))
@@ -1567,6 +1625,8 @@ export function createCombat() {
     const { boxes, groundY } = b.room ?? ctx
     const px = b.x, py = b.y
     b.t += dt
+    // (a grenade lying on the ground stays there)
+    if (!(b.fuse > 0 && !b.drop)) magnetize(b, dt, b.hits)
     if (b.drop) b.vy += b.drop * gravityAt(b.x, b.y) * dt
     b.x += b.vx * dt; b.y += b.vy * dt
     b.dist += Math.hypot(b.x - px, b.y - py)
@@ -1607,6 +1667,8 @@ export function createCombat() {
         // the wall of a closed block of the Grade de blocos: the note counts there (one the zone's "Só notas do tom"
         // leaves out only glances off) and, with "Notas quicam nas paredes", bounces
         let mw = wall || zw || b.room ? null : mine?.note(lx, ly, x, y, dry || b.remote || !music.fits(b.note.midi) ? null : b.by ?? null) ?? null
+        // a note that bursts on hitting (the Teclado's) bursts on the wall, like a rocket, instead of going on or bouncing
+        if (mw && b.explode > 0 && b.fuse <= 0) { b.x = lx; b.y = ly; return gone(lx, ly) }
         if (mw && !mw.bounce) mw = null
         if (!wall && !zw && !mw) continue
         b.x = lx; b.y = ly
@@ -2038,6 +2100,7 @@ export function createCombat() {
     for (let i = noteShots.length - 1; i >= 0; i--) {
       const n = noteShots[i]
       const px = n.x, py = n.y
+      if (n.state === 'rebated') magnetize(n, dt)
       n.t += dt; n.x += n.vx * dt; n.y += n.vy * dt
       if (n.state === 'incoming') {
         if (parryAt(n.x, n.y, n.size, n.color)) { noteEvents.push({ kind: 'parry', shot: n, player: parriedBy }); noteShots.splice(i, 1); continue }
@@ -2090,11 +2153,15 @@ export function createCombat() {
 
   // the violin: a held note in a beam from the muzzle to the first thing it meets; its pitch follows the aim and the chord
   function stepBeam(d: ItemDef, h: Owned, dt: number, muzzle: { x: number; y: number }, ctx: StepCtx) {
-    const dx = Math.cos(aimAngle), dy = Math.sin(aimAngle)
-    let x = muzzle.x, y = muzzle.y, hit: Target | null = null
+    const way = assistAim(d, muzzle, d.speed).angle
+    const dx = Math.cos(way), dy = Math.sin(way)
+    let x = muzzle.x, y = muzzle.y, hit: Target | null = null, lx = x, ly = y, onWall = false
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
       if (y >= ctx.groundY || boxAt(ctx.boxes, x, y, d.instrument)) break
+      // the wall of a closed block of the Grade de blocos: the beam stops on it
+      if (mine && !shotRooms.has(active) && mine.note(lx, ly, x, y, null)) { onWall = true; break }
+      lx = x; ly = y
       hit = targets.find(t => t.deadT <= 0 && t.state !== 'converted' && !(t.kind === 'undead' && (t.data as UndeadState).bird) && x >= t.x - t.w / 2 && x <= t.x + t.w / 2 && y >= t.y - t.h && y <= t.y) ?? null
       if (hit) break
     }
@@ -2106,6 +2173,17 @@ export function createCombat() {
     else if (Math.abs(pitch - beamMidi) > 0.005) { beamHeld.setPitch(pitch); beamMidi = pitch }
     beamHeld?.setVolume?.(noteVol(d))
     // bend: semitones the aim's tremolo is bending it right now; vib: its "Vibrato natural" depth in cents (the beam's wave shows both)
+    // on a block's wall it counts as a note there every sixteenth (the first one at once), as the notes it plays
+    // would (one the zone leaves out only glances off)
+    if (onWall) {
+      const since = (beamWall.get(active) ?? Infinity) + dt, every = Math.max(0.05, music.secondsPerBeat() / 4)
+      if (since >= every) {
+        if (music.fits(midi)) mine?.note(lx, ly, x, y, active)
+        burst(lx, ly, 3, color, 120, 2)
+        beamWall.set(active, since >= 2 * every ? 0 : since - every)
+      } else beamWall.set(active, since)
+      x = lx; y = ly
+    } else beamWall.delete(active)
     beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null, bend: tremBend, vib: d.vibratoDepth }
     h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
@@ -2124,7 +2202,7 @@ export function createCombat() {
     }
     if (h.ammo <= 0) { stopBeam(); if (d.autoReload) startReload() }
   }
-  function stopBeam() { beamHeld?.stop(); beamHeld = null; beam = null }
+  function stopBeam() { beamHeld?.stop(); beamHeld = null; beam = null; beamWall.delete(active) }
 
   // ---------- what the souls flying free do for and against their owners (lib/pigchicken/soul-acts.ts) ----------
   // each owner's fall (a step in the air needs to know she is falling); what a soul did to a player: the sway of
@@ -2608,6 +2686,8 @@ export function createCombat() {
     get detune() { return detuneNow() },
     // the aim's reach (0..1) for the current player, set by the page before step; the loudness it gives the held item
     // (kind: what that reach is: the pointer's place, a stick's push or nothing; the Cordas soltas read it)
+    // where this player's scale drawing is in the world (her shoulder) and its radius: the Aim Assist's cells
+    setScaleFan(fan: { x: number; y: number; r: number } | null) { if (fan && [fan.x, fan.y, fan.r].every(Number.isFinite)) scaleFans.set(active, { ...fan }); else scaleFans.delete(active) },
     setAimReach(r: number, kind: AimKind = 'none') { aimReach = Number.isFinite(r) ? Math.max(0, Math.min(1, r)) : 1; aimKind = kind },
     // the Cordas soltas for the current player: where along the strings her aim is (the aim's reach) and how long
     // ago string `i` was plucked (s; Infinity: not yet)
@@ -2854,6 +2934,7 @@ export function createCombat() {
     // world: false steps only the current player's loadout (another local player in the same frame)
     step(frameDt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      magnetCache = null
       // her own hands (aim, cooldowns, swings, charges) live on the time of the Zona she is in; the world below goes
       // thing by thing, each on the time of where it is, and the music keeps the frame's
       let dt = frameDt * timeAt(body.x, body.y - 60 * body.scale)

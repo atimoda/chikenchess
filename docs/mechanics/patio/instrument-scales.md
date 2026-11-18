@@ -74,3 +74,13 @@ A escala da harpa de pedais: cordas que saem em todas as direções em volta do 
 ## Bateria — 15/11, v2.11.0
 
 Escala **Bateria** (`drums`): os botões redondos das peças de um kit acústico em volta de quem toca, sem altura de nota pela mira. É a escala da Bateria fixa; peças, baquetas, atalhos, pedal do chimbal, rufo e o editor do kit (Escalas → Bateria → Kit) estão em [fixed-instruments.md](fixed-instruments.md). O standby da escala tem os mesmos números das outras, mas sentada na Bateria ela nunca some.
+
+## Aim Assist — 18/11, v2.14.0
+
+`ItemDef.aimAssist` (Itens → Música → **Aim Assist**, 0 a 100% de 5 em 5, padrão 0 = desligado; some na Bateria). Cálculo puro em `lib/pigchicken/aim-assist.ts` (`assistPick`, `blendAngle`, `arcAngle`), célula em `InstrumentScale.cellAt` (`instrument-scales.ts`), uso em `assistAim` de `combat.ts`; a tela informa o desenho da escala de cada player com `combat.setScaleFan({ x, y, r })` (ombro no mundo e raio da camada Escalas, o mesmo usado para o alcance da mira). Testes em `tests/pigchicken-aim-assist.cases.cjs`.
+
+- **Célula:** a parte do desenho que a mira acende: faixa do leque (nota), setor e anel dos gráficos redondos, pedaço da Espiral, casa do Campo harmônico, nota ou vão do Hangdrum e a corda inteira das Cordas soltas (com bemol, harmônico e sustenido). A Bateria não tem células.
+- **Gatilho:** cada nota que sai (tiro, acorde, rajada, arpejo, pizzicato, corda tocada) e o feixe do violino a cada quadro. Procura os inimigos vivos (aliens, zumbis, mortos-vivos que não viraram pássaro, bonecos de treino; não os botões) até o Alcance do item, cujo meio cai na mesma célula: direção a partir do ombro e alcance = distância ÷ raio da camada, limitado a 1, então a célula continua além do desenho na mesma direção, como a mira. Entre vários, o mais perto do ponto da mira.
+- **Efeito:** a direção do tiro vai da mira até o inimigo na fração do slider (100%: exatamente nele; 50%: metade do ângulo) e o espalhamento cai na mesma fração (100%: nenhum). Com queda (Harpa de Lira, Pandeiro), mira o arco baixo que passa pelo inimigo (com a gravidade da zona na saída); sem arco possível, aponta reto. A nota tocada continua a da mira. Sem inimigo na célula, o tiro vai exatamente onde a mira está.
+- **Com o Bullet Magnetism** dos aliens ([temple.md](temple.md)): o Aim Assist escolhe a direção de saída; depois, em voo, o magnetismo curva o tiro. Um alien a 100% puxa mesmo um tiro assistido para outro inimigo.
+- Vale para todos os players locais em todos os modos do Pátio; no online os tiros já saem virados.
