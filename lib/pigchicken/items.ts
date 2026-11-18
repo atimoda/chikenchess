@@ -18,7 +18,7 @@ export type ItemId = 'wing' | 'peck' | 'piu' | 'chainBlow' | 'tailBlow' | 'bat' 
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key' | 'boomerang' | 'cardsRed' | 'cardsBlue'
   | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
-  | 'goldkey' | 'minebomb'
+  | 'goldkey' | 'minebomb' | 'hook'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // what an instrument's tremolo follows: the aim turning, or the aim moving along the string (nearer / farther)
@@ -288,6 +288,19 @@ export type ItemDef = {
   deckBig: number
   deckTouch: number
   deckGap: number
+  // the Corrente-gancho (lib/pigchicken/grapple.ts): Atirar held spins a length of chain (charging up to `hookCharge`
+  // s) and letting go throws the hook straight where she aims, at `hookSpeed` px/s, up to `hookRange` px. It latches
+  // on the first thing it touches: a wall, a floor or an object pulls her to the hook; a character, an enemy or a
+  // dummy is pulled to her instead (hurt by `hookDamage`). The pull goes at `hookPull` px/s at full charge
+  // (`hookPullMin` of it with no charge) and lets go after `hookTime` s at most
+  grapple: boolean
+  hookRange: number
+  hookSpeed: number
+  hookCharge: number
+  hookPull: number
+  hookPullMin: number
+  hookDamage: number
+  hookTime: number
 }
 // what a special sounds and looks like: thunder (a bolt from the sky and its rumble) or lightning (long crackling arcs)
 export type SpecialKind = 'thunder' | 'lightning'
@@ -322,6 +335,7 @@ const NO_MUSIC = {
   specialCooldown: 0, specialRange: 260, specialJumps: 6, specialTime: 3, specialDamage: 20, specialKind: 'thunder' as SpecialKind,
   returnThrow: false, returnDamage: 30, returnRange: 700, returnMin: 0.5, returnSpeed: 1300, returnCharge: 0.8, returnPush: 500, returnCurveMin: 0, returnCurveMax: 0,
   returnCount: 1, deck: false, deckLeash: 700, deckBig: 2, deckTouch: 26, deckGap: 0.2,
+  grapple: false, hookRange: 900, hookSpeed: 2400, hookCharge: 0.6, hookPull: 1500, hookPullMin: 0.6, hookDamage: 8, hookTime: 1.5,
 }
 
 // a rebate chain from [kind, mode, n?] steps (always happening)
@@ -511,6 +525,17 @@ const CARDS_BLUE: ItemDef = {
   explodeRadius: 110, explodeDamage: 40, explodePush: 500,
   instrument: true, voice: 'bells', pitchSet: 'scale', octave: 1, span: 2, noteLen: 0.6, stun: 0.3, turnRate: 0, scales: ['primary'],
 }
+// Corrente-gancho: an iron shackle on her wrist, a length of chain and a big hook (lib/pigchicken/grapple.ts). Golpe
+// swings the hook; Atirar held spins the chain over her head and letting go throws the hook where she aims: it
+// latches on a wall, a floor or an object and pulls her to it, or on a character, an enemy or a dummy and pulls it to
+// her. Made with the Pig in mind; every class can use it
+const HOOK: ItemDef = {
+  ...BAT, id: 'hook', name: 'Corrente-gancho', family: 'Esportivos', mag: 0, refillTime: 0, weight: 0.95,
+  length: 70, meleeDamage: 16, meleeRange: 72, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.2, meleePush: 320, throwDamage: 16,
+  trailWidth: 22, trailColor: '#d9d7e0', gripX: 0, staffX: 30, staffY: 18, staffAngle: 82, windX: 4, windY: -64, windAngle: -90,
+  rebateTok: true, rebateSpeed: 1.2,
+  grapple: true, hookRange: 900, hookSpeed: 2400, hookCharge: 0.6, hookPull: 1500, hookPullMin: 0.6, hookDamage: 8, hookTime: 1.5,
+}
 const PECK: ItemDef = {
   ...WING, id: 'peck', name: 'Bicada', family: 'Sem item',
   meleeDamage: 12, meleeRange: 85, meleeArc: 160, meleeCooldown: 0.1, meleeTime: 0.16, meleePush: 220,
@@ -672,7 +697,7 @@ const CODE_ITEMS: Record<ItemId, ItemDef> = {
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY, boomerang: BOOMERANG, cardsRed: CARDS_RED, cardsBlue: CARDS_BLUE,
   cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
-  goldkey: GOLD_KEY, minebomb: MINE_BOMB,
+  goldkey: GOLD_KEY, minebomb: MINE_BOMB, hook: HOOK,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
@@ -683,7 +708,7 @@ export const INSTRUMENT_WEAPON: Partial<Record<ItemId, ItemId>> = {
 export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3, key: 9, goldkey: 9, minebomb: 10 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
-export const SPORTS_IDS: ItemId[] = ['bat', 'passagua', 'boomerang']
+export const SPORTS_IDS: ItemId[] = ['bat', 'passagua', 'boomerang', 'hook']
 // magic weapons: staffs like the sports tools (held in the wing, Golpe / Atirar): the ones whose blows shock, and
 // the decks of cards that burst
 export const MAGIC_IDS: ItemId[] = ['mjolnir', 'odinstaff', 'cardsRed', 'cardsBlue']
@@ -816,6 +841,13 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'deckBig', label: 'Explosão do 7 e do Ás', min: 1, max: 4, step: 0.1, unit: '×', group: 'Baralho', hint: 'Raio da explosão das duas cartas que explodem sozinhas ao chegar, em vezes o Raio da explosão' },
   { key: 'deckTouch', label: 'Área de contato', min: 4, max: 120, step: 2, unit: 'px', group: 'Baralho', hint: 'Raio em volta da carta: quem encosta nele faz a carta explodir' },
   { key: 'deckGap', label: 'Intervalo entre cartas', min: 0.05, max: 2, step: 0.05, unit: 's', group: 'Baralho', hint: 'Com Atirar segurado, sai uma carta a cada intervalo' },
+  { key: 'hookRange', label: 'Alcance', min: 100, max: 3000, step: 20, unit: 'px', group: 'Gancho', hint: 'Até onde o gancho vai; a bolinha laranja só aparece quando há onde grudar dentro dele' },
+  { key: 'hookSpeed', label: 'Velocidade do gancho', min: 300, max: 6000, step: 50, unit: 'px/s', group: 'Gancho' },
+  { key: 'hookCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.05, unit: 's', group: 'Gancho', hint: 'Quanto girar a corrente até a força máxima do puxão' },
+  { key: 'hookPull', label: 'Força do puxão', min: 200, max: 4000, step: 50, unit: 'px/s', group: 'Gancho', hint: 'Velocidade de quem é puxado, com a carga cheia' },
+  { key: 'hookPullMin', label: 'Puxão sem carga', min: 0.1, max: 1, step: 0.05, unit: '×', group: 'Gancho', hint: 'Parte da força com um toque rápido' },
+  { key: 'hookDamage', label: 'Dano ao grudar', min: 0, max: 100, step: 1, group: 'Gancho', hint: 'Em quem o gancho fisga' },
+  { key: 'hookTime', label: 'Tempo máximo do puxão', min: 0.2, max: 5, step: 0.1, unit: 's', group: 'Gancho', hint: 'Depois disso o gancho solta e a corrente volta' },
   { key: 'shockRange', label: 'Alcance do choque', min: 0, max: 800, step: 10, unit: 'px', group: 'Choque', hint: 'Distância que o raio pula de um para o próximo; 0 = sem choque' },
   { key: 'shockJumps', label: 'Pulos do raio', min: 0, max: 20, step: 1, group: 'Choque', hint: 'Quantos o raio alcança além dos que levaram o golpe' },
   { key: 'shockTime', label: 'Duração do choque', min: 0.05, max: 3, step: 0.05, unit: 's', group: 'Choque', hint: 'Quanto tempo tremem e ficam parados' },

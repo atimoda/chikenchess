@@ -26,6 +26,7 @@ import { drawBolts, drawFlights, drawShocked, drawSkyFlash, drawXray } from "./s
 import { drawCards } from "./cards"
 import { drawItemBeam, drawItemOutline } from "./item-glow"
 import { itemGlowLook, ITEM_GLOW_OFF, type ItemGlow } from "@/lib/pigchicken/item-glow"
+import { drawHooks } from "./hook"
 
 // the temple drawn with the world: its state and which aliens are about to drop a bomb (set every frame)
 // gongs: how each Gongo of the layout looks now (by its button's label); jukeLast: the jukebox struck last (its ring)
@@ -112,6 +113,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
   })
   combat.critters.forEach(c => { if (!visible(c.x, c.y + 60)) return; if (c.kind === "bird") drawBird(ctx, c, X(c.x)); else drawPerson(ctx, c, X(c.x)) })
   drawFlights(ctx, combat, camX, view)
+  drawHooks(ctx, combat, camX, view)
   drawCards(ctx, combat, camX, view)
   const drawTarget = (ctx: Ctx, g: Combat["targets"][number], x: number) => {
     if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }

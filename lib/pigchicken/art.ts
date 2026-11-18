@@ -42,7 +42,43 @@ function gummyBear(cx: number, cy: number, rot: number) {
 
 const I = '/pigchicken/instruments/'
 
+// ---------- the Corrente-gancho: an iron shackle on the wrist, a chain and a big hook (lib/pigchicken/grapple.ts) ----------
+// the iron's colours, the same as the chain on the Pig's cuffs
+export const HOOK_IRON = { ring: '#6b6a75', edge: '#4c4b55', hi: '#9d9ca8', cuff: '#3d3b45', cuffHi: '#55535f', rivet: '#a3a1ad' }
+// the hook alone, its eye at (0, 0) and pointing along +x: the eye, the shank, the bend and the barb that points back
+export const HOOK_PATHS = {
+  eye: 'M0 0 m-3.4 0 a3.4 3.4 0 1 0 6.8 0 a3.4 3.4 0 1 0 -6.8 0',
+  shank: 'M3.4 0 L20 0',
+  bend: 'M20 0 C 31 0, 33 15, 23 17 C 15 18.5, 11 13, 13 7.5',
+  barb: 'M13 7.5 L9.6 1.8 L16.4 5 Z',
+}
+const hookTip = (x: number) => `<g transform="translate(${x} 0)">
+    <path d="${HOOK_PATHS.eye}" fill="none" stroke="${HOOK_IRON.edge}" stroke-width="2.6"/>
+    <path d="${HOOK_PATHS.shank} ${HOOK_PATHS.bend}" fill="none" stroke="${HOOK_IRON.edge}" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${HOOK_PATHS.shank} ${HOOK_PATHS.bend}" fill="none" stroke="${HOOK_IRON.ring}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5 -1.1 L19 -1.1 C 27 -1.1, 30 7, 28 11" fill="none" stroke="${HOOK_IRON.hi}" stroke-width="1" stroke-linecap="round" opacity="0.8"/>
+    <path d="${HOOK_PATHS.barb}" fill="${HOOK_IRON.ring}" stroke="${HOOK_IRON.edge}" stroke-width="1" stroke-linejoin="round"/></g>`
+// a chain along +x from x0, `n` links: rings seen flat and seen side on, one after the other
+const chainSvg = (x0: number, n: number, link = 7) => Array.from({ length: n }, (_, i) => {
+  const x = x0 + link * (i + 0.5)
+  return i % 2 === 0
+    ? `<ellipse cx="${x}" cy="0" rx="${link * 0.68}" ry="${link * 0.4}" fill="none" stroke="${HOOK_IRON.edge}" stroke-width="2.4"/><ellipse cx="${x}" cy="0" rx="${link * 0.68}" ry="${link * 0.4}" fill="none" stroke="${HOOK_IRON.ring}" stroke-width="1.3"/>`
+    : `<path d="M${x - link * 0.62} 0 L${x + link * 0.62} 0" stroke="${HOOK_IRON.edge}" stroke-width="2.8" stroke-linecap="round"/><path d="M${x - link * 0.45} -0.5 L${x + link * 0.45} -0.5" stroke="${HOOK_IRON.hi}" stroke-width="0.8" stroke-linecap="round"/>`
+}).join('')
+// the shackle closed around her wrist, a bolt through its ears
+const HOOK_CUFF = `<rect x="-5" y="-8.5" width="10" height="17" rx="3.2" fill="${HOOK_IRON.cuff}"/><rect x="-5" y="-8.5" width="3.4" height="17" rx="2" fill="${HOOK_IRON.cuffHi}"/>
+    <circle cx="1.6" cy="-5" r="1.3" fill="${HOOK_IRON.rivet}"/><circle cx="1.6" cy="5" r="1.3" fill="${HOOK_IRON.rivet}"/>
+    <rect x="4.6" y="-2.4" width="3" height="4.8" rx="1" fill="${HOOK_IRON.edge}"/>`
+// while the chain spins or the hook is out, only the shackle (and the first link) stays in her hand: the rest is drawn
+// on the canvas (components/pigchicken/draw/hook.ts)
+export const HOOK_CUFF_SVG = HOOK_CUFF + chainSvg(7, 1)
+
 const ART: Partial<Record<ItemId, Art>> = {
+  // Corrente-gancho: the shackle at the grip, the chain hanging from it and the hook at its end
+  hook: {
+    box: [-7, -11, 82, 30],
+    svg: HOOK_CUFF + chainSvg(7, 5) + hookTip(45.4),
+  },
   // Taco: a wooden baseball bat, the knob and the taped handle at the grip, the barrel widening to a rounded end
   bat: {
     box: [-12, -9, 98, 18],

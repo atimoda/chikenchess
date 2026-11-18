@@ -209,7 +209,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "passagua": {
     "peckPull": 38,
@@ -414,7 +421,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "boomerang": {
     "peckPull": 38,
@@ -626,7 +640,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "pistol": {
     "peckPull": 38,
@@ -838,7 +859,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "smg": {
     "peckPull": 38,
@@ -1050,7 +1078,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "rifle": {
     "peckPull": 38,
@@ -1262,7 +1297,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "pump": {
     "peckPull": 38,
@@ -1474,7 +1516,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "sniper": {
     "peckPull": 38,
@@ -1692,7 +1741,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "launcher": {
     "peckPull": 38,
@@ -1904,7 +1960,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "grenade": {
     "peckPull": 38,
@@ -2116,7 +2179,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "bow": {
     "peckPull": 38,
@@ -2328,7 +2398,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "flute": {
     "peckPull": 38,
@@ -2544,7 +2621,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "sax": {
     "peckPull": 38,
@@ -2760,7 +2844,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "trumpet": {
     "peckPull": 38,
@@ -2976,7 +3067,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "guitar": {
     "peckPull": 38,
@@ -3198,7 +3296,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "violin": {
     "peckPull": 38,
@@ -3420,7 +3525,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "keys": {
     "peckPull": 38,
@@ -3636,7 +3748,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "tambourine": {
     "peckPull": 38,
@@ -3858,7 +3977,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "harp": {
     "peckPull": 38,
@@ -4080,7 +4206,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "hangdrum": {
     "peckPull": 38,
@@ -4292,7 +4425,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "maryjane": {
     "peckPull": 38,
@@ -4497,7 +4637,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cok": {
     "peckPull": 38,
@@ -4702,7 +4849,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "mjolnir": {
     "peckPull": 38,
@@ -4914,7 +5068,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "odinstaff": {
     "peckPull": 38,
@@ -5126,7 +5287,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cardsRed": {
     "peckPull": 38,
@@ -5338,7 +5506,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cardsBlue": {
     "peckPull": 38,
@@ -5550,7 +5725,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "key": {
     "peckPull": 38,
@@ -5755,7 +5937,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cage": {
     "peckPull": 38,
@@ -5960,7 +6149,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cageWire": {
     "peckPull": 38,
@@ -6165,7 +6361,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cageConcorde": {
     "peckPull": 38,
@@ -6370,7 +6573,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cageWood": {
     "peckPull": 38,
@@ -6575,7 +6785,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cageArch": {
     "peckPull": 38,
@@ -6780,7 +6997,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "cageFlight": {
     "peckPull": 38,
@@ -6985,7 +7209,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "pedalharp": {
     "peckPull": 38,
@@ -7197,7 +7428,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "drumkit": {
     "peckPull": 38,
@@ -7409,7 +7647,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "wing": {
     "peckPull": 38,
@@ -7621,7 +7866,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "peck": {
     "peckPull": 38,
@@ -7826,7 +8078,14 @@
     "spiralDescending": false,
     "tremoloAxis": "turn",
     "handDelay": 0.125,
-    "classPoints": {}
+    "classPoints": {},
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5
   },
   "piu": {
     "peckPull": 38,
@@ -8456,5 +8715,219 @@
     "tremoloAxis": "turn",
     "handDelay": 0.125,
     "classPoints": {}
+  },
+  "hook": {
+    "peckPull": 38,
+    "rate": 2.5,
+    "burst": 3,
+    "chargeTime": 0.1,
+    "chargeMin": 0.3,
+    "mag": 0,
+    "reloadTime": 1.2,
+    "refillTime": 0,
+    "refillAmount": 1,
+    "speed": 1500,
+    "drop": 0,
+    "damage": 0,
+    "pierce": 0,
+    "range": 1100,
+    "size": 3,
+    "pellets": 1,
+    "explodeRadius": 0,
+    "explodePush": 0,
+    "explodeDamage": 0,
+    "fuse": 0,
+    "bounce": 0,
+    "spreadBase": 1.5,
+    "spreadShot": 2.2,
+    "spreadMax": 9,
+    "spreadRecover": 14,
+    "spreadMove": 1.5,
+    "spreadAir": 3,
+    "crouchMult": 0.7,
+    "broodMult": 0.5,
+    "recoilKick": 0,
+    "recoilPush": 0,
+    "weight": 0.95,
+    "turnRate": 0,
+    "muzzleX": 0,
+    "muzzleY": 0,
+    "length": 70,
+    "pivotX": 0,
+    "pivotY": 0,
+    "handX": 0,
+    "handY": 0,
+    "backX": 0,
+    "backY": 0,
+    "drawLen": 30,
+    "gripX": 0,
+    "gripY": 0,
+    "staffX": 30,
+    "staffY": 18,
+    "staffAngle": 82,
+    "windX": 4,
+    "windY": -64,
+    "windAngle": -90,
+    "meleeDamage": 16,
+    "meleeRange": 72,
+    "meleeArc": 150,
+    "meleeCooldown": 0,
+    "meleeTime": 0.2,
+    "meleePush": 320,
+    "comboWindow": 0.45,
+    "heavyDamage": 40,
+    "heavyRange": 75,
+    "heavyArc": 170,
+    "heavyCooldown": 0.15,
+    "heavyTime": 0.42,
+    "heavyPush": 700,
+    "heavyCharge": 1,
+    "heavyReachMax": 1.5,
+    "heavySizeMax": 1.6,
+    "heavyTrailWidth": 40,
+    "heavyTrailTime": 0.3,
+    "heavyTrailWisps": 6,
+    "heavyTrailOpacity": 0.8,
+    "returnDamage": 30,
+    "returnRange": 700,
+    "returnMin": 0.5,
+    "returnCharge": 0.8,
+    "returnSpeed": 1300,
+    "returnPush": 500,
+    "returnCurveMin": 0,
+    "returnCurveMax": 0,
+    "returnCount": 1,
+    "deckLeash": 700,
+    "deckBig": 2,
+    "deckTouch": 26,
+    "deckGap": 0.2,
+    "hookRange": 900,
+    "hookSpeed": 2400,
+    "hookCharge": 0.6,
+    "hookPull": 1500,
+    "hookPullMin": 0.6,
+    "hookDamage": 8,
+    "hookTime": 1.5,
+    "shockRange": 0,
+    "shockJumps": 3,
+    "shockTime": 0.35,
+    "shockDamage": 0,
+    "shockDrain": 0,
+    "heavyShockRange": 0,
+    "heavyShockTime": 0.6,
+    "specialCooldown": 0,
+    "specialRange": 260,
+    "specialJumps": 6,
+    "specialTime": 3,
+    "specialDamage": 20,
+    "trailWidth": 22,
+    "trailTime": 0.2,
+    "trailWisps": 5,
+    "trailOpacity": 0.7,
+    "durability": 0,
+    "rebateSnap": 25,
+    "rebateSnapForce": 0.5,
+    "rebateSpeed": 1.2,
+    "throwDamage": 16,
+    "throwMin": 275,
+    "throwSpeed": 1100,
+    "throwCharge": 1,
+    "octave": 0,
+    "span": 2,
+    "arpRate": 10,
+    "noteLen": 0.25,
+    "wave": 6,
+    "quantWindow": 60,
+    "beatBonus": 1.5,
+    "stun": 0,
+    "strum": 0.018,
+    "tremolo": 0,
+    "vibratoDepth": 0,
+    "vibratoRate": 5.5,
+    "vibratoDelay": 0.15,
+    "tremoloRange": 0.5,
+    "meleeNotes": 3,
+    "ringNotes": 0,
+    "hangRows": 1,
+    "hangNotes": 8,
+    "hangNotes2": 7,
+    "effectTime": 0,
+    "effectSpeed": 1,
+    "effectAccel": 1,
+    "cageSouls": 0,
+    "effectRamp": 0.5,
+    "fireMode": "semi",
+    "pathShow": "off",
+    "landShow": "always",
+    "autoReload": true,
+    "burstHold": true,
+    "slideFire": true,
+    "shellReload": false,
+    "hitscan": false,
+    "quantize": true,
+    "beam": false,
+    "gliss": false,
+    "fretless": false,
+    "meleeInterrupt": true,
+    "rebateTok": true,
+    "pivotAt": "shoulder",
+    "handOn": false,
+    "backOn": false,
+    "wingFlip": false,
+    "archery": false,
+    "arp": "off",
+    "pitchSet": "chord",
+    "volMin": 1,
+    "volMax": 1,
+    "voice": "flute",
+    "effectCurve": "linear",
+    "effectLook": "none",
+    "combo": [
+      {
+        "kind": "down",
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
+      },
+      {
+        "kind": "up",
+        "arc": 150,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
+      },
+      {
+        "kind": "flat",
+        "arc": 200,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
+      },
+      {
+        "kind": "spin",
+        "arc": 360,
+        "time": 1,
+        "cooldown": 0,
+        "reach": 1
+      }
+    ],
+    "heavyKind": "down",
+    "specialKind": "thunder",
+    "rebateChain": [
+      {
+        "kind": "dynamics",
+        "chance": 1,
+        "n": 0,
+        "mode": "accent"
+      }
+    ],
+    "trailColor": "#d9d7e0",
+    "scales": [
+      "primary"
+    ],
+    "spiralDescending": false,
+    "tremoloAxis": "turn",
+    "handDelay": 0.125
   }
 }

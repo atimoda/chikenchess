@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.14.0',
     date: '18/11/2026',
-    title: 'Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”',
+    title: 'Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo filhote; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você',
     groups: [
       { title: 'Pátio: instrumentos', items: [
         'Novo ajuste “Aim Assist” (Itens → Música, de 0 a 100%, desligado por padrão) em cada instrumento. Ao tocar, se houver um inimigo na mesma célula da escala em que a mira está (a faixa do leque, a região do gráfico, o pedaço da espiral, a casa do campo harmônico, a nota do hang ou a corda), o tiro vira para ele: em 100% vai exatamente nele, sem espalhamento; em 50% vai até a metade do caminho. Sem inimigo na célula, o tiro vai onde a mira está. A célula continua além do desenho, na mesma direção. Vale para as notas, os acordes, o feixe do violino e as cordas; a Bateria não tem.',
@@ -28,6 +28,15 @@ const RECENT = [
         'A conta admin não fica mais presa no filhote: o Vestiário abre na aba Filhote, mas mantém as abas Raças e peças, e escolher uma raça ou peça volta a adulto com esse visual, em qualquer espécie.',
         'Saiu o aviso “meio apagado: ainda não liberado (dá pra testar)” do rodapé do Vestiário.',
         'Novo botão Hit-area no Vestiário (só admin): mostra sobre a prévia a caixa do corpo e a barra de vida de Chi, Pig, Ken e Filhote. Arraste a caixa, a borda, o topo e a barra, ou digite os números, e grave com Salvar no game, que mostra a lista do que muda antes. A caixa é o que explosões, notas, cartas e cagados acertam, e é a mesma da camada Hit-boxes.',
+      ] },
+      { title: 'Pátio: Corrente-gancho', items: [
+        'Item novo nos Esportivos (painel Itens, suportes do Modo editor e Baú): uma algema de ferro no pulso, um pedaço de corrente e um gancho grande na ponta. Pensado para o Pig, mas qualquer personagem pode usar.',
+        'Segure Atirar e o braço sobe girando a corrente com o gancho, cada vez mais rápido. Ao soltar, o gancho voa reto para onde você mira, puxando a corrente atrás de si.',
+        'Se o gancho bate numa parede, num chão, numa plataforma ou num objeto, ele gruda e puxa você até lá; em cima de uma plataforma, você aterrissa nela. Quanto mais tempo girando, mais forte o puxão.',
+        'Se fisga um alien, um zumbi, um morto-vivo, um boneco de treino ou outro player deste aparelho, ele leva um pouco de dano e é puxado até você. O zumbi fica onde foi puxado; o alien volta para a fileira e o boneco de treino para o lugar, como depois de uma explosão.',
+        'Enquanto mira com o gancho na mão, uma bolinha laranja mostra onde ele vai grudar. Sem nada ao alcance (900 px), a bolinha não aparece.',
+        'Apertar Atirar de novo com o gancho fora solta o gancho na hora, e a corrente volta para a mão. Golpe dá uma pancada com o gancho, com combo, como os outros esportivos.',
+        'No Pátio online, os outros players veem a corrente indo e voltando.',
       ] },
     ],
   },
