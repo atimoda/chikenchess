@@ -376,6 +376,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const mouseBtn = { fire: false, melee: false }
     // the main player sits at a fixed instrument (as the last frame left it)
     let p1Seated = false
+    // whether P1 was a Filhote last frame (becoming one drops everything)
+    let p1Baby = false
     // sitting at the Harpa, each finger on the screen is a hand on the strings (two fingers, two hands; slot 0: the
     // front hand). fresh: it landed since the last frame (its pluck); up: it lifted (it leaves after that frame)
     const fingers: { id: number; x: number; y: number; slot: number; fresh: boolean; up: boolean }[] = []
@@ -1254,10 +1256,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       for (let i = fingers.length - 1; i >= 0; i--) { if (fingers[i].up || !combat.seated) fingers.splice(i, 1); else fingers[i].fresh = false }
       minePlay.step(dt)
       minePlay.player("p1", engine, input)
-      // a Filhote (lib/chicken/baby.ts) plays its instruments and uses Usar, and nothing else; the notes that reach
-      // it fill its music bar
-      if (getBaby().on) {
-        if (!(combat.held && combat.def().instrument)) { input.fire = false; input.firePressed = false; input.melee = false; input.throwHeld = false; input.throwReleased = false }
+      // a Filhote (lib/chicken/baby.ts): becoming one, every item and Gaiola falls around her; it carries one firearm,
+      // one instrument, one utility and one Gaiola, never throws, and its empty hand peeps (combat.ts); the notes that
+      // reach it fill its music bar
+      const babyOn = getBaby().on
+      combat.setBaby("p1", babyOn)
+      if (babyOn && !p1Baby) combat.dropAll(getChickenConfig().params.babyDropSpread)
+      p1Baby = babyOn
+      if (babyOn) {
+        input.throwHeld = false; input.throwReleased = false
         combat.setBabies([{ by: "p1", box: { l: body.x - 40 * st.scale, r: body.x + 40 * st.scale, t: body.y - 200 * st.scale, b: body.y }, fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
       } else combat.setBabies([])
       // the strong blow charged with an empty hand (Correntada, Rabada): the arm or the tail winds up
@@ -1268,7 +1275,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the Itens panel follows the item the main player holds
       // (empty-handed, Pig and Ken hit with the chain and the tail: the panel opens on them)
-      announceHeldItem(combat.held?.item ?? (body.species === 'pig' ? 'chainBlow' : body.species === 'fox' ? 'tailBlow' : null))
+      announceHeldItem(combat.held?.item ?? (babyOn ? 'piu' : body.species === 'pig' ? 'chainBlow' : body.species === 'fox' ? 'tailBlow' : null))
       announcePlayerClass(pointClassOf(body.species))
       announceHeldScale(combat.held && combat.def().instrument ? combat.scale.id : null)
       // (and its preview is in this Pátio's key)

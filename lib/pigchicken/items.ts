@@ -14,7 +14,7 @@ export type PathShow = 'off' | 'hold' | 'holdAim' | 'always'
 export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
-export type ItemId = 'wing' | 'peck' | 'chainBlow' | 'tailBlow' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
+export type ItemId = 'wing' | 'peck' | 'piu' | 'chainBlow' | 'tailBlow' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key' | 'boomerang' | 'cardsRed' | 'cardsBlue'
   | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
@@ -516,6 +516,13 @@ const PECK: ItemDef = {
   chargeTime: 0.12, peckPull: 38,
   rebateChain: [],
 }
+// the Filhote's empty hand (Atirar or Golpe): a peep that lets out a small note, which flies a little way and gives
+// a little harmony (Projétil: Bônus musical por nota, speed, reach, size; Disparo: Cadência)
+const PIU: ItemDef = {
+  ...PECK, id: 'piu', name: 'Piu piu', family: 'Sem item',
+  rate: 4, damage: 5, speed: 520, range: 240, size: 4, drop: 0, pierce: 0, noteLen: 0.16, voice: 'bird', octave: 1, span: 1,
+  meleeDamage: 0, meleePush: 0, meleeCooldown: 0,
+}
 
 // ---------- instruments: one per family for now, on its weapon family's sheet ----------
 // melee is the same for all of them (Y); like the weapons they never break. Their notes come back on their own,
@@ -660,7 +667,7 @@ const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: 'Voadeira', cage
 
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
-  wing: WING, peck: PECK, chainBlow: CHAIN_BLOW, tailBlow: TAIL_BLOW, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
+  wing: WING, peck: PECK, piu: PIU, chainBlow: CHAIN_BLOW, tailBlow: TAIL_BLOW, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY, boomerang: BOOMERANG, cardsRed: CARDS_RED, cardsBlue: CARDS_BLUE,
   cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
@@ -696,7 +703,7 @@ export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 export const FIXED_IDS: ItemId[] = ['pedalharp', 'drumkit']
 // the items a rack can hold
 export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS, ...CAGE_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck', 'chainBlow', 'tailBlow']
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck', 'piu', 'chainBlow', 'tailBlow']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)

@@ -114,6 +114,8 @@ export const CHICKEN_PARAMS = {
   guardBlock: 60,
   // the Filhote: how many notes that reach it fill its music bar (then it is an adult again)
   babyNotes: 4,
+  // how far around her the items and Gaiolas she had fall when she becomes a Filhote (px, each side)
+  babyDropSpread: 140,
   heldFlapRate: 9,
   jumpFlapRate: 14,
   // Idle
