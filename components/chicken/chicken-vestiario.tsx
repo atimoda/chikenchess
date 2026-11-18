@@ -12,6 +12,7 @@ import { babyArt, babyClassOf, babySkins, defaultBabySkin, getBaby, setBaby, sub
 const NO_BABY: BabyState = { on: false, skin: null, bar: 0 }
 import { RARITIES, RARITY_COLOR, RARITY_LABEL, breedRarity, itemRarity, type Rarity } from "@/lib/chicken/rarity"
 import { cn } from "@/lib/utils"
+import { FloatingPanel } from "@/components/ui/floating-panel"
 
 const UNLOCK = "chickenchess:chicken-vest-unlock-all:v1"
 type Src = "green" | "gold" | "red"
@@ -129,14 +130,16 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
   }
 
   return (
-    <aside data-chicken-ignore aria-label="Vestiário" className="absolute bottom-10 left-3 top-16 z-[210] flex w-[min(740px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+    <FloatingPanel id="chicken-vestiario" data-chicken-ignore aria-label="Vestiário" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(740, vw - 24), h: vh - 104 })} minW={300} minH={320} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <h2 className="flex-1 text-sm text-white">Vestiário</h2>
         {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
         <button type="button" aria-label="Fechar vestiário" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <div className="relative h-56 shrink-0 border-b border-primary/30 bg-[radial-gradient(120%_70%_at_50%_85%,rgba(31,211,154,0.09),transparent_70%)] md:h-auto md:w-[260px] md:border-b-0 md:border-r">
+      {/* side by side when the window is wide enough (its own width, it can be resized) */}
+      <div className="@container flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col @xl:flex-row">
+        <div className="relative h-56 shrink-0 border-b border-primary/30 bg-[radial-gradient(120%_70%_at_50%_85%,rgba(31,211,154,0.09),transparent_70%)] @xl:h-auto @xl:w-[260px] @xl:border-b-0 @xl:border-r">
           <p className="absolute left-3.5 top-2.5 text-[10px] uppercase tracking-wider text-[#93a79a]">Prévia</p>
           <div className="absolute inset-x-3 bottom-8 top-8">{baby.on ? svg("-90 -210 180 220", LOOK_ART.composeSet(babyArt(look, babySkin))) : svg(fullView(look), LOOK_ART.compose(look))}</div>
           <div className="absolute inset-x-0 bottom-8 h-0.5 bg-primary/55" />
@@ -163,6 +166,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose }: { look:
           </footer>
         </div>
       </div>
-    </aside>
+      </div>
+    </FloatingPanel>
   )
 }
