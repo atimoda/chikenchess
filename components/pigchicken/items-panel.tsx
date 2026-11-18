@@ -44,6 +44,8 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   // the Boomerang and the decks: staffs thrown that come back, with no shock; a deck's cards burst (Explosão), the
   // blue one's in a note (Música)
   boomerang: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música", "Choque", "Especial"],
+  // the Corrente-gancho: a staff whose Atirar throws the hook (Gancho), with no shock
+  hook: ["Disparo", "Munição", "Projétil", "Espalhamento", "Explosão", "Efeito", "Música", "Choque", "Especial"],
   cardsRed: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Música", "Choque", "Especial"],
   cardsBlue: ["Disparo", "Munição", "Projétil", "Espalhamento", "Efeito", "Choque", "Especial"],
   wing: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito"],
@@ -80,7 +82,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   // opens on the item the main player holds; empty-handed, on the Bicada (what she attacks with then)
   const [sel, setSel] = useState<ItemId>(() => currentHeldItem() ?? "peck")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, "Golpe forte": true, Combo: true, Bicada: true, Pontos: true, "Arremesso que volta": true, Choque: true, Especial: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Disparo: true, Munição: true, Projétil: true, Efeito: true, Golpe: true, "Golpe forte": true, Combo: true, Bicada: true, Pontos: true, "Arremesso que volta": true, Gancho: true, Choque: true, Especial: true })
   useEffect(() => {
     setItems(loadItems())
     return subscribeItems(setItems)
@@ -118,7 +120,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {cages ? <CagesView items={items} onChange={(id, souls) => edit(all => { all[id].cageSouls = souls })} /> : ITEM_PARAM_GROUPS.filter(g => g !== "Gaiola" && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || (isStaff(it) && !it.returnThrow)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
+        {cages ? <CagesView items={items} onChange={(id, souls) => edit(all => { all[id].cageSouls = souls })} /> : ITEM_PARAM_GROUPS.filter(g => g !== "Gaiola" && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || (isStaff(it) && !it.returnThrow && !it.grapple)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Gancho" || it.grapple) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it))).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g === "Golpe" && isStaff(it) ? "Golpe rápido" : g}</summary>
             <div className="grid gap-field px-4 pb-4">

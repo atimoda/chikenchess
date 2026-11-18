@@ -89,6 +89,7 @@ import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/d
 import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
+import { drawHookDot, drawHookSpin } from "@/components/pigchicken/draw/hook"
 import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { drawAbductions, drawFreedSouls, drawPoops, drawPoopStains, drawScares } from "@/components/pigchicken/draw/souls"
 import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeSoulEntries } from "@/lib/pigchicken/soul-library"
@@ -1159,7 +1160,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const playerOf = new Map([[engine, "p1"] as const, ...Array.from(extras?.current?.entries() ?? [], ([id, e]) => [e, id] as const)])
       combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? []), ...Array.from(chicks?.current?.values() ?? [])].map(eng => {
         const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
-        return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }
+        return { id: playerOf.get(eng), box: { l: x - 45 * st.scale, r: x + 45 * st.scale, t: y - 200 * st.scale, b: y }, v: { x: st.vx, y: st.vy }, push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }
       }))
       if (perches.spans.length) {
         perches.camX = camX; perches.camY = camY - yr.lo; perches.restY = yr.lo; perches.time += dt
@@ -1250,7 +1251,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       for (let i = fingers.length - 1; i >= 0; i--) { if (fingers[i].up || !combat.seated) fingers.splice(i, 1); else fingers[i].fresh = false }
       minePlay.step(dt)
       minePlay.player("p1", engine, input)
-      combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
+      combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), hand: (() => { const p = engine.rigPoint("hand"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       // (she stays where its stool is, in the seated pose, until she gets up)
       { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
@@ -1313,7 +1314,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           } else extraKit.delete(id)
         } else extraKit.delete(id)
         minePlay.player(id, eng, xin)
-        combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
+        combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), hand: (() => { const p = eng.rigPoint("hand"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
         scalePlaying.set(id, xin.fire || xin.melee)
         { const seat = combat.seated, at = seat && seatSpot(seat); if (seat) extraSeated.add(id); else extraSeated.delete(id); eng.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }
@@ -1631,6 +1632,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       returnPath(engine)
       extraList.forEach(([id, eng]) => { combat.use(id); returnPath(eng) })
+      combat.use("p1")
+      // the Corrente-gancho in each local player's wing: the chain spinning in her hand while Atirar charges, and the
+      // orange dot where the hook would latch if thrown now
+      const hookAim = (eng: typeof engine) => {
+        if (!combat.held || !combat.def().grapple) return
+        const ms = eng.getMotionState()
+        if (combat.hookSpinning) drawHookSpin(ctx, eng.rigPoint("hand"), combat.hookSpin, ms.scale, ms.face)
+        const from = eng.heldPoint(combat.aimAngle, 0, 0), at = combat.predictHook({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G })
+        if (at) drawHookDot(ctx, { x: at.x - camX, y: at.y + camY })
+      }
+      hookAim(engine)
+      extraList.forEach(([id, eng]) => { combat.use(id); hookAim(eng) })
       combat.use("p1")
       // the other local players' reticles, each in their own color, where their item points
       extraList.forEach(([id, eng]) => {

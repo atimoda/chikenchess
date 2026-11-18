@@ -51,6 +51,7 @@
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
 | Pátio: Martelo de Thor e Cajado de Odin: choque em cadeia, estado de choque (raio-x), especial com intervalo no slot, arremesso que volta | [Armas de raio](docs/mechanics/patio/lightning.md) |
 | Pátio: Boomerang (dois de uma vez) e baralhos de cartas explosivas (vermelho: dano físico; azul: nota guardada e harmonia): ordem, estacionar, estouro, cadeia, retorno | [Boomerang e baralhos](docs/mechanics/patio/boomerangs.md) |
+| Pátio: Corrente-gancho (girar a corrente na carga, bolinha laranja de onde gruda, puxar a si até o cenário ou puxar alguém até você) | [Corrente-gancho](docs/mechanics/patio/hook.md) |
 | Pátio: zumbis (perseguição, mordida e ronda quando a galinha está fora de alcance) | [Zumbis e hordas](docs/mechanics/patio/enemies.md) |
 | Pátio: Templo do Gongo, fase de notas, mortes, pássaros e catálogo de aliens | [Templo](docs/mechanics/patio/temple.md) |
 | Pátio: rebate, transformações, zonas sonoras, jukebox, editor de músicas, MIDI | [Músicas](docs/mechanics/patio/songs.md) |

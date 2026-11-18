@@ -30,6 +30,7 @@ import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
 import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
 import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
+import { HOOK_ARRIVE, HOOK_ARRIVE_TARGET, HOOK_KEEP, HOOK_REEL, HOOK_STEP, hookCast, hookPullSpeed, pullDelta, pullStep, spinRate, type HookHit } from './grapple'
 import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
 import { STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
 import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, type FixedKind, type Seat } from './fixed-instruments'
@@ -193,6 +194,16 @@ export type Card = {
   id: number; rank: number; x: number; y: number; tx: number; ty: number; phase: CardPhase; t: number; seed: number; speed: number; angle: number
   item: ItemId; owned: Owned; owner: string; fuse?: number; note?: NoteInfo; remote?: boolean; net: number; home?: { x: number; y: number }
 }
+// the Corrente-gancho's hook (lib/pigchicken/grapple.ts): out along the aim from its owner's hand (hx, hy: where the
+// chain starts this frame), latched and pulling (`hit`: on the world, her to the anchor (ax, ay); on someone, them to
+// her, the hook riding on them at (ox, oy) from their middle), or reeling back to her hand. pull: the pull's speed;
+// t: s in this phase; best / stall: how close the pull got and for how long it has not got closer.
+// remote: another browser's (it only shows: out to where it latched over there, held a moment, back home)
+export type Hook = {
+  x: number; y: number; hx: number; hy: number; angle: number; speed: number; left: number; phase: 'out' | 'pull' | 'back'
+  owned: Owned; owner: string; hit: HookHit | null; ax: number; ay: number; ox: number; oy: number
+  pull: number; damage: number; t: number; best: number; stall: number; scale: number; flew?: boolean; room?: ShotRoom; remote?: boolean; latched?: boolean; home?: { x: number; y: number }
+}
 export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean; room?: ShotRoom }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 // undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
@@ -310,8 +321,8 @@ export function createCombat() {
   let effects: Effect[] = []
   // id: the local player it is (the souls act on their owner through it); the chicks have none
   // push(vx, vy, damage): damage is what the blow does, for a bird grabbed on a wall (lib/chicken/grab-damage.ts);
-  // without it the push always takes it off
-  let blastActors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[] = []
+  // without it the push always takes it off. v: its velocity now (the Corrente-gancho's pull keeps it at its speed)
+  let blastActors: { id?: string; box: BlastBox; v?: { x: number; y: number }; push: (vx: number, vy: number, damage?: number) => void }[] = []
   // other catchable birds in the world (the chicks that follow her): where they are (world px, their middle and
   // size) and what to do when the Passaguá catches one (the Parquinho removes it)
   let catchables: Catchable[] = []
@@ -350,6 +361,12 @@ export function createCombat() {
   const bolts: Bolt[] = [], flights: Flight[] = []
   // the cards of the decks out in the world: flying, floating where they were thrown to, or on their way back
   const cards: Card[] = []
+  // the Corrente-gancho's hooks out in the world, each local player's hand (where the chain starts) and the angle of
+  // the chain spinning in it while Atirar charges
+  const hooks: Hook[] = []
+  const hands = new Map<string, { x: number; y: number }>(), spins = new Map<string, number>()
+  // the targets a hook is pulling this frame: their blast motion is the pull's, not the fall's
+  const hooked = new Set<Target>()
   let clock = 0, skyFlash = 0
   // y: the floor the rack stands on (a platform's top), or the ground when unset
   const racks: { x: number; item: ItemId; t: number; label: string; y?: number; respawnDelay: number; pickupId?: number; spawnX?: number; spawnY?: number; cageSouls?: number; refillLimit?: number; given: number }[] = []
@@ -619,7 +636,149 @@ export function createCombat() {
     return stop < 0 ? path : path.slice(0, stop + 1)
   }
   // the charge of a staff's Atirar fills in its strong blow's time, or in its throw's when it is one that comes back
-  const staffCharge = (d: ItemDef) => Math.max(0.05, d.returnThrow ? d.returnCharge : d.heavyCharge)
+  const staffCharge = (d: ItemDef) => Math.max(0.05, d.grapple ? d.hookCharge : d.returnThrow ? d.returnCharge : d.heavyCharge)
+
+  // ---------- Corrente-gancho (lib/pigchicken/grapple.ts) ----------
+  // what the hook latches on at (x, y), thrown by `owner`: a live enemy, undead or dummy (a mirror of another
+  // browser's, a button or one with a full shield only hold it like a wall), another local player, or the world
+  // (the floor, a wall, a platform, an object)
+  function hookHitAt(x: number, y: number, owner: string, ctx: StepCtx): HookHit | null {
+    for (const t of targets) {
+      if (!alive(t) || Math.abs(x - t.x) > t.w / 2 + 6 || y < t.y - t.h - 6 || y > t.y + 6) continue
+      if (t.kind === 'button' || t.mirror || (t.shield ?? 0) >= 1) return { kind: 'world' }
+      return { kind: 'target', id: t.id }
+    }
+    for (const a of blastActors) if (a.id && a.id !== owner && x >= a.box.l && x <= a.box.r && y >= a.box.t && y <= a.box.b) return { kind: 'player', id: a.id }
+    if (y >= ctx.groundY || solidAt(ctx.boxes, x, y)) return { kind: 'world' }
+    return null
+  }
+  // where the hook would latch if thrown now from `from` (the orange dot): null when the item in her wing is not a
+  // Corrente-gancho ready in her hand, or nothing is in its reach
+  function predictHook(from: { x: number; y: number }, ctx: StepCtx) {
+    const h = held(), d = def()
+    if (!h || !d.grapple || h.out || (swing && swing.t < swing.time)) return null
+    const c = hookCast(from, aimAngle, d.hookRange, (x, y) => hookHitAt(x, y, active, shotRooms.get(active) ?? ctx))
+    return c.hit ? c : null
+  }
+  // Atirar let go: the hook leaves her hand where she aims, its pull as strong as the chain was spun
+  function throwHook(h: Owned, d: ItemDef, from: { x: number; y: number }, charge: number, ctx: StepCtx) {
+    const room = shotRooms.get(active)
+    hooks.push({
+      x: from.x, y: from.y, hx: from.x, hy: from.y, angle: aimAngle, speed: d.hookSpeed, left: d.hookRange, phase: 'out', owned: h, owner: active,
+      hit: null, ax: 0, ay: 0, ox: 0, oy: 0, pull: hookPullSpeed(d, charge), damage: d.hookDamage, t: 0, best: Infinity, stall: 0, scale: lastBody?.scale ?? 1, room,
+    })
+    leaves(h, d)
+    sound('throw', null)
+    if (netOn) {
+      const c = hookCast(from, aimAngle, d.hookRange, (x, y) => hookHitAt(x, y, active, room ?? ctx))
+      netShots.push({ k: 'gk', i: h.item, x: Math.round(from.x), y: Math.round(from.y), tx: Math.round(c.x), ty: Math.round(c.y), sp: d.hookSpeed, l: c.hit ? 1 : 0 })
+    }
+  }
+  // the hook latches on what it touched
+  function latchHook(k: Hook, hit: HookHit) {
+    k.phase = 'pull'; k.t = 0; k.best = Infinity; k.stall = 0; k.hit = hit
+    burst(k.x, k.y, 6, '#9d9ca8', 150, 2)
+    sound('block', null)
+    if (hit.kind === 'world') { k.ax = k.x; k.ay = k.y; return }
+    if (hit.kind === 'target') {
+      const t = targets.find(o => o.id === hit.id)
+      if (!t) { k.phase = 'back'; return }
+      k.ox = k.x - t.x; k.oy = k.y - (t.y - t.h / 2)
+      hitTarget(t, k.damage, 0, k.x, k.y, 'impact')
+      if (!alive(t)) k.phase = 'back'
+      return
+    }
+    const a = actorOf(hit.id)
+    if (!a) { k.phase = 'back'; return }
+    k.ox = k.x - (a.box.l + a.box.r) / 2; k.oy = k.y - (a.box.t + a.box.b) / 2
+  }
+  // the pull is over: a pulled player keeps a part of her speed, a pulled target falls from where it is (a zombie or
+  // an undead stays there; an alien goes back to its row and a dummy to its post, as after a blast)
+  function unhook(k: Hook) {
+    if (k.phase !== 'pull' || !k.hit) { k.phase = 'back'; return }
+    const hit = k.hit
+    if (hit.kind === 'world' || hit.kind === 'player') {
+      const a = actorOf(hit.kind === 'world' ? k.owner : hit.id)
+      if (a?.v) a.push(-a.v.x * (1 - HOOK_KEEP), -a.v.y * (1 - HOOK_KEEP))
+    } else {
+      const t = targets.find(o => o.id === hit.id)
+      if (t?.blast) { t.blast.vx = 0; t.blast.vy = 0; if (t.kind === 'zombie' || t.kind === 'undead') t.blast.x = 0 }
+    }
+    k.phase = 'back'; k.t = 0
+  }
+  // she lets go of her hooks (Atirar pressed again while one is out)
+  function releaseHooks(owner: string) { for (const k of hooks) if (!k.remote && k.owner === owner && k.phase !== 'back') unhook(k) }
+  // each hook: out until it latches or its reach ends, pulling while latched, then reeling back to her hand
+  function stepHooks(frameDt: number, ctx: StepCtx) {
+    hooked.clear()
+    for (let i = hooks.length - 1; i >= 0; i--) {
+      const k = hooks[i], d = items[k.owned.item], dt = frameDt * timeAt(k.x, k.y)
+      const hand = k.remote ? k.home! : bodyOf(k.owner) ? hands.get(k.owner) ?? null : null
+      // its owner is gone: it falls where it is
+      if (!hand) { hooks.splice(i, 1); arrives(k.owned); if (!k.remote && !k.owned.out) pickups.push({ id: nextId++, owned: k.owned, x: k.x, y: k.y, vy: 0, resting: false, noPick: 0.3 }); continue }
+      k.hx = hand.x; k.hy = hand.y; k.t += dt
+      if (k.phase === 'out') {
+        for (let left = k.speed * dt; left > 0 && k.phase === 'out'; left -= HOOK_STEP) {
+          const s = Math.min(HOOK_STEP, left, Math.max(0, k.left))
+          k.x += Math.cos(k.angle) * s; k.y += Math.sin(k.angle) * s; k.left -= s
+          if (k.remote) { if (k.left <= 0) { k.phase = k.latched ? 'pull' : 'back'; k.t = 0 } continue }
+          const hit = hookHitAt(k.x, k.y, k.owner, k.room ?? ctx)
+          if (hit) latchHook(k, hit)
+          else if (k.left <= 0) { k.phase = 'back'; k.t = 0 }
+        }
+        continue
+      }
+      if (k.phase === 'pull') {
+        // another browser's: it only holds a moment where it latched
+        if (k.remote) { if (k.t >= 0.35) { k.phase = 'back'; k.t = 0 } continue }
+        const hit = k.hit!
+        if (hit.kind === 'world') {
+          const me = actorOf(k.owner), her = bodyOf(k.owner)
+          if (!me || !her) { k.phase = 'back'; continue }
+          // her feet go to the hook: on top of a platform or an object she lands on it; on a wall or a ceiling her body
+          // stops against it first and the pull lets go
+          const feet = { x: her.x, y: her.y }, to = { x: k.ax, y: k.ay - 4 }
+          const r = pullStep(Math.hypot(to.x - feet.x, to.y - feet.y), k.best, k.stall, k.t, dt, HOOK_ARRIVE * her.scale * 0.4, d.hookTime)
+          k.best = r.best; k.stall = r.stall
+          // (she also is there once she flew and landed at the hook's height or above it)
+          if (!her.grounded) k.flew = true
+          if (r.done || (her.grounded && k.flew && her.y <= k.ay + 12)) { unhook(k); continue }
+          const dv = pullDelta(feet, to, k.pull, me.v ?? { x: her.vx, y: 0 })
+          me.push(dv.x, dv.y)
+          continue
+        }
+        if (hit.kind === 'player') {
+          const a = actorOf(hit.id)
+          if (!a) { k.phase = 'back'; continue }
+          const mid = { x: (a.box.l + a.box.r) / 2, y: (a.box.t + a.box.b) / 2 }
+          k.x = mid.x + k.ox; k.y = mid.y + k.oy
+          const r = pullStep(Math.hypot(hand.x - mid.x, hand.y - mid.y), k.best, k.stall, k.t, dt, HOOK_ARRIVE_TARGET, d.hookTime)
+          k.best = r.best; k.stall = r.stall
+          if (r.done) { unhook(k); continue }
+          const dv = pullDelta(mid, hand, k.pull, a.v ?? { x: 0, y: 0 })
+          a.push(dv.x, dv.y)
+          continue
+        }
+        const t = targets.find(o => o.id === hit.id)
+        if (!t || !alive(t)) { k.phase = 'back'; k.t = 0; continue }
+        const mid = { x: t.x, y: t.y - t.h / 2 }, dist = Math.hypot(hand.x - mid.x, hand.y - mid.y)
+        const r = pullStep(dist, k.best, k.stall, k.t, dt, HOOK_ARRIVE_TARGET, d.hookTime)
+        k.best = r.best; k.stall = r.stall
+        if (r.done) { k.x = mid.x + k.ox; k.y = mid.y + k.oy; unhook(k); continue }
+        // it moves on its blast motion, which the pull drives this frame (no fall, no drag)
+        const m = t.blast ??= { x: 0, y: 0, vx: 0, vy: 0 }
+        const s = Math.min(k.pull * dt, Math.max(0, dist - HOOK_ARRIVE_TARGET * 0.5)), ux = (hand.x - mid.x) / (dist || 1), uy = (hand.y - mid.y) / (dist || 1)
+        t.x += ux * s; t.y += uy * s; m.x += ux * s; m.y += uy * s; m.vx = 0; m.vy = 0
+        hooked.add(t)
+        k.x = t.x + k.ox; k.y = t.y - t.h / 2 + k.oy
+        continue
+      }
+      // back: the chain reels in to her hand
+      const dx = hand.x - k.x, dy = hand.y - k.y, dist = Math.hypot(dx, dy), s = d.hookSpeed * HOOK_REEL * dt
+      if (dist <= s + 4) { hooks.splice(i, 1); arrives(k.owned); if (!k.remote) sound('catch', null); continue }
+      k.x += (dx / dist) * s; k.y += (dy / dist) * s
+    }
+  }
 
   // a training dummy takes a hit: it loses life and breaks a stage at a time; wrecked, it only rattles and shows its tip again
   function hurtDummy(t: Target, damage: number, pushX: number, x: number, y: number) {
@@ -1349,6 +1508,15 @@ export function createCombat() {
         burst(s.x, s.y, 16, s.n ? s.n.c : '#ff6b5b', 300, 3)
         if (near && heard++ < 4) { if (s.n) out.note(s.n.v as VoiceId, s.n.m, 0, d.noteLen, 0.4); else sounds.push({ kind: 'explode', item: null }) }
         chainCards(s.x, s.y, s.rd)
+        continue
+      }
+      if (s.k === 'gk') {
+        const dx = s.tx - s.x, dy = s.ty - s.y
+        hooks.push({
+          x: s.x, y: s.y, hx: s.x, hy: s.y, angle: Math.atan2(dy, dx), speed: s.sp, left: Math.hypot(dx, dy), phase: 'out', owned: fresh(s.i), owner: '',
+          hit: null, ax: s.tx, ay: s.ty, ox: 0, oy: 0, pull: 0, damage: 0, t: 0, best: Infinity, stall: 0, scale: 1, remote: true, latched: s.l === 1, home: { x: s.x, y: s.y },
+        })
+        if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
         continue
       }
       if (s.k === 'hm') {
@@ -2407,7 +2575,7 @@ export function createCombat() {
   })
 
   return {
-    setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
+    setBlastActors(actors: { id?: string; box: BlastBox; v?: { x: number; y: number }; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
     setCatchables(list: Catchable[]) { catchables = list },
     /** a little cloud where something left (another browser's chick that is no longer there) */
     puff(x: number, y: number) { cloud(x, y) },
@@ -2587,6 +2755,12 @@ export function createCombat() {
     // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,
     // how bright the sky is from a special (0..1) and where a throw that comes back would fly if let go now
     bolts, flights,
+    // the Corrente-gancho (lib/pigchicken/grapple.ts): its hooks out in the world, where it would latch if thrown now
+    // (the orange dot), and the angle of the chain spinning in her hand while Atirar charges
+    get hooks() { return hooks as readonly Hook[] },
+    predictHook,
+    get hookSpin() { return spins.get(active) ?? 0 },
+    get hookSpinning() { return !!heavyItem && heavyItem === held() && def().grapple },
     // the cards of the decks out in the world (lib/pigchicken/cards.ts)
     get cards() { return cards as readonly Card[] },
     // the card a deck throws next (its place in CARD_RANKS), or null: not a deck, or all its cards are away
@@ -2852,7 +3026,7 @@ export function createCombat() {
     },
 
     // world: false steps only the current player's loadout (another local player in the same frame)
-    step(frameDt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number } } = {}) {
+    step(frameDt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number }; hand?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
       // her own hands (aim, cooldowns, swings, charges) live on the time of the Zona she is in; the world below goes
       // thing by thing, each on the time of where it is, and the music keeps the frame's
@@ -2882,6 +3056,8 @@ export function createCombat() {
       if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
       // her hammer is out flying: the wing waits for it (she can still change items). With one of two Boomerangs or
       // some of a deck's cards away she still hits and throws the rest, but the item itself is not thrown (Arremesso)
+      // the Corrente-gancho out: a press on Atirar lets go of it and the chain comes back
+      if (held()?.flying && items[held()!.item].grapple && input.firePressed) releaseHooks(active)
       if (held()?.flying) input = { ...input, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false }
       else if (held()?.out) input = { ...input, throwHeld: false, throwReleased: false }
       const d = def()
@@ -2918,6 +3094,7 @@ export function createCombat() {
       } else { if (tremBend || Number.isFinite(trem.slow)) trem = newTremolo(); tremBend = 0; tremReach = null }
 
       lastBody = body
+      hands.set(active, opts.hand ?? opts.throwOrigin ?? origin)
       if (world) { music.step(frameDt); bonusTextT = Math.max(0, bonusTextT - frameDt); clock += frameDt; skyFlash = Math.max(0, skyFlash - frameDt * 2.2) }
       // the arpeggio starts over after a pause
       if (!input.fire) { arpIdle += dt; if (arpIdle > 0.6) arpStep = 0 } else arpIdle = 0
@@ -3080,10 +3257,15 @@ export function createCombat() {
           if (heavyItem === h && cooldown <= 0 && throwCard(h, sd, opts.throwOrigin ?? origin)) cooldown = Math.max(0.05, sd.deckGap)
         }
         else if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else { heavyItem = h; heavyT = 0 } }
-        else if (heavyItem === h && input.fire) { if (meleeCool <= 0) heavyT += dt }
+        else if (heavyItem === h && input.fire) {
+          if (meleeCool <= 0) heavyT += dt
+          // the Corrente-gancho: the chain spins in her hand, faster as the charge fills
+          if (sd.grapple) spins.set(active, ((spins.get(active) ?? 0) + dt * spinRate(Math.min(1, heavyT / staffCharge(sd)))) % (Math.PI * 2))
+        }
         else if (heavyItem === h) {
-          // one that comes back is thrown instead (the Martelo de Thor)
-          if (sd.returnThrow) launch(h, sd, opts.throwOrigin ?? origin, Math.min(1, heavyT / staffCharge(sd)))
+          // one that comes back is thrown instead (the Martelo de Thor); the Corrente-gancho throws its hook
+          if (sd.grapple) throwHook(h, sd, opts.throwOrigin ?? origin, Math.min(1, heavyT / staffCharge(sd)), { boxes, groundY })
+          else if (sd.returnThrow) launch(h, sd, opts.throwOrigin ?? origin, Math.min(1, heavyT / staffCharge(sd)))
           else if (meleeCool <= 0 && canSwing(false)) { if (!blowsLeft(h, sd)) dryBlow(h, sd); else melee(false, body.scale, Math.min(1, heavyT / staffCharge(sd))) }
           heavyItem = null; heavyT = 0
         }
@@ -3273,6 +3455,7 @@ export function createCombat() {
         f.x += f.vx * dt; f.y += f.vy * dt
         touch()
       }
+      if (world) stepHooks(frameDt, { boxes, groundY })
       if (world) stepCards(dt, { boxes, groundY })
       if (world) for (let i = bolts.length - 1; i >= 0; i--) { bolts[i].t += dt; if (bolts[i].t >= bolts[i].life) bolts.splice(i, 1) }
 
@@ -3437,7 +3620,8 @@ export function createCombat() {
 
       targets.forEach(t => {
         if (!t.blast || t.mirror) return
-        stepBlastMotion(t.blast, tdt(t))
+        // (one a hook is pulling moves only with the pull)
+        if (!hooked.has(t)) stepBlastMotion(t.blast, tdt(t))
         t.x += t.blast.x; t.y += t.blast.y
       })
 
