@@ -567,23 +567,56 @@ test('Próximo instrumento / arma / utilitário cycle their group in the bar ord
   inv.groupStep([0, 0, 1], 5, 2) === -1 || assert.fail('empty group')
 })
 
-test('the wheel goes through an instrument’s scales first, each with its weapon’s reload, then the next item', () => {
+test('with Incluir variações, the wheel goes through an instrument’s scales first, each with its weapon’s reload, then the next item', () => {
   const c = newCombat()
   c.give('pistol'); c.give('flute')
   step(c, { slot: 1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'primary')
   c.sounds.length = 0
-  step(c, { pick: 1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'fifths')
+  step(c, { pick: 1, pickVariations: true }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'fifths')
   assert.deepEqual(c.sounds.find(s => s.kind === 'scale'), { kind: 'scale', item: 'pistol' })
-  step(c, { pick: 1 }); assert.equal(c.scale.id, 'tension')
-  step(c, { pick: 1 }); assert.equal(c.scale.id, 'spiral')
-  step(c, { pick: 1 }); assert.equal(c.scale.id, 'harmonic')
-  step(c, { pick: 1 }); assert.equal(c.held.item, 'pistol')
+  step(c, { pick: 1, pickVariations: true }); assert.equal(c.scale.id, 'tension')
+  step(c, { pick: 1, pickVariations: true }); assert.equal(c.scale.id, 'spiral')
+  step(c, { pick: 1, pickVariations: true }); assert.equal(c.scale.id, 'harmonic')
+  step(c, { pick: 1, pickVariations: true }); assert.equal(c.held.item, 'pistol')
   // back: arriving at the flute from after it starts at its last scale
-  step(c, { pick: -1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'harmonic')
-  step(c, { pick: -1 }); assert.equal(c.scale.id, 'spiral')
-  step(c, { pick: -1 }); assert.equal(c.scale.id, 'tension')
+  step(c, { pick: -1, pickVariations: true }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'harmonic')
+  step(c, { pick: -1, pickVariations: true }); assert.equal(c.scale.id, 'spiral')
+  step(c, { pick: -1, pickVariations: true }); assert.equal(c.scale.id, 'tension')
   // a number key keeps the scale it was on
   step(c, { slot: 2 }); step(c, { slot: 1 }); assert.equal(c.scale.id, 'tension')
+})
+
+test('without Incluir variações, the quick switch goes straight to the next item and keeps each instrument’s scale', () => {
+  const c = newCombat()
+  c.give('pistol'); c.give('flute')
+  step(c, { slot: 1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'primary')
+  step(c, { pick: 1 }); assert.equal(c.held.item, 'pistol')
+  step(c, { pick: -1 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'primary')
+})
+
+test('Próxima variação goes round the held instrument’s scales; on a weapon nothing switches', () => {
+  const c = newCombat()
+  c.give('pistol'); c.give('flute')
+  step(c, { slot: 1 }); assert.equal(c.held.item, 'flute')
+  c.sounds.length = 0
+  step(c, { variation: true }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'fifths')
+  assert.deepEqual(c.sounds.find(s => s.kind === 'scale'), { kind: 'scale', item: 'pistol' })
+  for (let k = 0; k < 4; k++) step(c, { variation: true })
+  assert.equal(c.scale.id, 'primary')
+  step(c, { slot: 2 }); assert.equal(c.held.item, 'pistol')
+  step(c, { variation: true }); assert.equal(c.held.item, 'pistol')
+})
+
+test('Próximo instrumento with Incluir escalas goes through the held instrument’s scales, then the next instrument', () => {
+  const c = newCombat()
+  c.give('flute'); c.give('sax'); c.give('pistol')
+  step(c, { slot: 1 }); assert.equal(c.held.item, 'flute')
+  step(c, { groupPick: 0, groupVariations: true }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'fifths')
+  for (let k = 0; k < 3; k++) step(c, { groupPick: 0, groupVariations: true })
+  assert.equal(c.scale.id, 'harmonic')
+  step(c, { groupPick: 0, groupVariations: true }); assert.equal(c.held.item, 'sax'); assert.equal(c.scale.id, 'primary')
+  // without it, straight to the next instrument
+  step(c, { groupPick: 0 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'harmonic')
 })
 
 test('a Pegar press that comes only from Correr takes new items but never equips one she already carries', () => {

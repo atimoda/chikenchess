@@ -324,10 +324,12 @@ test('keyboard defaults and legacy bindings migrate to G Throw, Tab next instrum
     for (const a of ['nextInstrument', 'nextWeapon', 'nextUtility']) { delete saved.keys[a]; delete saved.pad[a] }
     const migrated = controls.loadChickenControls()
     assert.deepEqual(migrated.keys.throw.filter(Boolean), ['Key:KeyG'])
-    // Tab next / Q wheel first, then (09/11) Tab next instrument, Q next weapon and T wheel
+    // Tab next / Q wheel first, then (09/11) Tab next instrument, Q next weapon and T wheel, then (18/11) Q to
+    // Próxima variação
     assert.equal(migrated.keys.nextItem[0], null)
     assert.equal(migrated.keys.nextInstrument[0], 'Key:Tab')
-    assert.equal(migrated.keys.nextWeapon[0], 'Key:KeyQ')
+    assert.equal(migrated.keys.nextWeapon[0], null)
+    assert.equal(migrated.keys.nextVariation[0], 'Key:KeyQ')
     assert.equal(migrated.keys.itemWheel[0], 'Key:KeyT')
     saved.keys.throw = ['Key:KeyT', null, null]
     saved.keys.nextItem = ['Key:KeyN', null, null]
@@ -687,7 +689,7 @@ test('the Shifts also grab and LB/RB go back/forward an item, migrating only the
 
 test('the inventory group binds (09/11) take Tab / Q / F and LB / RB / B (Y to Melee), moving only the previous defaults', () => {
   const d = controls.defaultChickenControls()
-  assert.deepEqual([d.keys.nextInstrument[0], d.keys.nextWeapon[0], d.keys.nextUtility[0], d.keys.itemWheel[0], d.keys.deselectItem[0]], ['Key:Tab', 'Key:KeyQ', 'Key:KeyF', 'Key:KeyT', 'Key:KeyB'])
+  assert.deepEqual([d.keys.nextInstrument[0], d.keys.nextWeapon[0], d.keys.nextVariation[0], d.keys.nextUtility[0], d.keys.itemWheel[0], d.keys.deselectItem[0]], ['Key:Tab', null, 'Key:KeyQ', 'Key:KeyF', 'Key:KeyT', 'Key:KeyB'])
   const keys = Object.values(d.keys).flat().filter(t => t && t !== 'Key:ShiftLeft')
   assert.equal(new Set(keys).size, keys.length, 'one action per primary key')
   const previous = globalThis.window
@@ -710,7 +712,7 @@ test('the inventory group binds (09/11) take Tab / Q / F and LB / RB / B (Y to M
     saved.keys.nextItem = ['Key:KeyN', null, null]; saved.keys.reload = ['Key:Tab', null, null]; saved.keys.itemWheel = ['Key:KeyI', null, null]
     saved.pad.nextItem = ['Pad:b12', null, null]; saved.pad.throw = ['Pad:b7', null, null]; saved.pad.fire = ['Pad:b3', null, null]
     c = controls.loadChickenControls()
-    assert.deepEqual([c.keys.nextItem[0], c.keys.reload[0], c.keys.itemWheel[0], c.keys.nextInstrument[0], c.keys.nextWeapon[0]], ['Key:KeyN', 'Key:Tab', 'Key:KeyI', null, 'Key:KeyQ'])
+    assert.deepEqual([c.keys.nextItem[0], c.keys.reload[0], c.keys.itemWheel[0], c.keys.nextInstrument[0], c.keys.nextWeapon[0], c.keys.nextVariation[0]], ['Key:KeyN', 'Key:Tab', 'Key:KeyI', null, null, 'Key:KeyQ'])
     assert.deepEqual([c.pad.nextItem[0], c.pad.prevItem[0], c.pad.throw[0], c.pad.jump[1], c.pad.nextUtility[0]], ['Pad:b12', 'Pad:b4', 'Pad:b7', 'Pad:b11', null])
     // LB is still Item anterior there, so Próximo instrumento waits for it to be freed
     assert.equal(c.pad.nextInstrument[0], null)
@@ -783,6 +785,38 @@ test('the Harpa\'s own binds: Sustenido is Shift (each keyboard) and L3 by defau
   controls.saveChickenControls(c)
   assert.deepEqual(controls.loadChickenControls().harp.pad.sharp, ['Pad:b2', null, null])
   assert.deepEqual(controls.chickenControlsDefaultsFile(controls.loadChickenControls()).harp.pad.sharp, ['Pad:b2', null, null])
+})
+
+test('Próxima variação (18/11) takes Q from Próxima arma once; custom binds and the switches’ checkboxes stay', () => {
+  const d = controls.defaultChickenControls()
+  assert.deepEqual([d.keys.nextVariation, d.keys2.nextVariation, d.pad.nextVariation], [['Key:KeyQ', null, null], [null, null], [null, null, null]])
+  assert.deepEqual(d.keys.nextWeapon, [null, null, null])
+  assert.deepEqual(d.variations, { nextItem: false, prevItem: false, nextInstrument: false, nextWeapon: false, nextUtility: false })
+  const previous = globalThis.window
+  try {
+    // the 17/11 defaults, saved before Próxima variação existed
+    const old = () => {
+      const saved = JSON.parse(JSON.stringify({ ...controls.defaultChickenControls(), cageBinds: true, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true }))
+      saved.keys.nextWeapon = ['Key:KeyQ', null, null]
+      delete saved.keys.nextVariation; delete saved.keys2.nextVariation; delete saved.pad.nextVariation; delete saved.variations
+      return saved
+    }
+    let saved = old()
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    let c = controls.loadChickenControls()
+    assert.deepEqual(c.keys, d.keys); assert.deepEqual(c.variations, d.variations)
+    // Próxima arma moved off Q: it stays there, and Q is not taken by Próxima variação
+    saved = old(); saved.keys.nextWeapon = ['Key:KeyN', null, null]; saved.keys.reload = ['Key:KeyQ', null, null]
+    c = controls.loadChickenControls()
+    assert.deepEqual([c.keys.nextWeapon[0], c.keys.reload[0], c.keys.nextVariation[0]], ['Key:KeyN', 'Key:KeyQ', null])
+    // once saved with the marker, a cleared bind stays cleared and the checkboxes load as saved
+    saved = { ...controls.defaultChickenControls(), variationBind: true, inventoryGroupBinds: true, cageBinds: true }
+    saved.keys.nextVariation = [null, null, null]; saved.variations = { ...d.variations, nextInstrument: true }
+    c = controls.loadChickenControls()
+    assert.deepEqual(c.keys.nextVariation, [null, null, null])
+    assert.equal(c.variations.nextInstrument, true)
+    assert.equal(c.variations.nextItem, false)
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
 })
 
 test('the inventory alignment (18/11) defaults to split, survives a save and falls back on an unknown value', () => {

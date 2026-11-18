@@ -380,7 +380,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
         ctx.fillStyle = effectTint(fx.look); ctx.fillText(t, x + 4, y + (bottom ? 9 : 6))
       }
       // the shots (or the taco's blows) loaded and coming back
-      const ammoBar = d.mag > 0 && !d.consumable, barH = bottom ? 4 : 3
+      const ammoBar = d.mag > 0 && !d.consumable && !d.infiniteAmmo, barH = bottom ? 4 : 3
       if (ammoBar) {
         const segs = Math.max(1, Math.round(d.mag))
         const coming = on && combat.reloading > 0 ? (d.shellReload ? combat.reloading : combat.reloading * (segs - o.ammo))
@@ -458,7 +458,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   if (since < PILL_TIME) {
     const d = held ? combat.item(held.item) : null
     const name = d ? d.name : "Mãos vazias"
-    const info = held && d ? [d.mag > 0 ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? `${held.durability} golpes` : ""].filter(Boolean).join(" · ") : ""
+    const info = held && d ? [d.mag > 0 && !d.infiniteAmmo ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? `${held.durability} golpes` : ""].filter(Boolean).join(" · ") : ""
     ctx.font = "600 12px ui-sans-serif, system-ui, sans-serif"
     const nw = ctx.measureText(name).width
     ctx.font = "400 11px ui-monospace, monospace"
@@ -533,7 +533,7 @@ export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number)
     ctx.fillText(GROUP_NAMES[groups[i]].toUpperCase(), 0, -22)
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 17px ui-sans-serif, system-ui, sans-serif"
     ctx.fillText(d.name, 0, 0, rIn * 1.7)
-    const info = [d.mag > 0 ? `${Math.ceil(o.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[o.item] : d.mag}` : "", d.durability > 0 ? `${o.durability} golpes` : ""].filter(Boolean).join(" · ")
+    const info = [d.mag > 0 && !d.infiniteAmmo ? `${Math.ceil(o.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[o.item] : d.mag}` : "", d.durability > 0 ? `${o.durability} golpes` : ""].filter(Boolean).join(" · ")
     if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, 0, 20) }
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "bold 15px ui-sans-serif, system-ui, sans-serif"

@@ -13,8 +13,9 @@
     "nextItem": [null,null,null],
     "prevItem": [null,null,null],
     "nextInstrument": ["Key:Tab",null,null],
-    "nextWeapon": ["Key:KeyQ",null,null],
+    "nextWeapon": [null,null,null],
     "nextUtility": ["Key:KeyF",null,null],
+    "nextVariation": ["Key:KeyQ",null,null],
     "deselectItem": ["Key:KeyB",null,null],
     "itemWheel": ["Key:KeyT",null,null],
     "cageRelease": ["Key:KeyH",null,null],
@@ -39,6 +40,7 @@
     "nextInstrument": [null,null],
     "nextWeapon": [null,null],
     "nextUtility": [null,null],
+    "nextVariation": [null,null],
     "deselectItem": [null,null],
     "itemWheel": [null,null],
     "cageRelease": ["Key:End",null],
@@ -63,6 +65,7 @@
     "nextInstrument": ["Pad:b4",null,null],
     "nextWeapon": ["Pad:b5",null,null],
     "nextUtility": ["Pad:b1",null,null],
+    "nextVariation": [null,null,null],
     "deselectItem": [null,null,null],
     "itemWheel": [null,null,null],
     "cageRelease": ["Pad:b10",null,null],
@@ -77,5 +80,6 @@
   "analog": {"deadzoneL":0.25,"deadzoneR":0.25,"magnet":false,"magnetDeg":0,"magnetRestoreDeg":12,"aimMagnetDeg":0},
   "inventory": {"repeatDelay":1.5,"repeatInterval":0.3,"align":"split"},
   "wheel": {"up":"nextItem","down":"prevItem"},
+  "variations": {"nextItem":false,"prevItem":false,"nextInstrument":false,"nextWeapon":false,"nextUtility":false},
   "harp": {"keys":{"sharp":["Key:ShiftLeft",null,null]},"keys2":{"sharp":["Key:ShiftRight",null]},"pad":{"sharp":["Pad:b10",null,null]}}
 }

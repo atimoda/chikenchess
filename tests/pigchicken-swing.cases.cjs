@@ -256,14 +256,15 @@ test('after the Golpe a held semi-automatic shoots again once; letting go during
 })
 
 test('a Golpe cancels a charge without shooting it, and a held button charges again afterwards', () => {
-  const c = armedWith('grenade')
+  // (the Pandeiro: the Granada never runs out, so its ammo would not tell a throw)
+  const c = armedWith('tambourine')
   step(c, { fire: true, firePressed: true }); hold(c, 0.3)
   assert.ok(c.fireCharge > 0)
   const before = ammo(c)
   step(c, { fire: true, melee: true }); step(c, { fire: true })
   assert.equal(c.fireCharge, 0, 'charge called off')
   assert.equal(ammo(c), before, 'and nothing thrown')
-  hold(c, DEFAULT_ITEMS.grenade.meleeTime + 0.1)
+  hold(c, DEFAULT_ITEMS.tambourine.meleeTime + 0.1)
   assert.ok(c.fireCharge > 0, 'charging again')
   step(c)
   assert.equal(ammo(c), before - 1, 'let go: it throws')

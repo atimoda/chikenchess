@@ -264,6 +264,13 @@ export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
   groupPick?: ItemGroup | null // Próximo instrumento / arma / utilitário: the next item of that group
+  // Próxima variação pressed: the held item's next variation (an instrument's next scale, round to the first; a
+  // weapon shows its tambor)
+  variation?: boolean
+  // Controles → "Incluir variações / escalas…": the quick switch (pick) and the group switch go through the held
+  // instrument's scales before the next item (off: straight to the next item)
+  pickVariations?: boolean
+  groupVariations?: boolean
   move?: { from: number; to: number; after: boolean } | null // a slot dragged on the bar, dropped before / after another
   deselect?: boolean // empty hands without dropping anything; cancels prepared actions
   cancelFire?: boolean // UI, focus loss or a grabbed/portal chicken cancels preparation
@@ -1304,7 +1311,7 @@ export function createCombat() {
   function startReload() {
     const h = held(); if (!h) return
     const d = items[h.item]
-    if (d.consumable) return
+    if (d.consumable || d.infiniteAmmo) return
     if (d.mag > 0 && h.ammo < d.mag && reloadT <= 0) { reloadT = d.reloadTime; sound('reload') }
   }
 
@@ -1565,7 +1572,7 @@ export function createCombat() {
     if (d.instrument) burst(mx, my, 2 + n, tones(d).color(notes[0]), 110, 3)
     else { burst(mx, my, 3 + n, '#fff3b0', 140, 2); sound('shot', h.item) }
     if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
-    if (pz) h.ammo = Math.max(0, h.ammo - d.rate / pzRate); else h.ammo--
+    if (d.infiniteAmmo) { /* the Granada: never runs out */ } else if (pz) h.ammo = Math.max(0, h.ammo - d.rate / pzRate); else h.ammo--
     if (h.refill) h.refill = 0; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / (pz ? pzRate : d.rate); kick = d.recoilKick
     onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
     if (h.ammo <= 0 && d.autoReload) startReload()
@@ -3276,20 +3283,38 @@ export function createCombat() {
       }
       if (input.slot) { if (input.slot <= shown().length) equip(input.slot - 1) }
       else if (pick) {
-        // an instrument with more scales goes through them first (each switch sounds its weapon's reload); with
-        // none left that way, the next item, arriving at its first scale (backward: its last)
+        // with "Incluir variações", an instrument with more scales goes through them first (each switch sounds its
+        // weapon's reload); with none left that way, the next item, arriving at its first scale (backward: its last).
+        // Without it, straight to the next item, keeping the scale each instrument has.
         const h = held(), count = h ? d.scales.length : 0
-        const next = h && d.instrument ? scaleStep(count, h.scale ?? 0, pick) : null
+        const next = input.pickVariations && h && d.instrument ? scaleStep(count, h.scale ?? 0, pick) : null
         if (h && next !== null) switchScale(h, next)
         else {
           // A full inventory has no displayed empty slot; Deselecionar can still leave it unequipped.
           const from = !room() && !held() ? (pick > 0 ? -1 : inv.length) : cur
           equip(from + pick)
           const now = held()
-          if (now && now !== h && items[now.item].instrument && items[now.item].scales.length > 1) now.scale = arrivalScale(items[now.item].scales.length, pick)
+          if (input.pickVariations && now && now !== h && items[now.item].instrument && items[now.item].scales.length > 1) now.scale = arrivalScale(items[now.item].scales.length, pick)
         }
       }
-      else if (groupSlot >= 0) equip(groupSlot)
+      else if (groupSlot >= 0) {
+        // with "Incluir escalas" (Próximo instrumento), the held instrument goes through its scales first, then the
+        // group's next item at its first scale; the group's only item goes round its scales
+        const h = held(), count = h ? d.scales.length : 0
+        const ofGroup = !!h && groupOf(h) === input.groupPick
+        const next = input.groupVariations && h && ofGroup && d.instrument ? scaleStep(count, h.scale ?? 0, 1) ?? (groupSlot === cur && count > 1 ? 0 : null) : null
+        if (h && next !== null) switchScale(h, next)
+        else {
+          equip(groupSlot)
+          const now = held()
+          if (input.groupVariations && now && now !== h && items[now.item].instrument && items[now.item].scales.length > 1) now.scale = 0
+        }
+      }
+      else if (input.variation) {
+        // Próxima variação: the held instrument's next scale, round to the first after the last
+        const h = held()
+        if (h && d.instrument && d.scales.length > 1) switchScale(h, ((h.scale ?? 0) + 1) % d.scales.length)
+      }
       const dNow = def()
       // Golpe is taken before firing, even with Atirar held: on an item that shoots, the blow interrupts firing
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
@@ -3327,6 +3352,8 @@ export function createCombat() {
       const hr = held()
       if (hr) {
         const dr = items[hr.item]
+        // a never-ending one (the Granada) is always full, even one carried empty from before
+        if (dr.infiniteAmmo && dr.mag > 0 && hr.ammo < dr.mag) hr.ammo = dr.mag
         if (!dr.consumable && dr.mag > 0 && dr.refillTime > 0 && reloadT <= 0 && hr.ammo < dr.mag) {
           hr.refill = (hr.refill ?? 0) + dt
           while (hr.refill >= dr.refillTime && hr.ammo < dr.mag) { hr.ammo = Math.min(dr.mag, hr.ammo + Math.max(1, dr.refillAmount)); hr.refill -= dr.refillTime }

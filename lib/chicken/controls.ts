@@ -7,7 +7,7 @@ import DEFAULTS_FILE from '../../data/chicken/default-controls.json'
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
   | 'fire' | 'melee' | 'throw' | 'nextItem' | 'prevItem' | 'itemWheel' | 'reload' | 'grab' | 'deselectItem'
-  | 'nextInstrument' | 'nextWeapon' | 'nextUtility'
+  | 'nextInstrument' | 'nextWeapon' | 'nextUtility' | 'nextVariation'
   // the Gaiolas (lib/pigchicken/cages.ts): lets a soul out of the one in front (held: the next one comes to the front)
   | 'cageRelease' | 'cageSwap'
   // the Pátio: turns the Modo editor's editing switch on and off (a tap: pressed and let go with no other key)
@@ -42,8 +42,10 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'nextItem', label: 'Próximo item', keys: [null, null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Quote', null], pad: [null, null, null], group: 'items' },
   { key: 'nextInstrument', label: 'Próximo instrumento', keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b4', null, null], group: 'items' },
-  { key: 'nextWeapon', label: 'Próxima arma', keys: ['Key:KeyQ', null, null], keys2: [null, null], pad: ['Pad:b5', null, null], group: 'items' },
+  { key: 'nextWeapon', label: 'Próxima arma', keys: [null, null, null], keys2: [null, null], pad: ['Pad:b5', null, null], group: 'items' },
   { key: 'nextUtility', label: 'Próximo utilitário', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: ['Pad:b1', null, null], group: 'items' },
+  // the held item's next variation: an instrument's next scale, a weapon's tambor (lib/pigchicken/inventory.ts)
+  { key: 'nextVariation', label: 'Próxima variação', keys: ['Key:KeyQ', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   { key: 'deselectItem', label: 'Deselecionar item', keys: ['Key:KeyB', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   // the inventory wheel stays open while held: aim at an item (mouse / right stick) and let go (or fire / jump / run)
   // (no gamepad button since 15/11: L3 went to the Gaiolas)
@@ -73,6 +75,22 @@ export type ChickenControls = {
   inventory: ChickenInventoryControls
   wheel: ChickenWheel
   harp: Record<ChickenInputType, Record<HarpAction, Slots>>
+  variations: ChickenVariations
+}
+
+// The item-switching actions that may also go through the held item's variations (an instrument's scales, a weapon's
+// tambores, a utility's types) before the next item: the small checkbox after each one's name in Controles. All off by
+// default: the switch goes straight to the next item, and Próxima variação is the way to the variations.
+export type VariationAction = 'nextItem' | 'prevItem' | 'nextInstrument' | 'nextWeapon' | 'nextUtility'
+export type ChickenVariations = Record<VariationAction, boolean>
+export const VARIATION_ACTIONS: { key: VariationAction; label: string }[] = [
+  { key: 'nextItem', label: 'Incluir variações' }, { key: 'prevItem', label: 'Incluir variações' },
+  { key: 'nextInstrument', label: 'Incluir escalas' }, { key: 'nextWeapon', label: 'Incluir tambores' }, { key: 'nextUtility', label: 'Incluir tipos' },
+]
+export const DEFAULT_VARIATIONS: ChickenVariations = { nextItem: false, prevItem: false, nextInstrument: false, nextWeapon: false, nextUtility: false }
+const variationsOf = (raw: unknown, fallback: ChickenVariations): ChickenVariations => {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return Object.fromEntries(VARIATION_ACTIONS.map(({ key }) => [key, typeof r[key] === 'boolean' ? r[key] : fallback[key]])) as ChickenVariations
 }
 
 // Inventário: the repeat of the item switches while held (seconds) and where the first player's big bar sits at the
@@ -134,7 +152,7 @@ function codeDefaultChickenControls(): ChickenControls {
   const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
   CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
   const harp = Object.fromEntries(CHICKEN_INPUT_TYPES.map(t => [t.id, Object.fromEntries(HARP_ACTIONS.map(a => [a.key, a[t.id].slice()]))])) as ChickenControls['harp']
-  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { ...DEFAULT_INVENTORY }, wheel: { ...DEFAULT_WHEEL }, harp }
+  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { ...DEFAULT_INVENTORY }, wheel: { ...DEFAULT_WHEEL }, harp, variations: { ...DEFAULT_VARIATIONS } }
 }
 
 /** The game's default controls: the defaults file over the code fallback (a missing or invalid field keeps the code's). */
@@ -159,13 +177,14 @@ export function defaultChickenControls(): ChickenControls {
   base.inventory = inventoryOf(file?.inventory, base.inventory)
   base.wheel = wheelOf(file?.wheel, base.wheel)
   base.harp = harpOf(file?.harp, base.harp)
+  base.variations = variationsOf(file?.variations, base.variations)
   return base
 }
 
 /** The defaults file's content for a set of controls (what "Salvar no game" writes). */
 export function chickenControlsDefaultsFile(c: ChickenControls) {
   const pick = (type: ChickenInputType) => Object.fromEntries(CHICKEN_ACTIONS.map(a => [a.key, c[type][a.key].slice()]))
-  return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory }, wheel: { ...c.wheel }, harp: harpOf(c.harp, c.harp) }
+  return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory }, wheel: { ...c.wheel }, harp: harpOf(c.harp, c.harp), variations: { ...c.variations } }
 }
 
 // The binds of one action on one input type (the players panel reads a player's inputs through this)
@@ -199,6 +218,8 @@ export function loadChickenControls(): ChickenControls {
       if (!Array.isArray(saved?.keys?.[a])) base.keys[a] = [null, null, null]
       if (!Array.isArray(saved?.pad?.[a])) base.pad[a] = [null, null, null]
     })
+    // Próxima variação (18/11) starts empty on controls saved before it; the migration at the end gives it Q
+    if (!saved?.variationBind && !Array.isArray(saved?.keys?.nextVariation)) base.keys.nextVariation = [null, null, null]
     // Add the new default only after legacy Throw migrations have freed F.
     if (!Array.isArray(saved?.keys?.deselectItem)) base.keys.deselectItem = [null, null, null]
     if (isTouchMode(saved?.touch)) base.touch = saved.touch
@@ -206,6 +227,7 @@ export function loadChickenControls(): ChickenControls {
     if (typeof saved?.sound === 'boolean') base.sound = saved.sound
     base.wheel = wheelOf(saved?.wheel, base.wheel)
     base.harp = harpOf(saved?.harp, base.harp)
+    base.variations = variationsOf(saved?.variations, base.variations)
     const an = saved?.analog ?? {}
     const savedMagnet = num(an.magnetDeg, 0, 22.5, an.magnet === true ? 12 : 0)
     const movementMagnet = an.magnet === false ? 0 : savedMagnet
@@ -431,6 +453,14 @@ export function loadChickenControls(): ChickenControls {
       base.keys2.cageRelease = [keyHeld('Key:End') ? null : 'Key:End', null]; base.keys2.cageSwap = [keyHeld('Key:Home') ? null : 'Key:Home', null]
       base.pad.cageRelease = [padHeld('Pad:b10') ? null : 'Pad:b10', null, null]; base.pad.cageSwap = [null, null, null]
     }
+    // 18/11: Próxima variação takes Q, which leaves Próxima arma (only while Próxima arma is still on Q alone; Q goes to
+    // Próxima variação only if nothing else holds it)
+    if (!saved?.variationBind) {
+      const on = base.keys.nextWeapon.filter(Boolean)
+      if (on.length === 1 && on[0] === 'Key:KeyQ') base.keys.nextWeapon = [null, null, null]
+      const qHeld = CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:KeyQ') || base.keys2[a.key].includes('Key:KeyQ'))
+      if (!Array.isArray(saved?.keys?.nextVariation) && !qHeld) base.keys.nextVariation = ['Key:KeyQ', null, null]
+    }
     // one key, one action, on one keyboard type: the primary keyboard wins
     const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
     CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = base.keys2[a.key].map(t => t && primary.has(t) ? null : t) })
@@ -439,7 +469,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, cageBinds: true, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, cageBinds: true, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true, variationBind: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 

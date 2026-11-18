@@ -31,7 +31,7 @@ import { cageCounterWidth, cageCounts, cageHudSpot, drawCageCounters, drawHangin
 import type { NetChickMirror } from "@/components/chicken/online-chickens"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
-import { INVENTORY_MAX, groupSwitchStep, inventorySlotFromCode, newGroupSwitchRepeat, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type GroupSwitchRepeat, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
+import { GROUP_SWITCHES, INVENTORY_MAX, groupSwitchStep, inventorySlotFromCode, newGroupSwitchRepeat, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type GroupSwitchRepeat, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
 import { announceHeldItem, announcePlayerClass, bowed, classItem, pointClassOf, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
@@ -57,6 +57,8 @@ import { bindMinePlay } from "./mine-grid-play"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { mineZoneBoxes } from "@/lib/pigchicken/mine-zones"
 import { drawScaleFan, SCALE_FAN_R, seatedFanSize } from "@/components/pigchicken/draw/scale-fan"
+import { drawAmmoAround, drawAmmoDrops, drawAmmoHud } from "@/components/pigchicken/draw/ammo-hud"
+import { AMMO_AROUND_SCALE, AMMO_HUD_R, ammoLook, aroundVisibility, newAmmoView, stepAmmoView, type AmmoView } from "@/lib/pigchicken/ammo-hud"
 import { announceHeldScale, newStandby, scaleParams, standbyStep, type StandbyState } from "@/lib/pigchicken/scale-params"
 import { dropScaleStage, setScaleStage } from "@/lib/pigchicken/scale-preview"
 import { drawHitboxes } from "@/components/pigchicken/draw/hitboxes"
@@ -108,6 +110,14 @@ import { drumBindLevels, drumKeyTokens } from "@/lib/pigchicken/drum-input"
 import { stageWidth } from "@/lib/stage-size"
 import { createTrainingGhosts } from "@/components/pigchicken/training-ghosts"
 
+// Controles → "Incluir variações / escalas / tambores / tipos": whether a switch also goes through the held item's
+// variations. pick: the quick switch (Item anterior held, else Próximo item); group: the group switch pressed
+const pickVariations = (c: ChickenControls, act: Partial<Record<ChickenAction, boolean>>) => act.prevItem ? c.variations.prevItem : c.variations.nextItem
+const groupVariations = (c: ChickenControls, group: ItemGroup | null) => {
+  const a = GROUP_SWITCHES.find(([, g]) => g === group)?.[0]
+  return a ? c.variations[a] : false
+}
+const variationPress = (act: Partial<Record<ChickenAction, boolean>>, prev: Partial<Record<ChickenAction, boolean>>) => !!act.nextVariation && !prev.nextVariation
 // how far (px) a press on the inventory bar moves before it becomes a drag instead of a click
 const BAR_DRAG_START = 6
 // the state the combat reads: a bird brooding on a grab (a wall, a ceiling) broods, for the spread of its shots
@@ -602,6 +612,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the Escalas layer's standby, per player: whether they played this frame and how far their scale has faded
     const scalePlaying = new Map<string, boolean>()
     const scaleStandby = new Map<string, StandbyState>()
+    // the weapons' tambor / pente, per player: what they saw last frame, Próxima variação pressed, where the reticle is
+    const ammoViews = new Map<string, AmmoView>()
+    const ammoWake = new Map<string, boolean>()
+    const ammoAt = new Map<string, { x: number; y: number }>()
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
     // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
@@ -1097,7 +1111,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // Próximo item / Item anterior and the group switches repeat while held (Controles → Inventário)
       let pick = quickSwitchStep(act, prev, engine.isShiftHeld(), quickSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
       const groupPick = groupSwitchStep(act, prev, groupSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
-      if (wheel) { pick = wheel > 0 ? 1 : -1; wheel = 0 }
+      let pickVar = pickVariations(controls, act)
+      if (wheel) { pick = wheel > 0 ? 1 : -1; pickVar = controls.variations[wheel > 0 ? "nextItem" : "prevItem"]; wheel = 0 }
+      const group = wh.open ? null : groupPick
       const move = barMove.current
       barMove.current = null
       const input = {
@@ -1119,7 +1135,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           return pressed
         })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(),
         grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
-        groupPick: wh.open ? null : groupPick, move,
+        groupPick: group, move, pickVariations: pickVar, groupVariations: groupVariations(controls, group),
+        variation: !wh.open && variationPress(act, prev),
       }
       slotPick = 0; slotTap.current = 0
       // (sitting at a fixed instrument its own binds come first: L3 is the Harpa's sustenido and the Bateria's Ataque
@@ -1289,6 +1306,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // (and its preview is in this Pátio's key)
       setScaleStage(combat.music)
       scalePlaying.set("p1", input.fire || input.melee)
+      if (input.variation) ammoWake.set("p1", true)
       // the items each local player stands on: a blue (take / swap) or grey (equip) outline with that player's grab key
       pickupMarks.clear(); chestMarks.clear(); seatMarks.clear()
       markHover(combat, grabLabel(controls, devs))
@@ -1322,7 +1340,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(),
           grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
-          groupPick: xgroup,
+          groupPick: xgroup, pickVariations: pickVariations(controls, xa), groupVariations: groupVariations(controls, xgroup),
+          variation: variationPress(xa, xp),
         }
         cageBinds(id, extraSeated.has(id) ? {} : xa, extraSeated.has(id) ? {} : xp)
         extraPrev.set(id, xa)
@@ -1349,6 +1368,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), hand: (() => { const p = eng.rigPoint("hand"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
         scalePlaying.set(id, xin.fire || xin.melee)
+        if (xin.variation) ammoWake.set(id, true)
         { const seat = combat.seated, at = seat && seatSpot(seat); if (seat) extraSeated.add(id); else extraSeated.delete(id); eng.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.held && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
         const xsw = combat.swing
@@ -1623,6 +1643,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (!(mouseOverUi && aim.source === "mouse")) {
         drawVolumeRing(ctx, combat, rx, ry, tints?.p1 ?? "#ffffff")
         drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
+        ammoAt.set("p1", { x: rx, y: ry })
       }
       if (hitboxesRef.current) {
         drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
@@ -1656,6 +1677,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         })
         combat.use("p1")
       }
+      // the weapons' tambor / pente: round her shoulder (fading like the Escalas) and next to her reticle
+      const drawAmmo = (id: string, eng: typeof engine) => {
+        let v = ammoViews.get(id)
+        if (!v) ammoViews.set(id, v = newAmmoView())
+        const h = combat.held, d = combat.def(), look = h ? ammoLook(h.item, d) : null
+        const at = ammoAt.get(id); ammoAt.delete(id)
+        const es = eng.getState(), o = es.shoulder, sp = scaleParams().primary, reload = combat.reloading
+        const around = S.ammoAround && !eng.getMotionState().held ? { x: o.x, y: o.y, scale: es.scale * AMMO_AROUND_SCALE, alpha: 1, after: sp.standbyAfter, fade: sp.fadeTime } : null
+        const hud = S.ammoHud && at ? { x: at.x, y: at.y, R: AMMO_HUD_R, alpha: 1 } : null
+        stepAmmoView(v, { owned: h ?? null, look, ammo: h?.ammo ?? 0, reload, draw: combat.fireCharge, wake: !!ammoWake.get(id), hud, around }, dt)
+        ammoWake.delete(id)
+        if (around) drawAmmoAround(ctx, v, o.x, o.y, around.scale, aroundVisibility(v, sp.standbyAfter, sp.fadeTime), reload, d.shellReload)
+        if (hud) drawAmmoHud(ctx, v, hud.x, hud.y, hud.R, 1, reload, d.shellReload)
+        drawAmmoDrops(ctx, v)
+      }
+      drawAmmo("p1", engine)
       if (charge > 0) { const from = engine.heldPoint(combat.throwAngle, 0, 0); drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY }))) }
       // a staff that comes back being charged (the Martelo de Thor): the straight line it would fly, each local player's
       const returnPath = (eng: typeof engine) => {
@@ -1697,6 +1734,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx, species: xs.species }
         drawVolumeRing(ctx, combat, xrx, xry, tints?.[id] ?? "#ffffff")
         drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
+        ammoAt.set(id, { x: xrx, y: xry })
+        drawAmmo(id, eng)
         if (combat.throwCharge > 0 && combat.held) {
           const from = eng.heldPoint(combat.throwAngle, 0, 0)
           drawThrowPath(ctx, combat.predictThrow({ x: from.x + camX, y: from.y - camY }, { boxes, groundY: G }).map(p => ({ x: p.x - camX, y: p.y + camY })))
@@ -1791,7 +1830,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {
         const h = combat.held
-        const item = h ? `${d.name}${d.mag > 0 ? ` ${h.ammo}/${d.consumable ? CONSUMABLE_LIMITS[h.item] : d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
+        const item = h ? `${d.name}${d.mag > 0 && !d.infiniteAmmo ? ` ${h.ammo}/${d.consumable ? CONSUMABLE_LIMITS[h.item] : d.mag}` : ""}${d.durability > 0 ? ` · ${h.durability} golpes` : ""}${combat.reloading ? " · recarregando" : ""}` : "mãos vazias (asa)"
         const k = combat.kills, cv = combat.converted
         const shown = h && d.mag > 0 ? Math.ceil(h.ammo) : 0
         const item2 = h ? item.replace(`${h.ammo}/`, `${shown}/`) : item
