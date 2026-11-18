@@ -111,6 +111,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
         // a Filhote on the open side is an adult again by raising the flag over a real bomb
         if (ev.bomb) grow(ev.by)
       } else if (ev.kind === "doubt") { combat.burst(at.x, at.y, 22, MINE_YELLOW, 260, 4); playWeaponSound("locked", null) }
+      else if (ev.kind === "clear") { combat.burst(at.x, at.y, 22, p?.grey ?? "#8f98a3", 260, 4); playWeaponSound("chest", null) }
       else if (ev.kind === "open") { combat.burst(at.x, at.y, 34, p?.grey ?? "#8f98a3", 360, 5); playWeaponSound("button", null) }
       else if (ev.kind === "shock") combat.burst(at.x, at.y, 12, "#cfe9ff", 220, 3)
       else if (ev.kind === "boom") {

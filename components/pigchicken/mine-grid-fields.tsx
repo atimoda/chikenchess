@@ -10,7 +10,7 @@ import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { StepSelect } from "@/components/ui/step-select"
 import { MINE_BOMBS, MINE_CELL, MINE_COLORS, MINE_CORNER, MINE_DAMAGE, MINE_FUSE, MINE_GAP, MINE_NOTES, MINE_START_BOMBS, MINE_TURNS, MINE_WALL_OPACITY, defaultMineGrid, type MineGridParams, type MineTurn } from "@/lib/pigchicken/mine-grid"
-import { mineStore, setMineDebug } from "@/lib/pigchicken/mine-grid-store"
+import { mineStore, setMineDebug, setMineNumbersFront } from "@/lib/pigchicken/mine-grid-store"
 import { patioIsAdmin } from "@/lib/pigchicken/edit-access"
 import { MINE_ZONE_RHYTHM, mineZoneHas, mineZonePoolLabel, toggleMineZoneBeat, type MineZoneParams } from "@/lib/pigchicken/mine-zone-params"
 import { BEATS, BEAT_GROUPS } from "@/lib/pigchicken/beats"
@@ -56,6 +56,8 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
   const set = (p: Partial<MineGridParams>) => onChange({ ...g, ...p })
   // the admin's debug: this browser's alone, gone with the page
   const debug = useSyncExternalStore(mineStore.subscribe, () => mineStore.debug, () => mineStore.debug)
+  // "Mostrar números": this browser's too
+  const front = useSyncExternalStore(mineStore.subscribe, () => mineStore.numbersFront, () => false)
   const admin = patioIsAdmin()
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const group = (title: string, children: React.ReactNode) => (
@@ -75,6 +77,7 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
           <input type="checkbox" checked={g.on} disabled={!canToggle || !canEdit} onChange={e => set({ on: e.target.checked })} className="h-5 w-5 accent-[var(--primary)] disabled:opacity-40" />
         </label>
         {g.on && onReset && <button type="button" onClick={onReset} title="Fecha todos os blocos e sorteia as bombas de novo" className="flex h-10 items-center justify-center gap-2 rounded-md border border-white/15 bg-[#0b110e] hover:border-[#ffd166] hover:text-white"><RotateCcw className="h-4 w-4" />Resetar grade</button>}
+        {g.on && <button type="button" aria-pressed={front} onClick={() => setMineNumbersFront(!front)} title="Conta de novo as bombas em volta de cada bloco aberto e mostra os números na frente de tudo, dos dois lados. Só neste navegador." className={`flex h-10 items-center justify-center rounded-md border hover:text-white ${front ? "border-[#ffd166] bg-[#ffd166]/15 text-[#ffd166]" : "border-white/15 bg-[#0b110e] hover:border-[#ffd166]"}`}>Mostrar números</button>}
       </div>
       {/* the settings can be prepared with the grid still off */}
       <fieldset disabled={!canEdit} className="m-0 min-w-0 border-0 p-0 disabled:opacity-60 [&:disabled_input]:cursor-default">
