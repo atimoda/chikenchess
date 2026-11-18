@@ -1,0 +1,24 @@
+# Pátio: barra do inventário (alinhamento) e trocas que repetem
+
+Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). O inventário em si (grupos, limite, coleta, roda) fica em [Itens](items.md); os binds, em [Controles da galinha](../chicken/controls.md).
+
+## Alinhamento da barra — 18/11, v2.14.0
+
+Código: `InventoryAlign`, `INVENTORY_ALIGNS` e `ChickenControls.inventory.align` em `lib/chicken/controls.ts`; geometria em `invGeom` (`components/pigchicken/draw/hud.ts`), usada pelo desenho (`drawInventory`) e pela camada invisível de clique/arraste de `components/pigchicken/parquinho.tsx`; botões em `components/chicken/chicken-controls-panel.tsx`.
+
+- **Gatilho:** Controles → **Inventário**, logo abaixo do título: quatro botões, **Centralizado**, **Separado**, **Esquerda** e **Direita**; o ativo fica aceso. Salvo neste navegador com os outros controles e no arquivo de padrões do admin (`data/chicken/default-controls.json`, “Salvar no game”). **Padrão: Separado**, também para quem já tinha controles salvos sem esse campo.
+- **Efeito:** muda só a barra grande de baixo do 1º player (desktop e tablet). **Centralizado:** a barra inteira no centro, como antes. **Separado:** os instrumentos encostados na borda esquerda (16 px) e as armas e os utilitários (com a casa vazia, que é do último grupo) encostados na borda direita; sem instrumentos, tudo vai para a direita; só instrumentos, tudo para a esquerda. **Esquerda / Direita:** a barra inteira encostada naquela borda. A ordem dos grupos e das casas não muda, nem as teclas dos grupos ao lado da primeira casa de cada um, os números 1–0 embaixo e o nome do item que aparece sobre a casa.
+- **Sem espaço:** se a barra não cabe na tela nem com as casas no tamanho mínimo, qualquer alinhamento volta ao comportamento antigo (a barra desliza para deixar a casa da mão perto do centro).
+- **Círculos de efeito** (consumível cujo item já saiu da barra): à esquerda da barra no Centralizado e na Direita; à direita do fim da barra na Esquerda; no Separado, à esquerda da metade das armas (ou à direita dos instrumentos, quando só há instrumentos).
+- **Arrastar casas:** igual em todos os alinhamentos; soltar um item do outro lado da tela o põe no grupo de lá. No modo de edição dos controles de toque, a alça da barra (`inventoryBar`) cobre a largura toda dela e o deslocamento salvo vale para as duas metades.
+- **Fora do escopo:** as fileiras pequenas (celular em pé e os outros players locais, ao lado dos avatares) não mudam. Vale em todos os Pátios e modos que usam o Parquinho (Pátio local e online, Templo, Campo minado).
+
+## Trocas que repetem enquanto segura — 08/11, v2.4.0; grupos 18/11, v2.14.0
+
+Código: `quickSwitchStep` e `groupSwitchStep` em `lib/pigchicken/inventory.ts`, chamados a cada quadro por `components/pigchicken/parquinho.tsx` para o 1º player e para cada player local extra (estado próprio por player).
+
+- **Gatilho:** segurar **Próximo item**, **Item anterior**, **Próximo instrumento**, **Próxima arma** ou **Próximo utilitário**.
+- **Efeito:** a primeira troca é imediata; com o bind ainda segurado, repete depois de **Repetir troca após segurar** (padrão 1,5 s, 0,2–5 s) e então a cada **Intervalo entre trocas** (padrão 0,3 s, 0,1–2 s), os dois em Controles → Inventário. O tempo conta pelo relógio do jogo (quadros longos contam no máximo 50 ms).
+- **Retorno/cancelamento:** soltar zera o temporizador; apertar outro atalho de troca recomeça a contagem por ele. Com dois atalhos de grupo apertados juntos vale o primeiro da lista (instrumento, arma, utilitário). A roda do inventário aberta não troca, mas a contagem segue.
+- **Prioridades:** Item anterior explícito vence Próximo item; Shift + Próximo item é decidido no aperto e não muda até soltar. Com Próximo item/Item anterior ativos no quadro, o atalho de grupo não age naquele quadro (como antes). Um instrumento com várias escalas passa pelas escalas antes do próximo item (regra de [Escalas](instrument-scales.md)).
+- **Observação:** no padrão, Próximo item só está na rodinha do mouse (cada dente é uma troca, sem repetição) e Item anterior em `'` do teclado secundário; os atalhos padrão de troca por grupo são Tab, Q, F (teclado) e LB, RB, B (gamepad).

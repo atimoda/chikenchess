@@ -48,6 +48,30 @@ export function quickSwitchStep(
   return repeat.direction
 }
 
+// Próximo instrumento / Próxima arma / Próximo utilitário: the group to go through on the press (the first one
+// listed wins when several are pressed together) and, with `repeat`, again while that one stays held, with the same
+// delay and interval as Próximo item (Controles → Inventário). Letting it go, or pressing another, starts over.
+export const GROUP_SWITCHES = [['nextInstrument', 0], ['nextWeapon', 1], ['nextUtility', 2]] as const
+type GroupSwitchAction = typeof GROUP_SWITCHES[number][0]
+export type GroupSwitchRepeat = { group: 0 | 1 | 2 | null; elapsed: number; nextAt: number }
+export const newGroupSwitchRepeat = (): GroupSwitchRepeat => ({ group: null, elapsed: 0, nextAt: 1.5 })
+export function groupSwitchStep(
+  current: Partial<Record<GroupSwitchAction, boolean>>, previous: Partial<Record<GroupSwitchAction, boolean>>,
+  repeat?: GroupSwitchRepeat, dt = 0, delay = 1.5, interval = 0.3,
+): 0 | 1 | 2 | null {
+  const pressed = GROUP_SWITCHES.find(([a]) => current[a] && !previous[a])
+  if (pressed) {
+    if (repeat) { repeat.group = pressed[1]; repeat.elapsed = 0; repeat.nextAt = delay }
+    return pressed[1]
+  }
+  if (!repeat) return null
+  if (repeat.group === null || !current[GROUP_SWITCHES[repeat.group][0]]) { repeat.group = null; repeat.elapsed = 0; repeat.nextAt = delay; return null }
+  repeat.elapsed += Math.max(0, dt)
+  if (repeat.elapsed + 1e-9 < repeat.nextAt) return null
+  repeat.nextAt += Math.max(0.05, interval)
+  return repeat.group
+}
+
 // the order of the groups in the inventory: instruments, weapons, then sports tools, consumables and utilities.
 // An item taken goes to its own group; dragged on the bar, it may join another one (the player's choice).
 export type ItemGroup = 0 | 1 | 2

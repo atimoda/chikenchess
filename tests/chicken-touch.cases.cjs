@@ -784,3 +784,19 @@ test('the Harpa\'s own binds: Sustenido is Shift (each keyboard) and L3 by defau
   assert.deepEqual(controls.loadChickenControls().harp.pad.sharp, ['Pad:b2', null, null])
   assert.deepEqual(controls.chickenControlsDefaultsFile(controls.loadChickenControls()).harp.pad.sharp, ['Pad:b2', null, null])
 })
+
+test('the inventory alignment (18/11) defaults to split, survives a save and falls back on an unknown value', () => {
+  const was = globalThis.window
+  try {
+    assert.equal(controls.defaultChickenControls().inventory.align, 'split')
+    assert.deepEqual(controls.INVENTORY_ALIGNS.map(a => a.value), ['center', 'split', 'left', 'right'])
+    // controls saved before the option: the new default
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify({ inventory: { repeatDelay: 2, repeatInterval: 0.5 } }) } }
+    assert.deepEqual(controls.loadChickenControls().inventory, { repeatDelay: 2, repeatInterval: 0.5, align: 'split' })
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify({ inventory: { align: 'left' } }) } }
+    assert.equal(controls.loadChickenControls().inventory.align, 'left')
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify({ inventory: { align: 'middle' } }) } }
+    assert.equal(controls.loadChickenControls().inventory.align, 'split')
+    assert.equal(controls.chickenControlsDefaultsFile({ ...controls.defaultChickenControls(), inventory: { repeatDelay: 1.5, repeatInterval: 0.3, align: 'right' } }).inventory.align, 'right')
+  } finally { globalThis.window = was }
+})
