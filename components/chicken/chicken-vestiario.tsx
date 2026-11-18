@@ -3,7 +3,7 @@
 // Vestiário (ported from the "Pátio da Caipira" prototype): picks the chicken's look by breed or part by
 // part, with art thumbnails and a big preview. It edits the look of the Pátio's draft of the central
 // configuration, so "Salvar no game" in Personagem saves it for every screen together with the params.
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react"
 import { Lock, X } from "lucide-react"
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from "@/lib/chicken/look-art"
 import { variantClass } from "@/lib/chicken/beast-art"
@@ -13,8 +13,8 @@ const NO_BABY: BabyState = { on: false, skin: null, bar: 0 }
 import { RARITIES, RARITY_COLOR, RARITY_LABEL, breedRarity, itemRarity, type Rarity } from "@/lib/chicken/rarity"
 import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
-import { FrameControls, FrameOverlay, frameView } from "./frame-editor"
-import type { BodyFrames, FrameClass } from "@/lib/chicken/body-frame"
+import { FrameControls, PosePreview } from "./frame-editor"
+import type { BodyFrames, FrameClass, FramePose } from "@/lib/chicken/body-frame"
 
 /** The admin's Hit-area editor: the central configuration's frames (draft and saved) and its Salvar no game. */
 export type FramesEdit = { value: BodyFrames; saved: BodyFrames; onChange: (f: BodyFrames) => void; onSave: () => void; saving: boolean; note: string | null }
@@ -45,15 +45,23 @@ export function ChickenHeadIcon({ look }: { look: ChickenLook }) {
   return <svg viewBox="12 -232 70 70" aria-hidden="true" className="h-full w-full" dangerouslySetInnerHTML={{ __html: LOOK_ART.headSvg(look) }} />
 }
 
-// the whole body of a look, small (a Filhote: its baby skin): the Personagem button shows the player's own character
-export function ChickenBodyIcon({ look, className }: { look: ChickenLook; className?: string }) {
+// the whole body of a look, small (a Filhote: its baby skin): the Personagem button shows the player's own character.
+// outline: only its contour, a line in the text colour (the art grown a little, minus the art itself)
+export function ChickenBodyIcon({ look, className, outline = false }: { look: ChickenLook; className?: string; outline?: boolean }) {
   const baby = useSyncExternalStore(subscribeBaby, getBaby, () => NO_BABY)
   const skin = baby.on ? baby.skin ?? defaultBabySkin(look) : null
-  const html = useMemo(() => (skin ? LOOK_ART.composeSet(babyArt(look, skin)) : LOOK_ART.compose(look)), [look, skin])
+  const id = useId().replace(/:/g, "")
+  const html = useMemo(() => {
+    const art = skin ? LOOK_ART.composeSet(babyArt(look, skin)) : LOOK_ART.compose(look)
+    if (!outline) return art
+    const f = `ol${id}`
+    return `<defs><filter id="${f}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="9" result="grown"/><feComposite in="grown" in2="SourceAlpha" operator="out" result="ring"/><feFlood flood-color="currentColor"/><feComposite in2="ring" operator="in"/></filter></defs><g filter="url(#${f})">${art}</g>`
+  }, [look, skin, outline, id])
   return <svg viewBox={skin ? "-90 -210 180 220" : "-110 -246 200 270"} aria-hidden="true" className={className} dangerouslySetInnerHTML={{ __html: html }} />
 }
 
-export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false, frames }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean; frames?: FramesEdit }) {
+// onProfile / onFriends: the Perfil and Amigos tabs, shortcuts that open those panels (left out: no tab)
+export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false, frames, onProfile, onFriends }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean; frames?: FramesEdit; onProfile?: () => void; onFriends?: () => void }) {
   const [tab, setTab] = useState(() => (typeof window !== "undefined" && getBaby().on ? "filhote" : "racas"))
   const [unlockAll, setUnlockAll] = useState(false)
   useEffect(() => { try { setUnlockAll(window.localStorage.getItem(UNLOCK) === "1") } catch { /* storage unavailable */ } }, [])
@@ -70,11 +78,10 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
   // the Hit-area editor (admin): the class it edits starts as the one on screen
   const [editFrames, setEditFrames] = useState(false)
   const [fc, setFc] = useState<FrameClass>(() => baby.on ? "baby" : lookFrame(look))
+  const [fpose, setFpose] = useState<FramePose>("stand")
   const frameEdit = admin && frames && editFrames ? frames : null
   const frameLook = fc === "baby" || lookFrame(look) === fc ? look : LOOK_ART.breedLook(CLASS_LOOK[fc])
-  const previewView = frameEdit ? (fc === "baby" ? "-90 -210 180 220" : fullView(frameLook)) : baby.on ? "-90 -210 180 220" : fullView(look)
-  const previewHtml = frameEdit ? (fc === "baby" ? LOOK_ART.composeSet(babyArt(look, babySkin)) : LOOK_ART.compose(frameLook)) : baby.on ? LOOK_ART.composeSet(babyArt(look, babySkin)) : LOOK_ART.compose(look)
-  const shownView = frameEdit ? frameView(previewView, frameEdit.value[fc]) : previewView
+  const kidArt = useMemo(() => (fc === "baby" ? babyArt(look, babySkin) : null), [fc, look, babySkin])
 
   // the photo's background takes a tint of the item's rarity; where it comes from only colors the small label
   const card = (key: string, src: Src, rarity: Rarity, locked: boolean, on: boolean, art: React.ReactNode, name: React.ReactNode, label: string, onPick: () => void, wide = false) => (
@@ -170,15 +177,20 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
       <div className="flex min-h-0 flex-1 flex-col @xl:flex-row">
         <div className="relative h-56 shrink-0 border-b border-primary/30 bg-[radial-gradient(120%_70%_at_50%_85%,rgba(31,211,154,0.09),transparent_70%)] @xl:h-auto @xl:w-[260px] @xl:border-b-0 @xl:border-r">
           <p className="absolute left-3.5 top-2.5 text-[10px] uppercase tracking-wider text-[#93a79a]">Prévia</p>
-          <div className="absolute inset-x-3 bottom-8 top-8">{svg(shownView, previewHtml)}{frameEdit && <FrameOverlay view={shownView} frame={frameEdit.value[fc]} onChange={f => frameEdit.onChange({ ...frameEdit.value, [fc]: f })} />}</div>
+          {frameEdit
+            ? <div className="absolute inset-x-0 bottom-0 top-7"><PosePreview cls={fc} pose={fpose} look={frameLook} art={kidArt} frames={frameEdit.value} onChange={frameEdit.onChange} /></div>
+            : <div className="absolute inset-x-3 bottom-8 top-8">{baby.on ? svg("-90 -210 180 220", LOOK_ART.composeSet(babyArt(look, babySkin))) : svg(fullView(look), LOOK_ART.compose(look))}</div>}
           {!frameEdit && <div className="absolute inset-x-0 bottom-8 h-0.5 bg-primary/55" />}
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {frameEdit ? <div className="min-h-0 flex-1 overflow-y-auto"><FrameControls cls={fc} onClass={setFc} frames={frameEdit.value} saved={frameEdit.saved} onChange={frameEdit.onChange} onSave={frameEdit.onSave} saving={frameEdit.saving} note={frameEdit.note} /></div> : <>
+          {frameEdit ? <div className="min-h-0 flex-1 overflow-y-auto"><FrameControls cls={fc} onClass={setFc} pose={fpose} onPose={setFpose} frames={frameEdit.value} saved={frameEdit.saved} onChange={frameEdit.onChange} onSave={frameEdit.onSave} saving={frameEdit.saving} note={frameEdit.note} /></div> : <>
           <nav role="tablist" className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/10 px-2.5 py-2">
             {tabs.map(t => (
               <button key={t.id} type="button" role="tab" aria-selected={cur === t.id} onClick={() => setTab(t.id)} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold", cur === t.id ? "bg-[#22302a] text-white shadow-[inset_0_0_0_1px_rgba(31,211,154,0.6)]" : "text-[#93a79a] hover:text-white")}>{t.label}</button>
             ))}
+            {/* shortcuts to the Perfil and Amigos panels, at the end of the row */}
+            {onProfile && <button type="button" onClick={onProfile} className="ml-auto h-[34px] whitespace-nowrap rounded-md px-3 font-semibold text-[#93a79a] hover:text-white">Perfil</button>}
+            {onFriends && <button type="button" onClick={onFriends} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold text-[#93a79a] hover:text-white", !onProfile && "ml-auto")}>Amigos</button>}
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {body}

@@ -8,6 +8,8 @@
 // The Pátio has its own portal, standing
 // near the start of its world, that leads back to the globe (the same ring, placed in world units: `world`).
 // Use must be pressed after the chicken enters the ring, even if the binding is shared with Run.
+// With `closeAfterSpawn` (the Pátio's rings) the ring only stays open while someone comes out of it or is sucked
+// into it (or `holdOpen`, the Modo editor): then it swells, collapses into a spark and stays shut.
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { useEffect, useRef, useState } from "react"
@@ -18,7 +20,7 @@ import { CHICKEN_GROUND_H } from "./chicken-layer"
 import { graphicsQuality } from "@/lib/quality"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
 import { mixGain } from "@/lib/pigchicken/mixer"
-import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
+import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, overlapsPortal, PORTAL_TRANSITION_MS, PORTAL_CLOSE_MS, createPortalShut, stepPortalShut, portalOpenness, type PortalShut } from "@/lib/chicken/portal"
 import { stageWidth } from "@/lib/stage-size"
 
 const PAD = 34 // room around the ring for the glow, arcs and sparks
@@ -225,7 +227,7 @@ export function chickenPortalAvoid(vw: number): [number, number][] {
 // a portal standing in a moving world (the Pátio): its centre x and the ground's y in the world element's units
 export type ChickenPortalWorld = { host: React.RefObject<HTMLElement | null>; x: number; groundY: number; d: number }
 
-export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", modeSwitch = false, id, actors, onEnter, enabled = true, instructionMode = 'hover', birth }: {
+export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", modeSwitch = false, id, actors, onEnter, enabled = true, instructionMode = 'hover', birth, closeAfterSpawn = false, holdOpen = false, startClosed = false }: {
   engine: ChickenEngine | null
   href?: string
   visible?: boolean
@@ -242,12 +244,21 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   birth?: () => boolean
   // under the button, an online / local switch: how the Pátio's lobby starts (local by default)
   modeSwitch?: boolean
+  // the ring closes once the chickens came out of it, and opens again only while one comes out of it or is sucked in
+  closeAfterSpawn?: boolean
+  // kept open (the Modo editor)
+  holdOpen?: boolean
+  // with closeAfterSpawn: it starts shut (no one is born here)
+  startClosed?: boolean
 }) {
   const router = useRouter()
   const local = !!onEnter
   const portalId = id ?? (world ? 'patio' : 'globe')
-  const runtimeRef = useRef({ actors, onEnter, enabled, instructionMode, birth })
-  runtimeRef.current = { actors, onEnter, enabled, instructionMode, birth }
+  const runtimeRef = useRef({ actors, onEnter, enabled, instructionMode, birth, closeAfterSpawn, holdOpen })
+  runtimeRef.current = { actors, onEnter, enabled, instructionMode, birth, closeAfterSpawn, holdOpen }
+  // kept across the drawing effect's restarts (a new Pátio keeps the ring that was already shut)
+  const shutRef = useRef<PortalShut>(createPortalShut(startClosed))
+  const isShut = () => runtimeRef.current.closeAfterSpawn && shutRef.current.phase !== "open"
   const candidateRef = useRef<ChickenEngine | null>(null)
   const arrivalReady = useRef<ChickenEngine | null>(null)
   const arrivalChecked = useRef(new WeakSet<ChickenEngine>())
@@ -336,7 +347,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     let rot = 0, last = performance.now(), nextStrands = 0, drawnAt = 0
     let power = 1 // glow strength: rises as she comes close, flares on entering
     let enteredAt = transitionRef.current?.at ?? 0, raf = 0
-    let slowFrames = 0, measured = 0
+    let slowFrames = 0, measured = 0, cleared = false
     let enteringEngine = transitionRef.current?.engine ?? null
     // the corner's canvas is fixed: its place only changes with the window (one in the world is read every frame)
     const inWorld = !!worldD
@@ -370,7 +381,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     window.addEventListener("pointercancel", onPortalPointerCancel, true)
 
     const enter = () => {
-      if (enteredAt || !runtimeRef.current.enabled || !visibleRef.current || !candidateRef.current) return
+      if (enteredAt || isShut() || !runtimeRef.current.enabled || !visibleRef.current || !candidateRef.current) return
       const center = centerRef.current
       if (!center || !touchesPortal(candidateRef.current.getMotionState(), { ...center, r }, true)) return
       enteredAt = performance.now()
@@ -394,7 +405,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
     }
 
     enterRef.current = (allowWalk = false) => {
-      if (enteredAt || !runtimeRef.current.enabled || !visibleRef.current) return
+      if (enteredAt || isShut() || !runtimeRef.current.enabled || !visibleRef.current) return
       if (candidateRef.current) { enter(); return }
       const center = centerRef.current
       const actor = engineRef.current
@@ -417,8 +428,21 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       // ---------- characters and destination arrival ----------
       let near = 0
       const runtime = runtimeRef.current
-      const active = runtime.enabled && visibleRef.current
       const eng = engineRef.current
+      // ---------- closing after the spawn ----------
+      const shut = shutRef.current
+      if (runtime.closeAfterSpawn) {
+        // open while it is held, or someone is coming out of it or being sucked into it
+        let needed = runtime.holdOpen || !!enteredAt
+        if (!needed) for (const actor of runtime.actors?.() ?? (eng ? [eng] : [])) {
+          const st = actor.getMotionState()
+          if ((st.state === "portal" || st.state === "portalArrival") && overlapsPortal(st, { x: pcx, y: pcy, r })) { needed = true; break }
+        }
+        stepPortalShut(shut, now, needed, !!eng)
+      }
+      const openness = runtime.closeAfterSpawn ? portalOpenness(shut, now) : 1
+      // shutting (or shut) it cannot be used
+      const active = runtime.enabled && visibleRef.current && !(runtime.closeAfterSpawn && shut.phase !== "open")
       if (eng && !runtime.onEnter && !enteredAt) {
         // The world's initial camera/spawn runs in its first frame. Place the
         // arrival afterwards, so that setup cannot overwrite the destination.
@@ -476,25 +500,38 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       // the decorative canvas work sleeps; a transition always keeps drawing.
       const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > 0 && box.top < window.innerHeight
       if (!onScreen && !enteredAt) { sparks.length = 0; arcs = []; nextStrands = now; return }
+      // shut: nothing to draw (cleared once)
+      if (openness <= 0.001) {
+        if (!cleared) { ctx.clearRect(0, 0, size, size); cleared = true }
+        sparks.length = 0; arcs = []; nextStrands = now
+        return
+      }
+      cleared = false
       const enterT = enteredAt ? Math.min(1, (now - enteredAt) / ENTER_MS) : 0
-      const target = 1 + near * 0.8 + enterT * 2.4
+      // while closing: 0 to 1 (it flares, spins faster and its sparks are sucked in)
+      const closeT = shut.phase === "closing" && runtime.closeAfterSpawn ? Math.min(1, (now - shut.at) / PORTAL_CLOSE_MS) : 0
+      const sizing = openness !== 1
+      const target = 1 + near * 0.8 + enterT * 2.4 + closeT * 1.8
       power += (target - power) * Math.min(1, dt * 8)
 
       // ---------- animate ----------
-      rot += dt * (0.25 + near * 0.6 + enterT * 4)
-      if (now >= nextStrands) {
-        strands = makeStrands(strandCount(), r, 5 + near * 3 + enterT * 6, strandPoints())
+      rot += dt * (0.25 + near * 0.6 + enterT * 4 + closeT * 7)
+      const strandR = r * openness
+      if (now >= nextStrands || sizing) {
+        strands = makeStrands(strandCount(), strandR, (5 + near * 3 + enterT * 6) * Math.min(1, openness), strandPoints())
         nextStrands = now + (reduce ? 260 : (lite ? 90 : 55) - enterT * 25)
       }
-      if (!lite && !reduce && Math.random() < dt * (3 + near * 10 + enterT * 30)) arcs.push(makeArc(cx, cy, r))
+      if (!lite && !reduce && !sizing && Math.random() < dt * (3 + near * 10 + enterT * 30)) arcs.push(makeArc(cx, cy, r))
       arcs = arcs.filter(a => (a.life -= dt * 7) > 0)
-      if (Math.random() < dt * (12 + near * 20 + enterT * 60) * (lite ? 0.4 : 1)) {
-        sparks.push({ a: Math.random() * Math.PI * 2, r: r + (Math.random() - 0.5) * 10, vr: enterT ? -60 - Math.random() * 80 : (Math.random() - 0.5) * 30, va: (Math.random() - 0.5) * 1.2, life: 0, max: 0.5 + Math.random() * 0.9, size: 0.8 + Math.random() * 1.6 })
+      if (Math.random() < dt * (12 + near * 20 + enterT * 60 + closeT * 90) * (lite ? 0.4 : 1)) {
+        const inward = enterT || closeT
+        sparks.push({ a: Math.random() * Math.PI * 2, r: strandR + (Math.random() - 0.5) * 10, vr: inward ? -60 - Math.random() * 80 - closeT * 120 : (Math.random() - 0.5) * 30, va: (Math.random() - 0.5) * 1.2, life: 0, max: 0.5 + Math.random() * 0.9, size: 0.8 + Math.random() * 1.6 })
       }
+      if (closeT) for (const s of sparks) s.vr = Math.min(s.vr, -140)
 
       // ---------- draw ----------
       ctx.clearRect(0, 0, size, size)
-      const ringR = r * (1 + enterT * 0.12)
+      const ringR = strandR * (1 + enterT * 0.12)
       if (lite) drawRingLite(ctx, cx, cy, ringR, strands, rot, power, halo)
       else drawRing(ctx, cx, cy, ringR, strands, rot, power)
 
@@ -516,6 +553,16 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         const k = 1 - s.life / s.max
         ctx.fillStyle = `rgba(200,240,255,${k})`
         ctx.beginPath(); ctx.arc(cx + Math.cos(s.a) * s.r, cy + Math.sin(s.a) * s.r, s.size, 0, Math.PI * 2); ctx.fill()
+      }
+      // the last spark where it closed
+      if (closeT > 0.6) {
+        const k = (closeT - 0.6) / 0.4, pr = r * (0.12 + 0.22 * Math.sin(k * Math.PI))
+        const pop = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr)
+        pop.addColorStop(0, `rgba(235,250,255,${0.9 * (1 - k)})`)
+        pop.addColorStop(0.4, `rgba(110,200,255,${0.6 * (1 - k)})`)
+        pop.addColorStop(1, "rgba(40,110,255,0)")
+        ctx.fillStyle = pop
+        ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2); ctx.fill()
       }
       ctx.restore()
 

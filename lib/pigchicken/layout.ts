@@ -21,6 +21,7 @@ import { VILLAGE_COLORS, VILLAGE_HOUSES, normalizeVillageRidge } from './village
 import { VILLAGE_GROUND_ID, defaultSurface, fitSurface, normalizeSurface, polygonContains, surfacePolygon, villageGround, type SurfaceKind, type SurfaceParams } from './surfaces'
 import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from './power-lines'
 import { BACKDROP_DEPTH, isBackdropLayer, type BackdropLayerId } from './backdrop-layers'
+import { MINE_ACTIVATOR_BOX, defaultMineActivator, normalizeMineActivator, type MineActivatorParams } from './mine-activator'
 import { GONG_BOX, JUKEBOX_BOX, RESET_STONE_BOX, TEMPLE_SPOTS, VITROLA_BOX, defaultGong, defaultPlayer, normalizeGong, normalizePlayer, type GongParams, type PlayerParams } from './gong'
 import { BALUSTRADE_FLOOR, BALUSTRADE_SIZE, BUILDING_SIZE, buildingSurfaces, defaultBalustrade, defaultBuilding, normalizeBalustrade, normalizeBuilding, type BalustradeParams, type BuildingParams } from './buildings'
 import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
@@ -64,7 +65,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'building', 'balustrade', 'resetstone'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'building', 'balustrade', 'resetstone', 'mineactivator'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -103,6 +104,7 @@ export type ElementParams = {
   balustrade?: BalustradeParams // Mureta com cerca: the courtyard's stone floor under it
   chalkboard?: ChalkboardParams // Quadro de lousa: its text and the ghost's move
   chest?: ChestParams // Baú: what opens it, what is inside, its rarity
+  mineActivator?: MineActivatorParams // Ativador de grid de campo minado: the music and the damage that fill it
 }
 
 export type LayoutElement = {
@@ -189,9 +191,11 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   pedalharp: { label: 'Harpa', group: 'Música', ...HARP_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: HARP_BOX.w, minH: HARP_BOX.h },
   // the acoustic drum kit and its throne
   drumkit: { label: 'Bateria', group: 'Música', ...DRUMKIT_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: DRUMKIT_BOX.w, minH: DRUMKIT_BOX.h },
+  // a big blue button that turns the Grade de blocos on once music or damage fills it (lib/pigchicken/mine-activator.ts)
+  mineactivator: { label: 'Ativador de grid de campo minado', group: 'Grade de blocos', ...MINE_ACTIVATOR_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: MINE_ACTIVATOR_BOX.w, minH: MINE_ACTIVATOR_BOX.h },
 }
 // the Gongo, the Jukebox and the Baú keep their art's size
-const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'vitrola' || kind === 'resetstone' || kind === 'chest' || isFixedKind(kind)
+const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'vitrola' || kind === 'resetstone' || kind === 'chest' || kind === 'mineactivator' || isFixedKind(kind)
 // Postes and Torres: their wires join the next one of the same model and line (lib/pigchicken/power-lines.ts)
 export const isPowerElement = (kind: ElementKind): kind is 'pole' | 'tower' => kind === 'pole' || kind === 'tower'
 // what may stand in a parallax depth of its own: the scenery (not the game's things, the music or the entry)
@@ -243,6 +247,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'jukebox' || kind === 'vitrola') return { player: defaultPlayer() }
   if (kind === 'chalkboard') return { chalkboard: defaultChalkboard() }
   if (kind === 'chest') return { chest: defaultChest() }
+  if (kind === 'mineactivator') return { mineActivator: defaultMineActivator() }
   if (isFixedKind(kind)) return { flip: false }
   return {}
 }
@@ -580,6 +585,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.chalkboard = normalizeChalkboard(p.chalkboard)
   } else if (kind === 'chest') {
     params.chest = normalizeChest(p.chest)
+  } else if (kind === 'mineactivator') {
+    params.mineActivator = normalizeMineActivator(p.mineActivator)
   } else if (isFixedKind(kind)) {
     params.flip = !!p.flip
   }

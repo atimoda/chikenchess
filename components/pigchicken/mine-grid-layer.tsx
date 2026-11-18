@@ -25,6 +25,7 @@ import {
 import { mineStore, setMineParams, setMineSide, startMineRound } from "@/lib/pigchicken/mine-grid-store"
 import { BOMB_USE_LABELS, mineHints, mineSpotOf } from "./mine-grid-play"
 import { MINE_BOMB_BOX, mineBombSvg } from "@/lib/pigchicken/mine-bomb-art"
+import { mineItemElements, mineItemSpots } from "@/lib/pigchicken/mine-items"
 import { FollowLayer } from "./patio-layout"
 
 // the round of the Pátio open: drawn again when another Pátio opens, when the grid's shape (its blocks' cut corners
@@ -46,6 +47,16 @@ export function useMineGrid({ patioKey, params, width, top, ground, portals }: {
   useEffect(() => { startMineRound(grid); return () => startMineRound(null) }, [grid])
   useEffect(() => { setMineParams(params); return () => setMineParams(null) }, [params])
   return { grid, reset: () => setRound(n => n + 1) }
+}
+
+// "Spawn de itens": the Pátio's elements plus the platforms and items the blocks were born with (lib/pigchicken/
+// mine-items.ts), for the game alone (the world, its colliders and the items lying in it). Each new round of this
+// browser (or of the online owner's, mirrored here) puts them back, so the items taken come back with it.
+export function useMineItems(elements: LayoutElement[], params: MineGridParams | null, geo: MineGeo | undefined): LayoutElement[] {
+  const roundNo = useSyncExternalStore(mineStore.subscribe, () => mineStore.roundNo, () => 0)
+  const items = params?.items
+  const spots = useMemo(() => (geo && items ? mineItemSpots(geo, items) : []), [geo, items])
+  return useMemo(() => (spots.length ? [...elements, ...mineItemElements(spots, roundNo)] : elements), [elements, spots, roundNo])
 }
 
 type View = { side: MineSide; c0: number; c1: number; r0: number; r1: number; near: string; hints: string }

@@ -14,6 +14,8 @@ import type { GameAction, OnlineFriend, OnlineMatch, OnlineRoom, PublicRoom, Roo
 import type { MatchPower } from '@/lib/chess-powers'
 import type { CreativeSession } from '@/lib/music/creative'
 import { replayMatch } from '@/lib/online/domain'
+import { isHiddenFriend, migrateHiddenFriendKeys, profileCodeMatches } from '@/lib/online/profile-code'
+import { sendInvite } from '@/lib/online/invites'
 import { Chess } from 'chess.js'
 import { cn, stableHtml } from '@/lib/utils'
 import { PiecesSVG } from '@/lib/chess-piece-svg'
@@ -460,8 +462,9 @@ function ExitRoomIcon() {
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-4"><path d="M15 20.5H10M15 20.5V3H2.5v16l7.8 3.5V7L2.5 3" /><path d="M7.9 13v2" /><path d="M22 10h-6.7l2-3.3h-2.1L12.5 11l2.7 4.4h2.1l-2-3.4H22z" /></svg>
 }
 
+// Hidden friends are stored by account id (older lists stored profile codes and migrate on the next friends list).
 const HIDDEN_FRIENDS_PREFIX = 'chickenchess:hidden_friends:'
-function getHiddenFriendCodes(userId: string | undefined): Set<string> {
+function getHiddenFriends(userId: string | undefined): Set<string> {
   if (typeof window === 'undefined') return new Set()
   try {
     const raw = localStorage.getItem(`${HIDDEN_FRIENDS_PREFIX}${userId || 'guest'}`)
@@ -470,7 +473,7 @@ function getHiddenFriendCodes(userId: string | undefined): Set<string> {
     return new Set()
   }
 }
-function saveHiddenFriendCodes(userId: string | undefined, hidden: Set<string>) {
+function saveHiddenFriends(userId: string | undefined, hidden: Set<string>) {
   if (typeof window === 'undefined') return
   try {
     localStorage.setItem(`${HIDDEN_FRIENDS_PREFIX}${userId || 'guest'}`, JSON.stringify(Array.from(hidden)))
@@ -488,7 +491,11 @@ function WardrobePane() {
   </div>
 }
 
-function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) => void }) {
+/** The button on each accepted friend: Create game on the globe, Invite inside the Pátio. The text it resolves to is
+ * shown under the list; an error's message too. */
+export type FriendPaneAction = { label: string; icon?: ReactNode; run: (friend: OnlineFriend) => Promise<string | void> | string | void }
+
+export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (friend: OnlineFriend) => void; friendAction?: FriendPaneAction }) {
   const { user } = useOnline()
   const { friends, loading, error, act, refresh } = useFriendList(true)
   const [targetCode, setTargetCode] = useState('')
@@ -496,30 +503,38 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
   const [refreshing, setRefreshing] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const [hiddenCodes, setHiddenCodes] = useState<Set<string>>(() => getHiddenFriendCodes(user?.id))
+  const [hidden, setHidden] = useState<Set<string>>(() => getHiddenFriends(user?.id))
 
   useEffect(() => {
-    setHiddenCodes(getHiddenFriendCodes(user?.id))
+    setHidden(getHiddenFriends(user?.id))
   }, [user?.id])
 
+  useEffect(() => {
+    setHidden(prev => {
+      const next = migrateHiddenFriendKeys(prev, friends.map((friend) => friend.profile))
+      if (next !== prev) saveHiddenFriends(user?.id, next)
+      return next
+    })
+  }, [friends, user?.id])
+
   const hideFriend = (friend: OnlineFriend) => {
-    const code = friend.profile.code.toUpperCase()
-    setHiddenCodes(prev => {
+    setHidden(prev => {
       const next = new Set(prev)
-      next.add(code)
-      saveHiddenFriendCodes(user?.id, next)
+      next.add(friend.profile.id)
+      saveHiddenFriends(user?.id, next)
       return next
     })
     setNotice(`${friend.profile.display_name} is now hidden from your friends list.`)
   }
 
-  const unhideCode = (code: string) => {
-    const upper = code.toUpperCase()
-    setHiddenCodes(prev => {
-      if (!prev.has(upper)) return prev
+  const unhideFriend = (friend: OnlineFriend) => {
+    const code = friend.profile.code.toUpperCase()
+    setHidden(prev => {
+      if (!prev.has(friend.profile.id) && !prev.has(code)) return prev
       const next = new Set(prev)
-      next.delete(upper)
-      saveHiddenFriendCodes(user?.id, next)
+      next.delete(friend.profile.id)
+      next.delete(code)
+      saveHiddenFriends(user?.id, next)
       return next
     })
   }
@@ -534,15 +549,15 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
         const query = targetCode.trim()
         const unhidden = next?.find((entry) =>
           entry.status === 'accepted' && (
-            hiddenCodes.has(entry.profile.code.toUpperCase()) ||
-            entry.profile.code.toUpperCase() === query.toUpperCase()
+            isHiddenFriend(hidden, entry.profile) ||
+            profileCodeMatches(entry.profile.code, query)
           )
         )
-        if (unhidden && hiddenCodes.has(unhidden.profile.code.toUpperCase())) {
-          unhideCode(unhidden.profile.code)
+        if (unhidden && isHiddenFriend(hidden, unhidden.profile)) {
+          unhideFriend(unhidden)
           setNotice(`${unhidden.profile.display_name} is visible again in your friends list.`)
         } else {
-          const relation = next?.find((entry) => entry.profile.code.toUpperCase() === query.toUpperCase())
+          const relation = next?.find((entry) => profileCodeMatches(entry.profile.code, query))
           setNotice(
             relation?.status === 'accepted'
               ? 'Friend request accepted.'
@@ -565,10 +580,10 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
     const query = targetCode.trim()
     if (!query) return
     const existingHidden = friends.find(
-      (f) => f.status === 'accepted' && hiddenCodes.has(f.profile.code.toUpperCase()) && f.profile.code.toUpperCase() === query.toUpperCase()
+      (f) => f.status === 'accepted' && isHiddenFriend(hidden, f.profile) && profileCodeMatches(f.profile.code, query)
     )
     if (existingHidden) {
-      unhideCode(existingHidden.profile.code)
+      unhideFriend(existingHidden)
       setNotice(`${existingHidden.profile.display_name} is visible again in your friends list.`)
       setTargetCode('')
       return
@@ -577,7 +592,7 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
   }
 
   const visibleAccepted = friends.filter(
-    (friend) => friend.status === 'accepted' && !hiddenCodes.has(friend.profile.code.toUpperCase())
+    (friend) => friend.status === 'accepted' && !isHiddenFriend(hidden, friend.profile)
   )
 
   const groups = [
@@ -638,10 +653,20 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
                         variant="outline"
                         className="border-primary/40 bg-transparent text-primary hover:border-primary hover:bg-black/80 hover:text-white"
                         disabled={Boolean(busy)}
-                        onClick={() => onCreateGame?.(friend)}
+                        onClick={() => {
+                          if (!friendAction) { onCreateGame?.(friend); return }
+                          setBusy(friend.id)
+                          setActionError(null)
+                          setNotice(null)
+                          void Promise.resolve()
+                            .then(() => friendAction.run(friend))
+                            .then((text) => { if (text) setNotice(text) })
+                            .catch((cause) => setActionError(onlineErrorMessage(cause)))
+                            .finally(() => setBusy(null))
+                        }}
                       >
-                        <Gamepad2 className="size-3.5" />
-                        Create game
+                        {friendAction ? friendAction.icon ?? <UserPlus className="size-3.5" /> : <Gamepad2 className="size-3.5" />}
+                        {friendAction ? friendAction.label : 'Create game'}
                       </Button>
                     </div>
                     <div className="absolute right-2 top-2">
@@ -655,7 +680,7 @@ function FriendsPane({ onCreateGame }: { onCreateGame?: (friend: OnlineFriend) =
                             <MoreVertical className="size-3.5" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="border-white/20 bg-[#101713] text-[#dfe8df]">
+                        <DropdownMenuContent align="end" data-chicken-ignore className="z-[400] border-white/20 bg-[#101713] text-[#dfe8df]">
                           <DropdownMenuItem
                             className="cursor-pointer gap-2 text-xs text-white/70 hover:bg-white/10 hover:text-white"
                             onClick={() => hideFriend(friend)}
@@ -1113,7 +1138,20 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     }
     return success
   }
-  const handleCreateGameWithFriend = (_friend: OnlineFriend) => { void createLobby(false) }
+  // Create game with a friend: a private lobby, and the friend is called into it once the lobby is there
+  const friendToInvite = useRef<OnlineFriend | null>(null)
+  const handleCreateGameWithFriend = (friend: OnlineFriend) => {
+    friendToInvite.current = friend
+    void createLobby(false).then((ok) => { if (!ok) friendToInvite.current = null })
+  }
+  useEffect(() => {
+    const friend = friendToInvite.current
+    if (!friend || !room || room.status !== 'open' || room.host_id !== user?.id) return
+    friendToInvite.current = null
+    sendInvite(friend.profile.id, { kind: 'room', code: room.code })
+      .then(() => setNotice(`Convite enviado para ${friend.profile.display_name}.`))
+      .catch((cause) => setNotice(cause instanceof Error ? cause.message : String(cause)))
+  }, [room, user?.id])
   const actionError = error && <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>
   const ownMember = room?.members.find((member) => member.user_id === user?.id)
   const mapLobbies = mapLobbyRooms(rooms, room, user?.id ?? null)

@@ -14,6 +14,8 @@ import { mineStore, setMineDebug, setMineNumbersFront } from "@/lib/pigchicken/m
 import { patioIsAdmin } from "@/lib/pigchicken/edit-access"
 import { MINE_ZONE_RHYTHM, mineZoneHas, mineZonePoolLabel, toggleMineZoneBeat, type MineZoneParams } from "@/lib/pigchicken/mine-zone-params"
 import { BEATS, BEAT_GROUPS } from "@/lib/pigchicken/beats"
+import { MINE_ITEM_CHANCE, MINE_ITEM_GROUPS, MINE_ITEM_GROUP_CHANCE, MINE_ITEM_MAX, MINE_ITEM_WEIGHT, defaultMineItems, mineItemWeight, setMineItemWeight, type MineItemParams } from "@/lib/pigchicken/mine-item-params"
+import { DEFAULT_ITEMS } from "@/lib/pigchicken/items"
 
 const ROW = "flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3"
 // the seesaw's turn: where the blue grows from (the red comes from the other side)
@@ -46,6 +48,35 @@ function RhythmPool({ zones, disabled, onChange }: { zones: MineZoneParams; disa
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
+
+// "Spawn de itens": how many blocks are born with items, how many each gets, and the chances of each group and item
+function ItemSpawnFields({ items, canToggle, onChange }: { items: MineItemParams; canToggle: boolean; onChange: (items: MineItemParams) => void }) {
+  const set = (p: Partial<MineItemParams>) => onChange({ ...items, ...p })
+  return <>
+    <PatioRange label="Blocos com itens" min={MINE_ITEM_CHANCE.min} max={MINE_ITEM_CHANCE.max} step={MINE_ITEM_CHANCE.step} value={items.chance} display={`${items.chance}%`}
+      onChange={v => set({ chance: v })} onReset={() => set({ chance: MINE_ITEM_CHANCE.default })}
+      hint="Chance de cada bloco nascer com itens, numa plataforma em algum lugar do meio dele." />
+    <PatioRange label="Itens por bloco" min={MINE_ITEM_MAX.min} max={MINE_ITEM_MAX.max} step={MINE_ITEM_MAX.step} value={items.max} display={`até ${items.max}`}
+      onChange={v => set({ max: v })} onReset={() => set({ max: MINE_ITEM_MAX.default })} />
+    {MINE_ITEM_GROUPS.map(g => <div key={g.id} className="grid gap-field">
+      <PatioRange label={g.label} min={MINE_ITEM_GROUP_CHANCE.min} max={MINE_ITEM_GROUP_CHANCE.max} step={MINE_ITEM_GROUP_CHANCE.step} value={items.groups[g.id]} display={`${items.groups[g.id]}%`}
+        onChange={v => set({ groups: { ...items.groups, [g.id]: v } })} onReset={() => set({ groups: { ...items.groups, [g.id]: MINE_ITEM_GROUP_CHANCE.default } })}
+        hint="Chance de cada item vir deste grupo, em proporção aos outros grupos. Em 0 o grupo não sai." />
+      <details className="rounded-md border border-white/10">
+        <summary className="cursor-pointer px-3 py-2 text-white/70 hover:text-white">Itens de {g.label.toLowerCase()}</summary>
+        <div className="grid gap-field px-2 pb-2">
+          {g.items.map(id => { const w = mineItemWeight(items, id); return (
+            <PatioRange key={id} label={DEFAULT_ITEMS[id].name} min={MINE_ITEM_WEIGHT.min} max={MINE_ITEM_WEIGHT.max} step={MINE_ITEM_WEIGHT.step} value={w} display={`${w}%`}
+              onChange={v => onChange(setMineItemWeight(items, id, v))} onReset={() => onChange(setMineItemWeight(items, id, MINE_ITEM_WEIGHT.default))} />
+          ) })}
+        </div>
+      </details>
+    </div>)}
+    <button type="button" disabled={!canToggle} onClick={() => set({ seed: 1 + Math.floor(Math.random() * 0x7ffffffe) })}
+      title={canToggle ? "Sorteia de novo quais blocos têm itens, onde fica a plataforma e quais itens ficam nela" : "Só o criador, o padrinho e o admin sorteiam."}
+      className="flex h-10 items-center justify-center gap-2 rounded-md border border-white/15 bg-[#0b110e] hover:border-[#ffd166] hover:text-white disabled:opacity-40"><Dices className="h-4 w-4" />Sortear</button>
+  </>
 }
 
 export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: {
@@ -126,6 +157,7 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
               className="flex h-10 items-center justify-center gap-2 rounded-md border border-white/15 bg-[#0b110e] hover:border-[#ffd166] hover:text-white disabled:opacity-40"><Dices className="h-4 w-4" />Sortear</button>
           </>}
         </>)}
+        {group("Spawn de itens", <ItemSpawnFields items={g.items ?? defaultMineItems()} canToggle={canToggle && canEdit} onChange={items => set({ items })} />)}
         {group("Bombas", <>
           <PatioRange label="Chance de bomba por bloco" min={MINE_BOMBS.min} max={MINE_BOMBS.max} step={MINE_BOMBS.step} value={g.bombs} display={`${g.bombs}%`}
             onChange={v => set({ bombs: v })} onReset={() => set({ bombs: MINE_BOMBS.default })} />

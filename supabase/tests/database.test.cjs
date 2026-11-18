@@ -12,6 +12,8 @@ const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-22
 const randomRoomIds = ['a1000000-0000-4000-8000-000000000001','a1000000-0000-4000-8000-000000000002','a1000000-0000-4000-8000-000000000003']
 let db; let profiles; let room; let match; let firstReceipt
 const legacyId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+// Accounts from before the 9-digit Profile code: an older one, and the admin ("jéjé") registered later.
+const oldestId='abababab-abab-4bab-8bab-abababababab'; const adminId='acacacac-acac-4cac-8cac-acacacacacac'
 async function admin(sql, args=[]) { await db.exec('reset role'); return db.query(sql,args) }
 async function asUser(id, sql, args=[]) {
   await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]); await db.exec('set role authenticated')
@@ -27,7 +29,7 @@ async function service(fn, args) {
 before(async () => {
   db=new PGlite()
   await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
-    create schema auth; create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}'::jsonb);
+    create schema auth; create table auth.users(id uuid primary key,raw_user_meta_data jsonb not null default '{}'::jsonb,created_at timestamptz default now());
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to authenticated,service_role; grant execute on function auth.uid() to authenticated,service_role;
     create schema realtime; create table realtime.messages(id bigint,extension text); alter table realtime.messages enable row level security;
@@ -39,6 +41,11 @@ before(async () => {
     if(file==='202610040003_baptism_names.sql') {
       await db.query('insert into auth.users(id) values($1)',[legacyId])
       await db.query('insert into public.online_profiles(id) values($1)',[legacyId])
+    }
+    if(file==='202611180001_numeric_profile_codes.sql') {
+      await db.query("insert into auth.users(id,created_at) values($1,'2026-01-01'),($2,'2026-06-01')",[oldestId,adminId])
+      await db.query("insert into public.online_profiles(id,display_name) values($1,'Oldest'),($2,'jéjé')",[oldestId,adminId])
+      await db.query("update public.online_profiles set code='7B23E26B10944F18' where id=$1",[adminId])
     }
     await db.exec(fs.readFileSync(path.join(migrations,file),'utf8'))
   }
@@ -118,6 +125,23 @@ test('migration preserves existing names as legacy baptismal names without touch
   const edited=await rpc(legacyId,'online_profile',[null,'Legacy custom name',legacyId])
   assert.equal(edited.display_name,'Legacy custom name')
   assert.equal(edited.baptismal_name,'Sir Clucks-a-Lot')
+})
+test('profile codes are 9 digits in registration order, the admin first; old codes and short numbers find friends',async()=>{
+  const codes=Object.fromEntries((await admin('select id,code,legacy_code from public.online_profiles where id in ($1,$2,$3)',[adminId,oldestId,legacyId])).rows.map(r=>[r.id,r]))
+  assert.equal(codes[adminId].code,'000000001'); assert.equal(codes[adminId].legacy_code,'7B23E26B10944F18')
+  assert.equal(codes[oldestId].code,'000000002'); assert.equal(codes[legacyId].code,'000000003')
+  assert.ok(profiles.every(p=>/^[0-9]{9}$/.test(p.code)))
+  // repeated reads never burn a number: the next account takes the next code
+  for (const id of ids) await rpc(id,'online_profile')
+  const max=(await admin('select max(code) as code from public.online_profiles')).rows[0].code
+  const id='79797979-7979-4979-8979-797979797979'; await admin('insert into auth.users(id) values($1)',[id])
+  assert.equal((await rpc(id,'online_profile')).code,String(Number(max)+1).padStart(9,'0'))
+  await assert.rejects(admin("update public.online_profiles set code='12345' where id=$1",[id]),/online_profiles_code_digits/)
+  await admin('insert into online_private.profile_saves(user_id,profile) values($1,online_private.normalize_profile(null))',[adminId])
+  const findsAdmin=async(query)=>(await rpc(id,'online_friends',['request',query])).some(f=>f.profile?.id===adminId)
+  assert.ok(await findsAdmin('1'))
+  await rpc(id,'online_friends',['cancel',null,(await rpc(id,'online_friends')).find(f=>f.profile.id===adminId).id])
+  assert.ok(await findsAdmin('7b23e26b10944f18'))
 })
 test('profile imports once, preserves exact eggs and cities, calculates rank and adds no gift',async()=>{
   // Start an unused sixth identity to test the creation/import boundary.
@@ -968,10 +992,12 @@ test('patio: an admin features a Pátio for everyone; the example Pátios become
   assert.equal(listed.featured,true)
   await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); await db.exec('set role anon')
   assert.ok((await db.query('select public.patio_lobby_featured() as result')).rows[0].result.some(l=>l.id===id&&l.featured))
-  // the examples: given to the account with the admin's profile code (an existing one by name keeps its layout)
-  await admin("update public.online_profiles set code='7B23E26B10944F18' where id=$1",[owner])
+  // the examples: given to the account with the admin's profile code (an existing one by name keeps its layout);
+  // the historic migration looked the admin up by the old code, pointed here at the current one (000000001)
+  await admin("update public.online_profiles set code='999999999' where code='000000001'")
+  await admin("update public.online_profiles set code='000000001' where id=$1",[owner])
   await admin("insert into online_private.patio_lobbies (id,name,layout,creator_id) values ('b6000000-0000-4000-8000-000000000006','Vales e ilhas no céu','{\"elements\":[1]}'::jsonb,$1)",[other])
-  await db.exec('reset role'); await db.exec(fs.readFileSync(path.join(__dirname,'../migrations/202611120002_example_patios.sql'),'utf8'))
+  await db.exec('reset role'); await db.exec(fs.readFileSync(path.join(__dirname,'../migrations/202611120002_example_patios.sql'),'utf8').replaceAll('7B23E26B10944F18','000000001'))
   const ex=(await admin("select id,name,creator_id,godparent_id,saved_by,featured,layout from online_private.patio_lobbies where name in ('Pôr do sol com torres','Vales e ilhas no céu') order by name")).rows
   assert.equal(ex.length,2)
   for(const r of ex){ assert.equal(r.creator_id,owner); assert.equal(r.godparent_id,owner); assert.equal(r.saved_by,owner); assert.equal(r.featured,true) }

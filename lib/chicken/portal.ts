@@ -56,3 +56,40 @@ export function takePortalArrival(destination: string) {
     return typeof value.at === 'number' && Date.now() - value.at >= 0 && Date.now() - value.at < 8000
   } catch { return false }
 }
+
+// A Pátio's ring closes after the spawn: open at least SHUT_FIRST_MS once there is a chicken, then until SHUT_HOLD_MS
+// after the last one came out of it or went in (`needed`, also while held open by the Modo editor). Needed again, it
+// reopens from wherever it was.
+export const PORTAL_CLOSE_MS = 720
+export const PORTAL_OPEN_MS = 380
+const SHUT_FIRST_MS = 700
+const SHUT_HOLD_MS = 280
+export type PortalShut = { phase: 'open' | 'closing' | 'closed' | 'opening'; at: number; from: number; closeAt: number }
+
+export function createPortalShut(closed = false): PortalShut {
+  return { phase: closed ? 'closed' : 'open', at: 0, from: closed ? 0 : 1, closeAt: 0 }
+}
+
+// how open the ring is (its size, 1 = open): closing, it swells a little and then collapses faster and faster;
+// opening, it overshoots a little
+export function portalOpenness(s: PortalShut, now: number) {
+  if (s.phase === 'open') return 1
+  if (s.phase === 'closed') return 0
+  if (s.phase === 'closing') {
+    const k = Math.min(1, (now - s.at) / PORTAL_CLOSE_MS)
+    return Math.max(0, s.from * (k < 0.18 ? 1 + 0.07 * k / 0.18 : 1.07 * Math.cos((k - 0.18) / 0.82 * Math.PI / 2)))
+  }
+  const t = Math.min(1, (now - s.at) / PORTAL_OPEN_MS) - 1
+  return s.from + (1 - s.from) * (1 + 2.70158 * t * t * t + 1.70158 * t * t)
+}
+
+// one frame: `ready` once the Pátio has its chicken (the timer starts there)
+export function stepPortalShut(s: PortalShut, now: number, needed: boolean, ready: boolean) {
+  if (!s.closeAt && ready) s.closeAt = now + SHUT_FIRST_MS
+  if (needed) s.closeAt = Math.max(s.closeAt, now + SHUT_HOLD_MS)
+  if (needed && (s.phase === 'closed' || s.phase === 'closing')) Object.assign(s, { phase: 'opening', from: portalOpenness(s, now), at: now })
+  else if (!needed && s.closeAt && now >= s.closeAt && (s.phase === 'open' || s.phase === 'opening')) Object.assign(s, { phase: 'closing', from: portalOpenness(s, now), at: now })
+  if (s.phase === 'opening' && now - s.at >= PORTAL_OPEN_MS) s.phase = 'open'
+  if (s.phase === 'closing' && now - s.at >= PORTAL_CLOSE_MS) s.phase = 'closed'
+  return s
+}
