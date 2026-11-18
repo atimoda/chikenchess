@@ -169,6 +169,7 @@ function SkylineArt({ s, row, w, look, id, haze }: { s: SkylineShapes; row: Skyl
   const panel = mix(wall, tone, 0.45)
   return <>
     <path d={s.body} fill={wall} />
+    {s.side && <path d={s.side} fill={mix(wall, "#000000", 0.14)} />}
     <rect x={0} y={s.feet - 1} width={w} height={BOTTOM - s.feet + 1} fill={wall} />
     {s.antenna && <path d={s.antenna} stroke={wall} strokeWidth={2.5} fill="none" />}
     {s.panel && <path d={s.panel} fill={panel} />}

@@ -5,11 +5,11 @@
 // The geometry: lib/pigchicken/skyline-draw.ts. The drawing: components/pigchicken/parallax.tsx. The panel:
 // components/pigchicken/skyline-fields.tsx.
 
-// the facade's pattern: a grid of windows, thin vertical or horizontal stripes, a mix of those three (one per
+// the facade's pattern: windows, a grid of thin lines, thin vertical or horizontal stripes, a mix of those three (one per
 // building), app windows with lines of code (a title bar with three dots on top), or server racks (data-centers)
-export type SkylineFacade = 'janelas' | 'verticais' | 'horizontais' | 'misto' | 'codigo' | 'servidores'
+export type SkylineFacade = 'janelas' | 'grade' | 'verticais' | 'horizontais' | 'misto' | 'codigo' | 'servidores'
 export const SKYLINE_FACADES: Record<SkylineFacade, string> = {
-  janelas: 'Grade de janelas', verticais: 'Listras verticais', horizontais: 'Listras horizontais', misto: 'Misturado',
+  janelas: 'Janelas', grade: 'Grade de linhas', verticais: 'Listras verticais', horizontais: 'Listras horizontais', misto: 'Misturado',
   codigo: 'Código', servidores: 'Servidores',
 }
 
@@ -27,6 +27,7 @@ export const SKYLINE_NUMS = {
   cluster: [0, 100, 1, 'Aglomerado', 'Junta os prédios em grupos com os mais altos no meio.'],
   setback: [0, 100, 1, 'Recuos no topo', 'A parte dos prédios com um ou dois degraus mais estreitos no alto.'],
   annex: [0, 100, 1, 'Anexos', 'A parte dos prédios com um bloco mais baixo colado ao lado.'],
+  side: [0, 100, 1, 'Lateral', 'A parte dos prédios com uma face lateral estreita, de topo inclinado, à direita.'],
   roof: [0, 100, 1, 'Coisas no teto', 'Caixas e máquinas em cima dos prédios.'],
   antenna: [0, 100, 1, 'Antenas', 'A parte dos prédios com uma antena.'],
   windowSize: [30, 300, 5, 'Janelas', 'O tamanho das janelas, listras, linhas de código e servidores.'],
@@ -51,22 +52,22 @@ type RowShape = Omit<SkylineRow, 'show' | 'shape' | 'model'>
 export const SKYLINE_PRESETS: Record<SkylinePreset, RowShape> = {
   cidade: {
     facade: 'janelas', depth: 50, lift: 0, haze: 50, density: 100, height: 100, heightVar: 55, width: 100, widthVar: 50, gap: 30, cluster: 40,
-    setback: 30, annex: 30, roof: 25, antenna: 20, windowSize: 100, windowGap: 100, contrast: 30, lit: 15,
+    setback: 30, annex: 30, side: 30, roof: 25, antenna: 20, windowSize: 100, windowGap: 100, contrast: 30, lit: 15,
     wall: '#3a3f5c', wallAmount: 0, face: '#fff1c9', faceAmount: 0, light: '#ffd27a',
   },
   flat: {
     facade: 'misto', depth: 60, lift: 0, haze: 70, density: 120, height: 120, heightVar: 60, width: 110, widthVar: 60, gap: 15, cluster: 50,
-    setback: 50, annex: 50, roof: 0, antenna: 0, windowSize: 90, windowGap: 100, contrast: 22, lit: 0,
+    setback: 50, annex: 50, side: 55, roof: 0, antenna: 0, windowSize: 90, windowGap: 100, contrast: 22, lit: 0,
     wall: '#5b2a4a', wallAmount: 0, face: '#e7a8c4', faceAmount: 0, light: '#ffd27a',
   },
   codigo: {
     facade: 'codigo', depth: 45, lift: 0, haze: 20, density: 100, height: 160, heightVar: 60, width: 140, widthVar: 70, gap: 10, cluster: 80,
-    setback: 0, annex: 0, roof: 0, antenna: 0, windowSize: 100, windowGap: 100, contrast: 45, lit: 30,
+    setback: 0, annex: 0, side: 0, roof: 0, antenna: 0, windowSize: 100, windowGap: 140, contrast: 40, lit: 18,
     wall: '#16223f', wallAmount: 75, face: '#8fb8ff', faceAmount: 60, light: '#e8c35a',
   },
   datacenter: {
     facade: 'servidores', depth: 70, lift: 0, haze: 60, density: 100, height: 260, heightVar: 20, width: 900, widthVar: 30, gap: 40, cluster: 0,
-    setback: 10, annex: 70, roof: 70, antenna: 10, windowSize: 80, windowGap: 100, contrast: 30, lit: 40,
+    setback: 10, annex: 70, side: 40, roof: 70, antenna: 10, windowSize: 80, windowGap: 100, contrast: 30, lit: 40,
     wall: '#1f2a33', wallAmount: 30, face: '#9fb3c8', faceAmount: 0, light: '#6fe3ff',
   },
 }

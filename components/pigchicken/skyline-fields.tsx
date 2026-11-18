@@ -15,7 +15,7 @@ const COLOR = "h-8 w-8 cursor-pointer rounded border border-white/15 bg-transpar
 const HEAD = "pt-1 text-[10px] uppercase tracking-wider text-[#93a79a]"
 
 const PLACE: SkylineNum[] = ["depth", "lift", "haze"]
-const SHAPE: SkylineNum[] = ["height", "heightVar", "width", "widthVar", "density", "gap", "cluster", "setback", "annex", "roof", "antenna"]
+const SHAPE: SkylineNum[] = ["height", "heightVar", "width", "widthVar", "density", "gap", "cluster", "setback", "annex", "side", "roof", "antenna"]
 const FACE: SkylineNum[] = ["windowSize", "windowGap", "contrast"]
 
 export function SkylineFields({ skyline, onChange }: { skyline: SkylineParams | undefined; onChange: (s: SkylineParams | undefined) => void }) {

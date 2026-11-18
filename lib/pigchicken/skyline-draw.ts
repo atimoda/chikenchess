@@ -38,14 +38,16 @@ export type SkylineShapes = {
   body: string; panel: string; win: string; litWin: string; stripe: string; code: string; litCode: string
   slot: string; led: string; dots: string; antenna: string
   // the dashes and strokes the facades are drawn with
+  // side: the faces turned away, a narrow strip with a slanted top on the right of some buildings (Lateral)
+  side: string
   winDash: string; winH: number; stripeW: number; codeW: number; slotDash: string; slotH: number; ledDash: string
   feet: number; top: number
 }
 
-const KINDS: SkylineFacade[] = ['janelas', 'verticais', 'horizontais']
+const KINDS: SkylineFacade[] = ['grade', 'verticais', 'horizontais', 'janelas']
 
 export function skylineShapes(w: number, row: SkylineRow, seed: number): SkylineShapes {
-  const rS = rng(seed), rD = rng(seed + 977), rC = rng(seed + 31)
+  const rS = rng(seed), rD = rng(seed + 977), rC = rng(seed + 31), rX = rng(seed + 53)
   const p = row.depth / 100
   const feet = skylineFeet(p) - row.lift * SKYLINE_LIFT_UNIT
   const ws = row.windowSize / 100, gs = row.windowGap / 100, lit = row.lit / 100
@@ -53,7 +55,7 @@ export function skylineShapes(w: number, row: SkylineRow, seed: number): Skyline
   const ww = 7 * ws, wh = 9 * ws, gx = Math.max(1.5, 6 * gs), gy = Math.max(1.5, 7 * gs)
   const stripeW = 2.2 * ws, codeW = 4 * ws, codeStep = codeW + 6.5 * gs
   const rackW = 34 * ws, slotH = 3 * ws, slotGap = 3, slotStep = slotH + 5 * gs, ledL = 2.2 * ws
-  const out = { body: '', panel: '', win: '', litWin: '', stripe: '', code: '', litCode: '', slot: '', led: '', dots: '', antenna: '' }
+  const out = { body: '', side: '', panel: '', win: '', litWin: '', stripe: '', code: '', litCode: '', slot: '', led: '', dots: '', antenna: '' }
   let cmds = 0, top = feet
   const baseH = SKYLINE_BASE.h * row.height / 100, baseW = SKYLINE_BASE.w * row.width / 100
   // the clusters: a smooth noise along the row, one value every few buildings, the tallest in the middle of each
@@ -81,6 +83,14 @@ export function skylineShapes(w: number, row: SkylineRow, seed: number): Skyline
           c += run
         }
       }
+    } else if (kind === 'grade') {
+      // a grid of thin lines over the facade, like big panes
+      const cw = (ww + gx) * 1.6, ch = (wh + gy) * 1.3
+      const n = Math.floor((bw - 2 * m) / cw), k = Math.floor((bh - 2 * m) / ch)
+      if (n < 1 || k < 1) return
+      const xs = x + (bw - n * cw) / 2, ys = y + m
+      for (let i = 0; i <= n; i++) { out.stripe += vline(xs + i * cw, ys, k * ch); cmds++ }
+      for (let j = 0; j <= k; j++) { out.stripe += hline(xs, ys + j * ch, n * cw); cmds++ }
     } else if (kind === 'verticais') {
       const n = Math.floor((bw - 2 * m) / (ww + gx))
       if (n < 1) return
@@ -127,8 +137,9 @@ export function skylineShapes(w: number, row: SkylineRow, seed: number): Skyline
       for (let i = 0; i <= n; i += 4) { out.stripe += vline(xs + i * rackW - slotGap / 2, y + m * 0.5, bh - m); cmds++ }
     }
   }
-  const block = (x: number, y: number, bw: number, bh: number, kind: SkylineFacade) => {
+  const block = (x: number, y: number, bw: number, bh: number, kind: SkylineFacade, side = 0) => {
     out.body += rect(x, y, bw, bh)
+    if (side > 0) out.side += `M${f(x + bw)} ${f(y)}l${f(side)} ${f(side * 0.6)}V${f(feet)}H${f(x + bw)}Z`
     top = Math.min(top, y)
     facade(x, y, bw, bh, kind)
   }
@@ -142,6 +153,8 @@ export function skylineShapes(w: number, row: SkylineRow, seed: number): Skyline
     const y = feet - bh
     // setbacks: the main block is lower and one or two narrower blocks stand on it
     const steps = rS() < row.setback / 100 ? 1 + (rS() < 0.4 ? 1 : 0) : 0
+    // Lateral: a side face on the right of the main block and its setbacks
+    const lateral = rX() < row.side / 100 ? bw * (0.08 + rX() * 0.1) : 0
     let mainY = y, mainH = bh, tx = x, tw = bw
     if (steps) {
       const part = 0.55 + rS() * 0.2
@@ -151,12 +164,12 @@ export function skylineShapes(w: number, row: SkylineRow, seed: number): Skyline
         const nw = sw * (0.55 + rS() * 0.25), side = rS()
         const nx = sx + (sw - nw) * (side < 0.33 ? 0.08 : side < 0.66 ? 0.5 : 0.92)
         const nh = s === steps - 1 ? left : left * (0.55 + rS() * 0.2)
-        block(nx, sy - nh, nw, nh, kind)
+        block(nx, sy - nh, nw, nh, kind, lateral * nw / bw)
         sx = nx; sw = nw; sy -= nh; left -= nh
       }
       tx = sx; tw = sw
     }
-    block(x, mainY, bw, mainH, kind)
+    block(x, mainY, bw, mainH, kind, lateral)
     // an annex: a lower block against one side
     if (rS() < row.annex / 100) {
       const aw = bw * (0.3 + rS() * 0.35), ah = Math.min(mainH, bh * (0.22 + rS() * 0.3)), right = rS() < 0.5
