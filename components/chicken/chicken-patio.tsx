@@ -843,6 +843,11 @@ export function ChickenPatio() {
           <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
           <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
           <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+          <div className="flex flex-col gap-1.5 text-xs">
+            <span>Tambores e pentes</span>
+            <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Em volta</span><input type="checkbox" checked={pq.ammoAround} onChange={e => setPqValue("ammoAround", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+            <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Na mira</span><input type="checkbox" checked={pq.ammoHud} onChange={e => setPqValue("ammoHud", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+          </div>
           <p className="text-[10px] text-[#93a79a]">Zona morta e ímã dos analógicos ficam em Controles.</p>
           <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end" />
           </div>

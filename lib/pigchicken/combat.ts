@@ -1075,7 +1075,7 @@ export function createCombat() {
   function startReload() {
     const h = held(); if (!h) return
     const d = items[h.item]
-    if (d.consumable) return
+    if (d.consumable || d.infiniteAmmo) return
     if (d.mag > 0 && h.ammo < d.mag && reloadT <= 0) { reloadT = d.reloadTime; sound('reload') }
   }
 
@@ -1308,7 +1308,7 @@ export function createCombat() {
     if (d.instrument) burst(mx, my, 2 + n, tones(d).color(notes[0]), 110, 3)
     else { burst(mx, my, 3 + n, '#fff3b0', 140, 2); sound('shot', h.item) }
     if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
-    if (pz) h.ammo = Math.max(0, h.ammo - d.rate / pzRate); else h.ammo--
+    if (d.infiniteAmmo) { /* the Granada: never runs out */ } else if (pz) h.ammo = Math.max(0, h.ammo - d.rate / pzRate); else h.ammo--
     if (h.refill) h.refill = 0; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / (pz ? pzRate : d.rate); kick = d.recoilKick
     onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
     if (h.ammo <= 0 && d.autoReload) startReload()
@@ -3018,6 +3018,8 @@ export function createCombat() {
       const hr = held()
       if (hr) {
         const dr = items[hr.item]
+        // a never-ending one (the Granada) is always full, even one carried empty from before
+        if (dr.infiniteAmmo && dr.mag > 0 && hr.ammo < dr.mag) hr.ammo = dr.mag
         if (!dr.consumable && dr.mag > 0 && dr.refillTime > 0 && reloadT <= 0 && hr.ammo < dr.mag) {
           hr.refill = (hr.refill ?? 0) + dt
           while (hr.refill >= dr.refillTime && hr.ammo < dr.mag) { hr.ammo = Math.min(dr.mag, hr.ammo + Math.max(1, dr.refillAmount)); hr.refill -= dr.refillTime }

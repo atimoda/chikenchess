@@ -60,6 +60,7 @@ export type ItemDef = {
   autoReload: boolean
   slideFire: boolean // can fire while sliding
   shellReload: boolean // reloads one shot at a time (reloadTime each); firing stops it
+  infiniteAmmo: boolean // never runs out nor reloads (the Granada: each one is a single item); only the fire rate paces it
   // gradual auto reload: every `refillTime` s without using it, `refillAmount` shots come back on their own (0 = off)
   refillTime: number
   refillAmount: number
@@ -321,7 +322,7 @@ function chain(...steps: [TransformKind, string?, number?][]): Transform[] {
 
 const PISTOL: ItemDef = {
   id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off', landShow: 'always',
-  fireMode: 'semi', rate: 6, burst: 3, burstHold: true, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0.1, chargeMin: 0.3,
+  fireMode: 'semi', rate: 6, burst: 3, burstHold: true, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, infiniteAmmo: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0.1, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
@@ -386,7 +387,7 @@ const LAUNCHER: ItemDef = {
 
 const GRENADE: ItemDef = {
   ...PISTOL, id: 'grenade', name: 'Granada', family: 'Granadas', reticle: 'grenade', pathShow: 'hold', landShow: 'hold',
-  fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3,
+  fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3, infiniteAmmo: true,
   speed: 1100, drop: 1500, damage: 0, range: 3000, size: 8, explodeRadius: 140, explodeDamage: 90, explodePush: 1250, fuse: 2.5, bounce: 0.45,
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
   recoilKick: 0, recoilPush: 0,
@@ -554,7 +555,7 @@ const KEYS: ItemDef = {
 // Percussion fires a musical note with a fuse, then lets out notes in a circle.
 const TAMBOURINE: ItemDef = {
   ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
-  mag: 3, fuse: 1.6, range: 3000, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 12, muzzleX: 14, muzzleY: 0, length: 20,
+  mag: 3, infiniteAmmo: false, fuse: 1.6, range: 3000, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 12, muzzleX: 14, muzzleY: 0, length: 20,
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }

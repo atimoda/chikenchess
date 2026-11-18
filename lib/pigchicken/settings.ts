@@ -16,12 +16,14 @@ export type ParquinhoSettings = {
   jumpShake: number // degrees the aim shakes on a jump (air jumps and wall jumps too), fading out
   superJumpShake: number // degrees the aim shakes on a super jump (crouch + jump)
   quantize: boolean // instruments land on the sixteenth grid
+  ammoAround: boolean // the weapon's tambor / pente flashes around her (like the scales) when equipped, varied or reloaded
+  ammoHud: boolean // the small tambor / pente HUD next to the reticle
   debug: boolean // the debug readouts: the HUD line, the scenes' labels and the shaped floors' lines
 }
 
 // the settings as written in the code; the game's defaults are these with data/pigchicken/default-patio.json over
 // them (its `camera`, which the Câmera de Mira panel writes with "Salvar no game")
-const CODE_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, lookAhead: 140, lookAheadSpeed: 2.5, aimRelease: 0, keysAimRelease: 5, reticleDist: 200, jumpShake: 3, superJumpShake: 8, quantize: true, debug: false }
+const CODE_PARQUINHO: ParquinhoSettings = { camera: 'follow', screens: 4, deadband: 80, lag: 6, lookAhead: 140, lookAheadSpeed: 2.5, aimRelease: 0, keysAimRelease: 5, reticleDist: 200, jumpShake: 3, superJumpShake: 8, quantize: true, ammoAround: true, ammoHud: true, debug: false }
 
 // the aim-release slider: 0..AIM_RELEASE_MAX seconds, and one step past it is "never" (Infinity)
 export const AIM_RELEASE_MAX = 5
@@ -30,7 +32,7 @@ export const KEYS_AIM_RELEASE_MAX = 30
 
 const STORE = 'pigchicken-parquinho-v1'
 
-// `base` with what is valid in `saved` over it. file: the defaults file, which has neither the width nor Debug
+// `base` with what is valid in `saved` over it. file: the defaults file, which has neither the width, Debug nor the tambores' view
 function readParquinho(base: ParquinhoSettings, saved: unknown, file = false): ParquinhoSettings {
   const out = { ...base }
   if (!saved || typeof saved !== 'object') return out
@@ -49,6 +51,9 @@ function readParquinho(base: ParquinhoSettings, saved: unknown, file = false): P
   num('keysAimRelease', 0, KEYS_AIM_RELEASE_MAX)
   if (typeof r.quantize === 'boolean') out.quantize = r.quantize
   if (!file && typeof r.debug === 'boolean') out.debug = r.debug
+  // each player's own view: not in the defaults file
+  if (!file && typeof r.ammoAround === 'boolean') out.ammoAround = r.ammoAround
+  if (!file && typeof r.ammoHud === 'boolean') out.ammoHud = r.ammoHud
   return out
 }
 
