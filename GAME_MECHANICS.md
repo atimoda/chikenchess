@@ -36,6 +36,7 @@
 | Pátio: Quadro de lousa, fantasma de treino e o Pátio Training room | [Treino](docs/mechanics/patio/training.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, presos às camadas do fundo, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
 | Pátio: aurora no céu (Configurações do Pátio → Aurora) | [Aurora](docs/mechanics/patio/aurora.md) |
+| Pátio: brilho dos itens caídos no chão (Configurações do Pátio → Brilho dos itens: coluna de luz, contorno aceso, cor) | [Brilho dos itens](docs/mechanics/patio/item-glow.md) |
 | Pátio: mata do fundo (Configurações do Pátio → Mata: Mata ao longe e Mata perto) | [Mata](docs/mechanics/patio/forest.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
@@ -115,6 +116,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) | 14 KB |
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 7 KB |
+| [Pátio: brilho dos itens](docs/mechanics/patio/item-glow.md) | 2 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
 | [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 23 KB |
 | [Pátio: Gaiolas](docs/mechanics/patio/cages.md) | 9 KB |

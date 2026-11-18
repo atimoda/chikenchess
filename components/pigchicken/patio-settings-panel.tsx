@@ -9,7 +9,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import { PatioDualRange } from "@/components/ui/patio-dual-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioSceneMusic, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
+import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioItemGlow, patioSceneMusic, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultPatioSettings } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
@@ -18,6 +18,7 @@ import { DEFAULT_PARQUINHO } from "@/lib/pigchicken/settings"
 import { hourLabel } from "@/lib/pigchicken/sky"
 import { AuroraFields, CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
 import { ForestFields } from "./forest-fields"
+import { ITEM_GLOW, ITEM_GLOW_COLOR } from "@/lib/pigchicken/item-glow"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 // the zoom's slider runs on a log scale (each step the same proportion); its left end, below the floor, is the
@@ -38,6 +39,12 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
   const zoom = patioZoom(layout.settings)
   const inventory = patioInventoryLimit(layout.settings)
   const itemsLabel = `${inventory} ${inventory === 1 ? "item" : "itens"}`
+  const glow = patioItemGlow(layout.settings)
+  // Brilho dos itens: 0 takes it out of the Pátio's settings (off, as before it existed); the color stays meanwhile
+  const setGlow = (amount: number, color = glow.color) => {
+    const { itemGlow: _old, ...rest } = layout.settings ?? {}
+    onChange({ ...layout, settings: amount > 0 || color !== ITEM_GLOW_COLOR ? { ...rest, itemGlow: { amount, color } } : rest })
+  }
   const set = (next: PatioSettings) => onChange({ ...layout, settings: { ...layout.settings, ...next } })
   const width = worldScenes(screens) * SCENE_W
   const [open, setOpen] = useState<Record<string, boolean>>({})
@@ -75,6 +82,12 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             }}
             onReset={() => set({ zoom: base.zoom })}
             hint="Até onde a câmera afasta (ponto da esquerda) e aproxima (ponto da direita). Na ponta esquerda, Pátio inteiro: afasta até o Pátio todo caber na tela." />
+          <div className="grid grid-cols-[1fr_40px] items-center gap-1.5">
+            <PatioRange label="Brilho dos itens" min={ITEM_GLOW.min} max={ITEM_GLOW.max} step={ITEM_GLOW.step} value={glow.amount}
+              display={glow.amount ? `${glow.amount}%` : "Desligado"} onChange={v => setGlow(v)} onReset={() => setGlow(0)}
+              hint="Uma coluna de luz sobre cada item caído no chão e um contorno aceso em volta dele. Valores baixos ficam bem suaves." />
+            <input type="color" aria-label="Cor do brilho dos itens" title="Cor do brilho dos itens" value={glow.color} onChange={e => setGlow(glow.amount, e.target.value)} className="h-10 w-10 cursor-pointer rounded-md border border-white/15 bg-transparent p-0" />
+          </div>
           <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Cada cena toca a sua zona (Campo, Noite, Feira…). Desligado, só as Zonas do mapa tocam; fora delas não há percussão nem drone.">
             <span>Zonas das cenas</span>
             <input type="checkbox" checked={patioSceneMusic(layout.settings)} onChange={e => {
@@ -123,6 +136,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>Espaço abaixo do chão</dt><dd className="font-bold">{ground} px</dd>
           <dt>Limite do inventário</dt><dd className="font-bold">{itemsLabel}</dd>
           <dt>Zoom</dt><dd className="font-bold">{zoomLabel(zoom)}</dd>
+          <dt>Brilho dos itens</dt><dd className="font-bold">{glow.amount ? `${glow.amount}%` : "Desligado"}</dd>
           <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
           <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
           <dt>Fundo da Vila</dt><dd className="font-bold">{patioTemple(layout.settings) ? "Sim" : "Não"}</dd>
