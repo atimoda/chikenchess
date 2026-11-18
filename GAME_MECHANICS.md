@@ -46,6 +46,7 @@
 | Pátio: Guia de pássaros (aves reais, a ave que inspira cada alma, cantos gravados e créditos, canto real das almas soltas) | [Guia de pássaros](docs/mechanics/patio/bird-guide.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução, Cordas soltas da harpa), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
+| Pátio: Próxima variação (escala, tambor) e os checkboxes “Incluir variações” das trocas de item | [Variações dos itens](docs/mechanics/patio/item-variations.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
@@ -122,6 +123,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 14 KB |
 | [Pátio: Guia de pássaros](docs/mechanics/patio/bird-guide.md) | 6 KB |
 | [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 23 KB |
+| [Pátio: Próxima variação e variações nas trocas](docs/mechanics/patio/item-variations.md) | 4 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |
 | [Pátio: zonas sonoras, camadas e música ambiente](docs/mechanics/patio/zones.md) | 17 KB |

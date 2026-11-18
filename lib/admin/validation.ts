@@ -15,7 +15,7 @@ import { isProfileToken } from '../music/profile-tokens'
 import { prepareOfficialCityKit } from '../music/city-kits'
 import { kitReactionsSchema, reactionsSchema } from '../music/reactions'
 import type { StyleProfile } from '../music/kit-profiles/types'
-import { CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, HARP_ACTIONS } from '../chicken/controls'
+import { CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, HARP_ACTIONS, VARIATION_ACTIONS } from '../chicken/controls'
 import { itemsFileProblem } from '../pigchicken/items'
 import { scalesFileProblem } from '../pigchicken/scale-params'
 import { soulsFileProblem } from '../pigchicken/soul-library'
@@ -134,6 +134,7 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
         inventory: z.object({ repeatDelay: finite.min(.2).max(5), repeatInterval: finite.min(.1).max(2) }).strict(),
         harp: z.object(Object.fromEntries(CHICKEN_INPUT_TYPES.map(t => [t.id, exactMap(HARP_ACTIONS.map(a => a.key), z.array(z.string().max(40).startsWith(t.device === 'gamepad' ? 'Pad:' : 'Key:').nullable()).length(t.slots))]))).strict().optional(),
         wheel: z.object({ up: z.enum(CHICKEN_ACTIONS.map(a => a.key) as [string, ...string[]]).nullable(), down: z.enum(CHICKEN_ACTIONS.map(a => a.key) as [string, ...string[]]).nullable() }).strict().optional(),
+        variations: z.object(Object.fromEntries(VARIATION_ACTIONS.map(a => [a.key, z.boolean()]))).strict().optional(),
       }).strict().parse(value)
       break
     }

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronRight, Gamepad2, Keyboard, Mouse, X, type LucideIcon } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import {
-  CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, HARP_ACTIONS, KEYBOARD_INPUT_TYPES, type HarpAction, PAD_STYLE_LABELS, type PadStyle, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames, padStyleAt,
+  CHICKEN_ACTIONS, CHICKEN_INPUT_TYPES, HARP_ACTIONS, KEYBOARD_INPUT_TYPES, VARIATION_ACTIONS, type HarpAction, PAD_STYLE_LABELS, type PadStyle, chickenBindName, defaultChickenControls, loadChickenControls, loadKeyboardLayoutNames, padStyleAt,
   readGamepadTokens, saveChickenControls, setChickenControlsListening, subscribeChickenControls,
   type ChickenAction, type ChickenControls, type ChickenInputType, type ChickenTouchMode,
 } from "@/lib/chicken/controls"
@@ -189,7 +189,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
   useEffect(() => () => setChickenControlsListening(false), [])
 
   // one list of actions; the bind columns are grouped by input type
-  const cols = `clamp(7.5rem, 26vw, 12rem) ${CHICKEN_INPUT_TYPES.map(t => `repeat(${t.slots}, 4.75rem)`).join(" 0px ")} 0px minmax(4.5rem, max-content)`
+  const cols = `clamp(7.5rem, 26vw, 15rem) ${CHICKEN_INPUT_TYPES.map(t => `repeat(${t.slots}, 4.75rem)`).join(" 0px ")} 0px minmax(4.5rem, max-content)`
   const mouseColumn = COLUMNS[COLUMNS.length - 1].column + 2
   const grid = (
     <div className="overflow-x-auto">
@@ -216,7 +216,20 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             {a.group === "patio" && DISPLAY_ACTIONS[i - 1]?.group !== "patio" && (
               <span style={{ gridColumn: `span ${COLUMNS.length + CHICKEN_INPUT_TYPES.length + 2}` }} className="pt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a9a8a]">Pátio</span>
             )}
-            <span className="sticky left-0 z-[1] truncate bg-[#101713] pr-1 text-[#b9c7b9]" title={a.label}>{a.label}</span>
+            {(() => {
+              // the switches that may also go through the held item's variations: a small checkbox after the name
+              const v = VARIATION_ACTIONS.find(x => x.key === a.key)
+              if (!v) return <span className="sticky left-0 z-[1] truncate bg-[#101713] pr-1 text-[#b9c7b9]" title={a.label}>{a.label}</span>
+              return (
+                <span className="sticky left-0 z-[1] flex min-w-0 items-center gap-1.5 bg-[#101713] pr-1 text-[#b9c7b9]">
+                  <span className="truncate" title={a.label}>{a.label}</span>
+                  <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap text-[10px] text-[#8a9a8a] hover:text-[#dfe8df]">
+                    <input type="checkbox" checked={controls.variations[v.key]} onChange={e => { const on = e.target.checked; update(c => { c.variations[v.key] = on }) }} className="h-3 w-3 accent-[var(--primary)]" />
+                    {v.label}
+                  </label>
+                </span>
+              )
+            })()}
             {COLUMNS.map(({ type, slot, column }) => {
               const kind = type.id
               const on = listen?.list !== "harp" && listen?.kind === kind && listen.action === a.key && listen.slot === slot

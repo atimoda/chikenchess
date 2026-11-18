@@ -108,6 +108,14 @@ import { createTrainingGhosts } from "@/components/pigchicken/training-ghosts"
 const GROUP_BINDS: [ChickenAction, ItemGroup][] = [["nextInstrument", 0], ["nextWeapon", 1], ["nextUtility", 2]]
 const groupPress = (act: Partial<Record<ChickenAction, boolean>>, prev: Partial<Record<ChickenAction, boolean>>): ItemGroup | null =>
   GROUP_BINDS.find(([a]) => act[a] && !prev[a])?.[1] ?? null
+// Controles → "Incluir variações / escalas / tambores / tipos": whether a switch also goes through the held item's
+// variations. pick: the quick switch (Item anterior held, else Próximo item); group: the group switch pressed
+const pickVariations = (c: ChickenControls, act: Partial<Record<ChickenAction, boolean>>) => act.prevItem ? c.variations.prevItem : c.variations.nextItem
+const groupVariations = (c: ChickenControls, group: ItemGroup | null) => {
+  const a = GROUP_BINDS.find(([, g]) => g === group)?.[0]
+  return a === "nextInstrument" || a === "nextWeapon" || a === "nextUtility" ? c.variations[a] : false
+}
+const variationPress = (act: Partial<Record<ChickenAction, boolean>>, prev: Partial<Record<ChickenAction, boolean>>) => !!act.nextVariation && !prev.nextVariation
 // how far (px) a press on the inventory bar moves before it becomes a drag instead of a click
 const BAR_DRAG_START = 6
 // the state the combat reads: a bird brooding on a grab (a wall, a ceiling) broods, for the spread of its shots
@@ -1090,7 +1098,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       prevFire = act.fire
       const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || fingers.length > 0 || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
       let pick = quickSwitchStep(act, prev, engine.isShiftHeld(), quickSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
-      if (wheel) { pick = wheel > 0 ? 1 : -1; wheel = 0 }
+      let pickVar = pickVariations(controls, act)
+      if (wheel) { pick = wheel > 0 ? 1 : -1; pickVar = controls.variations[wheel > 0 ? "nextItem" : "prevItem"]; wheel = 0 }
+      const group = wh.open ? null : groupPress(act, prev)
       const move = barMove.current
       barMove.current = null
       const input = {
@@ -1112,7 +1122,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           return pressed
         })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(),
         grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
-        groupPick: wh.open ? null : groupPress(act, prev), move,
+        groupPick: group, move, pickVariations: pickVar, groupVariations: groupVariations(controls, group),
+        variation: !wh.open && variationPress(act, prev),
       }
       slotPick = 0; slotTap.current = 0
       // (sitting at a fixed instrument its own binds come first: L3 is the Harpa's sustenido and the Bateria's Ataque
@@ -1290,7 +1301,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(),
           grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
-          groupPick: groupPress(xa, xp),
+          groupPick: groupPress(xa, xp), pickVariations: pickVariations(controls, xa), groupVariations: groupVariations(controls, groupPress(xa, xp)),
+          variation: variationPress(xa, xp),
         }
         cageBinds(id, extraSeated.has(id) ? {} : xa, extraSeated.has(id) ? {} : xp)
         extraPrev.set(id, xa)
