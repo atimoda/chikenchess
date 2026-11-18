@@ -4,17 +4,21 @@
 // browser so the chicken starts with it right away; without it the defaults in params.ts apply.
 // The Pátio sets a preview (its unsaved draft) that the chickens on screen follow until it closes.
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from './look-art'
-import { CHICKEN_CLUCKS, CHICKEN_PARAMS, type ChickenParams } from './params'
+import { CHICKEN_CLUCKS, CHICKEN_PARAMS, SCALE_BASE, type ChickenParams } from './params'
+import { defaultClasses, normalizeClasses, type ClassesTuning } from './species'
+import { defaultFrames, normalizeFrames, type BodyFrames } from './body-frame'
 import { onlineConfigured, requireOnlineClient } from '@/lib/online/client'
 
 /* global process, fetch */
-export type ChickenConfig = { params: ChickenParams; look: ChickenLook }
+// classes: Pig's and Ken's factors over these params (species.ts), edited in the same panel; frames: each class's
+// hit-area and health bar (body-frame.ts), edited in the Vestiário
+export type ChickenConfig = { params: ChickenParams; look: ChickenLook; classes: ClassesTuning; frames: BodyFrames }
 export type SavedChickenConfig = { config: ChickenConfig; revision: number; updatedAt: string | null }
 
 const CACHE = 'chickenchess:chicken-config:v1'
 const REFRESH_AFTER_MS = 60_000
 
-export const defaultChickenConfig = (): ChickenConfig => ({ params: { ...CHICKEN_PARAMS }, look: LOOK_ART.breedLook('caipira') })
+export const defaultChickenConfig = (): ChickenConfig => ({ params: { ...CHICKEN_PARAMS }, look: LOOK_ART.breedLook('caipira'), classes: defaultClasses(), frames: defaultFrames() })
 
 const SFX_VALUES = new Set(['', 'all', ...Object.keys(CHICKEN_CLUCKS)])
 
@@ -36,12 +40,15 @@ function storedBackpedal() {
 /** Keeps only known settings with the right type; anything missing or broken falls back to the default. */
 export function normalizeChickenConfig(raw: unknown): ChickenConfig {
   const out = defaultChickenConfig()
-  const src = (raw && typeof raw === 'object' ? raw : {}) as { params?: Record<string, unknown>; look?: Record<string, unknown> }
+  const src = (raw && typeof raw === 'object' ? raw : {}) as { params?: Record<string, unknown>; look?: Record<string, unknown>; classes?: unknown; frames?: unknown }
   const params = src.params && typeof src.params === 'object' ? src.params : {}
   const target = out.params as Record<string, unknown>
   if (params.backpedal === undefined) out.params.backpedal = storedBackpedal() ?? legacyBackpedal() ?? out.params.backpedal
   // a version saved before 'runBroodJumpBoost' existed still has the old crouch-run speed (1): drop it so the new default applies
   const legacy = !('runBroodJumpBoost' in params)
+  // a version saved before the size was rebased kept the rig's own scale (0.5 was the usual size): the same size now
+  // reads as scale / SCALE_BASE
+  const oldScale = !('scaleBase' in params) && typeof params.scale === 'number' && Number.isFinite(params.scale)
   for (const [key, def] of Object.entries(CHICKEN_PARAMS)) {
     if (legacy && key === 'crouchRunSpeed') continue
     const v = params[key]
@@ -50,6 +57,10 @@ export function normalizeChickenConfig(raw: unknown): ChickenConfig {
       target[key] = v
     }
   }
+  if (oldScale) out.params.scale = Math.round((params.scale as number) / SCALE_BASE * 100) / 100
+  out.params.scaleBase = SCALE_BASE
+  out.classes = normalizeClasses(src.classes)
+  out.frames = normalizeFrames(src.frames)
   const look = src.look && typeof src.look === 'object' ? src.look : {}
   for (const slot of Object.keys(out.look) as ChickenSlot[]) {
     const v = look[slot]

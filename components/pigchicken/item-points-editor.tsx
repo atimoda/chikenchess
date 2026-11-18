@@ -67,6 +67,10 @@ export function ItemPointsEditor({ id, item, base, onChange }: { id: ItemId; ite
           <input type="checkbox" checked={item.wingFlip} onChange={e => { const v = e.target.checked; onChange(d => { d.wingFlip = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
           <span>Inverter asa (vertical)</span>
         </label>
+        <label className="flex items-center gap-2" title="Pig e Ken: o item fica na mão de trás, e a da frente vira a segunda mão">
+          <input type="checkbox" checked={item.swapHands} onChange={e => { const v = e.target.checked; onChange(d => { d.swapHands = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
+          <span>Segurar com a outra mão (dois braços)</span>
+        </label>
         {item.fireMode === "charge" && (
           <label className="flex items-center gap-2" title="Na carga do tiro, a asa da frente puxa a flecha para trás e a corda dobra junto; a asa de trás segura o arco parado">
             <input type="checkbox" checked={item.archery} onChange={e => { const v = e.target.checked; onChange(d => { d.archery = v; if (v) { d.handOn = true; d.backOn = true } }) }} className="h-4 w-4 accent-[var(--primary)]" />

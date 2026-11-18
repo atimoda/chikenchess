@@ -13,8 +13,11 @@ import { requestGameFrame, cancelGameFrame } from '../game-frame'
 import type { PeckPose } from '../pigchicken/peck'
 import { LOOK_ART, type ChickenArtSet, type ChickenLook } from './look-art'
 import { speciesParams, type BirdSpecies } from './species'
-import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, chickenClucks, type ChickenParams } from './params'
+import { variantClass } from './beast-art'
+import { armMarkup, type ArmsSpec } from './arm-rig'
+import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, SCALE_BASE, chickenClucks, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
+import { frameClassOf } from './body-frame'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
 import { grabDamageStep } from './grab-damage'
@@ -31,7 +34,7 @@ import { mixGain } from '../pigchicken/mixer'
 import { LIMIT_BORDER } from './limits'
 import { stageWidth } from "../stage-size"
 
-export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number }
+export type ChickenState = { x: number; y: number; angle: number; shoulder: { x: number; y: number }; vx: number; vy: number; face: number; scale: number; grounded: boolean; state: string; networkAnimation?: string; held: boolean; width: number; height: number; groundY: number; species?: BirdSpecies; hp?: number; maxHp?: number }
 // Game hooks (PigChicKen's Parquinho): the screen walls move with the camera, the camera shifts her, aim can set where she faces
 // accelMult scales her acceleration; accelPower > 1 eases each start (1 linear, 3 "ease-super-in": slow, then fast),
 // reaching full speed in accelRamp seconds; buddha / fizz are how many doses of each consumable look she has
@@ -62,6 +65,14 @@ export type ChickenEngine = {
   setVirtual: (action: ChickenAction, on: boolean) => void
   getState: () => ChickenState
   getMotionState: () => Omit<ChickenState, 'shoulder'>
+  /** Health (docs/mechanics/chicken/characters.md): takes `amount` off (from a source at x `fromX`, for Pig's Guarda). */
+  hurt: (amount: number, fromX?: number) => void
+  /** What happens when her health reaches zero (she turns into a Filhote, lib/chicken/baby.ts); she gets it all back. */
+  setOnDown: (fn: (() => void) | null) => void
+  /** A bar over her head that is not her health (the Filhote's music bar, 0..1), or null for none. */
+  setMeter: (fill: number | null) => void
+  /** The strong blow being charged with an empty hand (Pig's Correntada, Ken's Rabada), 0..1, or null. */
+  setBareCharge: (charge: number | null) => void
   // every action held right now (keys, gamepad buttons and on-screen controls)
   getActions: () => Record<ChickenAction, boolean>
   // Only actions held NOW: no remembered taps, and no consumption (portals, pickup hints).
@@ -121,12 +132,14 @@ export type ChickenEngine = {
   // `off`: with a staff, one of it in the back wing's hand, carried in this pose (the two Boomerangs)
   // `back`: the back wing holds the item (the second Boomerang): with `off`, carried there, and the item itself is not
   // shown; without, the back wing moves as the front wing would. The front wing rests
-  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: HeldStaff | null; back?: boolean } | null) => void
+  setHeld: (held: { svg: string; itemKey?: string; angle: number; kick: number; pull?: number; throwing?: boolean; atHand?: boolean; consumable?: { upright: number; progress?: number }; bow?: { x: number; stroke: number } | null; rig?: HeldRig | null; archery?: { x: number; y: number; arrow: string | null; string: [number, number, number, number] } | null; staff?: HeldStaff | null; off?: HeldStaff | null; back?: boolean; swap?: boolean; charging?: boolean } | null) => void
   // the melee swing: the wing turns to `angle` (screen radians) and stretches out to `reach` px from her
   // shoulder; a held item rides on the wing tip. `t` 0..1 eases the wing out and back in. `size`: how much bigger
   // the item is drawn at the height of the blow (×, a charged strong blow)
   setPeck: (peck: PeckPose | null) => void
-  setSwing: (swing: { angle: number; reach: number; t: number; size?: number } | null) => void
+  setSwing: (swing: { angle: number; reach: number; t: number; size?: number; bare?: boolean; heavy?: boolean } | null) => void
+  // her species class now ('chicken', 'pig', 'fox', 'chick'): the one set, or the one her look gives
+  speciesNow: () => BirdSpecies
   // a point on the held item's drawing (rig units, x forward from the grip, y down) on the screen when the
   // item points at `angle` (screen radians); her shoulder for (0, 0)
   heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
@@ -161,7 +174,7 @@ export type ChickenEngine = {
 }
 
 // flip: the wings that hold it are mirrored across their own length (shoulder to tip), for poses that turn them upside down
-export type HeldStaff = { x: number; y: number; angle: number; gripX: number; gripY: number; flip?: boolean }
+export type HeldStaff = { x: number; y: number; angle: number; gripX: number; gripY: number; flip?: boolean; grip2?: { x: number; y: number } | null }
 export type HeldRig = { at: 'shoulder' | 'mouth'; x: number; y: number; hand?: { x: number; y: number } | null; back?: { x: number; y: number } | null; flip?: boolean }
 
 // ceil: a ceiling she hangs from upside down (never a floor; counted with the walls so floors skip it)
@@ -189,6 +202,8 @@ const SWITCH_GRACE = 0.18
 const SHOCKING_GROUND_GRACE = 0.12
 // a box collider's edges: `<element id>:<part>`, clipped pieces add `~n`
 const BOX_PART = /^(.*):(top|bottom|left|right|under|topBelow)(?:~\d+)?$/
+// where Ken's tail points at rest from its pivot (degrees, rig units, 0 = forward): the Rabada turns it from here
+const TAIL_REST_DEG = 117
 const PIV: Record<string, [number, number]> = {
   legF: [-14, -88], tibF: [-14, -58], shinF: [-14, -26], toeF: [-14, 14],
   legB: [-26, -88], tibB: [-26, -58], shinB: [-26, -26], toeB: [-26, 14],
@@ -284,6 +299,7 @@ const SVG_MARKUP = `
     <radialGradient id="chk-buddhaGlow"><stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/><stop offset="0.6" stop-color="#ffd166" stop-opacity="0.22"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient>
   </defs>
   <ellipse data-part="shadow" rx="60" ry="7" fill="#000" opacity="0.35"/>
+  <g data-part="hpBar" style="display:none"><rect x="-32" y="-4" width="64" height="8" rx="4" fill="#0b0f0c" opacity="0.7"/><rect data-part="hpFill" x="-30" y="-2" width="60" height="4" rx="2" fill="#3fcf6b"/></g>
   <g data-part="root" style="pointer-events: visiblePainted; cursor: grab; touch-action: none">
     ${AURA_MARKUP}
     ${legMarkup('Back', -26)}${legMarkup('Front', -14)}
@@ -291,6 +307,7 @@ const SVG_MARKUP = `
       <g data-part="wingBack"><g data-part="artWingBack"></g><g data-part="heldOff" style="display:none"></g></g>
       <g data-part="tail"><g data-part="artTail"></g></g>
       <g data-part="artTorso"></g>
+      <g data-part="armB"></g>
       <g data-part="neck"><g data-part="artNeck"></g>
         <g data-part="head">${HALO_MARKUP}<g data-part="artComb"></g><g data-part="artFace"></g><g data-part="artBeak"></g><g data-part="artWattle"></g>
           <circle data-part="sclera" cx="51" cy="-192" r="4.6" fill="#fff8e1"/>
@@ -301,6 +318,7 @@ const SVG_MARKUP = `
         ${XRAY_NECK}
       </g>
       <g data-part="wing"><g data-part="artWing"></g>${XRAY_WING}</g>
+      <g data-part="armF"></g>
       <g data-part="heldPivot" transform="translate(14 -120)"><g data-part="held"><path data-part="heldString" fill="none" stroke="#e8e2d0" stroke-width="1.2" stroke-linejoin="round" style="display:none"/><g data-part="heldArrow" style="display:none"></g><g data-part="heldArt"></g><g data-part="heldBow" style="display:none">${BOW_MARKUP}</g></g></g>
       ${XRAY_BODY}
     </g>
@@ -348,7 +366,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   host.appendChild(svg)
   const part = (name: string) => svg.querySelector(`[data-part="${name}"]`) as SVGGraphicsElement
   const el: Record<string, SVGGraphicsElement> = {}
-  ;['shadow', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo', 'bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead', 'xraySocket', 'artWingBack', 'artTail', 'artTorso', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing'].forEach(n => { el[n] = part(n) })
+  ;['shadow', 'hpBar', 'hpFill', 'root', 'body', 'wingBack', 'tail', 'neck', 'artNeck', 'head', 'wing', 'sclera', 'pupil', 'lid', 'heldPivot', 'held', 'heldString', 'heldArrow', 'heldArt', 'heldOff', 'heldBow', 'aura', 'fizz', 'halo', 'bonesBody', 'bonesWing', 'bonesNeck', 'bonesHead', 'xraySocket', 'artWingBack', 'artTail', 'artTorso', 'artComb', 'artFace', 'artBeak', 'artWattle', 'artWing', 'armF', 'armB'].forEach(n => { el[n] = part(n) })
   ;(['F', 'B'] as const).forEach(k => {
     const n = k === 'F' ? 'Front' : 'Back'
     el['leg' + k] = part('leg' + n); el['tib' + k] = part('tib' + n); el['shin' + k] = part('shin' + n); el['toe' + k] = part('toe' + n); el['wrap' + k] = part('leg' + n + 'Wrap')
@@ -368,6 +386,28 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let ownArt: ChickenArtSet | null = opts.art ?? null
   // the eye's middle in the head (rig units): every face may set its own
   let eyeAt = { x: 51, y: -192 }
+  // her hand: the near limb's tip seen from the shoulder (rig units); every wing (arm) may set its own
+  const armTip = { x: CHICKEN_HAND.x as number, y: CHICKEN_HAND.y as number, dx: HAND_DX, dy: HAND_DY, deg: WING_TIP_DEG, len: WING_TIP_LEN }
+  // a face that draws its own eyes hides hers (sclera, pupil, blinking lid)
+  let ownEyes = false
+  // the species her look's class asks for (Pig, Ken), when she was not given one (a chick): it sets her movement
+  let lookSpecies: BirdSpecies | undefined
+  let paramsReady = false
+  // a blow with an empty hand that Ken gives with his tail
+  let rotorT = 0
+  // Pig's and Ken's arms (arm-rig.ts): bent at the elbow to reach where the wings put their hands
+  let arms: ArmsSpec | null = null
+  // where the held pivot sits (the shoulder, lowered by the art's holdDrop), and how far the strong blow has moved
+  // the hand to the other shoulder (0..1, eased)
+  let heldBase: [number, number] = [PIV.wing[0], PIV.wing[1]], otherHand = 0
+  // where the other arm (the back wing) rests, from the near one; the strong blow's charge with an empty hand (0..1)
+  let backOffset: [number, number] = [-4, -2], bareCharge: number | null = null
+  const tailBlow = () => !!swingNow?.bare && (species ?? lookSpecies) === 'fox'
+  // Pig and Ken (not the chicken, not a chick): they move like mammals
+  // (their Filhotes too: the leitão and the raposinha draw their own eyes, the chick does not)
+  const beast = () => { const sp = species ?? lookSpecies; return sp === 'pig' || sp === 'fox' || ownEyes }
+  // each leg moved along her body (rig units) by legs.shape
+  const legDx = { F: 0, B: 0 }
   // her voice: the breed of her beak, if that breed has clucks of its own (params.ts CHICKEN_VOICES)
   let voice = ''
   function paintLook(look: ChickenLook) {
@@ -376,7 +416,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const set = (name: string, html: string | undefined) => { part(name).innerHTML = html ?? '' }
     set('artComb', A.comb.svg); set('artFace', A.face.svg); set('artBeak', A.beak.svg); set('artWattle', A.wattle.svg)
     set('artNeck', A.neck.svg); set('artTorso', A.torso.svg); set('artTail', A.tail.svg); set('artWing', A.wing.svg)
-    set('artWingBack', `<path d="${A.wing.backPath ?? LOOK_ART.WING}" fill="${A.wing.back}"/>`)
+    set('artWingBack', A.wing.arms ? '' : A.wing.backSvg ?? `<path d="${A.wing.backPath ?? LOOK_ART.WING}" fill="${A.wing.back}"/>`)
+    arms = A.wing.arms ?? null
+    if (!arms) { el.armF.innerHTML = ''; el.armB.innerHTML = '' }
+    // Pig's and Ken's other arm is drawn in front of the body, a little behind the near one (both arms show)
+    backOffset = A.wing.backOffset ?? [-4, -2]
+    if (A.wing.backFront) { if (el.wingBack.previousElementSibling !== el.artTorso) el.artTorso.after(el.wingBack) }
+    else if (el.body.firstElementChild !== el.wingBack) el.body.prepend(el.wingBack)
     el.sclera.setAttribute('fill', A.face.eye ?? '#fff8e1'); el.pupil.setAttribute('fill', A.face.pupil ?? '#1f1a17')
     eyeAt = A.face.eyeAt ? { x: A.face.eyeAt[0], y: A.face.eyeAt[1] } : { x: 51, y: -192 }
     el.sclera.setAttribute('cx', String(eyeAt.x)); el.sclera.setAttribute('cy', String(eyeAt.y)); el.lid.setAttribute('cx', String(eyeAt.x))
@@ -388,6 +434,29 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     })
     el.lid.setAttribute('fill', A.face.lid ?? '#f7b21b')
     tailSwing = A.tail.swing ?? 1
+    const h = A.wing.hand ?? [CHICKEN_HAND.x, CHICKEN_HAND.y]
+    armTip.x = h[0]; armTip.y = h[1]; armTip.dx = h[0] - PIV.wing[0]; armTip.dy = h[1] - PIV.wing[1]
+    armTip.deg = Math.atan2(armTip.dy, armTip.dx) * 180 / Math.PI; armTip.len = Math.hypot(armTip.dx, armTip.dy)
+    ownEyes = !!A.face.ownEyes
+    heldBase = [PIV.wing[0], PIV.wing[1] + (A.wing.holdDrop ?? 0)]
+    el.heldPivot.setAttribute('transform', `translate(${heldBase[0]} ${heldBase[1]})`)
+    const klass = ownArt ? 'galinha' : variantClass(look.torso)
+    const nextSpecies: BirdSpecies | undefined = klass === 'porco' ? 'pig' : klass === 'raposa' ? 'fox' : undefined
+    if (nextSpecies !== lookSpecies) { lookSpecies = nextSpecies; if (paramsReady) resize() }
+    ;['sclera', 'pupil', 'lid'].forEach(n => { el[n].style.display = ownEyes ? 'none' : '' })
+    // legs drawn their own way: thicker strokes, a foot (hoof, paw) in place of the toes, each leg moved along the body
+    ;([['wrapF', 'F', legs.front], ['wrapB', 'B', legs.back]] as const).forEach(([w, k, c]) => {
+      const sh = legs.shape, n = k === 'F' ? 'Front' : 'Back'
+      const drums = el[w].querySelectorAll('.c-drum'), shanks = el[w].querySelectorAll('.c-shank')
+      drums[0]?.setAttribute('stroke-width', String(sh?.thigh ?? 6)); drums[1]?.setAttribute('stroke-width', String(sh?.tib ?? 9))
+      shanks[0]?.setAttribute('stroke-width', String(sh?.shin ?? 4.5))
+      const toe = part('toe' + n)
+      const own = toe.querySelector('[data-foot]')
+      if (own) own.remove()
+      ;(shanks[1] as SVGElement | undefined)?.style.setProperty('display', sh?.foot ? 'none' : '')
+      if (sh?.foot) toe.insertAdjacentHTML('beforeend', `<g data-foot transform="translate(${PIV['toe' + k][0]} ${PIV['toe' + k][1]})">${sh.foot.replaceAll('FILL', c.shank)}</g>`)
+      legDx[k] = (k === 'F' ? sh?.dxFront : sh?.dxBack) ?? 0
+    })
     const m = A.beak.mouth
     mouthAt = m ? { x: m[0], y: m[1] } : CHICKEN_MOUTH
   }
@@ -398,7 +467,39 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
   // ---------- params (scaled down on small screens, except in a fixed-size world such as the Pátio's) ----------
   let species = opts.species
-  const R = speciesParams(species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+  const R = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams, config.classes)
+  paramsReady = true
+  // ---------- health ----------
+  // hp: what she has left; hurtAgo: seconds since the last damage (it comes back on its own after regenDelay);
+  // a chick (a bot) has none. At zero she gets it all back for now (the Filhote comes in the next step).
+  let hp = R.maxHp, hurtAgo = Infinity, barShown = 0
+  let onDown: (() => void) | null = null, meter: number | null = null
+  function hurt(amount: number, fromX?: number) {
+    if (!(amount > 0) || portalEntry || species === 'chick') return
+    // Pig's Guarda: brooding on the ground, what comes from the front hurts less
+    const sp = species ?? lookSpecies
+    if (sp === 'pig' && S.grounded && S.state === 'brood' && fromX !== undefined && Math.sign(fromX - S.x) === S.face) amount *= 1 - R.guardBlock / 100
+    hp = Math.max(0, hp - amount); hurtAgo = 0; barShown = 2
+    if (hp <= 0) { hp = R.maxHp; hurtAgo = Infinity; barShown = 0; S.squash = 1; onDown?.() }
+  }
+  let hpMax = R.maxHp
+  function stepHealth(dt: number) {
+    // another class (a new look): the same share of a different whole
+    if (R.maxHp !== hpMax) { hp = hp / Math.max(1, hpMax) * R.maxHp; hpMax = R.maxHp }
+    if (hp > R.maxHp) hp = R.maxHp
+    hurtAgo += dt
+    if (hurtAgo >= R.regenDelay && hp < R.maxHp) hp = Math.min(R.maxHp, hp + R.maxHp * R.regenRate / 100 * dt)
+    if (hp < R.maxHp) barShown = 2; else barShown = Math.max(0, barShown - dt)
+    const show = meter !== null || (barShown > 0 && species !== 'chick')
+    el.hpBar.style.display = show ? '' : 'none'
+    if (!show) return
+    const f = meter ?? hp / Math.max(1, R.maxHp)
+    el.hpFill.setAttribute('width', (60 * f).toFixed(1))
+    el.hpFill.setAttribute('fill', meter !== null ? '#b45cff' : f > 0.5 ? '#3fcf6b' : f > 0.25 ? '#f2c14e' : '#ef4b4b')
+    // the bar's height over the feet is each class's (the Vestiário's Hit-area editor)
+    const top = (S.cl ? S.cl.py : S.y) - config.frames[frameClassOf(species ?? lookSpecies)].bar * R.scale
+    el.hpBar.setAttribute('transform', `translate(${(S.cl ? S.cl.px : S.x).toFixed(1)} ${top.toFixed(1)}) scale(${Math.max(0.6, R.scale * 1.6).toFixed(2)})`)
+  }
   let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
     rigMatrices.clear()
@@ -406,10 +507,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
     // fixedScale: a world in fixed units (PigChicKen): she is the same size on every screen, like everything else
     const vf = opts.fixedScale ? 1 : clamp(Math.min(W, H) / 800, 0.55, 1)
-    const P = speciesParams(species, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams)
+    const P = speciesParams(species ?? lookSpecies, { ...CHICKEN_PARAMS, ...config.params } as ChickenParams, config.classes)
     Object.assign(R, P)
     CHICKEN_PX_PARAMS.forEach(k => { (R as any)[k] = (P as any)[k] * vf })
-    R.scale = P.scale * vf
+    R.scale = P.scale * SCALE_BASE * vf
     if (S.grounded && !S.plat && !S.cl) S.y = groundY
     // clinging, S.x is her distance along the surface (the limits' walls can be taller than the screen)
     if (!S.cl) S.x = clamp(S.x, 40 * R.scale, W - 40 * R.scale)
@@ -507,7 +608,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let heldItem: Parameters<ChickenEngine['setHeld']>[0] = null, heldSvg = '', heldArrowSvg = '', heldOffSvg = '', heldOffOn = false
   const throwTransition = createThrowTransition()
   let peckNow: PeckPose | null = null
-  let swingNow: { angle: number; reach: number; t: number; size?: number } | null = null
+  // bare: a blow with an empty hand (Ken hits it with the tail instead of the arm)
+  let swingNow: { angle: number; reach: number; t: number; size?: number; bare?: boolean; heavy?: boolean } | null = null
   // screen angle (degrees) -> her rig: undo the root's turn, the mirror when facing left, and the body's lean
   const rigAngle = (screenDeg: number) => {
     let a = screenDeg - vis.a
@@ -770,7 +872,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       S.vy = 60; S.jumpIndex = 0; S.y += 2; plantFeet(); sfx('dropThrough')
     } else if (jumpPressed && plat && !plat.solid && !D && !C && against && hangUnder(plat, face0)) {
       clingPose(dt, U, false); return
-    } else if (jumpPressed) {
+    } else if (jumpPressed && (S.grounded || groundRelease || S.jumpIndex + 1 <= R.airJumps)) {
       const fromGround = S.grounded || groundRelease
       S.jumpIndex = fromGround ? 0 : S.jumpIndex + 1
       // the way up of a shocking jump (launched letting go of Jump with Brood held) grabs a hard ceiling by itself
@@ -1135,6 +1237,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // walls: solid ones grab when pushing toward them; floating ones when her feet touch them in the
   // air while no movement control is held
   function tryCling(dir: number, up = false) {
+    // a species that does not climb (Pig) never grabs a wall
+    if (R.climbSpeed <= 0) return false
     const bodyY = S.y - 40 * R.scale, footY = S.y - 4 * R.scale
     for (const sg of SEGS) {
       if (!sg.wall || sg.ceil || (S.clCool > 0 && sg.id === S.clLast)) continue
@@ -1295,7 +1399,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // standing on a floating box (or a wire): hang upside down from its underside, right below (switching sides)
   // (`under`: another ceiling at her feet instead, the other face of the same line)
   function hangUnder(plat: Seg, look: number, under = underSide(plat)) {
-    if (!under) return false
+    if (!under || R.climbSpeed <= 0) return false
     const y = floorY(under, S.x) ?? under.ay
     // on a sloped wire piece her feet point into the line, square to it
     const ux = (under.bx - under.ax) / under.len, uy = (under.by - under.ay) / under.len
@@ -1309,6 +1413,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   // A hard outline's floor ("Objeto duro") does the same with the outline's own walls, on their outside; the other
   // solid walls (the limits) never take her this way.
   function grabEdgeSide(sg: Seg, dir: number, vup: number) {
+    if (R.climbSpeed <= 0) return false
     const ex = dir > 0 ? Math.max(sg.ax, sg.bx) : Math.min(sg.ax, sg.bx), ey = floorY(sg, ex)
     if (ey === null) return false
     for (const w of SEGS) {
@@ -1773,7 +1878,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       t.tail = Math.sin(Math.PI * stepT) * 4
     }
     const contact = S.contact; S.contact = false
-    if (st === 'walk' || ((st === 'crouch' || st === 'cling') && speed > 5)) {
+    // Pig and Ken walk like mammals: no head locked in the air and thrust forward at each step
+    if (beast() && (st === 'walk' || ((st === 'crouch' || st === 'cling') && speed > 5))) {
+      headAnchor.x = null
+      const stepT = feet.F.stepping ? feet.F.t : feet.B.stepping ? feet.B.t : 0
+      t.neck = -pose.body * 0.5; t.head = Math.sin(Math.PI * stepT) * 2
+      k = 20
+    } else if (st === 'walk' || ((st === 'crouch' || st === 'cling') && speed > 5)) {
       // head locks in place; when a foot lands it shoots forward to where the body will be next, never back
       const A = headAnchor, reach = NECK_LEN * 0.7 * R.scale
       if (A.x === null) { A.x = A.from = A.to = S.x; A.t = 1; A.lastContact = S.x }
@@ -1836,16 +1947,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         if (Math.random() < 0.3) idle.next = 0.25
       }
       t.neck = idle.neck; t.head = idle.head
+      // a mammal looks around much less than a hen
+      if (beast()) { t.neck *= 0.25; t.head *= 0.3 }
       t.bob = Math.sin(performance.now() / 600) * 0.6
-      k = 38
+      k = beast() ? 8 : 38
     }
     if (!S.grounded) {
       t.ik = 0
       t.tgtF = [LEG.F.hx + 6, -36]; t.tgtB = [LEG.B.hx + 2, -40]; t.tuck = 12
+      // Pig and Ken let their legs hang in the air (tucked up, a mammal's would hide inside the body)
+      if (beast()) { t.tgtF = [LEG.F.hx + 10, -10]; t.tgtB = [LEG.B.hx - 2, -12]; t.tuck = 0 }
       t.body = clamp(S.vy / 70, -14, 14)
       t.tail = -8; t.neck = -4; t.head = S.vy < 0 ? -10 : 6
       if (st === 'held') { t.tgtF = [LEG.F.hx + 3, -2]; t.tgtB = [LEG.B.hx - 3, 0]; t.tuck = -14; t.body = clamp(-S.vx / 35, -28, 28); t.neck = 4; t.head = 10; t.tail = 10 }
-      if (st === 'fastFall') { t.wing = 120; t.wingBack = 110; t.tgtF = [LEG.F.hx + 4, -6]; t.tgtB = [LEG.B.hx + 8, -8]; t.tuck = -10; t.body = 6; t.head = 14; t.tail = -24 }
+      if (st === 'fastFall') { t.wing = beast() ? 30 : 120; t.wingBack = beast() ? 26 : 110; t.tgtF = [LEG.F.hx + 4, -6]; t.tgtB = [LEG.B.hx + 8, -8]; t.tuck = -10; t.body = 6; t.head = 14; t.tail = -24 }
       k = 18
     }
     if (U && (st === 'walk' || st === 'run' || st === 'crouch' || !S.grounded)) { t.neck -= 10; t.head -= 30 }
@@ -1910,7 +2025,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       pose['toe' + key] = ease(pose['toe' + key], toeW - (sa - 90), lk === 160 ? 160 : 40, dt)
     })
 
-    if (chargeFlap || (!S.shocking && flapping && (st !== 'fastFall' || S.burst > 0))) {
+    // Pig and Ken have arms, not wings: they never flap them
+    if (!beast() && (chargeFlap || (!S.shocking && flapping && (st !== 'fastFall' || S.burst > 0)))) {
       const f = (1 - Math.cos(S.flapPhase)) / 2
       pose.wing = 15 + f * 95; pose.wingBack = 10 + f * 85
     } else {
@@ -2031,15 +2147,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // flip it is mirrored across that line, so a wing turned all the way round is not upside down
     const wingTo = (node: SVGGraphicsElement, x: number, y: number) => {
       const [px, py] = PIV.wing
-      node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(Math.max(1, Math.hypot(x, y)) / WING_TIP_LEN).toFixed(3)} ${rig?.flip ? -1 : 1}) rotate(${(-WING_TIP_DEG).toFixed(2)}) translate(${-px} ${-py})`)
+      node.setAttribute('transform', `translate(${px} ${py}) rotate(${(Math.atan2(y, x) * DEG).toFixed(2)}) scale(${(beast() ? clamp(Math.hypot(x, y) / armTip.len, 0.7, 1.35) : Math.max(1, Math.hypot(x, y)) / armTip.len).toFixed(3)} ${rig?.flip ? -1 : 1}) rotate(${(-armTip.deg).toFixed(2)}) translate(${-px} ${-py})`)
     }
     // a staff carried in its own pose: the hand at its place on her body, whatever the aim
     const staff = heldItem && !consumable && !heldItem.throwing ? heldItem.staff ?? null : null
     const restAngle = (pose.wing + (heldItem?.atHand ? handAimAngle(heldA) : 0)) / DEG
-    const restHandX = HAND_DX * Math.cos(restAngle) - HAND_DY * Math.sin(restAngle)
-    const restHandY = HAND_DX * Math.sin(restAngle) + HAND_DY * Math.cos(restAngle)
+    const restHandX = armTip.dx * Math.cos(restAngle) - armTip.dy * Math.sin(restAngle)
+    const restHandY = armTip.dx * Math.sin(restAngle) + armTip.dy * Math.cos(restAngle)
     let handX = restHandX, handY = restHandY
-    const wingToHand = (flip = false) => { el.wing.setAttribute('transform', wingReachTransform(handX, handY, flip)) }
+    const wingToHand = (flip = false) => { el.wing.setAttribute('transform', `translate(${PIV.wing[0]} ${PIV.wing[1]}) rotate(${Math.atan2(handY, handX) * DEG}) scale(${beast() ? clamp(Math.hypot(handX, handY) / armTip.len, 0.7, 1.35) : Math.hypot(handX, handY) / armTip.len} ${flip ? -1 : 1}) rotate(${-armTip.deg}) translate(${-PIV.wing[0]} ${-PIV.wing[1]})`) }
     // the swing of a staff: the angle (degrees) the staff itself points at, turning from its carried pose to the blow
     let staffSwingA = 0
     if (consumable) {
@@ -2063,22 +2179,24 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       el.heldBow.setAttribute('transform', `translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(${BOW_TILT})`)
       // the frog in her body's frame, from the shoulder: the held item's own transform applied to it
       const { x: vx, y: vy } = onItem(fx, fy)
-      const b = Math.atan2(vy, vx) * DEG, stretch = clamp(Math.hypot(vx, vy) / WING_TIP_LEN, 0.6, 1.5)
+      const b = Math.atan2(vy, vx) * DEG, stretch = clamp(Math.hypot(vx, vy) / armTip.len, 0.6, 1.5)
       const [px, py] = PIV.wing
-      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${stretch.toFixed(3)} 1) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
-    } else if (swingNow) {
+      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${stretch.toFixed(3)} 1) rotate(${(-armTip.deg).toFixed(1)}) translate(${-px} ${-py})`)
+    } else if (swingNow && !tailBlow()) {
       const e = smooth(clamp(swingNow.t, 0, 1))
       // the blow leaves from where the wing was: at rest, or holding the staff in its pose
-      const rest = staff ? Math.atan2(staff.y, staff.x) * DEG : WING_TIP_DEG + pose.wing
-      const restLen = staff ? Math.max(1, Math.hypot(staff.x, staff.y)) : WING_TIP_LEN
+      const rest = staff ? Math.atan2(staff.y, staff.x) * DEG : armTip.deg + pose.wing
+      const restLen = staff ? Math.max(1, Math.hypot(staff.x, staff.y)) : armTip.len
       const target = rigAngle(swingNow.angle * DEG)
       const b = rest + ((((target - rest) % 360) + 540) % 360 - 180) * e
-      const full = Math.max(WING_TIP_LEN, swingNow.reach / Math.max(0.01, R.scale * pose.puff))
+      const full = Math.max(armTip.len, swingNow.reach / Math.max(0.01, R.scale * pose.puff))
       wingLen = restLen + (full - restLen) * e
+      // an arm (Pig, Ken) does not stretch like a wing: the blow's reach is the chain's or the tail's
+      if (beast()) wingLen = Math.min(wingLen, armTip.len * 1.3)
       tipRig = b
       if (staff) staffSwingA = staff.angle + ((((target - staff.angle) % 360) + 540) % 360 - 180) * e
       const [px, py] = PIV.wing
-      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / WING_TIP_LEN).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-WING_TIP_DEG).toFixed(1)}) translate(${-px} ${-py})`)
+      el.wing.setAttribute('transform', `translate(${px} ${py}) rotate(${b.toFixed(1)}) scale(${(wingLen / armTip.len).toFixed(3)} ${(1 - 0.2 * e).toFixed(3)}) rotate(${(-armTip.deg).toFixed(1)}) translate(${-px} ${-py})`)
     } else if (staff) {
       handX = staff.x; handY = staff.y
       wingToHand(!!staff.flip)
@@ -2121,8 +2239,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         handX = animated.handX; handY = animated.handY; wingToHand()
       }
     }
+    // charging the strong Correntada: the arm with the chain goes back and up, shaking when full
+    if (bareCharge !== null && !heldItem && !swingNow && (species ?? lookSpecies) === 'pig') {
+      const c = smooth(bareCharge), shake = bareCharge >= 1 ? Math.sin(frameNow / 30) * 3 : 0
+      el.wing.setAttribute('transform', rot('wing', 105 * c + shake))
+    }
     if (rig?.back) { const h = onItem(rig.back.x, rig.back.y); wingTo(el.wingBack, h.x, h.y) }
-    else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ' translate(-4 -2)')
+    else el.wingBack.setAttribute('transform', rot('wing', pose.wingBack * 0.9) + ` translate(${backOffset[0]} ${backOffset[1]})`)
     // the back wing holds it: moving, it takes the pose the front wing got (the item went behind her body above);
     // carried, the item is the one in the back wing's hand below. The front wing rests
     if (heldItem?.back) {
@@ -2135,11 +2258,64 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (!!off !== heldOffOn) { heldOffOn = !!off; el.heldOff.style.display = off ? '' : 'none' }
     if (off) {
       if (heldOffSvg !== heldSvg) { heldOffSvg = heldSvg; el.heldOff.innerHTML = heldSvg }
-      el.heldOff.setAttribute('transform', `translate(${CHICKEN_HAND.x} ${CHICKEN_HAND.y}) rotate(${off.angle.toFixed(1)}) translate(${(-off.gripX).toFixed(2)} ${(-off.gripY).toFixed(2)})`)
+      el.heldOff.setAttribute('transform', `translate(${armTip.x} ${armTip.y}) rotate(${off.angle.toFixed(1)}) translate(${(-off.gripX).toFixed(2)} ${(-off.gripY).toFixed(2)})`)
     }
-    el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
+    // Ken's Rabada: the tail sweeps down and forward, under her, and back
+    if (arms) {
+      // the strong blow (charging and swinging) goes with the other hand: with an item, or Pig's chain (Ken's own
+      // strong blow is the tail). The wing and the item move to that arm's shoulder, so the blow turns around it
+      const heavy = !!swingNow?.heavy || !!heldItem?.charging || (bareCharge !== null && !heldItem)
+      const handBlow = heavy && !(!heldItem && (species ?? lookSpecies) === 'fox')
+      otherHand += ((handBlow ? 1 : 0) - otherHand) * Math.min(1, frameDt * 14)
+      if (otherHand < 0.002) otherHand = 0
+      const backHolds = !!heldItem?.swap !== handBlow
+      const sx = (arms.back.shoulder[0] - arms.front.shoulder[0]) * otherHand, sy = (arms.back.shoulder[1] - arms.front.shoulder[1]) * otherHand
+      el.heldPivot.setAttribute('transform', `translate(${(heldBase[0] + sx).toFixed(2)} ${(heldBase[1] + sy).toFixed(2)})`)
+      if (otherHand > 0) el.wing.setAttribute('transform', `translate(${sx.toFixed(2)} ${sy.toFixed(2)}) ${el.wing.getAttribute('transform') ?? ''}`)
+      const map = (node: SVGGraphicsElement, x: number, y: number): [number, number] => {
+        const m = node.transform.baseVal.consolidate()?.matrix
+        return m ? [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f] : [x, y]
+      }
+      const tipOf = (node: SVGGraphicsElement) => map(node, armTip.x, armTip.y)
+      // a point of the held item's drawing, where it is drawn this frame
+      const itemPt = (x: number, y: number) => { const [hx, hy] = map(el.held, x, y); return map(el.heldPivot, hx, hy) }
+      const onHeld = !!heldItem && !heldItem.back && el.held.style.opacity !== '0'
+      // the hand holding the item: on its touch point (a staff's grip, the hand point of the item), at the hand
+      // of an item carried in it, else (no item, a blow, an item turning with the wing) where the wing's tip went.
+      // The wing stretches only so far for these bodies; the arm goes to the item itself
+      const main = onHeld && rig?.hand ? itemPt(rig.hand.x, rig.hand.y)
+        : onHeld && staff ? itemPt(staff.gripX, staff.gripY)
+        : onHeld && (heldItem?.atHand || consumable) && !swingNow ? map(el.heldPivot, handX, handY)
+        : tipOf(el.wing)
+      // the other hand: on the item's second touch point (or the item it holds), on a staff's second hand point
+      // (carried or swinging with it), else resting where it was drawn
+      const second = onHeld && rig?.back ? itemPt(rig.back.x, rig.back.y)
+        : heldItem?.back ? tipOf(el.wingBack)
+        : onHeld && staff?.grip2 ? itemPt(staff.grip2.x, staff.grip2.y) : null
+      // "Segurar com a outra mão": the back arm takes the item and the front one is the second hand (the strong blow
+      // turns it round once more)
+      const f = backHolds ? second ?? arms.front.rest : main
+      const b = backHolds ? main : second ?? arms.back.rest
+      el.armF.innerHTML = armMarkup(arms.front, f[0], f[1])
+      el.armB.innerHTML = armMarkup(arms.back, b[0], b[1])
+    }
+    // Ken's Planagem (gliding, Jump held in the air): the tail raised and spinning like a rotor
+    const rotor = (species ?? lookSpecies) === 'fox' && S.state === 'fly'
+    rotorT = rotor ? rotorT + frameDt : 0
+    if (rotor) {
+      const [tx, ty] = PIV.tail, c = Math.cos(rotorT * 22)
+      el.tail.setAttribute('transform', `${rot('tail', 150)} translate(${tx} ${ty}) scale(${((0.25 + 0.75 * Math.abs(c)) * (c < 0 ? -1 : 1)).toFixed(3)} 1) translate(${-tx} ${-ty})`)
+    } else if (tailBlow()) {
+      // the Rabada: the tail swings from its rest to point where the blow goes (it rests pointing back and down)
+      const target = rigAngle(swingNow!.angle * DEG), turnTo = ((((target - TAIL_REST_DEG) % 360) + 540) % 360) - 180
+      el.tail.setAttribute('transform', rot('tail', turnTo * smooth(clamp(swingNow!.t, 0, 1))))
+    } else if (bareCharge !== null && (species ?? lookSpecies) === 'fox') {
+      // charging the strong Rabada: the tail cocks up behind him, shaking when full
+      const c = bareCharge, shake = c >= 1 ? Math.sin(frameNow / 30) * 3 : 0
+      el.tail.setAttribute('transform', rot('tail', 70 * smooth(c) + shake))
+    } else el.tail.setAttribute('transform', rot('tail', pose.tail * tailSwing))
     const legShift = `translate(0 ${(pose.shiftY || 0).toFixed(2)})`
-    el.wrapF.setAttribute('transform', legShift); el.wrapB.setAttribute('transform', legShift)
+    el.wrapF.setAttribute('transform', `translate(${legDx.F} 0) ${legShift}`); el.wrapB.setAttribute('transform', `translate(${legDx.B} 0) ${legShift}`)
     ;(['F', 'B'] as const).forEach(k => { ['leg', 'tib', 'shin', 'toe'].forEach(b => { el[b + k].setAttribute('transform', rot(b + k, pose[b + k])) }) })
     el.lid.setAttribute('ry', (5.4 * pose.lid).toFixed(2))
     el.lid.setAttribute('cy', (eyeAt.y - 5.4 + 5.4 * pose.lid).toFixed(2))
@@ -2234,6 +2410,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (portalEntry) { remote?.(); if (portalEntry) renderPortal(now) }
     else if (remote) remoteStep(dt)
     else if (!isChickenControlsListening()) step(dt); else render()
+    if (!portalEntry && !remote) stepHealth(dt)
     raf = requestGameFrame(frame)
   }
   tagBoxes()
@@ -2267,7 +2444,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   function motionState(): Omit<ChickenState, 'shoulder'> {
-    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, networkAnimation: !portalEntry && S.cl ? S.clingAnim ?? 'cling' : !portalEntry && !S.held && !S.cl && !S.grounded && S.shocking ? 'shockingAirPrepare' : !portalEntry && !S.held && !S.cl && !S.grounded && shockingAirReleaseTime > 0 ? 'shockingAirRelease' : undefined, held: !!S.held, width: W, height: H, groundY }
+    return { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y, angle: S.cl ? S.cl.phi : 0, vx: S.vx * movementFactor(), vy: S.vy * movementFactor(), face: S.face, scale: R.scale, grounded: !!S.grounded, state: portalEntry ? portalEntry.mode === 'arrive' ? 'portalArrival' : 'portal' : S.state, networkAnimation: !portalEntry && S.cl ? S.clingAnim ?? 'cling' : !portalEntry && !S.held && !S.cl && !S.grounded && S.shocking ? 'shockingAirPrepare' : !portalEntry && !S.held && !S.cl && !S.grounded && shockingAirReleaseTime > 0 ? 'shockingAirRelease' : undefined, held: !!S.held, width: W, height: H, groundY, species: species ?? lookSpecies, hp, maxHp: R.maxHp }
   }
 
   return {
@@ -2352,6 +2529,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // Full snapshots remain eager; camera/contact queries need no SVG geometry.
     getState: () => ({ ...motionState(), shoulder: shoulder() }),
     getMotionState: motionState,
+    hurt,
+    setOnDown(fn) { onDown = fn },
+    setBareCharge(c) { bareCharge = c === null ? null : clamp(c, 0, 1) },
+    setMeter(fill) { meter = fill === null ? null : clamp(fill, 0, 1) },
     canPointAndClick,
     canWalkToPortal,
     walkToPortal(id, point) {
@@ -2429,12 +2610,13 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     setPeck(next) { if (!portalEntry) peckNow = next },
     setSwing(next) { swingNow = next; if (next) throwTransition.reset() },
+    speciesNow: () => species ?? lookSpecies ?? 'chicken',
     heldPoint(angle, x, y) {
       // The trajectory and release use the resting hand, not the hand pulled
       // back while charging; otherwise each frame would move the origin again.
       const hand = heldItem?.atHand && !swingNow ? rigMatrix(el.heldPivot) : null
       const r = (pose.wing + handAimAngle(rigAngle(angle * DEG))) / DEG
-      const hx = HAND_DX * Math.cos(r) - HAND_DY * Math.sin(r), hy = HAND_DX * Math.sin(r) + HAND_DY * Math.cos(r)
+      const hx = armTip.dx * Math.cos(r) - armTip.dy * Math.sin(r), hy = armTip.dx * Math.sin(r) + armTip.dy * Math.cos(r)
       // an item with a rig turns around its pivot, which sits on her shoulder or mouth
       const rig = heldItem && !swingNow && !heldItem.consumable && !heldItem.atHand && !heldItem.throwing ? heldItem.rig ?? null : null
       if (rig) { x -= rig.x; y -= rig.y }
@@ -2448,7 +2630,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     },
     rigPoint(point) {
       const node = point === 'neck' ? el.body : point === 'hand' ? (heldItem?.back ? el.wingBack : el.wing) : el.head
-      const at = point === 'neck' ? { x: PIV.neck[0], y: PIV.neck[1] } : point === 'hand' ? CHICKEN_HAND : CHICKEN_MOUTH
+      const at = point === 'neck' ? { x: PIV.neck[0], y: PIV.neck[1] } : point === 'hand' ? armTip : CHICKEN_MOUTH
       const m = rigMatrix(node)
       const p = m ? new DOMPoint(at.x, at.y).matrixTransform(m) : shoulder()
       return { x: p.x, y: p.y }
@@ -2462,7 +2644,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         const m = el.held.transform.baseVal.consolidate()?.matrix
         const wing = (heldItem?.back ? el.wingBack : el.wing).getCTM(), pivot = el.heldPivot.getCTM()
         if (m && wing && pivot) {
-          const hand = new DOMPoint(CHICKEN_HAND.x, CHICKEN_HAND.y).matrixTransform(wing).matrixTransform(pivot.inverse())
+          const hand = new DOMPoint(armTip.x, armTip.y).matrixTransform(wing).matrixTransform(pivot.inverse())
           throwTransition.start({ x: m.e, y: m.f, angle: Math.atan2(m.b, m.a) * DEG, handX: hand.x, handY: hand.y }, performance.now())
         }
       }
@@ -2486,6 +2668,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
           // (she flinches and holds on)
           if (!hit.drop) { S.squash = 0.5; return }
         }
+        if (damage) hurt(damage, S.x - Math.sign(vx || 1) * 100)
+        // how much a push moves her (Pig barely moves; in Guarda, brooding on the ground, not at all)
+        const k = R.knockbackTaken * (S.grounded && S.state === 'brood' && (species ?? lookSpecies) === 'pig' ? 0 : 1)
+        if (k <= 0) { S.squash = 0.5; return }
+        vx *= k; vy *= k
         leaveSeat()
         const state = { x: S.cl ? S.cl.px : S.x, y: S.cl ? S.cl.py : S.y }
         fallFrom(state.x, state.y, S.vx + vx, S.vy + vy)

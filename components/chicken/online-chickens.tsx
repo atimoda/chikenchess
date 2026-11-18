@@ -23,7 +23,7 @@ import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
-import { DEFAULT_ITEMS, isStaff, itemRig, type ItemId } from "@/lib/pigchicken/items"
+import { DEFAULT_ITEMS, classItem, isStaff, itemRig, pointClassOf, type ItemId } from "@/lib/pigchicken/items"
 import { aimElevation, staffPose } from "@/lib/pigchicken/staff-pose"
 import { stageWidth } from "@/lib/stage-size"
 import { liveZoneEffectsAt } from "@/lib/pigchicken/zone-physics"
@@ -145,7 +145,9 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
           const key = itemKey(c.item), svg = key ? ITEM_SVG[key as keyof typeof ITEM_SVG] : undefined
           if (c.item !== entry.item || key) {
             entry.item = c.item
-            const def = key && key in DEFAULT_ITEMS ? DEFAULT_ITEMS[key as ItemId] : null
+            const own = key && key in DEFAULT_ITEMS ? DEFAULT_ITEMS[key as ItemId] : null
+            // (as her class holds it: Pig's and Ken's own Pontos)
+            const def = own ? classItem(own, pointClassOf(engine.speciesNow())) : null
             // a staff is carried in its own pose on her body (the game's default one), as on the browser that plays her
             const staff = def && isStaff(def) ? staffPose(def, 0, aimElevation(angle, c.face)) : null
             engine.setHeld(key && svg ? { svg, itemKey: key, angle, kick: 0, atHand: !!staff, rig: def ? itemRig(def) : null, staff } : null)

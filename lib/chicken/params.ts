@@ -4,6 +4,9 @@
 // values are its fallback and fill any setting the saved version lacks.
 // Distances are in screen pixels at full size; the engine scales the ones in CHICKEN_PX_PARAMS on small screens.
 // sfx_* pick the cluck of each movement: '' none, 'all' any enabled type, or one type.
+// the size the rig is drawn at when the Tamanho setting is 1 (the chicken's usual size)
+export const SCALE_BASE = 0.5
+
 export const CHICKEN_PARAMS = {
   // Movimento
   walkSpeed: 255,
@@ -99,6 +102,20 @@ export const CHICKEN_PARAMS = {
   flyDownFallAtten: 69,
   flapRate: 9,
   jumpFlaps: 2,
+  // how many jumps in the air before landing (the chicken's are not counted; Ken has 1, Pig 0)
+  airJumps: 99,
+  // how much a push (explosion, blow) moves her: 1 = all of it (Pig takes 0.35, Ken 0.8)
+  knockbackTaken: 1,
+  // health: how much she has (Pig 300, Ken 200 by their class), how long without damage until it comes back and how
+  // fast (% of the whole per second); Guarda: how much less the damage from the front hurts Pig (%)
+  maxHp: 100,
+  regenDelay: 6,
+  regenRate: 8,
+  guardBlock: 60,
+  // the Filhote: how many notes that reach it fill its music bar (then it is an adult again)
+  babyNotes: 4,
+  // how far around her the items and Gaiolas she had fall when she becomes a Filhote (px, each side)
+  babyDropSpread: 140,
   heldFlapRate: 9,
   jumpFlapRate: 14,
   // Idle
@@ -143,7 +160,10 @@ export const CHICKEN_PARAMS = {
   sfx_st_fly: '',
   sfx_st_fastFall: '',
   // Visual
-  scale: 0.55,
+  // 1 = the chicken's usual size: the engine draws her at SCALE_BASE of the rig (the old 0.5)
+  scale: 1,
+  // marks a saved configuration whose scale is already on that base (older ones are converted when read)
+  scaleBase: SCALE_BASE,
 }
 
 export type ChickenParams = typeof CHICKEN_PARAMS

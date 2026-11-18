@@ -17,6 +17,10 @@ import {
   setChickenConfigPreview, subscribeChickenConfig, type ChickenConfig, type SavedChickenConfig,
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
+import { CLASS_FACTOR_KEYS, CLASS_FACTOR_MAX, CLASS_IDS, defaultClasses, type ClassId } from "@/lib/chicken/species"
+import { Knob } from "@/components/knob"
+import { useSaveConfirm } from "@/components/admin/save-confirm"
+import { diffValues } from "@/lib/admin/save-diff"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
@@ -35,7 +39,8 @@ import { portalGate, PORTAL_TRANSITION_MS } from "@/lib/chicken/portal"
 import { PatioPortals, type PatioPortalTravel } from "@/components/pigchicken/patio-portals"
 import { HouseDoors } from "@/components/pigchicken/house-doors"
 import { checkPatioTarget, MISSING_PATIO_TEXT, OFFLINE_PATIO_TEXT, targetLobbyId } from "@/lib/pigchicken/portal-links"
-import { ChickenHeadIcon, ChickenVestiario } from "./chicken-vestiario"
+import { ChickenHeadIcon, ChickenVestiario, type FramesEdit } from "./chicken-vestiario"
+import { FRAME_KEYS, FRAME_LABEL, type FrameClass } from "@/lib/chicken/body-frame"
 import { cn } from "@/lib/utils"
 import { stageInset, subscribeStageInset } from "@/lib/stage-size"
 import { isChickenControlsListening, loadChickenControls } from "@/lib/chicken/controls"
@@ -580,13 +585,23 @@ export function ChickenPatio() {
     setStatus(null)
   }
   const setParam = (key: ChickenParamKey, value: unknown) => update(c => { (c.params as Record<string, unknown>)[key] = value })
+  // Pig's and Ken's columns: a factor over the chicken's value, or (the jumps in the air) the number itself
+  const setClass = (id: ClassId, key: ChickenParamKey, value: number) => update(c => {
+    c.classes ??= defaultClasses()
+    if (key === "airJumps") c.classes[id].airJumps = value
+    else (c.classes[id].factors as Record<string, number>)[key] = value
+  })
   const replaceDraft = (next: ChickenConfig) => {
     writeDraft(sameChickenConfig(next, saved.config) ? null : next)
     setDraft(next)
     setStatus(null)
   }
 
+  // "Salvar no game" asks first, with every change against the saved version
+  const [confirmSave, saveConfirmation] = useSaveConfirm()
   const save = async () => {
+    const changes = diffValues(normalizeChickenConfig(saved.config), normalizeChickenConfig(draft), chickenChangeLabel)
+    if (!(await confirmSave(changes, "Grava a configuração central dos personagens: vale na hora para todas as telas e para todo mundo."))) return
     setSaving(true)
     setStatus(null)
     try {
@@ -601,6 +616,9 @@ export function ChickenPatio() {
       setSaving(false)
     }
   }
+
+  // the Vestiário's Hit-area editor (admin): each class's frame in the same draft, saved by the same Salvar no game
+  const framesEdit: FramesEdit | undefined = isAdmin ? { value: draft.frames, saved: saved.config.frames, onChange: f => update(c => { c.frames = f }), onSave: () => void save(), saving, note: status?.text ?? null } : undefined
 
   const patioName = patio?.name ?? (patio?.id ? "Pátio sem nome" : "Pátio da Galinha")
   // the Pátio's limits (the Sun panel): its width in scenes (a Pátio saved before it had one keeps this browser's
@@ -741,7 +759,7 @@ export function ChickenPatio() {
         <button type="button" aria-label="Controles" title="Controles" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Ajustes da galinha" aria-pressed={panelOpen} title="Ajustes da galinha" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Ajustes do personagem" aria-pressed={panelOpen} title="Ajustes do personagem" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
         </button>
         <VolumeButton />
@@ -849,9 +867,11 @@ export function ChickenPatio() {
       )}
       <ChickenControlsPanel open={controlsOpen} onOpenChange={setControlsOpen} editLayout />
 
+      {/* the confirmation of the central configuration's Salvar no game (Ajustes and the Vestiário's Hit-area) */}
+      {saveConfirmation}
       {vestOpen && (vestPlayer?.look
-        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} />
-        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} />)}
+        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} />
+        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} />)}
 
       {playersOpen && lobby && (
         <PlayersPanel
@@ -874,7 +894,7 @@ export function ChickenPatio() {
       )}
 
       {panelOpen && (
-        <FloatingPanel id="chicken-tuning" aria-label="Ajustes da galinha" initial={(vw, vh) => { const w = Math.min(400, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <FloatingPanel id="chicken-tuning" aria-label="Ajustes do personagem" initial={(vw, vh) => { const w = Math.min(480, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={340} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Ajustes</h2>
             {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
@@ -885,13 +905,17 @@ export function ChickenPatio() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
+            {/* the class columns: the chicken's value on the left, Pig's and Ken's factors over it on the right */}
+            <div className={cn(ROW, "sticky top-0 z-30 border-b border-white/10 bg-[#101713] px-4 py-1.5 text-center text-[10px] uppercase tracking-wider text-[#8a9a8a]")}>
+              <span className="text-left">Chi</span><span>Pig</span><span>Ken</span>
+            </div>
             <Group title="Visual" open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
               <button type="button" onClick={() => setVestOpen(true)} className="h-8 justify-self-start rounded-md border border-white/20 px-3 hover:border-primary">Abrir o vestiário (raças e partes)</button>
-              {CHICKEN_PARAM_META.filter(p => p.group === "Visual").map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} />)}
+              {CHICKEN_PARAM_META.filter(p => p.group === "Visual").map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} />)}
             </Group>
             {CHICKEN_PARAM_GROUPS.filter(g => g !== "Visual").map(g => (
               <Group key={g} title={g} open={!!openGroups[g]} onToggle={v => setOpenGroups(o => ({ ...o, [g]: v }))}>
-                {CHICKEN_PARAM_META.filter(p => p.group === g).map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} />)}
+                {CHICKEN_PARAM_META.filter(p => p.group === g).map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} />)}
               </Group>
             ))}
             {/* admin only: the draft becomes the central configuration, for every screen and everyone, at once */}
@@ -916,33 +940,76 @@ function Group({ title, open, onToggle, children }: { title: string; open: boole
   )
 }
 
-function ParamRow({ meta, draft, saved, onChange }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void }) {
+// a change of the central configuration in words: the setting's label, Pig's and Ken's factors, the look's parts
+const PARAM_LABEL: Record<string, string> = Object.fromEntries(CHICKEN_PARAM_META.map(m => [m.key, m.label]))
+function chickenChangeLabel([part, a, b, c]: string[]) {
+  if (part === "params") return PARAM_LABEL[a] ?? a
+  if (part === "classes") return `${CLASS_NAME[a as ClassId] ?? a} › ${b === "airJumps" ? PARAM_LABEL.airJumps : `${PARAM_LABEL[c] ?? c} (fator)`}`
+  if (part === "look") return `Visual › ${a}`
+  if (part === "frames") return `Hit-area › ${FRAME_LABEL[a as FrameClass] ?? a} › ${FRAME_KEYS.find(k => k.key === b)?.label ?? b}`
+  return [part, a, b, c].filter(Boolean).join(" › ")
+}
+
+// a row of the Ajustes panel: the chicken's value, then Pig's and Ken's
+const ROW = "grid grid-cols-[minmax(0,1fr)_40px_40px] items-center gap-2"
+const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken" }
+
+function ParamRow({ meta, draft, saved, onChange, onClass }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void }) {
   const value = draft.params[meta.key] ?? defaultChickenConfig().params[meta.key]
   const changed = value !== (saved.params[meta.key] ?? defaultChickenConfig().params[meta.key])
   if (meta.type === "bool") {
     return (
-      <label className="flex items-center justify-between gap-3" title={meta.hint}>
-        <span className={cn(changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
-        <input type="checkbox" checked={!!value} onChange={e => onChange(meta.key, e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
+      <label className={ROW} title={meta.hint}>
+        <span className={cn("flex items-center justify-between gap-3", changed && "text-amber-300")}><CombinationLabel meta={meta} /><input type="checkbox" checked={!!value} onChange={e => onChange(meta.key, e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></span>
       </label>
     )
   }
   if (meta.type === "select") {
     return (
-      <label className="flex items-center justify-between gap-3">
-        <span className={cn("min-w-0", changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
-        <StepSelect value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
-          <option value="">sem som</option>
-          <option value="all">sorteio</option>
-          {CHICKEN_SOUND_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-        </StepSelect>
+      <label className={ROW}>
+        <span className="flex min-w-0 items-center justify-between gap-3">
+          <span className={cn("min-w-0", changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
+          <StepSelect value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
+            <option value="">sem som</option>
+            <option value="all">sorteio</option>
+            {CHICKEN_SOUND_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          </StepSelect>
+        </span>
       </label>
     )
   }
   const n = value as number
-  return <PatioRange label={<CombinationLabel meta={meta} />} name={meta.label} min={meta.min} max={meta.max} step={meta.step}
-    value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed}
-    onChange={value => onChange(meta.key, value)} onReset={() => onChange(meta.key, saved.params[meta.key])} />
+  return (
+    <div className={ROW}>
+      <PatioRange label={<CombinationLabel meta={meta} />} name={meta.label} min={meta.min} max={meta.max} step={meta.step}
+        value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed}
+        onChange={value => onChange(meta.key, value)} onReset={() => onChange(meta.key, saved.params[meta.key])} />
+      {CLASS_IDS.map(id => <ClassCell key={id} id={id} meta={meta} draft={draft} saved={saved} onClass={onClass} />)}
+    </div>
+  )
+}
+
+// Pig's or Ken's cell: a knob with the factor over the chicken's value; the jumps in the air are a count of their own
+function ClassCell({ id, meta, draft, saved, onClass }: { id: ClassId; meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void }) {
+  const name = `${meta.label}: ${CLASS_NAME[id]}`
+  // (a draft kept from before the classes were saved with it has none)
+  const now = (draft.classes ?? defaultClasses())[id], before = (saved.classes ?? defaultClasses())[id]
+  if (meta.key === "airJumps") {
+    const v = now.airJumps, was = before.airJumps
+    return <input type="number" aria-label={name} title={name} min={0} max={99} step={1} value={v}
+      onChange={e => { const x = Math.round(Number(e.target.value)); if (Number.isFinite(x)) onClass(id, meta.key, Math.max(0, Math.min(99, x))) }}
+      onDoubleClick={() => onClass(id, meta.key, was)}
+      className={cn("h-10 w-10 rounded-md border border-white/15 bg-[#0b110e] text-center tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none", v !== was && "text-amber-300")} />
+  }
+  const key = meta.key as (typeof CLASS_FACTOR_KEYS)[number]
+  if (!CLASS_FACTOR_KEYS.includes(key)) return <span />
+  const f = now.factors[key], was = before.factors[key]
+  return (
+    <div onDoubleClick={() => onClass(id, meta.key, was)}>
+      <Knob value={f} min={0} max={CLASS_FACTOR_MAX} step={0.01} logarithmic label={name} ariaLabel={`${name} (× o valor da galinha)`} hideLabel
+        formatValue={x => `${Math.round(x * 100) / 100}`} accentColor={f !== was ? "#fcd34d" : undefined} onChange={x => onClass(id, meta.key, x)} />
+    </div>
+  )
 }
 
 function PqRange({ label, unit, min, max, step, value, onChange, hint, format }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string; format?: (v: number) => string }) {

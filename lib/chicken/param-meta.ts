@@ -103,6 +103,7 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Voo', key: 'flyDownFallAtten', label: 'Atenuador de queda (segurando para baixo)', unit: '%', min: -200, max: 200, step: 1, hint: 'Voando (Pulo segurado) com Baixo (agachar): tira esta parte da gravidade. 100% anula a queda; acima disso ela sobe; negativo puxa para baixo.' },
   { group: 'Voo', key: 'flapRate', label: 'Batidas de asa voando', unit: '/s', min: 2, max: 20, step: 0.5},
   { group: 'Voo', key: 'jumpFlaps', label: 'Batidas de asa por pulo', unit: '', min: 0, max: 6, step: 1},
+  { group: 'Voo', key: 'airJumps', label: 'Pulos no ar (máximo)', unit: '', min: 0, max: 99, step: 1, hint: '99 = sem limite.' },
   { group: 'Voo', key: 'heldFlapRate', label: 'Batidas de asa sendo arrastada', unit: '/s', min: 0, max: 20, step: 0.5, hint: '0 = asas paradas' },
   { group: 'Voo', key: 'jumpFlapRate', label: 'Velocidade das batidas do pulo', unit: '/s', min: 4, max: 24, step: 0.5},
   { group: 'Idle', key: 'idleMin', label: 'Balanço de cabeça: intervalo mín.', unit: 's', min: 0.2, max: 6, step: 0.1},
@@ -121,7 +122,13 @@ const RAW: ChickenParamMeta[] = [
   { group: 'Sorteio do cacarejo', key: 'byType', label: 'Sortear o tipo antes do sample', type: 'bool', hint: 'ligado: cada tipo tem a mesma chance, mesmo com poucos samples' },
   { group: 'Sorteio do cacarejo', key: 'avoidRepeat', label: 'Não repetir o último sample', type: 'bool'},
   ...CHICKEN_SFX_EVENTS.map(([ev, label]) => ({ group: 'Som de cada movimento', key: ('sfx_' + ev) as ChickenParamKey, label, type: 'select' as const })),
-  { group: 'Visual', key: 'scale', label: 'Tamanho da galinha', unit: '×', min: 0.5, max: 3, step: 0.05 },
+  { group: 'Vida', key: 'maxHp', label: 'Vida', unit: '', min: 10, max: 1000, step: 5, hint: 'Chi 100; Pig e Ken pelo fator da classe' },
+  { group: 'Vida', key: 'regenDelay', label: 'Regenera depois de', unit: 's', min: 0, max: 30, step: 0.5, hint: 'Tempo sem dano até a vida voltar sozinha' },
+  { group: 'Vida', key: 'regenRate', label: 'Velocidade da regeneração', unit: '%/s', min: 0, max: 50, step: 0.5 },
+  { group: 'Vida', key: 'guardBlock', label: 'Guarda: dano bloqueado de frente', unit: '%', min: 0, max: 100, step: 1, hint: 'Chocando, o Pig toma menos dano do que vem pela frente' },
+  { group: 'Vida', key: 'babyNotes', label: 'Filhote: notas para crescer', unit: '', min: 1, max: 40, step: 1, hint: 'Quantas notas enchem a barra de música do filhote' },
+  { group: 'Vida', key: 'babyDropSpread', label: 'Filhote: espalhada dos itens', unit: 'px', min: 0, max: 600, step: 10, hint: 'Até onde, de cada lado, caem os itens e as gaiolas ao virar filhote' },
+  { group: 'Visual', key: 'scale', label: 'Tamanho', unit: '×', min: 0.5, max: 6, step: 0.05, hint: '1 = o tamanho normal da galinha.' },
 ]
 
 export const CHICKEN_PARAM_META: ChickenParamMeta[] = RAW

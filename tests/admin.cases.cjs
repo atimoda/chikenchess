@@ -211,3 +211,19 @@ test('soul sheets: the file validates, feeds the catalogue and round-trips what 
   assert.throws(() => validateAdminValue(entry, { extra: 1 }))
   assert.throws(() => validateAdminValue(entry, []))
 })
+
+test('Salvar no game lists what changes: leaf by leaf, arrays whole, and nothing when equal', () => {
+  const { diffValues, showValue } = loadTs('lib/admin/save-diff.ts')
+  assert.deepEqual(diffValues({ a: 1, b: { c: [1, 2] } }, { a: 1, b: { c: [1, 2] } }), [])
+  const ch = diffValues({ a: 1, b: { c: [1, 2], d: true } }, { a: 2, b: { c: [1, 3], d: true }, e: { f: 'x' } })
+  assert.deepEqual(ch.map(c => c.label), ['a', 'b › c', 'e › f'])
+  assert.equal(ch[2].before, undefined)
+  assert.equal(showValue(undefined), '—'); assert.equal(showValue(true), 'sim'); assert.equal(showValue(0.12345), '0.123')
+  // the items: compared as the game reads them, so a file that lacks a key with the default is no change
+  const { itemsDefaultsFile, itemsOver, DEFAULT_ITEMS } = loadTs('lib/pigchicken/items.ts')
+  const now = itemsDefaultsFile(DEFAULT_ITEMS)
+  const sparse = { bat: { gripX: now.bat.gripX } }
+  assert.deepEqual(diffValues(itemsDefaultsFile(itemsOver(sparse)), itemsDefaultsFile(itemsOver(sparse))), [])
+  const next = itemsDefaultsFile({ ...DEFAULT_ITEMS, bat: { ...DEFAULT_ITEMS.bat, gripX: DEFAULT_ITEMS.bat.gripX + 3 } })
+  assert.deepEqual(diffValues(itemsDefaultsFile(itemsOver(now)), next).map(c => c.path.join('.')), ['bat.gripX'])
+})

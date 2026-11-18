@@ -247,7 +247,8 @@ export const PUFF_LIFE = 0.4
 export type FloatText = { x: number; y: number; text: string; life: number; color: string; size?: number }
 export type { Swing } from './swing'
 
-export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number }
+// species: her class's species ('pig', 'fox'): an empty hand of theirs hits with the chain or the tail
+export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; species?: string }
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
@@ -541,7 +542,11 @@ export function createCombat() {
     return true
   }
   const useKey = () => { spend(isKey) }
-  const def = (): ItemDef => { const h = held(); return h ? items[h.item] : items.wing }
+  // an empty hand: the wing, or Pig's chain (Correntada) and Ken's tail (Rabada)
+  const bareDef = (): ItemDef => lastBody?.species === 'pig' ? items.chainBlow : lastBody?.species === 'fox' ? items.tailBlow : items.wing
+  // the strong blow charged with an empty hand (Pig, Ken) has no item: this stands in for it
+  const BARE: Owned = { item: 'wing', ammo: 0, durability: 0 }
+  const def = (): ItemDef => { const h = held(); return h ? items[h.item] : bareDef() }
   // a Gaiola is born empty with its model's limit (cap: this one's own, a rack's or a loose item's)
   const fresh = (item: ItemId, cap?: number): Owned => ({ item, ammo: items[item].consumable ? Math.max(1, Math.min(CONSUMABLE_LIMITS[item] ?? 1, items[item].mag)) : items[item].mag, durability: items[item].durability, ...(items[item].cageSouls > 0 ? { cage: newCage(cageCap(cap, items[item].cageSouls)) } : {}) })
 
@@ -826,6 +831,12 @@ export function createCombat() {
     addText(t.x, top - 60, t.kind === 'alien' ? 'virou passarinho!' : 'curado!', '#7bdff2')
   }
   let lastBody: Body | null = null
+  // damage to this browser's own player (setHurt): a zombie's bite takes ZOMBIE_BITE of its health
+  let hurtSelf: ((amount: number, fromX: number) => void) | null = null
+  const ZOMBIE_BITE = 15
+  // the Filhotes here (lib/chicken/baby.ts): the notes that reach one fill its music bar (not its own notes)
+  let babies: { by?: string; box: BlastBox; fill: () => void }[] = []
+  const babyAt = (x: number, y: number, r: number, by?: string) => babies.find(b => b.by !== by && x + r > b.box.l && x - r < b.box.r && y + r > b.box.t && y - r < b.box.b)
 
   // ---------- the undead ----------
   const harmonyNow = () => { const z = music.zone; return { root: z.root, steps: SCALES[z.scale].steps, chord: music.chord(true), spb: music.secondsPerBeat() } }
@@ -963,7 +974,15 @@ export function createCombat() {
 
   // One slot per type; consumables can top up their existing stack.
   // A Gaiola is always offered: it hangs with the others, or takes the place of the one in front.
-  const canTake = (p: Pickup) => p.noPick <= 0 && (!!p.owned.cage || !inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
+  // the Filhotes among the local players (lib/chicken/baby.ts): one firearm, one instrument, one utility and one Gaiola
+  // at most (a new one of a group takes the place of the one it had, which falls); no staff (Taco, Passaguá, Martelo,
+  // Cajado, Boomerang, baralhos): it never hits
+  const babyHere = new Set<string>()
+  const isBabyNow = () => babyHere.has(active)
+  const babyRefuses = (item: ItemId) => isBabyNow() && !isCage(item) && (isStaff(items[item]) || (ownGroup(item) === 1 && items[item].mag <= 0))
+  const canTake = (p: Pickup) => p.noPick <= 0 && !babyRefuses(p.owned.item) && (!!p.owned.cage || !inv.some(o => o.item === p.owned.item) || inv.some(o => o.item === p.owned.item && o.ammo < (CONSUMABLE_LIMITS[o.item] ?? 0)))
+  // when the Filhote's piu can sound again
+  let piuCool = 0
 
   // ---------- Gaiolas (lib/pigchicken/cages.ts) ----------
   // the souls on their way to a cage (caught, called back, asked of another browser) keep their place in it
@@ -988,7 +1007,7 @@ export function createCombat() {
   // the one that was there falls to the floor with its souls; Golpe and Pegar held while passing never swap
   function takeCage(p: Pickup, swap: boolean) {
     const cage = p.owned.cage!
-    if (cages.length >= CAGES_MAX) {
+    if (cages.length >= (isBabyNow() ? 1 : CAGES_MAX)) {
       if (!swap) return false
       const old = cages[0]
       old.cage!.enterT = Infinity
@@ -1016,6 +1035,15 @@ export function createCombat() {
       sound('equip', stack.item)
       addText(p.x, p.y - 30, `+${amount} ${items[stack.item].name}`, '#7bdff2')
       return true
+    }
+    // a Filhote with an item of that group already: the new one takes its place and the old one falls
+    const same = isBabyNow() ? inv.findIndex(o => groupOf(o) === ownGroup(p.owned.item)) : -1
+    if (same >= 0) {
+      const old = inv[same]
+      if (same === cur) stopBeam()
+      inv.splice(same, 1)
+      if (cur > same || cur >= inv.length + 1) cur = Math.max(0, cur - 1)
+      pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
     }
     if (!room()) return false
     const wasHeld = held()
@@ -1212,6 +1240,25 @@ export function createCombat() {
       if (r.choke) { kit.hat.stop(0.03); kit.hat = null }
       else kit.hat.setVolume?.(hatRing(r.open))
     }
+  }
+
+  // ---------- the Filhote's piu ----------
+  // a peep of the bird voice on a note of the chord (higher aiming up), and that note flying off a little way: it
+  // gives a little harmony to what it reaches and fills the music bar of another Filhote
+  function piu(at: { x: number; y: number }, angle: number) {
+    const d = items.piu
+    const midi = music.noteFor(angle, 'chord', d.octave, d.span)
+    out.note(d.voice, midi, 0, d.noteLen, 0.55)
+    const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    const b: Bullet = {
+      x: at.x, y: at.y, vx: Math.cos(angle) * d.speed, vy: Math.sin(angle) * d.speed, dist: 0, damage: d.damage, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      item: 'piu', t: 0, explode: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
+      note: { midi, color, sym: NOTE_SYMBOLS[0], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }, ring: 0, ghost: true,
+    }
+    b.by = active
+    bullets.push(b)
+    if (netOn) netShots.push(shotOf(b))
+    burst(at.x, at.y, 3, color, 90, 2)
   }
 
   // ---------- Cordas soltas: the strings (lib/pigchicken/strings-play.ts) ----------
@@ -1426,7 +1473,7 @@ export function createCombat() {
         // its note, softer than one's own
         if (note && near && heard < 4) out.note(note.voice, note.midi, 0, d.noteLen, 0.4)
       }
-      if (near && heard++ < 4 && !d.instrument) sounds.push({ kind: s.k === 'th' ? 'throw' : 'shot', item: s.k === 'th' ? null : s.i })
+      if (near && heard++ < 4 && !d.instrument && s.i !== 'piu') sounds.push({ kind: s.k === 'th' ? 'throw' : 'shot', item: s.k === 'th' ? null : s.i })
     }
   }
 
@@ -1634,6 +1681,13 @@ export function createCombat() {
     if (b.fuse > 0 && b.t >= b.fuse) return gone(b.x, b.y)
     if (b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
+    // an instrument's note that reaches a Filhote (not the one who played it) fills its music bar
+    if (b.note && !b.room) {
+      for (let k = 1; k <= steps; k++) {
+        const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps, baby = babyAt(x, y, b.size, b.by)
+        if (baby) { baby.fill(); burst(x, y, 6, b.note.color, 140, 2); return true }
+      }
+    }
     // swept test against targets: points along the step's segment inside the target's box
     for (const t of b.room ? [] : targets) {
       if (t.deadT > 0 || b.hits.has(t.id)) continue
@@ -1782,7 +1836,7 @@ export function createCombat() {
   // a blow pressed while the last one is still going interrupts it and the new one starts right away (with no
   // interval, every note of a song can be hit), unless the item says not to: then it waits for the move to end
   function canSwing(wing: boolean) {
-    const d = wing ? items.wing : def()
+    const d = wing ? bareDef() : def()
     return d.meleeInterrupt || !swing || swing.t >= swing.time
   }
   // an item only for hitting with blows to count (the taco): a blow needs one loaded and not reloading
@@ -1791,7 +1845,7 @@ export function createCombat() {
   function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
   // heavy: the strong blow, with the share of the charge it was let go with (0..1)
   function melee(wing: boolean, scale: number, heavy: number | null = null) {
-    const d = wing ? items.wing : def()
+    const d = wing ? bareDef() : def()
     const strong = heavy !== null
     const own = wing ? null : held()
     if (own && d.meleeOnly && d.mag > 0) {
@@ -2016,7 +2070,7 @@ export function createCombat() {
       const off = music.time - n.arriveAt, grade = judgeNote(off)
       // what it plays: the sequenced note through the ambience (the stage's fan, the map's lanes and zone) and the
       // item's chain of transformations, in the order the note's rule says
-      const d = sw.wing ? items.wing : def()
+      const d = sw.wing ? bareDef() : def()
       const env = noteEnv?.(n, Math.atan2(n.y - origin.y, n.x - origin.x)) ?? null
       const voice: VoiceId = d.instrument ? d.voice : 'bells'
       const seq: NoteOut = { midi: n.midi, at: 0, dur: grade === 'fora' ? 0.2 : 0.4, vel: grade === 'perfect' ? 0.85 : grade === 'good' ? 0.6 : 0.25, voice }
@@ -2139,6 +2193,9 @@ export function createCombat() {
       }
       const tuned = laneRetune(n.x, n.y)
       if (tuned !== null && tuned !== n.midi) { n.midi = tuned; n.color = DEGREE_COLORS[music.degreeOf(tuned) % DEGREE_COLORS.length] }
+      // a rebated note that reaches a Filhote fills its music bar
+      const baby = babyAt(n.x, n.y, n.size)
+      if (baby) { baby.fill(); burst(n.x, n.y, 8, n.color, 160, 3); noteShots.splice(i, 1); continue }
       const hit = targets.find(t => (t.kind === 'alien' || t.kind === 'zombie' || (t.kind === 'undead' && !(t.data as UndeadState).bird)) && t.deadT <= 0 && t.state !== 'converted' &&
         n.x + n.size > t.x - t.w / 2 && n.x - n.size < t.x + t.w / 2 && n.y + n.size > t.y - t.h && n.y - n.size < t.y)
       if (hit) {
@@ -2479,13 +2536,28 @@ export function createCombat() {
     onBite: (t, at) => {
       const px = at?.x ?? playerX, py = at?.y ?? playerY
       // the bitten one is this browser's chicken: it counts here
-      if (px === playerX && py === playerY) kills.bites++
+      if (px === playerX && py === playerY) { kills.bites++; hurtSelf?.(ZOMBIE_BITE, t.x) }
       addText(px, py - 150, 'mordida!', '#ff6b5b'); burst(px + (t.face > 0 ? -20 : 20), py - 80, 10, '#ff6b5b', 200, 3); sound('bite', null)
     },
   })
 
   return {
     setBlastActors(actors: { id?: string; box: BlastBox; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
+    /** What damage to this browser's own player does (its health, lib/chicken/engine.ts): a zombie's bite. */
+    setHurt(fn: ((amount: number, fromX: number) => void) | null) { hurtSelf = fn },
+    /** The Filhotes the notes can reach: each note that does fills a share of its music bar. */
+    setBabies(list: { by?: string; box: BlastBox; fill: () => void }[]) { babies = list },
+    /** Whether the local player `id` is a Filhote (what it can carry and do). */
+    setBaby(id: string, on: boolean) { if (on) babyHere.add(id); else babyHere.delete(id) },
+    /** The active player becomes a Filhote: every item and Gaiola she had falls around her, up to `spread` px away. */
+    dropAll(spread: number) {
+      standUp()
+      stopBeam(); peck = null; peckPrep = 0; swing = null; heavyItem = null; heavyT = 0; consumption = null; reloadT = 0; chargeT = 0; burstLeft = 0
+      const at = lastBody ?? { x: 0, y: floorY }
+      const fling = (o: Owned) => pickups.push({ id: nextId++, owned: o, x: at.x + rand(-spread, spread), y: at.y - 40, vy: -rand(260, 460), resting: false, noPick: 1 })
+      inv.splice(0).forEach(fling); cur = 0
+      for (const o of cages.splice(0)) { o.cage!.enterT = Infinity; fling(o) }
+    },
     setCatchables(list: Catchable[]) { catchables = list },
     /** a little cloud where something left (another browser's chick that is no longer there) */
     puff(x: number, y: number) { cloud(x, y) },
@@ -2660,8 +2732,10 @@ export function createCombat() {
     // grab on the hovered item swaps (inventory full) instead of taking it into a free slot
     get hoverSwaps() { return hover?.owned.cage ? cages.length >= CAGES_MAX : !room() && !inv.some(o => o.item === hover?.owned.item) },
     // the strong blow being charged with the staff in the wing: whether it is armed and how full the charge is (0..1)
-    get heavyCharging() { return !!heavyItem && heavyItem === held() },
-    get heavyCharge() { return heavyItem && heavyItem === held() ? Math.min(1, heavyT / staffCharge(def())) : 0 },
+    // the class of the body it last stepped (Pig's and Ken's items have their own Pontos)
+    get species() { return lastBody?.species },
+    get heavyCharging() { return !!heavyItem && heavyItem === (held() ?? BARE) },
+    get heavyCharge() { return heavyItem && heavyItem === (held() ?? BARE) ? Math.min(1, heavyT / staffCharge(def())) : 0 },
     // the lightning weapons (lib/pigchicken/shock.ts): the bolts showing, the staffs thrown that are coming back,
     // how bright the sky is from a special (0..1) and where a throw that comes back would fly if let go now
     bolts, flights,
@@ -3044,10 +3118,11 @@ export function createCombat() {
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
       // starts again as if the button had just been pressed.
       const hNow = held()
-      if (input.melee && meleeCool <= 0 && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
+      // a Filhote never hits: Golpe with the hand empty is its piu (below)
+      if (input.melee && meleeCool <= 0 && !isBabyNow() && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
       // a strong blow being charged is called off by Golpe (the quick blow comes out instead), by another item in
       // the wing and by a Throw
-      if (heavyItem && (heavyCancel || input.melee || heavyItem !== hNow || input.throwHeld)) { heavyItem = null; heavyT = 0 }
+      if (heavyItem && (heavyCancel || input.melee || heavyItem !== (hNow ?? BARE) || input.throwHeld)) { heavyItem = null; heavyT = 0 }
       if (hNow && !dNow.consumable && !dNow.meleeOnly && dNow.mag !== 0 && swing && swing.t < swing.time) {
         fireResume = input.fire ? hNow : null
         input = { ...input, fire: false, firePressed: false }
@@ -3137,7 +3212,24 @@ export function createCombat() {
       }
       const canFire = body.state !== 'slide' || d.slideFire
       if (effects.length) { effects.forEach(e => { e.left -= dt }); effects = effects.filter(e => e.left > 0) }
-      if (!h) {
+      piuCool = Math.max(0, piuCool - dt)
+      if (!h && isBabyNow()) {
+        // the Filhote's empty hand: Atirar or Golpe peeps a small note that flies a little way
+        if ((input.firePressed || input.melee) && !input.cancelFire && piuCool <= 0 && body.state !== 'held' && !body.state.startsWith('portal')) {
+          piu(opts.peckOrigin ?? origin, targetAngle)
+          piuCool = 1 / Math.max(0.2, items.piu.rate)
+        }
+      } else if (!h && bareDef() !== items.wing) {
+        // Pig and Ken with empty hands: Atirar is the strong blow of the chain or the tail, like a staff's
+        const bd = bareDef()
+        if (input.cancelFire || body.state === 'held' || body.state.startsWith('portal')) { heavyItem = null; heavyT = 0 }
+        else if (input.firePressed && !heavyCancel && !input.melee && !input.throwHeld) { heavyItem = BARE; heavyT = 0 }
+        else if (heavyItem === BARE && input.fire) { if (meleeCool <= 0) heavyT += dt }
+        else if (heavyItem === BARE) {
+          if (meleeCool <= 0 && canSwing(true)) melee(true, body.scale, Math.min(1, heavyT / staffCharge(bd)))
+          heavyItem = null; heavyT = 0
+        }
+      } else if (!h) {
         if (!input.cancelFire && !input.melee && body.state !== 'held' && !body.state.startsWith('portal')) {
           if (input.firePressed && peckCool <= 0 && meleeCool <= 0 && !peck) peckPrep = dt
           else if (input.fire && peckPrep > 0) peckPrep += dt
