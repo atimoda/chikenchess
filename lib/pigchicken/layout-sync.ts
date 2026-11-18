@@ -10,6 +10,7 @@ import { isFixedKind, type Seat } from './fixed-instruments'
 import { DUMMY_DEFAULTS } from './dummies'
 import { worldEnd, type LayoutElement } from './layout'
 import { rackRefillLimit, rackRespawnDelay } from './racks'
+import { pressRules, withPressRules } from './button-limit'
 
 type Rack = Combat['racks'][number]
 const AWAY = -1e6
@@ -120,6 +121,8 @@ export function createLayoutSync(combat: Combat) {
       if (el.kind === 'button') {
         if (!t) { combat.addButton(cx, bottom, el.params.action!, el.w, el.h); t = combat.targets[combat.targets.length - 1]; targets.set(el.id, t) }
         t.label = el.params.action
+        // the Aliens button's limit (the others press as before)
+        t.press = el.params.action === 'aliens' ? withPressRules(t.press, pressRules(el.params)) : undefined
       } else {
         const params = { message: el.params.message ?? '', maxHp: el.params.maxHp ?? DUMMY_DEFAULTS.maxHp }
         const key = JSON.stringify(params)

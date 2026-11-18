@@ -9,14 +9,14 @@ const geo = (cell = 288, gap = 32, w = world) => M.mineGeometry({ cell, gap }, w
 test('the saved grid is cleaned to its ranges; nothing saved means no grid', () => {
   assert.equal(M.normalizeMineGrid(undefined), undefined)
   assert.equal(M.normalizeMineGrid('on'), undefined)
-  const round = { blockNotes: false, toFlag: 24, toOpen: 600, insideBreaks: true, toDoubt: 24, turn: 0, fuse: 10, startBombs: 2, grey: '#8f98a3', blue: '#4d9bff', red: '#ff5a5a', wallOpacity: 100, corner: 0, zones: { on: true, rhythm: 3, all: true, pool: [], seed: 1 } }
+  const round = { blockNotes: false, toFlag: 24, toOpen: 600, insideBreaks: true, toDoubt: 24, turn: 0, fuse: 10, startBombs: 2, grey: '#8f98a3', blue: '#4d9bff', red: '#ff5a5a', orange: '#ffb366', wallOpacity: 100, corner: 0, zones: { on: true, rhythm: 3, all: true, pool: [], seed: 1 } }
   assert.deepEqual(M.normalizeMineGrid({}), { on: false, cell: 288, gap: 32, pass: true, bombs: 15, ...round })
   assert.deepEqual(M.normalizeMineGrid({ on: true, cell: 5000, gap: -9, pass: false, bombs: 99.6 }), { on: true, cell: 960, gap: 0, pass: false, bombs: 60, ...round })
   assert.deepEqual(M.normalizeMineGrid({ on: 1, cell: 291, gap: 33, bombs: NaN }), { on: false, cell: 288, gap: 32, pass: true, bombs: 15, ...round })
   // the seesaw's settings: ranges, the turn's choices and colours as #rrggbb
   assert.deepEqual(
     M.normalizeMineGrid({ blockNotes: true, toFlag: 1, toOpen: 99999, toDoubt: 300, turn: 'first', fuse: -4, startBombs: 3.4, grey: 'red', blue: '#ABCDEF', red: '#12', wallOpacity: 37, corner: 37 }),
-    { on: false, cell: 288, gap: 32, pass: true, bombs: 15, blockNotes: true, toFlag: 4, toOpen: 5000, insideBreaks: true, toDoubt: 200, turn: 'first', fuse: 0, startBombs: 3, grey: '#8f98a3', blue: '#abcdef', red: '#ff5a5a', wallOpacity: 35, corner: 35, zones: { on: true, rhythm: 3, all: true, pool: [], seed: 1 } },
+    { on: false, cell: 288, gap: 32, pass: true, bombs: 15, blockNotes: true, toFlag: 4, toOpen: 5000, insideBreaks: true, toDoubt: 200, turn: 'first', fuse: 0, startBombs: 3, grey: '#8f98a3', blue: '#abcdef', red: '#ff5a5a', orange: '#ffb366', wallOpacity: 35, corner: 35, zones: { on: true, rhythm: 3, all: true, pool: [], seed: 1 } },
   )
   // the notes bounce only where a Pátio says so
   assert.equal(M.normalizeMineGrid({ blockNotes: 1 }).blockNotes, false)
@@ -463,7 +463,8 @@ test('the example Pátio "Campo minado" survives saving and starts a round: thre
   const shelvesOf = els.filter(e => e.kind === 'platform')
   ;[...portals, ...racks, ...chests].forEach(e => {
     const [c, r] = blockOf(e), k = M.mineCellRect(geo, c, r), floor = r === 0 ? W.WORLD_GROUND_Y : k.y + k.h - M.mineWallThickness(geo)
-    assert.equal(L.layoutFloorBelow(els, e.x + e.w / 2, e.y), floor, e.id)
+    // (without itself: a rack's own table holds up what is dropped on it)
+    assert.equal(L.layoutFloorBelow(els.filter(o => o !== e), e.x + e.w / 2, e.y), floor, e.id)
     assert.equal(shelvesOf.filter(s => s.y === floor && s.x <= e.x && s.x + s.w >= e.x + e.w).length, r === 0 ? 0 : 1, e.id)
   })
   assert.equal(shelvesOf.length, new Set([...portals, ...racks, ...chests].map(blockOf).filter(([, r]) => r > 0).map(String)).size)

@@ -338,6 +338,9 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 <label className="flex items-center justify-between gap-3" title="Desligado: um golpe apertado durante o anterior espera ele terminar"><span>Golpe novo interrompe o anterior</span><input type="checkbox" checked={it.meleeInterrupt} onChange={e => { const v = e.target.checked; update(d => { d.meleeInterrupt = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
               {g === "Golpe" && sel !== "peck" && (
+                <label className="flex items-center justify-between gap-3" title="Clique direito do mouse num ponto fora do alcance: anda até lá e golpeia ao chegar"><span>Clique direito: point and click</span><input type="checkbox" checked={it.pointClick} onChange={e => { const v = e.target.checked; update(d => { d.pointClick = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+              )}
+              {g === "Golpe" && sel !== "peck" && (
                 <label className="flex items-center justify-between gap-3">
                   <span>Rastro: cor</span>
                   <input type="color" aria-label="Cor do rastro" value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? "Nos instrumentos o rastro pega a cor da nota do acorde" : "Duplo clique volta a cor do código"} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />

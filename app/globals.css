@@ -207,3 +207,20 @@ html[data-power-targeting-cursor="grabbing"] * {
 :root[data-graphics="low"] :is(.pt-tree, .pt-petal, .tp-lantern, .tp-glow, .tp-tree, .tp-petal, .px-cloud, .px-aurora, .px-aurora-b, .custom-tree-sway) { animation: none !important; }
 :root[data-graphics="low"] .custom-tree-particles { display: none; }
 :root[data-graphics="low"] .scenery-wind-bend { transform: none !important; transition: none; }
+
+/* A zone tag's value changing (components/pigchicken/zone-tags.tsx): like a departures board, the old text drops
+   down out of its line and the new one comes in from above. */
+@keyframes zone-flip-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(1.6em); opacity: 0.2; }
+}
+@keyframes zone-flip-in {
+  from { transform: translateY(-1.6em); opacity: 0.2; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.zone-flip-out { animation: zone-flip-out 240ms cubic-bezier(0.5, 0, 0.9, 0.6) both; }
+.zone-flip-in { animation: zone-flip-in 260ms cubic-bezier(0.15, 0.6, 0.35, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .zone-flip-out { display: none; }
+  .zone-flip-in { animation: none; }
+}

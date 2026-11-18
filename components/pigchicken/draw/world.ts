@@ -7,6 +7,7 @@ import { type Catalog } from "@/lib/pigchicken/alien-catalog"
 import { nearestPoint } from "@/lib/pigchicken/eyes"
 import { lookSpecies } from "@/lib/pigchicken/enemies"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { RACK_ITEM_START, rackCountdown } from "@/lib/pigchicken/racks"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Temple } from "@/lib/pigchicken/temple"
 import { type NoteStage } from "@/lib/pigchicken/note-stage"
@@ -71,6 +72,9 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
     ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
     ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
+    // waiting to put its item back: the time left, where the item appears
+    const left = rackCountdown(r)
+    if (left) { ctx.textBaseline = "top"; ctx.fillText(left, x, groundY - RACK_ITEM_START); ctx.textBaseline = "alphabetic" }
   })
   combat.chests.forEach(c => { if (visible(c.x, c.y + 40, 320, 520)) drawChest(ctx, c, X(c.x), t) })
   combat.seats.forEach(s => { if (!visible(s.x, s.y + 40, 320, 520)) return; if (s.kind === 'drumkit') drawDrumKit(ctx, s, X(s.x), p => combat.seatPulse(s, p)); else drawHarp(ctx, s, X(s.x)) })

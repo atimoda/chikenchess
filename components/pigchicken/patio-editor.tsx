@@ -23,6 +23,7 @@ import { isFixedKind } from "@/lib/pigchicken/fixed-instruments"
 import { DUMMY_HP_RANGE } from "@/lib/pigchicken/dummies"
 import { TRAMPOLINE_ANGLE, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { rackRespawnDelay, RACK_DELAY_STEPS, RACK_REFILL_MAX } from "@/lib/pigchicken/racks"
+import { pressRules, PRESS_GAP, PRESS_LIMIT_MAX, PRESS_WINDOW_STEPS } from "@/lib/pigchicken/button-limit"
 import { CAGE_IDS, CAGE_SOULS_MAX, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, MINE_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, isCage, loadItems, type ItemId } from "@/lib/pigchicken/items"
 import { addChestItem, CHEST_GLOW, CHEST_RARITIES, defaultChest, type ChestRarity } from "@/lib/pigchicken/chests"
 import { ChestFields, ItemOptGroups } from "./chest-fields"
@@ -35,7 +36,7 @@ import { BackdropPin, type BackdropScene } from "./backdrop-pin"
 import { ELEMENT_DEPTH, POWER_MODELS, POWER_SAG, POWER_WIRE, POLE_MODELS, TOWER_MODELS, defaultPower, dropLinks, linkedTo, spreadPower, toggleLink, type PowerParams } from "@/lib/pigchicken/power-lines"
 import { SCENE_W, WORLD_GROUND_Y, sceneAt, templeScene, worldScenes } from "@/lib/pigchicken/world"
 import { ZONES } from "@/lib/pigchicken/music"
-import { asSceneZone, defaultSoundZone, moveSceneEdge, sceneZoneParams, type SceneZones, type SoundZoneParams } from "@/lib/pigchicken/sound-zones"
+import { defaultSoundZone, moveSceneEdge, sceneZoneParams, type SceneZones, type SoundZoneParams, withSceneZone } from "@/lib/pigchicken/sound-zones"
 import { LanesFields, SoundZoneFields, SurfaceRebateFields } from "./sound-zone-panels"
 import { MusicZonesLayer, type ZoneResize } from "./music-zones-layer"
 import { DepthLayer, ElementArt } from "./patio-layout"
@@ -148,10 +149,8 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }, [commit, screens])
   // a scene's own zone, saved in the Pátio's settings (null: back to the scene's own, in silence)
   const setSceneZone = useCallback((scene: number, zone: SoundZoneParams | null, step?: string) => {
-    const cur = layoutRef.current, zones = { ...cur.settings?.sceneZones }
-    if (zone) zones[String(scene)] = asSceneZone(zone)
-    else delete zones[String(scene)]
-    const settings = { ...cur.settings, sceneZones: Object.keys(zones).length ? zones : undefined }
+    const cur = layoutRef.current
+    const settings = { ...cur.settings, sceneZones: withSceneZone(cur.settings?.sceneZones, scene, zone) }
     if (!settings.sceneZones) delete settings.sceneZones
     commit({ ...cur, settings }, step)
   }, [commit])
@@ -286,9 +285,32 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }, [select])
 
   // ---------- gestures on the selected element: move, resize, turn ----------
-  const begin = (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => {
+  // A locked element does not hold the click: a press, a double click or the hover on it go to the first unlocked
+  // element under the pointer (behind it, or around it inside its box), the way to reach a layer behind without
+  // moving the one in front. Only with nothing else there does it take the click itself (to be selected and
+  // unlocked). While wiring, a locked pole or tower of the selected one's kind still takes it.
+  const through = useCallback((el: LayoutElement, x: number, y: number) => {
+    if (!el.locked || (linkingRef.current && el.id !== selectedRef.current && layoutRef.current.elements.find(e => e.id === selectedRef.current)?.kind === el.kind)) return el
+    for (const n of document.elementsFromPoint(x, y)) {
+      const id = n.getAttribute("data-patio-hit")
+      if (!id || id === el.id || n.hasAttribute("data-locked")) continue
+      const hit = layoutRef.current.elements.find(e => e.id === id)
+      if (hit) return hit
+    }
+    return el
+  }, [])
+  const passed = useRef<Element | null>(null)
+  const peek = useCallback((el: LayoutElement, e: React.PointerEvent | null) => {
+    const box = e?.currentTarget as Element | undefined
+    const to = e && !gesture.current ? through(el, e.clientX, e.clientY) : el
+    const node = to === el ? null : document.querySelector(`[data-patio-hit="${CSS.escape(to.id)}"]`)
+    if (passed.current !== node) { passed.current?.removeAttribute("data-under"); node?.setAttribute("data-under", ""); passed.current = node }
+    if (box) { if (node) box.setAttribute("data-through", to.id === selectedRef.current ? "move" : "pick"); else box.removeAttribute("data-through") }
+  }, [through])
+  const begin = (kind: Gesture["kind"], at: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault(); e.stopPropagation()
+    const el = kind === "move" ? through(at, e.clientX, e.clientY) : at
     // wiring: another pole or tower of the same kind is wired to the selected one (or unwired); a new wire moves
     // the selection to it, to go on with the line
     const from = selectedRef.current
@@ -389,8 +411,12 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         [data-patio-hit] { cursor: pointer; }
         [data-patio-hit]:hover { outline: 1px solid rgba(255,209,102,.7); outline-offset: 2px; }
         [data-patio-hit][data-sel] { outline: 2px solid #ffd166; outline-offset: 2px; cursor: move; }
-        [data-patio-hit][data-sel][data-locked] { outline-color: #9aa0a8; cursor: not-allowed; }
+        [data-patio-hit][data-sel][data-locked] { outline-color: #9aa0a8; cursor: default; }
         [data-patio-hit][data-link] { outline: 1px dashed rgba(123,223,242,.8); outline-offset: 2px; cursor: crosshair; }
+        [data-patio-hit][data-locked][data-through]:not([data-sel]):hover { outline: none; }
+        [data-patio-hit][data-locked][data-through="pick"] { cursor: pointer; }
+        [data-patio-hit][data-locked][data-through="move"] { cursor: move; }
+        [data-patio-hit][data-under]:not([data-sel]) { outline: 1px solid rgba(255,209,102,.7); outline-offset: 2px; }
         [data-patio-hit][data-link="on"] { outline: 2px solid #7bdff2; }
         .patio-corner { position: absolute; width: 28px; height: 28px; touch-action: none; display: grid; place-items: center; }
         .patio-corner span { width: 12px; height: 12px; border: 0 solid #ffd166; }
@@ -400,7 +426,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
         <div ref={worldRef} className="absolute left-0 top-0" style={{ width, height: WORLD_GROUND_Y }}>
           {[...shown.filter(e => isMusicElement(e.kind)), ...shown.filter(e => !isMusicElement(e.kind))].map(el => {
             const link = linking && sel && el.id !== sel.id && el.kind === sel.kind ? (wired.has(el.id) ? "on" : "can") : undefined
-            const box = <HitBox key={el.id} el={el} selected={el.id === selected} link={link} begin={begin} onMove={onMove} onUp={onUp} edit={edit} />
+            const box = <HitBox key={el.id} el={el} selected={el.id === selected} link={link} begin={begin} onMove={onMove} onUp={onUp} edit={edit} through={through} peek={peek} />
             // in a parallax depth its handle slides with it
             return el.depth ? <DepthLayer key={el.id} depth={el.depth} pinned={!!el.backdrop}>{box}</DepthLayer> : box
           })}
@@ -440,7 +466,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
-        onScene={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
+        onScene={setSceneZone} onSlam={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
       {active && soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
         <SceneZonePanel key={scenePanel} scene={scenePanel} zones={layout.settings?.sceneZones} onChange={(zone, step) => setSceneZone(scenePanel, zone, step && `${step}:cena${scenePanel}`)}
           onReset={() => setSceneZone(scenePanel, null)} onClose={() => setScenePanel(null)} />
@@ -467,10 +493,11 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
 }
 
 // one element's hit area (turned like it) with its corners when selected
-const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, edit }: {
+const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, edit, through, peek }: {
   el: LayoutElement; selected: boolean; link?: "on" | "can"
   begin: (kind: Gesture["kind"], el: LayoutElement, corner?: [number, number]) => (e: React.PointerEvent) => void
   onMove: (e: React.PointerEvent) => void; onUp: (e: React.PointerEvent) => void; edit: (el: LayoutElement) => void
+  through: (el: LayoutElement, x: number, y: number) => LayoutElement; peek: (el: LayoutElement, e: React.PointerEvent | null) => void
 }) {
   const d = ELEMENT_DEFS[el.kind]
   return (
@@ -484,10 +511,11 @@ const HitBox = memo(function HitBox({ el, selected, link, begin, onMove, onUp, e
       className={cn("pointer-events-auto absolute touch-none", (el.kind === "portal" || el.kind === "entry" || el.kind === "spawn") && "z-[1]")}
       style={{ left: el.x, top: el.y, width: el.w, height: el.h, transform: el.rot ? `rotate(${el.rot}deg)` : undefined }}
       onPointerDown={begin("move", el)}
-      onPointerMove={onMove}
+      onPointerMove={e => { onMove(e); if (el.locked) peek(el, e) }}
+      onPointerLeave={() => peek(el, null)}
       onPointerUp={onUp}
       onPointerCancel={onUp}
-      onDoubleClick={e => { e.stopPropagation(); edit(el) }}
+      onDoubleClick={e => { e.stopPropagation(); edit(through(el, e.clientX, e.clientY)) }}
       onContextMenu={e => e.preventDefault()}
     >
       {selected && !el.locked && d.resizable && ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as [number, number][]).map(([sx, sy]) => (
@@ -822,6 +850,25 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
           </StepSelect>
         </label>
       )}
+      {el.kind === "button" && el.params.action === "aliens" && (() => {
+        // how often it can be pressed (lib/pigchicken/button-limit.ts); double click: the default
+        const rules = pressRules(el.params)
+        const at = PRESS_WINDOW_STEPS.reduce((best, v, i) => Math.abs(v - rules.window) < Math.abs(PRESS_WINDOW_STEPS[best] - rules.window) ? i : best, 0)
+        return <>
+          <PatioRange label="Limite de apertos" min={1} max={PRESS_LIMIT_MAX + 1} value={rules.limit || PRESS_LIMIT_MAX + 1}
+            display={rules.limit || "∞"} onEnd={endSlider} onReset={() => set({ pressLimit: undefined })}
+            hint="Quantas vezes o botão pode ser apertado dentro do tempo abaixo. Atingido o limite, ele fica cinza até poder de novo. No fim da barra: sem limite."
+            onChange={v => set({ pressLimit: v > PRESS_LIMIT_MAX ? 0 : v }, `press-limit:${editSession}:${sliderGesture.current}`)} />
+          <PatioRange label="A cada" min={0} max={PRESS_WINDOW_STEPS.length - 1} value={at}
+            display={rules.window >= 60 ? `${(rules.window / 60).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} min` : `${rules.window} s`}
+            dimmed={!rules.limit} onEnd={endSlider} onReset={() => set({ pressWindow: undefined })}
+            onChange={i => set({ pressWindow: PRESS_WINDOW_STEPS[i] }, `press-window:${editSession}:${sliderGesture.current}`)} />
+          <PatioRange label="Intervalo mínimo" min={PRESS_GAP.min * 10} max={PRESS_GAP.max * 10} value={Math.round(rules.gap * 10)}
+            display={`${rules.gap.toLocaleString("pt-BR")} s`} onEnd={endSlider} onReset={() => set({ pressGap: undefined })}
+            hint="Tempo entre um aperto e o próximo; o botão fica cinza nesse intervalo."
+            onChange={v => set({ pressGap: v / 10 }, `press-gap:${editSession}:${sliderGesture.current}`)} />
+        </>
+      })()}
 
     </FloatingPanel>
   )

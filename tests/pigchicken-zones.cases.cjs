@@ -343,3 +343,53 @@ test('zone chords always fit the melody scale, and the drone stays near the key 
   assert.equal(music.droneOf(zone, music.chordOn(zone, 5)).third, 3); assert.equal(music.droneOf(zone, music.chordOn(zone, 3)).third, 4)
   for (let d = 0; d < 7; d++) { const r = music.droneOf(zone, music.chordOn(zone, d)).root; assert.ok(r >= 55 && r <= 66, `${d}: ${r}`) }
 })
+
+// The scenes' zone strip under the ground is stepped on: a slam (falling onto the ground holding Chocar) moves the tag
+// under the player to its next value, the same as a click on it (lib/pigchicken/zone-slam.ts)
+test('a slam moves the tag under it to the next value, the same as a click', () => {
+  const slam = loadTs('lib/pigchicken/zone-slam.ts')
+  const zc = loadTs('lib/pigchicken/zone-changes.ts')
+  const z = sz.sceneZoneParams(undefined, 1)
+  assert.equal(slam.nextZoneTag(z, 'name'), null)
+  for (const key of Object.keys(zc.ZONE_STEP)) {
+    const next = slam.nextZoneTag(z, key)
+    assert.deepEqual(next, sz.normalizeSoundZone({ ...z, ...zc.ZONE_STEP[key](z) }), key)
+  }
+  // the sliders step in tens (the priority one at a time) and go back to the start past the end
+  assert.equal(slam.nextZoneTag({ ...z, bpm: 95 }, 'bpm').bpm, 100)
+  assert.equal(slam.nextZoneTag({ ...z, bpm: 200 }, 'bpm').bpm, zc.ZONE_BPM.min)
+  assert.equal(slam.nextZoneTag({ ...z, priority: 9 }, 'priority').priority, 1)
+  assert.equal(slam.nextZoneTag({ ...z, xray: undefined }, 'xray').xray, true)
+  assert.equal(slam.nextZoneTag({ ...z, xray: true }, 'xray').xray, undefined)
+  assert.notEqual(slam.nextZoneTag(z, 'gravity').gravity, z.gravity)
+})
+
+test('the slam finds its scene and the tag under it: the top row, the nearest within reach, nothing past the tags', () => {
+  const slam = loadTs('lib/pigchicken/zone-slam.ts')
+  assert.equal(slam.sceneAtX([0, 1920, 3840], 100), 0)
+  assert.equal(slam.sceneAtX([0, 1920, 3840], 1920), 1)
+  assert.equal(slam.sceneAtX([0, 1920, 3840], 4000), -1)
+  const tags = [
+    { key: 'name', l: 10, r: 150, top: 2 }, { key: 'root', l: 154, r: 190, top: 2 }, { key: 'scale', l: 194, r: 280, top: 2 },
+    { key: 'color', l: 10, r: 40, top: 34 },
+  ]
+  assert.equal(slam.tagUnder(tags, 170).key, 'root')
+  assert.equal(slam.tagUnder(tags, 192).key, 'root')
+  assert.equal(slam.tagUnder(tags, 20).key, 'name')
+  assert.equal(slam.tagUnder(tags, 280 + slam.SLAM_REACH).key, 'scale')
+  assert.equal(slam.tagUnder(tags, 280 + slam.SLAM_REACH + 1), null)
+  assert.equal(slam.tagUnder([], 20), null)
+  const heard = []
+  const off = slam.onZoneSlam(x => heard.push(x))
+  slam.zoneSlam(42); off(); slam.zoneSlam(7)
+  assert.deepEqual(heard, [42])
+})
+
+test('setting a scene zone keeps the others and leaves nothing when the last one goes back', () => {
+  const z = sz.sceneZoneParams(undefined, 2)
+  const one = sz.withSceneZone(undefined, 2, { ...z, life: 5, priority: 4 })
+  assert.equal(one['2'].life, 0)
+  assert.equal(one['2'].priority, 1)
+  assert.deepEqual(Object.keys(sz.withSceneZone(one, 3, z)), ['2', '3'])
+  assert.equal(sz.withSceneZone(one, 2, null), undefined)
+})

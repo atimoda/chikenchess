@@ -20,11 +20,10 @@ export function trajectoryVisible(mode: 'off' | 'always' | 'hold' | 'holdAim', f
   return mode === 'always' || (mode !== 'off' && fire) || (mode === 'holdAim' && aim)
 }
 
-export function needsTrajectory(reticle: string, path: boolean, landing: boolean, reloading: boolean) {
-  // The bow's reload ring follows the predicted endpoint even with its path hidden.
+export function needsTrajectory(reticle: string, path: boolean, landing: boolean) {
   return (reticle === 'laser' && path) ||
     ((reticle === 'impact' || reticle === 'grenade') && (path || landing)) ||
-    (reticle === 'bow' && (path || reloading))
+    (reticle === 'bow' && path)
 }
 
 export const patioPixelRatio = (dpr: number, lite: boolean) => lite ? 1 : Math.min(2, Math.max(1, dpr || 1))

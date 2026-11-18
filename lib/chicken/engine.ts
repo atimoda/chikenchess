@@ -113,8 +113,12 @@ export type ChickenEngine = {
   setZoneEffects: (fx: { gravity: number; time?: number; xray: boolean }) => void
   // the Pátio's point-and-click: walk to this spot (screen pixels as clicked, before the camera's zoom)
   walkTo: (point: { x: number; y: number }) => void
+  // that walk is still going (not the portal button's), and calling it off
+  isWalking: () => boolean
+  stopWalk: () => void
   setGame: (game: ChickenGame) => void
   takeSeatLeft: () => boolean
+  takeSlam: () => boolean
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
   // The wing turns with it: its tip follows the aim.
@@ -140,6 +144,8 @@ export type ChickenEngine = {
   setSwing: (swing: { angle: number; reach: number; t: number; size?: number; bare?: boolean; heavy?: boolean } | null) => void
   // her species class now ('chicken', 'pig', 'fox', 'chick'): the one set, or the one her look gives
   speciesNow: () => BirdSpecies
+  // the most items of each category she carries now (instruments, weapons, utilities: Personagem → Inventário, by class)
+  inventoryLimits: () => [number, number, number]
   // a point on the held item's drawing (rig units, x forward from the grip, y down) on the screen when the
   // item points at `angle` (screen radians); her shoulder for (0, 0)
   heldPoint: (angle: number, x: number, y: number) => { x: number; y: number }
@@ -475,7 +481,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let hp = R.maxHp, hurtAgo = Infinity, barShown = 0
   let onDown: (() => void) | null = null, meter: number | null = null
   function hurt(amount: number, fromX?: number) {
-    if (!(amount > 0) || portalEntry || species === 'chick') return
+    // a chick (the Filhote, the chicks that follow her) is immortal unless Personagem → Filhote → Imortal is off
+    if (!(amount > 0) || portalEntry || (species === 'chick' && R.babyImmortal)) return
     // Pig's Guarda: brooding on the ground, what comes from the front hurts less
     const sp = species ?? lookSpecies
     if (sp === 'pig' && S.grounded && S.state === 'brood' && fromX !== undefined && Math.sign(fromX - S.x) === S.face) amount *= 1 - R.guardBlock / 100
@@ -659,6 +666,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('resize', resize)
 
   let prevJump = false
+  // she landed on the main ground holding Brood since takeSlam() last asked
+  let slammed = false
   let shockingAirElapsed = 0
   let shockingAirLimitApplied = false
   let shockingAirReleaseTime = 0
@@ -937,7 +946,11 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         })
         if (best) land((best as { sg: Seg; y: number }).y, (best as { sg: Seg; y: number }).sg)
       }
-      if (S.y >= groundY && S.vy >= 0) land(groundY, null)
+      if (S.y >= groundY && S.vy >= 0) {
+        land(groundY, null)
+        // a slam: falling onto the main ground holding Brood (the Pátio steps on the zone strip under it: takeSlam)
+        if (D && !S.held && S.grounded) slammed = true
+      }
       // rising into a ceiling: Up grabs it (she hangs upside down); the limits' ceiling stops her otherwise.
       // A shocking jump grabs the hard ones without Up (never with Down/Crouch held)
       if (S.grounded || S.vy >= 0) S.shockRise = false
@@ -2602,15 +2615,20 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // entering game mode drops a globe walk; the Pátio's own point-and-click (walkTo) survives the per-frame updates
     setGame(next) { Object.assign(game, next); if (next.gameMode) goal = null; showAura() },
     takeSeatLeft() { const left = seatLeft; seatLeft = false; return left },
+    // she fell onto the main ground holding Brood (a slam) since the last call: said once
+    takeSlam() { const s = slammed; slammed = false; return s },
     walkTo(point) {
       if (remote || portalEntry || S.held || S.cl) return
       const p = local(point.x, point.y), m = 40 * R.scale
       goal = { x: clamp(p.x, m, W - m), y: p.y, checkT: .3, checkX: S.x }
       if (R.broodStandOnMove) S.broodLatch = false
     },
+    isWalking: () => !!goal && !goal.portalId,
+    stopWalk() { if (goal && !goal.portalId) goal = null },
     setPeck(next) { if (!portalEntry) peckNow = next },
     setSwing(next) { swingNow = next; if (next) throwTransition.reset() },
     speciesNow: () => species ?? lookSpecies ?? 'chicken',
+    inventoryLimits: () => [R.invInstruments, R.invWeapons, R.invUtilities],
     heldPoint(angle, x, y) {
       // The trajectory and release use the resting hand, not the hand pulled
       // back while charging; otherwise each frame would move the origin again.

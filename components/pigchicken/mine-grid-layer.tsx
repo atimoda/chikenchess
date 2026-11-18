@@ -23,7 +23,7 @@ import {
   type MineCell, type MineGeo, type MineGrid, type MineGridParams, type MineSide,
 } from "@/lib/pigchicken/mine-grid"
 import { mineStore, setMineParams, setMineSide, startMineRound } from "@/lib/pigchicken/mine-grid-store"
-import { BOMB_USE_LABELS, MINE_YELLOW, mineHints, mineSpotOf } from "./mine-grid-play"
+import { BOMB_USE_LABELS, mineHints, mineSpotOf } from "./mine-grid-play"
 import { MINE_BOMB_BOX, mineBombSvg } from "@/lib/pigchicken/mine-bomb-art"
 import { FollowLayer } from "./patio-layout"
 
@@ -112,7 +112,7 @@ function Face({ k, x, y, size, p, veil, clip }: { k: MineCell; x: number; y: num
       {veil && p.wallOpacity > 0 && <div className="absolute inset-0" style={{ background: p.grey, opacity: p.wallOpacity / 100 }} />}
       {blue > 0 && <div className="absolute inset-0" style={{ background: fill(turn, p.blue, blue), opacity: veil ? 1 : 0.4 }} />}
       {red > 0 && <div className="absolute inset-0" style={{ background: fill(turn + 180, p.red, red), opacity: veil ? 1 : 0.4 }} />}
-      {k.flag && k.yellow > 0 && <div className="absolute inset-0" style={{ background: fill(turn, MINE_YELLOW, k.yellow), opacity: veil ? 0.9 : 0.5 }} />}
+      {k.flag && k.yellow > 0 && <div className="absolute inset-0" style={{ background: fill(turn, p.orange, k.yellow), opacity: veil ? 0.9 : 0.5 }} />}
       {shown > 0 && <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" fill="none" stroke="#14181d" strokeWidth={1.4} strokeLinejoin="round" opacity={0.75}>
         {CRACKS.slice(0, shown).map(d => <path key={d} d={d} vectorEffect="non-scaling-stroke" />)}
       </svg>}
@@ -122,7 +122,7 @@ function Face({ k, x, y, size, p, veil, clip }: { k: MineCell; x: number; y: num
           <path d="M13 5 L36 13 L13 22 Z" fill="#f4f1e8" stroke="#14181d" strokeWidth={2} strokeLinejoin="round" />
           <path d="M5 44 L20 44" stroke="#14181d" strokeWidth={3.5} strokeLinecap="round" />
         </svg>}
-        {k.doubt && <span style={{ fontSize: size * 0.46, color: MINE_YELLOW, textShadow: "0 2px 0 #14181d" }}>?</span>}
+        {k.doubt && <span style={{ fontSize: size * 0.46, color: p.orange, textShadow: "0 2px 0 #14181d" }}>?</span>}
         {k.fuse !== null && <span style={{ fontSize: size * 0.2, color: "#fff", background: p.red, borderRadius: size, padding: `${size * 0.02}px ${size * 0.06}px` }}>{Math.max(0, Math.ceil(k.fuse))}</span>}
       </div>
     </div>

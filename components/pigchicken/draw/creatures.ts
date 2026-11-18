@@ -1,6 +1,7 @@
 // Birds, undead (and their riders), people, horde buttons, aliens, zombies and training dummies.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
 import { TIP_TIME, type Combat } from "@/lib/pigchicken/combat"
+import { canPress, pressCountdown } from "@/lib/pigchicken/button-limit"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
 import { ALIEN_FRAMES, ALIEN_PIXEL, ZOMBIE_TIMES, lookSpecies, type EnemyData } from "@/lib/pigchicken/enemies"
 import { drawTempleAlien } from "@/components/pigchicken/temple-draw"
@@ -152,15 +153,23 @@ export function harmonyBar(ctx: Ctx, g: Combat["targets"][number], x: number, y:
 export const buttonLabels: Record<string, string> = {}
 export function drawButton(ctx: Ctx, g: Combat["targets"][number], x: number) {
   const ground = g.y + 46, cy = g.y - g.h / 2, on = g.flash > 0
+  // held by its limit (lib/pigchicken/button-limit.ts): grey, and while the limit holds it, the time left under it
+  const off = !on && !!g.press && !canPress(g.press)
   ctx.fillStyle = "#3a3f4a"; ctx.fillRect(x - 4, g.y, 8, ground - g.y)
   ctx.fillStyle = "#23262d"; ctx.beginPath(); ctx.ellipse(x, cy + 6, 24, 12, 0, 0, Math.PI * 2); ctx.fill()
-  ctx.fillStyle = on ? "#ffd166" : g.label === "aliens" || g.label === "zombies" ? "#d6453d" : "#4cc9f0"
+  ctx.fillStyle = on ? "#ffd166" : off ? "#6b7079" : g.label === "aliens" || g.label === "zombies" ? "#d6453d" : "#4cc9f0"
   ctx.beginPath(); ctx.ellipse(x, cy + (on ? 4 : 0), 19, 10, 0, 0, Math.PI * 2); ctx.fill()
   ctx.fillRect(x - 19, cy + (on ? 4 : 0), 38, on ? 2 : 6)
   ctx.font = "bold 10px ui-monospace, monospace"; ctx.textAlign = "center"
   ctx.fillStyle = "rgba(0,0,0,0.55)"; const label = buttonLabels[g.label ?? ""] ?? ""; const w = ctx.measureText(label).width + 10
   ctx.fillRect(x - w / 2, cy - 34, w, 15)
   ctx.fillStyle = "#ffffff"; ctx.fillText(label, x, cy - 23)
+  // the same plain text as the Suporte de item's countdown
+  const left = g.press && pressCountdown(g.press)
+  if (left) {
+    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textBaseline = "top"
+    ctx.fillText(left, x, cy + 22); ctx.textBaseline = "alphabetic"
+  }
 }
 
 export function drawAlien(ctx: Ctx, g: Combat["targets"][number], x: number) {

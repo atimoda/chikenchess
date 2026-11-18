@@ -11,7 +11,8 @@ import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, templeScene, villa
 import { DEFAULT_PATIO_SETTINGS, PATIO_LOWEST_TOP, PATIO_SCREENS, normalizePatioSettings, type PatioSettings } from './patio-settings'
 import type { Box } from './combat'
 import { outlineTops } from './box-tops'
-import { rackRefillLimit, rackRespawnDelay } from './racks'
+import { RACK_TABLE, rackRefillLimit, rackRespawnDelay } from './racks'
+import { pressGapParam, pressLimitParam, pressWindowParam } from './button-limit'
 import { HOUSE_SIZE, housePreset, houseRoof, houseWallPolygon, newHouseSeed, normalizeHouse, type HouseParams } from './houses'
 import { createCollisionOcclusion, type CollisionMask } from '../chicken/collision-occlusion'
 import { TREE_SIZE, newTreeSeed, normalizeTree, treePreset, treeSurfaces, type TreeParams, type TreePoint } from './trees'
@@ -75,6 +76,9 @@ export type ElementParams = {
   refillLimit?: number // rack: how many times it puts the item back after the first one (none: no limit)
   cageSouls?: number // rack and loose holding a Gaiola: how many souls fit in that one (none: the model's own)
   action?: HordeButton // button
+  // the Aliens button: at most pressLimit presses (0: no limit) in any pressWindow seconds, pressGap seconds apart
+  // (none: 10, 60 and 0.3; lib/pigchicken/button-limit.ts)
+  pressLimit?: number; pressWindow?: number; pressGap?: number
   seed?: number; flip?: boolean // trees; a fixed instrument (the Harpa) turned the other way: its player on its right
   house?: HouseParams
   tree?: TreeParams
@@ -309,6 +313,13 @@ export function emptyLayout(): PatioLayout {
   return { v: LAYOUT_VERSION, elements: [entryPortalElement()], ...(Object.keys(settings).length ? { settings } : {}) }
 }
 
+// the Suporte de item's table (./racks.ts): its top board and legs, centered on the element and standing on its
+// bottom. For the bonecos it is a platform like the others: a one-way floor on top, sides they climb.
+export { RACK_TABLE }
+export function rackTable(el: Pick<LayoutElement, 'x' | 'y' | 'w' | 'h'>) {
+  return { x: el.x + el.w / 2 - RACK_TABLE.w / 2, y: el.y + el.h - RACK_TABLE.h, w: RACK_TABLE.w, h: RACK_TABLE.h }
+}
+
 // deleting a rack leaves its item where it stood, on its own (same id, so the game keeps the item already there)
 export function looseFromRack(rack: LayoutElement): LayoutElement {
   const d = ELEMENT_DEFS.loose
@@ -520,6 +531,10 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     if (isCage(params.item) && typeof p.cageSouls === 'number' && Number.isFinite(p.cageSouls)) params.cageSouls = Math.round(clamp(p.cageSouls, 1, CAGE_SOULS_MAX))
   } else if (kind === 'button') {
     params.action = HORDE_BUTTONS.includes(p.action as HordeButton) ? (p.action as HordeButton) : 'aliens'
+    const limit = pressLimitParam(p.pressLimit), every = pressWindowParam(p.pressWindow), gap = pressGapParam(p.pressGap)
+    if (limit !== undefined) params.pressLimit = limit
+    if (every !== undefined) params.pressWindow = every
+    if (gap !== undefined) params.pressGap = gap
   } else if (kind === 'house') {
     params.house = normalizeHouse(p.house)
   } else if (kind === 'building') {
@@ -828,6 +843,13 @@ export function layoutBoxes(elements: LayoutElement[]): Box[] {
   const out: Box[] = []
   const occlusion = createCollisionOcclusion(layoutCollisionMasks(elements))
   elements.forEach((e, index) => {
+    // a Suporte de item's table: what falls lands on its board (only the board, so it is no wall)
+    if (e.kind === 'rack') {
+      if (e.depth) return
+      const t = rackTable(e)
+      out.push({ l: t.x, t: t.y, r: t.x + t.w, b: Math.min(t.y + RACK_TABLE.board, G), solid: true, shots: false, notes: false })
+      return
+    }
     const solid = e.solid && e.kind !== 'house' && e.kind !== 'building' && e.kind !== 'trampoline'
     if (ELEMENT_DEFS[e.kind].entity || (!solid && !e.shots && !e.notes && !e.rebate)) return
     const b = elementBounds(e)
@@ -860,7 +882,11 @@ export function layoutMusic(elements: LayoutElement[]): { zones: ZoneBox[]; lane
 export const sameLayout = (a: PatioLayout | null, b: PatioLayout | null) => JSON.stringify(a) === JSON.stringify(b)
 
 // the top of a solid element over the span [l, r]: its highest point there (a ramp's sloped edge, else its top)
+// what holds up another element (gravity, a drop from the palette): the solid ones, and a Suporte de item's table
+const holdsUp = (el: LayoutElement) => (el.solid && !ELEMENT_DEFS[el.kind].entity) || el.kind === 'rack'
+
 function surfaceTop(el: LayoutElement, l: number, r: number): number {
+  if (el.kind === 'rack') return rackTable(el).y
   const b = elementBounds(el)
   if (el.kind === 'balustrade') return b.y + BALUSTRADE_FLOOR
   const line = elementFloorLine(el)
@@ -899,22 +925,22 @@ export function settleLayoutInWorld(layout: PatioLayout, screens: number, skip?:
 export function layoutFloorBelow(elements: LayoutElement[], x: number, y: number) {
   let floor = WORLD_GROUND_Y
   for (const el of elements) {
-    if (!el.solid || ELEMENT_DEFS[el.kind].entity) continue
+    if (!holdsUp(el)) continue
     const b = elementBounds(el)
     if (x < b.x || x > b.x + b.w) continue
-    const top = el.kind === 'house' || el.kind === 'building' || el.kind === 'balustrade' || isSurfaceElement(el.kind) ? surfaceTop(el, x, x) : b.y
+    const top = el.kind === 'rack' || el.kind === 'house' || el.kind === 'building' || el.kind === 'balustrade' || isSurfaceElement(el.kind) ? surfaceTop(el, x, x) : b.y
     if (top >= y && top < floor) floor = top
   }
   return floor
 }
 
-// gravity: each element with `gravity` falls straight down until its bounds rest on a solid element below it or on
-// the ground. The lowest ones fall first, so a stack settles in one pass; one already resting (or `skip`, the one
+// gravity: each element with `gravity` falls straight down until its bounds rest on a solid element (or a Suporte de
+// item's table) below it or on the ground. The lowest ones fall first, so a stack settles in one pass; one already resting (or `skip`, the one
 // being dragged) stays. Only falls: an element is never pushed up.
 export function settleLayout(elements: LayoutElement[], skip?: string | null): LayoutElement[] {
   const falling = elements.filter(e => e.gravity && e.id !== skip)
   if (!falling.length) return elements
-  const supports = elements.filter(e => e.solid && !ELEMENT_DEFS[e.kind].entity && (!e.gravity || e.id === skip))
+  const supports = elements.filter(e => holdsUp(e) && (!e.gravity || e.id === skip))
   const moved = new Map<string, LayoutElement>()
   const order = [...falling].sort((a, b) => { const ba = elementBounds(a), bb = elementBounds(b); return bb.y + bb.h - (ba.y + ba.h) })
   for (const el of order) {
@@ -930,7 +956,7 @@ export function settleLayout(elements: LayoutElement[], skip?: string | null): L
     const dy = r1(floor - bottom)
     const next = Math.abs(dy) < 0.05 ? el : { ...el, y: r1(el.y + dy) }
     if (next !== el) moved.set(el.id, next)
-    if (next.solid && !ELEMENT_DEFS[next.kind].entity) supports.push(next)
+    if (holdsUp(next)) supports.push(next)
   }
   return moved.size ? elements.map(e => moved.get(e.id) ?? e) : elements
 }

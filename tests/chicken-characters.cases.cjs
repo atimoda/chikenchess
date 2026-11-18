@@ -151,3 +151,40 @@ test('each class has its own hit-area: saved with the central config, the box fo
   // old saved configs have none: the defaults
   assert.deepEqual(normalizeChickenConfig({ params: {}, look: {} }).frames, defaultFrames())
 })
+
+test('the inventory limits per category are counts of each class (Personagem → Inventário)', () => {
+  const { speciesParams, defaultClasses, CLASS_FACTOR_KEYS } = loadTs('lib/chicken/species.ts')
+  const { CHICKEN_PARAMS } = loadTs('lib/chicken/params.ts')
+  const { normalizeChickenConfig } = loadTs('lib/chicken/config.ts')
+  assert.deepEqual([CHICKEN_PARAMS.invInstruments, CHICKEN_PARAMS.invWeapons, CHICKEN_PARAMS.invUtilities], [30, 30, 30])
+  for (const k of ['invInstruments', 'invWeapons', 'invUtilities']) assert.ok(!CLASS_FACTOR_KEYS.includes(k), k)
+  const d = defaultClasses()
+  assert.equal(d.pig.invWeapons, 30); assert.equal(d.fox.invInstruments, 30); assert.equal(d.pig.airJumps, 0)
+  const c = normalizeChickenConfig({ params: { invWeapons: 4 }, classes: { pig: { factors: {}, invInstruments: 2.6, invUtilities: 99 }, fox: { airJumps: 1 } } })
+  assert.equal(c.classes.pig.invInstruments, 3); assert.equal(c.classes.pig.invUtilities, 30); assert.equal(c.classes.pig.invWeapons, 30)
+  const base = { ...CHICKEN_PARAMS, ...c.params }
+  assert.equal(speciesParams('chicken', base, c.classes).invWeapons, 4)
+  const pig = speciesParams('pig', base, c.classes)
+  assert.deepEqual([pig.invInstruments, pig.invWeapons, pig.invUtilities], [3, 30, 30])
+})
+
+test('the Filhote has its own column (the chick class): factors, one of each inventory category, and its limits', () => {
+  const { speciesParams, defaultClasses, CHICK_FACTORS, CLASS_IDS } = loadTs('lib/chicken/species.ts')
+  const { CHICKEN_PARAMS } = loadTs('lib/chicken/params.ts')
+  const { normalizeChickenConfig } = loadTs('lib/chicken/config.ts')
+  assert.deepEqual(CLASS_IDS, ['pig', 'fox', 'chick'])
+  const d = defaultClasses()
+  assert.equal(d.chick.factors.scale, CHICK_FACTORS.scale); assert.equal(d.chick.factors.maxHp, 1)
+  assert.deepEqual([d.chick.invInstruments, d.chick.invWeapons, d.chick.invUtilities], [1, 1, 1])
+  const chick = speciesParams('chick', CHICKEN_PARAMS)
+  assert.equal(chick.walkSpeed, CHICKEN_PARAMS.walkSpeed * CHICK_FACTORS.walkSpeed); assert.equal(chick.invWeapons, 1); assert.equal(chick.volume, 0)
+  // an older saved configuration (no Filhote column) gets the code's
+  const c = normalizeChickenConfig({ params: { babyMute: false }, classes: { pig: { factors: {} } } })
+  assert.equal(c.classes.chick.factors.jumpHeight, CHICK_FACTORS.jumpHeight)
+  c.classes.chick.factors.walkSpeed = 2
+  const base = { ...CHICKEN_PARAMS, ...c.params, volume: 0.5 }
+  const tuned = speciesParams('chick', base, c.classes)
+  assert.equal(tuned.walkSpeed, base.walkSpeed * 2); assert.equal(tuned.volume, 0.5, 'clucks with Sem cacarejo off')
+  // the limits' defaults: all on but the quick blow (it came back)
+  assert.deepEqual(['babyImmortal', 'babyDropItems', 'babyNoStaffs', 'babyOneCage', 'babyNoThrow', 'babyNoMelee', 'babyPiu', 'babyMute', 'babyMineHands'].map(k => CHICKEN_PARAMS[k]), [true, true, true, true, true, false, true, true, true])
+})

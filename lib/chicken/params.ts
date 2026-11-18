@@ -116,6 +116,23 @@ export const CHICKEN_PARAMS = {
   babyNotes: 4,
   // how far around her the items and Gaiolas she had fall when she becomes a Filhote (px, each side)
   babyDropSpread: 140,
+  // Inventário: the most items of each category she carries (instruments, weapons, utilities), always under the
+  // Pátio's limit for the whole inventory (30 = only that one); Pig's and Ken's are set outright, like the air jumps
+  invInstruments: 30,
+  invWeapons: 30,
+  invUtilities: 30,
+  // the Filhote's limits (lib/chicken/baby.ts), each one on or off: immortal; everything falls when it becomes one;
+  // no staffs or melee weapons; one Gaiola; no throw; no quick blow (Golpe); the empty hand peeps; no clucks (also the
+  // chicks that follow her); in the Campo minado only instruments and bombs
+  babyImmortal: true,
+  babyDropItems: true,
+  babyNoStaffs: true,
+  babyOneCage: true,
+  babyNoThrow: true,
+  babyNoMelee: false,
+  babyPiu: true,
+  babyMute: true,
+  babyMineHands: true,
   heldFlapRate: 9,
   jumpFlapRate: 14,
   // Idle

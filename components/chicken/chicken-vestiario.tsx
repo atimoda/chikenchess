@@ -2,8 +2,8 @@
 
 // Vestiário (ported from the "Pátio da Caipira" prototype): picks the chicken's look by breed or part by
 // part, with art thumbnails and a big preview. It edits the look of the Pátio's draft of the central
-// configuration, so "Salvar no game" in Ajustes saves it for every screen together with the params.
-import { useEffect, useState, useSyncExternalStore } from "react"
+// configuration, so "Salvar no game" in Personagem saves it for every screen together with the params.
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { Lock, X } from "lucide-react"
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from "@/lib/chicken/look-art"
 import { variantClass } from "@/lib/chicken/beast-art"
@@ -43,6 +43,14 @@ const fullView = (look: ChickenLook) => (look.tail === "onagadori" ? "-350 -246 
 
 export function ChickenHeadIcon({ look }: { look: ChickenLook }) {
   return <svg viewBox="12 -232 70 70" aria-hidden="true" className="h-full w-full" dangerouslySetInnerHTML={{ __html: LOOK_ART.headSvg(look) }} />
+}
+
+// the whole body of a look, small (a Filhote: its baby skin): the Personagem button shows the player's own character
+export function ChickenBodyIcon({ look, className }: { look: ChickenLook; className?: string }) {
+  const baby = useSyncExternalStore(subscribeBaby, getBaby, () => NO_BABY)
+  const skin = baby.on ? baby.skin ?? defaultBabySkin(look) : null
+  const html = useMemo(() => (skin ? LOOK_ART.composeSet(babyArt(look, skin)) : LOOK_ART.compose(look)), [look, skin])
+  return <svg viewBox={skin ? "-90 -210 180 220" : "-110 -246 200 270"} aria-hidden="true" className={className} dangerouslySetInnerHTML={{ __html: html }} />
 }
 
 export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false, frames }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean; frames?: FramesEdit }) {
@@ -182,7 +190,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
           </div>
           </>}
           <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-white/10 px-4 py-2.5">
-            <p className="flex-1 text-[#93a79a]">{dirty ? "Visual alterado. “Salvar no game” em Ajustes grava para todas as telas." : "Visual igual ao salvo."}</p>
+            <p className="flex-1 text-[#93a79a]">{dirty ? "Visual alterado. “Salvar no game” em Personagem grava para todas as telas." : "Visual igual ao salvo."}</p>
             <label className="flex items-center gap-2 text-[11px] text-[#93a79a]"><input type="checkbox" checked={unlockAll} onChange={e => toggleUnlock(e.target.checked)} className="accent-[var(--primary)]" />Tudo liberado (dev)</label>
             <button type="button" disabled={!dirty} onClick={() => onChange(savedLook)} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-45">Desfazer</button>
           </footer>

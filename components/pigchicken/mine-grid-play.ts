@@ -13,9 +13,8 @@ import {
 import { defaultChest, rollLoot } from "@/lib/pigchicken/chests"
 import { mineAct, mineStore, mineTouched, setMineChick, stepMine, watchMine } from "@/lib/pigchicken/mine-grid-store"
 import { playWeaponSound } from "@/lib/pigchicken/sfx"
+import { getChickenConfig } from "@/lib/chicken/config"
 
-// the yellow of the doubt (the notes over a flag)
-export const MINE_YELLOW = "#ffd34a"
 // how far from the bomb, at the middle of its block, her body may be to use it (world units)
 const BOMB_REACH = 130
 // ms after a player is first seen in a round in which being on the closed side still counts as starting there
@@ -39,10 +38,13 @@ export function mineSpotOf(e: ChickenEngine) {
   return { x: st.x + liveCamera.x + Math.sin(st.angle) * FEET_UP, y: st.y - liveCamera.y - Math.cos(st.angle) * FEET_UP, body: 100 * st.scale, angle: st.angle }
 }
 
-// a Filhote plays its instruments and uses the bombs, and nothing else
+// a Filhote plays its instruments and uses the bombs, and nothing else (Personagem → Filhote: “Campo minado: só
+// instrumentos e bombas” off lets it do everything; its Golpe rápido follows “Sem Golpe rápido”)
 function childHands(combat: Combat, input: FrameInput) {
-  if (combat.held && combat.def().instrument) return
-  input.fire = false; input.firePressed = false; input.melee = false; input.throwHeld = false; input.throwReleased = false
+  const p = getChickenConfig().params
+  if (!p.babyMineHands || (combat.held && combat.def().instrument)) return
+  input.fire = false; input.firePressed = false; input.throwHeld = false; input.throwReleased = false
+  if (p.babyNoMelee) input.melee = false
 }
 
 export function bindMinePlay(combat: Combat, o: { engines: () => [string, ChickenEngine][]; color?: (who: string) => string | undefined }) {
@@ -55,7 +57,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
       const cell = mineCell(round.grid, hit.c, hit.r)!
       // a note that goes on through the blocks counts once, on its way in
       if (by && (p.blockNotes || hit.inward)) { mineAct({ k: "note", c: hit.c, r: hit.r, side: mineStore.side(by), by, face: hit.face }); mineTouched() }
-      return { flipX: hit.flipX, bounce: p.blockNotes, color: cell.flag ? MINE_YELLOW : p.blue }
+      return { flipX: hit.flipX, bounce: p.blockNotes, color: cell.flag ? p.orange : p.blue }
     },
     shot(px, py, x, y, damage, by) {
       const round = mineStore.round, p = mineStore.params
@@ -110,7 +112,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
         combat.burst(at.x, at.y, 26, p?.blue ?? "#4d9bff", 300, 4); playWeaponSound("chest", null)
         // a Filhote on the open side is an adult again by raising the flag over a real bomb
         if (ev.bomb) grow(ev.by)
-      } else if (ev.kind === "doubt") { combat.burst(at.x, at.y, 22, MINE_YELLOW, 260, 4); playWeaponSound("locked", null) }
+      } else if (ev.kind === "doubt") { combat.burst(at.x, at.y, 22, p?.orange ?? "#ffb366", 260, 4); playWeaponSound("locked", null) }
       else if (ev.kind === "clear") { combat.burst(at.x, at.y, 22, p?.grey ?? "#8f98a3", 260, 4); playWeaponSound("chest", null) }
       else if (ev.kind === "open") { combat.burst(at.x, at.y, 34, p?.grey ?? "#8f98a3", 360, 5); playWeaponSound("button", null) }
       else if (ev.kind === "shock") combat.burst(at.x, at.y, 12, "#cfe9ff", 220, 3)

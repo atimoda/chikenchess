@@ -47,6 +47,7 @@ import { songVolume } from "@/lib/pigchicken/soul-acts"
 import { ZONES, chordName, droneOf, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
+import { zoneSlam } from "@/lib/pigchicken/zone-slam"
 import { SCENE_W, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, type LayoutElement } from "@/lib/pigchicken/layout"
@@ -450,6 +451,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       walkTap = null
       if (Math.hypot(e.clientX - t.x, e.clientY - t.y) <= 8 && performance.now() - t.t <= 600) engine.walkTo({ x: e.clientX, y: e.clientY })
     }
+    // point-and-click Golpe (the right button, when the item's "Clique direito: point and click" is on): the press is
+    // looked at in the frame, which walks her to a point out of the blow's reach and strikes it once in reach
+    let pcPress: { x: number; y: number } | null = null
+    let pcGoal: { x: number; y: number; t: number } | null = null
+    const canPointClick = (e: PointerEvent) => e.button === 2 && !cameraKey && !isUi(e.target) && !onChicken(e.target) &&
+      !(e.target as Element | null)?.closest?.("[data-patio-editor]") && !engine.getMotionState().held
     // the mouse is someone else's (another local player holds it)
     const noMouse = () => !!devicesRef.current && !devicesRef.current.includes("mouse")
     // the pointer is over a UI control or panel (the same ones that keep the normal cursor): p1's mouse reticle hides
@@ -521,7 +528,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // empty hands: the left button pecks as always and, on a quick click, also walks there
       if (e.button === 0 && canWalkTap(e)) walkTap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }
       if (e.button === 0) mouseBtn.fire = true
-      if (e.button === 2) mouseBtn.melee = true
+      if (e.button === 2) { mouseBtn.melee = true; pcPress = canPointClick(e) ? { x: e.clientX, y: e.clientY } : null }
       if (e.button === 0 && p1Kit) clicks.push({ x: e.clientX, y: e.clientY })
     }
     const onUp = (e: PointerEvent) => {
@@ -1095,6 +1102,38 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // a soul that shakes her aim (lib/pigchicken/soul-acts.ts): it sways for a moment
       const skew = combat.aimSkew
       if (skew) { const a = aim.angle + skew; aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) } }
+      // point-and-click Golpe: a right click out of the blow's reach walks her there instead of striking the air; the
+      // blow comes out, aimed at that point, once it is in reach (or when the walk ends below it). Any other Golpe,
+      // the item's option off, the wheel, being picked up or 10 s call it off
+      let pcStrike = false
+      {
+        const wo = { x: origin.x + camX, y: origin.y - camY }
+        if (pcPress) {
+          const p = pcPress, reach = p1Seated || wh.open || st.held ? null : combat.pointClickReach(st.scale)
+          pcPress = null; pcGoal = null
+          if (reach !== null) {
+            const at = zoom !== 1
+              ? { x: (p.x - stageWidth() / 2) / zoom + stageWidth() / 2, y: (p.y - window.innerHeight / 2) / zoom + window.innerHeight / 2 }
+              : p
+            const goal = { x: at.x + camX, y: at.y - camY, t: now }
+            if (Math.hypot(goal.x - wo.x, goal.y - wo.y) > reach) {
+              engine.walkTo(p)
+              // (she cannot walk now, clinging to a wall or entering a portal: the blow comes out where she is, as before)
+              if (engine.isWalking()) { pcGoal = goal; mouseBtn.melee = false }
+            }
+          }
+        }
+        if (pcGoal) {
+          const reach = p1Seated || wh.open || st.held || act.melee || now - pcGoal.t > 10000 ? null : combat.pointClickReach(st.scale)
+          const walking = engine.isWalking()
+          if (reach === null) pcGoal = null
+          else if (Math.hypot(pcGoal.x - wo.x, pcGoal.y - wo.y) <= reach || (!walking && Math.abs(pcGoal.x - wo.x) <= reach)) {
+            const a = Math.atan2(pcGoal.y - wo.y, pcGoal.x - wo.x)
+            aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
+            engine.stopWalk(); pcGoal = null; pcStrike = true
+          } else if (!walking) pcGoal = null
+        }
+      }
       const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
         // brooding does not freeze her: "frente + chocar" walks at its own speed (0 keeps her still), aiming with the item;
@@ -1108,7 +1147,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- combat (world coordinates) ----------
       if (fireBlock && !act.fire) fireBlock = false
       prevFire = act.fire
-      const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || fingers.length > 0 || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
+      const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || fingers.length > 0 || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee || pcStrike)
       // Próximo item / Item anterior and the group switches repeat while held (Controles → Inventário)
       let pick = quickSwitchStep(act, prev, engine.isShiftHeld(), quickSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
       const groupPick = groupSwitchStep(act, prev, groupSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
@@ -1145,7 +1184,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       cageBinds("p1", p1Seated ? {} : act, p1Seated ? {} : prev)
       prev = { ...act, fire, melee }
       const boxes = worldBoxes
-      const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: bodyState(st), vx: st.vx, species: st.species }
+      const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: bodyState(st), vx: st.vx, species: st.species, invLimits: engine.inventoryLimits() }
       const worldOrigin = { x: origin.x + camX, y: origin.y - camY }
       // the enemies move inside the scene she is in: the same for every screen size (and every player)
       const sceneL = Math.min(sceneAt(body.x), worldScenes(S.screens) - 1) * SCENE_W
@@ -1239,6 +1278,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       { const sd = S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1); combat.setAimPoint(aim.target ? { x: aim.target.x + camX, y: aim.target.y - camY } : { x: m0.x + Math.cos(aim.angle) * sd + camX, y: m0.y + Math.sin(aim.angle) * sd - camY }) }
       // sitting at a fixed instrument (the Harpa): Pular or a blast got her up
       if (engine.takeSeatLeft()) combat.standUp()
+      // she fell onto the ground holding Chocar: the zone strip's tag under her steps to its next value (zone-slam.ts)
+      if (engine.takeSlam()) zoneSlam(engine.getMotionState().x + camX)
       // (the part of the screen the Bateria's chart may use, whatever the camera's zoom: under the header's buttons)
       { const hw = stageWidth() / 2, hh = window.innerHeight / 2; setDrumScreen({ l: hw - (hw - 8) / zoom, r: hw + (hw - 8) / zoom, t: hh - (hh - 60) / zoom, b: hh + (hh - 8) / zoom }) }
       // her hands over its strings: the fingers on the screen (each one a hand, its touch the pluck); else a gamepad's
@@ -1282,15 +1323,16 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       for (let i = fingers.length - 1; i >= 0; i--) { if (fingers[i].up || !combat.seated) fingers.splice(i, 1); else fingers[i].fresh = false }
       minePlay.step(dt)
       minePlay.player("p1", engine, input)
-      // a Filhote (lib/chicken/baby.ts): becoming one, every item and Gaiola falls around her; it carries one firearm,
-      // one instrument, one utility and one Gaiola, never throws, and its empty hand peeps (combat.ts); the notes that
-      // reach it fill its music bar
-      const babyOn = getBaby().on
+      // a Filhote (lib/chicken/baby.ts): with its limits on (Personagem → Filhote), becoming one every item and Gaiola
+      // falls around her, it carries one of each category and one Gaiola, never throws, and its empty hand peeps
+      // (combat.ts); the notes that reach it fill its music bar
+      const babyOn = getBaby().on, bp = getChickenConfig().params
       combat.setBaby("p1", babyOn)
-      if (babyOn && !p1Baby) combat.dropAll(getChickenConfig().params.babyDropSpread)
+      combat.setBabyRules({ noStaffs: bp.babyNoStaffs, oneCage: bp.babyOneCage, noMelee: bp.babyNoMelee, piu: bp.babyPiu })
+      if (babyOn && !p1Baby && bp.babyDropItems) combat.dropAll(bp.babyDropSpread)
       p1Baby = babyOn
       if (babyOn) {
-        input.throwHeld = false; input.throwReleased = false
+        if (bp.babyNoThrow) { input.throwHeld = false; input.throwReleased = false }
         combat.setBabies([{ by: "p1", box: bodyBox(getChickenConfig().frames, "chick", body.x, body.y, st.scale, st.face), fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
       } else combat.setBabies([])
       // the strong blow charged with an empty hand (Correntada, Rabada): the arm or the tail winds up
@@ -1347,11 +1389,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         cageBinds(id, extraSeated.has(id) ? {} : xa, extraSeated.has(id) ? {} : xp)
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
-        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx, species: xs.species }
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx, species: xs.species, invLimits: eng.inventoryLimits() }
         combat.setAimReach((rs ?? ls)?.mag ?? 1, rs ?? ls ? "stick" : "none")
         combat.setScaleFan({ x: xo.x + camX, y: xo.y - camY, r: SCALE_FAN_R * (combat.seated ? seatedFanSize(scaleSizeRef.current) : scaleSizeRef.current) * xs.scale })
         { const xdist = S.reticleDist * (rs ? 0.45 + 0.55 * rs.mag : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
         if (eng.takeSeatLeft()) combat.standUp()
+        if (eng.takeSlam()) zoneSlam(xs.x + camX)
         // (her hands over the Harpa's strings: the two sticks; with the keys, the direction they aim)
         if (combat.seated) {
           const padL = stickFor(devs, 0, an.deadzoneL), pad = !!devs?.some(isPadDevice)
@@ -1627,7 +1670,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const showPath = armed && trajectoryVisible(d.pathShow, fire, aimLock)
       const showLand = armed && trajectoryVisible(d.landShow, fire, aimLock)
       let path: { x: number; y: number }[] | null = null
-      if (armed && needsTrajectory(d.reticle, showPath, showLand, !!combat.reloading)) {
+      if (armed && needsTrajectory(d.reticle, showPath, showLand)) {
         const power = d.fireMode === "charge" ? d.chargeMin + (1 - d.chargeMin) * combat.fireCharge : 1
         path = combat.predict({ x: muzzle.x + camX, y: muzzle.y - camY }, ang, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
       }
@@ -1728,7 +1771,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xShow = xArmed && trajectoryVisible(xd.pathShow, xFire, false)
         const xLand = xArmed && trajectoryVisible(xd.landShow, xFire, false)
         let xpath: { x: number; y: number }[] | null = null
-        if (xArmed && needsTrajectory(xd.reticle, xShow, xLand, !!combat.reloading)) {
+        if (xArmed && needsTrajectory(xd.reticle, xShow, xLand)) {
           const power = xd.fireMode === "charge" ? xd.chargeMin + (1 - xd.chargeMin) * combat.fireCharge : 1
           xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
         }

@@ -173,3 +173,73 @@ test('a rack on a shaped floor (Chão): its item lands on the outline, not on th
   for(let i=0;i<180;i++)c.step(1/60,body,{x:0,y:0},{x:0,y:0},0,input,boxes,1000,()=>{},{})
   assert.equal(c.pickups[0].y,1000)
 })
+
+test('a rack\'s table is a platform box the size of the drawn table, centered on the rack and standing on its bottom',()=>{
+  const el=L.createElement('rack',100,200,{item:'pistol'})
+  const t=L.rackTable(el)
+  assert.deepEqual(L.RACK_TABLE,{w:76,h:56,board:7})
+  assert.equal(t.x+t.w/2,el.x+el.w/2)
+  assert.equal(t.y+t.h,el.y+el.h)
+  assert.deepEqual({w:t.w,h:t.h},{w:76,h:56})
+  for(const r of L.defaultLayout().elements.filter(e=>e.kind==='rack')){const b=L.rackTable(r);assert.equal(b.y+b.h,r.y+r.h)}
+})
+
+test('items land on a rack\'s table: a stacked rack\'s item on the table below, its own never on its own table',()=>{
+  const run=(c,boxes,n=180)=>{for(let i=0;i<n;i++)c.step(1/60,body,{x:0,y:0},{x:0,y:0},0,input,boxes,1000,()=>{},{})}
+  // two racks stacked: the upper one's legs stand on the lower one's board
+  const low=L.createElement('rack',100,1000-62,{item:'pistol'})
+  const lowTop=L.rackTable(low).y
+  const high=L.createElement('rack',100,lowTop-62,{item:'rifle'})
+  const boxes=L.layoutBoxes([low,high])
+  assert.equal(boxes.length,2)
+  assert.ok(boxes.every(b=>b.solid&&b.shots===false&&b.notes===false&&b.b-b.t===7))
+  const c=createCombat()
+  c.addRack(low.x+low.w/2,'pistol',low.y+low.h,0);c.addRack(high.x+high.w/2,'rifle',high.y+high.h,0)
+  run(c,boxes)
+  const at=item=>c.pickups.find(p=>p.owned.item===item)
+  assert.equal(at('pistol').y,1000)
+  assert.equal(at('rifle').resting,true)
+  assert.equal(at('rifle').y,lowTop)
+  // something dropped from above lands on the top table's board
+  const d=createCombat();d.addPickup(high.x+high.w/2,'smg',lowTop-200);run(d,boxes)
+  assert.equal(d.pickups[0].y,L.rackTable(high).y)
+  // in a parallax depth it is only scenery
+  assert.deepEqual(L.layoutBoxes([{...low,depth:2}]),[])
+})
+
+test('a rack waiting to put its item back shows the time left in tenths, rounded up, and nothing otherwise',()=>{
+  const {rackCountdown}=loadTs('lib/pigchicken/racks.ts')
+  const r={t:0,respawnDelay:2,given:1}
+  assert.equal(rackCountdown(r),'2,0')
+  assert.equal(rackCountdown({...r,t:.55}),'1,5')
+  assert.equal(rackCountdown({...r,t:1.91}),'0,1')
+  assert.equal(rackCountdown({...r,t:2}),'0,1')
+  assert.equal(rackCountdown({...r,pickupId:3}),null)
+  assert.equal(rackCountdown({...r,respawnDelay:0}),null)
+  assert.equal(rackCountdown({...r,refillLimit:0}),null)
+  assert.equal(rackCountdown({...r,refillLimit:1}),'2,0')
+  // in the game: counting down while it waits, gone once the item is back
+  const c=createCombat();c.addRack(0,'pistol',1000,1)
+  for(let i=0;i<30;i++)c.step(1/60,body,{x:0,y:0},{x:0,y:0},0,input,[],1000,()=>{},{})
+  assert.equal(rackCountdown(c.racks[0]),'0,5')
+  for(let i=0;i<40;i++)c.step(1/60,body,{x:0,y:0},{x:0,y:0},0,input,[],1000,()=>{},{})
+  assert.equal(rackCountdown(c.racks[0]),null)
+})
+
+test('a rack with gravity falling onto another rack stops on its table; a palette drop lands there too',()=>{
+  const G=loadTs('lib/pigchicken/world.ts').WORLD_GROUND_Y
+  const low=L.createElement('rack',100,G-62,{item:'pistol'})
+  const top=L.rackTable(low).y
+  const high={...L.createElement('rack',110,300,{item:'rifle'}),id:'high',gravity:true}
+  const out=L.settleLayout([low,high]).find(e=>e.id==='high')
+  assert.equal(out.y+out.h,top)
+  // two falling at once: the lower one first, the upper one on it
+  const third={...L.createElement('rack',95,100,{item:'smg'}),id:'third',gravity:true}
+  const both=L.settleLayout([low,high,third])
+  const h2=both.find(e=>e.id==='high'),t2=both.find(e=>e.id==='third')
+  assert.equal(t2.y+t2.h,L.rackTable(h2).y)
+  // beside it, it falls to the ground
+  const away=L.settleLayout([low,{...high,x:400}]).find(e=>e.id==='high')
+  assert.equal(away.y+away.h,G)
+  assert.equal(L.layoutFloorBelow([low],low.x+10,0),top)
+})
