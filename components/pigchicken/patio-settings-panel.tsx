@@ -19,6 +19,8 @@ import { hourLabel } from "@/lib/pigchicken/sky"
 import { AuroraFields, CloudFields, SnowfallFields, MountainFields, SkyFields, StarFields } from "./sky-fields"
 import { ForestFields } from "./forest-fields"
 import { SkylineFields } from "./skyline-fields"
+import { backdropLayers } from "@/lib/pigchicken/backdrop-layers"
+import { MOUNTAINS_DEFAULT } from "@/lib/pigchicken/mountains"
 import { ITEM_GLOW, ITEM_GLOW_COLOR } from "@/lib/pigchicken/item-glow"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
@@ -27,6 +29,12 @@ const units = (v: number) => v.toLocaleString("pt-BR")
 const ZOOM_STEP = 0.05, ZOOM_LEFT = -3.4, ZOOM_RIGHT = Math.log2(PATIO_ZOOM.ceil)
 const zoomPct = (z: number) => `${Math.round(z * 100)}%`
 const zoomLabel = (z: PatioZoom) => `${z.min === 0 ? "Pátio inteiro" : zoomPct(z.min)} – ${zoomPct(z.max)}`
+
+// the layers a row of Prédios can stand between: the ranges and the tree lines this Pátio shows
+function skylineNeighbours(s: PatioSettings | undefined) {
+  return backdropLayers({ mountains: s?.mountains ?? MOUNTAINS_DEFAULT, clouds: false, forest: s?.sky?.forest !== false })
+    .filter(l => l.id !== "sun" && !(l.id === "forestFar" && s?.forest?.far.show === false) && !(l.id === "forestNear" && s?.forest?.near.show === false))
+}
 
 // (the Grade de blocos has its own panel: components/pigchicken/mine-grid-panel.tsx)
 export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose }: {
@@ -121,7 +129,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             const { forest: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: forest ? { ...rest, forest } : rest })
           }} />)}
-          {group("Prédios", <SkylineFields skyline={layout.settings?.skyline} onChange={skyline => {
+          {group("Prédios", <SkylineFields skyline={layout.settings?.skyline} layers={skylineNeighbours(layout.settings)} onChange={skyline => {
             const { skyline: _old, ...rest } = layout.settings ?? {}
             onChange({ ...layout, settings: skyline ? { ...rest, skyline } : rest })
           }} />)}

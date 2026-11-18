@@ -571,5 +571,15 @@ test('skyline (Prédios): rows are cleaned and kept with the Pátio; without the
   const dc = SD.skylineShapes(8000, SK.skylineRowFrom('datacenter'), 61)
   assert.ok(dc.slot.length > 0 && dc.led.length > 0)
   assert.ok(SD.skylineFeet(0.8) < SD.skylineFeet(0.3))
+  // Posição: the gaps between this Pátio's ranges and tree lines, each with the depth in its middle
+  const BD = loadTs('lib/pigchicken/backdrop-layers.ts')
+  const near = o => BD.backdropLayers({ mountains: { show: true, ranges: o }, clouds: false, forest: true }).filter(l => l.id !== 'sun')
+  const slots = SK.skylineSlots(near(3))
+  assert.deepEqual(slots.map(s => s.label), ['Atrás das Montanhas 1', 'Entre as Montanhas 1 e 2', 'Entre as Montanhas 2 e 3', 'Entre as Montanhas 3 e a Mata ao longe', 'Entre a Mata ao longe e a Mata perto', 'Na frente da Mata perto'])
+  for (const s of slots) assert.equal(SK.skylineSlotOf(slots, s.depth), s)
+  assert.equal(SK.skylineSlotOf(slots, 66), null, 'on a range, no gap')
+  assert.equal(SK.skylineSlotOf(slots, SK.SKYLINE_PRESETS.datacenter.depth).label, 'Entre as Montanhas 1 e 2')
+  // the farthest of six ranges is past the deepest a row goes: no room behind it
+  assert.equal(SK.skylineSlots(near(6))[0].label, 'Entre as Montanhas 1 e 2')
   assert.ok(SD.skylineShapes(4000, { ...city, lift: 50 }, 61).feet < a.feet)
 })

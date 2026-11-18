@@ -105,3 +105,25 @@ export function normalizeSkyline(raw: unknown): SkylineParams | undefined {
 
 // a row's depth (0 to 1, like the other layers)
 export const skylineDepth = (row: SkylineRow) => row.depth / 100
+
+// Where a row stands among the other layers of the backdrop (the panel's Posição): the gaps between the layers this
+// Pátio shows (its mountain ranges and the Mata's lines, farthest first), each with the depth in its middle. A gap
+// narrower than a step of Profundidade is left out. `layers`: backdropLayers() without the sky and the clouds.
+export type SkylineSlot = { id: string; label: string; depth: number; lo: number; hi: number }
+export function skylineSlots(layers: { label: string; depth: number }[]): SkylineSlot[] {
+  const [min, max] = SKYLINE_NUMS.depth
+  const ls = layers.map(l => ({ label: l.label, d: Math.round(l.depth * 100) })).sort((a, b) => b.d - a.d)
+  // "as Montanhas 2", "a Mata perto"; two ranges side by side: "as Montanhas 1 e 2"
+  const the = (l: string) => l.startsWith('Montanhas') ? `as ${l}` : `a ${l}`
+  const pair = (a: string, b: string) => a.startsWith('Montanhas ') && b.startsWith('Montanhas ') ? `${the(a)} e ${b.slice(10)}` : `${the(a)} e ${the(b)}`
+  const out: SkylineSlot[] = []
+  for (let k = 0; k <= ls.length; k++) {
+    const hi = Math.min(max + 1, k === 0 ? Infinity : ls[k - 1].d), lo = Math.max(min - 1, k === ls.length ? -Infinity : ls[k].d)
+    if (hi - lo < 2) continue
+    const label = !ls.length ? 'Fundo' : k === 0 ? `Atrás d${the(ls[0].label)}` : k === ls.length ? `Na frente d${the(ls[k - 1].label)}` : `Entre ${pair(ls[k - 1].label, ls[k].label)}`
+    out.push({ id: `s${k}`, label, depth: Math.max(min, Math.min(max, Math.round((hi + lo) / 2))), lo, hi })
+  }
+  return out
+}
+// the gap a row's depth falls in (null: on a layer's own depth)
+export const skylineSlotOf = (slots: SkylineSlot[], depth: number) => slots.find(s => depth > s.lo && depth < s.hi) ?? null

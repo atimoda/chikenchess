@@ -14,6 +14,7 @@ const RECENT = [
         'Cada fileira ajusta tudo: Profundidade (de quase junto do chão até atrás das montanhas), Elevação, Névoa, Altura e Largura com as suas variações, Densidade, Vãos, Aglomerado (grupos com os mais altos no meio), Recuos no topo, Anexos, Lateral (uma face estreita de topo inclinado), Coisas no teto e Antenas.',
         'A fachada tem sete padrões: janelas, grade de linhas, listras verticais, listras horizontais, misturado, código (janelas de app com barra de três bolinhas e linhas de texto) e servidores (racks com luzinhas), com tamanho e espaço das janelas, contraste, luzes acesas e as cores da parede, da fachada e das luzes. Largos e altos, os prédios viram data-centers enormes.',
         'A cor de cada fileira vem do céu na profundidade dela, como as montanhas, e as mais distantes ficam mais claras com a névoa. “Sortear forma” desenha outros prédios com os mesmos ajustes.',
+        'Cada fileira tem “Posição”, que escolhe entre quais montanhas e fileiras da Mata ela fica (por exemplo “Entre as Montanhas 1 e 2”), para pôr um data-center no meio das cordilheiras sem procurar a Profundidade certa.',
       ] },
       { title: 'Pátio: árvores novas na Mata', items: [
         'Na Mata (Mata ao longe e Mata perto), duas formas novas de árvore: Copas em nuvem, altas e contornadas por montinhos, e Guarda-chuvas, de copa larga e achatada dobrada pelo vento, com a ponta curvada e tronco grosso em Y.',
