@@ -29,6 +29,9 @@ let dismissed = false
 // number of every block
 export type MineDebug = { bombs: boolean; numbers: boolean }
 let debug: MineDebug = { bombs: false, numbers: false }
+// "Mostrar números" (Grade de blocos' panel), in this browser only and never saved: the numbers of the open blocks in
+// front of everything, whichever side this screen is on
+let numbersFront = false
 
 // for useSyncExternalStore
 export const mineStore = {
@@ -38,6 +41,7 @@ export const mineStore = {
   get params() { return params },
   get dismissed() { return dismissed },
   get debug() { return debug },
+  get numbersFront() { return numbersFront },
   side: (who: string): MineSide => sides.get(who) ?? 'open',
   // whether the layer has already read where they are
   hasSide: (who: string) => sides.has(who),
@@ -114,3 +118,5 @@ export function setMineChick(who: string, on: boolean) {
 }
 export function dismissMineEnd() { dismissed = true; emit() }
 export function setMineDebug(next: Partial<MineDebug>) { debug = { ...debug, ...next }; emit() }
+// turning it on or off also draws the grid again from the round (its numbers counted again, its layers found again)
+export function setMineNumbersFront(on: boolean) { numbersFront = on; emit() }

@@ -156,6 +156,7 @@ function cleanEvent(x: unknown): MineEvent | null {
     case 'shock': return { kind: 'shock', ...at }
     case 'flag': return { kind: 'flag', ...at, by, bomb: e.bomb === true }
     case 'doubt': return { kind: 'doubt', ...at, by }
+    case 'clear': return { kind: 'clear', ...at, by }
     case 'open': return { kind: 'open', ...at, by, lost: e.lost === true }
     case 'disarm': case 'arm': case 'take': case 'install': case 'detonator': return { kind: e.kind, ...at, by }
     case 'boom': {

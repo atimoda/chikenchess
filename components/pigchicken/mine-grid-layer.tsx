@@ -147,9 +147,10 @@ function blockShapes(g: MineGeo, r: number, t: number) {
   return { clip: `polygon(${outer.map(([x, y]) => `${x}px ${y}px`).join(",")})`, outer: outlinePath(outer), walls: `${outlinePath(outer)}${outlinePath(inner)}` }
 }
 
-// the number of an open block
+// the number of an open block, with a dark outline so that its light colour reads over any sky
+const DIGIT_OUTLINE = (size: number) => { const w = Math.max(2, Math.round(size * 0.012)); return { WebkitTextStroke: `${w * 2}px #14181dcc`, paintOrder: "stroke fill" } as const }
 function Digit({ x, y, size, count }: { x: number; y: number; size: number; count: number }) {
-  return <div className="absolute flex items-center justify-center font-mono font-bold" style={{ left: x, top: y, width: size, height: size, fontSize: size * 0.5, color: NUMBER_COLORS[count] }}>{count}</div>
+  return <div className="absolute flex items-center justify-center font-mono font-bold" style={{ left: x, top: y, width: size, height: size, fontSize: size * 0.5, color: NUMBER_COLORS[count], ...DIGIT_OUTLINE(size) }}>{count}</div>
 }
 
 // houses: the Pátio's houses in the world's units (a number shows again inside the ones open on this screen)
@@ -164,7 +165,9 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
   const [host, setHost] = useState<HTMLDivElement | null>(null)
   // the world's place for the numbers, behind the Pátio's own elements (ParquinhoWorld)
   const [under, setUnder] = useState<HTMLElement | null>(null)
-  useEffect(() => { setHost(worldRef.current); setUnder(worldRef.current?.querySelector<HTMLElement>("[data-mine-numbers]") ?? null) }, [worldRef, grid])
+  // looked for again whenever the round changes, so that a world drawn again never keeps the numbers in a place gone
+  // from the page
+  useEffect(() => { setHost(worldRef.current); setUnder(worldRef.current?.querySelector<HTMLElement>("[data-mine-numbers]") ?? null) }, [worldRef, grid, version])
   const openHouses = useSyncExternalStore(houseRoomsStore.subscribe, () => houseRoomsStore.open, () => houseRoomsStore.open)
   const walls = useMemo(() => {
     if (!grid || !pass || !view.near) return []
@@ -190,7 +193,7 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
     return out
   }, [grid, view.c0, view.c1, view.r0, view.r1, version])
   if (!grid || !host || !p) return null
-  const size = grid.geo.cell, t = mineWallThickness(grid.geo), mine = view.side, debug = mineStore.debug
+  const size = grid.geo.cell, t = mineWallThickness(grid.geo), mine = view.side, debug = mineStore.debug, front = mineStore.numbersFront
   // with cut corners: the blocks' shape (the bottom row keeps its bottom corners)
   const cutShapes = grid.geo.cut > 0 ? [blockShapes(grid.geo, 0, t), blockShapes(grid.geo, 1, t)] : null
   const shapeOf = (r: number) => cutShapes?.[r === 0 ? 0 : 1]
@@ -198,13 +201,15 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
   const hints = view.hints ? view.hints.split(";").map(h => h.split("/")) : []
   const uses = new Map(hints.filter(h => h[0]).map(h => { const [c, r, use] = h[0].split(","); return [`${c},${r}`, use as keyof typeof BOMB_USE_LABELS] }))
   const installs = new Set(hints.map(h => h[1]).filter(Boolean))
-  // the numbers, for whoever is on the open side
-  const digits = mine === "open" ? cells.filter(cell => cell.k.open && cell.count > 0) : []
+  // the numbers, for whoever is on the open side (with "Mostrar números", for both sides, in front of everything)
+  const digits = front || mine === "open" ? cells.filter(cell => cell.k.open && cell.count > 0) : []
+  // behind the Pátio's elements, unless "Mostrar números" brings them to the front
+  const behind = front ? [] : digits
   // the houses a local player is in: their walls are gone, so the numbers behind them show
-  const entered = digits.length ? (houses ?? []).filter(el => openHouses.has(el.id)) : []
+  const entered = behind.length ? (houses ?? []).filter(el => openHouses.has(el.id)) : []
   return <>
     {under && opacity > 0 && createPortal(<div aria-hidden="true" className="absolute inset-0" style={{ opacity }}>
-      {digits.map(({ c, r, x, y, count }) => <Digit key={`${c},${r}`} x={x} y={y} size={size} count={count} />)}
+      {behind.map(({ c, r, x, y, count }) => <Digit key={`${c},${r}`} x={x} y={y} size={size} count={count} />)}
     </div>, under)}
     {createPortal(<>
       {/* over the veil that darkens the scenery while someone is inside a house (components/pigchicken/house-dusk.tsx) */}
@@ -215,7 +220,7 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
           ? <div key={`${c},${r}`} className={`absolute flex items-center justify-center font-mono font-bold${cutShapes ? "" : " rounded-sm border border-dashed border-white/10"}`}
             style={{ left: x, top: y, width: size, height: size, fontSize: size * 0.5, color: NUMBER_COLORS[count], background: k.crater ? "radial-gradient(circle, #14181dcc 0 22%, #14181d55 38%, transparent 62%)" : undefined }}>
             {cutShapes && <svg className="absolute inset-0 h-full w-full" fill="none" stroke="#ffffff1a" strokeWidth={1} strokeDasharray="3 3"><path d={shapeOf(r)!.outer} /></svg>}
-            {!under && mine === "open" && count > 0 ? count : null}
+            {!under && !front && mine === "open" && count > 0 ? <span style={DIGIT_OUTLINE(size)}>{count}</span> : null}
           </div>
           // a closed block: its walls, and its bomb for whoever is on the closed side (a disarmed one is grey, with
           // no spark)
@@ -230,7 +235,7 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
           </div>)}
         {/* inside a house a local player is in: the numbers behind it, over its inside (within its walls) */}
         {under && entered.map(el => <div key={`h${el.id}`} className="absolute overflow-hidden" style={{ left: el.x, top: el.y, width: el.w, height: el.h, clipPath: el.params.house ? `polygon(${houseWallPolygon(el.params.house).map(([x, y]) => `${x}% ${y}%`).join(",")})` : undefined }}>
-          {digits.filter(d => d.x < el.x + el.w && d.x + size > el.x && d.y < el.y + el.h && d.y + size > el.y).map(({ c, r, x, y, count }) => <Digit key={`${c},${r}`} x={x - el.x} y={y - el.y} size={size} count={count} />)}
+          {behind.filter(d => d.x < el.x + el.w && d.x + size > el.x && d.y < el.y + el.h && d.y + size > el.y).map(({ c, r, x, y, count }) => <Digit key={`${c},${r}`} x={x - el.x} y={y - el.y} size={size} count={count} />)}
         </div>)}
       </div>}
       {/* the walls near the local chickens, for the engine: hard on every side */}
@@ -246,6 +251,8 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
         {cells.map(({ c, r, x, y, k }) => k.open
           ? mine === "closed" && <div key={`${c},${r}`} className="absolute bg-[#0e1512]" style={{ left: x, top: y, width: size, height: size, clipPath: shapeOf(r)?.clip }} />
           : <Face key={`${c},${r}`} k={k} x={x} y={y} size={size} p={p} veil={mine === "open"} clip={shapeOf(r)?.clip} />)}
+        {/* "Mostrar números": the numbers of the open blocks over everything, the veils included */}
+        {front && digits.map(({ c, r, x, y, count }) => <Digit key={`d${c},${r}`} x={x} y={y} size={size} count={count} />)}
         {/* the admin's debug (Configurações do Pátio → Grade de blocos): the bombs and the numbers of every block */}
         {debug.bombs && cells.filter(({ k }) => !k.open && k.bomb).map(({ c, r, x, y, k }) => <span key={`b${c},${r}`} className="absolute flex items-center justify-center" style={{ left: x, top: y, width: size, height: size }}><Bomb k={k} size={size} p={p} /></span>)}
         {debug.numbers && cells.map(({ c, r, x, y }) => <span key={`n${c},${r}`} className="absolute rounded-sm bg-black/70 px-1 font-mono font-bold text-white" style={{ left: x + 6, top: y + 6, fontSize: Math.max(12, size * 0.07) }}>{bombsAround(grid, c, r)}</span>)}
