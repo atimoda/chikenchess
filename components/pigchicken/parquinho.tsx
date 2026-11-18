@@ -28,7 +28,7 @@ import { cageCounterWidth, cageCounts, cageHudSpot, drawCageCounters, drawHangin
 import type { NetChickMirror } from "@/components/chicken/online-chickens"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
-import { INVENTORY_MAX, inventorySlotFromCode, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
+import { INVENTORY_MAX, groupSwitchStep, inventorySlotFromCode, newGroupSwitchRepeat, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type GroupSwitchRepeat, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
 import { announceHeldItem, bowed, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
@@ -104,11 +104,6 @@ import { drumBindLevels, drumKeyTokens } from "@/lib/pigchicken/drum-input"
 import { stageWidth } from "@/lib/stage-size"
 import { createTrainingGhosts } from "@/components/pigchicken/training-ghosts"
 
-// Próximo instrumento / Próxima arma / Próximo utilitário pressed this frame: the group to go through (the first
-// one listed wins when several are pressed together)
-const GROUP_BINDS: [ChickenAction, ItemGroup][] = [["nextInstrument", 0], ["nextWeapon", 1], ["nextUtility", 2]]
-const groupPress = (act: Partial<Record<ChickenAction, boolean>>, prev: Partial<Record<ChickenAction, boolean>>): ItemGroup | null =>
-  GROUP_BINDS.find(([a]) => act[a] && !prev[a])?.[1] ?? null
 // how far (px) a press on the inventory bar moves before it becomes a drag instead of a click
 const BAR_DRAG_START = 6
 // the state the combat reads: a bird brooding on a grab (a wall, a ceiling) broods, for the spread of its shots
@@ -593,10 +588,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let zoomLo: number = PATIO_ZOOM.min, zoomHi: number = PATIO_ZOOM.max
     const clampZoom = (z: number) => Math.max(zoomLo, Math.min(zoomHi, z))
     let prev: Partial<Record<ChickenAction, boolean>> = {}
-    const quickSwitch = newQuickSwitchRepeat()
+    const quickSwitch = newQuickSwitchRepeat(), groupSwitch = newGroupSwitchRepeat()
     // the other local players' actions in the last frame (presses are edges)
     const extraPrev = new Map<string, Partial<Record<ChickenAction, boolean>>>()
-    const extraQuickSwitch = new Map<string, QuickSwitchRepeat>()
+    const extraQuickSwitch = new Map<string, QuickSwitchRepeat>(), extraGroupSwitch = new Map<string, GroupSwitchRepeat>()
     const extraAim = new Map<string, { muzzle: { x: number; y: number }; angle: number; reach: number }>()
     // the Escalas layer's standby, per player: whether they played this frame and how far their scale has faded
     const scalePlaying = new Map<string, boolean>()
@@ -1093,7 +1088,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (fireBlock && !act.fire) fireBlock = false
       prevFire = act.fire
       const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || fingers.length > 0 || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee)
+      // Próximo item / Item anterior and the group switches repeat while held (Controles → Inventário)
       let pick = quickSwitchStep(act, prev, engine.isShiftHeld(), quickSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
+      const groupPick = groupSwitchStep(act, prev, groupSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
       if (wheel) { pick = wheel > 0 ? 1 : -1; wheel = 0 }
       const move = barMove.current
       barMove.current = null
@@ -1116,7 +1113,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           return pressed
         })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(),
         grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
-        groupPick: wh.open ? null : groupPress(act, prev), move,
+        groupPick: wh.open ? null : groupPick, move,
       }
       slotPick = 0; slotTap.current = 0
       // (sitting at a fixed instrument its own binds come first: L3 is the Harpa's sustenido and the Bateria's Ataque
@@ -1291,13 +1288,16 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const xrepeat = extraQuickSwitch.get(id) ?? newQuickSwitchRepeat()
         extraQuickSwitch.set(id, xrepeat)
         const xpick = quickSwitchStep(xa, xp, eng.isShiftHeld(), xrepeat, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
+        const xgroupRepeat = extraGroupSwitch.get(id) ?? newGroupSwitchRepeat()
+        extraGroupSwitch.set(id, xgroupRepeat)
+        const xgroup = groupSwitchStep(xa, xp, xgroupRepeat, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
         const xin = {
           deselect: xa.deselectItem && !xp.deselectItem,
           cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(),
           grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
-          groupPick: groupPress(xa, xp),
+          groupPick: xgroup,
         }
         cageBinds(id, extraSeated.has(id) ? {} : xa, extraSeated.has(id) ? {} : xp)
         extraPrev.set(id, xa)
@@ -1331,7 +1331,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         eng.setSwing(rigSwing(xsw))
         eng.setHeld(heldItemPose(combat, now, null, xbody.face))
       })
-      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraQuickSwitch.delete(id); extraAim.delete(id); cageHolds.delete(id); extraKit.delete(id); combat.drop(id) } })
+      extraPrev.forEach((_, id) => { if (!extras?.current?.has(id)) { extraPrev.delete(id); extraQuickSwitch.delete(id); extraGroupSwitch.delete(id); extraAim.delete(id); cageHolds.delete(id); extraKit.delete(id); combat.drop(id) } })
       combat.use("p1")
 
       // ---------- the temple's mini-game ----------
@@ -1678,7 +1678,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const offsets = getTouchLayout().offsets
       const drag = barDrag.current?.active ? barDrag.current : null
       arpBoxes.length = 0
-      arpBoxes.push(...drawInventory(hud, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom)))
+      arpBoxes.push(...drawInventory(hud, combat, 0, barBottom, null, now, offsets[barBottom ? "inventoryBar" : "inventory"], drag, barLabels(controls, devicesRef.current, !barBottom), controls.inventory.align))
       cageBoxes.length = 0
       const cam = { x: camX, y: camY, zoom }
       // the first player's Gaiolas hang in the top left corner, under the header, and swing with the camera
@@ -1838,7 +1838,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           In edit mode the Movable's drag handle covers it, so moving the bar never equips. */}
       {engine && (() => {
         const labels = barLabels(controls, devices, lifted)
-        const g = invGeom(0, invGroups, !lifted, undefined, undefined, undefined, !!labels?.some(Boolean), invCur)
+        const g = invGeom(0, invGroups, !lifted, undefined, undefined, undefined, !!labels?.some(Boolean), invCur, controls?.inventory.align)
         // the pointer's place along the bar (px from its left end), from any slot's button
         const slotAt = (e: ReactPointerEvent<HTMLButtonElement>) => barSlotAt(g.xs, g.size, e.clientX - (e.currentTarget.parentElement?.getBoundingClientRect().left ?? 0))
         const end = (e: ReactPointerEvent<HTMLButtonElement>, drop: boolean) => {

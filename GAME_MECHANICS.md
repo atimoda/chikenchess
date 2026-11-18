@@ -40,6 +40,7 @@
 | Pátio: mata do fundo (Configurações do Pátio → Mata: Mata ao longe e Mata perto) | [Mata](docs/mechanics/patio/forest.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
+| Pátio: alinhamento da barra do inventário (Separado, Centralizado, Esquerda, Direita) e trocas de item que repetem enquanto segura | [Barra do inventário](docs/mechanics/patio/inventory-bar.md) |
 | Pátio: almas capturadas (identidade, raridade, abdução, soltar, bot amigo, Callback, ajudas e atrapalhos, Pátio online) | [Almas](docs/mechanics/patio/souls.md) |
 | Pátio: Gaiolas (modelos e limite de almas, até três por player, captura, negação, espanto sem gaiola, soltar e trocar, contadores e avatares dos players, binds, Pátio online) | [Gaiolas](docs/mechanics/patio/cages.md) |
 | Pátio: pássaros e almas que exploram o mapa, lugares de pouso (árvores, plataformas, telhados, objetos), fuga das almas soltas dos outros players, poder de cagar | [Pássaros e almas que exploram](docs/mechanics/patio/birds-explore.md) |
@@ -118,6 +119,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 7 KB |
 | [Pátio: brilho dos itens](docs/mechanics/patio/item-glow.md) | 2 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
+| [Pátio: barra do inventário e trocas que repetem](docs/mechanics/patio/inventory-bar.md) | 4 KB |
 | [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 23 KB |
 | [Pátio: Gaiolas](docs/mechanics/patio/cages.md) | 9 KB |
 | [Pátio: pássaros e almas que exploram, fuga, cagar](docs/mechanics/patio/birds-explore.md) | 10 KB |

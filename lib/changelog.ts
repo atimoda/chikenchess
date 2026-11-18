@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.14.0',
     date: '18/11/2026',
-    title: 'Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado',
+    title: 'Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado',
     groups: [
       { title: 'Pátio: instrumentos', items: [
         'Novo ajuste “Aim Assist” (Itens → Música, de 0 a 100%, desligado por padrão) em cada instrumento. Ao tocar, se houver um inimigo na mesma célula da escala em que a mira está (a faixa do leque, a região do gráfico, o pedaço da espiral, a casa do campo harmônico, a nota do hang ou a corda), o tiro vira para ele: em 100% vai exatamente nele, sem espalhamento; em 50% vai até a metade do caminho. Sem inimigo na célula, o tiro vai onde a mira está. A célula continua além do desenho, na mesma direção. Vale para as notas, os acordes, o feixe do violino e as cordas; a Bateria não tem.',
@@ -18,6 +18,11 @@ const RECENT = [
         'Parâmetro novo “Bullet Magnetism” (painel Aliens → Corpo, de 0 a 100%) em cada variação: o alien puxa para si os tiros e as notas rebatidas que passam perto, mais quanto mais perto passam, e as notas fazem uma curva no caminho. Em 100% ele suga todos os tiros da tela; com mais de um em 100%, o mais perto do tiro leva.',
         'Cada espécie veio com o seu valor, em média perto de 20%: os grandes e lentos puxam mais (Casco 30%, Dragão 25%), os pequenos e rápidos quase nada (Mini 0%). Alguns exageram: Bronze 60%, Baixo 55% e Bumbo 50%.',
         'Variação nova “Ímã” (Casco): puxa 100%, suga todas as notas da tela e tem vida 400 para durar mais.',
+      ] },
+      { title: 'Pátio: inventário', items: [
+        'Opção nova em Controles → Inventário para alinhar a barra de itens de baixo: Centralizado (como era), Separado (instrumentos no canto esquerdo, armas e utilitários no canto direito), Esquerda ou Direita. Separado é o novo padrão. Arrastar um item de um lado para o outro continua mudando o grupo dele.',
+        'Próximo instrumento, Próxima arma e Próximo utilitário agora repetem a troca enquanto o botão fica segurado, como Próximo item e Item anterior: troca na hora, de novo depois de “Repetir troca após segurar” e depois a cada “Intervalo entre trocas”. Antes esses atalhos (Tab, Q, F, LB, RB e B no padrão) trocavam uma vez só por aperto.',
+        'Na Câmera de Mira saiu o aviso sobre zona morta e ímã dos analógicos.',
       ] },
     ],
   },
