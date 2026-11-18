@@ -25,7 +25,7 @@ import type { WeaponSound } from './sfx'
 import { rackRefillLimit, rackRespawnDelay } from './racks'
 import { glideMirror, isSharedTarget, netIdFor, type NetHit, type NetShot } from './net-world'
 import { TAKE_WAIT, glideSoulMirror, importSouls, soulFromWho, soulWho, type NetGive, type NetSoulWho, type NetTake, type SoulMirror } from './net-souls'
-import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type EnemyEnv } from './enemies'
+import { ALIEN_DEATH, ZOMBIE_TIMES, spawnAlienRow, spawnZombieAt, spawnZombies, stepEnemy, stepFormations, type AlienPatternDef, type EnemyEnv } from './enemies'
 import { newTremolo, stepTremolo, type TremoloState } from './tremolo'
 import { aimVolume } from './aim-volume'
 import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockChain, type Shock } from './shock'
@@ -2727,7 +2727,8 @@ export function createCombat() {
     setView(l: number, r: number) { view = { l, r } },
     pressed, kills,
     // bounds: the scene the horde is for (by default the one on screen here); the aliens keep to it
-    spawnAliens(groundY: number, playerX: number, bounds?: { l: number; r: number }) { spawnAlienRow(targets, env(groundY, playerX, 0, bounds)) },
+    // pattern: which aliens, in how many rows and columns (lib/pigchicken/alien-patterns.ts; the Fileira by default)
+    spawnAliens(groundY: number, playerX: number, bounds?: { l: number; r: number }, pattern?: AlienPatternDef) { spawnAlienRow(targets, env(groundY, playerX, 0, bounds), pattern) },
     spawnZombies(groundY: number, playerX: number, count: number, bounds?: { l: number; r: number }) { spawnZombies(targets, env(groundY, playerX, 0, bounds), count) },
     // ---------- online (lib/pigchicken/net-world-sync.ts) ----------
     // follower: report hits on the owner's enemies to fn instead of applying them (null: this browser decides)

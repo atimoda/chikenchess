@@ -5,6 +5,7 @@ import { type InputDeviceId } from "@/lib/chicken/input-devices"
 import { type Combat, type Pickup } from "@/lib/pigchicken/combat"
 import { type Catalog } from "@/lib/pigchicken/alien-catalog"
 import { nearestPoint } from "@/lib/pigchicken/eyes"
+import { lookSpecies } from "@/lib/pigchicken/enemies"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Temple } from "@/lib/pigchicken/temple"
@@ -107,7 +108,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
   drawCards(ctx, combat, camX, view)
   const drawTarget = (ctx: Ctx, g: Combat["targets"][number], x: number) => {
     if (g.kind === "undead") { drawUndead(ctx, g, x, combat.music.beatPhase, combat.music.beat); return }
-    if (g.kind === "alien" && (g.data as { kind?: string } | undefined)?.kind === "temple") { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
+    if (g.kind === "alien" && lookSpecies(g.data)) { drawTempleAlien(ctx, g, x, combat.music.beatPhase, templeDraw.charges.get(g.id) ?? 0, combat.music.beat, nearestPoint({ x: g.x, y: g.y - g.h / 2 }, lookTargets)); return }
     if (g.kind === "alien") { drawAlien(ctx, g, x); return }
     if (g.kind === "button" && g.label === "gong") { if (templeDraw.temple) drawGong(ctx, g, x, templeDraw.temple); return }
     if (g.kind === "button" && g.label === "reset") { if (templeDraw.temple) drawResetStone(ctx, g, x, templeDraw.temple); return }

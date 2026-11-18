@@ -22,7 +22,7 @@ export const SPECIES: Record<Species, { name: string; hp: number; points: number
   dragon: { name: 'Dragão', hp: 45, points: 200, w: 52, h: 52, color: '#ffb703' },
   dragonHead: { name: 'Cabeça do dragão', hp: 400, points: 2000, w: 84, h: 64, color: '#ff6b35' },
 }
-const JELLY_COLORS = ['#c77dff', '#7bd88f', '#ffd166', '#4cc9f0', '#f72585']
+export const JELLY_COLORS = ['#c77dff', '#7bd88f', '#ffd166', '#4cc9f0', '#f72585']
 
 export type StageDef = {
   name: string; intro: string
