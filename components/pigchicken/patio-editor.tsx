@@ -49,6 +49,7 @@ import { SurfacePoints } from "./surface-points"
 import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
 import { CHALK_TEXT_MAX, DEMO_IDS, GHOST_OFFSET, GHOST_REACH, TRAINING_DEMOS, chalkboardForDemo, type ChalkboardParams, type DemoId } from "@/lib/pigchicken/chalkboard"
+import { MINE_ACTIVATOR_DAMAGE, MINE_ACTIVATOR_NOTES, defaultMineActivator, type MineActivatorParams } from "@/lib/pigchicken/mine-activator"
 import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, PLAYER_ACCURACY, PLAYER_HEARTS, defaultGong, defaultPlayer, type GongParams, type PlayerParams } from "@/lib/pigchicken/gong"
 import { BUILDING_COLUMNS, BUILDING_LANTERNS, BUILDING_ROOFS, defaultBuilding, type BuildingParams } from "@/lib/pigchicken/buildings"
 import { BalustradeArt, BuildingArt } from "./building-art"
@@ -833,6 +834,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
           <input type="checkbox" checked={!!el.params.flip} onChange={e => set({ flip: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
         </label>
       )}
+      {el.kind === "mineactivator" && <MineActivatorFields activator={el.params.mineActivator ?? defaultMineActivator()} onChange={(mineActivator, step) => set({ mineActivator }, step && `${step}:${el.id}`)} />}
       {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
       {(el.kind === "jukebox" || el.kind === "vitrola") && <PlayerFields player={el.params.player ?? defaultPlayer()} onChange={(player, step) => set({ player }, step && `${step}:${el.id}`)} />}
       {el.kind === "building" && el.params.building && <BuildingFields building={el.params.building} onChange={(building, step) => set({ building }, step && `${step}:${el.id}`)} />}
@@ -920,6 +922,14 @@ function GongFields({ gong, onChange }: { gong: GongParams; onChange: (gong: Gon
   </>
 }
 
+// an Ativador de grid de campo minado: the music and the damage that fill its two bars
+function MineActivatorFields({ activator: a, onChange }: { activator: MineActivatorParams; onChange: (activator: MineActivatorParams, step?: string) => void }) {
+  return <div className="grid gap-field">
+    <PatioRange label="Notas até ativar" min={MINE_ACTIVATOR_NOTES.min} max={MINE_ACTIVATOR_NOTES.max} step={MINE_ACTIVATOR_NOTES.step} value={a.notes} onChange={notes => onChange({ ...a, notes }, "activator-notes")} />
+    <PatioRange label="Dano até ativar" min={MINE_ACTIVATOR_DAMAGE.min} max={MINE_ACTIVATOR_DAMAGE.max} step={MINE_ACTIVATOR_DAMAGE.step} value={a.damage} onChange={damage => onChange({ ...a, damage }, "activator-damage")} />
+  </div>
+}
+
 // a Jukebox or a Vitrola toca-discos: what its songs ask (the least accuracy at the end, the hearts)
 function PlayerFields({ player, onChange }: { player: PlayerParams; onChange: (player: PlayerParams, step?: string) => void }) {
   const set = (patch: Partial<PlayerParams>, step?: string) => onChange({ ...player, ...patch }, step)
@@ -998,7 +1008,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   { group: "Habilidades especiais", items: CONSUMABLE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Magia", items: MAGIC_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Chaves", items: KEY_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
-  { group: "Grade de blocos", items: MINE_ITEM_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
+  { group: "Grade de blocos", items: [{ key: "mineactivator", kind: "mineactivator" as ElementKind, label: ELEMENT_DEFS.mineactivator.label }, ...MINE_ITEM_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } }))] },
   { group: "Gaiolas", items: CAGE_IDS.map(id => ({ key: `rack-${id}`, kind: "rack" as ElementKind, label: DEFAULT_ITEMS[id].name, params: { item: id } })) },
   { group: "Baús", items: CHEST_RARITIES.map(r => ({ key: `chest-${r.value}`, kind: "chest" as ElementKind, label: `Baú ${r.label.toLowerCase()}`, params: { chest: defaultChest(r.value) } })) },
 ]
@@ -1015,6 +1025,7 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "gong") return <span aria-hidden="true" className="relative block h-8 w-9"><span className="absolute inset-x-0 top-0 h-1 rounded-sm bg-[#b3261e]" /><span className="absolute bottom-0 left-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute bottom-0 right-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute left-1/2 top-2 h-5 w-5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f2c46d,#c58b2e_55%,#7a4f12)]" /></span>
   if (entry.kind === "building") { const s = entry.size ?? ELEMENT_DEFS.building; return <span className="relative block h-9" style={{ aspectRatio: `${s.w} / ${s.h}` }}><BuildingArt building={entry.params?.building ?? defaultBuilding()} w={s.w} h={s.h} /></span> }
   if (entry.kind === "resetstone") return <span aria-hidden="true" className="relative block h-9 w-7"><span className="absolute inset-x-1 bottom-1 top-0 rounded-t-full bg-[#7c8892]" /><span className="absolute left-1/2 top-2.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#7bdff2]" /><span className="absolute inset-x-0 bottom-0 h-1.5 rounded-sm bg-[#6f695f]" /></span>
+  if (entry.kind === "mineactivator") return <span aria-hidden="true" className="relative block h-8 w-11"><span className="absolute inset-x-1.5 bottom-1 top-0.5 rounded-t-full bg-[radial-gradient(circle_at_35%_30%,#bfe0ff,#3d8bff_45%,#1b4fb8)]" /><span className="absolute inset-x-0 bottom-0 h-1.5 rounded-sm bg-[#2b3440]" /></span>
   if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
   if (entry.kind === "vitrola") return <VitrolaThumb />
   if (entry.kind === "pedalharp") return <HarpThumb />
@@ -1153,7 +1164,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       if (drag.entry.size) { el.w = drag.entry.size.w; el.h = drag.entry.size.h; el.x = p.x - el.w / 2; el.y = p.y - el.h / 2 }
       // dummies and racks stand on the floor right under where they were dropped
-      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "vitrola" || el.kind === "resetstone" || el.kind === "chest" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "vitrola" || el.kind === "resetstone" || el.kind === "chest" || el.kind === "mineactivator" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       // postes and torres in their model's proportions, planted on the floor under where they were dropped
       if (el.params.power) {

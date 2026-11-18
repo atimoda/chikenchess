@@ -473,9 +473,10 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
 
   return <OnlineContext.Provider value={value}>
     {children}
-    <div aria-live="polite" aria-relevant="additions" className="pointer-events-none fixed inset-x-3 top-[max(1rem,env(safe-area-inset-top))] z-[160] mx-auto flex max-w-md flex-col gap-2">
+    <div aria-live="polite" aria-relevant="additions" className="pointer-events-none fixed inset-x-3 top-[max(1rem,env(safe-area-inset-top))] z-[340] mx-auto flex max-w-md flex-col gap-2">
       {notices.map((notice) => <div key={notice.id} className="pointer-events-auto flex items-start gap-3 rounded-lg border border-primary/50 bg-[#101713] p-4 text-sm text-white shadow-lg">
         <p className="min-w-0 flex-1 break-words">{notice.message}</p>
+        {notice.action && <a href={notice.action.href} onClick={() => dismiss(notice.id)} className="shrink-0 rounded-md border border-primary px-3 py-1 font-medium text-primary hover:bg-primary hover:text-[#05060c]">{notice.action.label}</a>}
         <button type="button" aria-label="Fechar aviso" className="shrink-0 text-white/60 hover:text-white" onClick={() => dismiss(notice.id)}><X className="size-4" /></button>
       </div>)}
     </div>

@@ -33,3 +33,12 @@ export function wallSwitch(k: { brood: boolean; dir: number; toward: boolean }):
   if (k.dir !== 0) return k.toward ? 'box' : k.brood ? 'shock' : null
   return k.brood ? 'face' : null
 }
+
+// on a hard wall of the Grade de blocos that leads to another room (engine.ts, crossWall), Jump with the one direction
+// that points into it also takes her through: toward a wall she clings to (left on her left wall), or Up hanging from
+// a ceiling. Never on a diagonal: Up or Crouch on a wall, or left/right hanging, keep Jump what it was. (Brood + Jump,
+// the older gesture, still goes through, in the engine.) dir: left/right held (-1, 0, 1); toward: it points into the wall
+export function crossDirection(k: { hanging: boolean; dir: number; toward: boolean; up: boolean; down: boolean }): boolean {
+  if (k.down) return false
+  return k.hanging ? k.up && k.dir === 0 : k.dir !== 0 && k.toward && !k.up
+}

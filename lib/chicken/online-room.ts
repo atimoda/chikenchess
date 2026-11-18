@@ -10,7 +10,7 @@ import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world
 import type { NetGive, NetSoul, NetTake } from '../pigchicken/net-souls'
 import type { NetChests } from '../pigchicken/net-chests'
 import type { NetCages } from '../pigchicken/cages'
-import type { NetMineActs, NetMineState } from '../pigchicken/net-mine'
+import type { NetMineActs, NetMineState, NetMineWord } from '../pigchicken/net-mine'
 import { importChicks, keepChicks, type NetChick, type RemoteChick } from './net-chicks'
 
 /* global process */
@@ -214,7 +214,7 @@ export const sendNetChests = (msg: NetChests) => (netCan('chests') ? live() : nu
 // the Gaiolas each of this browser's chickens carries, as counters
 export const sendNetCages = (l: NetCages) => (netCan('cages') ? live() : null)?.send('cages', { l })
 // the round of the Grade de blocos: the owner's round, or what this browser's players did to it
-export const sendNetMine = (m: NetMineState | NetMineActs) => (netCan('mine') ? live() : null)?.send('mine', { m })
+export const sendNetMine = (m: NetMineState | NetMineActs | NetMineWord) => (netCan('mine') ? live() : null)?.send('mine', { m })
 // the house each of this browser's chickens is inside of ('' outside), in their slots' order
 export const sendNetHouses = (l: string[]) => (netCan('houses') ? live() : null)?.send('houses', { l })
 // the chicks that follow this browser's first chicken (an empty list: none left)

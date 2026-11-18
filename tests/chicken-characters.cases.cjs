@@ -197,3 +197,27 @@ test('how far back the head stays walking is a parameter; the Kids lean back muc
   assert.ok(Math.abs(kid.headLag - 0.315) < 1e-9)
   assert.ok(Math.asin(kid.headLag) * 180 / Math.PI < 20, 'under 20° back')
 })
+
+test('the hit-area per pose: a pose without its own frame is the standing one; on a wall the frame turns', () => {
+  const { defaultFrames, normalizeFrames, bodyBox, frameFor, withFrame, poseOf, effectiveFrames, barPoint } = loadTs('lib/chicken/body-frame.ts')
+  assert.equal(poseOf('crouch', true), 'crouch'); assert.equal(poseOf('slide', true), 'crouch')
+  assert.equal(poseOf('brood', true), 'brood'); assert.equal(poseOf('shockingPrepare', true), 'brood')
+  assert.equal(poseOf('jump', false), 'air'); assert.equal(poseOf('seat', true), 'seat')
+  assert.equal(poseOf('cling', true, 0), 'cling'); assert.equal(poseOf('brood', true, Math.PI / 2), 'cling'); assert.equal(poseOf('idle', true), 'stand')
+  let f = defaultFrames()
+  assert.deepEqual(frameFor(f, 'pig', 'brood'), frameFor(f, 'pig', 'stand'))
+  f = withFrame(f, 'pig', 'brood', { w: 120, h: 110, x: 5, y: 0, bar: 160 })
+  assert.deepEqual(bodyBox(f, 'pig', 0, 0, 1, 1, 'brood'), { l: -55, r: 65, t: -110, b: 0 })
+  assert.deepEqual(bodyBox(f, 'pig', 0, 0, 1, 1, 'stand'), { l: -45, r: 45, t: -200, b: 0 })
+  // saved and read back; "Igual a Em pé" removes it
+  const back = normalizeFrames(JSON.parse(JSON.stringify(f)))
+  assert.deepEqual(back.pig.poses.brood, { w: 120, h: 110, x: 5, y: 0, bar: 160 })
+  assert.equal(withFrame(back, 'pig', 'brood', null).pig.poses, undefined)
+  // the confirmation compares what the game uses
+  assert.deepEqual(effectiveFrames(defaultFrames()).chi.poses.air, frameFor(defaultFrames(), 'chi', 'stand'))
+  // on a wall to her right (angle -90°) the frame lies along the wall's normal: away from it, to the left
+  const wall = bodyBox(defaultFrames(), 'chicken', 100, 100, 1, 1, 'cling', -Math.PI / 2)
+  assert.ok(Math.abs(wall.r - 100) < 1e-9 && Math.abs(wall.l + 100) < 1e-9 && Math.abs(wall.t - 55) < 1e-9 && Math.abs(wall.b - 145) < 1e-9, JSON.stringify(wall))
+  const bar = barPoint(defaultFrames(), 'chicken', 0, 0, 1, 'stand')
+  assert.deepEqual(bar, { x: 0, y: -240 })
+})

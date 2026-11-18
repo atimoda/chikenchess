@@ -12,15 +12,20 @@
 //   own players keep their names ('p1', 'p2'...).
 import { mineCell, type MineCell, type MineSide } from './mine-grid'
 import type { MineAct, MineBombUse, MineEvent, MineFace, MineRound, MineStats } from './mine-round'
+import type { NetMineActivator, NetMineActivatorHits } from './mine-activator'
 
 // a block: [index, bits, gauge, yellow, hold, fuse (-1: none), turn (-1: not drawn yet), who played the last note,
 // who shot last, whose bomb]; the names at the end are left out when empty
 export type NetMineCell = (number | string)[]
 // the owner's round. n: its number; c, r: the grid's columns and rows (another shape is another Pátio's settings: not
 // taken); f: every block is in l; st: the stats by player; o: over; e: what happened since the last one; k: Filhotes
-export type NetMineState = { n: number; c: number; r: number; f?: 1; l: NetMineCell[]; st?: Record<string, number[]>; o?: 1; e?: MineEvent[]; k?: string[] }
+// g: the Ativadores de grid de campo minado (mine-activator.ts), which the owner also sends with no round at all
+// (NetMineWord)
+export type NetMineState = { n: number; c: number; r: number; f?: 1; l: NetMineCell[]; st?: Record<string, number[]>; o?: 1; e?: MineEvent[]; k?: string[]; g?: NetMineActivator }
+export type NetMineWord = { g: NetMineActivator }
 // what a browser's players did, for the owner, and which of its chickens (by number) are a Filhote
-export type NetMineActs = { a?: MineAct[]; k?: number[] }
+// g: what they poured into the Ativadores; h: its admin hid the grid an Ativador turned on
+export type NetMineActs = { a?: MineAct[]; k?: number[]; g?: NetMineActivatorHits; h?: 1 }
 
 export const NET_MINE_CELLS = 4096
 export const NET_MINE_ACTS = 64

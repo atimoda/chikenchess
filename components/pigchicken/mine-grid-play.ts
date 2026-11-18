@@ -12,6 +12,7 @@ import {
 } from "@/lib/pigchicken/mine-round"
 import { defaultChest, rollLoot } from "@/lib/pigchicken/chests"
 import { mineAct, mineStore, mineTouched, setMineChick, stepMine, watchMine } from "@/lib/pigchicken/mine-grid-store"
+import { mineActivatorBlastHit, mineActivatorBlowHit, mineActivatorNote, mineActivatorShot, mineActivatorStore, takeMineActivatorFlashes } from "@/lib/pigchicken/mine-activator-store"
 import { playWeaponSound } from "@/lib/pigchicken/sfx"
 import { getChickenConfig } from "@/lib/chicken/config"
 
@@ -48,8 +49,11 @@ function childHands(combat: Combat, input: FrameInput) {
 }
 
 export function bindMinePlay(combat: Combat, o: { engines: () => [string, ChickenEngine][]; color?: (who: string) => string | undefined }) {
+  // the Ativadores de grid de campo minado come first: they stand anywhere, with or without the grid
   combat.setMine({
     note(px, py, x, y, by) {
+      const act = mineActivatorNote(px, py, x, y, by, mineStore.params?.blue ?? "#4d9bff")
+      if (act) return act
       const round = mineStore.round, p = mineStore.params
       if (!round || !p) return null
       const hit = mineWallHit(round.grid, px, py, x, y)
@@ -60,6 +64,8 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
       return { flipX: hit.flipX, bounce: p.blockNotes, color: cell.flag ? p.orange : p.blue }
     },
     shot(px, py, x, y, damage, by) {
+      const act = mineActivatorShot(px, py, x, y, damage, by)
+      if (act) return act
       const round = mineStore.round, p = mineStore.params
       if (!round || !p) return null
       const hit = mineWallHit(round.grid, px, py, x, y)
@@ -68,6 +74,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
       return { flipX: hit.flipX }
     },
     blast(x, y, r, damage, by) {
+      mineActivatorBlastHit(x, y, r, damage)
       const round = mineStore.round, p = mineStore.params
       if (!round || !p) return
       for (const k of mineBlastCells(round.grid, x, y, r)) mineAct({ k: "shot", c: k.c, r: k.r, d: damage * k.part, by, side: mineStore.side(by) })
@@ -80,6 +87,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
       if (hit) { mineAct({ k: "shock", c: hit.c, r: hit.r }); mineTouched() }
     },
     blow(x, y, angle, arc, reach, damage, music, by) {
+      mineActivatorBlowHit(x, y, angle, arc, reach, damage, music)
       const round = mineStore.round, p = mineStore.params
       if (!round || !p) return
       const hits = mineBlowHits(round.grid, x, y, angle, arc, reach)
@@ -169,6 +177,11 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
     // once per frame of the world, before the players
     step(dt: number) {
       stepMine(dt); dress()
+      // an activator whose bar just filled: a blue burst and a fanfare where it stands
+      for (const id of takeMineActivatorFlashes()) {
+        const b = mineActivatorStore.boxes.find(o => o.id === id)
+        if (b) { combat.burst(b.x + b.w / 2, b.y + b.h * 0.45, 48, mineStore.params?.blue ?? "#4d9bff", 460, 5); playWeaponSound("chestLegend", null) }
+      }
       waiting.forEach((t, who) => { if (t <= dt) waiting.delete(who); else waiting.set(who, t - dt) })
       if (later.length) {
         for (const [who, fn] of later.splice(0)) { combat.use(who); fn() }

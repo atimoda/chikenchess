@@ -7,8 +7,14 @@ const RECENT = [
   {
     version: '2.14.0',
     date: '18/11/2026',
-    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo kid; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você; botão Camadas no painel do Modo editor e elementos trancados deixam o clique passar para os de trás; Prédios no fundo do Pátio (cidade, skyline flat, torres de código e data-centers) e duas árvores novas na Mata; Cor da dúvida na Grade de blocos; mesa do Suporte de item vira plataforma e contagem regressiva da reposição; painel Personagem (com a miniatura do seu boneco e a coluna Kids) separado de Ajustes, limites do inventário por categoria e Golpe rápido de volta nos kids; botões do cabeçalho do Pátio centralizados no desktop; zonas das cenas embaixo do chão, pisáveis: um slam (cair de um pulo segurando Chocar) troca o valor pisado, com transição de painel de aeroporto; fases de notas por zona, com meta de precisão e corações, e a Vitrola toca-discos; Pátio abre sem mostrar antes uma cópia antiga e o Playgrounds aberto mostra na hora o Pátio recém-salvo',
+    title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo kid; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você; botão Camadas no painel do Modo editor e elementos trancados deixam o clique passar para os de trás; Prédios no fundo do Pátio (cidade, skyline flat, torres de código e data-centers) e duas árvores novas na Mata; Cor da dúvida e Spawn de itens na Grade de blocos; mesa do Suporte de item vira plataforma e contagem regressiva da reposição; painel Personagem (com a miniatura do seu boneco e a coluna Kids) separado de Ajustes, limites do inventário por categoria e Golpe rápido de volta nos kids; botões do cabeçalho do Pátio centralizados no desktop; zonas das cenas embaixo do chão, pisáveis: um slam (cair de um pulo segurando Chocar) troca o valor pisado, com transição de painel de aeroporto; fases de notas por zona, com meta de precisão e corações, e a Vitrola toca-discos; Pátio abre sem mostrar antes uma cópia antiga e o Playgrounds aberto mostra na hora o Pátio recém-salvo; o portal de chegada do Pátio se fecha depois que a galinha sai dele; Friends dentro do Pátio para chamar um amigo para o seu lobby, com aviso e botão Entrar para quem foi chamado, e abas Perfil e Amigos no Vestiário; Ativador de grid de campo minado',
     groups: [
+      { title: 'Pátio: Ativador de grid de campo minado', items: [
+        'Elemento novo no Modo editor, grupo Grade de blocos: o Ativador de grid de campo minado, um botão azul grande com duas barras em volta da cúpula. As notas dos instrumentos enchem a de música (azul) e tiros, explosões, Golpes e Bicadas enchem a de dano (vermelha). No Editar dele: Notas até ativar e Dano até ativar.',
+        'A primeira barra que enche liga a grade de blocos para todos no Pátio: pela música, com os blocos tocando como Zonas sonoras; pelo dano, sem elas. Assim os próprios players ligam o Campo minado, sem depender do dono do Pátio.',
+        'Com a grade à mostra, o Ativador fica pequeno e cinza, e notas e tiros passam por ele sem contar. Ele volta a ser o botão azul quando a rodada termina ou quando quem cuida do Pátio desmarca Grade ligada no painel; enchido de novo depois do fim da rodada, começa uma rodada nova.',
+        'No online, o dono da sala soma as notas e o dano de todos e liga a grade para a sala inteira.',
+      ] },
       { title: 'Pátio: Prédios no fundo', items: [
         'Categoria nova “Prédios” nas Configurações do Pátio, logo depois de Mata: até quatro fileiras de prédios ao fundo, cada uma criada a partir de um modelo (Cidade, Skyline flat, Torres de código ou Data-center) e salva com o Pátio, em todos os modos.',
         'Cada fileira ajusta tudo: Profundidade (de quase junto do chão até atrás das montanhas), Elevação, Névoa, Altura e Largura com as suas variações, Densidade, Vãos, Aglomerado (grupos com os mais altos no meio), Recuos no topo, Anexos, Lateral (uma face estreita de topo inclinado), Coisas no teto e Antenas.',
@@ -62,7 +68,7 @@ const RECENT = [
         'O feixe do Violino agora para na parede de um bloco fechado e enche a barra de música dele: conta uma nota a cada semicolcheia enquanto fica ali (só do lado aberto, como as outras notas).',
       ] },
       { title: 'Pátio: painéis Personagem e Ajustes', items: [
-        'O antigo painel Ajustes virou Personagem, com as mesmas características dos personagens (colunas Chi, Pig e Ken). O botão dele no cabeçalho mostra a miniatura do seu próprio boneco com a skin atual, inclusive de kid.',
+        'O antigo painel Ajustes virou Personagem, com as mesmas características dos personagens (colunas Chi, Pig e Ken). O botão dele no cabeçalho mostra só o contorno do seu próprio boneco, na forma da skin atual, inclusive de kid.',
         'Novo painel Ajustes, logo ao lado, só com os ajustes universais: Notas no ritmo (quantizar), Tambores e pentes (Em volta, Na mira), que saíram da Câmera de Mira, e Debug.',
         'Grupo novo Inventário em Personagem: o máximo de instrumentos, armas e utilitários que cada personagem carrega (0 a 30, padrão 30), com valor próprio para Chi, Pig e Ken. Com a categoria cheia, Pegar só troca pelo item da mão se ele for da mesma categoria; senão aparece “Limite de instrumentos/armas/utilitários” sobre o item. O Limite do inventário do Pátio continua valendo para o total.',
         'Coluna nova Kids em Personagem, ao lado de Chi, Pig e Ken: o movimento e o tamanho do kid (e dos pintinhos que seguem a galinha) por fator sobre a galinha, e quantos itens de cada categoria ele carrega (padrão 1 de cada).',
@@ -74,6 +80,8 @@ const RECENT = [
       { title: 'Pátio: Grade de blocos', items: [
         'Cor nova “Cor da dúvida” no grupo Cores do painel Grade de blocos, laranja claro por padrão (duplo clique volta a ele): pinta as notas que caem numa bandeira, a barra que enche até a dúvida e a interrogação.',
         'Sair de um bloco fechado por qualquer caminho (por uma plataforma que atravessa a parede, escalando o vão para fora da grade) agora troca a vista para o lado de fora: o vão ao lado de um bloco aberto, o espaço acima da grade e as margens contam como lado aberto. Só o vão entre blocos fechados mantém o lado que você tinha.',
+        'Grupo novo “Spawn de itens” no painel Grade de blocos: cada bloco tem uma chance de nascer com itens (Blocos com itens, padrão 15%), de 1 até o máximo de Itens por bloco (padrão 2), lado a lado numa plataforma em lugar sorteado no meio do bloco. Dá para ajustar a chance de cada grupo (Armas, Instrumentos e Utilitários, 33% cada) e, na lista de cada grupo, a de cada item (10% cada); 0 tira do sorteio. Sortear muda os blocos, as plataformas e os itens, e os itens pegos voltam quando a grade é resetada.',
+        'Trocar de bloco ficou mais fácil: agarrado numa parede com outra sala atrás, Esquerda ou Direita (a que aponta para a parede) + Pulo já atravessa; pendurado no teto, Cima + Pulo vai para a sala de cima. Na diagonal não atravessa. Chocar + Pulo continua valendo.',
       ] },
       { title: 'Aliens: Bullet Magnetism', items: [
         'Parâmetro novo “Bullet Magnetism” (painel Aliens → Corpo, de 0 a 100%) em cada variação: o alien puxa para si os tiros e as notas rebatidas que passam perto, mais quanto mais perto passam, e as notas fazem uma curva no caminho. Em 100% ele suga todos os tiros da tela; com mais de um em 100%, o mais perto do tiro leva.',
@@ -89,6 +97,7 @@ const RECENT = [
         'A conta admin não fica mais presa no kid: o Vestiário abre na aba Kids, mas mantém as abas Raças e peças, e escolher uma raça ou peça volta a adulto com esse visual, em qualquer espécie.',
         'Saiu o aviso “meio apagado: ainda não liberado (dá pra testar)” do rodapé do Vestiário.',
         'Novo botão Hit-area no Vestiário (só admin): mostra sobre a prévia a caixa do corpo e a barra de vida de Chi, Pig, Ken e Kids. Arraste a caixa, a borda, o topo e a barra, ou digite os números, e grave com Salvar no game, que mostra a lista do que muda antes. A caixa é o que explosões, notas, cartas e cagados acertam, e é a mesma da camada Hit-boxes.',
+        'A Hit-area agora tem uma caixa por pose: Em pé, Agachado, Chocando, No ar, Sentado e Agarrado (parede ou teto, onde a caixa gira com a superfície). A prévia mostra o boneco de verdade em cada pose. Pose sem caixa própria usa a Em pé.',
       ] },
       { title: 'Pátio: Corrente-gancho', items: [
         'Item novo nos Esportivos (painel Itens, suportes do Modo editor e Baú): uma algema de ferro no pulso, um pedaço de corrente e um gancho grande na ponta. Pensado para o Pig, mas qualquer personagem pode usar.',
@@ -126,6 +135,23 @@ const RECENT = [
         'Um Pátio que este navegador ainda não conhece abre direto como ele é, em vez de mostrar antes o Pátio padrão.',
         'Quando o armazenamento do navegador enche, as cópias de Pátios que já estão salvos no servidor dão lugar, e o Pátio aberto continua sendo guardado.',
         'Com o painel Playgrounds aberto, um Pátio novo aparece na lista assim que é salvo ou ganha nome.',
+      ] },
+      { title: 'Pátio: portal de entrada', items: [
+        'O portal por onde a galinha chega no Pátio se fecha logo depois que ela sai dele: incha um pouco, gira mais rápido, as faíscas são sugadas para o centro e ele encolhe até sumir num ponto de luz. Para voltar ao globo, use o botão Globo no canto da tela. Os Portais de nascimento fazem o mesmo.',
+        'O portal reabre só para alguém sair dele ou ser sugado ao trocar de Pátio, e fecha de novo em seguida. No Modo editor eles ficam abertos para serem arrastados.',
+      ] },
+      { title: 'Online: Profile code de 9 dígitos', items: [
+        'O Profile code agora tem 9 números, na ordem de cadastro: a primeira conta é 000000001 e cada conta nova pega o próximo. As contas existentes foram renumeradas pela data de cadastro.',
+        'Em Friends, Add aceita o código sem os zeros à esquerda (12 acha 000000012), o código antigo de 16 caracteres ou o email.',
+        'Amigos ocultados continuam ocultos depois da troca de código.',
+      ] },
+      { title: 'Online: chamar amigos para o seu lobby', items: [
+        'No cabeçalho do Pátio, ao lado de Players, o botão Friends abre o mesmo painel de amigos do globo (adicionar por código ou email, aceitar, ocultar, remover), agora com “Invite” em cada amigo. “Invite friend” no painel Players abre esse painel.',
+        'Invite chama o amigo para o seu lobby: o Pátio aberto e, no online, a sua sala. Se você estiver no modo local, o Pátio entra no online antes de mandar o convite.',
+        'Quem é chamado vê um aviso “Fulano chamou você para o Pátio …” com o botão Entrar, no globo, numa partida ou no Pátio, mesmo com a aba em segundo plano. Entrar abre o Pátio já no online, na sala de quem chamou. O convite vale por 10 minutos e aparece uma vez por navegador.',
+        'No globo, Create game em Friends cria o lobby privado e já chama o amigo para ele, com o mesmo aviso.',
+        'No Vestiário, as abas Perfil e Amigos, no fim da fileira, abrem o painel do seu perfil (o mesmo do globo) e o painel Friends.',
+        'Copy link do painel Players agora leva ao Pátio aberto e à sua sala online; antes, depois de trocar de Pátio pelo Playgrounds, o link podia levar ao Pátio padrão.',
       ] },
     ],
   },

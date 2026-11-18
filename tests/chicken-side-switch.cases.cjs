@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { standSwitch, hangSwitch, wallSwitch } = loadTs('lib/chicken/side-switch.ts')
+const { standSwitch, hangSwitch, wallSwitch, crossDirection } = loadTs('lib/chicken/side-switch.ts')
 const keys = (s = '') => ({ brood: s.includes('brood'), up: s.includes('up'), down: s.includes('down'), against: s.includes('against') })
 
 test('standing on a floating floor: Brood + Jump is the other face, with Down the other side of the box', () => {
@@ -37,4 +37,23 @@ test('on a wall: Brood + Jump without left/right is the other face, toward the w
   assert.equal(wallSwitch({ brood: true, dir: -1, toward: false }), 'shock')
   assert.equal(wallSwitch({ brood: false, dir: -1, toward: false }), null)
   assert.equal(wallSwitch({ brood: false, dir: 0, toward: false }), null)
+})
+
+test('a wall of the Grade de blocos with a room behind it: Jump with the direction into it goes through, never a diagonal', () => {
+  const k = (hanging, dir, toward, s = '') => crossDirection({ hanging, dir, toward, up: s.includes('up'), down: s.includes('down') })
+  // clinging to a wall: toward it (left on the left wall, right on the right one)
+  assert.equal(k(false, -1, true), true)
+  assert.equal(k(false, 1, true), true)
+  // away from it is the wall jump, and nothing held is not this gesture
+  assert.equal(k(false, 1, false), false)
+  assert.equal(k(false, 0, false), false)
+  // diagonals: toward the wall with Up or Crouch
+  assert.equal(k(false, -1, true, 'up'), false)
+  assert.equal(k(false, -1, true, 'down'), false)
+  // hanging from a ceiling: Up alone
+  assert.equal(k(true, 0, false, 'up'), true)
+  assert.equal(k(true, 0, false), false)
+  assert.equal(k(true, -1, false, 'up'), false)
+  assert.equal(k(true, 1, false, 'up'), false)
+  assert.equal(k(true, 0, false, 'up down'), false)
 })

@@ -172,3 +172,23 @@ test('blocked browser storage keeps the campaign readable and backup/cache write
   assert.deepEqual(readLocalProfile(), source)
   assert.equal(dispatched.length, 0)
 })
+
+const { isHiddenFriend, migrateHiddenFriendKeys, normalizeProfileCodeQuery, profileCodeMatches } = loadTs('lib/online/profile-code.ts')
+
+test('profile code queries accept the 9 digits without leading zeros and old codes in any case', () => {
+  assert.equal(normalizeProfileCodeQuery(' 1 '), '000000001')
+  assert.equal(normalizeProfileCodeQuery('000000012'), '000000012')
+  assert.equal(normalizeProfileCodeQuery('7b23e26b10944f18'), '7B23E26B10944F18')
+  assert.equal(normalizeProfileCodeQuery('1234567890'), '1234567890')
+  assert.ok(profileCodeMatches('000000012', '12'))
+  assert.ok(!profileCodeMatches('000000012', '120'))
+})
+
+test('hidden friends move from profile codes to account ids and survive a code change', () => {
+  const legacy = new Set(['7B23E26B10944F18', 'GONE'])
+  const migrated = migrateHiddenFriendKeys(legacy, [{ id: 'admin', code: '7B23E26B10944F18' }, { id: 'other', code: '000000002' }])
+  assert.deepEqual([...migrated].sort(), ['GONE', 'admin'])
+  assert.equal(migrateHiddenFriendKeys(migrated, [{ id: 'admin', code: '000000001' }]), migrated)
+  assert.ok(isHiddenFriend(migrated, { id: 'admin', code: '000000001' }))
+  assert.ok(!isHiddenFriend(migrated, { id: 'other', code: '000000002' }))
+})

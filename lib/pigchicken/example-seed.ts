@@ -10,7 +10,7 @@ import { trainingLayout } from './example-training'
 import { minefieldLayout } from './example-minefield'
 import type { PatioLayout } from './layout'
 
-export const ADMIN_PROFILE_CODE = '7B23E26B10944F18'
+export const ADMIN_PROFILE_CODE = '000000001'
 
 export type ExamplePatio = { id: string; name: string; layout: () => PatioLayout }
 export const EXAMPLE_PATIOS: ExamplePatio[] = [

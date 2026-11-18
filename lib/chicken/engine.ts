@@ -17,12 +17,12 @@ import { variantClass } from './beast-art'
 import { armMarkup, type ArmsSpec } from './arm-rig'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, SCALE_BASE, chickenClucks, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
-import { frameClassOf } from './body-frame'
+import { barPoint, poseOf } from './body-frame'
 import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
 import { grabDamageStep } from './grab-damage'
 import { clingAnim, clingSpeedLimit } from './cling-brood'
-import { hangSwitch, standSwitch, wallSwitch } from './side-switch'
+import { crossDirection, hangSwitch, standSwitch, wallSwitch } from './side-switch'
 import { shockingAirLegPose } from './shocking-pose'
 import { magnetVector } from './analog-magnet'
 import { createThrowTransition } from './throw-transition'
@@ -503,9 +503,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     const f = meter ?? hp / Math.max(1, R.maxHp)
     el.hpFill.setAttribute('width', (60 * f).toFixed(1))
     el.hpFill.setAttribute('fill', meter !== null ? '#b45cff' : f > 0.5 ? '#3fcf6b' : f > 0.25 ? '#f2c14e' : '#ef4b4b')
-    // the bar's height over the feet is each class's (the Vestiário's Hit-area editor)
-    const top = (S.cl ? S.cl.py : S.y) - config.frames[frameClassOf(species ?? lookSpecies)].bar * R.scale
-    el.hpBar.setAttribute('transform', `translate(${(S.cl ? S.cl.px : S.x).toFixed(1)} ${top.toFixed(1)}) scale(${Math.max(0.6, R.scale * 1.6).toFixed(2)})`)
+    // the bar's height over the feet is each class's, in each pose (the Vestiário's Hit-area editor)
+    const phi = S.cl ? S.cl.phi : 0
+    const at = barPoint(config.frames, species ?? lookSpecies, S.cl ? S.cl.px : S.x, S.cl ? S.cl.py : S.y, R.scale, poseOf(S.state, !!S.grounded, phi), phi)
+    el.hpBar.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)}) scale(${Math.max(0.6, R.scale * 1.6).toFixed(2)})`)
   }
   let W = stageWidth(), H = window.innerHeight, groundY = H - opts.groundHeight
   function resize() {
@@ -1538,7 +1539,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // preparing the shocking jump off the wall: she holds still, in the preparation's pose (step() launches or cancels)
     if (c.shock) { S.vx = 0; clingPose(dt, U, Dn, true); return }
     const sw = !jumpPressed ? null : hanging ? hangSwitch({ brood, up: U, down: Dn, against }) : wallSwitch({ brood, dir, toward: dir * c.n[0] < 0 })
-    if (jumpPressed && ((broodFlip && crossWall(sg, c.n, c.px, c.py)) || (sw === 'box' && switchSide(sg)) || (sw === 'face' && switchFace(sg)))) {
+    // a wall that leads to another room: Brood + Jump, or Jump with the direction into it (never a diagonal)
+    const intoWall = jumpPressed && crossDirection({ hanging, dir, toward: dir * c.n[0] < 0, up: U, down: Dn })
+    if (jumpPressed && (((broodFlip || intoWall) && crossWall(sg, c.n, c.px, c.py)) || (sw === 'box' && switchSide(sg)) || (sw === 'face' && switchFace(sg)))) {
       if (S.cl) clingPose(dt, U, Dn, brood)
       else { S.state = 'idle'; animate(dt, 'idle', false, 0) }
       return

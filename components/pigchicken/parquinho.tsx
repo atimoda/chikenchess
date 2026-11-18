@@ -7,7 +7,7 @@
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import { feedBaby, getBaby } from "@/lib/chicken/baby"
 import { getChickenConfig } from "@/lib/chicken/config"
-import { bodyBox } from "@/lib/chicken/body-frame"
+import { bodyBox, poseOf } from "@/lib/chicken/body-frame"
 import { Search } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
@@ -56,6 +56,9 @@ import { setLiveZones, zoneEffectsAt } from "@/lib/pigchicken/zone-physics"
 import { hitZone, liveZones, resetZoneLife, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { bindMinePlay } from "./mine-grid-play"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
+import { setMineActivators } from "@/lib/pigchicken/mine-activator-store"
+import { defaultMineActivator } from "@/lib/pigchicken/mine-activator"
+import { drawMineActivators } from "./draw/mine-activator"
 import { mineZoneBoxes } from "@/lib/pigchicken/mine-zones"
 import { drawScaleFan, SCALE_FAN_R, seatedFanSize } from "@/components/pigchicken/draw/scale-fan"
 import { drawAmmoAround, drawAmmoDrops, drawAmmoHud } from "@/components/pigchicken/draw/ammo-hud"
@@ -819,6 +822,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         syncedElements = elementsRef.current; syncedScreens = S.screens
         const shown = elementsInWorld({ v: 1, elements: syncedElements }, S.screens)
         layoutSync.sync(syncedElements, S.screens)
+        // the Ativadores de grid de campo minado (mine-activator-store.ts)
+        setMineActivators(shown.filter(el => el.kind === "mineactivator").map(el => ({ id: el.id, x: el.x, y: el.y, w: el.w, h: el.h, params: el.params.mineActivator ?? defaultMineActivator() })))
         gongSet.clear()
         for (const el of syncedElements) if (el.kind === "gong" && el.params.gong && !el.params.gong.temple) gongSet.set(el.id, el.params.gong)
         playerSet.clear()
@@ -1237,7 +1242,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const frames = getChickenConfig().frames
       combat.setBlastActors([engine, ...Array.from(extras?.current?.values() ?? []), ...Array.from(chicks?.current?.values() ?? [])].map(eng => {
         const st = eng.getMotionState(), x = st.x + camX, y = st.y - camY
-        return { id: playerOf.get(eng), box: bodyBox(frames, st.species, x, y, st.scale, st.face), v: { x: st.vx, y: st.vy }, push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }
+        return { id: playerOf.get(eng), box: bodyBox(frames, st.species, x, y, st.scale, st.face, poseOf(st.state, st.grounded, st.angle), st.angle), v: { x: st.vx, y: st.vy }, push: (vx: number, vy: number, damage?: number) => eng.impulse(vx, vy, true, damage) }
       }))
       if (perches.spans.length) {
         perches.camX = camX; perches.camY = camY - yr.lo; perches.restY = yr.lo; perches.time += dt
@@ -1343,7 +1348,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       p1Baby = babyOn
       if (babyOn) {
         if (bp.babyNoThrow) { input.throwHeld = false; input.throwReleased = false }
-        combat.setBabies([{ by: "p1", box: bodyBox(getChickenConfig().frames, "chick", body.x, body.y, st.scale, st.face), fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
+        combat.setBabies([{ by: "p1", box: bodyBox(getChickenConfig().frames, "chick", body.x, body.y, st.scale, st.face, poseOf(st.state, st.grounded, st.angle), st.angle), fill: () => { feedBaby(getChickenConfig().params.babyNotes) } }])
       } else combat.setBabies([])
       // the strong blow charged with an empty hand (Correntada, Rabada): the arm or the tail winds up
       engine.setBareCharge(!combat.held && combat.heavyCharging ? combat.heavyCharge : null)
@@ -1707,6 +1712,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       lookTargets.push({ x: body.x, y: body.y - 170 * st.scale })
       inWorld()
       drawWorld(ctx, combat, camX, view, itemGlowRef.current)
+      drawMineActivators(ctx, camX, view, { blue: mineStore.params?.blue ?? "#4d9bff", red: mineStore.params?.red ?? "#ff5a5a" })
       // online, the other browsers' souls wear a ring in their browser's colour
       const netPlayers = combat.netSouls.length ? getNetState().info?.players : null
       drawFreedSouls(ctx, combat, camX, view, extraList.length ? colorsRef.current : null, netPlayers ? pid => { const p = netPlayers.find(q => q.pid === pid); return p ? PLAYER_COLORS[p.color % PLAYER_COLORS.length] : undefined } : undefined)
@@ -1771,7 +1777,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (hitboxesRef.current) {
         drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
           const ms = eng.getMotionState(), es = eng.getState()
-          return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, box: bodyBox(getChickenConfig().frames, ms.species, ms.x, ms.y, ms.scale, ms.face) }
+          return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, box: bodyBox(getChickenConfig().frames, ms.species, ms.x, ms.y, ms.scale, ms.face, poseOf(ms.state, ms.grounded, ms.angle), ms.angle) }
         }))
       }
       // the scale layer hides while a chicken is being dragged by the mouse/touch
@@ -1984,6 +1990,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       carryRef.current = { carry: combat.exportCarry(), zoom }
       resetZoneLife()
       minePlay.dispose()
+      setMineActivators([])
       dropScaleStage(combat.music)
       templeDraw.gongs.clear()
       headerObserver.disconnect()

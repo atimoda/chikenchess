@@ -8,12 +8,10 @@ import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { LOOK_ART, type ChickenLook } from "@/lib/chicken/look-art"
 import { connectedPads, inputDeviceLabel, sortDevices, type InputDeviceId } from "@/lib/chicken/input-devices"
 import {
-  LOCAL_MAX, canEditPatio, isProtectedPlayer, firstLocal, inviteLink, isOwner, localPlayers, neighbourLobby,
+  LOCAL_MAX, canEditPatio, isProtectedPlayer, firstLocal, isOwner, localPlayers, neighbourLobby,
   type LobbyMode, type LobbyPlayer, type LobbyState,
 } from "@/lib/chicken/lobby"
 import { ONLINE_OFF, listNetLobbies, type NetLobby } from "@/lib/chicken/online-room"
-import { onlineConfigured, onlineRpc } from "@/lib/online/client"
-import type { OnlineFriend } from "@/lib/online/types"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { ChickenHeadIcon } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
@@ -122,8 +120,10 @@ export function LobbySwitcher({ mode, roomId, onStatus, onSwitch }: { mode: Lobb
 }
 
 // ---------- the panel ----------
-export function PlayersPanel({ lobby, seats, connecting, onPublic, devices, meName, meLook, onClose, onMode, onAdd, onRemove, onAssign, onEditor, onRename, onAvatar }: {
+export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices, meName, meLook, onClose, onMode, onAdd, onInviteFriend, onRemove, onAssign, onEditor, onRename, onAvatar }: {
   lobby: LobbyState
+  // the invite link: this Pátio and, online, its room
+  link: string
   // online: browsers in the lobby out of 13 (the counter); null in Local mode, where it counts this computer's players
   seats: { used: number; max: number } | null
   // online chosen but not connected yet
@@ -139,6 +139,8 @@ export function PlayersPanel({ lobby, seats, connecting, onPublic, devices, meNa
   onClose: () => void
   onMode: (mode: LobbyMode) => void
   onAdd: () => void
+  // opens the Friends panel, where each friend is called into this lobby
+  onInviteFriend: () => void
   onRemove: (playerId: string) => void
   onAssign: (device: InputDeviceId, playerId: string) => void
   onEditor: (playerId: string, on: boolean) => void
@@ -152,11 +154,9 @@ export function PlayersPanel({ lobby, seats, connecting, onPublic, devices, meNa
   const present = new Set(devices)
   const full = localPlayers(lobby).length >= LOCAL_MAX
   const [note, setNote] = useState<string | null>(null)
-  const [invite, setInvite] = useState(false)
   const nameOf = (p: LobbyPlayer) => (p.id === me?.id && meName ? meName : p.name)
 
   const copyLink = async () => {
-    const link = inviteLink(lobby.id)
     try {
       await navigator.clipboard.writeText(link)
       setNote(lobby.mode === "online" ? "Link de convite copiado." : "Link de convite copiado. Quem abrir entra quando o modo online voltar.")
@@ -273,7 +273,7 @@ export function PlayersPanel({ lobby, seats, connecting, onPublic, devices, meNa
                 <div className="flex flex-wrap items-center gap-x-1 text-[#b9c7b9]">
                   <button type="button" onClick={onAdd} disabled={full} className="hover:text-white disabled:opacity-40">Add local player</button>
                   <span className="text-white/25">/</span>
-                  <button type="button" onClick={() => setInvite(v => !v)} disabled={full} aria-expanded={invite} className="inline-flex items-center gap-1 hover:text-white disabled:opacity-40"><UserPlus className="h-3.5 w-3.5" />Invite friend</button>
+                  <button type="button" onClick={onInviteFriend} className="inline-flex items-center gap-1 hover:text-white"><UserPlus className="h-3.5 w-3.5" />Invite friend</button>
                   <span className="text-white/25">/</span>
                   <button type="button" onClick={() => void copyLink()} className="inline-flex items-center gap-1 hover:text-white"><Link2 className="h-3.5 w-3.5" />Copy link</button>
                 </div>
@@ -281,7 +281,6 @@ export function PlayersPanel({ lobby, seats, connecting, onPublic, devices, meNa
             </tr>
           </tbody>
         </table>
-        {invite && <InviteFriends lobbyId={lobby.id} onNote={setNote} />}
       </div>
       {(note || full) && (
         <p className="shrink-0 border-t border-white/10 px-4 py-2 text-[10px] leading-relaxed text-[#93a79a]">
@@ -298,40 +297,6 @@ function ModeSwitch({ mode, onChange }: { mode: LobbyMode; onChange: (mode: Lobb
       {(["local", "online"] as const).map(m => (
         <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => onChange(m)} className={cn("h-7 rounded px-3 capitalize", mode === m ? "bg-primary font-bold text-[#05060c]" : "text-[#b9c7b9] hover:text-white")}>{m}</button>
       ))}
-    </div>
-  )
-}
-
-// The friends of the logged account; the notice (push / e-mail) goes out once the online server is back.
-function InviteFriends({ lobbyId, onNote }: { lobbyId: string; onNote: (text: string) => void }) {
-  const [friends, setFriends] = useState<OnlineFriend[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  useEffect(() => {
-    if (!onlineConfigured) { setError(ONLINE_OFF); return }
-    let alive = true
-    onlineRpc<OnlineFriend[]>("online_friends", { p_action: "list" })
-      .then(list => { if (alive) setFriends(list.filter(f => f.status === "accepted")) })
-      .catch(() => { if (alive) setError(ONLINE_OFF) })
-    return () => { alive = false }
-  }, [])
-  const send = (f: OnlineFriend) => {
-    // TODO(online): call the invite RPC (push / e-mail) when the server is back; for now the link goes to the clipboard
-    void navigator.clipboard?.writeText(inviteLink(lobbyId)).catch(() => {})
-    onNote(`Convite para ${f.profile.display_name}: o aviso por push / e-mail sai quando o online voltar. O link já está copiado.`)
-  }
-  return (
-    <div className="mx-4 my-2 rounded-md border border-white/10 p-3">
-      <h3 className="mb-2 text-[10px] uppercase tracking-wider text-[#93a79a]">Amigos</h3>
-      {error ? <p className="text-amber-200">{error}</p> : !friends ? <p className="text-[#93a79a]">Carregando…</p> : !friends.length ? <p className="text-[#93a79a]">Nenhum amigo ainda.</p> : (
-        <ul className="grid gap-1">
-          {friends.map(f => (
-            <li key={f.id} className="flex items-center gap-2">
-              <span className="flex-1 truncate text-white">{f.profile.display_name}</span>
-              <button type="button" onClick={() => send(f)} className="h-7 rounded-md border border-white/20 px-2 hover:border-primary">Convidar</button>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }
