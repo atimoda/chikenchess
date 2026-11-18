@@ -1206,7 +1206,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const m0 = muzzleAt(d.turnRate > 0 ? combat.aimAngle : aim.angle)
       // the aim's distance from her sets the instrument's loudness (lib/pigchicken/aim-volume.ts)
       // (mouse: full at the scale fan's circle; sticks: their value, which already starts at 0 at the dead zone's edge)
-      combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, radius: SCALE_FAN_R * (combat.seated ? seatedFanSize(scaleSizeRef.current) : scaleSizeRef.current) * st.scale, stick: aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? aim.strength : null }), aim.target ? "point" : aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? "stick" : "none")
+      // (and where her scale's drawing is in the world: the Aim Assist's cells)
+      const scaleR = SCALE_FAN_R * (combat.seated ? seatedFanSize(scaleSizeRef.current) : scaleSizeRef.current) * st.scale
+      combat.setScaleFan({ x: origin.x + camX, y: origin.y - camY, r: scaleR })
+      combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, radius: scaleR, stick: aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? aim.strength : null }), aim.target ? "point" : aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? "stick" : "none")
       // where the reticle is (the cursor; with a stick or the keys, at the reticle's distance): a deck's card flies there
       { const sd = S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1); combat.setAimPoint(aim.target ? { x: aim.target.x + camX, y: aim.target.y - camY } : { x: m0.x + Math.cos(aim.angle) * sd + camX, y: m0.y + Math.sin(aim.angle) * sd - camY }) }
       // sitting at a fixed instrument (the Harpa): Pular or a blast got her up
@@ -1301,6 +1304,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx }
         combat.setAimReach((rs ?? ls)?.mag ?? 1, rs ?? ls ? "stick" : "none")
+        combat.setScaleFan({ x: xo.x + camX, y: xo.y - camY, r: SCALE_FAN_R * (combat.seated ? seatedFanSize(scaleSizeRef.current) : scaleSizeRef.current) * xs.scale })
         { const xdist = S.reticleDist * (rs ? 0.45 + 0.55 * rs.mag : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
         if (eng.takeSeatLeft()) combat.standUp()
         // (her hands over the Harpa's strings: the two sticks; with the keys, the direction they aim)
