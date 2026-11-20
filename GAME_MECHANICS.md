@@ -33,7 +33,7 @@
 | Pátio: Grade de blocos do Campo minado (blocos fechados e abertos, bombas, vão, paredes, lado aberto e fechado, trocar de bloco) | [Grade de blocos](docs/mechanics/patio/mine-grid.md) |
 | Pátio: rodada do Campo minado (gangorra de música e dano, bandeira, dúvida, bombas, Chave dourada, detonador, instalar bomba, Filhote, fim da rodada e títulos, rodada no online, Pátio de exemplo Campo minado) | [Rodada do Campo minado](docs/mechanics/patio/mine-round.md) |
 | Pátio: salvar/abrir, Playgrounds, Destaques, Pátios de exemplo | [Lobbies do Pátio](docs/mechanics/patio/lobbies.md) |
-| Pátio: instrumentos fixos (Harpa de pedais: sentar, tocar parada, duas mãos, dedos na tela, levantar; Bateria: peças, baquetas, atalhos, pedal do chimbal, rufo, editor do kit) | [Instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) |
+| Pátio: instrumentos fixos (Harpa de pedais: sentar, tocar parada, duas mãos, dedos na tela, levantar; Bateria: peças, baquetas, atalhos, pedal do chimbal, rufo, editor do kit; Piano de cauda: Estrela sentada, dinâmica pelas binds, levantar com Golpe) | [Instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) |
 | Pátio: Baú do Modo editor (abrir por chave ou merecimento, itens com chance, raridade, Pátio online) e item Chave | [Baú e Chave](docs/mechanics/patio/chests.md) |
 | Pátio: Quadro de lousa, fantasma de treino e o Pátio Training room | [Treino](docs/mechanics/patio/training.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, presos às camadas do fundo, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
@@ -51,6 +51,7 @@
 | Pátio: Guia de pássaros (aves reais, a ave que inspira cada alma, cantos gravados e créditos, canto real das almas soltas) | [Guia de pássaros](docs/mechanics/patio/bird-guide.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução, Cordas soltas da harpa), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
+| Pátio: escala Estrela (12 notas numa estrela de hexágonos, eixo do trítono, realce da escala da zona, toque e arraste, RT analógico, dinâmica pelo movimento, acumulador no Correr: rajada, cascata, tercinas) | [Escala Estrela](docs/mechanics/patio/star-scale.md) |
 | Pátio: Próxima variação (escala, tambor), os checkboxes “Incluir variações” das trocas de item, tambores e pentes das armas (na mira e em volta), a mira espacial dos instrumentos e itens e a Granada de pente infinito | [Variações dos itens](docs/mechanics/patio/item-variations.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
 | Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
@@ -122,7 +123,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: salvar/abrir, Playgrounds, Destaques](docs/mechanics/patio/lobbies.md) | 10 KB |
 | [Pátio: Baú e Chave](docs/mechanics/patio/chests.md) | 6 KB |
 | [Pátio: Suportes de item](docs/mechanics/patio/racks.md) | 4 KB |
-| [Pátio: instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) | 14 KB |
+| [Pátio: instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) | 22 KB |
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 7 KB |
 | [Pátio: brilho dos itens](docs/mechanics/patio/item-glow.md) | 2 KB |
@@ -133,7 +134,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: pássaros e almas que exploram, fuga, cagar](docs/mechanics/patio/birds-explore.md) | 10 KB |
 | [Pátio: biblioteca de almas](docs/mechanics/patio/soul-library.md) | 14 KB |
 | [Pátio: Guia de pássaros](docs/mechanics/patio/bird-guide.md) | 6 KB |
-| [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 23 KB |
+| [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 27 KB |
+| [Pátio: escala Estrela](docs/mechanics/patio/star-scale.md) | 7 KB |
 | [Pátio: Próxima variação, variações nas trocas e tambores](docs/mechanics/patio/item-variations.md) | 7 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |

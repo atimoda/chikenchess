@@ -21,6 +21,7 @@ import { drawItem, type Ctx } from "./shared"
 import { chestMarks, drawChest } from "./chests"
 import { drawHarp, seatMarks } from "./harp"
 import { drawDrumKit } from "./drumkit"
+import { drawGrandPiano } from "./grandpiano"
 import { CAGE_WORLD_SCALE, drawCageOnFloor } from "./cages"
 import { cageArt } from "@/lib/pigchicken/cage-art"
 import { drawBolts, drawFlights, drawShocked, drawSkyFlash, drawXray } from "./shock"
@@ -78,7 +79,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     if (left) { ctx.textBaseline = "top"; ctx.fillText(left, x, groundY - RACK_ITEM_START); ctx.textBaseline = "alphabetic" }
   })
   combat.chests.forEach(c => { if (visible(c.x, c.y + 40, 320, 520)) drawChest(ctx, c, X(c.x), t) })
-  combat.seats.forEach(s => { if (!visible(s.x, s.y + 40, 320, 520)) return; if (s.kind === 'drumkit') drawDrumKit(ctx, s, X(s.x), p => combat.seatPulse(s, p)); else drawHarp(ctx, s, X(s.x)) })
+  combat.seats.forEach(s => { if (!visible(s.x, s.y + 40, 320, 520)) return; if (s.kind === 'drumkit') drawDrumKit(ctx, s, X(s.x), p => combat.seatPulse(s, p)); else if (s.kind === 'grandpiano') drawGrandPiano(ctx, s, X(s.x)); else drawHarp(ctx, s, X(s.x)) })
   const glowLook = itemGlowLook(glow.amount)
   combat.pickups.forEach(p => {
     if (!visible(p.x, p.y + 40, 160, glowLook ? glowLook.beamH + 40 : 240)) return

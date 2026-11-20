@@ -42,8 +42,9 @@ export type ChickenState = { x: number; y: number; angle: number; shoulder: { x:
 export type ChickenGame = { gameMode?: boolean; throwHeld?: boolean; throwCharging?: boolean; aimFace?: number | null; lookAngle?: number | null; speedMult?: number; accelMult?: number; accelPower?: number; accelRamp?: number; buddha?: number; fizz?: number; seat?: ChickenSeat | null }
 // Sitting at a fixed instrument (the Pátio's Harpa: lib/pigchicken/fixed-instruments.ts): her feet stay at (x, y) on
 // the screen, she faces `face` and no movement input counts, in the seated pose. Pular, a blast or being dragged
-// gets her up: takeSeatLeft() says so once, for the game to free the seat
-export type ChickenSeat = { x: number; y: number; face: number }
+// gets her up: takeSeatLeft() says so once, for the game to free the seat. keepJump: Pular does not get her up (the
+// Piano de cauda, where Pular is a dynamic)
+export type ChickenSeat = { x: number; y: number; face: number; keepJump?: boolean }
 // A chicken driven from outside (an online player's, from the network): where she is on this screen and what she
 // is doing. She follows it smoothly, animates by its state and ignores input, physics and the pointer.
 // cling: the angle (radians) of the surface she holds, turned like hers (null: not clinging); then x/y is the
@@ -988,7 +989,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   function leaveSeat() { if (game.seat) { game.seat = null; seatLeft = true } }
   function seatStep(dt: number, jumpPressed: boolean) {
     const s = game.seat!
-    if (jumpPressed) { leaveSeat(); S.prevD = false; return }
+    if (jumpPressed && !s.keepJump) { leaveSeat(); S.prevD = false; return }
     if (S.cl) { S.cl = null; startTurn() }
     S.x = s.x; S.y = s.y; S.vx = 0; S.vy = 0; S.grounded = true; S.jumpIndex = 0; S.airBoost = 0
     S.face = s.face < 0 ? -1 : 1

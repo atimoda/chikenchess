@@ -29,6 +29,8 @@ export const setDrumScreen = (s: { l: number; t: number; r: number; b: number } 
  * (lib/pigchicken/drum-kit.ts, `drumChartFrame`). `unit`: the radius of a chart of size 1 for her.
  */
 export const drumFrame = (kit: DrumKit, x: number, y: number, unit: number) => drumChartFrame(kit, x, y, unit, screen)
+/** That part of the screen (the Estrela sitting at the Piano de cauda fits in it too). */
+export const drumScreen = () => screen
 
 /** The chart centred at (cx, cy) with radius rOut (screen units). */
 export function drawDrumChart(ctx: CanvasRenderingContext2D, kit: DrumKit, cx: number, cy: number, rOut: number, look: DrumChartLook) {
