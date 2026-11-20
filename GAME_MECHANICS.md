@@ -50,6 +50,7 @@
 | Pátio: biblioteca de almas (catálogo fixo, receitas raras, desenho de cada alma, coleção no navegador e na conta, painel com Receita, Inspiration e som, editor de fichas para admin) | [Biblioteca de almas](docs/mechanics/patio/soul-library.md) |
 | Pátio: Guia de pássaros (aves reais, a ave que inspira cada alma, cantos gravados e créditos, canto real das almas soltas) | [Guia de pássaros](docs/mechanics/patio/bird-guide.md) |
 | Pátio: como a galinha segura itens: eixo de giro, boca, mãos das asas, Arco e Flecha e editor de pontos | [Itens na asa](docs/mechanics/patio/held-items.md) |
+| Pátio: luneta da Sniper (mirar com Atirar segurado: câmera avança e afasta, retícula mais longe, lupa na ponta da mira; números por arma) | [Luneta](docs/mechanics/patio/scope.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução, Cordas soltas da harpa), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: escala Estrela (12 notas numa estrela de hexágonos, eixo do trítono, realce da escala da zona, toque e arraste, RT analógico, dinâmica pelo movimento, acumulador no Correr: rajada, cascata, tercinas) | [Escala Estrela](docs/mechanics/patio/star-scale.md) |
 | Pátio: Próxima variação (escala, tambor), os checkboxes “Incluir variações” das trocas de item, tambores e pentes das armas (na mira e em volta), a mira espacial dos instrumentos e itens e a Granada de pente infinito | [Variações dos itens](docs/mechanics/patio/item-variations.md) |
@@ -128,6 +129,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 7 KB |
 | [Pátio: brilho dos itens](docs/mechanics/patio/item-glow.md) | 2 KB |
+| [Pátio: luneta da Sniper](docs/mechanics/patio/scope.md) | 4 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |
 | [Pátio: barra do inventário e trocas que repetem](docs/mechanics/patio/inventory-bar.md) | 4 KB |
 | [Pátio: almas capturadas](docs/mechanics/patio/souls.md) | 23 KB |

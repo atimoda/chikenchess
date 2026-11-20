@@ -95,6 +95,16 @@ export type ItemDef = {
   recoilPush: number // px/s pushing her away from the shot, only in the air
   weight: number // walking speed multiplier
   turnRate: number // deg/s the aim can turn (0 = instant)
+  // the luneta (lib/pigchicken/scope.ts): with it on, holding Atirar aims through it, coming in over `scopeTime` s. The
+  // camera leans `scopePan` px toward the aim and shows `scopeView` × more (1 = no change), the stick's / keys' reticle
+  // reaches `scopeReach` × farther, and a lupa of `lensSize` px of radius (0 = none) magnifies `lensZoom` × at the reticle
+  scope: boolean
+  scopeTime: number
+  scopeReach: number
+  scopePan: number
+  scopeView: number
+  lensSize: number
+  lensZoom: number
   // art (rig units, on the item's drawing: x forward from the grip, y down)
   muzzleX: number // where the shot leaves and the aim line starts
   muzzleY: number
@@ -351,6 +361,7 @@ const PISTOL: ItemDef = {
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
   recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
+  scope: false, scopeTime: 0.3, scopeReach: 2, scopePan: 420, scopeView: 1.3, lensSize: 64, lensZoom: 2.5,
   muzzleX: 54, muzzleY: -7, length: 56,
   meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, pointClick: true, meleeTime: 0.2, durability: 0, meleePush: 260,
   combo: swingCombo(110), comboWindow: COMBO_WINDOW,
@@ -396,6 +407,7 @@ const SNIPER: ItemDef = {
   speed: 4000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
   spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
   recoilKick: 14, recoilPush: 250, weight: 0.85, turnRate: 360,
+  scope: true, scopeTime: 0.3, scopeReach: 2.2, scopePan: 420, scopeView: 1.3, lensSize: 64, lensZoom: 2.5,
   muzzleX: 142, muzzleY: -4, length: 140, meleeDamage: 20, durability: 0, throwDamage: 30,
   rebateChain: chain(['octave', 'fixed', 2], ['dynamics', 'staccato']), rebateSnap: 0,
 }
@@ -596,7 +608,7 @@ const GUITAR: ItemDef = {
 // Cordas friccionadas → sniper: a held note in a beam; it keeps the enemy still while it plays
 const VIOLIN: ItemDef = {
   ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
-  fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
+  fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400, scope: false,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 0, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', vibratoDepth: 12, vibratoDelay: 0.25, pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
   handOn: true, handX: 45, handY: 0, backOn: true, backX: -23, backY: 0,
@@ -800,6 +812,12 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'recoilPush', label: 'Recuo no ar', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Manuseio' },
   { key: 'weight', label: 'Peso (velocidade)', min: 0.3, max: 1.2, step: 0.05, unit: '×', group: 'Manuseio' },
   { key: 'turnRate', label: 'Giro da mira', min: 0, max: 1440, step: 30, unit: '°/s', group: 'Manuseio', hint: '0 = instantâneo' },
+  { key: 'scopeTime', label: 'Tempo para mirar', min: 0, max: 1.5, step: 0.05, unit: 's', group: 'Luneta', hint: 'Quanto a mira leva para entrar toda depois de segurar Atirar (e para sair ao soltar); 0 = na hora' },
+  { key: 'scopePan', label: 'Câmera: avança para a mira', min: 0, max: 1200, step: 10, unit: 'px', group: 'Luneta', hint: 'Quanto a câmera anda na direção da mira, sem tirar o boneco da tela; 0 = não anda' },
+  { key: 'scopeView', label: 'Câmera: afasta', min: 1, max: 2.5, step: 0.05, unit: '×', group: 'Luneta', hint: 'Quanto a mais de cenário a tela mostra mirando (1,3 = 30% a mais); 1 = sem afastar' },
+  { key: 'scopeReach', label: 'Distância da retícula', min: 1, max: 4, step: 0.1, unit: '×', group: 'Luneta', hint: 'No analógico e nas setas, quantas vezes mais longe a retícula fica mirando; com o mouse ela fica no cursor' },
+  { key: 'lensSize', label: 'Lupa: tamanho', min: 0, max: 200, step: 2, unit: 'px', group: 'Luneta', hint: 'Raio da lupa na ponta da mira; 0 = sem lupa' },
+  { key: 'lensZoom', label: 'Lupa: aumento', min: 1, max: 8, step: 0.1, unit: '×', group: 'Luneta', hint: 'Quantas vezes a lupa aumenta o que está na ponta da mira; 1 = sem aumento' },
   { key: 'muzzleX', label: 'Saída do tiro X', min: -20, max: 160, step: 1, unit: 'u', group: 'Desenho', hint: 'Ponto de onde sai o tiro e começa a mira, a partir da empunhadura' },
   { key: 'muzzleY', label: 'Saída do tiro Y', min: -60, max: 60, step: 0.5, unit: 'u', group: 'Desenho', hint: 'Negativo sobe' },
   { key: 'length', label: 'Comprimento no golpe', min: 0, max: 200, step: 1, unit: 'u', group: 'Desenho', hint: 'Quanto a arma estende o golpe além da ponta da asa' },
@@ -970,7 +988,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending', 'scope'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   // saved before "Arco e Flecha" (v11): a bow whose points were never touched takes the new ones (both wings on it)
   if (id === 'bow' && !(v >= 11) && !s.handOn && !s.backOn && !s.pivotX && !s.pivotY) (['pivotX', 'handOn', 'handX', 'handY', 'backOn', 'backX', 'backY'] as const).forEach(k => { (out.bow as Record<string, unknown>)[k] = DEFAULT_ITEMS.bow[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
@@ -1021,7 +1039,7 @@ const ITEMS_VERSION = 11
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints',
+  'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints', 'scope',
 ])]
 /** The items a defaults file gives (the code's, with the file over them). */
 export function itemsOver(file: unknown): Record<ItemId, ItemDef> {

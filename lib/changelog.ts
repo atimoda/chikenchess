@@ -31,6 +31,12 @@ const RECENT = [
         'Sentada no piano ela não se move, mas as binds valem como se ela se movesse: Chocar, Agachar, Correr e Pular mudam a dinâmica (Pular segurado vira ff) e o Correr acumula as notas. Por isso Pular e Correr não levantam do piano: levanta com Pegar (E no teclado), com Golpe (Y no gamepad) ou com o botão Sair do celular.',
         'Sentada, a estrela fica sempre à vista e cabe inteira na tela.',
       ] },
+      { title: 'Pátio: luneta da Sniper', items: [
+        'Segurando Atirar com a Sniper, ela mira pela luneta: a câmera avança na direção da mira e se afasta, mostrando mais longe, sem tirar a galinha da tela. Soltar atira e a câmera volta.',
+        'Uma lupa redonda aparece na ponta da mira e aumenta os aliens, zumbis, bonecos, itens e tiros que estão embaixo dela, para acertar com mais precisão.',
+        'No analógico e nas setas, a retícula vai mais longe enquanto mira; com o mouse ela continua no cursor.',
+        'Itens → Luneta: ligar a luneta em qualquer arma ou instrumento e ajustar o tempo para mirar, quanto a câmera avança e afasta, a distância da retícula e o tamanho e o aumento da lupa. Cada arma guarda os seus números. Só a Sniper vem com a luneta ligada.',
+      ] },
       { title: 'Pátio: fundo e números da grade sem piscar ao andar', items: [
         'No celular, o fundo (céu, montanhas, mata) e os números da Grade de blocos piscavam toda vez que a galinha andava. A cada passo o navegador redesenhava do zero o mundo, cada camada do fundo e as camadas da frente; agora elas só deslizam, já desenhadas. Vale em todos os Pátios, local e online, e no Modo editor.',
         'Com zoom diferente de 100%, o Pátio continua redesenhando as camadas para ficarem nítidas naquele zoom, como antes.',
