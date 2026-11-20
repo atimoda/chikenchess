@@ -15,7 +15,7 @@
 // around D and G♯), the star with arms of 8 covers about seven octaves, the grand piano's range.
 // Coordinates: the star's tips at radius 1 (the aim's reach); screen axes (x right, y down).
 
-export const STAR_ARM_MIN = 4, STAR_ARM_MAX = 10, STAR_ARM_DEFAULT = 8
+export const STAR_ARM_MIN = 3, STAR_ARM_MAX = 10, STAR_ARM_DEFAULT = 8
 /** How much of the star shows (%) and how much the notes outside the zone's scale show next to the others (%). */
 export const STAR_OPACITY = 70, STAR_OFF_SCALE = 35
 

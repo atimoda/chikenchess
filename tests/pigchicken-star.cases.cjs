@@ -38,6 +38,13 @@ test('Estrela: a hexagram of cells without the axis column; a point finds its ce
   assert.ok(path.filter(k => k >= 0).length >= 10)
   // fewer, bigger cells with shorter arms
   assert.ok(G.starGrid(4).cells.length < g.cells.length)
+  // the fewest levels still hold all 12 notes, and the star keeps its size (the tips stay at radius 1)
+  const small = G.starGrid(G.STAR_ARM_MIN)
+  assert.equal(G.STAR_ARM_MIN, 3)
+  assert.equal(new Set(small.cells.map(c => ((G.starSemis(c.c, c.v) % 12) + 12) % 12)).size, 12)
+  assert.ok(small.size > g.size * 2)
+  const reach = grid => Math.max(...grid.cells.map(c => Math.hypot(c.x, c.y)))
+  assert.ok(Math.abs(reach(small) - reach(g)) < small.size + g.size)
 })
 
 test('Estrela as a scale: the axis is D, black keys are dark, the zone scale is lit and every cell plays', () => {
