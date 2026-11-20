@@ -14,7 +14,7 @@ import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
 import type { ChickenEngine, ChickenGame } from "@/lib/chicken/engine"
 import { isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { isPadDevice, padButtonValues, padTokensFor, stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
-import { grabIsSeatBind, harpHeld, seatTokens } from "@/lib/pigchicken/instrument-binds"
+import { fireDepth, grabIsSeatBind, harpHeld, movesOf, seatBindsOf, seatTokens } from "@/lib/pigchicken/instrument-binds"
 import { createMouseOwner, keysAimAfterMouse, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, cameraXRange, leadStep, wholeWorldZoom, zoomLimits } from "@/lib/pigchicken/camera"
 import { PATIO_ZOOM, type PatioZoom } from "@/lib/pigchicken/patio-settings"
@@ -61,6 +61,7 @@ import { defaultMineActivator } from "@/lib/pigchicken/mine-activator"
 import { drawMineActivators } from "./draw/mine-activator"
 import { mineZoneBoxes } from "@/lib/pigchicken/mine-zones"
 import { drawScaleFan, SCALE_FAN_R, seatedFanSize } from "@/components/pigchicken/draw/scale-fan"
+import { starSeatFrame } from "@/components/pigchicken/draw/star-grid"
 import { drawAmmoAround, drawAmmoDrops, drawAmmoHud } from "@/components/pigchicken/draw/ammo-hud"
 import { drawNoteBits, drawNoteHud } from "@/components/pigchicken/draw/note-hud"
 import { NOTE_HUD_R, newNoteView, noteLook, stepNoteView, type NoteView } from "@/lib/pigchicken/note-hud"
@@ -110,7 +111,7 @@ import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeS
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
 import { chestMarks } from "@/components/pigchicken/draw/chests"
 import { seatMarks } from "@/components/pigchicken/draw/harp"
-import { HARP_BOX, seatSpot } from "@/lib/pigchicken/fixed-instruments"
+import { FIXED_INSTRUMENTS, HARP_BOX, seatKeepsJump, seatSpot } from "@/lib/pigchicken/fixed-instruments"
 import { drumKit } from "@/lib/pigchicken/drum-kit"
 import { playKit, playKnock } from "@/lib/pigchicken/drum-synth"
 import { drumFrame, setDrumScreen } from "@/components/pigchicken/draw/drum-chart"
@@ -408,6 +409,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the Bateria (lib/pigchicken/drum-kit.ts): the main player sits at one; the mouse clicks that landed since the
     // last frame (each one a hit on the piece under it); the keyboard keys held now (the pieces' shortcuts)
     let p1Kit = false
+    // the main player sits at the Piano de cauda (its Estrela fits the screen; the camera keeps the piano in sight)
+    let p1Star = false
     const clicks: { x: number; y: number }[] = []
     const drumKeys = new Set<string>()
     const onFingerDown = (e: PointerEvent) => {
@@ -895,7 +898,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const yr = cameraYRange(zoomGround, worldTop, zoomTop)
       if (oy === null) oy = yr.lo
       // (sitting at a fixed instrument, it and its strings around her have to fit under the header)
-      const seatAbove = p1Seated && !p1Kit ? Math.max(HARP_BOX.h + 20, st.y - engine.getState().shoulder.y + SCALE_FAN_R * seatedFanSize(scaleSizeRef.current) * st.scale * 1.12 + 16) : 0
+      const seatAbove = p1Star ? FIXED_INSTRUMENTS.grandpiano.box.h + 20 : p1Seated && !p1Kit ? Math.max(HARP_BOX.h + 20, st.y - engine.getState().shoulder.y + SCALE_FAN_R * seatedFanSize(scaleSizeRef.current) * st.scale * 1.12 + 16) : 0
       let nextOy = manualView || (st.held && !recenter) ? oy : cameraYStep(oy, { worldY: st.y - oy, groundScreen: zoomGround, viewTop: zoomTop, dt: snapToPortal || recenter ? 1 : dt, lag: snapToPortal || recenter ? 1 : forceFollow ? 12 : S.lag, top: worldTop, above: seatAbove })
       if (zoom > 1 && !manualView && !st.held) {
         const feetY = st.y - oy
@@ -1189,7 +1192,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           }
           return pressed
         })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(),
-        grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
+        grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(seatBindsOf(combat.seated.kind), controls, devs, drumKit())),
+        fireDepth: wh.open || fireBlock ? 0 : fireDepth(controls, devs, padButtonValues(devs)), moves: movesOf(act),
         groupPick: group, move, pickVariations: pickVar, groupVariations: groupVariations(controls, group),
         variation: !wh.open && variationPress(act, prev),
       }
@@ -1316,6 +1320,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         } else if (padR || padL) hands = [padR ? stickHand(padR) : null, padL ? stickHand(padL) : null]
         else if (aim.target) hands = [{ angle: Math.atan2(aim.target.y - origin.y, aim.target.x - origin.x), reach: aimReach({ px: Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y), radius: fanR }), kind: "point" }, null]
         else if (!padHands && (aim.source === "keys" || aim.source === "facing")) hands = [{ angle: aim.angle, reach: 1, kind: "none", sharp }, null]
+        // at the Piano de cauda: its Estrela fits the screen, so a pointer's place is taken from the star's middle;
+        // only the right stick is a hand (the left one is Agachar, Chocar and walking: the dynamics)
+        p1Star = combat.scale.id === "star"
+        if (p1Star) {
+          const frame = starSeatFrame(origin.x, origin.y, fanR)
+          const on = (px: number, py: number) => ({ angle: Math.atan2(py - frame.y, px - frame.x), reach: Math.hypot(px - frame.x, py - frame.y) / frame.r })
+          hands = [null, null]
+          if (fingers.length) fingers.forEach(f => {
+            const fx = zoom !== 1 ? (f.x - stageWidth() / 2) / zoom + stageWidth() / 2 : f.x, fy = zoom !== 1 ? (f.y - window.innerHeight / 2) / zoom + window.innerHeight / 2 : f.y
+            hands[f.slot] = { ...on(fx, fy), kind: "point", fire: true, pressed: f.fresh }
+          })
+          else if (padR) hands = [{ angle: Math.atan2(padR.y, padR.x), reach: padR.mag, kind: "stick" }, null]
+          else if (aim.target) hands = [{ ...on(aim.target.x, aim.target.y), kind: "point" }, null]
+          else if (!padHands && (aim.source === "keys" || aim.source === "facing")) hands = [{ angle: aim.angle, reach: 0.6, kind: "none" }, null]
+        }
         combat.setStringHands(hands)
         // at the Bateria: each stick is a drumstick on the chart, each click or finger that landed a hit, and
         // every piece's shortcuts as her keys and gamepad say them
@@ -1333,7 +1352,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             binds: wh.open ? {} : drumBindLevels(drumKit(), controls, devs, drumKeys, padButtonValues(devs)),
           })
         }
-      } else p1Kit = false
+      } else { p1Kit = false; p1Star = false }
       clicks.length = 0
       for (let i = fingers.length - 1; i >= 0; i--) { if (fingers[i].up || !combat.seated) fingers.splice(i, 1); else fingers[i].fresh = false }
       minePlay.step(dt)
@@ -1354,7 +1373,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setBareCharge(!combat.held && combat.heavyCharging ? combat.heavyCharge : null)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), hand: (() => { const p = engine.rigPoint("hand"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       // (she stays where its stool is, in the seated pose, until she gets up)
-      { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }
+      { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face, keepJump: seatKeepsJump(seat!.kind) } : null }) }
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the Itens panel follows the item the main player holds
       // (empty-handed, Pig and Ken hit with the chain and the tail: the panel opens on them)
@@ -1397,7 +1416,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
           throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(),
-          grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(combat.seated.kind === "drumkit" ? "drums" : "harp", controls, devs, drumKit())),
+          grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(seatBindsOf(combat.seated.kind), controls, devs, drumKit())),
+          fireDepth: fireDepth(controls, devs, padButtonValues(devs)), moves: movesOf(xa),
           groupPick: xgroup, pickVariations: pickVariations(controls, xa), groupVariations: groupVariations(controls, xgroup),
           variation: variationPress(xa, xp),
         }
@@ -1415,7 +1435,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           const padL = stickFor(devs, 0, an.deadzoneL), pad = !!devs?.some(isPadDevice)
           const sharp = harpHeld(controls, "sharp", devs, drumKeys, padButtonValues(devs))
           const stickHand = (s: Stick): StringAim => ({ angle: Math.atan2(s.y, s.x), reach: s.mag, kind: "stick", sharp })
-          combat.setStringHands(rs || padL ? [rs ? stickHand(rs) : null, padL ? stickHand(padL) : null] : pad ? [null, null] : [{ angle, reach: 1, kind: "none", sharp }, null])
+          // (at the Piano de cauda only the right stick is a hand: the left one is the dynamics)
+          if (combat.scale.id === "star") combat.setStringHands(rs ? [{ angle: Math.atan2(rs.y, rs.x), reach: rs.mag, kind: "stick" }, null] : pad ? [null, null] : [{ angle, reach: 0.6, kind: "none" }, null])
+          else combat.setStringHands(rs || padL ? [rs ? stickHand(rs) : null, padL ? stickHand(padL) : null] : pad ? [null, null] : [{ angle, reach: 1, kind: "none", sharp }, null])
           // (at the Bateria: their sticks are the drumsticks, their keys and buttons the pieces' shortcuts)
           if (combat.scale.id === "drums") {
             extraKit.add(id)
@@ -1428,7 +1450,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         markHover(combat, grabLabel(controls, devs))
         scalePlaying.set(id, xin.fire || xin.melee)
         if (xin.variation) ammoWake.set(id, true)
-        { const seat = combat.seated, at = seat && seatSpot(seat); if (seat) extraSeated.add(id); else extraSeated.delete(id); eng.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face } : null }) }
+        { const seat = combat.seated, at = seat && seatSpot(seat); if (seat) extraSeated.add(id); else extraSeated.delete(id); eng.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face, keepJump: seatKeepsJump(seat!.kind) } : null }) }
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.held && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)

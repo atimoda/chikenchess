@@ -37,6 +37,7 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   // a fixed instrument is never carried, thrown nor swung: only its notes (Projétil) and its music
   pedalharp: ["Disparo", "Munição", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
   drumkit: ["Disparo", "Munição", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
+  grandpiano: ["Disparo", "Munição", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
   peck: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Combo", "Rebate"],
   bat: ["Disparo", "Projétil", "Espalhamento", "Explosão", "Efeito"],
   passagua: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Explosão", "Efeito", "Música", "Rebate"],

@@ -50,6 +50,13 @@
     "stringEnd": 0.85,
     "harmonicWidth": 0.08
   },
+  "star": {
+    "standbyAfter": 0.5,
+    "fadeTime": 1.5,
+    "standbyVis": 0,
+    "aimedVis": 33,
+    "starArm": 8
+  },
   "drums": {
     "standbyAfter": 0.5,
     "fadeTime": 1.5,

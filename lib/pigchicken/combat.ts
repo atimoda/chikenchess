@@ -33,8 +33,10 @@ import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockCha
 import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
 import { HOOK_ARRIVE, HOOK_ARRIVE_TARGET, HOOK_KEEP, HOOK_REEL, HOOK_STEP, hookCast, hookPullSpeed, pullDelta, pullStep, spinRate, type HookHit } from './grapple'
 import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
-import { STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
-import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, type FixedKind, type Seat } from './fixed-instruments'
+import { STAR_SCALE, STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
+import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, seatKeepsJump, type FixedKind, type Seat } from './fixed-instruments'
+import { starPath, starPoint, starCellAt } from './star-grid'
+import { DYNAMIC_VEL, NO_MOVES, bindDynamic, bodyDynamic, newStarHand, newStarRun, recordRun, stepStarHand, stepStarRun, type Dynamic, type MoveBinds, type StarHand, type StarRun } from './star-play'
 import { drumKit, drumPiece, hatRing, newDrumState, padOf, stepDrums, type DrumHit, type DrumInput, type DrumKnock, type DrumPiece, type DrumState } from './drum-kit'
 import { SWEEP_GAP, newStringHand, stepStringHand, stringAlong, stringSlide, type StringHand } from './strings-play'
 import { NO_EFFECTS, type ZoneEffects } from './zone-physics'
@@ -48,15 +50,20 @@ export type AimKind = 'point' | 'stick' | 'none'
 // of a harmonic in it (`base`), what the place of the pluck added (`from`: -1, 0, 1) and where it was (`r0`)
 type StringNote = { held: Held | null; bullet: Bullet | null; base: number; from: number; r0: number; bend: number }
 // `late`: the plucks that wait their time (the front hand's, after the back hand's: "Atraso entre as mãos")
-type HarpState = { hands: StringHand[]; notes: Map<number, StringNote>; plucked: Map<number, number>; late: { index: number; r: number; due: number; bonus: number }[]; t: number }
-const newHarp = (): HarpState => ({ hands: [newStringHand(), newStringHand()], notes: new Map(), plucked: new Map(), late: [], t: 0 })
+// `star`: the Estrela's own (lib/pigchicken/star-play.ts): her hands over it, the run of Correr, when each cell was last
+// played (s of its `t`), the dynamic now, how long Pular has been held sitting and whether Atirar (or a trigger's
+// least push) was held last frame
+type StarPlay = { hands: StarHand[]; run: StarRun; struck: Map<number, number>; dyn: Dynamic; jumpFor: number; fireWas: boolean; t: number }
+const newStarPlay = (): StarPlay => ({ hands: [newStarHand(), newStarHand()], run: newStarRun(), struck: new Map(), dyn: 'mp', jumpFor: 0, fireWas: false, t: 0 })
+type HarpState = { hands: StringHand[]; notes: Map<number, StringNote>; plucked: Map<number, number>; late: { index: number; r: number; due: number; bonus: number }[]; t: number; star: StarPlay }
+const newHarp = (): HarpState => ({ hands: [newStringHand(), newStringHand()], notes: new Map(), plucked: new Map(), late: [], t: 0, star: newStarPlay() })
 /**
  * One hand over the Cordas soltas this frame (null: that hand is off the strings). `angle`: where it points from her
  * shoulder; `reach` and `kind`: like the aim's (setAimReach); `sharp`: Correr held, a stick or the keys pluck past
  * the strings' end (the sustenido); `fire` / `pressed`: this hand's own Atirar (a finger on the screen), when it is
  * not the player's.
  */
-export type StringAim = { angle: number; reach: number; kind: AimKind; sharp?: boolean; fire?: boolean; pressed?: boolean }
+export type StringAim = { angle: number; reach: number; kind: AimKind; sharp?: boolean; fire?: boolean; pressed?: boolean; depth?: number }
 // the Bateria (lib/pigchicken/drum-kit.ts): the kit's own state, the open Chimbal ringing now (to damp and stop it),
 // when and how hard each piece was last hit (s of `t`, for the drawing) and what the page said this frame
 // knocks: the last knocks on the hardware (a click between the pieces): where on the chart and when
@@ -283,6 +290,12 @@ export type FrameInput = {
   grabReleased?: boolean // Pegar let go in this frame (a Gaiola with no room for it is swapped in only by a whole press on it)
   grabRun?: boolean // that press came only from Correr's keys/buttons: it takes (Pegar) but never equips (Equipar)
   grabKeep?: boolean // seated: that press came only from the instrument's own binds (lib/pigchicken/instrument-binds.ts): it does not get her up
+  // how deep the gamepad's Atirar (an analog trigger, RT) is pressed, 0..1 (0: not at all or no gamepad; a button that
+  // only says on and off gives 1). The Estrela plays with its least push and is as loud as it is deep
+  fireDepth?: number
+  // the movement binds held (Correr, Agachar, Chocar, Pular, Esquerda / Direita): the Estrela's accumulator, and its
+  // dynamics while she sits at a fixed instrument (lib/pigchicken/star-play.ts)
+  moves?: MoveBinds
 }
 
 export const SLOTS = INVENTORY_MAX
@@ -1382,6 +1395,7 @@ export function createCombat() {
     seated = null
     harp.hands.forEach(h => { h.on = -1 })
     harp.late = []
+    harp.star = newStarPlay()
     stringAims = null
     kit.hat?.stop(0.05)
     kit = newKit()
@@ -1539,6 +1553,73 @@ export function createCombat() {
         }
       }
     }
+  }
+
+  // ---------- Estrela (lib/pigchicken/star-grid.ts, star-play.ts) ----------
+  // the cell a hand points at: the pointer exactly where it is (-1 off the star); a stick (or the keys, a bit out
+  // from her) walks the cells, landing on the nearest one when pushed past the star
+  const starCellOf = (aim: StringAim) => STAR_SCALE.touch(aim.angle, aim.kind === 'none' ? 0.6 : aim.reach, aim.kind !== 'point')
+  // plays cell `index` of the star `at` s from now: its note, and that note flying off toward where the cell is
+  function playStar(h: Owned, d: ItemDef, index: number, vel: number, at: number, muzzle: { x: number; y: number }, bonus: number) {
+    const sc = STAR_SCALE, cell = sc.grid.cells[index]
+    if (!cell) return
+    const midi = sc.axisOf(d.octave) + cell.semis + detuneNow()
+    out.note(d.voice, midi, at, d.noteLen, Math.max(0.05, Math.min(1, vel)), undefined, vibOf(d))
+    const color = DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length]
+    const way = assistAim(d, muzzle, d.speed, Math.atan2(cell.y, cell.x), Math.hypot(cell.x, cell.y)).angle
+    const b: Bullet = {
+      x: muzzle.x, y: muzzle.y, vx: Math.cos(way) * d.speed, vy: Math.sin(way) * d.speed, dist: 0, damage: d.damage * bonus * (0.4 + 0.6 * vel), pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
+      item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
+      note: { midi, color, sym: NOTE_SYMBOLS[index % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice: d.voice }, ring: d.ringNotes, ghost: true,
+    }
+    b.by = active
+    bullets.push(b)
+    if (netOn) netShots.push(shotOf(b))
+    burst(muzzle.x, muzzle.y, 2, color, 100, 3)
+    harp.star.struck.set(index, harp.star.t + at)
+  }
+  // one frame of the Estrela: each hand plays the cell it presses and, held, every cell it is dragged into (a stick
+  // walks the cells with its push and plays them only with Atirar, a trigger at any depth, as loud as it is deep);
+  // the loudness is her body's dynamic (sitting: the binds' as if she moved); Correr's run keeps what is played and
+  // lets it out when Correr is let go (a burst, a cascade or triplets)
+  function stepStar(h: Owned, d: ItemDef, input: FrameInput, muzzle: { x: number; y: number }, body: Body, dt: number) {
+    const st = harp.star, sc = STAR_SCALE, g = sc.grid, moves = input.moves ?? NO_MOVES
+    st.t += dt
+    st.jumpFor = moves.jump ? st.jumpFor + dt : 0
+    st.dyn = seated ? bindDynamic(moves, st.jumpFor) : bodyDynamic(body.state, body.vx)
+    const beat = music.secondsPerBeat()
+    // (a release left waiting while she held something else is let go, not played all at once)
+    st.run.queue = st.run.queue.filter(q => q.due >= st.t - 0.25)
+    if (input.cancelFire) { st.hands.forEach(hand => { hand.on = -1; hand.down = false }); st.fireWas = false }
+    const depth = Math.max(0, Math.min(1, input.fireDepth ?? 0))
+    const fire = !input.cancelFire && (input.fire || depth > 0.02), pressed = fire && !st.fireWas
+    st.fireWas = fire
+    let bonus = 1
+    const played: { index: number; vel: number; at: number }[] = []
+    handAims().slice(0, 2).forEach((aim, k) => {
+      const hand = st.hands[k]
+      if (!aim || input.cancelFire) { hand.on = -1; hand.down = false; return }
+      const hf = aim.fire ?? fire, hp = aim.pressed ?? pressed
+      // (a stick or the keys move cell to cell: the hand is at the middle of the cell they point at)
+      let p: { x: number; y: number } | null = starPoint(aim.angle, aim.reach)
+      if (aim.kind !== 'point') { const c = g.cells[starCellOf(aim)]; p = c ? { x: c.x, y: c.y } : null }
+      const cells = stepStarHand(hand, p, hf, hp, (x, y) => starCellAt(g, x, y), (x0, y0, x1, y1) => starPath(g, x0, y0, x1, y1))
+      if (!cells.length) return
+      const dz = aim.depth ?? depth, loud = dz > 0.02 ? Math.max(0.12, dz) : 1
+      cells.forEach((index, n) => played.push({ index, vel: DYNAMIC_VEL[st.dyn] * loud, at: n * SWEEP_GAP }))
+    })
+    if (played.length && music.offBeat() < 0.07) {
+      bonus = d.beatBonus
+      if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+    }
+    const axis = sc.axisOf(d.octave)
+    played.forEach(n => {
+      playStar(h, d, n.index, n.vel, n.at, muzzle, bonus)
+      recordRun(st.run, { index: n.index, midi: axis + g.cells[n.index].semis, vel: n.vel })
+    })
+    // Correr's run: what it kept comes out when Correr is let go (with Chocar held, the triplets stop when it is)
+    const brooding = seated ? moves.brood : moves.brood || body.state === 'brood' || body.state === 'shockingPrepare'
+    stepStarRun(st.run, { ...moves, brooding }, st.t, beat).forEach(n => { if (g.cells[n.index]) playStar(h, d, n.index, n.vel, n.at, muzzle, 1) })
   }
 
   function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void, power = 1, ctx?: StepCtx) {
@@ -3014,6 +3095,12 @@ export function createCombat() {
     /** Where each hand is over the strings now: its angle and its place along the radius (null: off the strings). */
     get stringHands() { return handAims().map(a => a ? { angle: a.angle, r: stringReachOf(a.kind, a.reach, a.sharp) } : null) },
     stringAge(i: number) { const at = harp.plucked.get(i); return at === undefined ? Infinity : harp.t - at },
+    /** The Estrela for this player: the cell each hand is on (-1: none), how long ago cell `i` was played (s), the
+     * dynamic now and the cells Correr's run keeps (to show them). A hand points at its cell even without playing. */
+    get starHands() { return handAims().slice(0, 2).map(a => (a ? starCellOf(a) : -1)) },
+    starAge(i: number) { const at = harp.star.struck.get(i); return at === undefined ? Infinity : harp.star.t - at },
+    get starDynamic() { return harp.star.dyn },
+    get starRun() { return harp.star.run.held ? harp.star.run.notes.map(n => n.index) : [] },
     // where the current player's reticle is, in world px (a deck's card is thrown there); null: only the aim's angle
     setAimPoint(p: { x: number; y: number } | null) { aimPoint = p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y } : null },
     get aimReach() { return aimReach },
@@ -3264,7 +3351,7 @@ export function createCombat() {
       // at it at the same time and comes first)
       let stoodUp = false
       if (seated) {
-        if (!seats.includes(seated.seat) || seated.seat.yield || (input.grab && !input.grabKeep) || body.state === 'held' || body.state.startsWith('portal')) { standUp(); stoodUp = true; input = { ...input, grab: false, grabHeld: false, grabReleased: false } }
+        if (!seats.includes(seated.seat) || seated.seat.yield || (input.grab && !input.grabKeep) || (seatKeepsJump(seated.seat.kind) && input.melee) || body.state === 'held' || body.state.startsWith('portal')) { standUp(); stoodUp = true; input = { ...input, grab: false, grabHeld: false, grabReleased: false } }
         else input = { ...input, ...NO_SWITCH, move: null, deselect: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false }
       }
       // rearranging the bar never changes what she holds (nor what is being done with it)
@@ -3536,6 +3623,11 @@ export function createCombat() {
         chargeT = 0; burstLeft = 0
         if (input.cancelFire) { kit.hat?.stop(0.05); kit.hat = null; kit.st = newDrumState(); kit.input = null }
         else stepKit(h, items[h.item], muzzle, dt)
+      } else if (items[h.item].instrument && scaleOf(h, items[h.item]).id === 'star') {
+        // an instrument on the Estrela: the hands play its cells (no magazine, no charge, no reload)
+        if (beam) stopBeam()
+        chargeT = 0; burstLeft = 0
+        stepStar(h, items[h.item], input, muzzle, body, dt)
       } else if (items[h.item].instrument && scaleOf(h, items[h.item]).id === 'strings') {
         // an instrument on the Cordas soltas: Atirar plucks the strings (no magazine, no charge, no reload)
         if (beam) stopBeam()

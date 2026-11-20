@@ -15,7 +15,7 @@ export const PATH_SHOWS: { value: PathShow; label: string }[] = [
   { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
 ]
 export type ItemId = 'wing' | 'peck' | 'piu' | 'chainBlow' | 'tailBlow' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
-  | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit'
+  | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit' | 'grandpiano'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key' | 'boomerang' | 'cardsRed' | 'cardsBlue'
   | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
   | 'goldkey' | 'minebomb' | 'hook'
@@ -654,6 +654,16 @@ const DRUMKIT: ItemDef = {
   instrument: true, voice: 'kit', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.3, wave: 2, volMin: 1, volMax: 1, quantize: false,
   scales: ['drums'], handOn: false, backOn: false,
 }
+// Piano de cauda (Teclas, instrumento fixo): a grand piano standing in the Pátio, played sitting at its bench on the
+// Estrela (lib/pigchicken/star-grid.ts, its default scale). Its loudness is the dynamic of the binds held
+// (lib/pigchicken/star-play.ts), not the aim's distance. The notes fly off like the Harpa's; no magazine, no reload,
+// no blow
+const GRANDPIANO: ItemDef = {
+  ...PISTOL, ...MUSIC_MELEE, id: 'grandpiano', name: 'Piano de cauda', family: 'Teclas', reticle: 'dot',
+  mag: 0, speed: 700, damage: 12, size: 11, range: 900, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
+  instrument: true, voice: 'grandPiano', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 1, volMax: 1, quantize: false,
+  scales: ['star'], handOn: false, backOn: false,
+}
 
 // ---------- consumables (special abilities): Fire uses a dose and puts an effect on her for a while ----------
 const CONSUMABLE = {
@@ -696,7 +706,7 @@ const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: 'Voadeira', cage
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
   wing: WING, peck: PECK, piu: PIU, chainBlow: CHAIN_BLOW, tailBlow: TAIL_BLOW, bat: BAT, passagua: PASSAGUA, pistol: PISTOL, smg: SMG, rifle: RIFLE, pump: PUMP, sniper: SNIPER, launcher: LAUNCHER, grenade: GRENADE, bow: BOW,
-  flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT,
+  flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT, grandpiano: GRANDPIANO,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY, boomerang: BOOMERANG, cardsRed: CARDS_RED, cardsBlue: CARDS_BLUE,
   cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
   goldkey: GOLD_KEY, minebomb: MINE_BOMB, hook: HOOK,
@@ -728,14 +738,14 @@ export const isCage = (id: ItemId) => CAGE_IDS.includes(id)
 export const CAGE_SOULS_MAX = 99
 export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 // the instruments that stand in the Pátio and are never carried (lib/pigchicken/fixed-instruments.ts)
-export const FIXED_IDS: ItemId[] = ['pedalharp', 'drumkit']
+export const FIXED_IDS: ItemId[] = ['pedalharp', 'drumkit', 'grandpiano']
 // the items a rack can hold
 export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS, ...CAGE_IDS]
 export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck', 'piu', 'chainBlow', 'tailBlow']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)
-const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true, hang: true, handpan: true, hangSteel: true, pedalHarp: true, kit: true }
+const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true, guitar: true, violin: true, keys: true, harp: true, bells: true, chip: true, hum: true, bird: true, hang: true, handpan: true, hangSteel: true, pedalHarp: true, kit: true, grandPiano: true }
 // the violin (a beam instrument) bows its held note with the arpeggiator off; with it on, it plucks the arpeggio
 // (pizzicato: short notes, the bow's seconds spent note by note)
 export const bowed = (d: ItemDef) => d.beam && d.arp === 'off'

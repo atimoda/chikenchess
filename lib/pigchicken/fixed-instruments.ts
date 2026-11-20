@@ -2,24 +2,30 @@
 // player next to it sits at it with Pegar and, while she sits, cannot move: only the aim and Atirar count, so all
 // her attention goes to playing. Pegar again or Pular gets her up. One player at a time.
 // Today: the Harpa (a pedal harp with its stool), played on the Cordas soltas (lib/pigchicken/instrument-scales.ts),
-// and the Bateria (an acoustic kit with its throne), played on the scale Bateria (lib/pigchicken/drum-kit.ts).
+// the Bateria (an acoustic kit with its throne), played on the scale Bateria (lib/pigchicken/drum-kit.ts), and the
+// Piano de cauda (a grand piano with its bench), played on the Estrela (lib/pigchicken/star-grid.ts).
 // Pure rules and sizes; the Pátio's combat keeps who sits where (lib/pigchicken/combat.ts), the engine holds her
 // still in the seated pose (lib/chicken/engine.ts) and the art is in components/pigchicken/draw/harp.ts and
-// components/pigchicken/draw/drumkit.ts.
+// components/pigchicken/draw/drumkit.ts and components/pigchicken/draw/grandpiano.ts.
 import type { ItemId } from './items'
 
-export type FixedKind = 'pedalharp' | 'drumkit'
+export type FixedKind = 'pedalharp' | 'drumkit' | 'grandpiano'
 // box: the element's size in the layout (its art's); item: the sheet she plays with (Itens → Instrumentos fixos);
 // stool: where she sits, px from the element's middle toward the side she sits on, and how high the stool's top is
 // over the floor at her size 1; reach: how near (px each side of the stool) she has to be to sit
 export const FIXED_INSTRUMENTS: Record<FixedKind, { label: string; item: ItemId; box: { w: number; h: number }; stool: number; stoolTop: number; reach: number }> = {
   pedalharp: { label: 'Harpa', item: 'pedalharp', box: { w: 190, h: 250 }, stool: 52, stoolTop: 40, reach: 46 },
   drumkit: { label: 'Bateria', item: 'drumkit', box: { w: 260, h: 190 }, stool: 84, stoolTop: 40, reach: 46 },
+  grandpiano: { label: 'Piano de cauda', item: 'grandpiano', box: { w: 300, h: 170 }, stool: 128, stoolTop: 42, reach: 46 },
 }
 export const FIXED_KINDS = Object.keys(FIXED_INSTRUMENTS) as FixedKind[]
 export const isFixedKind = (k: string): k is FixedKind => k in FIXED_INSTRUMENTS
 export const HARP_BOX = FIXED_INSTRUMENTS.pedalharp.box
 export const DRUMKIT_BOX = FIXED_INSTRUMENTS.drumkit.box
+export const GRANDPIANO_BOX = FIXED_INSTRUMENTS.grandpiano.box
+// sitting at the Piano de cauda, Pular and Correr are the dynamics and the accumulator (lib/pigchicken/star-play.ts):
+// Pular does not get her up there, and Golpe does
+export const seatKeepsJump = (kind: FixedKind) => kind === 'grandpiano'
 export const isFixedItem = (id: ItemId) => Object.values(FIXED_INSTRUMENTS).some(f => f.item === id)
 
 // a fixed instrument in the world: x its middle, y the floor it stands on; face: the side its player looks at

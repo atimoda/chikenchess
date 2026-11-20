@@ -28,15 +28,20 @@
 //     up). One string per letter (C D E F G A B), the lowest always a C; the zone's key tunes each letter like a
 //     harp's pedals (in G major the F strings sound F♯). How it is played (a pluck, the strings the aim crosses,
 //     the slide along a string): lib/pigchicken/strings-play.ts.
+//   Estrela: the 12 notes on a grid of hexagons shaped as a six-pointed star (lib/pigchicken/star-grid.ts): each
+//     direction out of its middle is an interval, the right half goes up from the axis' note (D) and the left half
+//     is its mirror, going down. The aim's point (direction and reach) is the cell played; how it is played (a press,
+//     a drag, the dynamics, Correr's accumulator): lib/pigchicken/star-play.ts.
 //   Bateria: an acoustic kit's pieces as big round buttons around her, one per piece, where the kit's setup puts
 //     them (lib/pigchicken/drum-kit.ts, which also says how they are played). No pitch follows the aim: a hit's
 //     "note" is the piece's number on the General MIDI drum map.
 // Angles are screen radians (0 = right, π/2 = down, -π/2 = up).
 import { SCALES, chordOn, scaleNotes, type Conductor, type PitchSet, type Zone } from './music'
 import { DRUM_PIECES, drumKit, drumPiece, padAt } from './drum-kit'
+import { STAR_ARM_DEFAULT, starCellAt, starGrid, starNearest, starPoint } from './star-grid'
 
-export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic' | 'hang' | 'strings' | 'drums'
-export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic', 'hang', 'strings', 'drums']
+export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic' | 'hang' | 'strings' | 'star' | 'drums'
+export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic', 'hang', 'strings', 'star', 'drums']
 
 export const SECTORS = 12
 // reach below it: the inner ring ("a mira pela metade"); from it on: the outer ring ("a mira esticada inteira")
@@ -92,13 +97,13 @@ export const STRINGS_MIN = 16, STRINGS_MAX = 48
 export const STRINGS_DEFAULT = { strings: 22, stringStart: 0.25, stringEnd: 0.85, harmonicWidth: 0.08 }
 // what the Escalas editor changes in a scale's shape (lib/pigchicken/scale-params.ts): where the round charts' inner ring
 // ends (it decides the ring the aim plays), the empty middle of the charts and of the Campo harmônico (drawing only)
-// and the Cordas soltas' strings
-export type ScaleShape = { ringSplit: number; hole: number; strings: number; stringStart: number; stringEnd: number; harmonicWidth: number }
+// and the Cordas soltas' strings; the Estrela's arms (long steps from its middle to a tip)
+export type ScaleShape = { ringSplit: number; hole: number; strings: number; stringStart: number; stringEnd: number; harmonicWidth: number; starArm: number }
 
 export abstract class InstrumentScale {
   abstract readonly id: InstrumentScaleId
   abstract readonly label: string
-  shape: ScaleShape = { ringSplit: RING_SPLIT, hole: CHART_HOLE, ...STRINGS_DEFAULT }
+  shape: ScaleShape = { ringSplit: RING_SPLIT, hole: CHART_HOLE, ...STRINGS_DEFAULT, starArm: STAR_ARM_DEFAULT }
   // the chart's regions (empty for the primary scale, which keeps the leque)
   regions(): ScaleRegion[] { return [] }
   regionAt(_angle: number, _reach: number): ScaleRegion | null { return null }
@@ -514,10 +519,44 @@ export class DrumsScale extends InstrumentScale {
   cellAt() { return '' }
 }
 
+// Estrela: the 12 notes on a star of hexagons (see the top of the file). The axis' note is D in the item's octave
+// (D4 at octave 0): the right half goes up from it, the left half down
+export const STAR_AXIS = 62
+// a cell as drawn and played: its note, its name (E♭), whether it is a black key and whether its note is in the
+// zone's scale (the drawing lights those a little; every cell plays)
+export type StarKey = { index: number; midi: number; name: string; black: boolean; inScale: boolean; x: number; y: number }
+export class StarScale extends InstrumentScale {
+  readonly id = 'star' as const
+  readonly label = 'Estrela'
+  get grid() { return starGrid(this.shape.starArm) }
+  axisOf(octave: number) { return STAR_AXIS + 12 * Math.round(octave || 0) }
+  layout(music: Conductor, q: Pick<ToneQuery, 'octave'>): StarKey[] {
+    const axis = this.axisOf(q.octave), zone = music.zone
+    const own = new Set((SCALES[zone.scale]?.steps ?? SCALES.major.steps).map(s => pc(zone.root + s)))
+    return this.grid.cells.map(c => { const midi = axis + c.semis; return { index: c.index, midi, name: LETTERS[pc(midi)], black: c.black, inScale: own.has(pc(midi)), x: c.x, y: c.y } })
+  }
+  /** The cell under the aim (-1: off the star or on its axis); clamp: the nearest cell when off it (a stick). */
+  touch(angle: number, reach: number, clamp = false) {
+    const p = starPoint(angle, Math.max(0, reach))
+    return clamp ? starNearest(this.grid, p.x, p.y) : starCellAt(this.grid, p.x, p.y)
+  }
+  pool(_music: Conductor, q: ToneQuery) {
+    const axis = this.axisOf(q.octave)
+    return [...new Set(this.grid.cells.map(c => axis + c.semis))].sort((a, b) => a - b)
+  }
+  noteFor(_music: Conductor, q: ToneQuery) { return this.axisOf(q.octave) + this.grid.cells[this.touch(q.angle, q.reach, true)].semis }
+  cellAt(_music: Conductor, q: ToneQuery) { return `t${this.touch(q.angle, q.reach, true)}` }
+  // arpeggios and phrases walk the zone's chord or scale, like the leque
+  walk(music: Conductor, from: number, n: number, set: PitchSet) { return music.walk(from, n, set) }
+  degreeOf(music: Conductor, m: number) { return music.degreeOf(m) }
+}
+
 // the Cordas soltas themselves (the strings' own layout and touch, beyond what every scale answers)
 export const STRINGS_SCALE = new StringsScale()
+// the Estrela itself (its grid, layout and touch)
+export const STAR_SCALE = new StarScale()
 export const INSTRUMENT_SCALES: Record<InstrumentScaleId, InstrumentScale> = {
-  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(), harmonic: new HarmonicFieldScale(), hang: new HangScale(), strings: STRINGS_SCALE, drums: new DrumsScale(),
+  primary: new PrimaryScale(), fifths: new FifthsScale(), tension: new TensionScale(), spiral: new SpiralScale(), harmonic: new HarmonicFieldScale(), hang: new HangScale(), strings: STRINGS_SCALE, star: STAR_SCALE, drums: new DrumsScale(),
 }
 export const isInstrumentScaleId = (v: unknown): v is InstrumentScaleId => typeof v === 'string' && (INSTRUMENT_SCALE_IDS as string[]).includes(v)
 
