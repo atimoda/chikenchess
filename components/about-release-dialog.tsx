@@ -15,8 +15,8 @@ const TAB_LABELS: Record<AboutTab, string> = { about: 'About', releases: 'Releas
 const ext = { target: '_blank', rel: 'noopener noreferrer' } as const
 const instagram = (handle: string) => `https://www.instagram.com/${handle}/`
 
-// Who made the game, and what it plays and is built on: the people, Strudel, the chicken voice
-// simulator, the AI tools, the art, then the long list of the Guia de pássaros' recordings and the globe.
+// Who made the game, and what it plays and is built on: the people (ChickenChess, Pigchicken), Strudel, the chicken voice
+// simulator, the AI tools, then the long list of the Guia de pássaros' recordings and the globe.
 function CreditsContent() {
   const songs = birdCredits()
   const link = 'text-primary hover:underline'
@@ -26,6 +26,11 @@ function CreditsContent() {
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">ChickenChess</h3>
       <p className="leading-relaxed">Original idea of musical chess: {person('Thiago Atimoda', 'atimoda')} and {person('Rodrigo Zecchinelli', 'rigoz311')}.</p>
       <p className="leading-relaxed">Development: {person('Thiago Atimoda', 'atimoda')}.</p>
+    </section>
+    <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pigchicken</h3>
+      <p className="leading-relaxed">Original gameplay, lore and story: Lila Zara and Uirá Fedatto Horta.</p>
+      <p className="leading-relaxed">Visual art inspired by the drawings of Thiago&apos;s daughter.</p>
     </section>
     <section className="grid gap-1.5">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Strudel</h3>
@@ -38,10 +43,6 @@ function CreditsContent() {
     <section className="grid gap-1.5">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">AI coding assistants</h3>
       <p className="leading-relaxed">Code written with the help of <a href="https://claude.ai" {...ext} className={link}>Claude</a> (Anthropic), <a href="https://chatgpt.com" {...ext} className={link}>ChatGPT</a> (OpenAI), <a href="https://gemini.google.com" {...ext} className={link}>Gemini</a> (Google) and <a href="https://www.deepseek.com" {...ext} className={link}>DeepSeek</a>.</p>
-    </section>
-    <section className="grid gap-1.5">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Art</h3>
-      <p className="leading-relaxed">Some visual assets come from creators on <a href="https://itch.io" {...ext} className={link}>itch.io</a>.</p>
     </section>
     <section className="grid gap-1.5">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bird songs</h3>
