@@ -60,8 +60,13 @@ export function ChickenBodyIcon({ look, className, outline = false }: { look: Ch
   return <svg viewBox={skin ? "-90 -210 180 220" : "-110 -246 200 270"} aria-hidden="true" className={className} dangerouslySetInnerHTML={{ __html: html }} />
 }
 
-// onProfile / onFriends: the Perfil and Amigos tabs, shortcuts that open those panels (left out: no tab)
-export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false, frames, onProfile, onFriends }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean; frames?: FramesEdit; onProfile?: () => void; onFriends?: () => void }) {
+// profile / friends: the Perfil and Amigos tabs of the title, beside Vestiário; each swaps the whole panel for that
+// content, rendered only while its tab is open (left out: no tab)
+type Page = "vestiario" | "perfil" | "amigos"
+export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = false, frames, profile, friends }: { look: ChickenLook; savedLook: ChickenLook; onChange: (look: ChickenLook) => void; onClose: () => void; admin?: boolean; frames?: FramesEdit; profile?: () => React.ReactNode; friends?: () => React.ReactNode }) {
+  const [page, setPage] = useState<Page>("vestiario")
+  const pages = ([["vestiario", "Vestiário", true], ["perfil", "Perfil", !!profile], ["amigos", "Amigos", !!friends]] as const).filter(p => p[2])
+  const vest = page === "vestiario"
   const [tab, setTab] = useState(() => (typeof window !== "undefined" && getBaby().on ? "filhote" : "racas"))
   const [unlockAll, setUnlockAll] = useState(false)
   useEffect(() => { try { setUnlockAll(window.localStorage.getItem(UNLOCK) === "1") } catch { /* storage unavailable */ } }, [])
@@ -167,13 +172,18 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
   return (
     <FloatingPanel id="chicken-vestiario" data-chicken-ignore aria-label="Vestiário" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(740, vw - 24), h: vh - 104 })} minW={300} minH={320} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        <h2 className="flex-1 text-sm text-white">Vestiário</h2>
-        {admin && frames && <button type="button" aria-pressed={editFrames} onClick={() => setEditFrames(v => !v)} className={cn("h-8 rounded-md border px-3", editFrames ? "border-[#4cc9f0] text-[#4cc9f0]" : "border-white/15 text-[#93a79a] hover:border-primary hover:text-white")}>Hit-area</button>}
-        {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
+        {pages.length > 1
+          ? <nav role="tablist" aria-label="Painel" className="flex min-w-0 flex-1 gap-3.5 overflow-x-auto text-sm">
+              {pages.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={page === id} onClick={() => setPage(id)} className={cn("whitespace-nowrap", page === id ? "text-white" : "text-[#93a79a] hover:text-white")}>{label}</button>)}
+            </nav>
+          : <h2 className="flex-1 text-sm text-white">Vestiário</h2>}
+        {vest && admin && frames && <button type="button" aria-pressed={editFrames} onClick={() => setEditFrames(v => !v)} className={cn("h-8 rounded-md border px-3", editFrames ? "border-[#4cc9f0] text-[#4cc9f0]" : "border-white/15 text-[#93a79a] hover:border-primary hover:text-white")}>Hit-area</button>}
+        {vest && dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
         <button type="button" aria-label="Fechar vestiário" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
+      {!vest && <div className="min-h-0 flex-1 overflow-auto p-4 font-sans text-base text-white">{page === "perfil" ? profile?.() : friends?.()}</div>}
       {/* side by side when the window is wide enough (its own width, it can be resized) */}
-      <div className="@container flex min-h-0 flex-1 flex-col">
+      {vest && <div className="@container flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col @xl:flex-row">
         <div className="relative h-56 shrink-0 border-b border-primary/30 bg-[radial-gradient(120%_70%_at_50%_85%,rgba(31,211,154,0.09),transparent_70%)] @xl:h-auto @xl:w-[260px] @xl:border-b-0 @xl:border-r">
           <p className="absolute left-3.5 top-2.5 text-[10px] uppercase tracking-wider text-[#93a79a]">Prévia</p>
@@ -188,9 +198,6 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
             {tabs.map(t => (
               <button key={t.id} type="button" role="tab" aria-selected={cur === t.id} onClick={() => setTab(t.id)} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold", cur === t.id ? "bg-[#22302a] text-white shadow-[inset_0_0_0_1px_rgba(31,211,154,0.6)]" : "text-[#93a79a] hover:text-white")}>{t.label}</button>
             ))}
-            {/* shortcuts to the Perfil and Amigos panels, at the end of the row */}
-            {onProfile && <button type="button" onClick={onProfile} className="ml-auto h-[34px] whitespace-nowrap rounded-md px-3 font-semibold text-[#93a79a] hover:text-white">Perfil</button>}
-            {onFriends && <button type="button" onClick={onFriends} className={cn("h-[34px] whitespace-nowrap rounded-md px-3 font-semibold text-[#93a79a] hover:text-white", !onProfile && "ml-auto")}>Amigos</button>}
           </nav>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {body}
@@ -208,7 +215,7 @@ export function ChickenVestiario({ look, savedLook, onChange, onClose, admin = f
           </footer>
         </div>
       </div>
-      </div>
+      </div>}
     </FloatingPanel>
   )
 }
