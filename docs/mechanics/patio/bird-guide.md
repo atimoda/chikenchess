@@ -40,7 +40,7 @@ Código: `lib/pigchicken/bird-guide.ts` (puro: as aves, as gravações e a ave q
 
 ## Créditos (17/11, v2.13.0)
 
-- A aba Credits do About (`components/about-release-dialog.tsx`) lista o Strudel, cada gravação (nome científico, quem gravou, número XC com link, licença com link) e as texturas do globo. A lista sai do manifesto (`birdCredits`), então uma gravação nova já entra nos créditos.
+- A aba Credits do About (`components/about-release-dialog.tsx`) lista as pessoas do ChickenChess (ideia original: Thiago Atimoda e Rodrigo Zecchinelli; desenvolvimento: Thiago Atimoda; nomes com link para o Instagram), o Strudel, cada gravação (nome científico, quem gravou, número XC com link, licença com link), o simulador de voz de galinha (Chimera, MIT), as IAs usadas para programar (Claude, ChatGPT, Gemini, DeepSeek), os assets visuais do itch.io e as texturas do globo. A lista sai do manifesto (`birdCredits`), então uma gravação nova já entra nos créditos.
 
 ## Ainda não implementado
 
