@@ -106,7 +106,7 @@ import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/com
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
 import { drawHookDot, drawHookSpin } from "@/components/pigchicken/draw/hook"
-import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, invRight, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
+import { drawReticle, drawThrowPath, INV_SIZE, INV_TOP, INV_STACK, invRowY, BAR, invGeom, barSlotAt, showKeyHints, drawInventory, wheelGeom, drawWheel, type BarDrag } from "@/components/pigchicken/draw/hud"
 import { drawAbductions, drawFreedSouls, drawPoops, drawPoopStains, drawScares } from "@/components/pigchicken/draw/souls"
 import { SOUL_RARITIES, collectSoul, loadSoulEntries, setSoulEntries, subscribeSoulEntries } from "@/lib/pigchicken/soul-library"
 import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWorld } from "@/components/pigchicken/draw/world"
@@ -2164,7 +2164,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           <Movable
             id={lifted ? "inventory" : "inventoryBar"}
             className="pointer-events-none fixed z-[190]"
-            style={lifted ? { right: invRight, top: invRowY(0), width: g.w, height: g.size } : { left: g.x, bottom: BAR.bottom + BAR.tab, width: g.w, height: g.size }}
+            style={lifted ? { left: g.x, top: invRowY(0), width: g.w, height: g.size } : { left: g.x, bottom: BAR.bottom + BAR.tab, width: g.w, height: g.size }}
           >
             {!editing && !invEmpty && (
               <div data-chicken-ignore role="toolbar" aria-label="Inventário: clique para equipar, arraste para mudar a ordem" className="relative h-full w-full">

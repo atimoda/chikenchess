@@ -54,6 +54,9 @@ const RECENT = [
       { title: 'Teclado', items: [
         'Shift esquerdo deixa de ser tecla padrão de Usar / pegar item (continua em Correr). Quem ainda estava no padrão antigo (E + Shift esq.) perde o Shift esq. no Pegar; quem configurou outra combinação não muda.',
       ] },
+      { title: 'Pátio: inventário no celular em pé', items: [
+        'No celular em pé, a fileira de itens do 1º player no alto da tela segue o alinhamento de Controles → Inventário, como a barra de baixo do desktop e do tablet. No padrão (Separado), os instrumentos ficam encostados na borda esquerda e as armas e os utilitários ficam à direita, junto do avatar; Centralizado, Esquerda e Direita também valem. O nome do item escolhido aparece embaixo da casa dele.',
+      ] },
     ],
   },
   {

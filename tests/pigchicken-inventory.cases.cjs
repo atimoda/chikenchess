@@ -663,10 +663,10 @@ test('the group switches (Próximo instrumento / arma / utilitário) repeat whil
   assert.equal(groupSwitchStep({ nextInstrument: true }, { nextInstrument: true }, r, 1, 0.5, 0.3), null)
 })
 
-test('the big bar lines up split (default), centred, left or right; the small rows do not change', () => {
+test('the big bar and the first player\'s row on a phone held upright line up split (default), centred, left or right; the other small rows do not change', () => {
   const was = globalThis.window
   globalThis.window = { innerHeight: 800, matchMedia: () => ({ matches: true }) }
-  const { invGeom, BAR } = loadTs('components/pigchicken/draw/hud.ts')
+  const { invGeom, BAR, invRight } = loadTs('components/pigchicken/draw/hud.ts')
   globalThis.window = was
   const groups = [0, 0, 1, 1, 2, 2], W = 1400, H = 800
   const ends = g => g.xs.map(x => g.x + x)
@@ -689,8 +689,27 @@ test('the big bar lines up split (default), centred, left or right; the small ro
   assert.equal(onlyRight.x + onlyRight.w, W - BAR.side)
   const onlyLeft = invGeom(0, [0, 0], true, undefined, W, H, false, 0, 'split')
   assert.equal(onlyLeft.x, BAR.side)
-  // the small rows ignore the alignment
-  assert.deepEqual(invGeom(1, groups, false, undefined, W, H, false, 0, 'split'), invGeom(1, groups, false, undefined, W, H, false, 0, 'center'))
+  // the small rows without an alignment (the other local players) stay against the avatar's end
+  const rowEnd = W - invRight, margin = 12
+  const other = invGeom(1, groups, false, undefined, W, H)
+  assert.equal(other.x + other.w, rowEnd)
+  // the first player's small row (a phone held upright) follows the alignment between the left margin and that end
+  const pw = 390
+  const ends2 = g => g.xs.map(x => g.x + x)
+  const pSplit = invGeom(0, groups, false, undefined, pw, H, false, 0, 'split'), ps = ends2(pSplit)
+  assert.equal(ps[0], margin, 'instruments at the left margin')
+  assert.equal(ps[5] + pSplit.size, pw - invRight, 'weapons and utilities against the avatar')
+  assert.equal(pSplit.rest.x, ps[2], 'effects left of the weapons half')
+  const pRight = invGeom(0, groups, false, undefined, pw, H, false, 0, 'right')
+  assert.equal(pRight.x + pRight.w, pw - invRight)
+  assert.deepEqual(pRight, invGeom(0, groups, false, undefined, pw, H), 'right is the old place')
+  const pLeft = invGeom(0, groups, false, undefined, pw, H, false, 0, 'left')
+  assert.equal(pLeft.x, margin)
+  assert.equal(pLeft.rest.dir, 1)
+  const pCenter = invGeom(0, groups, false, undefined, pw, H, false, 0, 'center')
+  assert.ok(Math.abs(pCenter.x + pCenter.w / 2 - (margin + pw - invRight) / 2) <= 1)
+  assert.equal(invGeom(0, [1, 2], false, undefined, pw, H, false, 0, 'split').x + invGeom(0, [1, 2], false, undefined, pw, H, false, 0, 'split').w, pw - invRight, 'no instruments: all against the avatar')
+  assert.equal(invGeom(0, [0, 0], false, undefined, pw, H, false, 0, 'split').x, margin, 'only instruments: all at the left margin')
 })
 
 test('each category has its own limit, from her class (Personagem → Inventário): over it nothing new comes in', () => {
