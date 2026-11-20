@@ -994,7 +994,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Treino", items: [{ key: "chalkboard", kind: "chalkboard", label: ELEMENT_DEFS.chalkboard.label }] },
-  { group: "Música", items: (["zone", "lanes", "gong", "jukebox", "vitrola", "resetstone", "pedalharp", "drumkit"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
+  { group: "Música", items: (["zone", "lanes", "gong", "jukebox", "vitrola", "resetstone", "pedalharp", "drumkit", "grandpiano"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   // the Templo do Gongo's pieces: its halls and its gong
   { group: "Templo", items: [
     { key: "building-hall", kind: "building", label: "Prédio: salão", params: { building: defaultBuilding() } },
@@ -1030,6 +1030,7 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "vitrola") return <VitrolaThumb />
   if (entry.kind === "pedalharp") return <HarpThumb />
   if (entry.kind === "drumkit") return <DrumKitThumb />
+  if (entry.kind === "grandpiano") return <GrandPianoThumb />
   if (entry.kind === "chest") return <ChestThumb rarity={entry.params?.chest?.rarity ?? "simple"} />
   if (entry.kind === "spawn") return <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#7cc4ff] bg-blue-950/60 shadow-[0_0_6px_#408cff]"><span className="h-2 w-2 rounded-full bg-[#ffd166]" /></span>
   if (entry.kind === "chalkboard") return <span aria-hidden="true" className="block h-7 w-11 rounded-[3px] border-[3px] border-[#7a4f27] bg-[#2f5b3f]" />
@@ -1098,6 +1099,19 @@ function DrumKitThumb() {
       <rect x="15" y="6" width="10" height="7" rx="1.5" fill="#4f8fc0" />
       <circle cx="20" cy="22" r="9" fill="#c8553d" stroke="#e9e4d8" strokeWidth="1.6" />
       <rect x="1" y="17" width="9" height="4" rx="1" fill="#e9e4d8" /><path d="M5.5 21 L5.5 30" stroke="#9aa0a8" strokeWidth="1.2" />
+    </svg>
+  )
+}
+
+// the Piano de cauda on its card: the black case with its lid open, the keys and three legs
+function GrandPianoThumb() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 40 32" className="h-8 w-10">
+      <path d="M8 17 L33 6 L34 8 L10 18 Z" fill="#2c2c33" />
+      <path d="M4 18 L32 18 Q38 18 38 21 Q38 24 32 24 L4 24 Z" fill="#16161a" />
+      <rect x="2" y="17" width="5" height="2" fill="#f2ecdc" />
+      <path d="M7 24 L7 31 M27 24 L27 31 M35 24 L35 30" stroke="#16161a" strokeWidth="1.8" />
+      <path d="M26 18 L30 9" stroke="#d4a84a" strokeWidth="0.8" />
     </svg>
   )
 }

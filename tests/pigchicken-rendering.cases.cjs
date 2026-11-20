@@ -179,6 +179,31 @@ test('editor overlays follow the camera again when the stage changes size with t
   }
 })
 
+test('layers that follow the camera are only slid at 100% zoom (no redraw per fraction of a pixel) and redrawn at other zooms', () => {
+  const { followCamera, followParallax, followDepth, moveLiveCamera, worldTransform } = loadTs('lib/pigchicken/live-camera.ts')
+  const old = global.window, listeners = new Map()
+  global.window = { innerWidth: 1000, innerHeight: 800, addEventListener: (k, f) => listeners.set(k, f), removeEventListener: k => listeners.delete(k) }
+  const front = { style: {} }, layer = { style: {} }, far = { style: {} }, flat = { style: {} }
+  const stops = []
+  try {
+    stops.push(followCamera(front), followParallax(layer, 0.9), followDepth(far, 0.5), followDepth(flat, 0))
+    moveLiveCamera(123.37, 4.21)
+    // a 3D translate at zoom 1 too: the compositor slides the follower's layer, already painted
+    assert.equal(front.style.transform, 'translate3d(-123.37px,4.21px,0)')
+    assert.equal(worldTransform(123.37, 4.21, 1), front.style.transform)
+    for (const el of [front, layer, far]) assert.equal(el.style.willChange, 'transform')
+    assert.equal(flat.style.willChange, '', 'a layer that never moves keeps no hint')
+    moveLiveCamera(130, 4.21, 1.5)
+    assert.match(front.style.transform, /scale\(1\.5\)$/)
+    for (const el of [front, layer, far]) assert.equal(el.style.willChange, '', 'another zoom: drawn again at its sharpness')
+    moveLiveCamera(130, 4.21, 1)
+    for (const el of [front, layer, far]) assert.equal(el.style.willChange, 'transform')
+  } finally {
+    stops.forEach(stop => stop()); moveLiveCamera(0, 0, 1)
+    global.window = old
+  }
+})
+
 test('scenery visibility uses camera/parallax bounds, wakes on return/resize, and unregisters cleanly', () => {
   const { watchCameraRegion, moveLiveCamera, followParallax } = loadTs('lib/pigchicken/live-camera.ts')
   const old = global.window, listeners = new Map()

@@ -20,7 +20,7 @@
     "itemWheel": ["Key:KeyT",null,null],
     "cageRelease": ["Key:KeyH",null,null],
     "cageSwap": ["Key:KeyY",null,null],
-    "grab": ["Key:KeyE","Key:ShiftLeft",null],
+    "grab": ["Key:KeyE",null,null],
     "reload": ["Key:KeyR",null,null],
     "editMode": ["Key:AltLeft","Key:MetaLeft",null]
   },
@@ -76,6 +76,8 @@
   },
   "touch": "auto",
   "touchRunGrab": true,
+  "touchScreenAim": true,
+  "touchAimStick": false,
   "sound": true,
   "analog": {"deadzoneL":0.25,"deadzoneR":0.25,"magnet":false,"magnetDeg":0,"magnetRestoreDeg":12,"aimMagnetDeg":0},
   "inventory": {"repeatDelay":1.5,"repeatInterval":0.3,"align":"split"},

@@ -7,11 +7,11 @@ import { pieceOfMidi } from './drum-kit'
 import { playKit } from './drum-synth'
 
 export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass' | 'pizz'
-  | 'hang' | 'handpan' | 'hangSteel' | 'hangSlap' | 'pedalHarp' | 'harpHarmonic' | 'kit'
+  | 'hang' | 'handpan' | 'hangSteel' | 'hangSlap' | 'pedalHarp' | 'harpHarmonic' | 'kit' | 'grandPiano'
 export const VOICE_LABELS: Record<VoiceId, string> = {
   flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa de Lira', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo', pizz: 'Violino pizzicato',
   hang: 'Hang clássico', handpan: 'Handpan nitretado', hangSteel: 'Handpan inox', hangSlap: 'Hang (batida entre notas)',
-  pedalHarp: 'Harpa', harpHarmonic: 'Harpa (harmônico)', kit: 'Bateria acústica',
+  pedalHarp: 'Harpa', harpHarmonic: 'Harpa (harmônico)', kit: 'Bateria acústica', grandPiano: 'Piano de cauda',
 }
 // the hangdrum's kinds of sound (its "Tipo de som"): each one a voice below
 export const HANG_VOICES: VoiceId[] = ['hang', 'handpan', 'hangSteel']
@@ -111,6 +111,12 @@ function hangRing(f: number, dur: number, ring: number) {
 // 1.5 s by default) stretching or shortening it
 function harpRing(f: number, dur: number) {
   return Math.max(0.6, Math.min(9, 4.2 * Math.pow(220 / f, 0.5) * Math.max(0.35, Math.min(2.5, dur / 1.5))))
+}
+
+// seconds a piano string takes to die away (with the dampers up): low notes much longer (about 7 s at A3, 14 s at the
+// bottom, under 1 s at the top), `dur` (the item's Duração da nota, 1.5 s by default) stretching or shortening it
+function pianoRing(f: number, dur: number) {
+  return Math.max(0.5, Math.min(14, 7 * Math.pow(220 / f, 0.55) * Math.max(0.35, Math.min(2.5, dur / 1.5))))
 }
 
 // stop: fades the note out (in `fade` s; 0.25 by default)
@@ -234,6 +240,36 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
       }
       out.gain.setValueAtTime(1, t)
       end = t + 0.012 + ring; break
+    }
+    // the grand piano: a hammered string. The fundamental is two strings a hair apart (the slow beating of a unison),
+    // the overtones a little sharp (a stiff string's inharmonicity) and shorter, a hard hit opens the tone (more
+    // overtones, a brighter filter) and the hammer's felt thumps at the start. The sound has two parts: a quick drop
+    // right after the hit, then the long, darkening ring
+    case 'grandPiano': {
+      const ring = pianoRing(f, dur), bright = 0.35 + 0.65 * vel
+      const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5
+      const open = Math.min(18000, f * (3 + 14 * vel))
+      lp.frequency.setValueAtTime(open, t); lp.frequency.exponentialRampToValueAtTime(Math.max(f * 1.5, Math.min(open, f * 3)), t + ring * 0.6)
+      lp.connect(out)
+      const B = 0.00035
+      for (const [r, peak, part] of [[1, 0.5, 1], [2, 0.3, 0.7], [3, 0.16, 0.45], [4, 0.09, 0.3], [5, 0.05, 0.2]] as const) {
+        if (f * r > 16000) continue
+        const fr = f * r * Math.sqrt(1 + B * r * r), k = r === 1 ? 1 : bright ** (r - 1)
+        const g = a.createGain()
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak * k, t + 0.003)
+        g.gain.exponentialRampToValueAtTime(peak * k * 0.45, t + 0.003 + 0.12 * part + 0.05)
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.003 + ring * part)
+        g.connect(lp)
+        for (const d of r === 1 ? [0.9995, 1.0005] : [1]) {
+          const o = osc(a, r === 1 ? 'triangle' : 'sine', fr * d, t)
+          o.connect(g); track(o.frequency, r * Math.sqrt(1 + B * r * r) * d); sources.push(o)
+        }
+      }
+      const th = noise(a), tf = a.createBiquadFilter(); tf.type = 'lowpass'; tf.frequency.value = Math.min(2600, 500 + f * 2)
+      const tg = a.createGain(); env(a, tg, t, 0.12 * vel, 0.001, 0, 0.035); th.connect(tf); tf.connect(tg); tg.connect(out)
+      sources.push(th)
+      out.gain.setValueAtTime(0.42 * vel, t)
+      end = t + 0.003 + ring; break
     }
     case 'bells': {
       const c = osc(a, 'sine', f * 2, t), m = osc(a, 'sine', f * 2 * 3.5, t), mg = a.createGain()

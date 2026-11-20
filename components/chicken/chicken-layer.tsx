@@ -11,7 +11,7 @@ import { babyArt, defaultBabySkin, getBaby, setBaby, subscribeBaby, type BabySta
 import { loadChickenControls, setTouchMoveStick, subscribeChickenControls, type ChickenAction, type ChickenTouchMode } from "@/lib/chicken/controls"
 import { magnetVector } from "@/lib/chicken/analog-magnet"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
-import { clampDelta, finishTouchLayoutEdit, getServerTouchLayout, getTouchLayout, resetTouchLayout, setTouchOffset, subscribeTouchLayout, type TouchControlId } from "@/lib/chicken/touch-layout"
+import { clampDelta, finishTouchLayoutEdit, getServerTouchLayout, getTouchLayout, resetTouchLayout, setTouchOffset, subscribeTouchLayout, touchOffset, type TouchControlId } from "@/lib/chicken/touch-layout"
 import { stageWidth } from "@/lib/stage-size"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
@@ -59,7 +59,7 @@ export function useTouchControls(mode: ChickenTouchMode) {
 // the drag (so the control itself does not react) and the offset follows the finger.
 export function Movable({ id, className = "", style, children }: { id: TouchControlId; className?: string; style?: CSSProperties; children: ReactNode }) {
   const { offsets, editing } = useTouchLayout()
-  const off = offsets[id]
+  const off = touchOffset(offsets, id)
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ pid: number; sx: number; sy: number; ox: number; oy: number; rect: DOMRect } | null>(null)
   const down = (e: ReactPointerEvent) => {

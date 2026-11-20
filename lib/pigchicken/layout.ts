@@ -26,7 +26,7 @@ import { GONG_BOX, JUKEBOX_BOX, RESET_STONE_BOX, TEMPLE_SPOTS, VITROLA_BOX, defa
 import { BALUSTRADE_FLOOR, BALUSTRADE_SIZE, BUILDING_SIZE, buildingSurfaces, defaultBalustrade, defaultBuilding, normalizeBalustrade, normalizeBuilding, type BalustradeParams, type BuildingParams } from './buildings'
 import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
 import { CHEST_BOX, defaultChest, normalizeChest, type ChestParams } from './chests'
-import { DRUMKIT_BOX, HARP_BOX, isFixedKind } from './fixed-instruments'
+import { DRUMKIT_BOX, GRANDPIANO_BOX, HARP_BOX, isFixedKind } from './fixed-instruments'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
@@ -65,7 +65,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'building', 'balustrade', 'resetstone', 'mineactivator'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'grandpiano', 'building', 'balustrade', 'resetstone', 'mineactivator'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -191,6 +191,8 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   pedalharp: { label: 'Harpa', group: 'Música', ...HARP_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: HARP_BOX.w, minH: HARP_BOX.h },
   // the acoustic drum kit and its throne
   drumkit: { label: 'Bateria', group: 'Música', ...DRUMKIT_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: DRUMKIT_BOX.w, minH: DRUMKIT_BOX.h },
+  // the grand piano and its bench (played on the Estrela)
+  grandpiano: { label: 'Piano de cauda', group: 'Música', ...GRANDPIANO_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GRANDPIANO_BOX.w, minH: GRANDPIANO_BOX.h },
   // a big blue button that turns the Grade de blocos on once music or damage fills it (lib/pigchicken/mine-activator.ts)
   mineactivator: { label: 'Ativador de grid de campo minado', group: 'Grade de blocos', ...MINE_ACTIVATOR_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: MINE_ACTIVATOR_BOX.w, minH: MINE_ACTIVATOR_BOX.h },
 }
@@ -208,6 +210,18 @@ export const isSurfaceElement = (kind: ElementKind): kind is SurfaceKind => kind
 // the elements whose collisions offer "Objeto duro" (on by default only on grounds and walls)
 export const HARD_KINDS: readonly ElementKind[] = ['platform', 'terrace', 'pillar', 'ground', 'wall']
 export const isHard = (el: Pick<LayoutElement, 'kind' | 'hard' | 'solid'>) => el.solid && HARD_KINDS.includes(el.kind) && !!el.hard
+// Scenery that is only decoration ("Qualidade e efeitos gráficos" Baixíssima leaves it out, outside the Modo editor):
+// nothing stands on it, nor do shots, notes or items meet it — the Árvores without Escalar tronco/Andar nos
+// galhos/Andar na copa, the Pinheiros and Ameixeiras, and any scenery in a parallax depth of its own. Postes and
+// Torres stay (their wires are floors), as do the game's things, the music, the Lousa and whatever collides.
+export function isDecorOnly(el: Pick<LayoutElement, 'kind' | 'solid' | 'shots' | 'notes' | 'rebate' | 'depth' | 'params'>) {
+  if (ELEMENT_DEFS[el.kind].entity || isPowerElement(el.kind) || isMusicElement(el.kind) || el.kind === 'chalkboard') return false
+  if (el.solid || el.shots || el.notes || el.rebate) return false
+  if (el.depth) return true
+  if (el.kind === 'pine' || el.kind === 'blossom') return true
+  if (el.kind === 'tree') { const t = el.params.tree; return !t || (!t.climbTrunk && !t.walkBranches && !t.walkCrown) }
+  return false
+}
 
 const r1 = (v: number) => Math.round(v * 10) / 10
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))

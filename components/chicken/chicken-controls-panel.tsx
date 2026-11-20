@@ -400,6 +400,15 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             <input type="checkbox" checked={controls.touchRunGrab} onChange={e => { const v = e.target.checked; update(c => { c.touchRunGrab = v }) }} className="accent-[var(--primary)]" />
             Correr também pega itens do chão
           </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={controls.touchScreenAim} onChange={e => { const v = e.target.checked; update(c => { c.touchScreenAim = v }) }} className="accent-[var(--primary)]" />
+            Tela serve como mira
+          </label>
+          <p className="text-[11px] text-[#8a9a8a]">Tocar no cenário mira e atira ali e anda até lá; tocar no item ou no que o Pegar oferece faz Pegar.</p>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={controls.touchAimStick} onChange={e => { const v = e.target.checked; update(c => { c.touchAimStick = v }) }} className="accent-[var(--primary)]" />
+            Exibir analógico touch de mira
+          </label>
           {editLayout && (
             <>
               <button type="button" onClick={() => { startTouchLayoutEdit(); onOpenChange(false) }} className="h-8 justify-self-start rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25">Editar posição dos botões</button>

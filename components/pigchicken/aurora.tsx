@@ -12,15 +12,17 @@ import { BACKDROP_PAD_L, SUN_DEPTH } from "@/lib/pigchicken/backdrop-layers"
 import { AURORA_RAY_STEP, auroraCurtains, auroraRays, auroraSpan, type AuroraCurtain } from "@/lib/pigchicken/aurora-draw"
 import type { AuroraParams } from "@/lib/pigchicken/aurora"
 import { mix } from "@/lib/pigchicken/sky"
-import type { QualityLevel } from "@/lib/quality"
+import type { GraphicsLevel } from "@/lib/quality"
 import { useQuality } from "@/components/quality-preferences"
 
 const PAD_L = BACKDROP_PAD_L
 // canvas pixels per unit, and the blur (units) painted into it, by graphics quality
-const LOOK: Record<QualityLevel, { scale: number; blur: number; shimmer: boolean; move: boolean }> = {
+const LOOK: Record<GraphicsLevel, { scale: number; blur: number; shimmer: boolean; move: boolean }> = {
   high: { scale: 0.5, blur: 3, shimmer: true, move: true },
   medium: { scale: 0.34, blur: 3, shimmer: false, move: true },
   low: { scale: 0.25, blur: 0, shimmer: false, move: false },
+  // not drawn at Baixíssima (the backdrop keeps only the sky); here for completeness
+  lowest: { scale: 0.25, blur: 0, shimmer: false, move: false },
 }
 
 const rgba = (hex: string, a: number) => {
@@ -51,7 +53,7 @@ function paint(canvas: HTMLCanvasElement, c: AuroraCurtain, rays: number, varian
   ctx.filter = "none"
 }
 
-function Curtain({ c, a, quality }: { c: AuroraCurtain; a: AuroraParams; quality: QualityLevel }) {
+function Curtain({ c, a, quality }: { c: AuroraCurtain; a: AuroraParams; quality: GraphicsLevel }) {
   const box = useRef<HTMLDivElement>(null), one = useRef<HTMLCanvasElement>(null), two = useRef<HTMLCanvasElement>(null)
   const look = LOOK[quality], h = c.bottom - c.top
   const gain = Math.max(1, a.amount / 100), rays = a.rays / 100

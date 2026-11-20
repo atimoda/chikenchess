@@ -71,6 +71,10 @@ A escala da harpa de pedais: cordas que saem em todas as direções em volta do 
 - **Som:** a voz **Harpa** (`pedalHarp`, escolhível em qualquer instrumento): fundamental redonda que soa por segundos (cerca de 4 s no Lá3, graves mais, multiplicada pela Duração da nota ÷ 1,5 s), parciais brilhantes no ataque que somem antes e o roçar curto do dedo. O limite de vozes simultâneas do Pátio subiu de 18 para 24 por causa dela (a mais antiga some rápido ao passar do limite); o efeito disso em celular ainda precisa ser conferido em aparelho.
 - **Online:** os toques chegam aos outros como as notas dos outros instrumentos. O corte da nota anterior e o deslize ainda são só locais.
 
+## Estrela — 20/11, v2.15.0
+
+Escala **Estrela** (`star`): as 12 notas numa estrela de seis pontas de hexágonos, com o eixo do trítono no meio, teclas pretas escuras e o realce da escala da zona; toque, arraste, gatilho analógico, dinâmica pelo movimento e o acumulador no Correr. Regras em [star-scale.md](star-scale.md). É a escala do Piano de cauda ([fixed-instruments.md](fixed-instruments.md)); qualquer instrumento pode ligá-la.
+
 ## Bateria — 15/11, v2.11.0
 
 Escala **Bateria** (`drums`): os botões redondos das peças de um kit acústico em volta de quem toca, sem altura de nota pela mira. É a escala da Bateria fixa; peças, baquetas, atalhos, pedal do chimbal, rufo e o editor do kit (Escalas → Bateria → Kit) estão em [fixed-instruments.md](fixed-instruments.md). O standby da escala tem os mesmos números das outras, mas sentada na Bateria ela nunca some.

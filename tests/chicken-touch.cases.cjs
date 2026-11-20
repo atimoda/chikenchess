@@ -648,9 +648,9 @@ test('movement magnet snaps only the movement stick before mapped gamepad action
  } finally {if(old===undefined)delete globalThis.navigator;else Object.defineProperty(globalThis,'navigator',{configurable:true,value:old})}
 })
 
-test('the Shifts also grab and LB/RB go back/forward an item, migrating only the previous defaults', () => {
+test('Shift dir. also grabs (Shift esq. no longer) and LB/RB go back/forward an item, migrating only the previous defaults', () => {
   const d = controls.defaultChickenControls()
-  assert.deepEqual(d.keys.grab, ['Key:KeyE', 'Key:ShiftLeft', null])
+  assert.deepEqual(d.keys.grab, ['Key:KeyE', null, null])
   assert.deepEqual(d.keys2.grab, ['Key:KeyP', 'Key:ShiftRight'])
   assert.deepEqual(d.keys.run[0], 'Key:ShiftLeft')
   assert.deepEqual(d.keys2.run[0], 'Key:ShiftRight')
@@ -772,9 +772,11 @@ test('the Harpa\'s own binds: Sustenido is Shift (each keyboard) and L3 by defau
   const pad = []; pad[10] = 1
   assert.equal(IB.harpHeld(c, 'sharp', ['pad0'], new Set(), pad), true)
   assert.equal(IB.harpHeld(c, 'sharp', ['pad0'], new Set(), []), false)
-  // Pegar by Shift esq. (also the sustenido) keeps her at the Harpa; by E, or the gamepad's X, it gets her up
+  // Pegar by Shift dir. (also the sustenido) keeps her at the Harpa; by E, or the gamepad's X, it gets her up
   const harp = IB.seatTokens('harp', c, null, DEFAULT_KIT)
-  assert.equal(IB.grabIsSeatBind(c, ['kb1'], new Set(['Key:ShiftLeft']), [], harp), true)
+  assert.equal(IB.grabIsSeatBind(c, ['kb2'], new Set(['Key:ShiftRight']), [], harp), true)
+  // Shift esq. is not Pegar any more (20/11): held alone it does nothing to the seat
+  assert.equal(IB.grabIsSeatBind(c, ['kb1'], new Set(['Key:ShiftLeft']), [], harp), false)
   assert.equal(IB.grabIsSeatBind(c, ['kb1'], new Set(['Key:KeyE']), [], harp), false)
   const x = []; x[2] = 1
   assert.equal(IB.grabIsSeatBind(c, ['pad0'], new Set(), x, harp), false)
@@ -833,4 +835,51 @@ test('the inventory alignment (18/11) defaults to split, survives a save and fal
     assert.equal(controls.loadChickenControls().inventory.align, 'split')
     assert.equal(controls.chickenControlsDefaultsFile({ ...controls.defaultChickenControls(), inventory: { repeatDelay: 1.5, repeatInterval: 0.3, align: 'right' } }).inventory.align, 'right')
   } finally { globalThis.window = was }
+})
+
+test('Shift esq. leaves Pegar (20/11): only the previous default E + Shift esq. loses it, once', () => {
+  const previous = globalThis.window
+  try {
+    const d = controls.defaultChickenControls()
+    assert.deepEqual(d.keys.grab, ['Key:KeyE', null, null])
+    assert.equal(d.keys.run[0], 'Key:ShiftLeft', 'Shift esq. stays on Correr')
+    let saved = { ...JSON.parse(JSON.stringify(d)), keys2: d.keys2, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true, cageBinds: true, variationBind: true }
+    saved.keys.grab = ['Key:KeyE', 'Key:ShiftLeft', null]
+    globalThis.window = { localStorage: { getItem: () => JSON.stringify(saved) } }
+    assert.deepEqual(controls.loadChickenControls().keys.grab, ['Key:KeyE', null, null])
+    // a custom Pegar keeps Shift esq.
+    saved.keys.grab = ['Key:KeyK', 'Key:ShiftLeft', null]
+    assert.deepEqual(controls.loadChickenControls().keys.grab, ['Key:KeyK', 'Key:ShiftLeft', null])
+    // saved after the change (the marker), the player's own E + Shift esq. stays
+    saved = { ...saved, grabNoShiftLeft: true }; saved.keys.grab = ['Key:KeyE', 'Key:ShiftLeft', null]
+    assert.deepEqual(controls.loadChickenControls().keys.grab, ['Key:KeyE', 'Key:ShiftLeft', null])
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
+})
+
+test('Tela serve como mira starts on and the aim stick hidden; both are saved and in the defaults file', () => {
+  const previous = globalThis.window
+  try {
+    const d = controls.defaultChickenControls()
+    assert.equal(d.touchScreenAim, true)
+    assert.equal(d.touchAimStick, false)
+    const file = controls.chickenControlsDefaultsFile(d)
+    assert.equal(file.touchScreenAim, true); assert.equal(file.touchAimStick, false)
+    let raw = JSON.stringify({ touchScreenAim: false, touchAimStick: true })
+    globalThis.window = { localStorage: { getItem: () => raw } }
+    const c = controls.loadChickenControls()
+    assert.equal(c.touchScreenAim, false); assert.equal(c.touchAimStick, true)
+    // a save from before them: the defaults
+    raw = JSON.stringify({ touch: 'on' })
+    const old = controls.loadChickenControls()
+    assert.equal(old.touchScreenAim, true); assert.equal(old.touchAimStick, false)
+  } finally { if (previous === undefined) delete globalThis.window; else globalThis.window = previous }
+})
+
+test('the touch controls default to the 20/11 layout; a moved control keeps its own offset and Padrão goes back to the default', () => {
+  const d = layout.DEFAULT_TOUCH_OFFSETS
+  for (const id of ['move', 'run', 'down', 'jump', 'aim', 'melee', 'throw', 'itemWheel', 'grab']) assert.ok(d[id], id)
+  assert.equal(d.inventory, undefined, 'the inventory keeps its corner')
+  assert.deepEqual(layout.touchOffset({}, 'jump'), d.jump)
+  assert.deepEqual(layout.touchOffset({ jump: { x: 5, y: 6 } }, 'jump'), { x: 5, y: 6 })
+  assert.equal(layout.touchOffset({}, 'inventory'), undefined)
 })

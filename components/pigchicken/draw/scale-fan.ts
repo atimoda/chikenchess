@@ -12,6 +12,8 @@ import { DrumsScale } from "@/lib/pigchicken/instrument-scales"
 import { drumKit } from "@/lib/pigchicken/drum-kit"
 import { drumBindName } from "@/lib/pigchicken/drum-input"
 import { drawDrumChart, drumFrame, drumHints } from "./drum-chart"
+import { StarScale } from "@/lib/pigchicken/instrument-scales"
+import { drawStar, starSeatFrame } from "./star-grid"
 
 
 const noteName = (m: number) => `${NOTE_NAMES[((m % 12) + 12) % 12]}${Math.floor(m / 12) - 1}`
@@ -49,6 +51,12 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
     return
   }
   const d = combat.def()
+  if (chart instanceof StarScale) {
+    // (sitting at the Piano de cauda it fits the screen, like the Bateria)
+    const r = SCALE_FAN_R * size * scale, at = combat.seated ? starSeatFrame(cx, cy, r) : { x: cx, y: cy, r }
+    drawStar(ctx, chart.layout(combat.music, { octave: d.octave }), chart.grid, { hands: combat.starHands, age: i => combat.starAge(i), run: combat.starRun, dyn: combat.starDynamic, opacity: chart.shape.starOpacity / 100, offScale: chart.shape.starOffScale / 100 }, at.x, at.y, at.r, alpha, lines, alphaOn)
+    return
+  }
   drawScaleShape(ctx, chart, combat.music, {
     ...src, descending: d.spiralDescending, hang: hangOf(d), aim, reach: combat.aimReach, fade, unit: scale,
     hands: chart instanceof StringsScale ? combat.stringHands.flatMap(h => h ? [chart.touch(h.angle, h.r)] : []) : undefined,
@@ -87,6 +95,10 @@ export function drawScaleShape(ctx: CanvasRenderingContext2D, chart: InstrumentS
   if (chart instanceof HangScale) {
     const lay = chart.layout(music, { octave: q.octave, hang: q.hang })
     drawHang(ctx, lay, aim === null ? { index: -1, slap: false } : chart.touch(lay, aim, q.reach), aim ?? 0, q.reach, cx, cy, rOut, alpha, lines, alphaOn)
+    return
+  }
+  if (chart instanceof StarScale) {
+    drawStar(ctx, chart.layout(music, { octave: q.octave }), chart.grid, { hands: aim === null ? [] : [chart.touch(aim, q.reach)], opacity: chart.shape.starOpacity / 100, offScale: chart.shape.starOffScale / 100 }, cx, cy, rOut, alpha, lines, alphaOn)
     return
   }
   if (chart instanceof StringsScale) {

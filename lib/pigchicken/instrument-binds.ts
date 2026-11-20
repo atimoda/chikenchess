@@ -1,7 +1,9 @@
 // The fixed instruments' own binds, read for one player (pure: the page reads the keys and the gamepad). The Harpa's
 // are in ChickenControls.harp (Controles → Instrumentos → Harpa); the Bateria's are the kit's shortcuts
-// (lib/pigchicken/drum-kit.ts, the same list as Escalas → Bateria → Kit).
-import { type ChickenControls, type HarpAction } from '../chicken/controls'
+// (lib/pigchicken/drum-kit.ts, the same list as Escalas → Bateria → Kit). The Piano de cauda's are the movement binds
+// themselves (the dynamics and Correr's accumulator of the Estrela: lib/pigchicken/star-play.ts).
+import { type ChickenAction, type ChickenControls, type HarpAction } from '../chicken/controls'
+import type { MoveBinds } from './star-play'
 import { isPadDevice, keyTokensFor, type InputDeviceId } from '../chicken/input-devices'
 import { bindTokens } from './drum-input'
 import { DRUM_IDS, type DrumKit } from './drum-kit'
@@ -24,9 +26,16 @@ export function tokensHeld(tokens: readonly string[], keys: ReadonlySet<string>,
 export const harpHeld = (c: ChickenControls, action: HarpAction, devices: readonly InputDeviceId[] | null, keys: ReadonlySet<string>, pad: readonly number[]) =>
   tokensHeld(harpTokens(c, action, devices), keys, pad)
 
-/** Every key and button the instrument she sits at uses for that player: the Harpa's binds or the kit's shortcuts. */
-export function seatTokens(kind: 'harp' | 'drums', c: ChickenControls, devices: readonly InputDeviceId[] | null, kit: DrumKit): Set<string> {
+// the movement binds the Piano de cauda plays with (Correr, Agachar, Chocar, Pular, Esquerda, Direita)
+const PIANO_ACTIONS: ChickenAction[] = ['run', 'crouch', 'down', 'jump', 'left', 'right']
+const actionTokens = (c: ChickenControls, a: ChickenAction, devices: readonly InputDeviceId[] | null) =>
+  [...keyTokensFor(c, a, devices), ...(hasPad(devices) ? c.pad[a].filter((t): t is string => !!t) : [])]
+
+/** Every key and button the instrument she sits at uses for that player: the Harpa's binds, the kit's shortcuts or
+ * the Piano de cauda's movement binds. */
+export function seatTokens(kind: 'harp' | 'drums' | 'piano', c: ChickenControls, devices: readonly InputDeviceId[] | null, kit: DrumKit): Set<string> {
   if (kind === 'harp') return new Set((['sharp'] as HarpAction[]).flatMap(a => harpTokens(c, a, devices)))
+  if (kind === 'piano') return new Set(PIANO_ACTIONS.flatMap(a => actionTokens(c, a, devices)))
   return new Set(DRUM_IDS.flatMap(id => kit.binds[id].flatMap(b => bindTokens(b, c, devices))))
 }
 
@@ -40,3 +49,16 @@ export function grabIsSeatBind(c: ChickenControls, devices: readonly InputDevice
   const held = grab.filter(t => tokensHeld([t], keys, pad))
   return held.length > 0 && held.every(t => seat.has(t))
 }
+
+/** The seat's kind of binds for a fixed instrument. */
+export const seatBindsOf = (kind: string): 'harp' | 'drums' | 'piano' => (kind === 'drumkit' ? 'drums' : kind === 'grandpiano' ? 'piano' : 'harp')
+
+/** How deep a player's gamepad Atirar is (its analog trigger's push, 0..1; a plain button: 0 or 1; no gamepad: 0). */
+export function fireDepth(c: ChickenControls, devices: readonly InputDeviceId[] | null, pad: readonly number[]) {
+  if (!hasPad(devices)) return 0
+  return c.pad.fire.reduce((m, t) => (t && t.startsWith('Pad:b') ? Math.max(m, pad[Number(t.slice(5))] ?? 0) : m), 0)
+}
+
+/** The movement binds a player holds (the engine's actions): the Estrela's accumulator and dynamics. */
+export const movesOf = (a: Partial<Record<ChickenAction, boolean>>): MoveBinds =>
+  ({ run: !!a.run, crouch: !!a.crouch, brood: !!a.down, jump: !!a.jump, walk: !!a.left || !!a.right })

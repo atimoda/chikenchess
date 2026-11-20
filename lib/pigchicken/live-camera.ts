@@ -8,12 +8,26 @@ export const liveCamera = { x: 0, y: 0, zoom: 1 }
 const followers = new Set<HTMLElement>()
 const parallaxLayers = new Map<HTMLElement | SVGElement, number>()
 const regions = new Set<{ el: HTMLElement | SVGElement; bounds: ViewRect; depth: number; pinned: boolean }>()
-const cameraTransform = () => {
-  const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
-  if (z === 1) return `translate(${-liveCamera.x}px, ${liveCamera.y}px)`
-  return `translate3d(${cx * (1 - z) - liveCamera.x * z}px,${cy * (1 - z) + liveCamera.y * z}px,0) scale(${z})`
+// The layers that move with the camera (the world, each parallax layer, the layers in front) carry the hint
+// `will-change: transform` while the zoom is 100%. Without it the browser draws a moved layer again from scratch
+// whenever the fraction of a screen pixel it sits on changes, so a camera moving by fractions redrew the whole visible
+// part of the world, of each parallax layer and of each layer in front at every step (Chromium, Redmi screen: ~6000
+// raster tasks in 3 s of walking, ~900 with the hint). A phone could not keep up and the scenery and the numbers of
+// the Grade de blocos blinked while walking. With another zoom the hint is dropped, so the layers are drawn again
+// at that zoom's sharpness (a hinted layer keeps the scale it was first drawn at).
+export function holdLayer(el: HTMLElement | SVGElement, zoom = liveCamera.zoom) {
+  const hint = zoom === 1 ? 'transform' : ''
+  if (el.style.willChange !== hint) el.style.willChange = hint
 }
-const place = (el: HTMLElement) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform() }
+// the world's own transform (ParquinhoPlay) and that of the layers that follow it: always a 3D translate, so the
+// compositor moves the follower's layer, already painted (a 2D one at zoom 1 repainted it every frame)
+export function worldTransform(camX: number, camY: number, z: number) {
+  const cx = stageWidth() / 2, cy = window.innerHeight / 2
+  const t = `translate3d(${cx * (1 - z) - camX * z}px,${cy * (1 - z) + camY * z}px,0)`
+  return z === 1 ? t : `${t} scale(${z})`
+}
+const cameraTransform = () => worldTransform(liveCamera.x, liveCamera.y, liveCamera.zoom)
+const place = (el: HTMLElement) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform(); holdLayer(el) }
 // A parallax layer lives inside the world element, which already carries the zoom and the camera: it only gives
 // back depth × the camera's travel (x and y alike), never a second zoom.
 const parallaxTransform = (depth: number) => `translate3d(${liveCamera.x * depth}px,${-liveCamera.y * depth}px,0)`
@@ -60,7 +74,7 @@ export function followCamera(el: HTMLElement) {
 
 export function followParallax(el: HTMLElement | SVGElement, depth: number) {
   parallaxLayers.set(el, depth)
-  el.style.transformOrigin = '0 0'; el.style.transform = parallaxTransform(depth)
+  el.style.transformOrigin = '0 0'; el.style.transform = parallaxTransform(depth); holdLayer(el)
   return () => { parallaxLayers.delete(el) }
 }
 
@@ -75,6 +89,7 @@ const depthFollowers = new Map<HTMLElement | SVGElement, { depth: number; pinned
 let restY = 0
 const placeDepth = ({ depth, pinned }: { depth: number; pinned: boolean }, el: HTMLElement | SVGElement) => {
   el.style.transform = depth ? `translate3d(${(liveCamera.x * depth).toFixed(2)}px,${(-(liveCamera.y - (pinned ? 0 : restY)) * depth).toFixed(2)}px,0)` : ''
+  holdLayer(el, depth ? liveCamera.zoom : 0)
 }
 export const cameraRestY = () => restY
 // the camera's y at rest (ParquinhoPlay sets it when the screen or the Pátio's height changes)
@@ -107,7 +122,7 @@ export function moveLiveCamera(x: number, y: number, zoom = liveCamera.zoom) {
   depthFollowers.forEach(placeDepth)
   cameraListeners.forEach(fn => fn(x, y - restY))
   followers.forEach(place)
-  parallaxLayers.forEach((depth, el) => { el.style.transformOrigin = '0 0'; el.style.transform = parallaxTransform(depth) })
+  parallaxLayers.forEach((depth, el) => { el.style.transformOrigin = '0 0'; el.style.transform = parallaxTransform(depth); holdLayer(el) })
   updateRegions()
 }
 
