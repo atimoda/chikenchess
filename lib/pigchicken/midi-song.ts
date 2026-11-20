@@ -1,9 +1,9 @@
 // "Gerar de MIDI" (the jukebox): a .mid file becomes a song. The file is read here (Standard MIDI File, format 0 or 1:
 // its tracks, tempo and notes, in beats), then the generator picks the tracks the player chose, quantizes them to
 // the difficulty's grid, keeps only as many notes as the difficulty allows (notes a second, the shortest gap on the
-// same lane, how many at once), folds them into the fan's lanes (each track an octave or two up or down so its
+// same lane, how many at once; the tracks share them), folds them into the fan's lanes (each track an octave or two up or down so its
 // middle sits in the middle of the fan; drums by piece: kick low, snare in the middle, hats and cymbals high), and
-// groups the notes that follow each other in the same region into aliens of 5 to 15 notes, each one appearing a
+// groups the notes that follow each other in the same region into aliens of up to 15 notes, each one appearing a
 // few beats before its first. The result opens in the song editor.
 import { fanNotes, songFan } from './fan'
 import { SCALES, type ScaleId } from './music'
@@ -41,9 +41,11 @@ export function parseMidi(data: Uint8Array): MidiFile {
   // channel tracks: a format 0 file has every channel in one track, so tracks are split by channel
   const byKey = new Map<string, MidiTrack>()
   let endTick = 0
-  for (let t = 0; t < ntracks && p < data.length; t++) {
-    if (tag() !== 'MTrk') throw new MidiError('Uma faixa do arquivo MIDI está estragada.')
-    const len = u32(), end = p + len
+  for (let t = 0; t < ntracks && p + 8 <= data.length; t++) {
+    const id = tag(), len = u32(), end = p + len
+    if (!/^[\x20-\x7e]{4}$/.test(id)) throw new MidiError('Uma faixa do arquivo MIDI está estragada.')
+    // a chunk of another kind (the format allows them) is skipped
+    if (id !== 'MTrk') { p = end; t--; continue }
     if (end > data.length) throw new MidiError('O arquivo MIDI acabou antes da hora.')
     let tick = 0, status = 0, name = ''
     const programs = new Map<number, number>()
@@ -63,7 +65,8 @@ export function parseMidi(data: Uint8Array): MidiFile {
         if (type === 0x2f) break
         continue
       }
-      if (b === 0xf0 || b === 0xf7) { p += vlq(); continue }
+      // the length is read before moving on (`p += vlq()` would add it to the position from before the length)
+      if (b === 0xf0 || b === 0xf7) { const l = vlq(); p += l; continue }
       const kind = b & 0xf0, ch = b & 0x0f
       const d1 = u8(), d2 = kind === 0xc0 || kind === 0xd0 ? 0 : u8()
       if (kind === 0xc0) programs.set(ch, d1)
@@ -153,6 +156,7 @@ function drumPiece(m: number): { at: number; variant: string; rank: number } {
 type Hit = { beat: number; lane: number; vel: number; rank: number; track: number; variant: string }
 const GAP_REST = 2 // beats without a note close an alien
 const GROUP_MIN = 5, GROUP_MAX = 15, REGION = 3 // lanes
+const SHARE_BEATS = 16 // the tracks share the places by how many notes each kept in the last 4 bars
 
 export function generateSong(file: MidiFile, o: GenOptions): { song: LibrarySong; kept: number; dropped: number } {
   const diff = DIFFICULTIES.find(d => d.value === o.difficulty) ?? DIFFICULTIES[1]
@@ -194,25 +198,51 @@ export function generateSong(file: MidiFile, o: GenOptions): { song: LibrarySong
       }
     }
   }
-  // the density: at each beat at most `together` notes (the strongest, the highest), never the same lane closer
-  // than the gap, and no more than nps notes in any second
-  hits.sort((a, b) => a.beat - b.beat || a.rank - b.rank || b.vel - a.vel || b.lane - a.lane)
+  // the density: at each beat at most `together` notes, never the same lane closer than the gap, and no more than
+  // nps notes in any second. The tracks share the places: a note waits for (gives its place to) a note of a track
+  // with fewer notes kept in the last bars that comes within the next second, so a steady drum track does not take
+  // every place from the melody and the bass. Among the notes of a beat: that same share, then the kick, the snare
+  // and the melody, the strongest and the highest
+  hits.sort((a, b) => a.beat - b.beat)
   const kept: Hit[] = []
   const lastOn = new Map<number, number>()
   const second = bpm / 60 // beats in a second
+  const nps = Math.max(1, Math.floor(diff.nps))
   const recent: number[] = [] // the beats of the notes kept in the last second
+  const share = new Map<number, number[]>() // per track, the beats of its notes kept in the last bars
+  const shareOf = (track: number, beat: number) => {
+    const bs = share.get(track)
+    if (!bs) return 0
+    while (bs.length && bs[0] <= beat - SHARE_BEATS) bs.shift()
+    return bs.length
+  }
+  const fits = (p: Hit, beat: number) => beat - (lastOn.get(p.lane) ?? -Infinity) >= diff.gap - 1e-9
+  const before = (a: Hit, b: Hit, beat: number) => shareOf(a.track, beat) - shareOf(b.track, beat) || a.rank - b.rank || b.vel - a.vel || b.lane - a.lane
   for (let i = 0; i < hits.length;) {
     const beat = hits[i].beat
     let j = i
     while (j < hits.length && hits[j].beat === beat) j++
+    while (recent.length && recent[0] <= beat - second + 1e-9) recent.shift()
     let here = 0
     const usedLanes = new Set<number>()
-    for (const p of hits.slice(i, j)) {
-      while (recent.length && recent[0] <= beat - second + 1e-9) recent.shift()
-      if (here >= diff.together || usedLanes.has(p.lane)) continue
-      if (beat - (lastOn.get(p.lane) ?? -Infinity) < diff.gap - 1e-9) continue
-      if (recent.length >= Math.max(1, Math.floor(diff.nps))) continue
+    const left = hits.slice(i, j)
+    while (left.length && here < diff.together && recent.length < nps) {
+      let b = 0
+      for (let x = 1; x < left.length; x++) if (before(left[x], left[b], beat) < 0) b = x
+      const p = left.splice(b, 1)[0]
+      if (usedLanes.has(p.lane) || !fits(p, beat)) continue
+      // a track with fewer notes lately has one coming soon that this one would leave no place for: it waits
+      const mine = shareOf(p.track, beat)
+      let wait = false
+      for (let x = j; x < hits.length && hits[x].beat < beat + second - 1e-9 && !wait; x++) {
+        const q = hits[x]
+        if (q.track === p.track || shareOf(q.track, beat) >= mine || !fits(q, q.beat)) continue
+        const full = recent.filter(r => r > q.beat - second + 1e-9).length + 1 >= nps
+        if (full || (q.lane === p.lane && q.beat - beat < diff.gap - 1e-9)) wait = true
+      }
+      if (wait) continue
       kept.push(p); here++; usedLanes.add(p.lane); lastOn.set(p.lane, beat); recent.push(beat)
+      share.set(p.track, [...(share.get(p.track) ?? []), beat])
     }
     i = j
   }
@@ -220,28 +250,34 @@ export function generateSong(file: MidiFile, o: GenOptions): { song: LibrarySong
   const start = kept.length ? Math.floor(kept[0].beat / 4) * 4 : 0
   kept.forEach(p => { p.beat -= start })
 
-  // the aliens: per track and variation, the notes that follow each other in the same region
-  const aliens: SongAlien[] = []
+  // the aliens: per track and variation, the notes that follow each other in the same region. A long song whose
+  // aliens would pass the library's limit is grouped again with a longer rest, so its end is not cut off
   const streams = new Map<string, Hit[]>()
   for (const p of kept) { const key2 = `${p.track}|${p.variant}`; streams.set(key2, [...(streams.get(key2) ?? []), p]) }
-  for (const [, ps] of streams) {
-    let group: Hit[] = []
-    const close = () => {
-      if (!group.length) return
-      const v = variantFor(catalog, group[0].variant, 'jelly')
-      aliens.push({ species: v.species, variant: v.id, notes: group.map(p => ({ beat: p.beat, midi: lanes[p.lane] })) })
-      group = []
-    }
-    for (const p of ps) {
-      const prev = group[group.length - 1]
-      if (prev) {
-        const meanLane = group.reduce((s, x) => s + x.lane, 0) / group.length
-        if (p.beat - prev.beat > GAP_REST || group.length >= GROUP_MAX || (group.length >= GROUP_MIN && Math.abs(p.lane - meanLane) > REGION)) close()
+  const group = (rest: number) => {
+    const out: SongAlien[] = []
+    for (const [, ps] of streams) {
+      let g: Hit[] = []
+      const close = () => {
+        if (!g.length) return
+        const v = variantFor(catalog, g[0].variant, 'jelly')
+        out.push({ species: v.species, variant: v.id, notes: g.map(p => ({ beat: p.beat, midi: lanes[p.lane] })) })
+        g = []
       }
-      group.push(p)
+      for (const p of ps) {
+        const prev = g[g.length - 1]
+        if (prev) {
+          const meanLane = g.reduce((s, x) => s + x.lane, 0) / g.length
+          if (p.beat - prev.beat > rest || g.length >= GROUP_MAX || (g.length >= GROUP_MIN && Math.abs(p.lane - meanLane) > REGION)) close()
+        }
+        g.push(p)
+      }
+      close()
     }
-    close()
+    return out
   }
+  let aliens = group(GAP_REST)
+  for (let rest = GAP_REST * 2; aliens.length > SONG_ALIENS_MAX && rest <= 64; rest *= 2) aliens = group(rest)
   aliens.sort((a, b) => a.notes[0].beat - b.notes[0].beat)
   const capped = aliens.slice(0, SONG_ALIENS_MAX).map(a => ({ ...a, notes: a.notes.slice(0, SONG_NOTES_MAX) }))
   const colors = ['#7bdff2', '#c77dff', '#7bd88f', '#ffd166', '#ff8fab', '#4cc9f0', '#f4a261', '#b5e48c', '#ff6b5b', '#9d8df1', '#64dfdf', '#ffb703']
