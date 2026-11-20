@@ -25,13 +25,25 @@
   "redirects": [
     {
       "source": "/chicken-voice-simulator",
-      "destination": "/chicken-voice-simulator/index.html?mode=bestiary&creature=chicken",
+      "missing": [
+        {
+          "type": "query",
+          "key": "mode"
+        }
+      ],
+      "destination": "/chicken-voice-simulator?mode=bestiary&creature=chicken",
       "permanent": false
     },
     {
-      "source": "/chicken-voice-simulator/",
-      "destination": "/chicken-voice-simulator/index.html?mode=bestiary&creature=chicken",
+      "source": "/chicken-voice-simulator/index.html",
+      "destination": "/chicken-voice-simulator?mode=bestiary&creature=chicken",
       "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/chicken-voice-simulator",
+      "destination": "/chicken-voice-simulator/index"
     }
   ]
 }
