@@ -840,7 +840,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const unsubscribeQuality = subscribeQuality(fit)
 
     const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000); last = now
+      // never below 0: the first frame's time can come before the moment this loop was set up (a slow load), and a
+      // step back in time brought every dummy's tip back for that long
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now
       const S = settingsRef.current
       let st = engine.getMotionState()
       const viewW = st.width, worldW = SCENE_W * worldScenes(S.screens)

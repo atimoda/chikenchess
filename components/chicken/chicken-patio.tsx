@@ -1049,6 +1049,12 @@ export function ChickenPatio() {
           </div>
         </FloatingPanel>
       )}
+      {/* while the Pátio opening is still coming from the database: nothing of the world shows (use-patio-lobby.ts) */}
+      {!patio && (
+        <div role="status" className="fixed inset-0 z-[900] flex items-center justify-center bg-[#05060c] font-mono text-xs text-[#8a9a8a]">
+          Carregando…
+        </div>
+      )}
     </main>
   )
 }

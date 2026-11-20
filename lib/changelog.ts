@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.15.0',
     date: '20/11/2026',
-    title: 'Simulador de voz de galinha em chickenchess.com/chicken-voice-simulator; créditos completos no About; Piano de cauda e a escala Estrela: as 12 notas numa estrela de hexágonos, tocadas por clique e arraste, com dinâmica pelo movimento e o acumulador de notas no Correr; Pátio sem piscadas no celular ao andar e qualidade gráfica Baixíssima; Tela como mira no celular: tocar atira, anda até lá e pega o item; analógico de mira atira ao soltar e fica escondido por padrão; arrastar o botão Roda escolhe o item; nova posição dos botões de toque; Shift esquerdo sai do Pegar',
+    title: 'Simulador de voz de galinha em chickenchess.com/chicken-voice-simulator; créditos completos no About; Piano de cauda e a escala Estrela: as 12 notas numa estrela de hexágonos, tocadas por clique e arraste, com dinâmica pelo movimento e o acumulador de notas no Correr; Pátio sem piscadas no celular ao andar e qualidade gráfica Baixíssima; Tela como mira no celular: tocar atira, anda até lá e pega o item; analógico de mira atira ao soltar e fica escondido por padrão; arrastar o botão Roda escolhe o item; nova posição dos botões de toque; Shift esquerdo sai do Pegar; Pátio abre com “Carregando…” em vez da versão antiga, sem dicas dos alvos piscando',
     groups: [
       { title: 'Simulador de voz de galinha', items: [
         'Página nova em /chicken-voice-simulator: um sintetizador que simula o corpo da galinha (sacos aéreos, siringe, traqueia, laringe, garganta e bico) em vez de usar gravações. Ela cacareja, choca, canta de galo, pia como pintinho, dá alarme e chama para comer.',
@@ -34,6 +34,10 @@ const RECENT = [
       { title: 'Pátio: fundo e números da grade sem piscar ao andar', items: [
         'No celular, o fundo (céu, montanhas, mata) e os números da Grade de blocos piscavam toda vez que a galinha andava. A cada passo o navegador redesenhava do zero o mundo, cada camada do fundo e as camadas da frente; agora elas só deslizam, já desenhadas. Vale em todos os Pátios, local e online, e no Modo editor.',
         'Com zoom diferente de 100%, o Pátio continua redesenhando as camadas para ficarem nítidas naquele zoom, como antes.',
+      ] },
+      { title: 'Pátio: abrir sem versão antiga e sem dicas piscando', items: [
+        'Ao abrir um Pátio (o padrão inclusive), aparece “Carregando…” até chegar a versão salva no servidor, em vez de mostrar por alguns segundos a cópia antiga guardada no aparelho e depois trocar. Sem conexão, ou se o servidor demorar mais de 6 s, a cópia do aparelho aparece como antes.',
+        'Os balões de dica dos alvos de treino não piscam mais na tela durante o carregamento do Pátio: só aparecem quando o alvo é destruído.',
       ] },
       { title: 'Qualidade gráfica Baixíssima', items: [
         'Novo nível em “Qualidade e efeitos gráficos” (Preferências e painel Camadas do Pátio): Baixíssima, para celulares lentos e antigos. É a Baixa sem o cenário que só enfeita: o fundo do Pátio fica só com o céu (sem sol, estrelas, lua, aurora, nuvens, montanhas, prédios, mata e neve) e saem as Árvores em que não se sobe, os Pinheiros, as Ameixeiras e o cenário em profundidade própria.',
