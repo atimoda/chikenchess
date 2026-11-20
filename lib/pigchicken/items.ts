@@ -350,7 +350,7 @@ const PISTOL: ItemDef = {
   fireMode: 'semi', rate: 6, burst: 3, burstHold: true, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, infiniteAmmo: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0.1, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
-  recoilKick: 7, recoilPush: 60, weight: 1, turnRate: 0,
+  recoilKick: 7, recoilPush: 50, weight: 1, turnRate: 0,
   muzzleX: 54, muzzleY: -7, length: 56,
   meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, pointClick: true, meleeTime: 0.2, durability: 0, meleePush: 260,
   combo: swingCombo(110), comboWindow: COMBO_WINDOW,
@@ -365,7 +365,7 @@ const SMG: ItemDef = {
   fireMode: 'auto', rate: 14, mag: 35, reloadTime: 1.4,
   speed: 1600, damage: 6, range: 900, size: 2,
   spreadBase: 3, spreadShot: 0.8, spreadMax: 12, spreadRecover: 18, spreadMove: 2, spreadAir: 3,
-  recoilKick: 3, recoilPush: 30, weight: 0.98,
+  recoilKick: 3, recoilPush: 25, weight: 0.98,
   muzzleX: 62, muzzleY: -6.5, length: 70, meleeDamage: 16, durability: 0, throwDamage: 22,
   rebateChain: chain(['ratchet', undefined, 4]),
 }
@@ -375,7 +375,7 @@ const RIFLE: ItemDef = {
   fireMode: 'auto', rate: 9, mag: 30, reloadTime: 1.8,
   speed: 2200, damage: 14, pierce: 1, range: 1600,
   spreadBase: 1, spreadShot: 1.2, spreadMax: 10, spreadRecover: 14, spreadMove: 3, spreadAir: 5,
-  recoilKick: 5, recoilPush: 50, weight: 0.92, turnRate: 720,
+  recoilKick: 5, recoilPush: 40, weight: 0.92, turnRate: 720,
   muzzleX: 106, muzzleY: -5.5, length: 110, meleeDamage: 22, durability: 0, throwDamage: 28,
   rebateChain: chain(['transpose', 'degree', 4]),
 }
@@ -385,7 +385,7 @@ const PUMP: ItemDef = {
   fireMode: 'semi', rate: 1.25, mag: 6, reloadTime: 0.45, shellReload: true,
   speed: 1400, damage: 9, range: 520, pellets: 8,
   spreadBase: 14, spreadShot: 0, spreadMax: 18, spreadRecover: 30, spreadMove: 2, spreadAir: 3,
-  recoilKick: 12, recoilPush: 420, weight: 0.9, turnRate: 540,
+  recoilKick: 12, recoilPush: 140, weight: 0.9, turnRate: 540,
   muzzleX: 104, muzzleY: -8, length: 105, meleeDamage: 25, durability: 0, throwDamage: 30,
   rebateChain: chain(['voices', 'cluster']), rebateSnap: 60, rebateSnapForce: 0.6,
 }
@@ -395,7 +395,7 @@ const SNIPER: ItemDef = {
   fireMode: 'release', pathShow: 'holdAim', rate: 0.83, mag: 5, reloadTime: 2.2,
   speed: 4000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
   spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
-  recoilKick: 14, recoilPush: 250, weight: 0.85, turnRate: 360,
+  recoilKick: 14, recoilPush: 130, weight: 0.85, turnRate: 360,
   muzzleX: 142, muzzleY: -4, length: 140, meleeDamage: 20, durability: 0, throwDamage: 30,
   rebateChain: chain(['octave', 'fixed', 2], ['dynamics', 'staccato']), rebateSnap: 0,
 }
@@ -405,7 +405,7 @@ const LAUNCHER: ItemDef = {
   fireMode: 'semi', rate: 1, mag: 1, reloadTime: 1.6,
   speed: 900, damage: 0, range: 1600, size: 6, explodeRadius: 130, explodeDamage: 80, explodePush: 1100,
   spreadBase: 1, spreadShot: 0, spreadMax: 2, spreadMove: 1, spreadAir: 2,
-  recoilKick: 16, recoilPush: 500, weight: 0.8, turnRate: 300,
+  recoilKick: 16, recoilPush: 150, weight: 0.8, turnRate: 300,
   muzzleX: 96, muzzleY: -17, length: 120, meleeDamage: 26, durability: 0, throwDamage: 35,
   rebateChain: chain(['echo', 'dotted', 3]),
 }
@@ -415,7 +415,7 @@ const GRENADE: ItemDef = {
   fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3, infiniteAmmo: true,
   speed: 1100, drop: 1500, damage: 0, range: 3000, size: 8, explodeRadius: 140, explodeDamage: 90, explodePush: 1250, fuse: 2.5, bounce: 0.45,
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
-  recoilKick: 0, recoilPush: 0,
+  recoilKick: 0, recoilPush: 30,
   muzzleX: 8, muzzleY: -4, length: 0, meleeDamage: 10, meleeRange: 80, durability: 0, throwDamage: 15,
   rebateChain: chain(['octave', 'random', 1]),
 }
@@ -425,7 +425,7 @@ const BOW: ItemDef = {
   fireMode: 'charge', rate: 2, mag: 12, reloadTime: 1.5, chargeTime: 0.9, chargeMin: 0.25,
   speed: 1700, drop: 900, damage: 40, range: 2500,
   spreadBase: 0.5, spreadShot: 0, spreadMax: 3, spreadMove: 1, spreadAir: 2,
-  recoilKick: 0, recoilPush: 0,
+  recoilKick: 0, recoilPush: 40,
   muzzleX: 28, muzzleY: 0, length: 40, meleeDamage: 12, durability: 0, throwDamage: 15,
   // held like a real bow: the grip out in front of her in the back wing, the front wing on the arrow's nock
   archery: true, drawLen: 30, pivotX: -74, handOn: true, handX: -12, handY: 0, backOn: true, backX: 1, backY: 0,
@@ -561,7 +561,7 @@ const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDama
 const FLUTE: ItemDef = {
   ...PISTOL, ...MUSIC_MELEE, id: 'flute', name: 'Flauta', family: 'Flautas', reticle: 'dot',
   rate: 13, mag: 60, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
-  recoilKick: 2, muzzleX: 60, muzzleY: 0, length: 60,
+  recoilKick: 2, recoilPush: 200, muzzleX: 60, muzzleY: 0, length: 60,
   instrument: true, voice: 'flute', vibratoDepth: 10, vibratoDelay: 0.12, pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35, volMin: 0.45,
   pivotAt: 'mouth', pivotX: -49, pivotY: 0, handOn: true, handX: 13, handY: 0, backOn: true, backX: -22, backY: 0, wingFlip: true,
   throwCharge: 0.3, rebateChain: chain(['octave', 'fixed', 1]),
@@ -570,7 +570,7 @@ const FLUTE: ItemDef = {
 const SAX: ItemDef = {
   ...SMG, ...MUSIC_MELEE, id: 'sax', name: 'Sax', family: 'Palhetas', reticle: 'circle',
   rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
-  recoilKick: 2, recoilPush: 100, weight: 0.75, turnRate: 0, muzzleX: 32, muzzleY: 18, length: 50,
+  recoilKick: 2, recoilPush: 160, weight: 0.75, turnRate: 0, muzzleX: 32, muzzleY: 18, length: 50,
   instrument: true, voice: 'sax', vibratoDepth: 14, vibratoDelay: 0.1, pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
   pivotAt: 'mouth', pivotX: -27, pivotY: -52, handOn: true, handX: 0, handY: 12, backOn: true, backX: 2, backY: -15, wingFlip: true,
   rebateChain: chain(['transpose', 'degree', 2]),
@@ -579,7 +579,7 @@ const SAX: ItemDef = {
 const TRUMPET: ItemDef = {
   ...RIFLE, ...MUSIC_MELEE, id: 'trumpet', name: 'Trompete', family: 'Metais', reticle: 'cross',
   fireMode: 'burst', burst: 3, rate: 9, mag: 24, reloadTime: 0.2, refillTime: 0.25, speed: 1300, damage: 10, size: 10, pierce: 1,
-  recoilKick: 3, recoilPush: 790, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
+  recoilKick: 3, recoilPush: 260, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
   instrument: true, voice: 'trumpet', vibratoDepth: 9, vibratoDelay: 0.2, pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4, volMin: 0.55,
   pivotAt: 'mouth', pivotX: -53, pivotY: -7, handOn: true, handX: -4, handY: -12, backOn: true, backX: -23, backY: 7, wingFlip: true,
   rebateChain: chain(['voices', 'power']),
@@ -588,7 +588,7 @@ const TRUMPET: ItemDef = {
 const GUITAR: ItemDef = {
   ...PUMP, ...MUSIC_MELEE, id: 'guitar', name: 'Violão', family: 'Cordas', reticle: 'cone',
   rate: 17, burst: 5, mag: 60, reloadTime: 0.2, refillTime: 0.55, refillAmount: 4, pellets: 2, speed: 900, damage: 9, size: 10, range: 850,
-  spreadBase: 20, spreadMax: 30, recoilKick: 5, turnRate: 0, muzzleX: 87, muzzleY: 0, length: 87,
+  spreadBase: 20, spreadMax: 30, recoilKick: 5, recoilPush: 100, turnRate: 0, muzzleX: 87, muzzleY: 0, length: 87,
   instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022, tremolo: 0.45, volMin: 0.5,
   handOn: true, handX: 45, handY: 0, backOn: true, backX: -10, backY: 0,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 0.15]),
@@ -597,7 +597,7 @@ const GUITAR: ItemDef = {
 const VIOLIN: ItemDef = {
   ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400,
-  spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 0, speed: 4000, weight: 0.6, turnRate: 0, muzzleX: 78, muzzleY: 0, length: 78,
+  spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 90, speed: 4000, weight: 0.6, turnRate: 0, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', vibratoDepth: 12, vibratoDelay: 0.25, pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
   handOn: true, handX: 45, handY: 0, backOn: true, backX: -23, backY: 0,
   rebateChain: chain(['gliss', 'up', 3], ['dynamics', 'legato']),
@@ -606,7 +606,7 @@ const VIOLIN: ItemDef = {
 const KEYS: ItemDef = {
   ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: 'Teclado', family: 'Teclas', reticle: 'impact',
   rate: 1, burst: 4, chargeTime: 0.25, mag: 33, reloadTime: 1.4, speed: 650, size: 12, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0, hitscan: true,
-  recoilKick: 6, turnRate: 0, muzzleX: 82, muzzleY: -9, length: 82,
+  recoilKick: 6, recoilPush: 120, turnRate: 0, muzzleX: 82, muzzleY: -9, length: 82,
   instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6, volMin: 0.6,
   handOn: true, handX: 40, handY: -15, backOn: true, backX: -30, backY: -15,
   rebateChain: chain(['voices', 'seventh']),
@@ -614,14 +614,14 @@ const KEYS: ItemDef = {
 // Percussion fires a musical note with a fuse, then lets out notes in a circle.
 const TAMBOURINE: ItemDef = {
   ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
-  mag: 3, infiniteAmmo: false, fuse: 1.6, range: 3000, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 12, muzzleX: 14, muzzleY: 0, length: 20,
+  mag: 3, infiniteAmmo: false, fuse: 1.6, range: 3000, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 12, recoilPush: 40, muzzleX: 14, muzzleY: 0, length: 20,
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
 // Harpa de Lira (Harpas) → bow: the charge is a glissando, the note rises with the charge and flies far and precise
 const HARP: ItemDef = {
   ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa de Lira', family: 'Harpas', reticle: 'bow', archery: false, pivotX: 0,
-  damage: 40, size: 12, speed: 1500, drop: 700, muzzleX: 21, muzzleY: -10, length: 30,
+  damage: 40, size: 12, speed: 1500, drop: 700, recoilPush: 60, muzzleX: 21, muzzleY: -10, length: 30,
   instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
@@ -632,7 +632,7 @@ const HARP: ItemDef = {
 const HANGDRUM: ItemDef = {
   ...PISTOL, ...MUSIC_MELEE, id: 'hangdrum', name: 'Hangdrum', family: 'Idiofones', reticle: 'dot',
   rate: 8, mag: 40, reloadTime: 0.9, speed: 800, damage: 14, size: 11, range: 950, spreadBase: 1, spreadShot: 0.5,
-  recoilKick: 1, muzzleX: 58, muzzleY: -6, length: 60,
+  recoilKick: 1, recoilPush: 30, muzzleX: 58, muzzleY: -6, length: 60,
   instrument: true, voice: 'hang', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 0.8, volMax: 0.8,
   scales: ['hang'], hangRows: 1, hangNotes: 8, hangNotes2: 7,
   rebateChain: chain(['echo', 'dotted', 2]),
@@ -797,7 +797,7 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'crouchMult', label: 'Agachada', min: 0.1, max: 1.5, step: 0.05, unit: '×', group: 'Espalhamento' },
   { key: 'broodMult', label: 'Chocando', min: 0.1, max: 1.5, step: 0.05, unit: '×', group: 'Espalhamento' },
   { key: 'recoilKick', label: 'Coice visual', min: 0, max: 30, step: 1, unit: 'px', group: 'Manuseio' },
-  { key: 'recoilPush', label: 'Recuo no ar', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Manuseio' },
+  { key: 'recoilPush', label: 'Recuo no ar', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Manuseio', hint: 'Empurra para trás no ar a cada nota ou tiro; no arco do violino, por segundo' },
   { key: 'weight', label: 'Peso (velocidade)', min: 0.3, max: 1.2, step: 0.05, unit: '×', group: 'Manuseio' },
   { key: 'turnRate', label: 'Giro da mira', min: 0, max: 1440, step: 30, unit: '°/s', group: 'Manuseio', hint: '0 = instantâneo' },
   { key: 'muzzleX', label: 'Saída do tiro X', min: -20, max: 160, step: 1, unit: 'u', group: 'Desenho', hint: 'Ponto de onde sai o tiro e começa a mira, a partir da empunhadura' },
@@ -1012,12 +1012,21 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   }
   // saved before instruments aimed instantly (v8): an untouched old Giro da mira takes the new default (0); custom numbers stay
   if (!(v >= 8) && s.turnRate === V7_TURN_RATE[id]) out[id].turnRate = DEFAULT_ITEMS[id].turnRate
+  // saved before every weapon and instrument pushed her back in the air (v12): an untouched old Recuo no ar takes the
+  // new default; custom numbers stay
+  if (!(v >= 12) && id in V11_RECOIL_PUSH && s.recoilPush === V11_RECOIL_PUSH[id]) out[id].recoilPush = DEFAULT_ITEMS[id].recoilPush
 }
 
 // Giro da mira the instruments had before v8 (now 0 = instant)
 const V7_TURN_RATE: Partial<Record<ItemId, number>> = { sax: 120, violin: 420, keys: 300 }
 
-const ITEMS_VERSION = 11
+// Recuo no ar the weapons and instruments had before v12 (the wind instruments are the strongest now)
+const V11_RECOIL_PUSH: Partial<Record<ItemId, number>> = {
+  pistol: 60, smg: 30, rifle: 50, pump: 420, sniper: 250, launcher: 500, grenade: 0, bow: 0,
+  flute: 0, sax: 100, trumpet: 790, guitar: 0, violin: 0, keys: 0, tambourine: 0, harp: 0, hangdrum: 0,
+}
+
+const ITEMS_VERSION = 12
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',

@@ -54,6 +54,7 @@
 | Pátio: escala Estrela (12 notas numa estrela de hexágonos, eixo do trítono, realce da escala da zona, toque e arraste, RT analógico, dinâmica pelo movimento, acumulador no Correr: rajada, cascata, tercinas) | [Escala Estrela](docs/mechanics/patio/star-scale.md) |
 | Pátio: Próxima variação (escala, tambor), os checkboxes “Incluir variações” das trocas de item, tambores e pentes das armas (na mira e em volta), a mira espacial dos instrumentos e itens e a Granada de pente infinito | [Variações dos itens](docs/mechanics/patio/item-variations.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
+| Pátio: recuo no ar ao atirar (Recuo no ar de cada arma e instrumento; sopros os mais fortes) | [Recuo no ar](docs/mechanics/patio/recoil.md) |
 | Pátio: golpe rápido em quatro tempos, rastro, combo (direção, ângulo, duração, cooldown e alcance de cada golpe; golpe relativo à mira; barra da janela), interrupção e golpe com Atirar segurado | [Golpe e combo](docs/mechanics/patio/melee.md) |
 | Pátio: armas de bastão (Taco, Passaguá): pose no corpo e editor, golpe rápido, golpe forte carregado, dano do Passaguá | [Armas de bastão](docs/mechanics/patio/staffs.md) |
 | Pátio: Martelo de Thor e Cajado de Odin: choque em cadeia, estado de choque (raio-x), especial com intervalo no slot, arremesso que volta | [Armas de raio](docs/mechanics/patio/lightning.md) |
@@ -112,6 +113,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Online 1v1: salas, lobby, convites e popup](docs/mechanics/online/lobby.md) | 14 KB |
 | [Online 1v1: partida, confirmação, análise, áudio e rede](docs/mechanics/online/match.md) | 14 KB |
 | [Pátio: combate, mira, bicada e arremesso](docs/mechanics/patio/combat.md) | 24 KB |
+| [Pátio: recuo no ar ao atirar](docs/mechanics/patio/recoil.md) | 2 KB |
 | [Pátio: golpe e combo](docs/mechanics/patio/melee.md) | 11 KB |
 | [Pátio: armas de bastão](docs/mechanics/patio/staffs.md) | 7 KB |
 | [Pátio: armas de raio e estado de choque](docs/mechanics/patio/lightning.md) | 9 KB |

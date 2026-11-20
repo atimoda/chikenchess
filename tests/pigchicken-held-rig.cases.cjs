@@ -74,6 +74,15 @@ test('instruments aim instantly by default; an old saved Giro da mira moves to 0
   withStorage({ _v: 8, sax: { turnRate: 120 } }, () => assert.equal(items.loadItems().sax.turnRate, 120))
 })
 
+test('an old saved Recuo no ar takes the new default unless it was changed', () => {
+  const d = items.DEFAULT_ITEMS
+  withStorage({ _v: 11, trumpet: { recoilPush: 790 }, launcher: { recoilPush: 500 }, flute: { recoilPush: 0 }, sax: { recoilPush: 300 } }, () => {
+    const back = items.loadItems()
+    assert.deepEqual([back.trumpet.recoilPush, back.launcher.recoilPush, back.flute.recoilPush, back.sax.recoilPush], [d.trumpet.recoilPush, d.launcher.recoilPush, d.flute.recoilPush, 300])
+  })
+  withStorage({ _v: 12, trumpet: { recoilPush: 790 } }, () => assert.equal(items.loadItems().trumpet.recoilPush, 790))
+})
+
 // "Arco e Flecha": the charge draws the arrow, the bow stays on its rig
 const { heldItemPose } = loadTs('lib/pigchicken/held-pose.ts')
 const { ARCHERY_ART } = loadTs('lib/pigchicken/art.ts')
