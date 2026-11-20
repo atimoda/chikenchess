@@ -54,7 +54,7 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
   if (chart instanceof StarScale) {
     // (sitting at the Piano de cauda it fits the screen, like the Bateria)
     const r = SCALE_FAN_R * size * scale, at = combat.seated ? starSeatFrame(cx, cy, r) : { x: cx, y: cy, r }
-    drawStar(ctx, chart.layout(combat.music, { octave: d.octave }), chart.grid, { hands: combat.starHands, age: i => combat.starAge(i), run: combat.starRun, dyn: combat.starDynamic }, at.x, at.y, at.r, alpha, lines, alphaOn)
+    drawStar(ctx, chart.layout(combat.music, { octave: d.octave }), chart.grid, { hands: combat.starHands, age: i => combat.starAge(i), run: combat.starRun, dyn: combat.starDynamic, opacity: chart.shape.starOpacity / 100, offScale: chart.shape.starOffScale / 100 }, at.x, at.y, at.r, alpha, lines, alphaOn)
     return
   }
   drawScaleShape(ctx, chart, combat.music, {
@@ -98,7 +98,7 @@ export function drawScaleShape(ctx: CanvasRenderingContext2D, chart: InstrumentS
     return
   }
   if (chart instanceof StarScale) {
-    drawStar(ctx, chart.layout(music, { octave: q.octave }), chart.grid, { hands: aim === null ? [] : [chart.touch(aim, q.reach)] }, cx, cy, rOut, alpha, lines, alphaOn)
+    drawStar(ctx, chart.layout(music, { octave: q.octave }), chart.grid, { hands: aim === null ? [] : [chart.touch(aim, q.reach)], opacity: chart.shape.starOpacity / 100, offScale: chart.shape.starOffScale / 100 }, cx, cy, rOut, alpha, lines, alphaOn)
     return
   }
   if (chart instanceof StringsScale) {

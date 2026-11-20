@@ -38,7 +38,7 @@
 // Angles are screen radians (0 = right, π/2 = down, -π/2 = up).
 import { SCALES, chordOn, scaleNotes, type Conductor, type PitchSet, type Zone } from './music'
 import { DRUM_PIECES, drumKit, drumPiece, padAt } from './drum-kit'
-import { STAR_ARM_DEFAULT, starCellAt, starGrid, starNearest, starPoint } from './star-grid'
+import { STAR_ARM_DEFAULT, STAR_OFF_SCALE, STAR_OPACITY, starCellAt, starGrid, starNearest, starPoint } from './star-grid'
 
 export type InstrumentScaleId = 'primary' | 'fifths' | 'tension' | 'spiral' | 'harmonic' | 'hang' | 'strings' | 'star' | 'drums'
 export const INSTRUMENT_SCALE_IDS: InstrumentScaleId[] = ['primary', 'fifths', 'tension', 'spiral', 'harmonic', 'hang', 'strings', 'star', 'drums']
@@ -98,12 +98,12 @@ export const STRINGS_DEFAULT = { strings: 22, stringStart: 0.25, stringEnd: 0.85
 // what the Escalas editor changes in a scale's shape (lib/pigchicken/scale-params.ts): where the round charts' inner ring
 // ends (it decides the ring the aim plays), the empty middle of the charts and of the Campo harmônico (drawing only)
 // and the Cordas soltas' strings; the Estrela's arms (long steps from its middle to a tip)
-export type ScaleShape = { ringSplit: number; hole: number; strings: number; stringStart: number; stringEnd: number; harmonicWidth: number; starArm: number }
+export type ScaleShape = { ringSplit: number; hole: number; strings: number; stringStart: number; stringEnd: number; harmonicWidth: number; starArm: number; starOpacity: number; starOffScale: number }
 
 export abstract class InstrumentScale {
   abstract readonly id: InstrumentScaleId
   abstract readonly label: string
-  shape: ScaleShape = { ringSplit: RING_SPLIT, hole: CHART_HOLE, ...STRINGS_DEFAULT, starArm: STAR_ARM_DEFAULT }
+  shape: ScaleShape = { ringSplit: RING_SPLIT, hole: CHART_HOLE, ...STRINGS_DEFAULT, starArm: STAR_ARM_DEFAULT, starOpacity: STAR_OPACITY, starOffScale: STAR_OFF_SCALE }
   // the chart's regions (empty for the primary scale, which keeps the leque)
   regions(): ScaleRegion[] { return [] }
   regionAt(_angle: number, _reach: number): ScaleRegion | null { return null }

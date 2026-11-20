@@ -55,7 +55,9 @@
     "fadeTime": 1.5,
     "standbyVis": 0,
     "aimedVis": 33,
-    "starArm": 8
+    "starArm": 8,
+    "starOpacity": 70,
+    "starOffScale": 35
   },
   "drums": {
     "standbyAfter": 0.5,
