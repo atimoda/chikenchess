@@ -11,6 +11,33 @@
           "value": "no-cache, no-store, must-revalidate"
         }
       ]
+    },
+    {
+      "source": "/chicken-voice-simulator/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/chicken-voice-simulator",
+      "destination": "/chicken-voice-simulator/?mode=bestiary&creature=chicken",
+      "permanent": false
+    },
+    {
+      "source": "/chicken-voice-simulator/",
+      "missing": [
+        {
+          "type": "query",
+          "key": "mode"
+        }
+      ],
+      "destination": "/chicken-voice-simulator/?mode=bestiary&creature=chicken",
+      "permanent": false
     }
   ]
 }

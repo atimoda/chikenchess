@@ -12,14 +12,37 @@ export type AboutTab = 'about' | 'releases' | 'credits'
 const TABS: readonly AboutTab[] = ['about', 'releases', 'credits']
 const TAB_LABELS: Record<AboutTab, string> = { about: 'About', releases: 'Release notes', credits: 'Credits' }
 
-// Who made what the game plays and is built on: the recordings of the Guia de pássaros, one line each, and Strudel.
+const ext = { target: '_blank', rel: 'noopener noreferrer' } as const
+const instagram = (handle: string) => `https://www.instagram.com/${handle}/`
+
+// Who made the game, and what it plays and is built on: the people (ChickenChess, Pigchicken), Strudel, the chicken voice
+// simulator, the AI tools, then the long list of the Guia de pássaros' recordings and the globe.
 function CreditsContent() {
   const songs = birdCredits()
   const link = 'text-primary hover:underline'
+  const person = (name: string, handle: string) => <a href={instagram(handle)} {...ext} className={link} title={`@${handle} on Instagram`}>{name}</a>
   return <div className="grid gap-5 pb-2 text-sm">
     <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">ChickenChess</h3>
+      <p className="leading-relaxed">Original idea of musical chess: {person('Thiago Atimoda', 'atimoda')} and {person('Rodrigo Zecchinelli', 'rigoz311')}.</p>
+      <p className="leading-relaxed">Development: {person('Thiago Atimoda', 'atimoda')}.</p>
+    </section>
+    <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Pigchicken</h3>
+      <p className="leading-relaxed">Original gameplay, lore and story: Lila Zara and Uirá Fedatto Horta.</p>
+      <p className="leading-relaxed">Visual art inspired by the drawings of Thiago&apos;s daughter.</p>
+    </section>
+    <section className="grid gap-1.5">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Strudel</h3>
-      <p className="leading-relaxed">Live coding music engine (@strudel/web), by the Strudel authors, licensed under AGPL-3.0-or-later. <a href="https://strudel.cc" target="_blank" rel="noopener noreferrer" className={link}>strudel.cc</a> · <a href="https://codeberg.org/uzu/strudel" target="_blank" rel="noopener noreferrer" className={link}>source</a></p>
+      <p className="leading-relaxed">The music sequencing engine of ChickenChess is Strudel (@strudel/web), a live coding music engine by the Strudel authors, licensed under AGPL-3.0-or-later. <a href="https://strudel.cc" target="_blank" rel="noopener noreferrer" className={link}>strudel.cc</a> · <a href="https://codeberg.org/uzu/strudel" target="_blank" rel="noopener noreferrer" className={link}>source</a></p>
+    </section>
+    <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Chicken voice simulator</h3>
+      <p className="leading-relaxed">The <a href="/chicken-voice-simulator/" className={link}>chicken voice simulator</a> is built on Chimera, a physical-modelling voice synthesizer by Jameson Hodge, licensed under MIT. <a href="https://www.chimera.audio" {...ext} className={link}>chimera.audio</a> · <a href="https://github.com/jamesondh/chimera-vocal-synth" {...ext} className={link}>source</a> · <a href="https://github.com/atimoda/chicken-vocal-synth" {...ext} className={link}>chicken fork</a></p>
+    </section>
+    <section className="grid gap-1.5">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">AI coding assistants</h3>
+      <p className="leading-relaxed">Code written with the help of <a href="https://claude.ai" {...ext} className={link}>Claude</a> (Anthropic), <a href="https://chatgpt.com" {...ext} className={link}>ChatGPT</a> (OpenAI), <a href="https://gemini.google.com" {...ext} className={link}>Gemini</a> (Google) and <a href="https://www.deepseek.com" {...ext} className={link}>DeepSeek</a>.</p>
     </section>
     <section className="grid gap-1.5">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bird songs</h3>
