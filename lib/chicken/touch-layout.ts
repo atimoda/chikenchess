@@ -1,5 +1,5 @@
-// Where the on-screen (touch) controls sit. Each control has an offset from its default place, saved in this
-// browser. Edit mode is a flag on the same store: while it is on, the controls show and can be dragged, and
+// Where the on-screen (touch) controls sit. Each control has an offset from its anchor (the place its component
+// puts it), saved in this browser; a control the player never moved uses its default offset (DEFAULT_TOUCH_OFFSETS). Edit mode is a flag on the same store: while it is on, the controls show and can be dragged, and
 // "Ok" saves the layout and ends it.
 
 export type TouchControlId = 'move' | 'run' | 'down' | 'jump' | 'aim' | 'melee' | 'throw' | 'itemWheel' | 'grab' | 'inventory' | 'inventoryBar'
@@ -8,6 +8,23 @@ export type TouchLayout = { offsets: Partial<Record<TouchControlId, TouchOffset>
 
 const STORE = 'chickenchess-chicken-touch-layout-v1'
 const IDS: TouchControlId[] = ['move', 'run', 'down', 'jump', 'aim', 'melee', 'throw', 'itemWheel', 'grab', 'inventory', 'inventoryBar']
+
+// The game's layout (20/11): the movement stick a little in and up; Pular, Chocar and Correr in a low arc under the
+// item buttons; Punch, Throw and Roda in an arc above them, Pegar over Roda and the aim stick (when shown) above Punch.
+// Px from each control's anchor, measured on a phone held upright; the inventory keeps its own corner.
+export const DEFAULT_TOUCH_OFFSETS: Partial<Record<TouchControlId, TouchOffset>> = {
+  move: { x: 24, y: -67 },
+  run: { x: 2, y: 14 },
+  down: { x: 1, y: -6 },
+  jump: { x: 0, y: -22 },
+  aim: { x: -15, y: -69 },
+  melee: { x: 96, y: 82 },
+  throw: { x: 33, y: 37 },
+  itemWheel: { x: -31, y: -2 },
+  grab: { x: 40, y: -6 },
+}
+/** Where a control sits now: the player's own offset, else the game's default. */
+export const touchOffset = (offsets: TouchLayout['offsets'], id: TouchControlId): TouchOffset | undefined => offsets[id] ?? DEFAULT_TOUCH_OFFSETS[id]
 
 const EMPTY: TouchLayout = { offsets: {}, editing: false }
 let state: TouchLayout | null = null
@@ -46,6 +63,7 @@ export function setTouchOffset(id: TouchControlId, offset: TouchOffset) {
   const cur = getTouchLayout()
   emit({ ...cur, offsets: { ...cur.offsets, [id]: offset } })
 }
+/** "Padrão": every control back to the game's layout. */
 export function resetTouchLayout() { emit({ ...getTouchLayout(), offsets: {} }) }
 /** "Ok": keeps what is on screen and leaves edit mode. */
 export function finishTouchLayoutEdit() {

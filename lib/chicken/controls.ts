@@ -55,7 +55,7 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
   { key: 'cageRelease', label: 'Soltar alma (segurar: trocar)', keys: ['Key:KeyH', null, null], keys2: ['Key:End', null], pad: ['Pad:b10', null, null], group: 'items' },
   { key: 'cageSwap', label: 'Trocar de gaiola', keys: ['Key:KeyY', null, null], keys2: ['Key:Home', null], pad: [null, null, null], group: 'items' },
   // X runs and also grabs while standing on an item; the Shifts do the same on the keyboards. R3 throws, Y hits, LT broods.
-  { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', 'Key:ShiftLeft', null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
+  { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', null, null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
   { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: [null, null], pad: ['Pad:b9', null, null], group: 'items' },
   { key: 'editMode', label: 'Edição (Modo editor)', keys: ['Key:AltLeft', 'Key:MetaLeft', null], keys2: [null, null], pad: [null, null, null], group: 'patio' },
 ]
@@ -70,6 +70,10 @@ export type ChickenControls = {
   pad: Record<ChickenAction, Slots>
   touch: ChickenTouchMode
   touchRunGrab: boolean
+  // the Pátio on a touch screen: a finger on the scene aims there and fires, a quick tap also walks her there and a
+  // tap on what Pegar offers takes it (Tela serve como mira); and whether the on-screen aim stick shows
+  touchScreenAim: boolean
+  touchAimStick: boolean
   sound: boolean
   analog: ChickenAnalog
   inventory: ChickenInventoryControls
@@ -152,7 +156,7 @@ function codeDefaultChickenControls(): ChickenControls {
   const keys = {} as ChickenControls['keys'], keys2 = {} as ChickenControls['keys2'], pad = {} as ChickenControls['pad']
   CHICKEN_ACTIONS.forEach(a => { keys[a.key] = a.keys.slice(); keys2[a.key] = a.keys2.slice(); pad[a.key] = a.pad.slice() })
   const harp = Object.fromEntries(CHICKEN_INPUT_TYPES.map(t => [t.id, Object.fromEntries(HARP_ACTIONS.map(a => [a.key, a[t.id].slice()]))])) as ChickenControls['harp']
-  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { ...DEFAULT_INVENTORY }, wheel: { ...DEFAULT_WHEEL }, harp, variations: { ...DEFAULT_VARIATIONS } }
+  return { keys, keys2, pad, touch: 'auto', touchRunGrab: true, touchScreenAim: true, touchAimStick: false, sound: true, analog: { ...DEFAULT_ANALOG }, inventory: { ...DEFAULT_INVENTORY }, wheel: { ...DEFAULT_WHEEL }, harp, variations: { ...DEFAULT_VARIATIONS } }
 }
 
 /** The game's default controls: the defaults file over the code fallback (a missing or invalid field keeps the code's). */
@@ -167,6 +171,8 @@ export function defaultChickenControls(): ChickenControls {
   })
   if (isTouchMode(file?.touch)) base.touch = file.touch
   if (typeof file?.touchRunGrab === 'boolean') base.touchRunGrab = file.touchRunGrab
+  if (typeof file?.touchScreenAim === 'boolean') base.touchScreenAim = file.touchScreenAim
+  if (typeof file?.touchAimStick === 'boolean') base.touchAimStick = file.touchAimStick
   if (typeof file?.sound === 'boolean') base.sound = file.sound
   const an = (file?.analog ?? {}) as Partial<ChickenAnalog>, d = base.analog
   const magnetDeg = num(an.magnetDeg, 0, 22.5, d.magnetDeg)
@@ -184,7 +190,7 @@ export function defaultChickenControls(): ChickenControls {
 /** The defaults file's content for a set of controls (what "Salvar no game" writes). */
 export function chickenControlsDefaultsFile(c: ChickenControls) {
   const pick = (type: ChickenInputType) => Object.fromEntries(CHICKEN_ACTIONS.map(a => [a.key, c[type][a.key].slice()]))
-  return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory }, wheel: { ...c.wheel }, harp: harpOf(c.harp, c.harp), variations: { ...c.variations } }
+  return { keys: pick('keys'), keys2: pick('keys2'), pad: pick('pad'), touch: c.touch, touchRunGrab: c.touchRunGrab, touchScreenAim: c.touchScreenAim, touchAimStick: c.touchAimStick, sound: c.sound, analog: { ...c.analog }, inventory: { ...c.inventory }, wheel: { ...c.wheel }, harp: harpOf(c.harp, c.harp), variations: { ...c.variations } }
 }
 
 // The binds of one action on one input type (the players panel reads a player's inputs through this)
@@ -224,6 +230,8 @@ export function loadChickenControls(): ChickenControls {
     if (!Array.isArray(saved?.keys?.deselectItem)) base.keys.deselectItem = [null, null, null]
     if (isTouchMode(saved?.touch)) base.touch = saved.touch
     if (typeof saved?.touchRunGrab === 'boolean') base.touchRunGrab = saved.touchRunGrab
+    if (typeof saved?.touchScreenAim === 'boolean') base.touchScreenAim = saved.touchScreenAim
+    if (typeof saved?.touchAimStick === 'boolean') base.touchAimStick = saved.touchAimStick
     if (typeof saved?.sound === 'boolean') base.sound = saved.sound
     base.wheel = wheelOf(saved?.wheel, base.wheel)
     base.harp = harpOf(saved?.harp, base.harp)
@@ -389,13 +397,13 @@ export function loadChickenControls(): ChickenControls {
     if (!Array.isArray(saved?.keys?.deselectItem) && !CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:KeyF') || base.keys2[a.key].includes('Key:KeyF'))) {
       base.keys.deselectItem[0] = 'Key:KeyF'
     }
-    // 08/11: the Shifts also grab (as X on the gamepad: run + use / grab), LB goes back an item and RB goes forward
-    // (RB leaves Run, where X stays). Each action changes only while it is still on the previous default.
+    // 08/11: Shift dir. also grabs on the secondary keyboard (as X on the gamepad: run + use / grab; Shift esq. left
+    // Pegar on 20/11), LB goes back an item and RB goes forward (RB leaves Run, where X stays). Each action changes only
+    // while it is still on the previous default.
     if (!saved?.shiftGrabLBRB) {
       const only = (list: Slots, toks: string[]) => { const on = list.filter(Boolean); return on.length === toks.length && toks.every(t => on.includes(t)) }
       const elsewhere = (tok: string, allow: ChickenAction[]) => CHICKEN_ACTIONS.some(a => !allow.includes(a.key) && (base.keys[a.key].includes(tok) || base.keys2[a.key].includes(tok)))
       const addSecond = (list: Slots, tok: string) => { const free = list.indexOf(null); if (free >= 0 && !list.includes(tok)) list[free] = tok }
-      if (only(base.keys.grab, ['Key:KeyE']) && !elsewhere('Key:ShiftLeft', ['run', 'grab'])) addSecond(base.keys.grab, 'Key:ShiftLeft')
       if (only(base.keys2.grab, ['Key:KeyP']) && !elsewhere('Key:ShiftRight', ['run', 'grab'])) addSecond(base.keys2.grab, 'Key:ShiftRight')
       const padHas = (tok: string, allow: ChickenAction[]) => CHICKEN_ACTIONS.some(a => !allow.includes(a.key) && base.pad[a.key].includes(tok))
       if (only(base.pad.nextItem, ['Pad:b4']) && !base.pad.prevItem.some(Boolean) && only(base.pad.run, ['Pad:b5', 'Pad:b2']) && !padHas('Pad:b5', ['run']) && !padHas('Pad:b4', ['nextItem'])) {
@@ -461,6 +469,12 @@ export function loadChickenControls(): ChickenControls {
       const qHeld = CHICKEN_ACTIONS.some(a => base.keys[a.key].includes('Key:KeyQ') || base.keys2[a.key].includes('Key:KeyQ'))
       if (!Array.isArray(saved?.keys?.nextVariation) && !qHeld) base.keys.nextVariation = ['Key:KeyQ', null, null]
     }
+    // 20/11: Shift esq. is no longer a default Pegar key (it stays on Correr): taken off Pegar once, only while Pegar is
+    // still on the previous default (E + Shift esq.)
+    if (!saved?.grabNoShiftLeft) {
+      const on = base.keys.grab.filter(Boolean)
+      if (on.length === 2 && on.includes('Key:KeyE') && on.includes('Key:ShiftLeft')) base.keys.grab = ['Key:KeyE', null, null]
+    }
     // one key, one action, on one keyboard type: the primary keyboard wins
     const primary = new Set(CHICKEN_ACTIONS.flatMap(a => base.keys[a.key]).filter(Boolean) as string[])
     CHICKEN_ACTIONS.forEach(a => { base.keys2[a.key] = base.keys2[a.key].map(t => t && primary.has(t) ? null : t) })
@@ -469,7 +483,7 @@ export function loadChickenControls(): ChickenControls {
 }
 
 export function saveChickenControls(next: ChickenControls) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, cageBinds: true, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true, variationBind: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, cageBinds: true, padX: true, padXRun: true, padRunRBThrowY: true, padMeleeB: true, padStickShortcuts: true, padRunRBX: true, itemsV1: true, broodLTB: true, grabE: true, throwF: true, keyboardThrowG: true, keyboardInventoryQ: true, keyboardVCXZ: true, keyboardJumpZ: true, grabKeys2: true, keys2Punctuation: true, noCmdBrood: true, shiftGrabLBRB: true, inventoryGroupBinds: true, padMeleeY: true, keys2NoDelBksp: true, variationBind: true, grabNoShiftLeft: true })) } catch { /* ignore */ }
   window.dispatchEvent(new CustomEvent(EVENT))
 }
 
