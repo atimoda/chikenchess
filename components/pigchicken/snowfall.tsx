@@ -3,7 +3,7 @@
 // Neve caindo: one canvas the size of the screen, over the far scenery and behind the Pátio's things. It sits in the
 // world element and undoes the camera and the zoom every frame, so it always covers the screen; the flakes drift a
 // little against the camera's travel (the near ones more), so they feel among the mountains.
-import { graphicsQuality } from "@/lib/quality"
+import { graphicsQuality, isLowGraphics } from "@/lib/quality"
 import { useEffect, useRef } from "react"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { stageWidth } from "@/lib/stage-size"
@@ -21,7 +21,7 @@ export function Snowfall({ snow, color = "#ffffff" }: { snow: SnowfallParams; co
   useEffect(() => {
     const box = boxRef.current, c = canvasRef.current, ctx = c?.getContext("2d")
     if (!box || !c || !ctx) return
-    const still = (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false) || graphicsQuality() === "low"
+    const still = (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false) || isLowGraphics(graphicsQuality())
     const flakes: Flake[] = []
     let raf = 0, last = performance.now(), camX = liveCamera.x
     const make = (W: number, H: number, anywhere: boolean): Flake => ({ x: Math.random() * W, y: anywhere ? Math.random() * H : -8, z: 0.3 + Math.random() * 0.7, ph: Math.random() * 6.28 })

@@ -203,10 +203,11 @@ html[data-power-targeting-cursor="grabbing"] * {
   .match-status-your-move { animation: none; }
 }
 
-/* "Qualidade e efeitos gráficos" Baixa (lib/quality.ts): the Pátio's scenery stands still, as with reduced motion. */
-:root[data-graphics="low"] :is(.pt-tree, .pt-petal, .tp-lantern, .tp-glow, .tp-tree, .tp-petal, .px-cloud, .px-aurora, .px-aurora-b, .custom-tree-sway) { animation: none !important; }
-:root[data-graphics="low"] .custom-tree-particles { display: none; }
-:root[data-graphics="low"] .scenery-wind-bend { transform: none !important; transition: none; }
+/* "Qualidade e efeitos gráficos" Baixa and Baixíssima (lib/quality.ts): the Pátio's scenery stands still, as with
+   reduced motion. */
+:root:is([data-graphics="low"], [data-graphics="lowest"]) :is(.pt-tree, .pt-petal, .tp-lantern, .tp-glow, .tp-tree, .tp-petal, .px-cloud, .px-aurora, .px-aurora-b, .custom-tree-sway) { animation: none !important; }
+:root:is([data-graphics="low"], [data-graphics="lowest"]) .custom-tree-particles { display: none; }
+:root:is([data-graphics="low"], [data-graphics="lowest"]) .scenery-wind-bend { transform: none !important; transition: none; }
 
 /* A zone tag's value changing (components/pigchicken/zone-tags.tsx): like a departures board, the old text drops
    down out of its line and the new one comes in from above. */

@@ -2,8 +2,8 @@
 
 import { useSyncExternalStore } from "react"
 import {
-  getQuality, getServerQuality, QUALITY_LABELS, QUALITY_LEVELS, setQualityAuto, setQualityLevel, subscribeQuality,
-  type QualityKind, type QualityLevel,
+  getQuality, getServerQuality, QUALITY_LABELS, qualityLevels, setQualityAuto, setQualityLevel, subscribeQuality,
+  type GraphicsLevel, type QualityKind,
 } from "@/lib/quality"
 
 export const useQuality = () => useSyncExternalStore(subscribeQuality, getQuality, getServerQuality)
@@ -20,8 +20,8 @@ export function QualityFields({ rowClassName, selectClassName, checkboxClassName
     {KINDS.map(({ kind, label }) => (
       <label key={kind} className={rowClassName}>
         <span>{label}</span>
-        <select value={quality[kind]} onChange={e => setQualityLevel(kind, e.target.value as QualityLevel)} className={selectClassName}>
-          {QUALITY_LEVELS.map(level => <option key={level} value={level}>{QUALITY_LABELS[level]}</option>)}
+        <select value={quality[kind]} onChange={e => setQualityLevel(kind, e.target.value as GraphicsLevel)} className={selectClassName}>
+          {qualityLevels(kind).map(level => <option key={level} value={level}>{QUALITY_LABELS[level]}</option>)}
         </select>
       </label>
     ))}

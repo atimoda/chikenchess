@@ -27,7 +27,29 @@ test('quality starts from the device and keeps only the levels someone changed',
   assert.deepEqual(quality.resolveQuality(null, phone), { graphics: 'medium', sound: 'medium', auto: true })
   assert.deepEqual(quality.resolveQuality({ sound: 'high', auto: false }, phone), { graphics: 'medium', sound: 'high', auto: false })
   assert.deepEqual(quality.resolveQuality({ graphics: 'ultra', sound: 3 }, phone), { graphics: 'medium', sound: 'medium', auto: true })
-  assert.deepEqual(['high', 'medium', 'low'].map(quality.lowerLevel), ['medium', 'low', 'low'])
+  assert.deepEqual(['high', 'medium', 'low', 'lowest'].map(quality.lowerLevel), ['medium', 'low', 'low', 'lowest'])
+  // Baixíssima exists only for the graphics, and only when chosen
+  assert.deepEqual(quality.resolveQuality({ graphics: 'lowest', sound: 'lowest' }, phone), { graphics: 'lowest', sound: 'medium', auto: true })
+  assert.deepEqual(quality.qualityLevels('graphics'), ['high', 'medium', 'low', 'lowest'])
+  assert.deepEqual(quality.qualityLevels('sound'), ['high', 'medium', 'low'])
+  assert.equal(quality.QUALITY_LABELS.lowest, 'Baixíssima')
+  assert.deepEqual(['high', 'medium', 'low', 'lowest'].map(quality.isLowGraphics), [false, false, true, true])
+})
+
+test('Baixíssima is kept, the monitor never steps into it and it lowers the sound instead', async () => {
+  await withBrowser(memory => {
+    quality.setQualityLevel('graphics', 'lowest')
+    assert.equal(quality.graphicsQuality(), 'lowest')
+    assert.deepEqual(JSON.parse(memory.get('chickenchess:quality:v1')), { auto: true, graphics: 'lowest' })
+    assert.equal(quality.lowerQuality('graphics'), false)
+    assert.equal(monitor.lowerFor('graphics'), 'sound')
+    assert.equal(quality.soundQuality(), 'medium')
+    assert.equal(quality.graphicsQuality(), 'lowest')
+    quality.setQualityLevel('sound', 'lowest')
+    assert.equal(quality.soundQuality(), 'low', 'the sound has no Baixíssima')
+    quality.setQualityLevel('graphics', 'low')
+    assert.equal(quality.lowerQuality('graphics'), false, 'automatic steps stop at Baixa')
+  })
 })
 
 test('manual levels persist, automatic steps stop at the lowest and turning auto on returns to the device', async () => {

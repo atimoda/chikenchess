@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.15.0',
     date: '20/11/2026',
-    title: 'Simulador de voz de galinha em chickenchess.com/chicken-voice-simulator; créditos completos no About; Piano de cauda e a escala Estrela: as 12 notas numa estrela de hexágonos, tocadas por clique e arraste, com dinâmica pelo movimento e o acumulador de notas no Correr',
+    title: 'Simulador de voz de galinha em chickenchess.com/chicken-voice-simulator; créditos completos no About; Piano de cauda e a escala Estrela: as 12 notas numa estrela de hexágonos, tocadas por clique e arraste, com dinâmica pelo movimento e o acumulador de notas no Correr; Pátio sem piscadas no celular ao andar e qualidade gráfica Baixíssima',
     groups: [
       { title: 'Simulador de voz de galinha', items: [
         'Página nova em /chicken-voice-simulator: um sintetizador que simula o corpo da galinha (sacos aéreos, siringe, traqueia, laringe, garganta e bico) em vez de usar gravações. Ela cacareja, choca, canta de galo, pia como pintinho, dá alarme e chama para comer.',
@@ -29,6 +29,15 @@ const RECENT = [
         'Instrumento fixo novo no Modo editor, grupo Música: o Piano de cauda, com banqueta. Pegar perto da banqueta senta; a escala dele é a Estrela, com som de piano novo (cordas marteladas, mais brilhante quanto mais forte).',
         'Sentada no piano ela não se move, mas as binds valem como se ela se movesse: Chocar, Agachar, Correr e Pular mudam a dinâmica (Pular segurado vira ff) e o Correr acumula as notas. Por isso Pular e Correr não levantam do piano: levanta com Pegar (E no teclado), com Golpe (Y no gamepad) ou com o botão Sair do celular.',
         'Sentada, a estrela fica sempre à vista e cabe inteira na tela.',
+      ] },
+      { title: 'Pátio: fundo e números da grade sem piscar ao andar', items: [
+        'No celular, o fundo (céu, montanhas, mata) e os números da Grade de blocos piscavam toda vez que a galinha andava. A cada passo o navegador redesenhava do zero o mundo, cada camada do fundo e as camadas da frente; agora elas só deslizam, já desenhadas. Vale em todos os Pátios, local e online, e no Modo editor.',
+        'Com zoom diferente de 100%, o Pátio continua redesenhando as camadas para ficarem nítidas naquele zoom, como antes.',
+      ] },
+      { title: 'Qualidade gráfica Baixíssima', items: [
+        'Novo nível em “Qualidade e efeitos gráficos” (Preferências e painel Camadas do Pátio): Baixíssima, para celulares lentos e antigos. É a Baixa sem o cenário que só enfeita: o fundo do Pátio fica só com o céu (sem sol, estrelas, lua, aurora, nuvens, montanhas, prédios, mata e neve) e saem as Árvores em que não se sobe, os Pinheiros, as Ameixeiras e o cenário em profundidade própria.',
+        'Fica tudo o que conta no jogo: chãos, plataformas, casas, Postes e Torres (os fios são pisáveis), árvores em que se sobe ou anda, o que bloqueia tiros ou notas, itens, bonecos, portais e a Grade de blocos. No Modo editor tudo aparece, para editar.',
+        'Só se escolhe à mão: “Ajustar automaticamente” continua parando na Baixa.',
       ] },
     ],
   },

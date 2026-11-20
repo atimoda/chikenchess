@@ -4,7 +4,7 @@
 // invisible floors and walls the chicken's engine reads (`data-chicken-platforms`). The game's own things
 // (dummies, racks, buttons) are drawn on the game's canvas (parquinho.tsx) and only placed from here.
 import { memo, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
-import { ELEMENT_DEFS, elementBounds, elementCorners, elementFloorLine, elementOutline, isHard, layoutCollisionDepth, rackTable, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
+import { ELEMENT_DEFS, elementBounds, elementCorners, elementFloorLine, elementOutline, isDecorOnly, isHard, layoutCollisionDepth, rackTable, treeWorldSurfaces, type LayoutElement, type LayoutLayer } from "@/lib/pigchicken/layout"
 import { houseSurfaces, normalizeHouse } from "@/lib/pigchicken/houses"
 import { TRAMPOLINE_DEFAULTS, TRAMPOLINE_LEVELS } from "@/lib/pigchicken/trampoline"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
@@ -12,6 +12,7 @@ import { followCamera, followDepth } from "@/lib/pigchicken/live-camera"
 import { PowerArt, PowerFloors, PowerLines } from "./power-art"
 import { TreeArt, TreeStyles } from "./patio-trees"
 import { SceneryRegion } from "./scenery-region"
+import { useBareScenery } from "@/hooks/use-reduced-graphics"
 import { HouseArt, PlacedHouseArt } from "./house-art"
 import { houseRooms, roomFloorSlab } from "@/lib/pigchicken/house-rooms"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
@@ -69,12 +70,15 @@ export function DepthLayer({ depth, pinned = false, children, className = "point
 // power: only the Postes and Torres with their wires (true), or everything else (false); missing: all of it. The
 // world draws the power apart from the sky's light filter: they already have the silhouette's colour, faded by depth.
 export const LayoutLayerView = memo(function LayoutLayerView({ elements, layer, editing, power }: { elements: LayoutElement[]; layer: LayoutLayer; editing: boolean; power?: boolean }) {
+  // Baixíssima: the scenery that is only decoration is left out (never in the Modo editor)
+  const bare = useBareScenery() && !editing
   return (
     <>
       {elements.map(el => {
         if (ELEMENT_DEFS[el.kind].entity || el.layer !== layer) return null
         if (power !== undefined && power !== (el.kind === "pole" || el.kind === "tower")) return null
         if (el.hidden && !editing) return null
+        if (bare && isDecorOnly(el)) return null
         const art = (
           <SceneryRegion
             depth={el.depth}

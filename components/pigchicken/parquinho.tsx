@@ -74,7 +74,7 @@ import { SceneryVisibilityStyles } from "./scenery-region"
 import { graphicsQuality, subscribeQuality } from "@/lib/quality"
 import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken/platform-geometry"
 import { needsTrajectory, patioPixelRatio, trajectoryVisible, zoomedView } from "@/lib/pigchicken/viewport"
-import { moveLiveCamera, setCameraRestY } from "@/lib/pigchicken/live-camera"
+import { holdLayer, moveLiveCamera, setCameraRestY, worldTransform } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
 import { houseRooms, roomShotWalls, type RoomRect } from "@/lib/pigchicken/house-rooms"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
@@ -89,6 +89,7 @@ import { defaultPlayer, newGongRun, stepGong, strikeGong, type GongParams, type 
 import { drawTempleHud, drawTempleShots } from "@/components/pigchicken/temple-draw"
 import { BuildingStyles } from "@/components/pigchicken/building-art"
 import { ParallaxBackdrop } from "@/components/pigchicken/parallax"
+import { useBareScenery } from "@/hooks/use-reduced-graphics"
 import type { MountainParams } from "@/lib/pigchicken/mountains"
 import type { ForestParams } from "@/lib/pigchicken/forest"
 import type { SkylineParams } from "@/lib/pigchicken/skyline"
@@ -163,6 +164,8 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
   const shown = useMemo(() => elementsInWorld({ v: 1, elements }, screens), [elements, screens])
   const occlusion = useMemo(() => createCollisionOcclusion(layoutCollisionMasks(shown)), [shown])
   const look = useSkyLook(sky)
+  // Baixíssima: the far scenery keeps only its sky (always whole in the Modo editor)
+  const bare = useBareScenery() && !editing
   const cloudSet = useMemo(() => patioClouds(clouds, sky?.clouds), [clouds, sky?.clouds])
   // the hour's light and the contraluz on the scenery (the characters, items and shots keep their own colours)
   const lit = look.scenery === "none" ? undefined : { filter: look.scenery }
@@ -177,7 +180,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
       <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
-      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} /></div>)}
+      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} bare={bare} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} bare={bare} /></div>)}
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)", ...lit }} />
       {debug && Array.from({ length: screens }, (_, s) => (
@@ -974,13 +977,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the zoom pivots on the stage's centre, so a new stage size (the editor's dock) also redraws it
       if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY || zoom !== drawnZoom || stageWidth() !== drawnW || window.innerHeight !== drawnH)) {
         const world = worldRef.current
-        world.style.transform = `translate3d(${(stageWidth() / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`
+        world.style.transform = worldTransform(camX, camY, zoom)
+        holdLayer(world, zoom)
         world.style.transformOrigin = "0 0"
         setPlatformWorldOffset(world, -camX, camY)
         drawnCamX = camX; drawnCamY = camY; drawnZoom = zoom; drawnW = stageWidth(); drawnH = window.innerHeight
       }
       if (fgRef?.current) {
-        fgRef.current.style.transform = `translate3d(${(stageWidth() / 2) * (1 - zoom) - camX * zoom}px,${(window.innerHeight / 2) * (1 - zoom) + camY * zoom}px,0) scale(${zoom})`
+        fgRef.current.style.transform = worldTransform(camX, camY, zoom)
+        holdLayer(fgRef.current, zoom)
         fgRef.current.style.transformOrigin = "0 0"
       }
       // the layers above the chicken and the editor's handles follow the same camera
@@ -2062,7 +2067,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setGroundHeight(groundHRef.current)
       engine.setCameraZoom(1)
       extras?.current?.forEach(o => o.setCameraZoom(1))
-      if (worldRef.current) { worldRef.current.style.transform = ""; setPlatformWorldOffset(worldRef.current, 0, 0) }
+      if (worldRef.current) { worldRef.current.style.transform = ""; worldRef.current.style.willChange = ""; setPlatformWorldOffset(worldRef.current, 0, 0) }
       moveLiveCamera(0, 0, 1)
     }
   }, [engine, worldRef, fgRef, patioKey])

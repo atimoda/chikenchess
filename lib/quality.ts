@@ -4,14 +4,24 @@
 import { isLiteDevice } from './performance'
 
 export type QualityLevel = 'high' | 'medium' | 'low'
+// the graphics have one level more, Baixíssima: Baixa without the scenery that is only decoration (the Pátio's
+// mountains, tree lines, clouds, sun…, and its trees, pinheiros and ameixeiras that nothing stands on). Only chosen
+// by hand: "Ajustar automaticamente" stops at Baixa.
+export type GraphicsLevel = QualityLevel | 'lowest'
 export type QualityKind = 'graphics' | 'sound'
-export type QualityState = { graphics: QualityLevel; sound: QualityLevel; auto: boolean }
+export type QualityState = { graphics: GraphicsLevel; sound: QualityLevel; auto: boolean }
 
 export const QUALITY_LEVELS: QualityLevel[] = ['high', 'medium', 'low']
-export const QUALITY_LABELS: Record<QualityLevel, string> = { high: 'Alta', medium: 'Média', low: 'Baixa' }
+export const GRAPHICS_LEVELS: GraphicsLevel[] = ['high', 'medium', 'low', 'lowest']
+export const QUALITY_LABELS: Record<GraphicsLevel, string> = { high: 'Alta', medium: 'Média', low: 'Baixa', lowest: 'Baixíssima' }
+/** The levels each selector offers. */
+export const qualityLevels = (kind: QualityKind): GraphicsLevel[] => kind === 'graphics' ? GRAPHICS_LEVELS : QUALITY_LEVELS
 const KEY = 'chickenchess:quality:v1'
 const SERVER: QualityState = { graphics: 'high', sound: 'high', auto: true }
 const isLevel = (value: unknown): value is QualityLevel => value === 'high' || value === 'medium' || value === 'low'
+const isGraphicsLevel = (value: unknown): value is GraphicsLevel => isLevel(value) || value === 'lowest'
+/** Baixa and Baixíssima: the shared frames at 30 FPS and the Pátio's scenery standing still. */
+export const isLowGraphics = (level: GraphicsLevel) => level === 'low' || level === 'lowest'
 
 /** The levels a device starts from: phones and other limited devices at Média, the rest at Alta. */
 export function detectQuality(lite?: boolean): Pick<QualityState, 'graphics' | 'sound'> {
@@ -24,14 +34,14 @@ export function detectQuality(lite?: boolean): Pick<QualityState, 'graphics' | '
 export function resolveQuality(saved: unknown, detected = detectQuality()): QualityState {
   const record = saved && typeof saved === 'object' ? saved as Record<string, unknown> : {}
   return {
-    graphics: isLevel(record.graphics) ? record.graphics : detected.graphics,
+    graphics: isGraphicsLevel(record.graphics) ? record.graphics : detected.graphics,
     sound: isLevel(record.sound) ? record.sound : detected.sound,
     auto: record.auto !== false,
   }
 }
 
-/** One level down, or the same level when it is already the lowest. */
-export const lowerLevel = (level: QualityLevel): QualityLevel => level === 'high' ? 'medium' : 'low'
+/** One level down, or the same level when it is already the lowest the monitor reaches (Baixa; Baixíssima stays). */
+export const lowerLevel = (level: GraphicsLevel): GraphicsLevel => level === 'high' ? 'medium' : level === 'lowest' ? 'lowest' : 'low'
 
 let state: QualityState | undefined
 let saved: Partial<QualityState> = {}
@@ -44,7 +54,7 @@ function read(): QualityState {
 }
 
 function reflect(next: QualityState) {
-  // CSS reads the level from the root: globals.css stops the Pátio's scenery animations at "low".
+  // CSS reads the level from the root: globals.css stops the Pátio's scenery animations at "low" and "lowest".
   if (typeof document !== 'undefined') document.documentElement.dataset.graphics = next.graphics
 }
 
@@ -77,9 +87,9 @@ export function subscribeQuality(listener: () => void) {
 }
 
 /** The player's own choice. It stays until changed again; the monitor may still lower it while auto is on. */
-export function setQualityLevel(kind: QualityKind, level: QualityLevel) {
+export function setQualityLevel(kind: QualityKind, level: GraphicsLevel) {
   getQuality()
-  store({ [kind]: level })
+  store({ [kind]: kind === 'sound' && level === 'lowest' ? 'low' : level })
 }
 
 /** Turning "Ajustar automaticamente" on starts again from the device's own levels. */
