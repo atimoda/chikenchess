@@ -74,6 +74,7 @@
 | Páginas legais, links do login/globo e analytics | [Páginas públicas](docs/mechanics/public-pages.md) |
 | Freeze, Shield e casas especiais | [Poderes](docs/mechanics/powers.md) |
 | Processamento | [Gestos e custo](docs/mechanics/performance.md) |
+| Pátio: renderização (camadas que seguem a câmera, qualidade Baixíssima, recorte do cenário, canvas, mira, geometria) | [Renderização do Pátio](docs/mechanics/patio/rendering.md) |
 
 Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa não é pré-requisito de toda alteração.
 
@@ -142,7 +143,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: Templo do Gongo, fase de notas, mortes e catálogo de aliens](docs/mechanics/patio/temple.md) | 17 KB |
 | [Pátio: mundo, cenário, portais, árvores e trampolim](docs/mechanics/patio/world.md) | 24 KB |
 | [Pátio: Vila dos Telhados, casas e interior](docs/mechanics/patio/houses.md) | 14 KB |
-| [Gestos e custo de processamento](docs/mechanics/performance.md) | 21 KB |
+| [Gestos e custo de processamento](docs/mechanics/performance.md) | 23 KB |
+| [Pátio: renderização e qualidade Baixíssima](docs/mechanics/patio/rendering.md) | 10 KB |
 | [Poderes da partida](docs/mechanics/powers.md) | 25 KB |
 | [Progresso e ovos dourados](docs/mechanics/progression.md) | 28 KB |
 | [Páginas públicas, privacidade e analytics](docs/mechanics/public-pages.md) | 5 KB |

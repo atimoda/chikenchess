@@ -1,4 +1,4 @@
-import { graphicsQuality } from './quality'
+import { graphicsQuality, isLowGraphics } from './quality'
 
 export const GAME_FPS_LIMIT = 240
 /** The games' frame rate at "Qualidade e efeitos gráficos" Baixa, whatever the limit option says. */
@@ -74,7 +74,7 @@ function schedule() {
 
 function tick(now: number) {
   nativeFrame = undefined
-  const low = graphicsQuality() === 'low'
+  const low = isLowGraphics(graphicsQuality())
   if (gate(now, low || getFramePreferences().limit, low ? 1000 / LOW_GRAPHICS_FPS : INTERVAL)) {
     running = pending
     pending = spare

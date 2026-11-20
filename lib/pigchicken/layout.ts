@@ -208,6 +208,18 @@ export const isSurfaceElement = (kind: ElementKind): kind is SurfaceKind => kind
 // the elements whose collisions offer "Objeto duro" (on by default only on grounds and walls)
 export const HARD_KINDS: readonly ElementKind[] = ['platform', 'terrace', 'pillar', 'ground', 'wall']
 export const isHard = (el: Pick<LayoutElement, 'kind' | 'hard' | 'solid'>) => el.solid && HARD_KINDS.includes(el.kind) && !!el.hard
+// Scenery that is only decoration ("Qualidade e efeitos gráficos" Baixíssima leaves it out, outside the Modo editor):
+// nothing stands on it, nor do shots, notes or items meet it — the Árvores without Escalar tronco/Andar nos
+// galhos/Andar na copa, the Pinheiros and Ameixeiras, and any scenery in a parallax depth of its own. Postes and
+// Torres stay (their wires are floors), as do the game's things, the music, the Lousa and whatever collides.
+export function isDecorOnly(el: Pick<LayoutElement, 'kind' | 'solid' | 'shots' | 'notes' | 'rebate' | 'depth' | 'params'>) {
+  if (ELEMENT_DEFS[el.kind].entity || isPowerElement(el.kind) || isMusicElement(el.kind) || el.kind === 'chalkboard') return false
+  if (el.solid || el.shots || el.notes || el.rebate) return false
+  if (el.depth) return true
+  if (el.kind === 'pine' || el.kind === 'blossom') return true
+  if (el.kind === 'tree') { const t = el.params.tree; return !t || (!t.climbTrunk && !t.walkBranches && !t.walkCrown) }
+  return false
+}
 
 const r1 = (v: number) => Math.round(v * 10) / 10
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))

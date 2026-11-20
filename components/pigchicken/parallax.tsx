@@ -6,7 +6,7 @@
 "use client"
 
 import { memo, useEffect, useMemo, useRef, useState } from "react"
-import { followParallax, onCameraMove, watchCameraRegion } from "@/lib/pigchicken/live-camera"
+import { followParallax, holdLayer, onCameraMove, watchCameraRegion } from "@/lib/pigchicken/live-camera"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
 import { FOREST_DEFAULT, forestDraw, type ForestParams } from "@/lib/pigchicken/forest"
@@ -75,7 +75,7 @@ const CLASSIC = classicLook()
 // its layer) by a transform only, so moving the camera never repaints the gradient
 function RadialSky({ look, left, width, top, height, cx }: { look: SkyLook; left: number; width: number; top: number; height: number; cx: number }) {
   const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => onCameraMove(x => { if (ref.current) ref.current.style.transform = `translate3d(${(x * 0.97).toFixed(2)}px,0,0)` }), [])
+  useEffect(() => onCameraMove(x => { if (ref.current) { ref.current.style.transform = `translate3d(${(x * 0.97).toFixed(2)}px,0,0)`; holdLayer(ref.current) } }), [])
   return <div ref={ref} className="absolute" style={{ left, width, top, height, background: skyRadial(look, top, -200, G - 60, cx - left) ?? undefined }} />
 }
 
@@ -190,7 +190,9 @@ function SkylineArt({ s, row, w, look, id, haze }: { s: SkylineShapes; row: Skyl
 // aurora: → Aurora (curtains of light at the sun's depth, behind the clouds); forest: → Mata (each tree line's
 // density, size, pines, shape and tint; Céu e luz → Mata still hides both)
 // skyline: → Prédios (rows of buildings, each at its own depth among the ranges and the tree lines)
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, forest = FOREST_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, skyline, zoomMin = 0.5 }: { worldW: number; look?: SkyLook; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; skyline?: SkylineParams; zoomMin?: number }) {
+// bare: "Qualidade e efeitos gráficos" Baixíssima (outside the Modo editor): only the sky, without its texture; the sun,
+// stars, moon, aurora, clouds, ranges, buildings, tree lines and snowfall are left out
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, forest = FOREST_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, skyline, zoomMin = 0.5, bare = false }: { worldW: number; look?: SkyLook; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; skyline?: SkylineParams; zoomMin?: number; bare?: boolean }) {
   // zoomed out far enough to see the whole world, the layers repeat past their ends
   const copies = (p: number) => backdropCopies(worldW, p, zoomMin)
   const wSun = layerW(worldW, SUN_DEPTH), wCloud = layerW(worldW, CLOUD_DEPTH)
@@ -224,7 +226,7 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   const skyShade = cloudSet.tintAmount > 0 ? mix(look.clouds.shade, cloudSet.tint, cloudSet.tintAmount / 200) : look.clouds.shade
   const cloudShade = mix(cloudLit, cloudSet.shadeTintAmount > 0 ? mix(skyShade, cloudSet.shadeTint, cloudSet.shadeTintAmount / 100) : skyShade, cloudSet.volume / 100)
   const cloudAlpha = look.clouds.opacity * cloudSet.opacity / 100
-  const texture = useSkyTexture(look.texture, look.textureLook.streak, look.textureLook.grain)
+  const texture = useSkyTexture(bare ? 0 : look.texture, look.textureLook.streak, look.textureLook.grain)
   const { treeFar, treeNear } = shapes
   const amount = cloudSet.amount / 100
   const shownClouds = cloudList.map((c, i) => ({ c, i })).filter(({ i }) => amount >= 1 || ((i * 0.618) % 1) < amount)
@@ -250,15 +252,17 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   const sunTop = backdropLayerTop(Math.min(look.stars > 0 ? -300 - 3 * look.starSize : 0, look.sun.opacity > 0 ? look.sun.y - sunGlowR : 0, look.moon.opacity > 0 ? look.moon.y - 150 : 0,
     look.horizonGlow > 0 ? 860 - 420 * Math.sqrt(look.sun.glowSize) : 0))
   const auroraShown = aurora ? auroraOpacity(aurora, look.night) : 0
+  // the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top and, in its last colour, down to the layers' foot
+  const sky = look.radial.amount > 0
+    ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={BOTTOM - skyTop} cx={1350} />
+    : <div className="absolute" style={{
+      left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: BOTTOM - skyTop,
+      background: skyGradient(look, skyTop, -200, G - 60),
+    }} />
+  if (bare) return <div aria-hidden="true" className="absolute inset-0">{sky}</div>
   return (
     <div aria-hidden="true" className="absolute inset-0">
-      {/* the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top and, in its last colour, down to the layers' foot */}
-      {look.radial.amount > 0
-        ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={BOTTOM - skyTop} cx={1350} />
-        : <div className="absolute" style={{
-          left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: BOTTOM - skyTop,
-          background: skyGradient(look, skyTop, -200, G - 60),
-        }} />}
+      {sky}
       {texture && <div className="absolute" style={{
         left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: -1600, height: G + 1600,
         backgroundImage: `url(${texture})`, backgroundSize: `${Math.round(1024 * look.textureLook.scale)}px ${Math.round(256 * look.textureLook.scale)}px`,
