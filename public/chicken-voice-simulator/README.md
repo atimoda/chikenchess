@@ -5,7 +5,7 @@ voice synthesizer, with a chicken added to its Bestiary: air sacs, a syrinx at t
 trachea, a larynx, a throat and a beak. The chicken clucks, cackles and crows, and sings typed lyrics
 to a tune. Served at `/chicken-voice-simulator/?mode=bestiary&creature=chicken`.
 
-- Source: [atimoda/chicken-vocal-synth](https://github.com/atimoda/chicken-vocal-synth), branch `chicken`, commit `d0632de`.
+- Source: [atimoda/chicken-vocal-synth](https://github.com/atimoda/chicken-vocal-synth), branch `chicken`, commit `63fec2c`.
 - License: MIT, Copyright (c) 2026 Jameson Hodge ([LICENSE.txt](LICENSE.txt)). The bundled
   dictionary and fonts keep their own licenses (`data/*-LICENSE.txt`, `fonts/OFL.txt`,
   `fonts/AVHERSHEY-LICENSE.txt`).
