@@ -339,6 +339,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const throwAim = useRef<Stick | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
+  // the on-screen Roda dragged out of its middle: the drag's direction points at the wheel's slice (a jog)
+  const wheelJog = useRef<Stick | null>(null)
   // a slot the player clicked or tapped on the inventory bar (1-based, 0 none): equips it on the next frame
   const slotTap = useRef(0)
   // the groups of the slots the inventory bar shows (her items plus the empty one while there is room), as a key
@@ -1074,7 +1076,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const g = wheelGeom()
         let hov = wh.hover >= nSlots ? -1 : wh.hover
         // the right stick (or the on-screen one) pushed far enough points at a slice; at rest it keeps the last one
-        const stick = rightStickForAim ?? (touchAim.current && touchAim.current.mag > 0.4 ? touchAim.current : null)
+        const stick = rightStickForAim ?? wheelJog.current ?? (touchAim.current && touchAim.current.mag > 0.4 ? touchAim.current : null)
         const ptr = wheelPtr.current
         if (stick && (stick.mag ?? 1) > 0.5) hov = wheelSliceAt(Math.atan2(stick.y, stick.x), nSlots)
         else if (ptr && Math.hypot(ptr.x - g.cx, ptr.y - g.cy) > g.rIn * 0.35) hov = wheelSliceAt(Math.atan2(ptr.y - g.cy, ptr.x - g.cx), nSlots)
@@ -2183,7 +2185,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           onContextMenu={e => e.preventDefault()}
         />
       )}
-      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} throwAimRef={throwAim} tapRef={tapShot} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} showStick={controls?.touchAimStick ?? false} />}
+      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} throwAimRef={throwAim} tapRef={tapShot} jogRef={wheelJog} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} showStick={controls?.touchAimStick ?? false} />}
     </>
   )
 }
@@ -2197,7 +2199,7 @@ const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 type GrabOffer = "" | "take" | "equip" | "sit" | "stand"
 const GRAB_LABELS: Record<Exclude<GrabOffer, "">, string> = { take: "Pegar", equip: "Equipar", sit: "Tocar", stand: "Sair" }
 
-function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, bottom, grabOffer, showStick }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; throwAimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; bottom: number; grabOffer: GrabOffer; showStick: boolean }) {
+function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, jogRef, bottom, grabOffer, showStick }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; throwAimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; jogRef: React.MutableRefObject<Stick | null>; bottom: number; grabOffer: GrabOffer; showStick: boolean }) {
   const { editing } = useTouchLayout()
   useEffect(() => {
     if (editing) ["melee", "throw", "itemWheel", "grab", "fire"].forEach(a => engine.setVirtual(a as ChickenAction, false))
@@ -2275,7 +2277,7 @@ function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, bottom, grabOffer,
         <div className="relative flex flex-col gap-2">
           <Movable id="melee" className="relative">{button("Punch", "melee")}</Movable>
           <Movable id="throw" className="relative"><TouchThrowButton engine={engine} aimRef={throwAimRef} /></Movable>
-          <Movable id="itemWheel" className="relative">{button("Roda", "itemWheel")}</Movable>
+          <Movable id="itemWheel" className="relative"><TouchWheelButton engine={engine} jogRef={jogRef} /></Movable>
         </div>
         {showStick ? <Movable id="aim" className="relative">
         <div
@@ -2295,6 +2297,58 @@ function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, bottom, grabOffer,
         </Movable> : <div aria-hidden="true" style={{ width: STICK, height: STICK }} />}
       </div>
     </div>
+  )
+}
+
+// ---------- on-screen Roda: held, the inventory wheel is open; dragged, it is a jog ----------
+// Pressing opens the wheel (as before). Dragging the finger more than JOG_PX from the button's middle points at the
+// slice in that direction, like the aim stick pushed past half; back near the middle the last slice stays. Lifting
+// equips the slice pointed at and closes the wheel; the button stays held two game frames more, so a quick flick
+// is still seen by the frame that picks the slice.
+const JOG_PX = 14
+function TouchWheelButton({ engine, jogRef }: { engine: ChickenEngine; jogRef: React.MutableRefObject<Stick | null> }) {
+  const { editing } = useTouchLayout()
+  const press = useRef<{ pid: number; cx: number; cy: number } | null>(null)
+  const turn = useRef(0)
+  const [down, setDown] = useState(false)
+  const cancel = () => { press.current = null; setDown(false); turn.current++; jogRef.current = null; engine.setVirtual("itemWheel", false) }
+  useEffect(() => { if (editing) cancel() }, [editing])
+  useEffect(() => () => { jogRef.current = null }, [jogRef])
+  const move = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    const dx = e.clientX - p.cx, dy = e.clientY - p.cy, len = Math.hypot(dx, dy)
+    if (len > JOG_PX) jogRef.current = { x: dx / len, y: dy / len, mag: 1 }
+  }
+  const lift = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    press.current = null; setDown(false)
+    const t = ++turn.current
+    afterFrames(2, () => { if (turn.current !== t) return; engine.setVirtual("itemWheel", false); afterFrames(1, () => { if (turn.current === t) jogRef.current = null }) })
+  }
+  return (
+    <button
+      type="button"
+      aria-label="Roda"
+      aria-pressed={down}
+      className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase text-white/80 ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/10"}`}
+      style={{ touchAction: "none" }}
+      onPointerDown={e => {
+        e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId)
+        const r = e.currentTarget.getBoundingClientRect()
+        turn.current++; jogRef.current = null
+        press.current = { pid: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2 }
+        setDown(true); engine.setVirtual("itemWheel", true)
+      }}
+      onPointerMove={move}
+      onPointerUp={lift}
+      onPointerCancel={lift}
+      onLostPointerCapture={lift}
+      onContextMenu={e => e.preventDefault()}
+    >
+      Roda
+    </button>
   )
 }
 
