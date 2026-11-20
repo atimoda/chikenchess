@@ -5,6 +5,26 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.15.0',
+    date: '20/11/2026',
+    title: 'Tela como mira no celular: tocar atira, anda até lá e pega o item; analógico de mira atira ao soltar e fica escondido por padrão; nova posição dos botões de toque; Shift esquerdo sai do Pegar',
+    groups: [
+      { title: 'Controles de toque: a tela como mira', items: [
+        'Tocar no cenário mira e atira ali na hora, como o clique do mouse (com as mãos vazias, bica). Segurando o dedo, a mira segue o dedo e a arma continua atirando.',
+        'Um toque rápido também faz a galinha andar até lá, com ou sem item na asa. O analógico de movimento e as teclas têm prioridade: mexer neles para a caminhada.',
+        'Tocar no item do chão em que ela está encostada, ou no instrumento fixo ou no Baú ao lado dela, faz Pegar em vez de atirar ou andar. Vale também para o clique do mouse.',
+        'No painel Controles, em Touch Controls: “Tela serve como mira” (ligado por padrão) e “Exibir analógico touch de mira” (desligado por padrão).',
+      ] },
+      { title: 'Controles de toque: analógico de mira e posição dos botões', items: [
+        'Soltar o analógico de mira antes da borda (onde ele ainda não atira sozinho) dá um tiro na direção em que ele estava.',
+        'Nova posição padrão dos botões: analógico de movimento um pouco mais para dentro e para cima, Pular, Chocar e Correr num arco baixo, Punch, Throw e Roda num arco acima deles, Pegar sobre a Roda e o analógico de mira acima do Punch. Botões que você já tinha movido ficam onde estão; “Padrão” em Editar posição dos botões volta todos para a nova posição.',
+      ] },
+      { title: 'Teclado', items: [
+        'Shift esquerdo deixa de ser tecla padrão de Usar / pegar item (continua em Correr). Quem ainda estava no padrão antigo (E + Shift esq.) perde o Shift esq. no Pegar; quem configurou outra combinação não muda.',
+      ] },
+    ],
+  },
+  {
     version: '2.14.0',
     date: '18/11/2026',
     title: 'Tambores e pentes das armas e ação Próxima variação; Aim Assist nos instrumentos, Bullet Magnetism nos aliens, e o Teclado e o Violino nos blocos do Campo minado; Pátio: alinhamento da barra de itens (separado, centralizado, à esquerda ou à direita) e trocas por grupo que repetem enquanto o botão fica segurado; Editor de hit-area dos personagens no Vestiário (admin); admin troca de espécie mesmo sendo kid; Vestiário sem o aviso “meio apagado”; Item novo no Pátio: Corrente-gancho, que gruda no cenário e puxa você até lá, ou fisga um boneco e puxa ele até você; botão Camadas no painel do Modo editor e elementos trancados deixam o clique passar para os de trás; Prédios no fundo do Pátio (cidade, skyline flat, torres de código e data-centers) e duas árvores novas na Mata; Cor da dúvida e Spawn de itens na Grade de blocos; mesa do Suporte de item vira plataforma e contagem regressiva da reposição; painel Personagem (com a miniatura do seu boneco e a coluna Kids) separado de Ajustes, limites do inventário por categoria e Golpe rápido de volta nos kids; botões do cabeçalho do Pátio centralizados no desktop; zonas das cenas embaixo do chão, pisáveis: um slam (cair de um pulo segurando Chocar) troca o valor pisado, com transição de painel de aeroporto; fases de notas por zona, com meta de precisão e corações, e a Vitrola toca-discos; Pátio abre sem mostrar antes uma cópia antiga e o Playgrounds aberto mostra na hora o Pátio recém-salvo; o portal de chegada do Pátio se fecha depois que a galinha sai dele; Friends dentro do Pátio para chamar um amigo para o seu lobby, com aviso e botão Entrar para quem foi chamado, e abas Perfil e Amigos no Vestiário; Ativador de grid de campo minado',
@@ -284,89 +304,6 @@ const RECENT = [
         'As almas soltas cantam de vez em quando o canto real da sua ave, entre uma ação e outra, com uma nota ♪ em cima delas. O canto fica mais baixo quanto mais longe do meio da tela e segue o volume “Efeitos do cenário”. As notas que elas tocam nas harmonias continuam sintetizadas, agora na voz da ave que inspira a alma.',
         'Para o admin, no editor de fichas: a aba Ficha tem o campo Inspiration (troca a ave da alma) e a aba Ações tem “Canto real”, a chance de a alma cantar a gravação a cada volta do intervalo (15% por padrão; 0 desliga).',
         'O About ganhou a aba Credits, com os créditos do Strudel e de cada gravação de canto (ave, quem gravou, número no xeno-canto e licença). As gravações vêm do acervo público xeno-canto.org, em uso não comercial.',
-      ] },
-    ],
-  },
-  {
-    version: '2.12.0',
-    date: '16/11/2026',
-    title: 'Campo minado no Pátio: Grade de blocos com paredes e dois lados, gangorra de música e dano, bandeira, bombas, detonador e Filhote, com a rodada compartilhada no online e um Pátio de exemplo; Portais de nascimento no Modo editor, cada um com a sua chance; gaiolas penduradas balançam para o lado certo; painel Itens com os seis modelos de gaiola numa tela só; almas em pose de descanso na gaiola e pousadas; cada Boomerang sai de uma asa; itens param em cima dos chãos com contorno, e a galinha agachada agarra a beirada deles; estrelas a qualquer hora do dia; dá para entrar nas casas pela porta; os elementos do Templo e da Vila ficam no lugar ao mudar a largura do Pátio; cada Pátio escolhe a faixa de zoom, até ver o Pátio inteiro; e botão de próximo item ao lado dos dropdowns dos painéis',
-    groups: [
-      { title: 'Pátio: Grade de blocos', items: [
-        'A Grade de blocos tem um painel próprio: o botão de grade no topo do Pátio, ao lado do Sol, que fica amarelo enquanto a grade está ligada. No painel, Grade ligada e Resetar grade ficam em cima, e os ajustes abrem em grupos: Blocos, Música e dano, Bombas e Cores. Quem não pode editar o Pátio vê o botão enquanto a grade está ligada, com os ajustes apagados. Ligada (pelo criador ou pelo padrinho do Pátio), ela cobre o Pátio com blocos quadrados fechados, do chão ao teto, e sorteia uma bomba em cada um pela chance escolhida. Dá para ajustar o tamanho do bloco, o vão entre os blocos, a chance de bomba, se as paredes barram a passagem, e resetar a grade.',
-        'Cada galinha está de um lado: aberto ou fechado, conforme o bloco em que está. As paredes dos blocos fechados separam os dois. Quem está do lado aberto anda pelos blocos abertos, pelo vão e por cima dos fechados, e vê o número de bombas em volta de cada bloco aberto; quem está do lado fechado vê o interior dos blocos fechados e as bombas. Os blocos do outro lado ficam cobertos.',
-        'Com vão, cada bloco fechado é uma sala. Do lado fechado, Chocar + Pulo em pé no chão, pendurada no teto ou agarrada numa parede leva para o bloco fechado vizinho daquele lado. Na parede que dá para um bloco aberto o gesto não troca. Sem vão, os blocos fechados vizinhos formam um espaço só.',
-        'No Editar do Portal de entrada e dos Portais de nascimento, “Bloco liberado” faz o bloco daquele portal começar aberto e sem bomba. Em Camadas, o slider Grade controla a opacidade do desenho.',
-        'Os botões do topo, os avatares, os controles de toque, o inventário e as Gaiolas ficam na frente dos blocos da grade, em vez de quase sumir atrás de um bloco fechado.',
-      ] },
-      { title: 'Pátio: rodada do Campo minado', items: [
-        'O fundo de cada bloco fechado é uma gangorra que começa cinza. Notas de instrumento de quem está do lado aberto a enchem de azul, tiros de armas de fogo a enchem de vermelho, e um desfaz o outro. As rachaduras aumentam com o vermelho. O golpe do Martelo de Thor e do Cajado de Odin devolve o bloco ao cinza.',
-        'Azul cheio hasteia a bandeira: o bloco continua fechado e deixa de sofrer dano de tiros. Mais notas em cima da bandeira enchem uma barra amarela, que a troca por uma interrogação; em dúvida, o bloco volta a sofrer dano.',
-        'Vermelho cheio libera o bloco. Sem bomba, ele abre e mostra o número de bombas em volta. Com bomba, ela explode: o bloco vira cratera e morre quem está nele e nos blocos abertos vizinhos.',
-        'Quem morre vira Filhote, um pintinho na cor do player, que ainda toca instrumentos mas não atira. Volta a ser adulto desarmando uma bomba (lado fechado) ou hasteando a bandeira num bloco que tem bomba (lado aberto).',
-        'Do lado fechado, perto da bomba do bloco, Usar desarma com uma Chave dourada, pega a bomba desarmada (o bloco abre sem explodir), rearma com Baixo segurado ou, num bloco em dúvida, aperta o detonador. A contagem aparece no bloco; se a bandeira subir de novo a tempo, a explosão fica contida no bloco.',
-        'Com a Bomba na asa, quem está do lado fechado aperta Atirar para instalá-la no bloco aberto vizinho, contornado de vermelho: ele fecha de novo com a bomba armada. Quem começa a rodada do lado fechado ganha bombas.',
-        'A rodada termina quando não sobra bloco fechado sem bomba. Aparece um painel com o que cada player fez e os títulos Desbravador, Guardião, Sapador e Minador, com prêmios. Dispensar fecha o painel; Resetar grade começa outra rodada.',
-        'Ajustes novos em Grade de blocos: Notas quicam nas paredes (desligado por padrão: as notas atravessam os blocos e contam ao entrar), notas até a bandeira e até a dúvida, dano até liberar o bloco, Lado de dentro quebra paredes (ligado por padrão: tiros, explosões e golpes de quem está do lado fechado também contam como dano; desligado, só o lado aberto quebra), giro da gangorra, tempo do detonador, bombas iniciais, as três cores e Opacidade das paredes. Chave dourada e Bomba entram na paleta de suportes e nos Baús.',
-        'O Golpe também mexe na gangorra do bloco cuja parede ele alcança: com a asa ou com uma arma soma dano, e com um instrumento na asa vale notas e diminui o dano (só do lado aberto). A Bicada conta como um Golpe com a asa, com o dano configurado nela.',
-        'Cantos em octógono, no painel Grade de blocos: um slider corta os cantos de cada bloco, de quadrado até um octógono de lados iguais. O canto cortado vira espaço entre os blocos, com parede inclinada: dá para andar pela rampa de cima, escalar até ela e contornar o canto por dentro da sala; notas e tiros também batem nela. A fileira do chão mantém os cantos de baixo.',
-        'Para o admin, o painel Grade de blocos tem duas opções de debug, que valem só no navegador dele: ver as bombas de todos os blocos e ver o número de todos os blocos.',
-        'No online a rodada é uma só para a sala: o dono da sala guarda a grade, e as notas, os tiros, o Usar na bomba e as bombas instaladas de todos passam por ele e aparecem para todo mundo. O painel do fim mostra os players de todos os navegadores, o Filhote de outro navegador aparece como pintinho, e só o dono da sala reseta a grade. Depende do servidor de jogo atualizado; sem isso, cada navegador segue com a própria rodada.',
-        'Pátio de exemplo novo, “Campo minado”, em Destaques: 13 por 4 blocos em três cenas. Nasce-se em um de três blocos liberados no chão, cada um com um instrumento e uma arma, ou dentro de um de dois blocos fechados, com bombas no inventário e uma Chave dourada ao lado. Há mais armas, chaves e dois Baús dentro da grade.',
-      ] },
-      { title: 'Pátio: Portais de nascimento', items: [
-        'O Modo editor ganhou o Portal de nascimento, no grupo Portais da paleta: mais um lugar onde a galinha pode nascer ao entrar no Pátio, além do Portal de entrada. Ele tem o mesmo anel, mas não leva a lugar nenhum; pode ser movido, duplicado e apagado.',
-        'Com dois ou mais portais (o de entrada conta), o Editar de cada um mostra “Chance de nascer aqui”, de 0 a 100%. A soma é sempre 100%: mexer num slider redistribui a diferença entre os outros na proporção do que cada um tinha. Um portal novo entra com a parte igual, e apagar um devolve a parte dele aos outros.',
-        'Ao abrir um Pátio (chegando do globo, trocando de Pátio ou recarregando a página), o jogo sorteia o portal pelas chances. Sorteado um Portal de nascimento, a galinha sai de dentro do anel dele; no Portal de entrada, ela começa ao lado do anel, como antes. Os Pátios com um portal só continuam iguais.',
-      ] },
-      { title: 'Pátio: Gaiolas', items: [
-        'As gaiolas penduradas agora balançam para o lado certo: quando a câmera vai para um lado, elas ficam para trás e começam o balanço para o outro, em vez de acompanhar a câmera.',
-        'No painel Itens, os seis modelos de gaiola viraram uma entrada só, “Gaiolas”: ela mostra os seis um abaixo do outro, cada um vazio e, ao lado, cheio até o limite, com as almas nos lugares em que o jogo as põe. Mexer no limite de almas de um modelo muda a gaiola cheia na hora. O Padrão do topo volta os seis de uma vez.',
-        'As almas dentro da gaiola agora ficam em pose de descanso, com a asa recolhida junto ao corpo; as almas pousadas pelo mapa também.',
-        'As almas soltas agora fogem dos outros jogadores: perto do dono, afastam-se de quem chega; pousadas pelo mapa, podem voar de volta para o dono. Capturar a alma de outro jogador continua possível, mas pede uma corrida. Cada ficha tem Susto e Fuga no editor, no fim do grupo Voo.',
-      ] },
-      { title: 'Pátio: Boomerang', items: [
-        'Cada arremesso do Boomerang usa uma asa só: o primeiro sai da asa da frente, enquanto o da asa de trás fica parado; o segundo sai da asa de trás, que carrega, golpeia e arremessa com ele enquanto a asa da frente fica vazia. O que volta primeiro vai para a asa da frente.',
-      ] },
-      { title: 'Pátio: Chãos e paredes', items: [
-        'Os itens não atravessam mais os chãos com contorno (Rocha da Vila, Campo, Deserto, Neve e Vulcânico): o item de um suporte posto em cima de um chão, um item largado ou arremessado e as granadas pousam na linha de cima do contorno. Os zumbis também ficam em cima desses chãos e acompanham as subidas e descidas suaves.',
-        'Andando agachada até a beirada de um chão ou parede com contorno, a galinha agora agarra a parede que desce dali e continua descendo por ela, como já fazia nas plataformas flutuantes. Antes ela caía da beirada.',
-      ] },
-      { title: 'Galinha: agarrar', items: [
-        'O shocking jump (soltar Pulo com Chocar segurado) agora agarra sozinho o teto duro em que a cabeça bate na subida, como o bloco de cima no vão da Grade de blocos, a parte de baixo de um Chão ou Parede com Objeto duro e o teto do mundo. Antes era preciso segurar Cima. Segurando Baixo ou Agachar ela não agarra, e a parte de baixo das plataformas flutuantes continua atravessável.',
-        'Ajuste novo em Ajustes → Agarrar: “Cair do grab após” (dano). Agarrada numa parede ou pendurada num teto, a galinha se segura, sem ser empurrada, até o dano recebido desde que agarrou chegar a esse valor; o golpe que completa o valor a derruba. Contam as explosões (foguetes, granadas, notas explosivas, bombas do Campo minado), o estouro das cartas e a cagada dos pássaros. O padrão é 5, bem baixo: qualquer explosão derruba e uma cagada fraca sozinha não. Em 0, qualquer golpe derruba.',
-      ] },
-      { title: 'Pátio: Zoom', items: [
-        'Nas Configurações do Pátio há o slider “Zoom”, com dois pontos: o da esquerda é até onde a câmera afasta e o da direita até onde ela aproxima (até 400%). Na ponta esquerda, “Pátio inteiro”, ela afasta até o Pátio todo caber na tela, do teto ao chão e de uma borda à outra. Sem mexer, a faixa continua 50%–250%.',
-        'Afastando além da largura do mundo, o Pátio fica no meio da tela, e as montanhas, matas e estrelas do fundo se estendem para cobrir o Pátio inteiro.',
-      ] },
-      { title: 'Pátio: Céu', items: [
-        'Nas Configurações do Pátio, a categoria Estrelas ganhou a opção “Mostrar estrelas a qualquer hora do dia” (desligada por padrão). Ligada, as estrelas aparecem mesmo com o céu claro, com o brilho escolhido em Intensidade. A aurora continua seguindo o próprio “Só à noite”.',
-      ] },
-      { title: 'Pátio: interior das casas', items: [
-        'Em frente à porta de uma casa, Usar (o mesmo comando de Pegar) entra nela; de dentro, o mesmo gesto na porta sai. O contorno da porta acende quando o boneco está no lugar certo.',
-        'Enquanto você está dentro de uma casa, o resto do cenário escurece e só a casa fica clara; ao sair, a luz volta.',
-        'Ao entrar, a fachada some na sua tela e aparece o interior: um cômodo entre as paredes, com um piso para cada andar da casa. Dá para pular de um andar para o outro e descer com o gesto de atravessar pisos; as paredes e o teto seguram o boneco como as bordas do mundo.',
-        'Vale para as casas da Vila dos Telhados e para qualquer casa com porta colocada no Modo editor, em todos os Pátios e para todos os players locais.',
-        'O que você atira ou arremessa dentro da casa fica no cômodo e não acerta inimigos do lado de fora.',
-        'Com a Grade de blocos, o número de um bloco aberto agora fica atrás dos elementos do Pátio. Uma casa na frente esconde o número, que só aparece para quem entra nela pela porta.',
-        'No Pátio online, quem está dentro de uma casa fica escondido pela fachada para quem está fora, e aparece para quem entra na mesma casa. Isso depende do servidor de jogo atualizado; até lá, os outros jogadores continuam aparecendo na frente das casas.',
-      ] },
-      { title: 'Pátio: largura e elementos do Templo e da Vila', items: [
-        'As casas da Vila, o Chão da Vila, os portais de volta dos atalhos e tudo o que foi posto nas cenas do Templo e da Vila agora são elementos soltos como os outros: mudar a Largura limite do Pátio não os move mais junto com o Templo e a Vila. O que passa do fim do mundo some, continua salvo e reaparece no mesmo lugar ao alargar de novo.',
-        'Ao estreitar o Pátio, o que estava no fim do Parquinho passa a aparecer nas cenas do Templo e da Vila, em vez de sumir já no fim do Parquinho.',
-        'Os Pátios salvos antes abrem com tudo no mesmo lugar em que estava; o que a largura escondia continua escondido.',
-      ] },
-      { title: 'Servidor', items: [
-        'Um salvamento em conflito (alguém salvou outra versão antes) não fica mais sendo repetido sem parar no servidor: o aviso de conflito chega na hora e o servidor não sobrecarrega. Vale para Pátios, perfil, músicas, configuração da galinha e lances das partidas online.',
-      ] },
-      { title: 'Pátio: painéis', items: [
-        'Todo dropdown dos painéis do Pátio ganhou ao lado um botão verde de próximo item: cada toque escolhe a opção seguinte da lista e, depois da última, volta à primeira. Vale no Editar da Zona sonora e na Zona da cena, nas Faixas fixas, no Editar dos outros elementos e nos painéis Itens, Catálogo de aliens, Biblioteca de almas, Escalas, Playgrounds, Câmera de Mira, Ajustes, MIDI e editor de músicas. O botão que já existia nos editores de casas e de árvores ficou com o mesmo fundo verde.',
-        'Nos painéis Editar, Camada, Zona da cena, Salvar Pátio, Playgrounds e perfil, as bordas de redimensionar não saem mais do lugar quando o conteúdo é rolado. Antes, a área de arrastar a borda se deslocava junto com a rolagem.',
-        'No painel Volume, o botão Mute agora mostra a palavra “MUTE” em vez do ícone de alto-falante; ligado, ele continua destacado.',
-      ] },
-      { title: 'Pátio: Modo editor', items: [
-        'O Modo editor se desliga sozinho depois de 5 minutos sem nenhuma edição no mapa, com um aviso curto. As mudanças pendentes continuam indo para o servidor pelo salvamento automático.',
       ] },
     ],
   },
