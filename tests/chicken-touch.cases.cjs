@@ -883,3 +883,48 @@ test('the touch controls default to the 20/11 layout; a moved control keeps its 
   assert.deepEqual(layout.touchOffset({ jump: { x: 5, y: 6 } }, 'jump'), { x: 5, y: 6 })
   assert.equal(layout.touchOffset({}, 'inventory'), undefined)
 })
+
+test('Caminhada lenta: the movement stick under 80% walks at the slow-walk factor', () => {
+  const { slowWalkMult, SLOW_WALK_EXTENT, DEFAULT_SLOW_WALK } = loadTs('lib/chicken/analog-walk.ts')
+  assert.equal(SLOW_WALK_EXTENT, 0.8)
+  assert.equal(DEFAULT_SLOW_WALK, 0.5)
+  const o = { factor: 0.5, run: false, digital: false }
+  assert.equal(slowWalkMult({ ...o, extent: 0.5 }), 0.5)
+  assert.equal(slowWalkMult({ ...o, extent: 0.79 }), 0.5)
+  assert.equal(slowWalkMult({ ...o, extent: 0.8 }), 1)
+  assert.equal(slowWalkMult({ ...o, extent: 1 }), 1)
+  // no stick, running, or a key / d-pad for the direction: full speed
+  assert.equal(slowWalkMult({ ...o, extent: null }), 1)
+  assert.equal(slowWalkMult({ ...o, extent: 0.5, run: true }), 1)
+  assert.equal(slowWalkMult({ ...o, extent: 0.5, digital: true }), 1)
+  assert.equal(slowWalkMult({ ...o, extent: 0.5, factor: 0.3 }), 0.3)
+  // the setting: default 0.5, saved and clamped to 0.1..1
+  globalThis.window = { localStorage: { getItem: () => JSON.stringify({ analog: { slowWalk: 0.7 } }) }, dispatchEvent() {} }
+  assert.equal(controls.loadChickenControls().analog.slowWalk, 0.7)
+  globalThis.window = { localStorage: { getItem: () => JSON.stringify({ analog: { slowWalk: 5 } }) }, dispatchEvent() {} }
+  assert.equal(controls.loadChickenControls().analog.slowWalk, 1)
+  globalThis.window = { localStorage: { getItem: () => JSON.stringify({ analog: { deadzoneL: 0.3 } }) }, dispatchEvent() {} }
+  assert.equal(controls.loadChickenControls().analog.slowWalk, 0.5)
+  assert.equal(controls.defaultChickenControls().analog.slowWalk, 0.5)
+  controls.setTouchMoveStick({ x: 1, y: 0, len: 0.6 })
+  assert.equal(controls.touchMoveExtent(), 0.6)
+  controls.setTouchMoveStick(null)
+  assert.equal(controls.touchMoveExtent(), null)
+  delete globalThis.window
+})
+
+test('the movement stick sets the reticle depth when no aim stick is in use; the aim stick keeps priority', () => {
+  const { stickAimDepth } = loadTs('lib/chicken/analog-walk.ts')
+  assert.equal(stickAimDepth('leftStick', 0), 0.45)
+  assert.equal(stickAimDepth('leftStick', 1), 1)
+  assert.ok(Math.abs(stickAimDepth('leftStick', 0.5) - 0.725) < 1e-9)
+  assert.equal(stickAimDepth('keys', 0.2), 1)
+  assert.equal(stickAimDepth('facing', 0.2), 1)
+  // both sticks pushed: the aim stick owns the aim and its push sets the depth
+  const aim = resolveAim({ ...base, rightStick: { x: 1, y: 0, mag: 0.2 }, leftStick: { x: 0, y: 1, mag: 1 } })
+  assert.equal(aim.source, 'rightStick')
+  assert.ok(Math.abs(stickAimDepth(aim.source, aim.strength) - (0.45 + 0.55 * 0.2)) < 1e-9)
+  const left = resolveAim({ ...base, leftStick: { x: 1, y: 0, mag: 0.3 } })
+  assert.equal(left.source, 'leftStick')
+  assert.ok(Math.abs(stickAimDepth(left.source, left.strength) - (0.45 + 0.55 * 0.3)) < 1e-9)
+})

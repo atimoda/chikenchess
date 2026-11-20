@@ -12,6 +12,7 @@ import { Search } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { createCollisionOcclusion } from "@/lib/chicken/collision-occlusion"
 import type { ChickenEngine, ChickenGame } from "@/lib/chicken/engine"
+import { stickAimDepth } from "@/lib/chicken/analog-walk"
 import { isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from "@/lib/chicken/controls"
 import { isPadDevice, padButtonValues, padTokensFor, stickFor, type InputDeviceId } from "@/lib/chicken/input-devices"
 import { fireDepth, grabIsSeatBind, harpHeld, movesOf, seatBindsOf, seatTokens } from "@/lib/pigchicken/instrument-binds"
@@ -1361,7 +1362,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       combat.setScaleFan({ x: origin.x + camX, y: origin.y - camY, r: scaleR })
       combat.setAimReach(aimReach({ px: aim.target ? Math.hypot(aim.target.x - origin.x, aim.target.y - origin.y) : null, radius: scaleR, stick: aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? aim.strength : null }), aim.target ? "point" : aim.source === "rightStick" || aim.source === "touch" || aim.source === "leftStick" ? "stick" : "none")
       // where the reticle is (the cursor; with a stick or the keys, at the reticle's distance): a deck's card flies there
-      { const sd = S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1); combat.setAimPoint(aim.target ? { x: aim.target.x + camX, y: aim.target.y - camY } : { x: m0.x + Math.cos(aim.angle) * sd + camX, y: m0.y + Math.sin(aim.angle) * sd - camY }) }
+      // (a stick that owns the aim sets how far by how far it is pushed: the aim stick first, else the movement stick)
+      { const sd = S.reticleDist * stickAimDepth(aim.source, aim.strength); combat.setAimPoint(aim.target ? { x: aim.target.x + camX, y: aim.target.y - camY } : { x: m0.x + Math.cos(aim.angle) * sd + camX, y: m0.y + Math.sin(aim.angle) * sd - camY }) }
       // sitting at a fixed instrument (the Harpa): Pular or a blast got her up
       if (engine.takeSeatLeft()) combat.standUp()
       // she fell onto the ground holding Chocar: the zone strip's tag under her steps to its next value (zone-slam.ts)
@@ -1490,11 +1492,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         }
         cageBinds(id, extraSeated.has(id) ? {} : xa, extraSeated.has(id) ? {} : xp)
         extraPrev.set(id, xa)
-        extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
+        extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: aimStick ? stickAimDepth("rightStick", aimStick.mag) : 1 })
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx, species: xs.species, invLimits: eng.inventoryLimits() }
         combat.setAimReach((rs ?? ls)?.mag ?? 1, rs ?? ls ? "stick" : "none")
         combat.setScaleFan({ x: xo.x + camX, y: xo.y - camY, r: SCALE_FAN_R * (combat.seated ? seatedFanSize(scaleSizeRef.current) : scaleSizeRef.current) * xs.scale })
-        { const xdist = S.reticleDist * (rs ? 0.45 + 0.55 * rs.mag : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
+        { const xdist = S.reticleDist * (aimStick ? stickAimDepth("rightStick", aimStick.mag) : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
         if (eng.takeSeatLeft()) combat.standUp()
         if (eng.takeSlam()) zoneSlam(xs.x + camX)
         // (her hands over the Harpa's strings: the two sticks; with the keys, the direction they aim)
@@ -1834,7 +1836,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // Keep the delayed reticle on the cursor's radius around the grip, not a
       // distance measured from a muzzle that is still pointing the other way.
       const free = d.turnRate > 0 || !aim.target || shake > 0
-      const stickDistance = S.reticleDist * (aim.source === "rightStick" || aim.source === "touch" ? 0.45 + 0.55 * aim.strength : 1)
+      const stickDistance = S.reticleDist * stickAimDepth(aim.source, aim.strength)
       const reticle = aim.target
         ? free ? reticleAtAngle(aim.target, engine.heldPoint(ang, 0, 0), muzzle, ang) : aim.target
         : { x: muzzle.x + adx * stickDistance, y: muzzle.y + ady * stickDistance }

@@ -100,6 +100,14 @@ export function stickFor(devices: readonly InputDeviceId[] | null, stick: 0 | 1,
   return { x: x / len, y: y / len, mag: Math.min(1, (len - deadzone) / Math.max(0.01, 1 - deadzone)) }
 }
 
+// How far one stick of the player's first gamepad is pushed (0..1, dead zone included); null without a gamepad
+export function stickExtentFor(devices: readonly InputDeviceId[] | null, stick: 0 | 1): number | null {
+  const pad = devices ? devices.find(isPadDevice) : null
+  const gp = devices ? (pad ? gamepadAt(padIndex(pad)) : null) : firstGamepad()
+  if (!gp) return null
+  return Math.min(1, Math.hypot(gp.axes[stick * 2] ?? 0, gp.axes[stick * 2 + 1] ?? 0))
+}
+
 // How deep each button of the player's gamepads is (0..1; a trigger says how far it is pulled, a plain button 0 or 1;
 // the deepest among their gamepads), by the button's index
 export function padButtonValues(devices: readonly InputDeviceId[] | null): number[] {

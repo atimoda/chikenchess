@@ -289,7 +289,8 @@ function TouchControls({ set, bottom, front }: { set: (action: ChickenAction, on
     e.currentTarget.setPointerCapture(e.pointerId)
     const origin = hits(e.clientX, e.clientY)
     if (!origin.size) origin.add(action)
-    const stick = origin.has("run") && stickBy.current !== "stick"
+    // a finger that starts on Correr or Pular (not one that slides onto them) drags the movement stick too
+    const stick = (origin.has("run") || origin.has("jump")) && stickBy.current !== "stick"
     if (stick) stickBy.current = e.pointerId
     touches.current.set(e.pointerId, { origin, over: new Set(), stick, sx: e.clientX, sy: e.clientY })
     sync()

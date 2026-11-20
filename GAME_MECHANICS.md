@@ -20,7 +20,8 @@
 | Galinha: movimento, pulo, shocking jump, portais do globo | [Movimento da galinha](docs/mechanics/chicken/movement.md) |
 | Galinha: paredes, teto e limites escaláveis, plataformas e fios por baixo, trocar e inverter de lado, Chocar agarrada, cair do grab por dano | [Paredes, teto e fios](docs/mechanics/chicken/climbing.md) |
 | Galinha: controles, teclado, gamepad e Ajustes | [Controles da galinha](docs/mechanics/chicken/controls.md) |
-| Galinha: controles de toque no celular (posição dos botões, deslizar entre botões, Correr com analógico, Throw ao soltar, avatar no canto, tela como mira, analógico de mira) | [Controles de toque](docs/mechanics/chicken/touch.md) |
+| Galinha: analógicos (zona morta, ímãs, caminhada lenta, profundidade da mira pelo analógico de movimento) | [Analógicos](docs/mechanics/chicken/analog.md) |
+| Galinha: controles de toque no celular (posição dos botões, deslizar entre botões, Correr e Pular com analógico, Throw ao soltar, avatar no canto, tela como mira, analógico de mira) | [Controles de toque](docs/mechanics/chicken/touch.md) |
 | Pintinhos: espécie de ave menor, estilos de cor, bots que seguem a galinha, captura como almas e Pátio online | [Pintinhos](docs/mechanics/chicken/chicks.md) |
 | Personagens Pig (porco) e Ken (raposa): raças do Vestiário, estilos, classe da espécie, desenho no esqueleto da galinha; painéis Personagem e Ajustes; limites do inventário por categoria | [Personagens](docs/mechanics/chicken/characters.md) |
 | Pátio: mundo, limites e botão Sol, parallax, portais, árvores, trampolim, volume e desempenho | [Mundo do Pátio](docs/mechanics/patio/world.md) |
@@ -86,8 +87,9 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Ações, efeitos e movimento](docs/mechanics/actions-and-movement.md) | 11 KB |
 | [Admin e catálogos locais](docs/mechanics/admin.md) | 4 KB |
 | [Arranjo global e atribuições por peça](docs/mechanics/arrangement.md) | 18 KB |
-| [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 30 KB |
-| [Galinha: controles de toque](docs/mechanics/chicken/touch.md) | 11 KB |
+| [Galinha: controles, teclado, gamepad e ajustes](docs/mechanics/chicken/controls.md) | 29 KB |
+| [Galinha: analógicos](docs/mechanics/chicken/analog.md) | 4 KB |
+| [Galinha: controles de toque](docs/mechanics/chicken/touch.md) | 12 KB |
 | [Galinha: movimento, globo e portais](docs/mechanics/chicken/movement.md) | 26 KB |
 | [Galinha: paredes, teto, plataformas por baixo e fios](docs/mechanics/chicken/climbing.md) | 17 KB |
 | [Pintinhos: espécie, estilos, IA de seguir, captura e online](docs/mechanics/chicken/chicks.md) | 6 KB |
