@@ -38,7 +38,7 @@ function CreditsContent() {
     </section>
     <section className="grid gap-1.5">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Chicken voice simulator</h3>
-      <p className="leading-relaxed">The <a href="/chicken-voice-simulator/" className={link}>chicken voice simulator</a> is built on Chimera, a physical-modelling voice synthesizer by Jameson Hodge, licensed under MIT. <a href="https://www.chimera.audio" {...ext} className={link}>chimera.audio</a> · <a href="https://github.com/jamesondh/chimera-vocal-synth" {...ext} className={link}>source</a> · <a href="https://github.com/atimoda/chicken-vocal-synth" {...ext} className={link}>chicken fork</a></p>
+      <p className="leading-relaxed">The <a href="/chicken-voice-simulator/index.html?mode=bestiary&amp;creature=chicken" className={link}>chicken voice simulator</a> is built on Chimera, a physical-modelling voice synthesizer by Jameson Hodge, licensed under MIT. <a href="https://www.chimera.audio" {...ext} className={link}>chimera.audio</a> · <a href="https://github.com/jamesondh/chimera-vocal-synth" {...ext} className={link}>source</a> · <a href="https://github.com/atimoda/chicken-vocal-synth" {...ext} className={link}>chicken fork</a></p>
     </section>
     <section className="grid gap-1.5">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">AI coding assistants</h3>
