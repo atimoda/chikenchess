@@ -1789,13 +1789,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       ctx.clearRect(0, 0, stageWidth(), window.innerHeight)
       ctx.save()
       if (zoom !== 1) { ctx.translate(stageWidth() / 2, window.innerHeight / 2); ctx.scale(zoom, zoom); ctx.translate(-stageWidth() / 2, -window.innerHeight / 2) }
-      // the world's things stay under the header, like the world itself
+      // the world's things show up to the top of the screen, behind the see-through header, like the world itself
+      // (viewTop only frames the camera; clipping or culling at it cut tall things in a line under the header)
       // a blow that lands jolts the world for a moment
       let jolt = swingShake(combat.swing)
       extraList.forEach(([id]) => { combat.use(id); jolt = Math.max(jolt, swingShake(combat.swing)) })
       combat.use("p1")
       const jx = jolt ? (Math.random() * 2 - 1) * jolt : 0, jy = jolt ? (Math.random() * 2 - 1) * jolt : 0
-      const screenView = zoomedView(viewW, st.height, zoom, viewTop)
+      const screenView = zoomedView(viewW, st.height, zoom)
       const view = { ...screenView, x: screenView.x + camX, y: screenView.y - camY }
       const inWorld = () => { ctx.save(); ctx.beginPath(); ctx.rect(screenView.x, screenView.y, screenView.w, screenView.h); ctx.clip(); ctx.translate(jx, camY + jy) }
       lookTargets.length = 0
