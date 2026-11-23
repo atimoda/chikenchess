@@ -1201,7 +1201,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
               ? { x: (p.x - stageWidth() / 2) / zoom + stageWidth() / 2, y: (p.y - window.innerHeight / 2) / zoom + window.innerHeight / 2 }
               : p
             const goal = { x: at.x + camX, y: at.y - camY, t: now }
-            if (Math.hypot(goal.x - wo.x, goal.y - wo.y) > reach) {
+            // (something already touching her, a body or a projectile: the blow comes out now, without walking)
+            if (Math.hypot(goal.x - wo.x, goal.y - wo.y) > reach && !combat.touching()) {
               engine.walkTo(p)
               // (she cannot walk now, clinging to a wall or entering a portal: the blow comes out where she is, as before)
               if (engine.isWalking()) { pcGoal = goal; mouseBtn.melee = false }
