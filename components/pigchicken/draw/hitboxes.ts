@@ -4,9 +4,9 @@
 // box (what explosions and incoming notes hit). Thin rings: shots and notes in flight with their radius.
 // Green: each item on the floor (the circle the Golpe and the Bicada touch) and, dashed, each player's reach at her
 // feet for items (what is offered to Pegar). Orange: the Bicada's cone from the neck while the beak is out.
-import { PICKUP_HIT_R, pickupReach, type Combat } from "@/lib/pigchicken/combat"
+import { PICKUP_HIT_R, pickupBox, type Combat } from "@/lib/pigchicken/combat"
 
-export type HitboxPlayer = { id: string; shoulder: { x: number; y: number }; neck: { x: number; y: number }; feet: { x: number; y: number }; scale: number; box: { l: number; r: number; t: number; b: number } }
+export type HitboxPlayer = { id: string; shoulder: { x: number; y: number }; neck: { x: number; y: number }; feet: { x: number; y: number }; scale: number; angle?: number; box: { l: number; r: number; t: number; b: number } }
 
 export function drawHitboxes(ctx: CanvasRenderingContext2D, combat: Combat, camX: number, camY: number, players: HitboxPlayer[]) {
   ctx.save()
@@ -29,8 +29,8 @@ export function drawHitboxes(ctx: CanvasRenderingContext2D, combat: Combat, camX
   }
   ctx.strokeStyle = "rgba(122,229,130,0.7)"; ctx.setLineDash([3, 4])
   for (const p of players) {
-    const r = pickupReach(p.scale)
-    ctx.strokeRect(p.feet.x - r.x, p.feet.y - r.y, r.x * 2, r.y * 2)
+    const r = pickupBox(p.feet.x, p.feet.y, p.scale, p.angle)
+    ctx.strokeRect(r.l, r.t, r.r - r.l, r.b - r.t)
   }
   ctx.setLineDash([])
   // shots and notes in flight

@@ -1271,7 +1271,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       cageBinds("p1", p1Seated ? {} : act, p1Seated ? {} : prev)
       prev = { ...act, fire, melee }
       const boxes = worldBoxes
-      const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: bodyState(st), vx: st.vx, species: st.species, invLimits: engine.inventoryLimits() }
+      const body = { x: st.x + camX, y: st.y - camY, face: st.face, scale: st.scale, grounded: st.grounded, state: bodyState(st), vx: st.vx, angle: st.angle, species: st.species, invLimits: engine.inventoryLimits() }
       const worldOrigin = { x: origin.x + camX, y: origin.y - camY }
       // the enemies move inside the scene she is in: the same for every screen size (and every player)
       const sceneL = Math.min(sceneAt(body.x), worldScenes(S.screens) - 1) * SCENE_W
@@ -1492,7 +1492,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         cageBinds(id, extraSeated.has(id) ? {} : xa, extraSeated.has(id) ? {} : xp)
         extraPrev.set(id, xa)
         extraAim.set(id, { muzzle: xm, angle: xd.turnRate > 0 ? combat.aimAngle : angle, reach: rs ? 0.45 + 0.55 * rs.mag : 1 })
-        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx, species: xs.species, invLimits: eng.inventoryLimits() }
+        const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx, angle: xs.angle, species: xs.species, invLimits: eng.inventoryLimits() }
         combat.setAimReach((rs ?? ls)?.mag ?? 1, rs ?? ls ? "stick" : "none")
         combat.setScaleFan({ x: xo.x + camX, y: xo.y - camY, r: SCALE_FAN_R * (combat.seated ? seatedFanSize(scaleSizeRef.current) : scaleSizeRef.current) * xs.scale })
         { const xdist = S.reticleDist * (rs ? 0.45 + 0.55 * rs.mag : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
@@ -1868,7 +1868,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (hitboxesRef.current) {
         drawHitboxes(ctx, combat, camX, camY, [["p1", engine] as const, ...extraList].map(([id, eng]) => {
           const ms = eng.getMotionState(), es = eng.getState()
-          return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, box: bodyBox(getChickenConfig().frames, ms.species, ms.x, ms.y, ms.scale, ms.face, poseOf(ms.state, ms.grounded, ms.angle), ms.angle) }
+          return { id, shoulder: es.shoulder, neck: eng.rigPoint("neck"), feet: { x: es.x, y: es.y }, scale: es.scale, angle: ms.angle, box: bodyBox(getChickenConfig().frames, ms.species, ms.x, ms.y, ms.scale, ms.face, poseOf(ms.state, ms.grounded, ms.angle), ms.angle) }
         }))
       }
       // the scale layer hides while a chicken is being dragged by the mouse/touch

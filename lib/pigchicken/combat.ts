@@ -270,7 +270,8 @@ export type { Swing } from './swing'
 
 // species: her class's species ('pig', 'fox'): an empty hand of theirs hits with the chain or the tail
 // invLimits: the most items of each category she carries (instruments, weapons, utilities; Personagem → Inventário)
-export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; species?: string; invLimits?: readonly number[] }
+// angle: the surface she clings to turned (radians, a wall or a ceiling she hangs from upside down); 0 standing
+export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; angle?: number; species?: string; invLimits?: readonly number[] }
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
@@ -309,12 +310,25 @@ const CARD_HALF = 14
 const REMOTE_CARD_LIFE = 90
 // an item on the floor, as a circle for the blows' hit areas (Golpe and Bicada): radius (px), centred this far above
 // where it rests
-export const PICKUP_HIT_R = 14
+export const PICKUP_HIT_R = 14 * 1.33
 const SWING_PICKUP_R = PICKUP_HIT_R
 // how much wider than an item's the reach of a Baú is (px each side): it is wider than an item
 const CHEST_REACH_X = 30
 // how near her feet (horizontally, vertically) an item on the floor counts as touching her body (offered to Pegar)
 export const pickupReach = (scale: number) => ({ x: (46 * scale + 10) * 1.15, y: 60 * scale + 20 })
+// that reach as a box around her feet (x, y): standing it is centred on them. Clinging to a wall or hanging upside
+// down from a ceiling (`angle`, as lib/chicken/body-frame.ts's bodyBox) it turns with her and lies all on her body's
+// side of the surface, the same size: hanging under a box it does not reach the items lying on top of it
+export function pickupBox(x: number, y: number, scale: number, angle = 0) {
+  const r = pickupReach(scale)
+  if (Math.abs(angle) <= 0.05) return { l: x - r.x, r: x + r.x, t: y - r.y, b: y + r.y }
+  // along the surface (t) and away from it (n, "up" for her)
+  const tx = Math.cos(angle), ty = Math.sin(angle), nx = Math.sin(angle), ny = -Math.cos(angle)
+  const xs: number[] = [], ys: number[] = []
+  for (const a of [-r.x, r.x]) for (const u of [0, r.y * 2]) { xs.push(x + tx * a + nx * u); ys.push(y + ty * a + ny * u) }
+  return { l: Math.min(...xs), r: Math.max(...xs), t: Math.min(...ys), b: Math.max(...ys) }
+}
+const inReach = (b: { l: number; r: number; t: number; b: number }, x: number, y: number) => x > b.l && x < b.r && y > b.t && y < b.b
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 // the Filhote's limits that the combat applies (Personagem → Filhote; lib/chicken/params.ts has the defaults)
@@ -2130,9 +2144,9 @@ export function createCombat() {
   function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
   // the new item offered at her body (the nearest one in Pegar's reach) that a Golpe would store now
   function takesAtBody(body: Body) {
-    const { x: rx, y: ry } = pickupReach(body.scale)
+    const box = pickupBox(body.x, body.y, body.scale, body.angle)
     let near: Pickup | null = null
-    for (const p of pickups) if (Math.abs(p.x - body.x) < rx && Math.abs(p.y - body.y) < ry && canTake(p) && (!near || Math.abs(p.x - body.x) < Math.abs(near.x - body.x))) near = p
+    for (const p of pickups) if (inReach(box, p.x, p.y) && canTake(p) && (!near || Math.abs(p.x - body.x) < Math.abs(near.x - body.x))) near = p
     if (!near) return false
     if (near.owned.cage) return cages.length < (isBabyNow() && babyRules.oneCage ? 1 : CAGES_MAX)
     return inv.some(o => o.item === near!.owned.item) || babySwaps(near.owned.item) || roomFor(near.owned.item)
@@ -3858,6 +3872,8 @@ export function createCombat() {
       // pickups: fall to the floor; walking over one only offers it, grab (Pegar) takes it
       hover = null; hoverOwned = null
       const { x: pickupReachX, y: pickupReachY } = pickupReach(body.scale)
+      const reachBox = pickupBox(body.x, body.y, body.scale, body.angle)
+      const clinging = Math.abs(body.angle ?? 0) > 0.05
       for (let i = pickups.length - 1; i >= 0; i--) {
         const p = pickups[i], dt = frameDt * timeAt(p.x, p.y)
         if (world) p.noPick = Math.max(0, p.noPick - dt)
@@ -3868,9 +3884,9 @@ export function createCombat() {
           if (top) { p.y = top.y; p.resting = true; p.vy = 0 }
           if (p.y >= groundY) { p.y = groundY; p.resting = true; p.vy = 0 }
         }
-        if (Math.abs(p.x - body.x) < pickupReachX && Math.abs(p.y - body.y) < pickupReachY && canTake(p)) {
+        if (inReach(reachBox, p.x, p.y) && canTake(p)) {
           if (!hover || Math.abs(p.x - body.x) < Math.abs(hover.x - body.x)) hover = p
-        } else if (p.noPick <= 0 && Math.abs(p.x - body.x) < pickupReachX && Math.abs(p.y - body.y) < pickupReachY && inv.some(o => o.item === p.owned.item)) {
+        } else if (p.noPick <= 0 && inReach(reachBox, p.x, p.y) && inv.some(o => o.item === p.owned.item)) {
           if (!hoverOwned || Math.abs(p.x - body.x) < Math.abs(hoverOwned.x - body.x)) hoverOwned = p
         }
       }
@@ -3914,7 +3930,10 @@ export function createCombat() {
       // with Correr (the gamepad's X has no other Pegar)
       let nearChest: Chest | null = null
       for (const c of chests) {
-        if (c.open || Math.abs(c.x - body.x) > pickupReachX + CHEST_REACH_X || body.y < c.y - 70 - pickupReachY || body.y > c.y + pickupReachY) continue
+        if (c.open) continue
+        // (clinging or hanging upside down: the turned reach, on her body's side of the surface)
+        if (clinging ? !inReach({ ...reachBox, l: reachBox.l - CHEST_REACH_X, r: reachBox.r + CHEST_REACH_X }, c.x, c.y)
+          : Math.abs(c.x - body.x) > pickupReachX + CHEST_REACH_X || body.y < c.y - 70 - pickupReachY || body.y > c.y + pickupReachY) continue
         if (!nearChest || Math.abs(c.x - body.x) < Math.abs(nearChest.x - body.x)) nearChest = c
       }
       // (an item offered at her feet hides its hint: Pegar takes the item first)
@@ -3924,7 +3943,7 @@ export function createCombat() {
       // the nearest free fixed instrument in her reach: Pegar sits at it (Correr's shared key too), when no item
       // nor Baú comes first
       if (seated) { hover = null; hoverOwned = null }
-      const nearSeat = seated || itemOffered || nearChest || !body.grounded ? null : nearestSeat(seats, body.x, body.y, pickupReachX, pickupReachY)
+      const nearSeat = seated || itemOffered || nearChest || !body.grounded || clinging ? null : nearestSeat(seats, body.x, body.y, pickupReachX, pickupReachY)
       if (nearSeat) seatNear.set(active, nearSeat); else seatNear.delete(active)
       if (nearSeat && input.grab && !stoodUp && body.state !== 'held' && !body.state.startsWith('portal')) sit(nearSeat)
       if (!world) return

@@ -286,6 +286,18 @@ test('melee with a new item only in the blow\'s hit area (not at her body) swing
   assert.notEqual(c.swing, null)
 })
 
+test('hanging upside down, the reach for items turns with her: items below her are taken, not the ones above the ceiling', () => {
+  const c = createCombat()
+  const hanging = { ...body, angle: -Math.PI }
+  const hang = (over = {}) => c.step(0.016, hanging, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0, ...over }, [], 1000, () => {})
+  c.pickups.push({ id: 909, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 0, y: -40, vy: 0, resting: true, noPick: 0 })
+  hang({ grab: true })
+  assert.equal(c.pickups.length, 1, 'on top of what she hangs from: out of reach')
+  c.pickups.push({ id: 910, owned: { item: 'sax', ammo: 12, durability: 0 }, x: 0, y: 100, vy: 0, resting: true, noPick: 0 })
+  hang({ grab: true })
+  assert.deepEqual(c.pickups.map(p => p.id), [909])
+})
+
 test('melee leaves a new item on the ground when there is no free slot', () => {
   const c = createCombat()
   c.setInventoryLimit(2)

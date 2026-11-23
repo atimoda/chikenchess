@@ -17,6 +17,8 @@ const RECENT = [
       { title: 'Pátio: golpe', items: [
         'Clicar com o botão direito longe da galinha fazia ela andar até o ponto antes de golpear. Agora, se nesse instante um boneco (inimigo, boneco de treino ou outro player) ou um projétil já estiver encostando nela, o golpe sai na hora, sem andar.',
         'Golpe em cima de um item (encostado na galinha) só pega o item, sem o movimento do golpe, quando não há inimigo ao alcance do golpe. Com um inimigo ao alcance, ou com o item só ao alcance do golpe, o golpe sai e pega o item como antes.',
+        'Pendurada de cabeça para baixo ou agarrada numa parede, a área em que ela pega itens gira junto com ela: pendurada sob uma caixa, não pega mais os itens nem abre os Baús que estão em cima dela.',
+        'A área de acerto dos itens no chão ficou 33% maior.',
       ] },
       { title: 'Pátio: desenho', items: [
         'A Harpa da ilha do Pátio padrão e tudo o que fica no alto da tela (itens, almas, efeitos) não são mais cortados numa linha reta na base do cabeçalho: aparecem inteiros através da faixa do cabeçalho, como o cenário.',
