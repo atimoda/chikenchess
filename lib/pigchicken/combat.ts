@@ -2128,6 +2128,30 @@ export function createCombat() {
   const blowsLeft = (h: Owned | null, d: ItemDef) => !h || !d.meleeOnly || d.mag <= 0 || (reloadT <= 0 && h.ammo > 0)
   // an empty taco: the dry click, and it reloads on its own when set to
   function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
+  // the new item offered at her body (the nearest one in Pegar's reach) that a Golpe would store now
+  function takesAtBody(body: Body) {
+    const { x: rx, y: ry } = pickupReach(body.scale)
+    let near: Pickup | null = null
+    for (const p of pickups) if (Math.abs(p.x - body.x) < rx && Math.abs(p.y - body.y) < ry && canTake(p) && (!near || Math.abs(p.x - body.x) < Math.abs(near.x - body.x))) near = p
+    if (!near) return false
+    if (near.owned.cage) return cages.length < (isBabyNow() && babyRules.oneCage ? 1 : CAGES_MAX)
+    return inv.some(o => o.item === near!.owned.item) || babySwaps(near.owned.item) || roomFor(near.owned.item)
+  }
+  // an enemy or a training dummy (not a button) in the hit area the next Golpe would have, aimed where she aims now
+  function foeInBlow(origin: { x: number; y: number }, wing: boolean, scale: number) {
+    const d = wing ? bareDef() : def()
+    const order = d.combo.length ? d.combo : DEFAULT_COMBO
+    const step = order[Math.max(0, nextCombo(swingCombo, swingGap, d.comboWindow, order.length)) % order.length]
+    const arc = blowKind(step.kind, aimAngle) === 'spin' ? Math.PI * 2 : step.arc * DEG
+    const reach = d.meleeRange * step.reach + (wing ? 0 : d.length * scale * step.reach)
+    return targets.some(t => {
+      if (t.deadT > 0 || t.kind === 'button') return false
+      const dx = t.x - origin.x, dy = t.y - t.h / 2 - origin.y, dist = Math.hypot(dx, dy) - t.w / 2
+      if (dist > reach) return false
+      const diff = Math.atan2(Math.sin(Math.atan2(dy, dx) - aimAngle), Math.cos(Math.atan2(dy, dx) - aimAngle))
+      return Math.abs(diff) <= arc / 2 || dist <= 10
+    })
+  }
   // heavy: the strong blow, with the share of the charge it was let go with (0..1)
   function melee(wing: boolean, scale: number, heavy: number | null = null) {
     const d = wing ? bareDef() : def()
@@ -3484,8 +3508,10 @@ export function createCombat() {
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
       // starts again as if the button had just been pressed.
       const hNow = held()
+      // a Golpe on a new item offered at her body, with no enemy in the blow's hit area, only takes it (below): no blow
+      const onlyTake = !!input.melee && !input.grab && !input.grabHeld && takesAtBody(body) && !foeInBlow(origin, !hNow, body.scale)
       // a Filhote never hits: Golpe with the hand empty is its piu (below)
-      if (input.melee && meleeCool <= 0 && !(isBabyNow() && babyRules.noMelee) && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
+      if (input.melee && !onlyTake && meleeCool <= 0 && !(isBabyNow() && babyRules.noMelee) && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
       // a strong blow being charged is called off by Golpe (the quick blow comes out instead), by another item in
       // the wing and by a Throw
       if (heavyItem && (heavyCancel || input.melee || heavyItem !== (hNow ?? BARE) || input.throwHeld)) { heavyItem = null; heavyT = 0 }

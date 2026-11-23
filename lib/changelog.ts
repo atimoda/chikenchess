@@ -7,15 +7,16 @@ const RECENT = [
   {
     version: '2.15.1',
     date: '23/11/2026',
-    title: 'Pátio: andar até o ponto clicado e golpe do clique direito',
+    title: 'Pátio: andar até o ponto clicado, golpe do clique direito e Golpe que só pega o item',
     groups: [
       { title: 'Pátio: andar até o ponto clicado', items: [
         'Agachar, Correr e Chocar não cancelam mais a caminhada até o ponto clicado (ou tocado, ou até o botão de um portal): ela continua indo para lá, agachada, correndo ou chocando. Esquerda, direita, olhar pra cima e Pular continuam parando a caminhada.',
         'Ela para em cima do ponto clicado em vez de passar dele, inclusive correndo.',
         'Soltar Chocar no meio da caminhada não a deixa parada chocando: ela segue andando. Com velocidades de chocar ou de agachar em 0 ela espera parada enquanto o botão está apertado e volta a andar ao soltar.',
       ] },
-      { title: 'Pátio: golpe com point and click', items: [
+      { title: 'Pátio: golpe', items: [
         'Clicar com o botão direito longe da galinha fazia ela andar até o ponto antes de golpear. Agora, se nesse instante um boneco (inimigo, boneco de treino ou outro player) ou um projétil já estiver encostando nela, o golpe sai na hora, sem andar.',
+        'Golpe em cima de um item (encostado na galinha) só pega o item, sem o movimento do golpe, quando não há inimigo ao alcance do golpe. Com um inimigo ao alcance, ou com o item só ao alcance do golpe, o golpe sai e pega o item como antes.',
       ] },
     ],
   },

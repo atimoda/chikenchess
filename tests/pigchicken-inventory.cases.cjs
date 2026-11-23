@@ -258,6 +258,34 @@ test('melee picks up a new item into a free slot without equipping it', () => {
   assert.equal(c.pickups.length, 0)
 })
 
+test('melee on a new item at her body, with no enemy in the blow\'s hit area, only takes it: no blow', () => {
+  const c = createCombat()
+  c.give('pistol')
+  c.pickups.push({ id: 906, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { melee: true })
+  assert.equal(c.swing, null)
+  assert.deepEqual(names(c), ['flute', 'pistol', null])
+  assert.equal(c.held.item, 'pistol')
+})
+
+test('melee on a new item at her body swings too when an enemy is in the blow\'s hit area', () => {
+  const c = createCombat()
+  c.give('pistol')
+  c.addTrainingZombie(40, 40)
+  c.pickups.push({ id: 907, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { melee: true })
+  assert.notEqual(c.swing, null)
+  assert.deepEqual(names(c), ['flute', 'pistol', null])
+})
+
+test('melee with a new item only in the blow\'s hit area (not at her body) swings', () => {
+  const c = createCombat()
+  c.give('pistol')
+  c.pickups.push({ id: 908, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 100, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { melee: true })
+  assert.notEqual(c.swing, null)
+})
+
 test('melee leaves a new item on the ground when there is no free slot', () => {
   const c = createCombat()
   c.setInventoryLimit(2)
