@@ -2994,6 +2994,23 @@ export function createCombat() {
       const step = order[Math.max(0, nextCombo(swingCombo, swingGap, d.comboWindow, order.length)) % order.length]
       return d.meleeRange * step.reach + (h ? d.length * scale * step.reach : 0)
     },
+    // something touching her body now: an enemy, a dummy, another player (a chick does not count) or a projectile
+    // that is not hers. A point-and-click Golpe then comes out at once instead of walking to the clicked point
+    touching() {
+      const me = actorOf(active)?.box
+      if (!me) return false
+      const over = (l: number, r: number, t: number, b: number) => l < me.r && r > me.l && t < me.b && b > me.t
+      const at = (x: number, y: number, r: number) => over(x - r, x + r, y - r, y + r)
+      return targets.some(g => alive(g) && g.kind !== 'button' && over(g.x - g.w / 2, g.x + g.w / 2, g.y - g.h, g.y)) ||
+        blastActors.some(a => !!a.id && a.id !== active && over(a.box.l, a.box.r, a.box.t, a.box.b)) ||
+        netBodies.some(b => over(b.x - 45, b.x + 45, b.y - 200, b.y)) ||
+        bullets.some(b => b.by !== active && at(b.x, b.y, b.size)) ||
+        noteShots.some(n => n.state === 'incoming' && at(n.x, n.y, n.size)) ||
+        thrown.some(t => t.remote && at(t.x, t.y, 16)) ||
+        flights.some(f => f.owner !== active && at(f.x, f.y, 20)) ||
+        cards.some(c => c.owner !== active && at(c.x, c.y, CARD_HALF)) ||
+        hooks.some(h => h.owner !== active && at(h.x, h.y, 10))
+    },
     get puffs() { return puffs as readonly Puff[] },
     get parryZones() { return [...parryZones.values()] },
     // a damaging note or projectile at (x, y), radius r: a peck defending there cancels it in a little cloud
