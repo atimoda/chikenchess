@@ -130,7 +130,7 @@ export function validateAdminValue(entry: AdminEntry, value: unknown): void {
       z.object({
         ...types,
         touch: z.enum(['auto', 'on', 'off']), touchRunGrab: z.boolean(), touchScreenAim: z.boolean().optional(), touchAimStick: z.boolean().optional(), sound: z.boolean(),
-        analog: z.object({ deadzoneL: finite.min(0).max(.9), deadzoneR: finite.min(0).max(.9), magnet: z.boolean(), magnetDeg: finite.min(0).max(22.5), magnetRestoreDeg: finite.min(.5).max(22.5), aimMagnetDeg: finite.min(0).max(22.5) }).strict(),
+        analog: z.object({ deadzoneL: finite.min(0).max(.9), deadzoneR: finite.min(0).max(.9), magnet: z.boolean(), magnetDeg: finite.min(0).max(22.5), magnetRestoreDeg: finite.min(.5).max(22.5), aimMagnetDeg: finite.min(0).max(22.5), slowWalk: finite.min(.1).max(1).optional() }).strict(),
         inventory: z.object({ repeatDelay: finite.min(.2).max(5), repeatInterval: finite.min(.1).max(2), align: z.enum(['split', 'center', 'left', 'right']).optional() }).strict(),
         harp: z.object(Object.fromEntries(CHICKEN_INPUT_TYPES.map(t => [t.id, exactMap(HARP_ACTIONS.map(a => a.key), z.array(z.string().max(40).startsWith(t.device === 'gamepad' ? 'Pad:' : 'Key:').nullable()).length(t.slots))]))).strict().optional(),
         wheel: z.object({ up: z.enum(CHICKEN_ACTIONS.map(a => a.key) as [string, ...string[]]).nullable(), down: z.enum(CHICKEN_ACTIONS.map(a => a.key) as [string, ...string[]]).nullable() }).strict().optional(),

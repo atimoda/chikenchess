@@ -18,7 +18,7 @@ import { armMarkup, type ArmsSpec } from './arm-rig'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, SCALE_BASE, chickenClucks, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { barPoint, poseOf } from './body-frame'
-import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, touchMoveExtent, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
 import { grabDamageStep } from './grab-damage'
 import { clingAnim, clingSpeedLimit } from './cling-brood'
@@ -30,7 +30,8 @@ import { createThrowTransition } from './throw-transition'
 import { chickenPlatformElements, chickenPlatformRects, chickenPlatformLines, chickenPlatformWalls, chickenPlatformBounce, chickenPlatformShape, chickenPlatformHard, type PlatformOcclusion } from './platform-geometry'
 import { blockHardWalls, clipAboveGround, crossesFused, fuseFaces, polygonContains, shapeEdges, type FusedBox, type JoinedShape } from './hard-shapes'
 import { trampolineVelocity, type TrampolineParams } from '../pigchicken/trampoline'
-import { allKeyTokens, keyTokensFor, padTokensFor, stickFor, type InputDeviceId } from './input-devices'
+import { allKeyTokens, keyTokensFor, padTokensFor, stickExtentFor, stickFor, type InputDeviceId } from './input-devices'
+import { slowWalkMult } from './analog-walk'
 import { mixGain } from '../pigchicken/mixer'
 import { LIMIT_BORDER } from './limits'
 import { stageWidth } from "../stage-size"
@@ -568,8 +569,16 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   window.addEventListener('blur', onBlur)
   window.addEventListener('pointermove', onPointerMove)
   let cameraResetR3 = false
+  // a key or a d-pad button (not a stick) held for left / right: she walks at full speed (Caminhada lenta)
+  let padDigitalWalk = false
+  const digitalWalk = () => padDigitalWalk || (['left', 'right'] as const).some(k => keyBinds[k].some(t => held.has(t)))
+  // how far the movement stick is pushed (gamepad's left stick or the on-screen one, the further); null without either
+  function moveStickExtent() {
+    const stick = stickExtentFor(devices, 0), touch = virtOk() ? touchMoveExtent() : null
+    return stick == null ? touch : touch == null ? stick : Math.max(stick, touch)
+  }
   function pollPad() {
-    if (bot) { pad = {}; padOwnGrab = false; botNow = bot(); return }
+    if (bot) { pad = {}; padOwnGrab = false; padDigitalWalk = false; botNow = bot(); return }
     const on = padTokensFor(devices, controls.analog.deadzoneL, controls.analog.magnetDeg)
     if (!on.has('Pad:b11')) cameraResetR3 = false
     else if (game.gameMode && on.has('Pad:b8')) cameraResetR3 = true
@@ -577,6 +586,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     pad = {}
     CHICKEN_ACTIONS.forEach(a => { pad[a.key] = controls.pad[a.key].some(t => t && on.has(t)) })
     padOwnGrab = controls.pad.grab.some(t => t && on.has(t) && !controls.pad.run.includes(t))
+    padDigitalWalk = (['left', 'right'] as const).some(k => controls.pad[k].some(t => t && !t.startsWith('Pad:a') && on.has(t)))
   }
   let useSampleAt = -Infinity, useSample = false
 
@@ -837,6 +847,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
         target = dir * R.walkSpeed * mult
         // aiming behind her while walking: she walks backwards, slower
         if (game.aimFace && dir !== 0 && dir !== game.aimFace) target *= R.backpedal / 100
+        // Caminhada lenta: the movement stick pushed less than 80% (not running, no key or d-pad for the direction)
+        if (inputDir !== 0 && !auto && !bot) target *= slowWalkMult({ extent: moveStickExtent(), factor: controls.analog.slowWalk, run: RUN, digital: digitalWalk() })
         target *= game.speedMult
         if (S.standT > 0) {
           const f = S.standT / Math.max(0.01, R.standBoostTime)

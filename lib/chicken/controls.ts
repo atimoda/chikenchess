@@ -61,8 +61,9 @@ export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; 
 ]
 
 // Independent eight-direction magnets for movement and aim; zero disables each.
-export type ChickenAnalog = { deadzoneL: number; deadzoneR: number; magnet: boolean; magnetDeg: number; magnetRestoreDeg: number; aimMagnetDeg: number }
-export const DEFAULT_ANALOG: ChickenAnalog = { deadzoneL: 0.25, deadzoneR: 0.25, magnet: false, magnetDeg: 0, magnetRestoreDeg: 12, aimMagnetDeg: 0 }
+// slowWalk: the speed multiplier while the movement stick is pushed less than 80% (lib/chicken/analog-walk.ts)
+export type ChickenAnalog = { deadzoneL: number; deadzoneR: number; magnet: boolean; magnetDeg: number; magnetRestoreDeg: number; aimMagnetDeg: number; slowWalk: number }
+export const DEFAULT_ANALOG: ChickenAnalog = { deadzoneL: 0.25, deadzoneR: 0.25, magnet: false, magnetDeg: 0, magnetRestoreDeg: 12, aimMagnetDeg: 0, slowWalk: 0.5 }
 
 export type ChickenControls = {
   keys: Record<ChickenAction, Slots>
@@ -178,7 +179,7 @@ export function defaultChickenControls(): ChickenControls {
   const magnetDeg = num(an.magnetDeg, 0, 22.5, d.magnetDeg)
   base.analog = {
     deadzoneL: num(an.deadzoneL, 0, 0.9, d.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, d.deadzoneR),
-    magnet: magnetDeg > 0, magnetDeg, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, d.magnetRestoreDeg), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, d.aimMagnetDeg),
+    magnet: magnetDeg > 0, magnetDeg, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, d.magnetRestoreDeg), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, d.aimMagnetDeg), slowWalk: num(an.slowWalk, 0.1, 1, d.slowWalk),
   }
   base.inventory = inventoryOf(file?.inventory, base.inventory)
   base.wheel = wheelOf(file?.wheel, base.wheel)
@@ -242,7 +243,7 @@ export function loadChickenControls(): ChickenControls {
     // a save without analog settings keeps the defaults file's
     if (saved?.analog && typeof saved.analog === 'object') base.analog = {
       deadzoneL: num(an.deadzoneL, 0, 0.9, base.analog.deadzoneL), deadzoneR: num(an.deadzoneR, 0, 0.9, base.analog.deadzoneR),
-      magnet: movementMagnet > 0, magnetDeg: movementMagnet, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, savedMagnet > 0 ? savedMagnet : 12), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, 0),
+      magnet: movementMagnet > 0, magnetDeg: movementMagnet, magnetRestoreDeg: num(an.magnetRestoreDeg, .5, 22.5, savedMagnet > 0 ? savedMagnet : 12), aimMagnetDeg: num(an.aimMagnetDeg, 0, 22.5, 0), slowWalk: num(an.slowWalk, 0.1, 1, base.analog.slowWalk),
     }
     base.inventory = inventoryOf(saved?.inventory, base.inventory)
     // controls saved before X became run (01/11): X leaves brood and takes RB's place in run
@@ -575,6 +576,8 @@ export function readStick(stick: 0 | 1, deadzone: number): { x: number; y: numbe
 // it in any direction. Same shape as readStick; null at rest or inside the dead zone.
 let touchMove: { x: number; y: number; len: number } | null = null
 export const setTouchMoveStick = (v: { x: number; y: number; len: number } | null) => { touchMove = v }
+// how far the on-screen movement stick is pushed (0..1, dead zone included); null at rest
+export const touchMoveExtent = () => touchMove ? touchMove.len : null
 export function readTouchMoveStick(deadzone: number): { x: number; y: number; mag: number } | null {
   if (!touchMove || touchMove.len <= deadzone || touchMove.len === 0) return null
   const mag = Math.min(1, (touchMove.len - deadzone) / Math.max(0.01, 1 - deadzone))

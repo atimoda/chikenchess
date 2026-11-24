@@ -386,6 +386,8 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
             display={`${controls.analog.magnetDeg}°`} onChange={v => update(c => { c.analog.magnetDeg = v; c.analog.magnet = v > 0; if (v > 0) c.analog.magnetRestoreDeg = v })} />
           <PatioRange label="Força do ímã dos 8 ângulos na mira" min={0} max={22.5} step={0.5} value={controls.analog.aimMagnetDeg}
             display={`${controls.analog.aimMagnetDeg}°`} onChange={v => update(c => { c.analog.aimMagnetDeg = v })} />
+          <PatioRange label="Caminhada lenta (analógico abaixo de 80%)" min={0.1} max={1} step={0.05} value={controls.analog.slowWalk}
+            display={`${controls.analog.slowWalk.toFixed(2).replace(/0$/, "").replace(".", ",")}x`} onChange={v => update(c => { c.analog.slowWalk = v })} />
           </div>
         </section>
         <section className="grid gap-field">
