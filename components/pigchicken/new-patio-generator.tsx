@@ -17,7 +17,7 @@ export function NewPatioGenerator({ onCreate, busy, action = "Criar", withName =
   // a name field (a named Pátio is kept for good)
   withName?: boolean
 }) {
-  const [kind, setKind] = useState<PatioRecipe["kind"]>("biome")
+  const [kind, setKind] = useState<PatioRecipe["kind"]>("empty")
   const [density, setDensity] = useState<number>(BIOME_DENSITY.default)
   const [name, setName] = useState("")
   return (

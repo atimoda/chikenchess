@@ -81,3 +81,59 @@ test('a target Pátio that no longer exists is told apart from one never saved o
   assert.equal(links.MISSING_PATIO_TEXT, 'Este pátio não existe mais...')
   assert.equal(links.targetLobbyId('default'), null); assert.equal(links.targetLobbyId(ID), ID)
 })
+
+test('Praça dos Portais, Sala de armas e Grid com loot: valid example Pátios whose portals lead to the right Pátios', () => {
+  const seed = loadTs('lib/pigchicken/example-seed.ts')
+  const menu = loadTs('lib/pigchicken/example-menu.ts')
+  const items = loadTs('lib/pigchicken/items.ts')
+  const grid = loadTs('lib/pigchicken/example-grid.ts')
+  const byName = name => seed.EXAMPLE_PATIOS.find(e => e.name === name)
+  const ids = new Set(seed.EXAMPLE_PATIOS.map(e => e.id))
+  assert.equal(ids.size, seed.EXAMPLE_PATIOS.length)
+  // only the square becomes the default Pátio
+  assert.deepEqual(seed.EXAMPLE_PATIOS.filter(e => e.default).map(e => e.name), [menu.MENU_NAME])
+  for (const name of [menu.MENU_NAME, 'Sala de armas e instrumentos', 'Grid com loot']) {
+    const ex = byName(name), l = ex.layout()
+    assert.ok(JSON.stringify(l).length < 400000, name)
+    assert.deepEqual(layout.normalizeLayout(JSON.parse(JSON.stringify(l))).elements.length, l.elements.length, name)
+    assert.equal(l.elements.filter(e => e.kind === 'entry').length, 1, name)
+    const end = layout.worldEnd(l.settings.screens)
+    for (const e of l.elements) if (e.kind !== 'zone') assert.ok(e.x + e.w / 2 < end, `${name}: ${e.id} inside the world`)
+    assert.equal(new Set(l.elements.map(e => e.id)).size, l.elements.length, name)
+  }
+  // the square: one portal on its own to each Pátio, the name always shown
+  const portals = byName(menu.MENU_NAME).layout().elements.filter(e => e.kind === 'portal')
+  assert.deepEqual(portals.map(p => p.params.portalTarget).sort(), [...menu.MENU_MAIN, ...menu.MENU_MORE].map(([id]) => id).sort())
+  for (const p of portals) {
+    assert.ok(links.leadsToPatio(p) && p.params.portalPairId === '' && p.params.portalInstruction === 'always')
+    // every target but the Training room (an older row of the database) is an example of the seed
+    if (p.params.portalTarget !== menu.TRAINING_PATIO_ID) assert.ok(ids.has(p.params.portalTarget), p.params.portalLabel)
+  }
+  // the room: every item a rack can hold, once, coming back after 1 s
+  const room = byName('Sala de armas e instrumentos').layout().elements
+  const racks = room.filter(e => e.kind === 'rack')
+  assert.deepEqual(racks.map(r => r.params.item).sort(), [...items.RACK_ITEM_IDS].sort())
+  assert.ok(racks.every(r => r.params.respawnDelay === 1))
+  assert.deepEqual(['pedalharp', 'drumkit', 'grandpiano'].map(k => room.filter(e => e.kind === k).length), [1, 1, 1])
+  // the examples lead back to the default Pátio
+  for (const name of ['Sala de armas e instrumentos', 'Grid com loot']) {
+    const back = byName(name).layout().elements.filter(e => e.kind === 'portal')
+    assert.ok(back.length >= 2 && back.every(p => p.params.portalTarget === layout.DEFAULT_PATIO_TARGET), name)
+  }
+  // the grid: on over the whole world, no bombs, items in a share of the blocks; each place to be born at is a free
+  // block of the ground with a portal back in it
+  const g = byName('Grid com loot').layout()
+  assert.equal(g.settings.mineGrid.on, true)
+  assert.equal(g.settings.mineGrid.bombs, 0)
+  assert.ok(g.settings.mineGrid.items.chance > 0)
+  const geo = grid.gridGeometry()
+  const births = g.elements.filter(e => e.kind === 'entry' || e.kind === 'spawn')
+  assert.equal(births.length, 3)
+  assert.equal(births.reduce((s, e) => s + e.params.spawnChance, 0), 100)
+  const back = g.elements.filter(e => e.kind === 'portal')
+  for (const b of births) {
+    assert.equal(b.params.freeBlock, true)
+    const c = Math.floor((b.x + b.w / 2 - geo.x0) / geo.step), x0 = geo.x0 + c * geo.step
+    assert.equal(back.filter(p => p.x >= x0 && p.x + p.w <= x0 + geo.cell).length, 1)
+  }
+})

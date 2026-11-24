@@ -32,7 +32,7 @@ export type SoulActParams = {
   poopSpare: boolean // it never lets one fall on its owner
   song: number // 0 to 1: each time its clock comes round, the chance it sings the real song of its bird (lib/pigchicken/bird-guide.ts)
 }
-export const SOUL_ACT_DEFAULTS: SoulActParams = { help: 'sing', every: 6, range: 300, power: 0.5, hinder: 'own', chance: 0, force: 0.3, poopEvery: 0, poopDamage: 2, poopSpare: true, song: 0.15 }
+export const SOUL_ACT_DEFAULTS: SoulActParams = { help: 'sing', every: 6, range: 300, power: 0.5, hinder: 'own', chance: 0, force: 0.3, poopEvery: 0, poopDamage: 2, poopSpare: true, song: 0.4 }
 type Numeric = Exclude<keyof SoulActParams, 'help' | 'hinder' | 'poopSpare'>
 export const SOUL_ACT_RANGES: Record<Numeric, { min: number; max: number; step: number }> = {
   every: { min: 1, max: 30, step: 0.5 }, range: { min: 50, max: 800, step: 10 }, power: { min: 0, max: 1, step: 0.05 },
@@ -79,7 +79,7 @@ export const SOUL_ACT = {
   peck: { push: [160, 520] as const, lock: [0.25, 0.9] as const }, // px/s she is knocked; s her item does not answer
   detune: { semis: 0.5, time: [3, 9] as const }, // her notes play this far off, for this long
   // its real song: s before the same soul sings again; px from the middle of the screen at which it is no longer heard
-  song: { gap: 12, far: 1600 },
+  song: { gap: 6, far: 1600 },
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))

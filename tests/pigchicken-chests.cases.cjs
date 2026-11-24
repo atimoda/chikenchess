@@ -180,3 +180,60 @@ test('online: the owner\'s list opens the ones open there (late joiners, quietly
   assert.equal(N.cleanNetChests({l:'x'}),null)
   assert.deepEqual(N.cleanNetChests({l:[['a',-3],[5,1],['b',1e9]],o:1}),{l:[['a',0],['b',3600]],o:1})
 })
+
+test('a won song\'s prize: the items of a Jukebox or Vitrola jump out of it as pickups, nothing for an empty roll',()=>{
+  const c=createCombat()
+  c.popPrize(300,700,['key','pistol'])
+  assert.deepEqual(c.pickups.map(p=>p.owned.item).sort(),['key','pistol'])
+  assert.ok(c.pickups.every(p=>p.noPick>0&&p.vy<0&&Math.abs(p.x-300)<=15))
+  c.popPrize(300,700,[])
+  assert.equal(c.pickups.length,2)
+  // the prize is drawn like a Baú's loot
+  assert.deepEqual(C.rollLoot([{pick:'key',chance:100},{pick:'magic',chance:0}],()=>0.5),['key'])
+})
+
+test('the example Pátio "Arquipélago das Almas": big, mirrored, three lanes of wires, spawns high and low, keys from songs',()=>{
+  const D=loadTs('lib/pigchicken/example-deadlock.ts'), P=loadTs('lib/pigchicken/power-lines.ts'), PS=loadTs('lib/pigchicken/patio-settings.ts')
+  const SEED=loadTs('lib/pigchicken/example-seed.ts'), SP=loadTs('lib/pigchicken/spawn-portals.ts'), W=loadTs('lib/pigchicken/world.ts')
+  const layout=D.deadlockLayout()
+  assert.deepEqual(L.normalizeLayout(JSON.parse(JSON.stringify(layout))),layout)
+  assert.deepEqual(D.deadlockLayout(),layout)
+  assert.ok(JSON.stringify(layout).length<400000)
+  assert.equal(layout.settings.screens,8)
+  const els=L.elementsInWorld(layout,8)
+  assert.equal(els.length,layout.elements.length)
+  assert.ok(els.length<L.LAYOUT_MAX_ELEMENTS)
+  const worldW=W.worldScenes(8)*W.SCENE_W
+  // nothing above the ceiling nor past the world's ends
+  assert.ok(els.every(e=>e.depth||(e.y>=PS.patioWorldTop(layout.settings)&&e.x>=0&&e.x+e.w<=worldW)))
+  // six places to be born at (three on each side, on the ground and on the islands), the chances adding to 100
+  const born=L.spawnPortalsIn?L.spawnPortalsIn(els):els.filter(SP.isSpawnPortal)
+  assert.equal(born.length,6)
+  assert.equal(SP.spawnChances(born).reduce((a,b)=>a+b,0),100)
+  assert.equal(born.filter(p=>p.y<0).length,4)
+  assert.equal(born.filter(p=>p.x<worldW/2).length,3)
+  // every pole and tower is wired by hand to another one; the islands' lanes are floors
+  const power=els.filter(e=>L.isPowerElement(e.kind))
+  assert.ok(power.every(e=>P.linkedTo(els,e.id).size>0))
+  assert.ok(P.powerSpans(els).filter(s=>P.spanFloor(s)).length>150)
+  // the portals have their partners; the sequencers give keys for a won song; the Baús lendários ask for one
+  els.filter(e=>e.kind==='portal').forEach(p=>assert.ok(L.portalPartner(p,els)))
+  const seqs=els.filter(e=>e.kind==='jukebox'||e.kind==='vitrola')
+  assert.equal(seqs.length,6)
+  assert.ok(seqs.every(e=>e.params.player.prize.some(l=>l.pick==='key'&&l.chance===100)))
+  assert.ok(els.filter(e=>e.kind==='chest'&&e.params.chest.rarity==='legendary'&&e.params.chest.lock==='key').length>=5)
+  assert.ok(els.some(e=>e.kind==='chest'&&e.params.chest.lock==='souls'))
+  // each sequencer in a zone of its own (one fase de notas per zone)
+  const zones=els.filter(e=>e.kind==='zone')
+  const inside=(z,e)=>{const x=e.x+e.w/2,y=e.y+e.h;return x>=z.x&&x<=z.x+z.w&&y>=z.y&&y<=z.y+z.h}
+  const zoneOf=e=>zones.filter(z=>inside(z,e)).sort((a,b)=>b.params.zone.priority-a.params.zone.priority)[0]
+  assert.ok(seqs.every(zoneOf))
+  assert.equal(new Set(seqs.map(e=>zoneOf(e).id)).size,seqs.length)
+  // themed items in many places
+  assert.ok(new Set(els.filter(e=>e.kind==='rack').map(e=>e.params.item)).size>=25)
+  const ex=SEED.EXAMPLE_PATIOS.find(e=>e.name==='Arquipélago das Almas')
+  assert.ok(ex)
+  assert.equal(ex.id,'5e7a0c11-0008-4e5a-9c0d-ec5a3b1e0008')
+  assert.deepEqual(ex.layout(),layout)
+  assert.equal(new Set(SEED.EXAMPLE_PATIOS.map(e=>e.id)).size,SEED.EXAMPLE_PATIOS.length)
+})

@@ -26,7 +26,7 @@ import { rackRespawnDelay, RACK_DELAY_STEPS, RACK_REFILL_MAX } from "@/lib/pigch
 import { pressRules, PRESS_GAP, PRESS_LIMIT_MAX, PRESS_WINDOW_STEPS } from "@/lib/pigchicken/button-limit"
 import { CAGE_IDS, CAGE_SOULS_MAX, CONSUMABLE_IDS, DEFAULT_ITEMS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, MINE_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, isCage, loadItems, type ItemId } from "@/lib/pigchicken/items"
 import { addChestItem, CHEST_GLOW, CHEST_RARITIES, defaultChest, type ChestRarity } from "@/lib/pigchicken/chests"
-import { ChestFields, ItemOptGroups } from "./chest-fields"
+import { ChestFields, ItemOptGroups, LootList } from "./chest-fields"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import { depthOffset, followCamera, liveCamera, onCameraMove, screenToWorld, worldToScreen } from "@/lib/pigchicken/live-camera"
 import { moveToDepth } from "@/lib/pigchicken/backdrop-layers"
@@ -936,6 +936,7 @@ function PlayerFields({ player, onChange }: { player: PlayerParams; onChange: (p
   return <div className="grid gap-field">
     <PatioRange label="Precisão mínima" min={PLAYER_ACCURACY.min} max={PLAYER_ACCURACY.max} step={5} value={player.minAccuracy} display={player.minAccuracy ? `${player.minAccuracy}%` : "Nenhuma"} onChange={minAccuracy => set({ minAccuracy }, "player-accuracy")} />
     <PatioRange label="Corações" min={PLAYER_HEARTS.min} max={PLAYER_HEARTS.max} value={player.hearts} onChange={hearts => set({ hearts }, "player-hearts")} />
+    <LootList label="Prêmio ao vencer" groupLabel="Prêmio ao vencer a música" loot={player.prize} onChange={(prize, step) => set({ prize }, step && `player-${step}`)} />
   </div>
 }
 

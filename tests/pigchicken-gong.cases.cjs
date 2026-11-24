@@ -18,10 +18,13 @@ test('a Gongo saved comes back the same; odd values are cleaned and clamped', ()
   assert.equal(odd.stopHits, gong.GONG_STOP_HITS.max)
 })
 
-test("the sequencers' goal: no least accuracy and 3 hearts by default, clamped", () => {
-  assert.deepEqual(gong.defaultPlayer(), { minAccuracy: 0, hearts: 3 })
-  assert.deepEqual(gong.normalizePlayer({ minAccuracy: 70, hearts: 5 }), { minAccuracy: 70, hearts: 5 })
-  assert.deepEqual(gong.normalizePlayer({ minAccuracy: 140, hearts: 0 }), { minAccuracy: 100, hearts: 1 })
+test("the sequencers' goal: no least accuracy, 3 hearts and no prize by default, clamped", () => {
+  assert.deepEqual(gong.defaultPlayer(), { minAccuracy: 0, hearts: 3, prize: [] })
+  assert.deepEqual(gong.normalizePlayer({ minAccuracy: 70, hearts: 5 }), { minAccuracy: 70, hearts: 5, prize: [] })
+  assert.deepEqual(gong.normalizePlayer({ minAccuracy: 140, hearts: 0 }), { minAccuracy: 100, hearts: 1, prize: [] })
+  // the prize for a won song: lines like a Baú's (unknown items leave, chances clamped, at most 12 lines)
+  assert.deepEqual(gong.normalizePlayer({ prize: [{ pick: 'key', chance: 100 }, { pick: 'nope', chance: 50 }, { pick: 'magic', chance: 150 }] }).prize, [{ pick: 'key', chance: 100 }, { pick: 'magic', chance: 100 }])
+  assert.equal(gong.normalizePlayer({ prize: Array.from({ length: 20 }, () => ({ pick: 'any', chance: 50 })) }).prize.length, 12)
   assert.deepEqual(gong.normalizePlayer('x'), gong.defaultPlayer())
   for (const kind of ['jukebox', 'vitrola']) {
     const e = layout.normalizeElement(JSON.parse(JSON.stringify(layout.createElement(kind, 0, 0))))

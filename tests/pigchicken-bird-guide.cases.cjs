@@ -28,6 +28,8 @@ test('the guide: thirty real birds, each with its names, its drawing and its rec
   }
   assert.equal(G.birdCredits().length, G.GUIDE_BIRDS.reduce((n, b) => n + G.birdClips(b.id).length, 0), 'every clip is in the credits')
   assert.equal(G.guideBird('nope').id, G.GUIDE_BIRDS[0].id); assert.equal(G.isGuideBird('ardea-alba'), true); assert.equal(G.isGuideBird('nope'), false)
+  // the synth's piu is the voice of two rare ones only
+  assert.deepEqual(G.GUIDE_BIRDS.filter(b => b.voice === 'bird').map(b => b.id), ['vanellus-chilensis', 'tangara-seledon'])
   // a song three times out of four when it has both; whatever it has otherwise
   assert.equal(G.pickBirdClip('turdus-rufiventris', () => 0).kind, 'song')
   assert.equal(G.pickBirdClip('turdus-rufiventris', () => 0.9).kind, 'call')
@@ -79,7 +81,7 @@ test('the recipe says how a soul like it is made', () => {
 
 test('the real song: a chance each time the clock comes round, never twice in a row; quieter far away', () => {
   const p = { ...A.SOUL_ACT_DEFAULTS, song: 0.5 }
-  assert.ok(A.SOUL_ACT_DEFAULTS.song > 0 && A.SOUL_ACT_DEFAULTS.song <= 0.2, 'low by default')
+  assert.ok(A.SOUL_ACT_DEFAULTS.song > 0 && A.SOUL_ACT_DEFAULTS.song <= 0.5, 'now and then by default')
   assert.equal(A.songDue({ in: 1, ready: false }, p, Infinity, 0.016, () => 0), false, 'not before its clock comes round')
   assert.equal(A.songDue({ in: 0.01, ready: false }, p, Infinity, 0.016, () => 0.49), true)
   assert.equal(A.songDue({ in: 0.01, ready: false }, p, Infinity, 0.016, () => 0.5), false, 'by chance')

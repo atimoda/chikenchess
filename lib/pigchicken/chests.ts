@@ -81,17 +81,22 @@ const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 const validPick = (p: unknown): p is LootEntry['pick'] => typeof p === 'string' && (isLootGroup(p) || (RACK_ITEM_IDS as string[]).includes(p))
 
+// a list of what comes out (a Baú's items, the prize of a Jukebox or Vitrola), cleaned: lines with an unknown item
+// leave, chances are whole percents from 0 to 100, at most CHEST_LOOT_MAX lines; not a list: `fallback`
+export function normalizeLoot(raw: unknown, fallback: LootEntry[]): LootEntry[] {
+  if (!Array.isArray(raw)) return fallback
+  return raw.flatMap(e => {
+    const o = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>
+    return validPick(o.pick) ? [{ pick: o.pick, chance: Math.round(clamp(num(o.chance, 100), 0, 100)) }] : []
+  }).slice(0, CHEST_LOOT_MAX)
+}
+
 // what comes from storage, the database or another player, cleaned
 export function normalizeChest(raw: unknown): ChestParams {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const rarity: ChestRarity = r.rarity === 'legendary' ? 'legendary' : 'simple'
   const lock: ChestLock = r.lock === 'key' || r.lock === 'souls' ? r.lock : 'free'
-  const loot = Array.isArray(r.loot)
-    ? r.loot.flatMap(e => {
-        const o = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>
-        return validPick(o.pick) ? [{ pick: o.pick, chance: Math.round(clamp(num(o.chance, 100), 0, 100)) }] : []
-      }).slice(0, CHEST_LOOT_MAX)
-    : defaultChest(rarity).loot
+  const loot = normalizeLoot(r.loot, defaultChest(rarity).loot)
   return {
     rarity, lock,
     souls: Math.round(clamp(num(r.souls, 5), CHEST_SOULS.min, CHEST_SOULS.max)),

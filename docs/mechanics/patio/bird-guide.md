@@ -6,7 +6,7 @@ Código: `lib/pigchicken/bird-guide.ts` (puro: as aves, as gravações e a ave q
 
 ## Duas camadas (17/11, v2.13.0)
 
-- **Aves reais:** o guia tem 30 aves do Brasil (`GUIDE_BIRDS`). Cada uma guarda o id (o nome científico em minúsculas com hífen), nome científico, nome popular, o nome que usa no jogo (inspirado nos dois, por exemplo “Sabiá Rufiventre”), família, tamanho em cm, onde vive, uma curiosidade, o desenho (uma das formas das almas, o tamanho do pixel pelo tamanho da ave e quatro cores) e a voz do sintetizador das almas que ela inspira (`bird`, `flute` ou `hum`).
+- **Aves reais:** o guia tem 30 aves do Brasil (`GUIDE_BIRDS`). Cada uma guarda o id (o nome científico em minúsculas com hífen), nome científico, nome popular, o nome que usa no jogo (inspirado nos dois, por exemplo “Sabiá Rufiventre”), família, tamanho em cm, onde vive, uma curiosidade, o desenho (uma das formas das almas, o tamanho do pixel pelo tamanho da ave e quatro cores) e a voz do sintetizador das almas que ela inspira. Desde 23/11 (v2.15.1), quando a ficha da ave não diz outra, a voz segue a forma do desenho: sopro `flute`, cordas `harp`, teclas `bells`, percussão `pizz`, rebate `hum`, pintinho `bells`. O “piu” do sintetizador (`bird`) ficou só em duas aves pouco sorteadas, o quero-quero e a saíra-sete-cores; as que já tinham `flute` ou `hum` continuam com elas.
 - **Almas:** continuam sendo as do jogo. Cada ficha da biblioteca tem uma ave que a inspira (`SoulEntry.bird`); uma ave pode inspirar várias almas.
 - **Regra do código (`inspirationOf`):** alma viva, pela espécie do alien e pela família do instrumento (tabela `DAY`, 8 por 5); alma morta, uma ave noturna ou de carniça pela família, duas por família, alternando pela espécie (tabela `NIGHT`: urutau, bacurau, suindara, gavião-carijó, coruja-buraqueira, anu-preto, carcará, urubu); pintinho, *Gallus gallus*; cada rara do jogo tem a sua (tabela `RARE`); uma rara criada pelo admin segue a regra do estado e da família dela. Toda ave do guia inspira ao menos uma alma.
 - **Ficha:** o admin troca a ave no campo Inspiration do editor ([soul-library.md](soul-library.md)); a ficha publicada guarda `bird` só quando difere da regra.
@@ -32,9 +32,9 @@ Código: `lib/pigchicken/bird-guide.ts` (puro: as aves, as gravações e a ave q
 
 ## Canto real das almas soltas (17/11, v2.13.0)
 
-- **Gatilho:** a cada volta do relógio de ações da alma solta (“A cada”, [souls.md](souls.md)), ela sorteia “Canto real” (`song` de `SoulActParams`, 15% por padrão). A mesma alma não canta de novo antes de 12 s (`SOUL_ACT.song.gap`).
+- **Gatilho:** a cada volta do relógio de ações da alma solta (“A cada”, [souls.md](souls.md)), ela sorteia “Canto real” (`song` de `SoulActParams`, 40% por padrão desde 23/11, antes 15%). A mesma alma não canta de novo antes de 6 s (`SOUL_ACT.song.gap`, antes 12 s). Uma ficha que gravou outro valor de “Canto real” guarda o dela.
 - **Efeito:** toca uma gravação da ave da ficha, sorteada (3 em 4 vezes um canto, quando a ave tem canto e chamado), e aparece uma nota ♪ sobre a alma. Não muda o que a alma faz naquela volta: ela ainda pode atrapalhar ou ficar pronta para ajudar.
-- **Volume:** cheio no meio da tela, caindo até zero a 1600 px dele (`songVolume`). No máximo três cantos de almas ao mesmo tempo; os demais são descartados.
+- **Volume:** cheio no meio da tela, caindo até zero a 1600 px dele (`songVolume`). No máximo três gravações ao mesmo tempo, somando almas e assobios dos pássaros (abaixo); as demais são descartadas.
 - **Parâmetro:** “Canto real” na aba Ações do editor de fichas, de 0 a 100%; 0 desliga.
 - **Escopo:** Pátio e Templo, todos os players locais. No online, cada navegador ouve só o canto das almas que ele mesmo simula (as dos seus players).
 
@@ -47,3 +47,11 @@ Código: `lib/pigchicken/bird-guide.ts` (puro: as aves, as gravações e a ave q
 - Padrão de voo por ave, silhueta própria de cada ave, habilidades e patrulha ligadas a traços da ave real.
 - Editor de aves para admin e lotes maiores de aves.
 - Canto real das almas dos outros navegadores no online.
+
+## Assobio real dos pássaros (23/11, v2.15.1)
+
+- **Quem:** os pássaros de `BIRDS` (o alien convertido, que voa, circula ou pousa nos fios, e o morto-vivo que volta como pássaro). Cada tipo aponta para uma ave do guia (`guide`): pardal → *Passer domesticus*, bem-te-vi → *Pitangus sulphuratus*, sabiá → *Turdus rufiventris*, canário → *Sicalis flaveola*, coruja → *Athene cunicularia*.
+- **Gatilho:** o mesmo assobio de antes (a cada `whistle` s do tipo, só dentro da tela e a até 1100 px da galinha).
+- **Efeito:** toca uma gravação sorteada da ave do guia, com o mesmo volume por distância e o mesmo limite de três gravações ao mesmo tempo do canto das almas. A frase do tipo não toca mais no sintetizador; ela só volta quando a ave do guia não tem gravação. A nota lançada contra a galinha, que chega na batida e pode ser rebatida, continua igual.
+- **Vozes dos tipos:** pardal `pizz`, bem-te-vi `bells`, canário `flute` (antes os três usavam o piu `bird`); sabiá `flute` e coruja `hum` como antes. Essa voz toca a frase da ressurreição do morto-vivo-pássaro e as notas da conversão: as notas de morte musical padrão que eram piu (`bird`) passam a tocar na voz do pássaro em que o alien virou.
+- **Escopo:** Pátio e Templo, local e online (cada navegador toca os assobios que ele mesmo simula).

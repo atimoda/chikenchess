@@ -2,7 +2,7 @@
 
 // The Editar panel of a Baú (lib/pigchicken/chests.ts): its rarity, what opens it and what comes out of it, each line
 // a specific item or a group (one of its items is drawn) with its own chance. Also the item dropdown's groups, shared
-// by the racks and loose items.
+// by the racks and loose items, and the list of lines itself, shared by the prize of the Jukebox and the Vitrola.
 import { StepSelect } from "@/components/ui/step-select"
 import { Plus, X } from "lucide-react"
 import { CHEST_LOCKS, CHEST_LOOT_MAX, CHEST_RARITIES, CHEST_REOPEN_MAX, CHEST_SOULS, LOOT_GROUPS, type ChestLock, type ChestParams, type ChestRarity, type LootEntry } from "@/lib/pigchicken/chests"
@@ -27,7 +27,6 @@ export function ItemOptGroups() {
 
 export function ChestFields({ chest, onChange }: { chest: ChestParams; onChange: (chest: ChestParams, step?: string) => void }) {
   const set = (patch: Partial<ChestParams>, step?: string) => onChange({ ...chest, ...patch }, step)
-  const setLine = (i: number, patch: Partial<LootEntry>, step?: string) => set({ loot: chest.loot.map((e, j) => (j === i ? { ...e, ...patch } : e)) }, step && `${step}-${i}`)
   return <>
     <label className="grid gap-1">
       <span>Raridade</span>
@@ -51,26 +50,32 @@ export function ChestFields({ chest, onChange }: { chest: ChestParams; onChange:
       <input aria-label="Fecha de novo após" type="number" min={0} max={CHEST_REOPEN_MAX} step={1} value={chest.reopen}
         onChange={e => { if (e.target.value !== "") set({ reopen: Math.max(0, Math.min(CHEST_REOPEN_MAX, Number(e.target.value))) }, "chest-reopen") }} className={FIELD} />
     </label>
-    <div className="grid min-w-0 gap-1.5" role="group" aria-label="Itens do baú">
-      <span>Itens</span>
-      {chest.loot.map((e, i) => (
-        <div key={i} className="flex min-w-0 items-center gap-1.5">
-          <StepSelect aria-label={`Item ${i + 1}`} value={e.pick} onChange={ev => setLine(i, { pick: ev.target.value as LootEntry["pick"] })} className={`${FIELD} min-w-0 flex-1`}>
-            <optgroup label="Aleatório">{LOOT_GROUPS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}</optgroup>
-            <ItemOptGroups />
-          </StepSelect>
-          <label className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-white/15 bg-[#0b110e] pr-2" title="Chance de este item sair">
-            <input aria-label={`Chance do item ${i + 1}`} type="number" min={0} max={100} step={5} value={e.chance}
-              onChange={ev => { if (ev.target.value !== "") setLine(i, { chance: Math.round(Math.max(0, Math.min(100, Number(ev.target.value)))) }, "chest-chance") }}
-              className="h-full w-12 bg-transparent pl-2 text-right outline-none" />
-            <span className="text-[#93a79a]">%</span>
-          </label>
-          <button type="button" aria-label={`Tirar item ${i + 1}`} onClick={() => set({ loot: chest.loot.filter((_, j) => j !== i) })}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
-        </div>
-      ))}
-      {chest.loot.length < CHEST_LOOT_MAX && <button type="button" onClick={() => set({ loot: [...chest.loot, { pick: "any", chance: 100 }] })}
-        className="flex h-9 items-center justify-center gap-1.5 rounded-md border border-dashed border-white/20 hover:border-primary hover:text-white"><Plus className="h-4 w-4" />Item</button>}
-    </div>
+    <LootList label="Itens" groupLabel="Itens do baú" loot={chest.loot} onChange={(loot, step) => set({ loot }, step)} />
   </>
+}
+
+// lines of what comes out: a specific item or a group, each with its chance; "+ Item" adds Qualquer item at 100%
+export function LootList({ label, groupLabel, loot, onChange }: { label: string; groupLabel: string; loot: LootEntry[]; onChange: (loot: LootEntry[], step?: string) => void }) {
+  const setLine = (i: number, patch: Partial<LootEntry>, step?: string) => onChange(loot.map((e, j) => (j === i ? { ...e, ...patch } : e)), step && `${step}-${i}`)
+  return <div className="grid min-w-0 gap-1.5" role="group" aria-label={groupLabel}>
+    <span>{label}</span>
+    {loot.map((e, i) => (
+      <div key={i} className="flex min-w-0 items-center gap-1.5">
+        <StepSelect aria-label={`Item ${i + 1}`} value={e.pick} onChange={ev => setLine(i, { pick: ev.target.value as LootEntry["pick"] })} className={`${FIELD} min-w-0 flex-1`}>
+          <optgroup label="Aleatório">{LOOT_GROUPS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}</optgroup>
+          <ItemOptGroups />
+        </StepSelect>
+        <label className="flex h-9 shrink-0 items-center gap-1 rounded-md border border-white/15 bg-[#0b110e] pr-2" title="Chance de este item sair">
+          <input aria-label={`Chance do item ${i + 1}`} type="number" min={0} max={100} step={5} value={e.chance}
+            onChange={ev => { if (ev.target.value !== "") setLine(i, { chance: Math.round(Math.max(0, Math.min(100, Number(ev.target.value)))) }, "chest-chance") }}
+            className="h-full w-12 bg-transparent pl-2 text-right outline-none" />
+          <span className="text-[#93a79a]">%</span>
+        </label>
+        <button type="button" aria-label={`Tirar item ${i + 1}`} onClick={() => onChange(loot.filter((_, j) => j !== i))}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+      </div>
+    ))}
+    {loot.length < CHEST_LOOT_MAX && <button type="button" onClick={() => onChange([...loot, { pick: "any", chance: 100 }])}
+      className="flex h-9 items-center justify-center gap-1.5 rounded-md border border-dashed border-white/20 hover:border-primary hover:text-white"><Plus className="h-4 w-4" />Item</button>}
+  </div>
 }

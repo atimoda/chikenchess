@@ -3,6 +3,7 @@ const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const ud = loadTs('lib/pigchicken/undead.ts')
 const birds = loadTs('lib/pigchicken/birds.ts')
+const guide = loadTs('lib/pigchicken/bird-guide.ts')
 const sz = loadTs('lib/pigchicken/sound-zones.ts')
 const { createCombat } = loadTs('lib/pigchicken/combat.ts')
 
@@ -81,6 +82,11 @@ test('birds: types for each place, their phrase on the scale, darkened when unde
   assert.deepEqual(live.map(o => o.midi), [60, 64, 67]); assert.deepEqual(live.map(o => o.at), [0, 0.25, 0.5])
   assert.deepEqual(birds.birdPhrase(t, 60, C, 'parallel').map(o => o.midi), [60, 63, 67], 'C major → C minor')
   assert.deepEqual(sz.normalizeSoundZone({ birds: ['sabia', 'nope', 'sabia'] }).birds, ['sabia'])
+  // each type whistles the recordings of a real bird of the guide, and none sings in the synth's piu
+  for (const b of Object.values(birds.BIRDS)) {
+    assert.ok(guide.isGuideBird(b.guide) && guide.birdClips(b.guide).length, b.id)
+    assert.notEqual(b.voice, 'bird', b.id)
+  }
 })
 
 // ---------- in the combat ----------
@@ -146,8 +152,11 @@ test('a converted alien becomes a bird of the place that whistles notes she can 
   const bird = w.c.critters[0]
   assert.ok(bird && bird.bird, 'a typed bird')
   assert.ok(birds.ZONE_BIRDS.campo.includes(bird.bird), "the Campo's birds")
+  w.c.songs.length = 0; w.played.length = 0
   bird.whistleIn = 0
   wait(w.c, 0.05)
+  assert.deepEqual(w.c.songs.map(s => s.bird), [birds.BIRDS[bird.bird].guide], 'its whistle is a recording of its real bird')
+  assert.ok(!w.played.some(n => n.voice === 'bird'), 'not the synth\'s piu')
   const shot = w.c.noteShots.find(n => n.source === 'bird')
   assert.ok(shot, 'it whistled a note at her')
   assert.equal(shot.state, 'incoming')

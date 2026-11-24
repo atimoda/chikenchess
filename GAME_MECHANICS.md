@@ -36,6 +36,7 @@
 | Pátio: instrumentos fixos (Harpa de pedais: sentar, tocar parada, duas mãos, dedos na tela, levantar; Bateria: peças, baquetas, atalhos, pedal do chimbal, rufo, editor do kit; Piano de cauda: Estrela sentada, dinâmica pelas binds, levantar com Golpe) | [Instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) |
 | Pátio: Baú do Modo editor (abrir por chave ou merecimento, itens com chance, raridade, Pátio online) e item Chave | [Baú e Chave](docs/mechanics/patio/chests.md) |
 | Pátio: Quadro de lousa, fantasma de treino e o Pátio Training room | [Treino](docs/mechanics/patio/training.md) |
+| Pátio: Arquipélago das Almas (Pátio de exemplo de faixas, inspirado em Deadlock: bases, três faixas de ilhas e fios, centro com prêmios e Baús de chave) | [Arquipélago das Almas](docs/mechanics/patio/arquipelago.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, presos às camadas do fundo, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
 | Pátio: aurora no céu (Configurações do Pátio → Aurora) | [Aurora](docs/mechanics/patio/aurora.md) |
 | Pátio: brilho dos itens caídos no chão (Configurações do Pátio → Brilho dos itens: coluna de luz, contorno aceso, cor) | [Brilho dos itens](docs/mechanics/patio/item-glow.md) |
@@ -126,6 +127,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: Suportes de item](docs/mechanics/patio/racks.md) | 4 KB |
 | [Pátio: instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) | 22 KB |
 | [Pátio: Quadro de lousa, fantasma e Training room](docs/mechanics/patio/training.md) | 4 KB |
+| [Pátio: Arquipélago das Almas](docs/mechanics/patio/arquipelago.md) | 6 KB |
 | [Pátio: padrões do jogo e painéis de configuração](docs/mechanics/patio/game-defaults.md) | 7 KB |
 | [Pátio: brilho dos itens](docs/mechanics/patio/item-glow.md) | 2 KB |
 | [Pátio: itens, inventário e consumíveis](docs/mechanics/patio/items.md) | 28 KB |

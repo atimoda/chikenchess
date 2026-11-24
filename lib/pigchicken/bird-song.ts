@@ -1,7 +1,7 @@
 // The real songs of the Guia de pássaros, played: a clip is fetched and decoded the first time it is asked for
 // (public/samples/birds-v1, Opus with an AAC twin) and kept. They play on the shared audio context, on the mixer's
 // "Efeitos do cenário" layer. The guide's panel plays one at a time (a new one cuts the last short); the souls flying
-// free sing over each other, a few at most.
+// free and the birds whistling (lib/pigchicken/birds.ts) sing over each other, a few at most.
 import { sampleUrl } from '@/lib/music/sample-format'
 import { BIRD_SONGS_FOLDER, pickBirdClip, type BirdClip } from './bird-guide'
 import { mixGain } from './mixer'
@@ -19,7 +19,7 @@ function load(a: AudioContext, file: string) {
 
 type Playing = { src: AudioBufferSourceNode; gain: GainNode }
 const BASE = 0.9 // a clip at full volume, before the mixer
-const MAX_FREE = 3 // souls' songs at once
+const MAX_FREE = 3 // songs at once out of the guide (the souls' and the birds' whistles)
 let solo: Playing | null = null, asked = 0
 const free = new Set<Playing>()
 
@@ -59,7 +59,7 @@ export function stopBirdClip() {
   solo = null
 }
 
-/** A soul flying free sings like its bird: one of the bird's clips at random, at `volume` (0 to 1: how near it is). */
+/** A soul flying free (or a bird whistling) sings like its real bird: one of its clips at random, at `volume` (0 to 1: how near it is). */
 export function playBirdSong(bird: string, volume: number) {
   const a = audio(), clip = pickBirdClip(bird)
   if (!a || !clip || volume <= 0.02 || free.size >= MAX_FREE) return

@@ -2,6 +2,7 @@
 // Jukebox and the Vitrola are the sequencers: each one opens the songs' panel, keeps its own pick and plays it (the
 // fase de notas, bound to the zone it stands in). A Gongo has no song: after its strikes it presses Tocar on the
 // sequencer of its zone. Pure: the params, their limits and the strikes' count.
+import { normalizeLoot, type LootEntry } from './chests'
 export type GongParams = {
   hits: number // strikes to start it
   lamps: boolean // the little lamps of the strikes so far
@@ -67,14 +68,15 @@ export function stepGong(run: GongRun, p: GongParams, dt: number) {
 }
 
 // ---------- the sequencers' goal ----------
-// what a Jukebox or a Vitrola asks of its songs: the least accuracy at the end (%, 0 = none) and the hearts
-export type PlayerParams = { minAccuracy: number; hearts: number }
+// what a Jukebox or a Vitrola asks of its songs: the least accuracy at the end (%, 0 = none) and the hearts; and
+// what it gives for a won song: its prize, lines of items or groups with a chance each, like a Baú's (empty: none)
+export type PlayerParams = { minAccuracy: number; hearts: number; prize: LootEntry[] }
 export const PLAYER_ACCURACY = { min: 0, max: 100 }
 export const PLAYER_HEARTS = { min: 1, max: 9 }
-export const defaultPlayer = (): PlayerParams => ({ minAccuracy: 0, hearts: 3 })
+export const defaultPlayer = (): PlayerParams => ({ minAccuracy: 0, hearts: 3, prize: [] })
 export function normalizePlayer(raw: unknown): PlayerParams {
   const d = defaultPlayer()
   if (!raw || typeof raw !== 'object') return d
   const p = raw as Record<string, unknown>
-  return { minAccuracy: int(p.minAccuracy, d.minAccuracy, PLAYER_ACCURACY.min, PLAYER_ACCURACY.max), hearts: int(p.hearts, d.hearts, PLAYER_HEARTS.min, PLAYER_HEARTS.max) }
+  return { minAccuracy: int(p.minAccuracy, d.minAccuracy, PLAYER_ACCURACY.min, PLAYER_ACCURACY.max), hearts: int(p.hearts, d.hearts, PLAYER_HEARTS.min, PLAYER_HEARTS.max), prize: normalizeLoot(p.prize, d.prize) }
 }

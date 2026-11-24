@@ -21,7 +21,7 @@ import { ForestFields } from "./forest-fields"
 import { SkylineFields } from "./skyline-fields"
 import { backdropLayers } from "@/lib/pigchicken/backdrop-layers"
 import { MOUNTAINS_DEFAULT } from "@/lib/pigchicken/mountains"
-import { ITEM_GLOW, ITEM_GLOW_COLOR } from "@/lib/pigchicken/item-glow"
+import { ITEM_GLOW, ITEM_GLOW_GROUPS, sameItemGlowColors, type ItemGlowColors } from "@/lib/pigchicken/item-glow"
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 // the zoom's slider runs on a log scale (each step the same proportion); its left end, below the floor, is the
@@ -49,10 +49,11 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
   const inventory = patioInventoryLimit(layout.settings)
   const itemsLabel = `${inventory} ${inventory === 1 ? "item" : "itens"}`
   const glow = patioItemGlow(layout.settings)
-  // Brilho dos itens: 0 takes it out of the Pátio's settings (off, as before it existed); the color stays meanwhile
-  const setGlow = (amount: number, color = glow.color) => {
+  // Brilho dos itens: 0 with the default colors takes it out of the Pátio's settings (off, as before it existed);
+  // the colors of each group stay meanwhile
+  const setGlow = (amount: number, colors: ItemGlowColors = glow.colors) => {
     const { itemGlow: _old, ...rest } = layout.settings ?? {}
-    onChange({ ...layout, settings: amount > 0 || color !== ITEM_GLOW_COLOR ? { ...rest, itemGlow: { amount, color } } : rest })
+    onChange({ ...layout, settings: amount > 0 || !sameItemGlowColors(colors) ? { ...rest, itemGlow: { amount, colors } } : rest })
   }
   const set = (next: PatioSettings) => onChange({ ...layout, settings: { ...layout.settings, ...next } })
   const width = worldScenes(screens) * SCENE_W
@@ -91,11 +92,18 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
             }}
             onReset={() => set({ zoom: base.zoom })}
             hint="Até onde a câmera afasta (ponto da esquerda) e aproxima (ponto da direita). Na ponta esquerda, Pátio inteiro: afasta até o Pátio todo caber na tela." />
-          <div className="grid grid-cols-[1fr_40px] items-center gap-1.5">
+          <div className="space-y-1.5">
             <PatioRange label="Brilho dos itens" min={ITEM_GLOW.min} max={ITEM_GLOW.max} step={ITEM_GLOW.step} value={glow.amount}
               display={glow.amount ? `${glow.amount}%` : "Desligado"} onChange={v => setGlow(v)} onReset={() => setGlow(0)}
-              hint="Uma coluna de luz sobre cada item caído no chão e um contorno aceso em volta dele. Valores baixos ficam bem suaves." />
-            <input type="color" aria-label="Cor do brilho dos itens" title="Cor do brilho dos itens" value={glow.color} onChange={e => setGlow(glow.amount, e.target.value)} className="h-10 w-10 cursor-pointer rounded-md border border-white/15 bg-transparent p-0" />
+              hint="Uma coluna de luz sobre cada item caído no chão e um contorno aceso em volta dele, na cor do grupo do item. Valores baixos ficam bem suaves." />
+            <div className="grid grid-cols-4 gap-1.5">
+              {ITEM_GLOW_GROUPS.map(g => (
+                <label key={g.id} title={`Cor do brilho: ${g.label}`} className="flex cursor-pointer flex-col items-center gap-1 text-[10px] text-[#b9c7b9]">
+                  <input type="color" aria-label={`Cor do brilho: ${g.label}`} value={glow.colors[g.id]} onChange={e => setGlow(glow.amount, { ...glow.colors, [g.id]: e.target.value })} className="h-8 w-full cursor-pointer rounded-md border border-white/15 bg-transparent p-0" />
+                  {g.label}
+                </label>
+              ))}
+            </div>
           </div>
           <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Cada cena toca a sua zona (Campo, Noite, Feira…). Desligado, só as Zonas do mapa tocam; fora delas não há percussão nem drone.">
             <span>Zonas das cenas</span>

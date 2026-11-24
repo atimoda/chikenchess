@@ -253,7 +253,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
   const [confirmDel, setConfirmDel] = useState<string | null>(null)
   const [dup, setDup] = useState<Dup>(null)
   const [tick, setTick] = useState(0)
-  // the generator of a Pátio "do zero" (Empty or Basic biome)
+  // the generator of a new Pátio (Empty, the default, or Basic biome)
   const [generator, setGenerator] = useState(false)
   const local = useMemo(() => { void tick; return localPatios() }, [tick])
   const seenRefresh = useRef(refreshKey)
@@ -315,8 +315,7 @@ export function PatioOpenPanel({ currentId, me, isAdmin, isAccount, onOpen, onNe
     <FloatingPanel id="patio-open" aria-label="Playgrounds" initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(580, vw - 24) - 12), y: 64, w: Math.min(580, vw - 24), h: Math.min(720, vh - 80) })} bodyClassName={panelBody} className={panelCls}>
       <PanelHead title="Playgrounds" icon={<FolderOpen className="h-4 w-4 text-[#ffd166]" />} onClose={onClose} />
       <div className="flex shrink-0 gap-2">
-        <button type="button" onClick={() => onNew("default")} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]")}><Plus className="h-4 w-4" /> Novo Pátio padrão</button>
-        <button type="button" aria-expanded={generator} onClick={() => setGenerator(v => !v)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]", generator && "bg-[#ffd166]/15")}><Plus className="h-4 w-4" /> Novo Pátio do zero</button>
+        <button type="button" aria-expanded={generator} onClick={() => setGenerator(v => !v)} className={cn(btn, "h-9 flex-1 justify-start border-[#ffd166] text-[#ffd166]", generator && "bg-[#ffd166]/15")}><Plus className="h-4 w-4" /> Novo Pátio</button>
       </div>
       {generator && <div className="shrink-0"><NewPatioGenerator onCreate={recipe => onNew(recipe)} /></div>}
 

@@ -23,7 +23,10 @@ export type GuideBird = {
 // kind: a song or a call; xc: its number in xeno-canto's catalogue; by: who recorded it
 export type BirdClip = { file: string; kind: 'song' | 'call'; seconds: number; xc: number; by: string; country: string; license: string; licenseUrl: string; url: string }
 
-const bird = (id: string, sci: string, name: string, game: string, family: string, cm: number, where: string, about: string, shape: GuideShape, colours: [string, string, string, string], voice: VoiceId = 'bird'): GuideBird =>
+// the voice of its souls' notes by the shape of its drawing, when it names none (the synth's "piu", 'bird', is kept for
+// two rare ones only: it tires quickly)
+const SHAPE_VOICE: Record<GuideShape, VoiceId> = { wind: 'flute', strings: 'harp', keys: 'bells', percussion: 'pizz', rebate: 'hum', chick: 'bells' }
+const bird = (id: string, sci: string, name: string, game: string, family: string, cm: number, where: string, about: string, shape: GuideShape, colours: [string, string, string, string], voice: VoiceId = SHAPE_VOICE[shape]): GuideBird =>
   ({ id, sci, name, game, family, cm, where, about, shape, pixel: cm < 14 ? 3 : cm < 20 ? 4 : cm < 32 ? 5 : cm < 50 ? 6 : cm < 70 ? 7 : 8, body: colours[0], wing: colours[1], belly: colours[2], beak: colours[3], voice })
 
 export const GUIDE_BIRDS: readonly GuideBird[] = [
@@ -34,7 +37,7 @@ export const GUIDE_BIRDS: readonly GuideBird[] = [
   bird('athene-cunicularia', 'Athene cunicularia', 'Coruja-buraqueira', 'Coruja Cunicular', 'Strigidae', 23, 'Campos, pastos e terrenos baldios', 'Mora em buracos no chão e fica ativa também de dia.', 'rebate', ['#8a6f4e', '#6a543a', '#e6d8bd', '#d8cf9a'], 'hum'),
   bird('eupetomena-macroura', 'Eupetomena macroura', 'Beija-flor-tesoura', 'Tesoura Macroura', 'Trochilidae', 17, 'Jardins, cerrado e bordas de mata', 'Um dos maiores beija-flores do Brasil. Para no ar e defende as flores com valentia.', 'wind', ['#1f7a5c', '#2a2f5e', '#2c3fa8', '#1a1a1a']),
   bird('furnarius-rufus', 'Furnarius rufus', 'João-de-barro', 'João Rufo', 'Furnariidae', 19, 'Campos, fazendas e cidades', 'Constrói uma casa de barro em forma de forno. O casal canta em dueto.', 'percussion', ['#b5713a', '#8f5528', '#e9d3b0', '#5a4632']),
-  bird('vanellus-chilensis', 'Vanellus chilensis', 'Quero-quero', 'Quero-quero Chileno', 'Charadriidae', 35, 'Campos, gramados e várzeas', 'Sentinela dos campos: dá o alarme a qualquer hora e tem esporões nas asas.', 'strings', ['#9a9a94', '#5e6b4f', '#f2f2ee', '#c9506a']),
+  bird('vanellus-chilensis', 'Vanellus chilensis', 'Quero-quero', 'Quero-quero Chileno', 'Charadriidae', 35, 'Campos, gramados e várzeas', 'Sentinela dos campos: dá o alarme a qualquer hora e tem esporões nas asas.', 'strings', ['#9a9a94', '#5e6b4f', '#f2f2ee', '#c9506a'], 'bird'),
   bird('zonotrichia-capensis', 'Zonotrichia capensis', 'Tico-tico', 'Tico-tico Capense', 'Passerellidae', 15, 'Do campo à cidade, em quase toda a América do Sul', 'Topete listrado e colar ferrugem. Cada região tem o seu dialeto de canto.', 'strings', ['#8a6a48', '#5f4630', '#dcd6c8', '#6a6a6a']),
   bird('thraupis-sayaca', 'Thraupis sayaca', 'Sanhaço-cinzento', 'Sanhaço Saiaca', 'Thraupidae', 17.5, 'Pomares, praças e bordas de mata', 'Cinza-azulado e comedor de frutas. Canto agudo e apressado.', 'keys', ['#8fa9b8', '#4f8fb0', '#b9c9cf', '#3a3f45']),
   bird('columbina-talpacoti', 'Columbina talpacoti', 'Rolinha-roxa', 'Rolinha Talpacoti', 'Columbidae', 17, 'Cidades, roças e campos', 'A pombinha mais comum das cidades. Arrulha baixo e repetido.', 'percussion', ['#a8623c', '#8a4f30', '#c98a6a', '#5a4a40'], 'hum'),
@@ -50,7 +53,7 @@ export const GUIDE_BIRDS: readonly GuideBird[] = [
   bird('nyctibius-griseus', 'Nyctibius griseus', 'Urutau', 'Urutau Gríseo', 'Nyctibiidae', 36, 'Bordas de mata e cerrados', 'De dia imita um toco de árvore. À noite solta um lamento que desce a escala: é a mãe-da-lua.', 'rebate', ['#7a6e5e', '#5a5045', '#9a8f7c', '#3a342c'], 'flute'),
   bird('procnias-nudicollis', 'Procnias nudicollis', 'Araponga', 'Araponga Nudicole', 'Cotingidae', 27, 'Mata Atlântica', 'O grito soa como martelo na bigorna e é um dos mais altos entre as aves.', 'percussion', ['#f2f2f0', '#dcdcdc', '#ffffff', '#2aa198']),
   bird('cyphorhinus-arada', 'Cyphorhinus arada', 'Uirapuru-verdadeiro', 'Uirapuru Arada', 'Troglodytidae', 12.5, 'Amazônia', 'Canto de flauta da floresta. A lenda diz que a mata se cala para ouvir.', 'strings', ['#8a4a2a', '#5e3a26', '#c9703a', '#2f2a26'], 'flute'),
-  bird('tangara-seledon', 'Tangara seledon', 'Saíra-sete-cores', 'Saíra Seledon', 'Thraupidae', 13.5, 'Mata Atlântica', 'Sete cores na plumagem. Vive em bandos pela copa das árvores.', 'keys', ['#36b37e', '#1c1c22', '#2a7fd0', '#1a1a1a']),
+  bird('tangara-seledon', 'Tangara seledon', 'Saíra-sete-cores', 'Saíra Seledon', 'Thraupidae', 13.5, 'Mata Atlântica', 'Sete cores na plumagem. Vive em bandos pela copa das árvores.', 'keys', ['#36b37e', '#1c1c22', '#2a7fd0', '#1a1a1a'], 'bird'),
   bird('cariama-cristata', 'Cariama cristata', 'Seriema', 'Seriema Cristata', 'Cariamidae', 90, 'Cerrados e campos', 'Corre mais do que voa. A gargalhada dela é ouvida a mais de um quilômetro.', 'strings', ['#a89a80', '#7a6e5a', '#d9d0bd', '#d8452a']),
   bird('gallus-gallus', 'Gallus gallus', 'Galo-doméstico', 'Pinto Galo', 'Phasianidae', 45, 'Quintais e galinheiros do mundo todo', 'Parente da galinha do jogo. O pintinho pia para a mãe o achar.', 'chick', ['#ffd23f', '#f4a261', '#fff3b0', '#f77f00']),
   bird('tyto-furcata', 'Tyto furcata', 'Suindara', 'Suindara Furcata', 'Tytonidae', 36, 'Torres, forros e campos abertos', 'Rosto em forma de coração. Caça no escuro pelo ouvido e grita como pano rasgando.', 'rebate', ['#d8b878', '#a89070', '#f4efe2', '#e8dcc0'], 'hum'),

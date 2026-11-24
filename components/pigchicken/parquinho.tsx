@@ -83,6 +83,7 @@ import { GONG_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { GOAL_DEFAULT, type NoteStage, type NoteStageIO, type NoteStageSound, type StageBy, type StageRequest } from "@/lib/pigchicken/note-stage"
 import { createNoteStages } from "@/lib/pigchicken/note-stages"
+import { rollLoot } from "@/lib/pigchicken/chests"
 import { drawNoteShots, drawNoteStageHud, drawStageDebug, drawStageFan, drawStageTalk } from "@/components/pigchicken/note-stage-draw"
 import { CAMPAIGN_ID, loadLibrary, nowPlaying, onPlayDraft, onPlaySong, onStopSong, openJukebox, pickOf, recordScore, subscribeLibrary, type DraftRequest } from "@/lib/pigchicken/song-library"
 import { defaultPlayer, newGongRun, stepGong, strikeGong, type GongParams, type GongRun, type PlayerParams } from "@/lib/pigchicken/gong"
@@ -1667,6 +1668,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       stageSounds.splice(0).forEach(e => playNoteStageSound(e, mixGain("effects")))
       // a new record: the song's best score is kept (and the banner says so)
       for (const r of stages.takeResults()) {
+        // a won song of a Jukebox or a Vitrola with a prize: its items jump out of it (in this browser, like a Baú's)
+        const prize = r.ok && r.request.device ? playerSet.get(r.request.device)?.prize : undefined
+        const dev = prize?.length ? combat.targets.find(t => t.label === r.request.device) : undefined
+        if (prize && dev) combat.popPrize(dev.x, dev.y - dev.h, rollLoot(prize))
         if (!r.ok || !r.request.record) continue
         const st = stages.all.find(x => x.request === r.request)
         if (recordScore(r.request.song.id, r.score, r.accuracy) && st?.state.banner) st.state.banner.title += " · novo recorde!"

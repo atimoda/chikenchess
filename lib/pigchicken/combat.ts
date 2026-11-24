@@ -11,7 +11,7 @@ import { SOUL_FLIGHT, createSoulBrain, soulErrandStep, soulFollowStep, spreadSou
 import { newSoulRoam, roamLift, soulFleeStep, soulRoamStep, type SoulRoam } from './soul-roam'
 import { POOP, newPoop, poopFall, poopHits, poopKnock, poopUnder, poopWait, type Poop } from './poop'
 import { SOUL_ACT, actClockStep, actDone, actLerp, hinderOf, newActClock, songDue, type SoulActClock, type SoulActParams, type SoulHinder } from './soul-acts'
-import { guideBird } from './bird-guide'
+import { birdClips, guideBird } from './bird-guide'
 import { entryActParams, entryFollowParams, entryOf } from './soul-library'
 import { crossedTop, landing } from './box-tops'
 import { UNDEAD_DEFAULTS, UNDEAD_MAX, deathNotes, deathSoundsFor, floorUnder, newUndead, stepUndead, type UndeadParams, type UndeadState } from './undead'
@@ -377,7 +377,8 @@ export function createCombat() {
   const booms: Boom[] = [], tracers: Tracer[] = []
   // sounds to play this frame (the Parquinho drains it)
   const sounds: { kind: WeaponSound; item: ItemId | null }[] = []
-  // the real songs the souls flying free started this frame (the Parquinho drains it: lib/pigchicken/bird-song.ts)
+  // the real songs started this frame: the souls flying free and the birds' whistles (the Parquinho drains it:
+  // lib/pigchicken/bird-song.ts)
   const songs: { bird: string; x: number; y: number }[] = []
   const sound = (kind: WeaponSound, item: ItemId | null = held()?.item ?? null) => {
     const d = item ? items[item] : null
@@ -1038,7 +1039,8 @@ export function createCombat() {
         bird: type.id, homeX: t.x, homeY: top - 60, whistleIn: whistleTime(type), soul: originOf(soulSpecies(t.data), 'alive', t.soul) })
       conv.birds++
       // its musical death on the grid
-      playNotes(deathNotes(deathSoundsFor(t.data).musical, chord, music.secondsPerBeat()), 'bird')
+      // (the synth's "piu" of the default sounds gives way to the voice of the bird it became)
+      playNotes(deathNotes(deathSoundsFor(t.data).musical, chord, music.secondsPerBeat()).map(o => (o.voice === 'bird' ? { ...o, voice: type.voice } : o)), type.voice)
       burst(t.x, top, 16, color, 200, 4)
     } else {
       critters.push({ kind: 'person', x: t.x, y: t.y, vx: away * rand(230, 290) + (t.blast?.vx ?? 0), vy: t.blast?.vy ?? 0, t: 0, color: '#ff6b9a', face: away, groundY: t.y })
@@ -1101,7 +1103,8 @@ export function createCombat() {
     burst(t.x, t.y - t.h / 2, 16, color, 200, 4)
     addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6')
   }
-  // a bird whistles: its phrase, and its last note flies to the nearest player, arriving on a beat (she can rebate it)
+  // a bird whistles: a recording of its real bird (its phrase in the synth when that bird has none), and the phrase's
+  // last note flies to the nearest player, arriving on a beat (she can rebate it)
   function whistle(x: number, y: number, type: BirdType, undead: UndeadMode | null) {
     const her = lastBody
     if (!her || x < view.l - 40 || x > view.r + 40) return
@@ -1114,7 +1117,8 @@ export function createCombat() {
     const T = (beats - music.beat) * spb
     const h = harmonyNow()
     const phrase = birdPhrase(type, h.chord[0] + 12, h, undead, 0.4)
-    playNotes(phrase, type.voice)
+    if (birdClips(type.guide).length) songs.push({ bird: type.guide, x, y })
+    else playNotes(phrase, type.voice)
     const midi = phrase[phrase.length - 1]?.midi ?? h.chord[0] + 12
     noteShots.push({
       id: nextId++, x, y, vx: (tx - x) / T, vy: (ty - y) / T, midi, color: DEGREE_COLORS[music.degreeOf(midi) % DEGREE_COLORS.length],
@@ -1316,9 +1320,13 @@ export function createCombat() {
     const loot = rollLoot(c.params.loot)
     if (!loot.length) { addText(c.x, top - 16, 'Vazio', '#c9ced6'); return }
     // they jump out of the lid side by side and fall to the floor around it
+    popItems(c.x, top, loot)
+  }
+  // items jump out of (x, top) side by side and fall to the floor around it (a Baú's loot, a won song's prize)
+  function popItems(x: number, top: number, loot: ItemId[]) {
     loot.forEach((item, i) => {
       const off = (i - (loot.length - 1) / 2) * 30
-      pickups.push({ id: nextId++, owned: fresh(item), x: c.x + off, y: top + 10, vy: -rand(420, 560), resting: false, noPick: 0.45 })
+      pickups.push({ id: nextId++, owned: fresh(item), x: x + off, y: top + 10, vy: -rand(420, 560), resting: false, noPick: 0.45 })
     })
   }
   let hover: Pickup | null = null
@@ -3374,6 +3382,14 @@ export function createCombat() {
     // the lobby's owner has it shut (its time ran out there, or it never opened)
     closeNetChest(id: string) { const c = chests.find(o => o.id === id); if (c?.open) { c.open = false; c.t = 0 } },
     // a Baú of the layout (x: its middle, y: its floor); the layout sync keeps its place and params up to date
+    // a won song's prize (the Jukebox's or Vitrola's): its items jump out of the sequencer's top, with a glint
+    popPrize(x: number, top: number, loot: ItemId[]) {
+      if (!loot.length) return
+      sound('chest', null)
+      burst(x, top + 20, 18, '#ffd76a', 220, 3)
+      addText(x, top - 16, 'Prêmio!', '#ffd76a')
+      popItems(x, top, loot)
+    },
     addChest(id: string, x: number, y: number, params: ChestParams): Chest { const c: Chest = { id, x, y, params, open: false, lid: 0, t: 0, shake: 0 }; chests.push(c); return c },
     // cageSouls: a Gaiola's limit of souls on this rack (none: the item's own)
     // (a Gaiola's rack waits longer between one cage and the next, but its first one is there from the start)
