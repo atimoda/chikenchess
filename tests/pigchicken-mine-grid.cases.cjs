@@ -424,6 +424,101 @@ test('with cut corners a plug stands only between the straight sides: the cuts s
   assert.equal(M.minePlugs(M.createMineGrid(g, { bombs: 0, seed: 1 })).some(p => p.kind === 'cross'), false)
 })
 
+// the pieces as the engine reads them (engine.ts, buildSegs), fused: segments with their outside and where they lead
+function engineSegs(pieces) {
+  const boxes = [], joins = []
+  const segs = pieces.flatMap(b => {
+    const shape = b.shape ?? [[0, 0], [b.w, 0], [b.w, b.h], [0, b.h]]
+    if (b.shape) joins.push({ id: b.id, poly: shape.map(([x, y]) => [b.x + x, b.y + y]), left: b.x, top: b.y, right: b.x + b.w, bottom: b.y + b.h })
+    else boxes.push({ id: b.id, group: b.group, left: b.x, top: b.y, right: b.x + b.w, bottom: b.y + b.h })
+    const cross = b.cross ? { key: 'closed', reach: b.cross, ...(b.skip ? { skip: b.skip } : {}) } : undefined
+    return Hd.shapeEdges(shape).map(({ i, a, b: e, kind, n }) => ({
+      id: `${b.id}:${kind[0]}${i}`, ax: b.x + a[0], ay: b.y + a[1], bx: b.x + e[0], by: b.y + e[1], len: Math.hypot(e[0] - a[0], e[1] - a[1]), anchorX: b.x + a[0],
+      wall: kind !== 'floor', ...(kind === 'ceil' ? { ceil: true } : {}), hardN: n, ...(b.shape ? { join: b.id } : { fused: b.id }),
+      ...(cross && (kind === 'wall') === (b.h > b.w) ? { cross } : {}),
+    })).filter(f => f.len >= 4)
+  })
+  return Hd.fuseFaces(segs, boxes, joins)
+}
+
+test('with cut corners and a gap, a slanted wall leads to the closed block on its diagonal, past its own outer face', () => {
+  // 3 x 3 of 300, gap 30, regular octagons, all closed: (1,1) is x 330 to 630, y 300 to 600; (0,0) x 0 to 300, y 630 to 930
+  const g = M.mineGeometry({ cell: 300, gap: 30, corner: 100 }, { width: 960, top: 930 - 960, ground: 930 })
+  const grid = M.createMineGrid(g, { bombs: 0, seed: 1 })
+  const k = g.cut, t = M.mineWallThickness(g), walls = M.mineWalls(grid)
+  const piece = id => walls.find(w => w.id === id)
+  const reach = Math.SQRT2 * (30 + k + t)
+  for (const id of ['mine-1-1-bl', 'mine-1-1-tl', 'mine-1-1-tr', 'mine-1-1-br', 'mine-0-0-tr', 'mine-0-1-br']) {
+    assert.ok(Math.abs(piece(id).cross - reach) < 1e-9, id)
+    assert.equal(piece(id).skip, t, id)
+  }
+  // nothing on that diagonal: outside the grid (the top row's top corners, the ends) or an open block
+  for (const id of ['mine-0-2-tl', 'mine-1-2-tr', 'mine-0-1-tl', 'mine-0-1-bl', 'mine-2-1-br']) assert.equal(piece(id).cross, undefined, id)
+  const open = M.mineWalls(M.createMineGrid(g, { bombs: 0, seed: 1, free: [{ c: 0, r: 0 }] }))
+  assert.equal(open.find(w => w.id === 'mine-1-1-bl').cross, undefined)
+  assert.ok(open.find(w => w.id === 'mine-1-1-tl').cross > 0)
+  // no gap, or a cut under the walls' thickness (no slanted floor inside): no diagonal
+  const tight = M.mineWalls(M.createMineGrid(M.mineGeometry({ cell: 300, gap: 0, corner: 100 }, { width: 960, top: 930 - 960, ground: 930 }), { bombs: 0, seed: 1, free: [{ c: 0, r: 0 }] }))
+  assert.equal(tight.some(w => w.shape && w.cross !== undefined), false)
+  const small = M.mineWalls(M.createMineGrid(M.mineGeometry({ cell: 300, gap: 30, corner: 10 }, { width: 960, top: 930 - 960, ground: 930 }), { bombs: 0, seed: 1 }))
+  assert.equal(small.some(w => w.shape && w.cross !== undefined), false)
+
+  // what the engine finds behind them (crossTarget), for a body that does not fit in the gap
+  const segs = engineSegs([...walls, ...M.minePlugs(grid)])
+  const at = (x, y, dx, dy) => segs.find(f => f.hardN && Math.abs(f.hardN[0] - dx) < 0.01 && Math.abs(f.hardN[1] - dy) < 0.01 && Math.abs((x - f.ax) * f.hardN[0] + (y - f.ay) * f.hardN[1]) < 0.01 && Math.min(f.ax, f.bx) - 0.5 <= x && x <= Math.max(f.ax, f.bx) + 0.5)
+  const s = Math.SQRT1_2
+  // standing on the slanted floor of (1,1)'s bottom left corner, in its middle: the slanted ceiling of (0,0)'s top right
+  const fx = (330 + t + 330 + k) / 2, fy = (600 - k + 600 - t) / 2
+  const floor = at(fx, fy, s, -s)
+  assert.ok(floor && floor.cross && floor.cross.skip === t, 'the slanted floor leads through')
+  const down = Hd.crossTarget(segs, floor.hardN, fx, fy, floor.cross.reach, floor.cross.skip)
+  assert.ok(down)
+  assert.match(down.to.id, /^mine-0-0-tr:/)
+  assert.ok(Math.abs(down.d - reach) < 0.01)
+  assert.ok(Math.abs(down.x - (300 - (t + k) / 2)) < 0.01 && Math.abs(down.y - (630 + (t + k) / 2)) < 0.01)
+  // ...without the skip it would be the corner's own outer face, in the diamond between the four blocks
+  assert.match(Hd.crossTarget(segs, floor.hardN, fx, fy, floor.cross.reach).to.id, /^mine-1-1-bl:/)
+  // standing where the slanted floor meets the flat one, still on the diagonal room's slanted ceiling
+  const end = Hd.crossTarget(segs, floor.hardN, 330 + t + 2, 600 - k + 2, floor.cross.reach, floor.cross.skip)
+  assert.match(end.to.id, /^mine-0-0-tr:/)
+  // hanging under the slanted ceiling of (1,1)'s top left corner: the slanted floor of (0,2)'s bottom right
+  const cx = (330 + t + 330 + k) / 2, cy = (300 + k + 300 + t) / 2
+  const ceil = at(cx, cy, s, s)
+  assert.ok(ceil && ceil.cross)
+  assert.match(Hd.crossTarget(segs, ceil.hardN, cx, cy, ceil.cross.reach, ceil.cross.skip).to.id, /^mine-0-2-br:/)
+  // the straight floor of (1,1) still leads to the ceiling of (1,0), right below
+  const flat = at(480, 600 - t, 0, -1)
+  assert.match(Hd.crossTarget(segs, flat.hardN, 480, 600 - t, flat.cross.reach, flat.cross.skip).to.id, /^mine-1-0-top/)
+})
+
+test('out of a room into the gap only by Trocar de bloco: any other way out of the rooms is the open side', () => {
+  // (0,0) open; (1,0) is x 336 to 624 and (2,0) starts at 656, walls 12 thick
+  const grid = M.createMineGrid(geo(), { bombs: 0, seed: 1, free: [{ c: 0, r: 0 }] })
+  const step = (last, x, y, crossed = false) => M.mineSideNext(grid, x, y, last, crossed)
+  const room = step({ side: 'open', crossed: false }, 480, 800)
+  assert.deepEqual(room, { side: 'closed', crossed: false })
+  // slipped through the wall into the gap between (1,0) and (2,0)
+  assert.deepEqual(step(room, 640, 800), { side: 'open', crossed: false })
+  // ...through the wall's thickness first: it keeps the side there, and the gap is still a way out
+  const wall = step(room, 618, 800)
+  assert.deepEqual(wall, { side: 'closed', crossed: false })
+  assert.deepEqual(step(wall, 640, 800), { side: 'open', crossed: false })
+  // Trocar de bloco into the gap: the closed side, along the gap too, until she is in a room again or out of the gap
+  const gap = step(room, 640, 800, true)
+  assert.deepEqual(gap, { side: 'closed', crossed: true })
+  assert.deepEqual(step(gap, 640, 700), { side: 'closed', crossed: true })
+  assert.deepEqual(step(gap, 660, 800), { side: 'closed', crossed: true })
+  assert.deepEqual(step(gap, 480, 800), { side: 'closed', crossed: false })
+  assert.deepEqual(step(gap, 310, 800), { side: 'open', crossed: false })
+  // from the open side the gap stays open
+  assert.deepEqual(step({ side: 'open', crossed: false }, 640, 800), { side: 'open', crossed: false })
+  // without a gap the closed blocks share their space: the diamond where four of them meet is inside
+  const g0 = M.mineGeometry({ cell: 320, gap: 0, corner: 100 }, { width: 640, top: 930 - 960, ground: 930 })
+  const shared = M.createMineGrid(g0, { bombs: 0, seed: 1 })
+  assert.equal(M.mineCellAt(g0, 320, 610), null)
+  assert.deepEqual(M.mineSideNext(shared, 320, 610, { side: 'closed', crossed: false }, false), { side: 'closed', crossed: false })
+})
+
 test('the Bomba is a bundle of dynamite with a timer: lit with the seconds left when armed, off when disarmed', () => {
   const A = loadTs('lib/pigchicken/mine-bomb-art.ts')
   assert.deepEqual([A.mineBombTime(10), A.mineBombTime(6.2), A.mineBombTime(67.4), A.mineBombTime(0), A.mineBombTime(-3), A.mineBombTime(1e6)], ['0010', '0007', '0108', '0000', '0000', '9959'])

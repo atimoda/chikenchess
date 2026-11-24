@@ -8,6 +8,7 @@ import type { ChickenAction } from "@/lib/chicken/controls"
 import { TRAINING_DEMOS, demoActionsAt, demoLength, nearBoard, type DemoId } from "@/lib/pigchicken/chalkboard"
 import { layoutFloorBelow, type LayoutElement } from "@/lib/pigchicken/layout"
 import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { stageHeight } from "@/lib/stage-size"
 
 // how see-through the ghost is, and how long it takes to appear or go (s)
 export const GHOST_OPACITY = 0.5
@@ -57,7 +58,7 @@ export function createTrainingGhosts(host: HTMLElement) {
           div.dataset.trainingGhost = el.id
           div.style.cssText = "position:absolute;inset:0;pointer-events:none;opacity:0;filter:grayscale(1) brightness(2.5)"
           host.appendChild(div)
-          const eng = createChickenEngine(div, { groundHeight: window.innerHeight - WORLD_GROUND_Y - f.camY, fixedScale: true, ghost: true })
+          const eng = createChickenEngine(div, { groundHeight: stageHeight() - WORLD_GROUND_Y - f.camY, fixedScale: true, ghost: true })
           eng.setGame({ gameMode: true })
           eng.setDevices([])
           const ghost: Ghost = { eng, div, demo: b.demo, key, t: 0, seen: 0, actions: {} }

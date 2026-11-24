@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, type ComponentProps } from 'react'
 import type { LayoutElement } from '@/lib/pigchicken/layout'
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageTop, stageWidth, stageY } from "@/lib/stage-size"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 
 type Drag = { pointer: number; x: number; y: number; el: LayoutElement; moving: boolean }
@@ -15,7 +15,8 @@ export type PatioPlacementHandlers = Pick<ComponentProps<'button'>,
 function moveGhost(node: HTMLDivElement | null, drag: Drag) {
   if (!node) return
   node.style.transformOrigin = `${drag.el.w / 2}px ${drag.el.h}px`
-  node.style.transform = `translate3d(${drag.x}px,${drag.y}px,0) scale(${liveCamera.zoom})`
+  // (drawn on the stage, which starts stageTop() below the window's top)
+  node.style.transform = `translate3d(${drag.x}px,${stageY(drag.y)}px,0) scale(${liveCamera.zoom})`
 }
 
 export function usePatioPlacement(place: (el: LayoutElement, x: number, y: number) => void) {
@@ -71,7 +72,7 @@ export function usePatioPlacement(place: (el: LayoutElement, x: number, y: numbe
       // Pointer gestures finish on pointer up. Keyboard activation has no pointer coordinates.
       if (e.detail !== 0) return
       if (tap) tap()
-      else place(make(), stageWidth() / 2, window.innerHeight / 2)
+      else place(make(), stageWidth() / 2, stageTop() + stageHeight() / 2)
     },
   })
   return { bind, cancel, ghost, ghostRef }

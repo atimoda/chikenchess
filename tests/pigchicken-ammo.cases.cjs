@@ -126,3 +126,22 @@ test('a burst only goes on while Atirar is held; with the option off one press f
   assert.equal(fired(false, 1), DEFAULT_ITEMS.trumpet.burst) // option off: one press, the whole burst
   assert.equal(loadItems().trumpet.burstHold, true)
 })
+
+test('Atirar while reloading clicks dry and shakes the reticle; empty without a reload only clicks', () => {
+  const set = loadItems(); set.pistol = { ...DEFAULT_ITEMS.pistol, mag: 1, autoReload: false, reloadTime: 1 }
+  const c = createCombat(); c.setItems(set); c.give('pistol'); step(c, { slot: 1 })
+  press(c)
+  assert.equal(c.held.ammo, 0)
+  c.sounds.length = 0
+  step(c, { fire: true, firePressed: true }); step(c)
+  assert.ok(c.sounds.some(s => s.kind === 'dry'))
+  assert.equal(c.fireDeny, 0, 'empty, not reloading: no shake')
+  step(c, { reload: true }); step(c)
+  assert.ok(c.reloading > 0)
+  step(c, { fire: true, firePressed: true })
+  assert.ok(c.fireDeny > 0.9, 'reloading: the reticle shakes')
+  wait(c, 0.15)
+  assert.ok(c.fireDeny > 0 && c.fireDeny < 0.6, 'and it fades out')
+  wait(c, 0.2)
+  assert.equal(c.fireDeny, 0)
+})

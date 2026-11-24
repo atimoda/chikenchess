@@ -6,7 +6,7 @@ import { lookDir, lookRows, type Point } from "@/lib/pigchicken/eyes"
 import type { Combat } from "@/lib/pigchicken/combat"
 import type { Conductor } from "@/lib/pigchicken/music"
 import { SPECIES, STAGES, drumOpen, multOf, type Species, type Temple } from "@/lib/pigchicken/temple"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { pixelSprite, stampGlow, stampHalo, stampPixels } from "@/components/pigchicken/draw/pixel-sprite"
 
 type Ctx = CanvasRenderingContext2D
@@ -439,7 +439,7 @@ const GRADE = { perfect: { text: "PERFEITO!", color: "#ffd166" }, good: { text: 
 
 export function drawTempleHud(ctx: Ctx, temple: Temple, music: Conductor, inside: boolean, top: number) {
   const s = temple.state
-  const W = stageWidth(), H = window.innerHeight
+  const W = stageWidth(), H = stageHeight()
   const active = s.phase === "intro" || s.phase === "playing"
   // hurt: a red vignette for a moment
   if (s.hurtT < 0.45) {
@@ -507,7 +507,7 @@ export function drawTempleHud(ctx: Ctx, temple: Temple, music: Conductor, inside
 
 // a banner in the middle of the screen: the title, then what is new
 export function drawBanner(ctx: Ctx, b: { title: string; sub: string; color: string; t: number; life: number }, top: number) {
-  const W = stageWidth(), H = window.innerHeight
+  const W = stageWidth(), H = stageHeight()
   const a = Math.min(1, b.t * 4, (b.life - b.t) * 2)
   const grow = 1 + 0.25 * Math.max(0, 1 - b.t * 5)
   ctx.save()

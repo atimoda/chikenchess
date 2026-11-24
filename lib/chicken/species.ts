@@ -48,14 +48,16 @@ export const CHICK_FACTORS: Partial<Record<NumKey, number>> = {
   jumpFlapRate: 1.5,
   stepTime: 0.65,
   stepGap: 0.65,
-  headSnapTime: 0.7,
-  // the head bobs much less walking and running
-  headLead: 0.35,
-  // the head stays back much less before it shoots forward (its steps are long for its size: at the chicken's 0.7 it
-  // leaned back ~44° on every step)
-  headLag: 0.45,
+  // the head (Kids as tuned in the game, 18/11): it shoots forward far and quick, and stays back little before it
+  // goes (its steps are long for its size: at the chicken's 0.7 it leaned back ~44° on every step)
+  headSnapTime: 0.52,
+  headLead: 3.1,
+  headLag: 0.26,
   runHeadTilt: 0.35,
-  bodyRock: 0.6,
+  // the body bobs and sways more than hers, and rocks less
+  bodyBob: 2.17,
+  bodySway: 1.25,
+  bodyRock: 0.38,
   // a lighter body: falls a little slower at the top speed
   terminalVelocity: 0.85,
 }
@@ -103,8 +105,8 @@ export const CLASS_FACTOR_KEYS = (Object.keys(CHICKEN_PARAMS) as (keyof ChickenP
 const CODE_CLASS: Record<ClassId, { factors: Partial<Record<NumKey, number>> } & Partial<Record<ClassCountKey, number>>> = {
   pig: { factors: { ...PIG_FACTORS, toeCurl: 0, maxHp: 3, climbSpeed: 0, jumpFlaps: 0, broodJumpFlaps: 0, flyFallDivisor: 0, flyUpFallAtten: 0, flyDownFallAtten: 0 }, airJumps: 0 },
   fox: { factors: { ...FOX_FACTORS, toeCurl: 0, maxHp: 2, jumpFlaps: 0, broodJumpFlaps: 0 }, airJumps: 1 },
-  // the Filhote carries one instrument, one weapon and one utility (a new one takes the place of the old)
-  chick: { factors: CHICK_FACTORS, invInstruments: 1, invWeapons: 1, invUtilities: 1 },
+  // Kids carry three instruments, three weapons and three utilities
+  chick: { factors: CHICK_FACTORS, invInstruments: 3, invWeapons: 3, invUtilities: 3 },
 }
 /** Pig's, Ken's and the Filhote's tuning as it comes in the code (a count not set: the chicken's). */
 export function defaultClasses(): ClassesTuning {

@@ -1,13 +1,13 @@
 "use client"
 
 // The Pátio header's volume button and its popup: the master volume on top and one slider per sound layer
-// (lib/pigchicken/mixer.ts). Everything is saved in this browser and heard at once. Mute, left of Padrão,
+// (lib/pigchicken/mixer.ts). Everything is saved in this browser and heard at once. Mute, in the header,
 // silences the whole mixer: the sliders turn grey but still move, and their values come back when it is off. An admin also sees
 // "Salvar no game": the volumes become the game's defaults (data/pigchicken/default-patio.json).
 import { PatioRange } from "@/components/ui/patio-range"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
-import { RotateCcw, Volume1, Volume2, VolumeX, X } from "lucide-react"
+import { Volume1, Volume2, VolumeX, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { DEFAULT_MIX, MIX_LAYERS, getMix, isMuted, setMix, setMuted, subscribeMix, type Mix } from "@/lib/pigchicken/mixer"
@@ -45,7 +45,6 @@ export function VolumeButton({ className }: { className?: string }) {
           <div data-drag-handle className="flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Volume</h2>
             <button type="button" aria-label="Mute" aria-pressed={muted} title="Mute: silencia todo o jogo sem mexer nos volumes" onClick={() => setMuted(!muted)} className={cn("inline-flex h-8 items-center justify-center rounded-md border px-2 text-[11px] font-bold tracking-wider hover:border-primary", muted ? "border-primary bg-primary/20 text-white" : "border-white/15 text-[#b9c7b9]")}>MUTE</button>
-            <button type="button" aria-label="Padrão" title="Padrão: volta todos os volumes para o padrão do jogo" onClick={() => setMix(DEFAULT_MIX)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
             <button type="button" aria-label="Fechar" onClick={() => setOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
           <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto px-4 py-3">
@@ -59,7 +58,7 @@ export function VolumeButton({ className }: { className?: string }) {
               Cacarejos
             </label>
           </div>
-          <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultVolume(mix)} className="justify-end" />
+          <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultVolume(mix)} className="justify-end" onRevert={() => setMix(DEFAULT_MIX)} />
           </div>
         </FloatingPanel>,
         document.body,

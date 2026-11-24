@@ -43,7 +43,7 @@ export const PATIO_HEIGHT = { min: 400, max: 8000, step: 10, default: WORLD_GROU
 export const PATIO_GROUND = { min: 30, max: 400, step: 10, default: 100 } as const
 // the camera's zoom (1 = 100%): floor and ceil bound the slider; min and max are a Pátio's range by default
 export type PatioZoom = { min: number; max: number }
-export const PATIO_ZOOM = { floor: 0.1, ceil: 4, min: 0.5, max: 2.5 } as const
+export const PATIO_ZOOM = { floor: 0.1, ceil: 8, min: 0.5, max: 2.5 } as const
 export const PATIO_INVENTORY = { min: INVENTORY_MIN, max: INVENTORY_MAX, step: 1, default: INVENTORY_MAX } as const
 // the lowest world y anything may be placed at (above the tallest ceiling allowed, with some room)
 export const PATIO_LOWEST_TOP = WORLD_GROUND_Y - PATIO_HEIGHT.max - 1000
@@ -150,3 +150,10 @@ export function patioSettingsOver(raw: unknown): PatioSettings {
   return Object.fromEntries(PATIO_DEFAULT_KEYS.filter(k => s[k] !== undefined).map(k => [k, s[k]])) as PatioSettings
 }
 export const DEFAULT_PATIO_SETTINGS: PatioSettings = patioSettingsOver(DEFAULTS_FILE.settings)
+/** Reverter para o padrão (Configurações do Pátio): every field the panel edits (PATIO_DEFAULT_KEYS) as a new empty
+ *  Pátio gets it, the width `screens`; the rest of the Pátio's settings (zones, layers, Grade de blocos) stay. */
+export function patioSettingsAtDefault(settings: PatioSettings | undefined, screens: number): PatioSettings {
+  const out = { ...settings } as Record<string, unknown>
+  for (const k of PATIO_DEFAULT_KEYS) delete out[k]
+  return { ...out, ...structuredClone(DEFAULT_PATIO_SETTINGS), screens } as PatioSettings
+}

@@ -76,18 +76,42 @@ test('the Training room survives saving, goes from the basic moves to the advanc
   els.filter(e => e.kind === 'portal').forEach(p => assert.ok(L.portalPartner(p, els)))
   const worldW = world.worldScenes(screens) * world.SCENE_W
   assert.ok(els.every(e => e.x >= 0 && e.x + e.w <= worldW && e.y >= PS.patioWorldTop(layout.settings)))
-  // one board per move, every move once, in the stations' order, each ghost starting on a floor next to it
+  // one board per move, every move once, section by section in the stations' order, each ghost starting on a floor
+  // inside its station
+  const order = T.TRAINING_SECTIONS.flatMap(sec => sec.stations)
+  const plan = T.trainingPlan()
+  assert.ok(plan.end + 100 <= worldW)
   const boards = els.filter(e => e.kind === 'chalkboard' && e.params.chalkboard.demo)
-  assert.deepEqual(boards.map(b => b.params.chalkboard.demo), T.TRAINING_STATIONS.map(s => s.demo))
-  assert.deepEqual([...new Set(boards.map(b => b.params.chalkboard.demo))].sort(), [...C.DEMO_IDS].sort())
-  boards.forEach((b, i) => {
-    const s = T.TRAINING_START + i * T.STATION_W
-    assert.ok(b.x + b.w / 2 > s && b.x + b.w / 2 < s + T.STATION_W, `board ${i}`)
+  assert.deepEqual(boards.map(b => b.params.chalkboard.demo), order)
+  assert.deepEqual([...order].sort(), [...C.DEMO_IDS].sort())
+  boards.forEach((b, k) => {
+    const demo = order[k], s = plan.at[demo], w = T.TRAINING_STATIONS[demo].w
+    assert.ok(b.x + b.w / 2 > s && b.x + b.w / 2 < s + w, `board ${demo}`)
     const x = b.x + b.w / 2 + b.params.chalkboard.ghostX
+    assert.ok(x > s && x < s + w, `ghost ${demo} in its station`)
     const floor = L.layoutFloorBelow(els, x, b.y + b.h + b.params.chalkboard.ghostY)
-    assert.equal(Math.round(world.WORLD_GROUND_Y - floor), T.TRAINING_STATIONS[i].start[1], `ghost ${i}`)
-    assert.ok(C.nearBoard(b, b.params.chalkboard, x, floor), `near ${i}`)
+    assert.equal(Math.round(world.WORLD_GROUND_Y - floor), T.TRAINING_STATIONS[demo].start[1], `ghost ${demo}`)
+    assert.ok(C.nearBoard(b, b.params.chalkboard, x, floor), `near ${demo}`)
   })
+  // the boards at the same height never overlap
+  const all = els.filter(e => e.kind === 'chalkboard')
+  all.forEach((a, i) => all.slice(i + 1).forEach(b => assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `boards ${a.id} ${b.id}`)))
+  // a portal by the entrance leads to the start of each later section
+  T.TRAINING_SECTIONS.slice(1).forEach(sec => {
+    const p = els.find(e => e.kind === 'portal' && e.params.portalLabel === sec.title)
+    assert.ok(p && p.x + p.w < T.TRAINING_START)
+    const to = L.portalPartner(p, els)
+    assert.ok(to && to.x > T.TRAINING_START && to.x < plan.at[sec.stations[0]], sec.title)
+  })
+  // Combate e itens: its boards with no ghost, its portal, a rack of an instrument and one of a weapon, the dummies
+  const items = els.filter(e => e.x >= plan.items && e.x < plan.end)
+  assert.equal(items.filter(e => e.kind === 'chalkboard').length, T.ITEMS_BOARDS.length)
+  assert.ok(items.filter(e => e.kind === 'chalkboard').every(b => !b.params.chalkboard.demo))
+  assert.deepEqual(items.filter(e => e.kind === 'rack').map(r => r.params.item), T.ITEMS_RACKS)
+  assert.equal(items.filter(e => e.kind === 'dummy').length, 3)
+  const back = items.find(e => e.kind === 'portal')
+  assert.equal(L.portalPartner(back, els).params.portalLabel, T.ITEMS_SECTION.title)
+  assert.equal(els.filter(e => e.kind === 'portal').length, 2 * T.TRAINING_SECTIONS.length)
   const ex = SEED.EXAMPLE_PATIOS.find(e => e.name === 'Training room')
   assert.ok(ex)
   assert.deepEqual(ex.layout(), layout)

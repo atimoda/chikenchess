@@ -101,3 +101,10 @@ export function barPoint(frames: BodyFrames, species: BirdSpecies | undefined, x
   const bar = frameFor(frames, frameClassOf(species), pose).bar * scale
   return { x: x + Math.sin(angle) * bar, y: y - Math.cos(angle) * bar }
 }
+/** How tall her body is, in rig units, in the pose of an engine's state: the top of that pose's box. The engine
+ * measures her by it against the hard walls and ceilings and in the narrow passages (`data-chicken-fit`), so a
+ * smaller box crouching or brooding lets her through where standing does not. */
+export function bodyHeight(frames: BodyFrames, species: BirdSpecies | undefined, state: string, grounded: boolean, angle = 0) {
+  const f = frameFor(frames, frameClassOf(species), poseOf(state, grounded, angle))
+  return Math.max(1, f.y + f.h)
+}

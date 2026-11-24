@@ -25,7 +25,7 @@ import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
 import { DEFAULT_ITEMS, classItem, isStaff, itemRig, pointClassOf, type ItemId } from "@/lib/pigchicken/items"
 import { aimElevation, staffPose } from "@/lib/pigchicken/staff-pose"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { liveZoneEffectsAt } from "@/lib/pigchicken/zone-physics"
 
 // the Zona where another browser's chicken stands, as this one sees it: its x-ray look (and its gravity, though
@@ -230,7 +230,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         r.engine.setCameraZoom(liveCamera.zoom)
         zoneFx(r.engine)
         const s = r.engine.getMotionState()
-        const z = liveCamera.zoom, cx = stageWidth() / 2, cy = window.innerHeight / 2
+        const z = liveCamera.zoom, cx = stageWidth() / 2, cy = stageHeight() / 2
         const x = cx + (s.x - cx) * z - r.tag.offsetWidth * z / 2
         const y = cy + (s.y - TAG_UP * s.scale - cy) * z
         // sucked into a portal, her name goes with her

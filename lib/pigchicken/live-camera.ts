@@ -2,7 +2,7 @@
 // left edge, y the screen y of world y = 0. Layers drawn above the chicken (the foreground, the editor's handles)
 // register their world element here and follow it, so they line up with the world underneath.
 import { intersectsView, zoomedView, type ViewRect } from './viewport'
-import { stageWidth } from "../stage-size"
+import { stageHeight, stageTop, stageWidth, stageY } from "../stage-size"
 
 export const liveCamera = { x: 0, y: 0, zoom: 1 }
 const followers = new Set<HTMLElement>()
@@ -22,9 +22,15 @@ export function holdLayer(el: HTMLElement | SVGElement, zoom = liveCamera.zoom) 
 // the world's own transform (ParquinhoPlay) and that of the layers that follow it: always a 3D translate, so the
 // compositor moves the follower's layer, already painted (a 2D one at zoom 1 repainted it every frame)
 export function worldTransform(camX: number, camY: number, z: number) {
-  const cx = stageWidth() / 2, cy = window.innerHeight / 2
+  const cx = stageWidth() / 2, cy = stageHeight() / 2
   const t = `translate3d(${cx * (1 - z) - camX * z}px,${cy * (1 - z) + camY * z}px,0)`
   return z === 1 ? t : `${t} scale(${z})`
+}
+// a point of the world (x, y in its own px; box: the world's element on the screen now) in the chickens' coordinates:
+// the stage's, before the camera's zoom around its middle
+export function worldPointOnStage(box: DOMRect, x: number, y: number) {
+  const z = liveCamera.zoom, W = stageWidth(), H = stageHeight()
+  return { x: (box.left + x * z - W / 2) / z + W / 2, y: (box.top - stageTop() + y * z - H / 2) / z + H / 2 }
 }
 const cameraTransform = () => worldTransform(liveCamera.x, liveCamera.y, liveCamera.zoom)
 const place = (el: HTMLElement) => { el.style.transformOrigin = '0 0'; el.style.transform = cameraTransform(); holdLayer(el) }
@@ -33,7 +39,7 @@ const place = (el: HTMLElement) => { el.style.transformOrigin = '0 0'; el.style.
 const parallaxTransform = (depth: number) => `translate3d(${liveCamera.x * depth}px,${-liveCamera.y * depth}px,0)`
 
 function updateRegions() {
-  const screenView = zoomedView(stageWidth(), window.innerHeight, liveCamera.zoom)
+  const screenView = zoomedView(stageWidth(), stageHeight(), liveCamera.zoom)
   const view = { ...screenView, x: screenView.x + liveCamera.x, y: screenView.y - liveCamera.y }
   regions.forEach(({ el, bounds, depth, pinned }) => {
     // where the region is now: its depth slides it on both axes (depthOffset), so a cloud or a far tree is tested
@@ -126,15 +132,15 @@ export function moveLiveCamera(x: number, y: number, zoom = liveCamera.zoom) {
   updateRegions()
 }
 
-// a screen point in world units
-export const screenToWorld = (sx: number, sy: number) => {
-  const cx = stageWidth() / 2, cy = window.innerHeight / 2, z = liveCamera.zoom
+// a point on the window (a pointer's clientX/clientY) in world units
+export const screenToWorld = (sx: number, clientY: number) => {
+  const cx = stageWidth() / 2, cy = stageHeight() / 2, z = liveCamera.zoom, sy = stageY(clientY)
   const x = (sx - cx) / z + cx, y = (sy - cy) / z + cy
   return { x: x + liveCamera.x, y: y - liveCamera.y }
 }
 
-// a world point on the screen (the other way round)
+// a world point on the stage (not the window: the stage starts stageTop() below it)
 export const worldToScreen = (wx: number, wy: number) => {
-  const cx = stageWidth() / 2, cy = window.innerHeight / 2, z = liveCamera.zoom
+  const cx = stageWidth() / 2, cy = stageHeight() / 2, z = liveCamera.zoom
   return { x: (wx - liveCamera.x - cx) * z + cx, y: (wy + liveCamera.y - cy) * z + cy }
 }

@@ -29,7 +29,9 @@
 | Pátio: espaço abaixo do chão, Salvar no game (Configurações do Pátio, Camadas, Câmera de Mira, Volume, Ajustes) ícones do cabeçalho dos painéis e botão de próximo item dos dropdowns | [Padrões do jogo](docs/mechanics/patio/game-defaults.md) |
 | Pátio: modo editor, layout, chãos e paredes, Objeto duro, pares de portais, Item solto | [Editor do Pátio](docs/mechanics/patio/editor.md) |
 | Pátio: Suportes de item (tempo e limite de reposição, contador, mesa como plataforma e pouso dos itens) | [Suportes de item](docs/mechanics/patio/racks.md) |
+| Pátio: câmera, zoom e panorama, faixa de zoom (Full Size a 800%), câmera que vai junto para o portal e corre entre os portais de um par | [Câmera do Pátio](docs/mechanics/patio/camera.md) |
 | Pátio: arrastar no Modo editor (Shift reto, qualquer zoom), zoom e panorama sobre elementos, camada de seleção presa à câmera | [Arraste e câmera no Modo editor](docs/mechanics/patio/editor-camera.md) |
+| Pátio: abas do Modo editor (Elementos, Zonas, Camadas, Grade, Pátio, Câmera), aba do elemento e painel fixo à direita, em cima ou embaixo | [Abas e painel fixo do Modo editor](docs/mechanics/patio/editor-tabs.md) |
 | Pátio: Portais de nascimento (vários lugares para nascer, chance de cada um, sorteio ao entrar) | [Portais de nascimento](docs/mechanics/patio/spawn-portals.md) |
 | Pátio: Grade de blocos do Campo minado (blocos fechados e abertos, bombas, vão, paredes, lado aberto e fechado, trocar de bloco) | [Grade de blocos](docs/mechanics/patio/mine-grid.md) |
 | Pátio: rodada do Campo minado (gangorra de música e dano, bandeira, dúvida, bombas, Chave dourada, detonador, instalar bomba, Filhote, fim da rodada e títulos, rodada no online, Pátio de exemplo Campo minado) | [Rodada do Campo minado](docs/mechanics/patio/mine-round.md) |
@@ -151,7 +153,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: zonas sonoras, camadas e música ambiente](docs/mechanics/patio/zones.md) | 17 KB |
 | [Pátio: ritmos das zonas (microtempo, timbres, variações e blocos)](docs/mechanics/patio/rhythms.md) | 10 KB |
 | [Pátio: Templo do Gongo, fase de notas, mortes e catálogo de aliens](docs/mechanics/patio/temple.md) | 17 KB |
-| [Pátio: mundo, cenário, portais, árvores e trampolim](docs/mechanics/patio/world.md) | 24 KB |
+| [Pátio: mundo, cenário, portais, árvores e trampolim](docs/mechanics/patio/world.md) | 25 KB |
+| [Pátio: câmera, zoom e portal](docs/mechanics/patio/camera.md) | 7 KB |
 | [Pátio: Vila dos Telhados, casas e interior](docs/mechanics/patio/houses.md) | 14 KB |
 | [Gestos e custo de processamento](docs/mechanics/performance.md) | 23 KB |
 | [Pátio: renderização e qualidade Baixíssima](docs/mechanics/patio/rendering.md) | 10 KB |

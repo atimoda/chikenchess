@@ -7,7 +7,7 @@ import { type Combat } from "@/lib/pigchicken/combat"
 import { POOP } from "@/lib/pigchicken/poop"
 import { soulPerched } from "@/lib/pigchicken/soul-roam"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { type Ctx } from "./shared"
 import { drawChickStill } from "./cages"
 import { drawSoulArt, soulLook } from "./soul-art"
@@ -40,7 +40,7 @@ function drawFlight(ctx: Ctx, soul: Soul, from: { x: number; y: number }, to: { 
   else drawSoulArt(ctx, 0, 0, to.x >= from.x ? 1 : -1, Math.max(0, t) + soul.id * 0.37, soulLook(soul))
   ctx.restore()
 }
-const onScreen = (x: number, y: number, cam: Cam) => { const cx = stageWidth() / 2, cy = window.innerHeight / 2; return { x: cx + (x - cam.x - cx) * cam.zoom, y: cy + (y + cam.y - cy) * cam.zoom } }
+const onScreen = (x: number, y: number, cam: Cam) => { const cx = stageWidth() / 2, cy = stageHeight() / 2; return { x: cx + (x - cam.x - cx) * cam.zoom, y: cy + (y + cam.y - cy) * cam.zoom } }
 // target: where the cage each one goes to is on the screen; cam: the world's camera and zoom this frame.
 // Drawn in screen px, over the cages
 export function drawAbductions(ctx: Ctx, combat: Combat, target: (a: Abduction) => { x: number; y: number }, cam: Cam) {

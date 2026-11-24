@@ -1,7 +1,7 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
-import { SWING_PHASES, announceComboBlow, blowKind, nextCombo, swingCombo as comboOf, swingHitAt, swingLife, type Swing } from './swing'
+import { DRAWN_RECOVER, SWING_PHASES, announceComboBlow, blowKind, nextCombo, pathAngle, pathAngles, pathEnd, pathSpan, swingCombo as comboOf, swingHitAt, swingLife, type Swing, type SwingPath } from './swing'
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
 import { BIRDS, birdPhrase, birdsFor, pickBird, type BirdId, type BirdType, type UndeadMode } from './birds'
@@ -148,6 +148,7 @@ export type WorldCarry = Record<string, { inv: Owned[]; cur: number; cages: { it
 // an errand of a soul: fetching an item (fetch: on its way to it; carry: bringing it), a step under its owner's feet,
 // or something against her. t: s on it; item: the one it goes for or carries; side: the side of her it comes from
 export type SoulJob = { kind: 'fetch' | 'carry' | 'step' | Exclude<SoulHinder, 'own' | 'none' | 'detune'>; t: number; item?: Pickup; side?: 1 | -1 }
+export const FIRE_DENY = 0.3 // s the reticle shakes when Atirar is pressed while the weapon reloads
 export const CALLBACK_GAP = 0.2 // s between two souls called back
 export const CALLBACK_GUARD = 0.5 // s after letting one out before a press on the Gaiola can call them back
 
@@ -274,6 +275,8 @@ export type { Swing } from './swing'
 export type Body = { x: number; y: number; face: number; scale: number; grounded: boolean; state: string; vx: number; angle?: number; species?: string; invLimits?: readonly number[] }
 export type FrameInput = {
   fire: boolean; firePressed: boolean; melee: boolean; throwHeld: boolean; throwReleased: boolean
+  // with melee: the Golpe desenhado let go in this frame (the move the wing makes); none: a plain blow of the combo
+  meleePath?: SwingPath | null
   reload: boolean; pick: number; slot: number // pick: +1 / -1 cycles; slot: 1-based exact slot (keys, bar, wheel), 0 none
   groupPick?: ItemGroup | null // Próximo instrumento / arma / utilitário: the next item of that group
   // Próxima variação pressed: the held item's next variation (an instrument's next scale, round to the first; a
@@ -337,6 +340,10 @@ export const BABY_RULES: BabyRules = { noStaffs: true, oneCage: true, noMelee: f
 // a Pegar refused by the category's limit (Personagem → Inventário)
 const CATEGORY_FULL: Record<ItemGroup, string> = { 0: 'Limite de instrumentos', 1: 'Limite de armas', 2: 'Limite de utilitários' }
 const DEG = Math.PI / 180
+// the Golpe desenhado: how much wider than the stretch the wing crossed in a frame its hit area is (so nothing slips
+// between two frames), and every how many radians it looks for the note of the instrument's fan it is on
+const SWEEP_PAD = 6 * DEG
+const NOTE_STEP = 2 * DEG
 // a combo for an item that has none (never in the game: every item has one)
 const DEFAULT_COMBO = comboOf(110)
 
@@ -502,8 +509,8 @@ export function createCombat() {
   const stringReach = () => stringReachOf(aimKind, aimReach)
   // her hands over the strings now ([front, back]; null: that hand is off them)
   const handAims = (): (StringAim | null)[] => stringAims ?? [{ angle: aimAngle, reach: aimReach, kind: aimKind }, null]
-  function tones(d: ItemDef) {
-    const sc = scaleOf(held(), d), angle = aimAngle, reach = sc.id === 'strings' ? stringReach() : aimReach
+  function tones(d: ItemDef, angle = aimAngle) {
+    const sc = scaleOf(held(), d), reach = sc.id === 'strings' ? stringReach() : aimReach
     const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending, hang: hangOf(d) }
     return {
       scale: sc,
@@ -1133,7 +1140,7 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number; cageArm: number | null
+    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number; cageArm: number | null; fireDeny: number
     trem: TremoloState; tremBend: number; tremReach: number | null; aimReach: number; aimKind: AimKind; harp: HarpState; stringAims: (StringAim | null)[] | null; kit: KitState; seated: { seat: Seat; owned: Owned } | null; aimPoint: { x: number; y: number } | null
   }
   const loadouts = new Map<string, Loadout>()
@@ -1144,6 +1151,8 @@ export function createCombat() {
   // she had no room for it: letting Pegar go still on it swaps it in
   let cages: Owned[] = []
   let cageDeny = 0
+  // fireDeny: s left of the reticle's shake after Atirar was pressed while the held weapon reloads
+  let fireDeny = 0
   let cageArm: number | null = null
   // the ground's y, as the last step had it
   let floorY = 0
@@ -1186,18 +1195,18 @@ export function createCombat() {
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, fireDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, cageArm: null, trem: newTremolo(), tremBend: 0, tremReach: null, aimReach: 1, aimKind: 'none', harp: newHarp(), stringAims: null, kit: newKit(), seated: null, aimPoint: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, cageArm: null, fireDeny: 0, trem: newTremolo(), tremBend: 0, tremReach: null, aimReach: 1, aimKind: 'none', harp: newHarp(), stringAims: null, kit: newKit(), seated: null, aimPoint: null,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, fireDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint } = l)
     active = id
   }
 
@@ -2160,7 +2169,9 @@ export function createCombat() {
   // an item only for hitting with blows to count (the taco): a blow needs one loaded and not reloading
   const blowsLeft = (h: Owned | null, d: ItemDef) => !h || !d.meleeOnly || d.mag <= 0 || (reloadT <= 0 && h.ammo > 0)
   // an empty taco: the dry click, and it reloads on its own when set to
-  function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() }
+  function dryBlow(h: Owned, d: ItemDef) { sound('dry'); if (reloadT > 0) fireDeny = FIRE_DENY; if (h.ammo <= 0 && d.autoReload) startReload() }
+  // Atirar pressed while the weapon reloads: the dry click and the reticle's shake
+  const reloadingDry = () => { sound('dry'); fireDeny = FIRE_DENY }
   // the new item offered at her body (the nearest one in Pegar's reach) that a Golpe would store now
   function takesAtBody(body: Body) {
     const box = pickupBox(body.x, body.y, body.scale, body.angle)
@@ -2185,8 +2196,16 @@ export function createCombat() {
       return Math.abs(diff) <= arc / 2 || dist <= 10
     })
   }
-  // heavy: the strong blow, with the share of the charge it was let go with (0..1)
-  function melee(wing: boolean, scale: number, heavy: number | null = null) {
+  // an instrument's blow sounds: a quick strum that starts at the note of the fan lane at this angle (the same note a
+  // shot would play there) and climbs the chord `meleeNotes` notes. The note it started at
+  function strum(d: ItemDef, angle = aimAngle) {
+    const t = tones(d, angle), base = t.note()
+    const n = Math.max(1, Math.min(4, Math.round(d.meleeNotes)))
+    for (let i = 0; i < n; i++) out.note(d.voice, (i ? t.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d), undefined, vibOf(d))
+    return base
+  }
+  // heavy: the strong blow, with the share of the charge it was let go with (0..1). path: the Golpe desenhado's move
+  function melee(wing: boolean, scale: number, heavy: number | null = null, path: SwingPath | null = null) {
     const d = wing ? bareDef() : def()
     const strong = heavy !== null
     const own = wing ? null : held()
@@ -2195,15 +2214,14 @@ export function createCombat() {
       if (own.ammo <= 0 && d.autoReload) startReload()
     }
     sound('swing', null)
-    // an instrument hit with Y still sounds: a quick strum that starts at the note of the fan lane she aims at
-    // (the same note a shot would play there) and climbs the chord `meleeNotes` notes; its air takes that note's colour
+    // an instrument hit with Y still sounds (the strum); its air takes that note's colour. The Golpe desenhado
+    // plays each note as the wing reaches it (sweepPath), its air in the colour of the first
     let color = d.trailColor
     if (!wing && d.instrument) {
-      const t = tones(d), base = t.note()
-      const n = Math.max(1, Math.min(4, Math.round(d.meleeNotes)))
-      for (let i = 0; i < n; i++) out.note(d.voice, (i ? t.walk(base, i, 'chord') : base) + tremBend, i * 0.02, 0.15, 0.5 * noteVol(d), undefined, vibOf(d))
-      color = t.color(base)
+      const a = path ? pathAngle(path, 0) : aimAngle
+      color = tones(d, a).color(path ? tones(d, a).note() : strum(d))
     }
+    if (path) { drawnSwing(d, wing, scale, path, color); return }
     // the strong blow: its own numbers, and the charge stretches its reach and makes the staff and its air bigger
     const far = strong ? 1 + (Math.max(1, d.heavyReachMax) - 1) * heavy : 1, size = strong ? 1 + (Math.max(1, d.heavySizeMax) - 1) * heavy : 1
     // blows in a row follow the item's combo (by default down, up, horizontal, a full spin), each with its own
@@ -2236,6 +2254,47 @@ export function createCombat() {
     swingGap = 0
     // the Itens panel's combo window bar (only while it is open): the window counts once the move and the block end
     if (active === 'p1') announceComboBlow(() => ({ busy: Math.max(time, meleeCool), window: strong ? 0 : d.comboWindow }))
+  }
+  // the Golpe desenhado: the wing makes the drawn move at the drawn speed, with the item's own reach and damage, and
+  // hits what it passes when it passes (sweepPath). It is no blow of the combo (the next one starts the combo over)
+  // and holds the next blow by the item's interval
+  function drawnSwing(d: ItemDef, wing: boolean, scale: number, path: SwingPath, color: string) {
+    const range = d.meleeRange, reach = range + (wing ? 0 : d.length * scale)
+    const end = pathEnd(path), time = end + DRAWN_RECOVER, trailTime = Math.max(0.05, d.trailTime)
+    const lo = Math.min(...path.a), hi = Math.max(...path.a)
+    meleeCool = d.meleeCooldown
+    swingCombo = -1
+    swing = {
+      angle: (lo + hi) / 2, arc: Math.min(Math.PI * 2, hi - lo), range, reach, t: 0, time, wing,
+      dir: path.a[path.a.length - 1] >= path.a[0] ? 1 : -1, kind: 'down', combo: 0, hitAt: 0, hit: false, hits: 0,
+      life: Math.max(time, end + trailTime), impacts: [], seed: Math.random(),
+      trail: { width: d.trailWidth, color, time: trailTime, wisps: Math.round(d.trailWisps), opacity: d.trailOpacity },
+      item: wing ? null : held() ?? null, damage: d.meleeDamage, push: d.meleePush, durability: d.durability > 0, name: d.name,
+      path, struck: new Set(), note: null,
+    }
+    swingGap = 0
+    if (active === 'p1') announceComboBlow(() => ({ busy: Math.max(time, meleeCool), window: 0 }))
+  }
+  // the Golpe desenhado from t0 to now: what the wing passed is hit (each thing once), the notes coming in its way are
+  // rebated and an instrument plays each note of its fan as the wing reaches it, with the blow's strum. When the move
+  // ends, the Grade de blocos takes the blow once, over all it covered
+  function sweepPath(sw: Swing, path: SwingPath, origin: { x: number; y: number }, t0: number) {
+    const end = pathEnd(path)
+    if (sw.hit) return
+    const t1 = Math.min(sw.t, end), { lo, hi } = pathSpan(path, t0, t1)
+    const seg = { angle: (lo + hi) / 2, arc: hi - lo + SWEEP_PAD }
+    strike(sw, origin, seg)
+    rebateNotes(sw, origin, seg)
+    const own = sw.item as Owned | null
+    if (own && own === held() && items[own.item].instrument) {
+      const d = def()
+      // the angles crossed, a few degrees at a time
+      for (const at of pathAngles(path, t0, t1, NOTE_STEP)) {
+        const note = tones(d, at).note()
+        if (note !== sw.note) { strum(d, at); sw.note = note }
+      }
+    }
+    if (sw.t >= end) { sw.hit = true; strikeGrid(sw, origin) }
   }
 
   // the blow's hit area also collects the new items on the floor it touches, like Golpe near her body: each one is
@@ -2301,9 +2360,12 @@ export function createCombat() {
     if (n) sound('puff', null)
   }
 
-  // the blow lands at the end of the preparação: everything in its arc is hit once
-  function strike(sw: Swing, origin: { x: number; y: number }) {
-    sw.hit = true
+  // the blow lands at the end of the preparação: everything in its arc is hit once. seg: the stretch a Golpe desenhado
+  // passed in this frame (its own sector; what the blow already hit is left alone, and the Grade de blocos waits for
+  // the end of the move, strikeGrid)
+  function strike(blow: Swing, origin: { x: number; y: number }, seg?: { angle: number; arc: number }) {
+    const sw = seg ? { ...blow, ...seg } : blow
+    if (!seg) blow.hit = true
     collectInSwing(sw, origin)
     // the passaguá catches birds and souls first: what it catches is gone before the blow could hurt or push it.
     // Without a Gaiola nothing can be kept: it only shoves the chicks and scares the birds off
@@ -2369,8 +2431,9 @@ export function createCombat() {
       // whatever it did not catch (aliens, zombies, dummies, undead on the ground) takes its damage and push below
     }
     const struck: Target[] = []
+    let hits = 0
     targets.forEach(t => {
-      if (t.deadT > 0 || sw.damage <= 0) return
+      if (t.deadT > 0 || sw.damage <= 0 || blow.struck?.has(t)) return
       const cx = t.x, cy = t.y - t.h / 2
       const dx = cx - origin.x, dy = cy - origin.y, dist = Math.hypot(dx, dy) - t.w / 2
       if (dist > sw.reach) return
@@ -2379,21 +2442,32 @@ export function createCombat() {
       if (Math.abs(diff) > sw.arc / 2 && dist > 10) return
       const hx = cx - Math.sign(dx) * t.w / 2
       hitTarget(t, sw.damage, Math.sign(dx || 1) * sw.push, hx, cy, 'impact')
-      sw.impacts.push({ x: hx - origin.x, y: cy - origin.y })
-      sw.hits++
+      blow.impacts.push({ x: hx - origin.x, y: cy - origin.y, ...(seg ? { t: blow.t } : {}) })
+      blow.struck?.add(t)
+      hits++
       if (t.kind !== 'button') struck.push(t)
     })
+    blow.hits += hits
+    if (hits && seg) blow.lastHit = blow.t
     // items wear out on hits; the wing never breaks
     const h = sw.item as Owned | null
     // a lightning weapon: whoever the blow hit is shocked, and the ones around after them
     if (h && struck.length) zap({ x: origin.x + Math.cos(sw.angle) * sw.reach * 0.85, y: origin.y + Math.sin(sw.angle) * sw.reach * 0.85 }, struck, items[h.item], !!sw.heavy, h)
-    // and a block of the Grade de blocos the blow reaches goes back to grey
+    if (!seg) strikeGrid(sw, origin)
+    wearOut(blow, h, hits, origin)
+  }
+  // the blow on the Grade de blocos: a lightning weapon's turns the block it reaches back to grey
+  function strikeGrid(sw: Swing, origin: { x: number; y: number }) {
+    const h = sw.item as Owned | null
     if (h && items[h.item].shockRange > 0) mine?.shock(origin.x, origin.y, origin.x + Math.cos(sw.angle) * sw.reach, origin.y + Math.sin(sw.angle) * sw.reach)
     // any other blow on the wall of a closed block moves its seesaw: an instrument's toward the music, the rest
     // (the wing too) toward the damage. Not from inside a house, whose room is all she reaches.
     else if (sw.damage > 0 && !shotRooms.has(active)) mine?.blow(origin.x, origin.y, sw.angle, sw.arc, sw.reach, sw.damage, !!h && !!items[h.item].instrument, active)
-    if (h && sw.hits > 0 && sw.durability && inv.includes(h)) {
-      h.durability -= sw.hits
+  }
+  // items wear out on hits (counted when they land); the wing never breaks
+  function wearOut(sw: Swing, h: Owned | null, hits: number, origin: { x: number; y: number }) {
+    if (h && hits > 0 && sw.durability && inv.includes(h)) {
+      h.durability -= hits
       if (h.durability <= 0) {
         const i = inv.indexOf(h)
         if (i === cur) removeHeld(); else { inv.splice(i, 1); if (i < cur) cur-- }
@@ -2405,8 +2479,10 @@ export function createCombat() {
 
   // a blow rebates the incoming notes in its sector during the golpe and the continuação: judged against when the
   // note should arrive, it plays (the song's rule picks the note) and flies off where she aims
-  function rebateNotes(sw: Swing, origin: { x: number; y: number }) {
-    if (sw.t < sw.hitAt || sw.t > sw.hitAt + sw.time * (SWING_PHASES.strike + SWING_PHASES.follow)) return
+  // seg: the stretch a Golpe desenhado passed in this frame (its sector, whenever it is)
+  function rebateNotes(blow: Swing, origin: { x: number; y: number }, seg?: { angle: number; arc: number }) {
+    const sw = seg ? { ...blow, ...seg } : blow
+    if (!seg && (sw.t < sw.hitAt || sw.t > sw.hitAt + sw.time * (SWING_PHASES.strike + SWING_PHASES.follow))) return
     for (const n of noteShots) {
       if (n.state !== 'incoming' || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, n.x, n.y, n.size)) continue
       const off = music.time - n.arriveAt, grade = judgeNote(off)
@@ -3041,33 +3117,23 @@ export function createCombat() {
     get current() { return cur },
     get held() { return held() },
     get reloading() { return reloadT > 0 ? 1 - reloadT / Math.max(0.01, def().reloadTime) : 0 },
+    // 1..0: the reticle's shake after Atirar was pressed while reloading (it fades out)
+    get fireDeny() { return fireDeny / FIRE_DENY },
     get kick() { return kick },
     get swing() { return swing },
+    // how far a Golpe desenhado reaches now (the held item's, or the empty hand's): the wing plus the item
+    drawnReach(scale: number) {
+      const h = held(), d = h ? items[h.item] : bareDef()
+      return d.meleeRange + (h ? d.length * scale : 0)
+    },
     // the reach of the next Golpe (the held item's, or the empty hand's blow) when its point-and-click is on (right
-    // button, Itens → Golpe): the Pátio walks her toward a clicked point farther than this before the blow; null: off
+    // button, Itens → Golpe): a click farther than this also walks her toward the clicked point; null: off
     pointClickReach(scale: number) {
       const h = held(), d = h ? items[h.item] : bareDef()
       if (!d.pointClick || seated) return null
       const order = d.combo.length ? d.combo : DEFAULT_COMBO
       const step = order[Math.max(0, nextCombo(swingCombo, swingGap, d.comboWindow, order.length)) % order.length]
       return d.meleeRange * step.reach + (h ? d.length * scale * step.reach : 0)
-    },
-    // something touching her body now: an enemy, a dummy, another player (a chick does not count) or a projectile
-    // that is not hers. A point-and-click Golpe then comes out at once instead of walking to the clicked point
-    touching() {
-      const me = actorOf(active)?.box
-      if (!me) return false
-      const over = (l: number, r: number, t: number, b: number) => l < me.r && r > me.l && t < me.b && b > me.t
-      const at = (x: number, y: number, r: number) => over(x - r, x + r, y - r, y + r)
-      return targets.some(g => alive(g) && g.kind !== 'button' && over(g.x - g.w / 2, g.x + g.w / 2, g.y - g.h, g.y)) ||
-        blastActors.some(a => !!a.id && a.id !== active && over(a.box.l, a.box.r, a.box.t, a.box.b)) ||
-        netBodies.some(b => over(b.x - 45, b.x + 45, b.y - 200, b.y)) ||
-        bullets.some(b => b.by !== active && at(b.x, b.y, b.size)) ||
-        noteShots.some(n => n.state === 'incoming' && at(n.x, n.y, n.size)) ||
-        thrown.some(t => t.remote && at(t.x, t.y, 16)) ||
-        flights.some(f => f.owner !== active && at(f.x, f.y, 20)) ||
-        cards.some(c => c.owner !== active && at(c.x, c.y, CARD_HALF)) ||
-        hooks.some(h => h.owner !== active && at(h.x, h.y, 10))
     },
     get puffs() { return puffs as readonly Puff[] },
     get parryZones() { return [...parryZones.values()] },
@@ -3496,9 +3562,13 @@ export function createCombat() {
       kick = Math.max(0, kick - dt * 60)
       bloom = Math.max(0, bloom - d.spreadRecover * dt)
       if (swing) {
+        const t0 = swing.t
         swing.t += dt
-        if (!swing.hit && swing.t >= swing.hitAt) strike(swing, origin)
-        rebateNotes(swing, origin)
+        if (swing.path) sweepPath(swing, swing.path, origin, t0)
+        else {
+          if (!swing.hit && swing.t >= swing.hitAt) strike(swing, origin)
+          rebateNotes(swing, origin)
+        }
         if (swing.t > swing.life) swing = null
       }
       // the combo window counts from the end of the move, and not while the blow's block still holds the next one
@@ -3551,10 +3621,12 @@ export function createCombat() {
       // (no shot, charge, beam or rest of a burst while it moves). When it ends with Atirar still held, firing
       // starts again as if the button had just been pressed.
       const hNow = held()
-      // a Golpe on a new item offered at her body, with no enemy in the blow's hit area, only takes it (below): no blow
-      const onlyTake = !!input.melee && !input.grab && !input.grabHeld && takesAtBody(body) && !foeInBlow(origin, !hNow, body.scale)
+      // a Golpe on a new item offered at her body, with no enemy in the blow's hit area, only takes it (below): no blow.
+      // A Golpe desenhado always strikes
+      const drawn = input.melee ? input.meleePath ?? null : null
+      const onlyTake = !!input.melee && !drawn && !input.grab && !input.grabHeld && takesAtBody(body) && !foeInBlow(origin, !hNow, body.scale)
       // a Filhote never hits: Golpe with the hand empty is its piu (below)
-      if (input.melee && !onlyTake && meleeCool <= 0 && !(isBabyNow() && babyRules.noMelee) && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale) }
+      if (input.melee && !onlyTake && meleeCool <= 0 && !(isBabyNow() && babyRules.noMelee) && canSwing(!hNow)) { if (hNow && !blowsLeft(hNow, dNow)) dryBlow(hNow, dNow); else melee(!hNow, body.scale, null, drawn) }
       // a strong blow being charged is called off by Golpe (the quick blow comes out instead), by another item in
       // the wing and by a Throw
       if (heavyItem && (heavyCancel || input.melee || heavyItem !== (hNow ?? BARE) || input.throwHeld)) { heavyItem = null; heavyT = 0 }
@@ -3729,13 +3801,14 @@ export function createCombat() {
         const ctx = { boxes, groundY }
         // shell by shell: firing with something loaded stops the reload
         if (reloadT > 0 && d.shellReload && h.ammo > 0 && input.firePressed) reloadT = 0
-        if (bowed(d)) { if (reloadT <= 0 && h.ammo > 0 && input.fire) stepBeam(d, h, dt, muzzle, ctx); else if (beam) stopBeam(); if (input.firePressed && (reloadT > 0 || h.ammo <= 0)) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() } }
+        if (bowed(d)) { if (reloadT <= 0 && h.ammo > 0 && input.fire) stepBeam(d, h, dt, muzzle, ctx); else if (beam) stopBeam(); if (input.firePressed && reloadT > 0) reloadingDry(); else if (input.firePressed && h.ammo <= 0) { sound('dry'); if (d.autoReload) startReload() } }
         // pizzicato: while Atirar is held, one plucked note of the arpeggio at a time
         else if (pizzicato(d)) {
-          if (reloadT > 0 || h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() } }
+          if (reloadT > 0) { if (input.firePressed) reloadingDry() }
+          else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload() } }
           else if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx)
         }
-        else if (reloadT > 0) { if (input.firePressed) sound('dry') }
+        else if (reloadT > 0) { if (input.firePressed) reloadingDry() }
         else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
         else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx) }
         // on release: aim with the button held, the shot leaves when it is let go
@@ -4194,9 +4267,9 @@ export function createCombat() {
       // the scared birds land where they were going
       stepScares(scares, dt)
       // every cage's glow and way in (the ones lying in the world keep still), and the shake of a catch that did not fit
-      cageDeny = Math.max(0, cageDeny - dt)
+      cageDeny = Math.max(0, cageDeny - dt); fireDeny = Math.max(0, fireDeny - dt)
       for (const o of cages) stepCage(o.cage!, dt)
-      loadouts.forEach((l, id) => { if (id === active) return; l.cageDeny = Math.max(0, l.cageDeny - dt); for (const o of l.cages) stepCage(o.cage!, dt) })
+      loadouts.forEach((l, id) => { if (id === active) return; l.cageDeny = Math.max(0, l.cageDeny - dt); l.fireDeny = Math.max(0, l.fireDeny - dt); for (const o of l.cages) stepCage(o.cage!, dt) })
       for (let i = puffs.length - 1; i >= 0; i--) { puffs[i].t += dt; if (puffs[i].t >= puffs[i].life) puffs.splice(i, 1) }
       for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt; s.vy += 600 * dt; s.x += s.vx * dt; s.y += s.vy * dt; if (s.life <= 0) sparks.splice(i, 1) }
       for (let i = texts.length - 1; i >= 0; i--) { const t = texts[i]; t.life -= dt; t.y -= 40 * dt; if (t.life <= 0) texts.splice(i, 1) }

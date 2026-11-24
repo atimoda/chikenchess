@@ -10,7 +10,7 @@ import type { ItemId } from "@/lib/pigchicken/items"
 import { soulCatalogVersion } from "@/lib/pigchicken/soul-library"
 import { CHICK_STYLES, chickArt } from "@/lib/chicken/chick-art"
 import { LOOK_ART, type ChickenLook } from "@/lib/chicken/look-art"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { drawSoulArt, soulLook } from "./soul-art"
 import { type Ctx } from "./shared"
 
@@ -147,7 +147,7 @@ export type CageBox = { i: number; x: number; y: number; w: number; h: number; c
 export function drawHangingCages(ctx: Ctx, hud: CageHud, cages: readonly CageLike[], opts: { top: number; color: string; deny: number; now: number; dt: number; callback: boolean; hover: number | null }): CageBox[] {
   const boxes: CageBox[] = []
   if (!cages.length || !cages[0].cage) return boxes
-  const W = stageWidth(), H = window.innerHeight, fa = cageArt(cages[0].item)
+  const W = stageWidth(), H = stageHeight(), fa = cageArt(cages[0].item)
   // as tall as a fifth of the screen (92 to 168 px for the tallest model); on a narrow screen the whole group keeps
   // to its left half
   const backs = (cages[1] ? cageArt(cages[1].item).w : 0) + (cages[2] ? cageArt(cages[2].item).w : 0)

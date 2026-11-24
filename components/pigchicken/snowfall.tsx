@@ -6,7 +6,7 @@
 import { graphicsQuality, isLowGraphics } from "@/lib/quality"
 import { useEffect, useRef } from "react"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { flakeCount, type SnowfallParams } from "@/lib/pigchicken/snowfall"
 
 type Flake = { x: number; y: number; z: number; ph: number }
@@ -29,7 +29,7 @@ export function Snowfall({ snow, color = "#ffffff" }: { snow: SnowfallParams; co
       raf = requestAnimationFrame(frame)
       const dt = Math.min(0.05, (t - last) / 1000)
       last = t
-      const z = liveCamera.zoom || 1, W = Math.max(1, stageWidth()), H = Math.max(1, window.innerHeight)
+      const z = liveCamera.zoom || 1, W = Math.max(1, stageWidth()), H = Math.max(1, stageHeight())
       box.style.transform = `translate3d(${liveCamera.x - (W / 2) * (1 - z) / z}px,${-liveCamera.y - (H / 2) * (1 - z) / z}px,0)`
       box.style.width = `${W / z}px`; box.style.height = `${H / z}px`
       if (c.width !== W || c.height !== H) { c.width = W; c.height = H }

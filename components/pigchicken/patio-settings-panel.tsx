@@ -3,13 +3,13 @@
 // The Sun button's panel: the current Pátio's own settings (its limits), saved with the Pátio like its layout.
 // Whoever may edit the Pátio changes them; everyone else sees them.
 import { useState } from "react"
-import { RotateCcw, X } from "lucide-react"
+import { X } from "lucide-react"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import { PatioDualRange } from "@/components/ui/patio-dual-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioItemGlow, patioSceneMusic, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
+import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioItemGlow, patioSceneMusic, patioSettingsAtDefault, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultPatioSettings } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
@@ -25,10 +25,10 @@ import { ITEM_GLOW, ITEM_GLOW_GROUPS, sameItemGlowColors, type ItemGlowColors } 
 
 const units = (v: number) => v.toLocaleString("pt-BR")
 // the zoom's slider runs on a log scale (each step the same proportion); its left end, below the floor, is the
-// whole Pátio
+// whole Pátio (Full Size)
 const ZOOM_STEP = 0.05, ZOOM_LEFT = -3.4, ZOOM_RIGHT = Math.log2(PATIO_ZOOM.ceil)
 const zoomPct = (z: number) => `${Math.round(z * 100)}%`
-const zoomLabel = (z: PatioZoom) => `${z.min === 0 ? "Pátio inteiro" : zoomPct(z.min)} – ${zoomPct(z.max)}`
+const zoomLabel = (z: PatioZoom) => `${z.min === 0 ? "Full Size" : zoomPct(z.min)} – ${zoomPct(z.max)}`
 
 // the layers a row of Prédios can stand between: the ranges and the tree lines this Pátio shows
 function skylineNeighbours(s: PatioSettings | undefined) {
@@ -43,8 +43,11 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
 }) {
   const height = patioHeight(layout.settings)
   const ground = patioGround(layout.settings)
-  // Padrão: what a new empty Pátio gets (the game's defaults file, the code's values where it has none)
+  // each field's own reset: what a new empty Pátio gets (the game's defaults file, the code's values where it has none)
   const base = { screens: DEFAULT_PATIO_SETTINGS.screens ?? DEFAULT_PARQUINHO.screens, height: patioHeight(DEFAULT_PATIO_SETTINGS), ground: patioGround(DEFAULT_PATIO_SETTINGS), inventory: patioInventoryLimit(DEFAULT_PATIO_SETTINGS), zoom: DEFAULT_PATIO_SETTINGS.zoom }
+  // Reverter para o padrão: every field of this panel as a new empty Pátio gets it (the game's defaults file, the
+  // code's values where it has none), so a Salvar no game right after it has nothing to write
+  const revert = () => onChange({ ...layout, settings: patioSettingsAtDefault(layout.settings, base.screens) })
   const zoom = patioZoom(layout.settings)
   const inventory = patioInventoryLimit(layout.settings)
   const itemsLabel = `${inventory} ${inventory === 1 ? "item" : "itens"}`
@@ -65,7 +68,6 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
     <FloatingPanel id="patio-settings" aria-label="Configurações do Pátio" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(340, vw - 24), h: Math.min(canEdit ? 720 : 300, vh - 80) })} className="rounded-xl border border-[#ffd166]/40 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
         <h2 className="flex-1 text-sm text-white">Configurações do Pátio</h2>
-        {canEdit && <button type="button" aria-label="Padrão" onClick={() => set(base)} title="Padrão: volta largura, altura, espaço abaixo do chão, limite do inventário e zoom para o padrão do jogo" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><RotateCcw className="h-4 w-4" /></button>}
         <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-[#ffd166]"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -91,7 +93,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
               set({ zoom: { min: 2 ** a < PATIO_ZOOM.floor ? 0 : Math.min(max, Math.round(2 ** a * 100) / 100), max } })
             }}
             onReset={() => set({ zoom: base.zoom })}
-            hint="Até onde a câmera afasta (ponto da esquerda) e aproxima (ponto da direita). Na ponta esquerda, Pátio inteiro: afasta até o Pátio todo caber na tela." />
+            hint="Até onde a câmera afasta (ponto da esquerda) e aproxima (ponto da direita). Na ponta esquerda, Full Size: afasta até o Pátio todo caber na tela." />
           <div className="space-y-1.5">
             <PatioRange label="Brilho dos itens" min={ITEM_GLOW.min} max={ITEM_GLOW.max} step={ITEM_GLOW.step} value={glow.amount}
               display={glow.amount ? `${glow.amount}%` : "Desligado"} onChange={v => setGlow(v)} onReset={() => setGlow(0)}
@@ -164,7 +166,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
         </dl>
       )}
-      <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultPatioSettings(layout.settings, screens)} className="justify-end px-4 py-3" />
+      <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultPatioSettings(layout.settings, screens)} onRevert={canEdit ? revert : undefined} className="justify-end px-4 py-3" />
       {!canEdit && <p className="px-4 py-3 text-[10px] leading-relaxed text-[#93a79a]">Só quem pode editar este Pátio muda as configurações.</p>}
       </div>
     </FloatingPanel>

@@ -125,11 +125,11 @@ export const CHICKEN_PARAMS = {
   invWeapons: 30,
   invUtilities: 30,
   // the Filhote's limits (lib/chicken/baby.ts), each one on or off: immortal; everything falls when it becomes one;
-  // no staffs or melee weapons; one Gaiola; no throw; no quick blow (Golpe); the empty hand peeps; no clucks (also the
+  // staffs and melee weapons allowed (off since 24/11: Kids take any item); one Gaiola; no throw; no quick blow (Golpe); the empty hand peeps; no clucks (also the
   // chicks that follow her); in the Campo minado only instruments and bombs
   babyImmortal: true,
   babyDropItems: true,
-  babyNoStaffs: true,
+  babyNoStaffs: false,
   babyOneCage: true,
   babyNoThrow: true,
   babyNoMelee: false,

@@ -6,6 +6,7 @@ import type { ChickenEngine } from '@/lib/chicken/engine'
 import { portalGate, PORTAL_TRANSITION_MS } from '@/lib/chicken/portal'
 import { elementsInWorld, LAYOUT_VERSION, portalPartner, type LayoutElement } from '@/lib/pigchicken/layout'
 import { portalTarget } from '@/lib/pigchicken/portal-links'
+import { worldPointOnStage } from '@/lib/pigchicken/live-camera'
 
 // where a portal to another Pátio sends her: the page checks the Pátio and opens it (her drawing stays hidden in
 // the portal meanwhile), or brings her back out of this portal with the notice
@@ -36,13 +37,14 @@ export function PatioPortals({ engine, extras, worldRef, elements, screens, edit
           if (!onTravel) return false
           onTravel(target, { id: el.id, centre: () => {
             const b = worldRef.current?.getBoundingClientRect()
-            return b ? { x: b.left + el.x + el.w / 2, y: b.top + el.y + el.h / 2 } : null
+            return b ? worldPointOnStage(b, el.x + el.w / 2, el.y + el.h / 2) : null
           } }, actor)
           return true
         }
         if (!destination) return false
         portalGate(actor, destination.id).block()
-        actor.arriveAtPortal({ x: box.left + destination.x + destination.w / 2, y: box.top + destination.y + destination.h / 2, durationMs: PORTAL_TRANSITION_MS })
+        // (the camera runs from this portal to the other one while she comes out of it)
+        actor.arriveAtPortal({ ...worldPointOnStage(box, destination.x + destination.w / 2, destination.y + destination.h / 2), durationMs: PORTAL_TRANSITION_MS, glide: true })
         playPortalSound('arrive')
         return true
       }} />

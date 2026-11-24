@@ -28,7 +28,7 @@ export function MineRoundEnd({ players, onReset }: { players: { id: string; name
   if (!round?.over || mineStore.dismissed) return null
   const titles = mineTitles(round.stats)
   return (
-    <div role="dialog" aria-label="Fim da rodada" className="pointer-events-auto fixed left-1/2 top-1/2 z-[400] max-h-[86vh] w-[min(96vw,1120px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-xl border border-white/15 bg-[#0f1713]/95 p-4 font-mono text-sm text-[#e8f0ea] shadow-2xl">
+    <div role="dialog" aria-label="Fim da rodada" className="pointer-events-auto fixed left-1/2 top-1/2 z-[400] max-h-[86%] w-[min(96vw,1120px)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-xl border border-white/15 bg-[#0f1713]/95 p-4 font-mono text-sm text-[#e8f0ea] shadow-2xl">
       <table className="w-full border-separate border-spacing-y-1 text-right">
         <thead>
           <tr className="text-xs text-white/60">

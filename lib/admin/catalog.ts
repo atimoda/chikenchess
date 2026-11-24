@@ -32,8 +32,8 @@ export const ADMIN_ENTRIES: AdminEntry[] = [
     description: 'Números de cada escala do painel Escalas (standby e fade out da camada Escalas, forma dos gráficos) para quem nunca mexeu neles. O painel Escalas grava aqui com Salvar no game.' },
   { id: 'pigchicken-souls', title: 'Almas (fichas da biblioteca)', group: 'Pátio', kind: 'pigchicken-souls', path: 'data/pigchicken/default-souls.json',
     description: 'O que muda nas fichas das almas em relação ao código (nome, raridade, voo, aparência) e a lista das raras com as receitas. O editor da Biblioteca de almas grava aqui com Salvar no game.' },
-  { id: 'pigchicken-patio', title: 'Pátio padrão (configurações, camadas, câmera e volume)', group: 'Pátio', kind: 'pigchicken-patio', path: 'data/pigchicken/default-patio.json',
-    description: 'settings: o que um Pátio vazio novo recebe (Configurações do Pátio). layers: o painel Camadas de um Pátio que não salvou o seu. camera: o painel Câmera de Mira para quem nunca mexeu nele e para Padrão. volume: o painel Volume, do mesmo jeito. Cada painel grava a sua parte com Salvar no game.' },
+  { id: 'pigchicken-patio', title: 'Pátio padrão (configurações, camadas, câmera, volume e grade)', group: 'Pátio', kind: 'pigchicken-patio', path: 'data/pigchicken/default-patio.json',
+    description: 'settings: o que um Pátio vazio novo recebe (Configurações do Pátio). layers: o painel Camadas de um Pátio que não salvou o seu. camera: o painel Câmera de Mira para quem nunca mexeu nele e para Padrão. volume: o painel Volume, do mesmo jeito. mineGrid: o painel Grade de blocos de um Pátio que não salvou a sua grade (um novo também), menos Ligar. Cada painel grava a sua parte com Salvar no game.' },
   { id: 'reactions', title: 'Estados e Eventos globais', group: 'Kits musicais', kind: 'music-reactions', path: 'data/music/reactions.json',
     description: 'Regras oficiais de Estados e Eventos usadas por todos os kits; cada kit pode sobrescrever gatilhos no Criativo.' },
   ...Object.keys(STYLE_PROFILES).map(cityId => {

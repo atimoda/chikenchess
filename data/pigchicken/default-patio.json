@@ -34,5 +34,43 @@
     "weapons": 0.6,
     "effects": 0.6,
     "chicken": 1
+  },
+  "mineGrid": {
+    "cell": 288,
+    "gap": 32,
+    "pass": true,
+    "bombs": 15,
+    "blockNotes": false,
+    "toFlag": 24,
+    "toOpen": 600,
+    "insideBreaks": true,
+    "toDoubt": 24,
+    "turn": 0,
+    "fuse": 10,
+    "startBombs": 2,
+    "grey": "#8f98a3",
+    "blue": "#4d9bff",
+    "red": "#ff5a5a",
+    "orange": "#ffb366",
+    "wallOpacity": 100,
+    "corner": 0,
+    "zones": {
+      "on": true,
+      "rhythm": 3,
+      "all": true,
+      "pool": [],
+      "seed": 1
+    },
+    "items": {
+      "chance": 15,
+      "max": 2,
+      "groups": {
+        "weapons": 33,
+        "instruments": 33,
+        "utilities": 33
+      },
+      "weights": {},
+      "seed": 1
+    }
   }
 }

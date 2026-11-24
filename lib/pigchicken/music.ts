@@ -42,7 +42,7 @@ export type Zone = {
 export type ZoneBlock = { zone: Zone; beats: number; reps: number }
 
 // the scenes' zones in the code: the key, scale and tempo each scene of the Parquinho starts with (in silence:
-// sound-zones.ts sceneZoneBase) and what "Predefinição" copies, with the ambience each one used to play
+// sound-zones.ts sceneZoneBase) and what the "Cenas" of the zone's Estilo (zone-styles.ts) copy, with the ambience each one used to play
 export const ZONES: Zone[] = [
   { id: 'campo', name: 'Campo', root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#7bd88f', ambience: { beat: 'straight', bass: 'drone' } },
   { id: 'noite', name: 'Noite', root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 88, feel: 'half', progression: [0, 5, 2, 6], color: '#7b8cff', ambience: { beat: 'half', bass: 'drone' } },

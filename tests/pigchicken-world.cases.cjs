@@ -105,7 +105,7 @@ test('the Pátio zoom range: whole Pátio at the left end, centred when the worl
   assert.deepEqual(camera.zoomLimits({ min: 0.5, max: 2.5 }, whole), { lo: 0.5, hi: 2.5 })
   assert.deepEqual(camera.zoomLimits({ min: 0.1, max: 0.2 }, 0.3), { lo: 0.3, hi: 0.3 })
   // saved settings: below the floor is the whole Pátio, the ends are clamped and min never passes max
-  assert.deepEqual(settings.normalizePatioZoom({ min: 0.05, max: 9 }), { min: 0, max: 4 })
+  assert.deepEqual(settings.normalizePatioZoom({ min: 0.05, max: 12 }), { min: 0, max: 8 })
   assert.deepEqual(settings.normalizePatioZoom({ min: 3, max: 2 }), { min: 2, max: 2 })
   assert.equal(settings.normalizePatioZoom({ min: 'x', max: 2 }), undefined)
   assert.deepEqual(settings.patioZoom(undefined), { min: 0.5, max: 2.5 })

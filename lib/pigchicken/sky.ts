@@ -257,9 +257,10 @@ export function skyLook(p: SkyParams | undefined): SkyLook {
 }
 
 // a CSS gradient for the sky div: `top` is the div's top in world y; the stops span from y0 to the horizon y1
-export function skyGradient(look: SkyLook, top: number, y0: number, y1: number) {
+// spaceY: where the sky has turned all into its far colour (by default 2400 above y0)
+export function skyGradient(look: SkyLook, top: number, y0: number, y1: number, spaceY = y0 - 2400) {
   const at = (y: number) => `${Math.round(y - top)}px`
-  return `linear-gradient(to bottom, ${look.space} 0, ${look.space} ${at(y0 - 2400)}, ${look.stops.map(s => `${s.color} ${at(y0 + s.at * (y1 - y0))}`).join(', ')})`
+  return `linear-gradient(to bottom, ${look.space} 0, ${look.space} ${at(spaceY)}, ${look.stops.map(s => `${s.color} ${at(y0 + s.at * (y1 - y0))}`).join(', ')})`
 }
 
 // The same bands curved into rings (Curvatura): a CSS radial gradient, or null when the bands are straight.
@@ -268,7 +269,7 @@ export function skyGradient(look: SkyLook, top: number, y0: number, y1: number) 
 // (almost straight) to 0.7 × ry (taller than wide) as the curvature grows. With radial.sun the centre is the sun
 // (sunY: its y in the same units as y0 and y1, by default the look's own) and the bands run from the horizon's
 // colour at the sun out to the top's colour at 75% of the sky's height; radial.size scales the rings either way.
-export function skyRadial(look: SkyLook, top: number, y0: number, y1: number, cx: number, sunY = look.sun.y, unit = 1) {
+export function skyRadial(look: SkyLook, top: number, y0: number, y1: number, cx: number, sunY = look.sun.y, unit = 1, spaceY = y0 - 2400) {
   const a = look.radial.amount
   if (a <= 0) return null
   const h = y1 - y0, onSun = look.radial.sun
@@ -279,7 +280,7 @@ export function skyRadial(look: SkyLook, top: number, y0: number, y1: number, cx
   const ring = (y: number) => onSun ? (y1 - y) / h : (cy - y) / base
   const at = (y: number) => `${(ring(y) * 100).toFixed(2)}%`
   const bands = [...look.stops].reverse().map(s => `${s.color} ${at(y0 + s.at * h)}`)
-  return `radial-gradient(${Math.round(rx)}px ${Math.round(ry)}px at ${Math.round(x)}px ${Math.round(cy - top)}px, ${bands.join(', ')}, ${look.space} ${at(y0 - 2400)})`
+  return `radial-gradient(${Math.round(rx)}px ${Math.round(ry)}px at ${Math.round(x)}px ${Math.round(cy - top)}px, ${bands.join(', ')}, ${look.space} ${at(spaceY)})`
 }
 
 // a short reading of the hour: "18:12"

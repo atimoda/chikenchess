@@ -4,6 +4,7 @@
 // a zone of the map and for a scene's own zone); the
 // Faixas fixas' layout and notes; and the "Rebate notas" collision of any surface.
 import { useEffect, useRef, useState } from "react"
+import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { StepSelect } from "@/components/ui/step-select"
 import { NOTE_NAMES, SCALES, ZONES, type Feel, type InKeyRule, type ScaleId } from "@/lib/pigchicken/music"
@@ -13,7 +14,7 @@ import {
   type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBlockParams,
 } from "@/lib/pigchicken/sound-zones"
 import {
-  AMBIENCE_VOL, BASSES, BASS_GROUPS, BASS_OCT, BEATS, BEAT_GROUPS, SILENCE, ambiencePattern, ambienceRows, ambienceKit, beatOf, beatPatterns, beatSilent, isBass, isBeat, legacyAmbience, microAt, withBeat,
+  AMBIENCE_VOL, BASSES, BASS_GROUPS, BASS_OCT, BEATS, BEAT_GROUPS, SILENCE, ambiencePattern, ambienceRows, ambienceKit, beatOf, beatPatterns, beatSilent, isBass, isBeat, microAt, withBeat,
   type ZoneAmbience,
 } from "@/lib/pigchicken/zone-ambience"
 import { rowLabel } from "@/lib/pigchicken/beat-kits"
@@ -23,6 +24,7 @@ import { ChainEditor } from "./chain-editor"
 import { BIRDS, BIRD_IDS } from "@/lib/pigchicken/birds"
 import { LanesArt } from "./sound-zone-art"
 import { GRAVITIES, ZONE_TIME, gravityOf, isGravity } from "@/lib/pigchicken/zone-physics"
+import { ZONE_STYLES, ZONE_STYLE_GROUPS, presetOf, presetSequence, zonePreset } from "@/lib/pigchicken/zone-styles"
 import { PROGRESSIONS, ZONE_CHANGES, chordScalesFor, fitChords, progressionIndex, zoneChange, type ZoneChangeId } from "@/lib/pigchicken/zone-changes"
 
 const field = "h-9 w-full min-w-0 rounded-md border border-white/15 bg-[#0b110e] px-2"
@@ -50,7 +52,18 @@ function KeySelect({ value, onChange, label = "Tom" }: { value: number; onChange
 
 // ---------- Zona sonora ----------
 
-const SECTION = "mt-1 border-t border-white/10 pt-3 text-[10px] uppercase tracking-[0.12em] text-[#93a79a]"
+// the panel's sections open and close like the Personagem panel's groups (yellow titles); which ones are open is kept
+// while the page is open, so another zone opens the same ones
+const openSections: Record<string, boolean> = {}
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const key = title.split(" · ")[0]
+  const [open, setOpen] = useState(!!openSections[key])
+  return (
+    <PatioDisclosure title={title} open={open} onToggle={v => { openSections[key] = v; setOpen(v) }}>
+      {open && <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field px-4 pb-4">{children}</div>}
+    </PatioDisclosure>
+  )
+}
 const OCTAVES = Array.from({ length: BASS_OCT.max - BASS_OCT.min + 1 }, (_, i) => BASS_OCT.min + i)
 
 // One component for every Zona sonora. scene: a scene's own zone, stuck to the ground (no priority and no walls:
@@ -89,6 +102,8 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
     if (z) { onChange(z); setPicked(at + 1) }
   }
   const tab = "h-8 min-w-8 rounded-md border px-2 tabular-nums "
+  // with more than one block, the sections that are the block's say which one they edit
+  const ofBlock = blocks.length > 1 ? ` · bloco ${at + 1}` : ""
   return (
     <>
       <div className="grid grid-cols-[1fr_auto] gap-field">
@@ -98,19 +113,23 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
         }} className={`${field} placeholder:text-[#5f6f65]`} />
         <input aria-label="Cor da zona" title="Cor" type="color" value={zone.color} onChange={e => set({ color: e.target.value }, "zone-color")} className="h-9 w-12 rounded-md border border-white/15 bg-transparent" />
       </div>
-      <StepSelect aria-label="Predefinição" title="Predefinição" value="" onChange={e => {
+      <StepSelect aria-label="Estilo" title="Estilo: a zona inteira (tom, acordes, andamento, batida e baixo) de uma cena ou de um ritmo" value={presetOf(cur)} onChange={e => {
         if (e.target.value === "silence") return setSeq({ ambience: { ...SILENCE } })
-        const z = ZONES.find(x => x.id === e.target.value)
+        const z = zonePreset(e.target.value)
         if (!z) return
-        onChange(setZoneBlock(normalizeSoundZone({ ...zone, name: z.name, color: z.color }), at, { root: z.root, scale: z.scale, chordScale: z.chordScale, bpm: z.bpm, feel: z.feel, progression: z.progression.slice(), ambience: z.ambience ?? legacyAmbience(z.feel) }))
-        setProg(z.progression.map(d => d + 1).join(" ")); setOwnProg(false)
+        const seq = presetSequence(z)
+        // the block's volumes and the bass's octave stay
+        onChange(setZoneBlock(normalizeSoundZone({ ...zone, name: z.name, color: z.color }), at, { ...seq, ambience: { ...seq.ambience, beatVol: amb.beatVol, bassVol: amb.bassVol, bassOct: amb.bassOct } }))
+        setProg(z.progression.map(d => d + 1).join(" ")); setOwnProg(progressionIndex(z.progression) < 0)
       }} className={field}>
-        <option value="" data-skip>Escolher…</option>
+        <option value="" data-skip>Escolher estilo…</option>
         <option value="silence">Silêncio</option>
-        {ZONES.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+        <optgroup label="Cenas">{ZONES.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}</optgroup>
+        {ZONE_STYLE_GROUPS.map(g => <optgroup key={g} label={g}>{ZONE_STYLES.filter(s => s.group === g).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</optgroup>)}
       </StepSelect>
 
-      <h3 className={SECTION}>Blocos</h3>
+      <div className="-mx-4 border-t border-white/10">
+      <Section title="Blocos">
       <div className="flex flex-wrap gap-field" title="Variações da harmonia, do ritmo e do baixo, tocadas uma depois da outra">
         {blocks.map((_, i) => (
           <button key={i} type="button" aria-label={`Bloco ${i + 1}`} aria-pressed={i === at} onClick={() => setPicked(i)}
@@ -127,8 +146,9 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
             className={"h-9 justify-self-end rounded-md border px-3 " + (solo ? "border-primary bg-primary/25 text-white" : "border-white/15 text-[#93a79a] hover:border-white/40")}>Solo</button>
         </div>
       )}
+      </Section>
 
-      <h3 className={SECTION}>Harmonia</h3>
+      <Section title={`Harmonia${ofBlock}`}>
       <div className="grid grid-cols-2 gap-field">
         <KeySelect value={cur.root} onChange={root => setSeq({ root })} />
         <StepSelect aria-label="Escala" title="Escala" value={cur.scale} onChange={e => { const scale = e.target.value as ScaleId; setSeq({ scale, chordScale: fitChords(scale, cur.chordScale) }) }} className={field}>
@@ -153,8 +173,9 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
           if (degrees.length) setSeq({ progression: degrees }, "zone-prog")
         }} className={field} />
       )}
+      </Section>
 
-      <h3 className={SECTION}>Ritmo</h3>
+      <Section title={`Ritmo${ofBlock}`}>
       <div className="grid grid-cols-[auto_auto_minmax(0,1.2fr)_minmax(0,1fr)] items-end gap-x-1.5">
         <PatioKnob label="Volume" name="Volume da batida" hint="Parcela do volume Ambiente" min={AMBIENCE_VOL.min} max={AMBIENCE_VOL.max} step={AMBIENCE_VOL.step} initial={100} dimmed={silent} value={amb.beatVol ?? 100} onChange={beatVol => setAmb({ beatVol }, "zone-beat-vol")} />
         <PatioKnob label="BPM" name="Andamento" min={ZONE_BPM.min} max={ZONE_BPM.max} value={cur.bpm} onChange={bpm => setSeq({ bpm }, "zone-bpm")} />
@@ -179,8 +200,9 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
         <BeatGridEditor pattern={ambiencePattern(amb)} rows={ambienceRows(amb).map(r => ({ id: r.id, label: rowLabel(kit, r.id) }))} color={zone.color} bpm={cur.bpm}
           seed={step => microAt(beat, step)} onChange={p => setAmb({ variant: undefined, drums: p.grid, drumTime: p.time })} />
       </div>
+      </Section>
 
-      <h3 className={SECTION}>Baixo</h3>
+      <Section title={`Baixo${ofBlock}`}>
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-x-2">
         <PatioKnob label="Volume" name="Volume do baixo" hint="Parcela do volume Ambiente" min={AMBIENCE_VOL.min} max={AMBIENCE_VOL.max} step={AMBIENCE_VOL.step} initial={100} dimmed={amb.bass === "none"} value={amb.bassVol ?? 100} onChange={bassVol => setAmb({ bassVol }, "zone-bass-vol")} />
         <Field label="Som">
@@ -195,8 +217,9 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
           </StepSelect>
         </Field>
       </div>
+      </Section>
 
-      <h3 className={SECTION}>Corpos</h3>
+      <Section title="Gravidade">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-field">
         <StepSelect aria-label="Gravidade" title="Gravidade: a de um planeta, da Lua ou do Sol, em relação à da Terra" value={gravityOf(zone.gravity).id} onChange={e => { if (isGravity(e.target.value)) set({ gravity: e.target.value }) }} className={field}>
           {GRAVITIES.map(p => <option key={p.id} value={p.id}>{p.label} · {Math.round(p.g * 100)}%</option>)}
@@ -209,10 +232,9 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
       <PatioRange label="Tempo" min={ZONE_TIME.min} max={ZONE_TIME.max} step={ZONE_TIME.step} value={zone.time ?? ZONE_TIME.initial} changed={(zone.time ?? ZONE_TIME.initial) !== ZONE_TIME.initial} onReset={() => set({ time: undefined })} display={`${zone.time ?? ZONE_TIME.initial}%`}
         hint="Abaixo de 100%, tudo dentro da zona (galinhas, tiros, itens, inimigos) anda em câmera lenta; acima, acelera. A música não muda."
         onChange={time => set({ time }, "zone-time")} />
+      </Section>
 
-      <details className="mt-1 border-t border-white/10 pt-3">
-        <summary className="cursor-pointer select-none text-[10px] uppercase tracking-[0.12em] text-[#93a79a] hover:text-white">Notas e regras</summary>
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-field pt-3">
+      <Section title="Notas e regras">
           <Field label="Dano nos inimigos" hint="Notas fora da regra resvalam sem harmonizar">
             <StepSelect aria-label="Dano nos inimigos" value={zone.inKey ?? ""} onChange={e => set({ inKey: (e.target.value || undefined) as InKeyRule | undefined })} className={field}>
               {(Object.keys(IN_KEY_LABELS) as (InKeyRule | "")[]).map(k => <option key={k} value={k}>{IN_KEY_LABELS[k]}</option>)}
@@ -249,8 +271,8 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
               </StepSelect>
             </Field>
           )}
-        </div>
-      </details>
+      </Section>
+      </div>
     </>
   )
 }

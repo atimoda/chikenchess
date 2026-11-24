@@ -23,8 +23,8 @@ test('the chicken species keeps the configured tuning; the chick is smaller with
   assert.deepEqual(Object.keys(c).sort(), Object.keys(base).sort())
   assert.ok(c.walkSpeed >= base.walkSpeed * 0.75 && c.runMultiplier === base.runMultiplier)
   assert.equal(c.volume, 0)
-  // the head bobs much less walking and running
-  assert.ok(c.headLead <= base.headLead * 0.4 && c.runHeadTilt <= base.runHeadTilt * 0.4)
+  // the head (as the Kids were tuned in the game on 18/11): it shoots forward far and quick; it tilts much less running
+  assert.ok(c.headLead > base.headLead && c.headSnapTime < base.headSnapTime && c.runHeadTilt <= base.runHeadTilt * 0.4)
   assert.ok(Object.keys(CHICK_FACTORS).every(k => k in base))
 })
 

@@ -21,7 +21,7 @@ import { graphicsQuality } from "@/lib/quality"
 import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobby"
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, overlapsPortal, PORTAL_TRANSITION_MS, PORTAL_CLOSE_MS, createPortalShut, stepPortalShut, portalOpenness, type PortalShut } from "@/lib/chicken/portal"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageTop, stageWidth, stageY } from "@/lib/stage-size"
 
 const PAD = 34 // room around the ring for the glow, arcs and sparks
 const OPACITY = 0.5 // the ring is half transparent
@@ -295,7 +295,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
 
   useEffect(() => { if (!local) router.prefetch(href) }, [router, href, local])
   useEffect(() => {
-    const move = (e: PointerEvent) => { if (e.pointerType === 'mouse') pointerRef.current = { x: e.clientX, y: e.clientY } }
+    const move = (e: PointerEvent) => { if (e.pointerType === 'mouse') pointerRef.current = { x: e.clientX, y: stageY(e.clientY) } }
     window.addEventListener('pointermove', move)
     return () => window.removeEventListener('pointermove', move)
   }, [])
@@ -358,7 +358,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       const zoom = inWorld ? liveCamera.zoom : 1
       return {
         x: stageWidth() / 2 + (center.x - stageWidth() / 2) * zoom,
-        y: window.innerHeight / 2 + (center.y - window.innerHeight / 2) * zoom,
+        y: stageHeight() / 2 + (center.y - stageHeight() / 2) * zoom,
       }
     }
     const insidePortal = (x: number, y: number) => {
@@ -367,13 +367,13 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       return !!shown && Math.hypot(x - shown.x, y - shown.y) <= r * (inWorld ? liveCamera.zoom : 1)
     }
     const onPortalPointerDown = (e: PointerEvent) => {
-      portalPressPointer = !document.body.classList.contains('pigchicken-camera-mode') && e.isPrimary && e.button === 0 && insidePortal(e.clientX, e.clientY) ? { id: e.pointerId, walk: !!buttonRef.current?.querySelector('button')?.contains(e.target as Node) } : null
+      portalPressPointer = !document.body.classList.contains('pigchicken-camera-mode') && e.isPrimary && e.button === 0 && insidePortal(e.clientX, stageY(e.clientY)) ? { id: e.pointerId, walk: !!buttonRef.current?.querySelector('button')?.contains(e.target as Node) } : null
     }
     const onPortalPointerUp = (e: PointerEvent) => {
       const press = portalPressPointer
       const beganInside = press?.id === e.pointerId
       portalPressPointer = null
-      if (beganInside && !document.body.classList.contains('pigchicken-camera-mode') && insidePortal(e.clientX, e.clientY)) enterRef.current?.(press?.walk)
+      if (beganInside && !document.body.classList.contains('pigchicken-camera-mode') && insidePortal(e.clientX, stageY(e.clientY))) enterRef.current?.(press?.walk)
     }
     const onPortalPointerCancel = () => { portalPressPointer = null }
     window.addEventListener("pointerdown", onPortalPointerDown, true)
@@ -420,9 +420,9 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       const world = worldRef.current
       if (inWorld && world) box = canvas.getBoundingClientRect()
       const zoom = inWorld ? liveCamera.zoom : 1
-      const pcxScreen = box.left + cx * zoom, pcyScreen = box.top + cy * zoom
+      const pcxScreen = box.left + cx * zoom, pcyScreen = box.top - stageTop() + cy * zoom
       const pcx = (pcxScreen - stageWidth() / 2) / zoom + stageWidth() / 2
-      const pcy = (pcyScreen - window.innerHeight / 2) / zoom + window.innerHeight / 2
+      const pcy = (pcyScreen - stageHeight() / 2) / zoom + stageHeight() / 2
       centerRef.current = { x: pcx, y: pcy }
       if (enteredAt) enteringEngine?.setPortalEntry({ x: pcx, y: pcy, durationMs: ENTER_MS })
       // ---------- characters and destination arrival ----------
@@ -473,7 +473,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         setTouching(!!candidate)
         const pointer = pointerRef.current
         const hovered = pointer && Math.hypot(pointer.x - pcxScreen, pointer.y - pcyScreen) <= r * zoom
-        const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > 0 && box.top < window.innerHeight
+        const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > stageTop() && box.top < stageTop() + stageHeight()
         setShowInstruction(!!(active && onScreen && !suppressed && (candidate || (label.trim() && (hovered || runtime.instructionMode === 'always')))))
       }
       // Contact is sampled every game frame, even when the ring draws at ~30 FPS.
@@ -498,7 +498,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
       }
       // Contact/arrival gates above still run for offscreen local players. Only
       // the decorative canvas work sleeps; a transition always keeps drawing.
-      const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > 0 && box.top < window.innerHeight
+      const onScreen = box.right > 0 && box.left < stageWidth() && box.bottom > stageTop() && box.top < stageTop() + stageHeight()
       if (!onScreen && !enteredAt) { sparks.length = 0; arcs = []; nextStrands = now; return }
       // shut: nothing to draw (cleared once)
       if (openness <= 0.001) {
@@ -597,7 +597,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   // first place of the button (the animation keeps it on the ring from then on)
   const c = centerRef.current
   const cOnScreen = c && (world
-    ? { x: stageWidth() / 2 + (c.x - stageWidth() / 2) * liveCamera.zoom, y: window.innerHeight / 2 + (c.y - window.innerHeight / 2) * liveCamera.zoom }
+    ? { x: stageWidth() / 2 + (c.x - stageWidth() / 2) * liveCamera.zoom, y: stageHeight() / 2 + (c.y - stageHeight() / 2) * liveCamera.zoom }
     : c)
   const btnStyle: React.CSSProperties = c
     ? { left: Math.max(8, cOnScreen!.x - buttonW / 2), top: cOnScreen!.y - 18 }

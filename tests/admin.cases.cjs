@@ -163,6 +163,17 @@ test('Pátio defaults: the file validates, feeds new empty Pátios, Camadas and 
   assert.deepEqual(layers.LAYERS_DEFAULT, file.layers)
   assert.deepEqual(camera.parquinhoDefaultsFile(camera.DEFAULT_PARQUINHO), file.camera)
   assert.deepEqual(mixer.DEFAULT_MIX, file.volume)
+  // the Grade de blocos: every setting but Ligar, what a Pátio that saved no grid shows; Reverter para o padrão
+  // takes a grid back to it and keeps it on or off
+  const mine = loadTs('lib/pigchicken/mine-grid.ts')
+  assert.deepEqual(mine.mineGridDefaultsFile(mine.defaultMineGrid()), file.mineGrid)
+  assert.equal(mine.defaultMineGrid().on, false)
+  const changed = { ...mine.defaultMineGrid(), on: true, cell: 400, pass: false, turn: 'first' }
+  assert.equal(mine.mineGridIsDefault(changed), false)
+  assert.equal(mine.mineGridIsDefault(mine.mineGridAtDefault(changed)), true)
+  assert.equal(mine.mineGridAtDefault(changed).on, true)
+  assert.throws(() => validateAdminValue(entry, { ...file, mineGrid: { ...file.mineGrid, cell: 99999 } }), /mineGrid/)
+  assert.throws(() => validateAdminValue(entry, { ...file, mineGrid: { ...file.mineGrid, on: true } }), /mineGrid/)
   // Mute silences every layer and keeps the volumes, which still change while it is on
   mixer.setMix({ master: 1, notes: 0.7 })
   assert.equal(mixer.mixGain('notes'), 0.7)
@@ -226,4 +237,29 @@ test('Salvar no game lists what changes: leaf by leaf, arrays whole, and nothing
   assert.deepEqual(diffValues(itemsDefaultsFile(itemsOver(sparse)), itemsDefaultsFile(itemsOver(sparse))), [])
   const next = itemsDefaultsFile({ ...DEFAULT_ITEMS, bat: { ...DEFAULT_ITEMS.bat, gripX: DEFAULT_ITEMS.bat.gripX + 3 } })
   assert.deepEqual(diffValues(itemsDefaultsFile(itemsOver(now)), next).map(c => c.path.join('.')), ['bat.gripX'])
+})
+
+// Reverter para o padrão (every panel with Salvar no game): after it, Salvar no game has nothing to write, whatever
+// the panel had. A field added to a panel without its revert breaks one of these.
+test('reverter para o padrão: each panel goes back to exactly what its Salvar no game compares with', () => {
+  const PS = loadTs('lib/pigchicken/patio-settings.ts')
+  const camera = loadTs('lib/pigchicken/settings.ts')
+  const sky = loadTs('lib/pigchicken/sky.ts')
+  const file = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data/pigchicken/default-patio.json'), 'utf8'))
+  // Configurações do Pátio: a Pátio with every field of the panel changed, plus what the panel does not edit
+  const changed = { screens: 7, height: 3000, ground: 250, inventory: 3, sceneMusic: false, temple: true, sky: { ...sky.SKY_DEFAULT, hour: 3 },
+    mountains: { show: false }, forest: { far: { show: false } }, skyline: {}, clouds: {}, snowfall: {}, aurora: {}, zoom: { min: 1, max: 2 },
+    itemGlow: { amount: 50 }, sceneZones: { 0: {} }, layers: file.layers }
+  for (const k of PS.PATIO_DEFAULT_KEYS) assert.ok(k in changed, `the test changes ${k}`)
+  const screens = PS.DEFAULT_PATIO_SETTINGS.screens ?? camera.DEFAULT_PARQUINHO.screens
+  const reverted = PS.patioSettingsAtDefault(PS.normalizePatioSettings(changed), screens)
+  assert.deepEqual(PS.patioSettingsDefaultsFile(reverted, PS.patioScreens(reverted, 4)), PS.patioSettingsDefaultsFile(PS.DEFAULT_PATIO_SETTINGS, screens))
+  // and keeps what is not the panel's
+  assert.deepEqual(reverted.sceneZones, PS.normalizePatioSettings(changed).sceneZones)
+  // Personagem: the code's configuration, every class (Chi, Pig, Ken, Kids) included
+  const C = loadTs('lib/chicken/config.ts')
+  const { CLASS_IDS } = loadTs('lib/chicken/species.ts')
+  const def = C.defaultChickenConfig()
+  assert.deepEqual(Object.keys(def.classes).sort(), [...CLASS_IDS].sort())
+  assert.ok(C.sameChickenConfig(def, C.normalizeChickenConfig(JSON.parse(JSON.stringify(def)))))
 })

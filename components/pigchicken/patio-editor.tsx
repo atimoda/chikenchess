@@ -10,8 +10,9 @@ import { StepSelect } from "@/components/ui/step-select"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
-import { ArrowDownToLine, Copy, Eye, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelRight, Pencil, Redo2, RotateCw, Skull, Trash2, Undo2, X } from "lucide-react"
-import { FloatingPanel } from "@/components/ui/floating-panel"
+import { ArrowDownToLine, Copy, Ghost, Layers, Lock, LockOpen, Music, PackagePlus, PanelBottom, PanelRight, PanelTop, Pencil, Redo2, RotateCw, Shapes, Skull, Trash2, Undo2, X, type LucideIcon } from "lucide-react"
+import { FloatingPanel, PanelInline } from "@/components/ui/floating-panel"
+import { stageY } from "@/lib/stage-size"
 import { PortalTargetFields } from "./portal-target-fields"
 import { isFreeBlock, isSpawnPortal, rebalanceSpawnPortals, setSpawnChance, spawnChances, spawnPortalsOf } from "@/lib/pigchicken/spawn-portals"
 import { cn } from "@/lib/utils"
@@ -53,7 +54,7 @@ import { MINE_ACTIVATOR_DAMAGE, MINE_ACTIVATOR_NOTES, defaultMineActivator, type
 import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, PLAYER_ACCURACY, PLAYER_HEARTS, defaultGong, defaultPlayer, type GongParams, type PlayerParams } from "@/lib/pigchicken/gong"
 import { BUILDING_COLUMNS, BUILDING_LANTERNS, BUILDING_ROOFS, defaultBuilding, type BuildingParams } from "@/lib/pigchicken/buildings"
 import { BalustradeArt, BuildingArt } from "./building-art"
-import { EditorDock, useEditorDocked } from "./editor-dock"
+import { EditorDock, useEditorDocked, useEditorDockSide, type DockSide } from "./editor-dock"
 
 const UI = "header, aside, button, input, select, textarea, a, label, [data-chicken-ignore], [role='dialog']"
 const HISTORY_MAX = 80
@@ -99,9 +100,16 @@ const snap45 = (deg: number) => ((Math.round(deg / 45) * 45) % 360 + 360) % 360
 // soundLayer: the "Zonas sonoras" layer (shared with the header's eye), editable here
 // active: the switch in the panel's title; off, the panel stays open and its cards still place elements, but the
 // elements cannot be selected, moved or edited and the Pátio plays as outside the editor
-export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, layersOpen = false, onLayers, active = true, onActive, palette = true, me, signedIn = false }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void
-  // the header's Camadas panel (layer-eyes.tsx), opened from the palette too
-  layersOpen?: boolean; onLayers?: () => void
+/** A tab of the palette for one of the Pátio header's panels: with the editing on, the panel is drawn in the tab
+ *  (`panel`, in place); with it off, the tab opens and closes that panel floating (`open`/`setOpen`). */
+export type PanelShortcut = { key: string; label: string; title: string; icon: LucideIcon; open: boolean; setOpen: (open: boolean) => void; panel: React.ReactNode }
+
+/** An element's (or a scene's zone's) panel shown as a tab of its own in the docked palette. */
+type ExtraTab = { key: string; label: string; panel: React.ReactNode; onClose: () => void }
+
+export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, soundLayer, onSoundLayer, onSoundLevel, shortcuts = [], active = true, onActive, palette = true, me, signedIn = false }: { layout: PatioLayout; palette?: boolean; screens: number; onChange: Change; onClose: () => void; active?: boolean; onActive?: (on: boolean) => void; onSpawnEnemy?: (kind: 'alien' | 'zombie', x: number, y: number) => void; soundLayer: number; onSoundLayer: () => void; onSoundLevel?: (percent: number) => void
+  /** the tabs after Elementos and Zonas, each a header panel (Camadas, Grade de blocos, Configurações do Pátio, Câmera de Mira) */
+  shortcuts?: PanelShortcut[]
   // who makes a Pátio new from a portal's Destino (the account, or this browser) and whether it may be saved/named
   me: string; signedIn?: boolean }) {
   const history = useHistory(layout, onChange)
@@ -405,6 +413,31 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
   }), [width, settings?.mountains, settings?.clouds, settings?.sky?.clouds, settings?.sky?.forest])
   const wired = useMemo(() => linking && selected ? linkedTo(layout.elements, selected) : new Set<string>(), [linking, selected, layout.elements])
 
+  const elementPanel = !sel ? null : panel === "layers" ? <LayersPanel el={sel} onChange={el => update(el)} onClose={() => setPanel("")} />
+    : panel === "edit" && !draft ? (sel.kind === 'house' && sel.params.house
+        ? <HousePanel key={sel.id} house={sel.params.house} dimensions={sel} onChange={(house, step) => update({ ...sel, params: { house } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
+        : selectedTree
+          ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
+            onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
+          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} backdropScene={backdropScene}
+            portal={sel.kind === "portal" ? { hasPartner: !!portalPartner(sel, layout.elements), me, signedIn } : undefined}
+            spawn={isSpawnPortal(sel) && spawnPortals.length > 1 ? {
+              chance: spawnChances(spawnPortals)[spawnPortals.findIndex(p => p.id === sel.id)] ?? 0,
+              onChance: v => commit({ ...layoutRef.current, elements: setSpawnChance(layoutRef.current.elements, sel.id, v) }, `spawn-chance:${sel.id}`),
+            } : undefined}
+            freeBlock={isSpawnPortal(sel) && gridOn ? { on: isFreeBlock(sel), last: isFreeBlock(sel) && spawnPortals.filter(isFreeBlock).length <= 1 } : undefined} />) : null
+  const sceneZonePanel = active && soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) ? (
+        <SceneZonePanel key={scenePanel} scene={scenePanel} zones={layout.settings?.sceneZones} onChange={(zone, step) => setSceneZone(scenePanel, zone, step && `${step}:cena${scenePanel}`)}
+          onReset={() => setSceneZone(scenePanel, null)} onClose={() => setScenePanel(null)} />
+      ) : null
+  // with the Modo editor docked and the editing on, these open as a tab of its own in the palette, named after what
+  // they edit; choosing another tab closes them
+  const [docked] = useEditorDocked()
+  const inDock = palette && active && docked
+  const extraTab: ExtraTab | null = !inDock ? null
+    : elementPanel && sel ? { key: `x:el:${sel.id}`, label: elementLabel(sel), panel: elementPanel, onClose: () => setPanel("") }
+    : sceneZonePanel && scenePanel !== null ? { key: `x:scene:${scenePanel}`, label: `Zona da cena ${scenePanel + 1}`, panel: sceneZonePanel, onClose: () => setScenePanel(null) }
+    : null
   return (
     <>
       <style>{`
@@ -450,27 +483,12 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           )}
         </div>
       </div>}
-      {sel && panel === "layers" && <LayersPanel el={sel} onChange={el => update(el)} onClose={() => setPanel("")} />}
-      {sel && panel === "edit" && !draft && (sel.kind === 'house' && sel.params.house
-        ? <HousePanel key={sel.id} house={sel.params.house} dimensions={sel} onChange={(house, step) => update({ ...sel, params: { house } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
-        : selectedTree
-          ? <TreePanel key={sel.id} tree={selectedTree} dimensions={sel} worldX={sel.x + sel.w / 2} legacy={sel.kind === "tree" ? undefined : <ElementArt el={sel} />}
-            onChange={(tree, step) => update({ ...sel, kind: "tree", params: { tree } }, step && `${sel.id}:${step}`)} onClose={() => setPanel("")} />
-          : <EditPanel key={sel.id} el={sel} onChange={(el, step) => update(el, step)} onClose={() => setPanel("")} onDelete={portalPartner(sel, layout.elements)?.locked ? undefined : () => remove(sel.id)} onSpawnEnemy={onSpawnEnemy} linking={linking} onLinking={setLinking} backdropScene={backdropScene}
-            portal={sel.kind === "portal" ? { hasPartner: !!portalPartner(sel, layout.elements), me, signedIn } : undefined}
-            spawn={isSpawnPortal(sel) && spawnPortals.length > 1 ? {
-              chance: spawnChances(spawnPortals)[spawnPortals.findIndex(p => p.id === sel.id)] ?? 0,
-              onChance: v => commit({ ...layoutRef.current, elements: setSpawnChance(layoutRef.current.elements, sel.id, v) }, `spawn-chance:${sel.id}`),
-            } : undefined}
-            freeBlock={isSpawnPortal(sel) && gridOn ? { on: isFreeBlock(sel), last: isFreeBlock(sel) && spawnPortals.filter(isFreeBlock).length <= 1 } : undefined} />)}
+      {!inDock && elementPanel}
       {active && soundLayer > 0 && <MusicZonesLayer elements={shown} screens={screens} sceneZones={layout.settings?.sceneZones} sceneEdges={layout.settings?.sceneEdges} sceneMusic={layout.settings?.sceneMusic !== false} editable opacity={soundLayer}
         onSceneEdge={setSceneEdge} onResizeZones={resizeZones}
         onZone={(el, zone, step) => { if (!el.locked) update({ ...el, params: { ...el.params, zone } }, step) }} onOpenZone={edit}
         onScene={setSceneZone} onSlam={setSceneZone} onOpenScene={s => { select(null); setScenePanel(s) }} />}
-      {active && soundLayer > 0 && scenePanel !== null && scenePanel < worldScenes(screens) && scenePanel !== templeScene(screens) && (
-        <SceneZonePanel key={scenePanel} scene={scenePanel} zones={layout.settings?.sceneZones} onChange={(zone, step) => setSceneZone(scenePanel, zone, step && `${step}:cena${scenePanel}`)}
-          onReset={() => setSceneZone(scenePanel, null)} onClose={() => setScenePanel(null)} />
-      )}
+      {!inDock && sceneZonePanel}
       {palette && <Palette active={active} onActive={onActive} onAdd={add} hidden={!!draft} draggingScenery={!!placement.ghost}
         bindHouse={house => placement.bind(() => randomHouseElement(house.style), () => openDraft({ kind: "house", value: house }))}
         bindTree={tree => placement.bind(() => {
@@ -478,7 +496,7 @@ export function PatioEditor({ layout, screens, onChange, onClose, onSpawnEnemy, 
           return { ...createElement("tree", 0, 0, { tree: next.tree }), w: next.w, h: next.h }
         }, () => openDraft({ kind: "tree", value: tree }))}
         canAddScenery={layout.elements.length < LAYOUT_MAX_ELEMENTS}
-        soundLayer={soundLayer > 0} onSoundLayer={onSoundLayer} layersOpen={layersOpen} onLayers={onLayers}
+        soundLayer={soundLayer} onSoundLayer={onSoundLayer} onSoundLevel={onSoundLevel} shortcuts={shortcuts} extraTab={extraTab}
         floorBelow={floorBelow} chestAt={chestAt} onInsert={insertInChest} onClose={onClose} undo={back} redo={forward} canUndo={canUndo} canRedo={canRedo} />}
       {palette && draft?.kind === "house" && <HousePanel house={draft.value} onChange={value => setDraft({ kind: "house", value })} onClose={() => setDraft(null)} dragging={!!placement.ghost}
         previewDrag={placement.bind(() => ({ ...createElement('house', 0, 0, { house: draft.value }), ...houseDraftSize(draft.value) }))} />}
@@ -1145,13 +1163,20 @@ function PaletteSection({ title, children }: { title: string; children: React.Re
   </PatioDisclosure>
 }
 
-function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, layersOpen, onLayers, floorBelow, chestAt, onInsert, onClose, undo, redo, canUndo, canRedo }: {
+// docked, the panel's place: the side it is at undocks it. Floating, only the last side's button shows, and docks it there
+const DOCK_SIDES: { side: DockSide; label: string; Icon: LucideIcon }[] = [
+  { side: "top", label: "em cima", Icon: PanelTop },
+  { side: "bottom", label: "embaixo", Icon: PanelBottom },
+  { side: "right", label: "à direita", Icon: PanelRight },
+]
+
+function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, hidden, draggingScenery, soundLayer, onSoundLayer, onSoundLevel, shortcuts, extraTab, floorBelow, chestAt, onInsert, onClose, undo, redo, canUndo, canRedo }: {
   active: boolean; onActive?: (on: boolean) => void
   onAdd: (el: LayoutElement) => void; bindHouse: (house: HouseParams) => PatioPlacementHandlers
   bindTree: (tree: TreeParams) => PatioPlacementHandlers
   canAddScenery: boolean; hidden: boolean; draggingScenery: boolean
-  soundLayer: boolean; onSoundLayer: () => void
-  layersOpen: boolean; onLayers?: () => void
+  soundLayer: number; onSoundLayer: () => void; onSoundLevel?: (percent: number) => void
+  shortcuts: PanelShortcut[]; extraTab: ExtraTab | null
   floorBelow: (x: number, y: number) => number
   chestAt: (clientX: number, clientY: number) => LayoutElement | null; onInsert: (chest: LayoutElement, item: ItemId) => void
   onClose: () => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean
@@ -1159,6 +1184,42 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
   const [housePreviews] = useState(() => (Object.keys(HOUSE_STYLE_LABELS) as HouseStyle[]).map(style => randomHouse(style).house))
   const [treePreviews] = useState(() => (Object.keys(TREE_STYLES) as TreeParams["style"][]).map(style => randomTree(style)))
   const [drag, setDrag] = useState<{ entry: Entry; x: number; y: number; pointer: number } | null>(null)
+  // the tabs: with the editing on, the chosen one shows below them (Elementos: the cards; the others: their panel in
+  // place, the floating one closed); with it off, the cards always show and the tabs work as the header's buttons
+  const [tab, setTab] = useState("elements")
+  const inTabs = active
+  const current = inTabs ? shortcuts.find(t => t.key === tab) : undefined
+  // the header opening the floating one of the tab on show: back to Elementos, so the panel is not drawn twice
+  const currentFloats = !!current?.open
+  useEffect(() => { if (currentFloats) setTab("elements") }, [currentFloats])
+  // an element's panel opening comes in front as its own tab; when it closes, the tab chosen before comes back
+  const extraKey = extraTab?.key ?? null
+  const before = useRef("elements")
+  useEffect(() => {
+    setTab(t => {
+      if (extraKey) { if (!t.startsWith("x:")) before.current = t; return extraKey }
+      return t.startsWith("x:") ? before.current : t
+    })
+  }, [extraKey])
+  const shown = inTabs ? tab : "elements"
+  const choose = (key: string) => {
+    if (extraTab && key !== extraTab.key) extraTab.onClose()
+    if (inTabs) {
+      shortcuts.find(t => t.key === key)?.setOpen(false)
+      if (key === "zones" && soundLayer === 0) onSoundLevel?.(33)
+      setTab(key)
+      return
+    }
+    if (key === "zones") onSoundLayer()
+    const t = shortcuts.find(t => t.key === key)
+    t?.setOpen(!t.open)
+  }
+  const tabs = [
+    { key: "elements", label: "Elementos", title: "Elementos para arrastar até o Pátio", icon: Shapes, on: shown === "elements" },
+    { key: "zones", label: "Zonas", title: "Mostra as zonas, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas", icon: Music, on: inTabs ? tab === "zones" : soundLayer > 0 },
+    ...shortcuts.map(t => ({ key: t.key, label: t.label, title: t.title, icon: t.icon, on: inTabs ? tab === t.key : t.open })),
+    ...(extraTab ? [{ key: extraTab.key, label: extraTab.label, title: extraTab.label, icon: Pencil, on: tab === extraTab.key }] : []),
+  ]
   const start = (entry: Entry) => (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault(); e.stopPropagation()
@@ -1194,7 +1255,19 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
     setDrag(null)
   }
   const d = drag ? ELEMENT_DEFS[drag.entry.kind] : null
-  const [docked, toggleDock] = useEditorDocked()
+  const entryGroup = (g: (typeof ENTRIES)[number]) => (
+    <PaletteSection key={g.group} title={g.group}>
+      {g.items.map(entry => (
+        <button key={entry.key} type="button" title={`Arraste para o Pátio: ${entry.label}`} className={PALETTE_CARD}
+          onPointerDown={start(entry)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}>
+          <span className="flex h-9 items-center justify-center"><Thumb entry={entry} /></span>
+          <span>{entry.label}</span>
+        </button>
+      ))}
+    </PaletteSection>
+  )
+  const [docked] = useEditorDocked()
+  const [dockSide, setDockSide] = useEditorDockSide()
   const body = (
     <>
         <div data-drag-handle className="flex shrink-0 items-center gap-1.5 border-b border-white/10 px-3 py-2">
@@ -1205,19 +1278,33 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
             <span aria-hidden className={cn("absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all", active ? "left-[18px] bg-[#101713]" : "left-0.5 bg-[#b9c7b9]")} />
           </button>
           <span className="flex-1" />
-          <button type="button" className={cn(TOOL, docked && "border-[#ffd166] text-white")} onClick={toggleDock} aria-pressed={docked}
-            title={docked ? "Soltar o painel (flutuante)" : "Fixar o painel à direita do Pátio"} aria-label="Fixar o painel à direita"><PanelRight className="h-4 w-4" /></button>
+          {docked ? DOCK_SIDES.map(({ side, label, Icon }) => (
+            <button key={side} type="button" className={cn(TOOL, dockSide === side && "border-[#ffd166] text-white")} onClick={() => setDockSide(side)} aria-pressed={dockSide === side}
+              title={dockSide === side ? "Soltar o painel (flutuante)" : `Fixar o painel ${label}`} aria-label={`Fixar o painel ${label}`}><Icon className="h-4 w-4" /></button>
+          )) : DOCK_SIDES.filter(d => d.side === dockSide).map(({ side, label, Icon }) => (
+            <button key={side} type="button" className={TOOL} onClick={() => setDockSide(side)} aria-pressed={false}
+              title={`Fixar o painel ${label}`} aria-label={`Fixar o painel ${label}`}><Icon className="h-4 w-4" /></button>
+          ))}
           <button type="button" className={TOOL} disabled={!canUndo} onClick={undo} title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><Undo2 className="h-4 w-4" /></button>
           <button type="button" className={TOOL} disabled={!canRedo} onClick={redo} title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer"><Redo2 className="h-4 w-4" /></button>
           <button type="button" className={TOOL} onClick={onClose} title="Sair do modo editor (=)" aria-label="Sair do modo editor"><X className="h-4 w-4" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-3 pt-2">
-          <div className="ml-4 flex gap-1.5">
-            <button type="button" className={cn(TOOL, "h-8 w-auto gap-1.5 px-2", soundLayer && "border-primary text-primary")} title="Mostra as zonas, a zona de cada cena, as superfícies que rebatem notas e as notas das faixas fixas"
-              aria-pressed={soundLayer} onClick={onSoundLayer}><Music size={16} /> Zonas</button>
-            {onLayers && <button type="button" className={cn(TOOL, "h-8 w-auto gap-1.5 px-2", layersOpen && "border-primary text-primary")} title="Abre o painel Camadas"
-              aria-pressed={layersOpen} onClick={onLayers}><Eye size={16} /> Camadas</button>}
+          <div className="mx-4 flex flex-wrap gap-1.5">
+            {tabs.map(({ key, label, title, icon: Icon, on }) => (
+              <button key={key} type="button" className={cn(TOOL, "h-8 w-auto gap-1.5 px-2", on && "border-primary text-primary")} title={title}
+                aria-pressed={on} onClick={() => choose(key)}><Icon size={16} /> {label}</button>
+            ))}
           </div>
+          {shown === "zones" && <>
+            <div className="mx-4 mt-2">
+              <PatioRange label="Zonas" min={0} max={100} value={Math.round(soundLayer * 100)} display={`${Math.round(soundLayer * 100)}%`} onChange={v => onSoundLevel?.(v)} />
+            </div>
+            {ENTRIES.filter(g => g.group === "Música").map(entryGroup)}
+          </>}
+          {current && <div className="mt-2"><PanelInline.Provider value>{current.panel}</PanelInline.Provider></div>}
+          {extraTab && shown === extraTab.key && <PanelInline.Provider value="esc" key={extraTab.key}>{extraTab.panel}</PanelInline.Provider>}
+          {shown === "elements" && <>
           <PaletteSection title="Casas">
             {housePreviews.map(house => {
               const size = houseDraftSize(house)
@@ -1241,17 +1328,8 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
               </button>
             ))}
           </PaletteSection>
-          {ENTRIES.map(g => (
-            <PaletteSection key={g.group} title={g.group}>
-              {g.items.map(entry => (
-                <button key={entry.key} type="button" title={`Arraste para o Pátio: ${entry.label}`} className={PALETTE_CARD}
-                  onPointerDown={start(entry)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}>
-                  <span className="flex h-9 items-center justify-center"><Thumb entry={entry} /></span>
-                  <span>{entry.label}</span>
-                </button>
-              ))}
-            </PaletteSection>
-          ))}
+          {ENTRIES.map(entryGroup)}
+          </>}
         </div>
     </>
   )
@@ -1263,7 +1341,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       {/* what is being dragged, at its real size in the world */}
       {drag && into && <InsertHint chest={into} entry={drag.entry} x={drag.x} y={drag.y} />}
       {drag && d && !into && (
-        <div aria-hidden="true" className="pointer-events-none fixed z-[250] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: drag.y - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
+        <div aria-hidden="true" className="pointer-events-none fixed z-[250] outline outline-2 outline-dashed outline-[#ffd166]" style={{ left: drag.x - d.w / 2, top: stageY(drag.y) - d.h / 2, width: d.w, height: d.h, opacity: 0.75 }}>
           {d.entity ? <div className="absolute inset-0 flex items-center justify-center bg-[#ffd166]/15"><Thumb entry={drag.entry} /></div> : <ElementArt el={{ kind: drag.entry.kind, params: previewParams(drag.entry), w: d.w, h: d.h }} editing />}
         </div>
       )}
@@ -1276,7 +1354,7 @@ function InsertHint({ chest, entry, x, y }: { chest: LayoutElement; entry: Entry
   const at = worldToScreen(chest.x, chest.y), z = liveCamera.zoom, color = CHEST_GLOW[chest.params.chest?.rarity ?? "simple"].color
   return <>
     <div aria-hidden="true" className="pointer-events-none fixed z-[250] rounded-lg border-2" style={{ left: at.x - 6, top: at.y - 6, width: chest.w * z + 12, height: chest.h * z + 12, borderColor: color, boxShadow: `0 0 18px ${color}` }} />
-    <div aria-hidden="true" data-chest-insert className="pointer-events-none fixed z-[251] flex -translate-x-1/2 -translate-y-full flex-col items-center gap-0.5" style={{ left: x, top: y - 4 }}>
+    <div aria-hidden="true" data-chest-insert className="pointer-events-none fixed z-[251] flex -translate-x-1/2 -translate-y-full flex-col items-center gap-0.5" style={{ left: x, top: stageY(y) - 4 }}>
       <Thumb entry={entry} />
       <span className="flex h-6 w-6 items-center justify-center rounded-full text-[#101713]" style={{ background: color }}><PackagePlus className="h-4 w-4" strokeWidth={2.5} /></span>
     </div>

@@ -12,15 +12,15 @@ import { createPortal } from "react-dom"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { requestGameFrame, cancelGameFrame } from "@/lib/game-frame"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { zoomedView } from "@/lib/pigchicken/viewport"
 import type { LayoutElement } from "@/lib/pigchicken/layout"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { houseWallPolygon } from "@/lib/pigchicken/houses"
 import { isFreeBlock } from "@/lib/pigchicken/spawn-portals"
 import {
-  MINE_MARGIN, bombsAround, createMineGrid, mineCell, mineCellRect, mineGeometry, mineNearestCell, mineOutline, minePlugs, mineSideAt, mineWallThickness, mineWalls,
-  type MineCell, type MineGeo, type MineGrid, type MineGridParams, type MineSide,
+  MINE_MARGIN, bombsAround, createMineGrid, mineCell, mineCellRect, mineGeometry, mineNearestCell, mineOutline, minePlugs, mineSideNext, mineWallThickness, mineWalls,
+  type MineCell, type MineGeo, type MineGrid, type MineGridParams, type MineSide, type MineSideState,
 } from "@/lib/pigchicken/mine-grid"
 import { mineStore, setMineParams, setMineSide, startMineRound } from "@/lib/pigchicken/mine-grid-store"
 import { BOMB_USE_LABELS, mineHints, mineSpotOf } from "./mine-grid-play"
@@ -69,20 +69,23 @@ function useMineView(grid: MineGrid | null, engine: ChickenEngine | null, extras
     if (!grid || !engine) return
     const g = grid.geo
     let raf = 0, key = ""
-    // each local chicken's side, which is also her key for the walls between two closed blocks
-    const sides = new Map<ChickenEngine, MineSide>(), names = new Set<string>()
+    // each local chicken's side, which is also her key for the walls between two closed blocks, and how many times
+    // she had gone through one of them (a way into the gap other than that is a way out of the rooms, mineSideNext)
+    const sides = new Map<ChickenEngine, MineSideState>(), names = new Set<string>(), crossed = new Map<ChickenEngine, number>()
     const spot = (who: string, e: ChickenEngine) => {
       // where she is: just off her feet, on the side of her body, whatever they are on (a floor, a wall or a
       // ceiling). Her feet never leave the space she is in, while her head can show through a wall or a low ceiling.
       const at = mineSpotOf(e)
-      const was = sides.get(e), now = mineSideAt(grid, at.x, at.y, was ?? "open")
-      if (now !== was) { sides.set(e, now); e.setCrossKey(now); names.add(who); setMineSide(who, now) }
+      const was = sides.get(e), count = e.crossings(), now = mineSideNext(grid, at.x, at.y, was ?? { side: "open", crossed: false }, count !== (crossed.get(e) ?? count))
+      crossed.set(e, count)
+      sides.set(e, now)
+      if (now.side !== was?.side) { e.setCrossKey(now.side); names.add(who); setMineSide(who, now.side) }
       return at
     }
     const frame = () => {
       raf = requestGameFrame(frame)
-      const me = spot("p1", engine), side = sides.get(engine) ?? "open"
-      const v = zoomedView(stageWidth(), window.innerHeight, liveCamera.zoom)
+      const me = spot("p1", engine), side = sides.get(engine)?.side ?? "open"
+      const v = zoomedView(stageWidth(), stageHeight(), liveCamera.zoom)
       const left = v.x + liveCamera.x, topY = v.y - liveCamera.y
       const c0 = Math.max(0, Math.floor((left - g.x0) / g.step) - 1), c1 = Math.min(g.cols - 1, Math.floor((left + v.w - g.x0) / g.step) + 1)
       const r1 = Math.min(g.rows - 1, Math.floor((g.ground - topY) / g.step) + 1), r0 = Math.max(0, Math.floor((g.ground - topY - v.h) / g.step) - 1)
@@ -188,7 +191,7 @@ export function MineGridLayer({ pass, engine, extras, worldRef, width, opacity, 
     // plugs of the narrow gaps count only for the bodies that do not fit in them (`data-chicken-fit`); all of them
     // are one solid for the engine (`data-chicken-fused`)
     return [
-      ...mineWalls(grid, close).map(w => ({ ...w, fit: undefined as number | undefined, cross: w.cross ? `closed,${w.cross}` : undefined })),
+      ...mineWalls(grid, close).map(w => ({ ...w, fit: undefined as number | undefined, cross: w.cross ? `closed,${w.cross}${w.skip ? `,${w.skip}` : ""}` : undefined })),
       ...minePlugs(grid, close).map(p => ({ ...p, shape: undefined as [number, number][] | undefined, cross: undefined as string | undefined })),
     ]
   }, [grid, pass, view.near, version])

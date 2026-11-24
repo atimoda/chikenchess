@@ -149,7 +149,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Grade de blocos">{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value={CAGE_IDS[0]}>Gaiolas</option>
         </StepSelect>
-        <button type="button" onClick={() => edit(all => (cages ? CAGE_IDS : [sel]).forEach(id => Object.assign(all[id], structuredClone(DEFAULT_ITEMS[id]))))} title={cages ? "Volta as gaiolas para os valores do código" : "Volta este item para os valores do código"} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+        <button type="button" onClick={() => edit(all => (cages ? CAGE_IDS : [sel]).forEach(id => { all[id] = structuredClone(DEFAULT_ITEMS[id]) }))} title={cages ? "Volta as gaiolas para os valores do código" : "Volta este item para os valores do código"} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -370,7 +370,9 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           </details>
         ))}
         {/* admins: every item's current numbers become the game's default (data/pigchicken/default-items.json) */}
-        <SaveToGameButton path="data/pigchicken/default-items.json" save={() => saveDefaultItems(items)} className="justify-end px-4 py-3" />
+        {/* Reverter para o padrão: every item (not only the one shown) as the game has it */}
+        <SaveToGameButton path="data/pigchicken/default-items.json" save={() => saveDefaultItems(items)} className="justify-end px-4 py-3"
+          onRevert={() => edit(all => { for (const id of Object.keys(all) as ItemId[]) all[id] = structuredClone(DEFAULT_ITEMS[id]) })} />
       </div>
     </FloatingPanel>
   )

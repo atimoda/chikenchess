@@ -40,7 +40,7 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
         <StepSelect aria-label="Escala" value={sel} onChange={e => setSel(e.target.value as InstrumentScaleId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
           {INSTRUMENT_SCALE_IDS.map(id => <option key={id} value={id}>{INSTRUMENT_SCALES[id].label}</option>)}
         </StepSelect>
-        <button type="button" onClick={() => { update(p => Object.assign(p, structuredClone(base))); if (sel === "drums") saveDrumKit(structuredClone(DEFAULT_KIT)) }} title="Volta esta escala para os valores padrão" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+        <button type="button" onClick={() => { { const next = structuredClone(scales); next[sel] = structuredClone(base); saveScaleParams(next); setScales(next) }; if (sel === "drums") saveDrumKit(structuredClone(DEFAULT_KIT)) }} title="Volta esta escala para os valores padrão" className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
         <button type="button" aria-label="Fechar escalas" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       {/* the scale's drawing, above the numbers and out of their scroll */}
@@ -69,7 +69,9 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
           </details>
         ))}
         {/* admins: every scale's current numbers become the game's default (data/pigchicken/default-scales.json) */}
-        <SaveToGameButton path="data/pigchicken/default-scales.json" save={() => saveDefaultScales(scales)} className="justify-end px-4 py-3" />
+        {/* Reverter para o padrão: every scale (and the Bateria's kit), not only the one shown */}
+        <SaveToGameButton path="data/pigchicken/default-scales.json" save={() => saveDefaultScales(scales)} className="justify-end px-4 py-3"
+          onRevert={() => { const next = structuredClone(DEFAULT_SCALES); saveScaleParams(next); setScales(next); saveDrumKit(structuredClone(DEFAULT_KIT)) }} />
       </div>
     </FloatingPanel>
   )

@@ -175,9 +175,9 @@ test('the Filhote has its own column (the chick class): factors, one of each inv
   assert.deepEqual(CLASS_IDS, ['pig', 'fox', 'chick'])
   const d = defaultClasses()
   assert.equal(d.chick.factors.scale, CHICK_FACTORS.scale); assert.equal(d.chick.factors.maxHp, 1)
-  assert.deepEqual([d.chick.invInstruments, d.chick.invWeapons, d.chick.invUtilities], [1, 1, 1])
+  assert.deepEqual([d.chick.invInstruments, d.chick.invWeapons, d.chick.invUtilities], [3, 3, 3])
   const chick = speciesParams('chick', CHICKEN_PARAMS)
-  assert.equal(chick.walkSpeed, CHICKEN_PARAMS.walkSpeed * CHICK_FACTORS.walkSpeed); assert.equal(chick.invWeapons, 1); assert.equal(chick.volume, 0)
+  assert.equal(chick.walkSpeed, CHICKEN_PARAMS.walkSpeed * CHICK_FACTORS.walkSpeed); assert.equal(chick.invWeapons, 3); assert.equal(chick.volume, 0)
   // an older saved configuration (no Filhote column) gets the code's
   const c = normalizeChickenConfig({ params: { babyMute: false }, classes: { pig: { factors: {} } } })
   assert.equal(c.classes.chick.factors.jumpHeight, CHICK_FACTORS.jumpHeight)
@@ -185,8 +185,8 @@ test('the Filhote has its own column (the chick class): factors, one of each inv
   const base = { ...CHICKEN_PARAMS, ...c.params, volume: 0.5 }
   const tuned = speciesParams('chick', base, c.classes)
   assert.equal(tuned.walkSpeed, base.walkSpeed * 2); assert.equal(tuned.volume, 0.5, 'clucks with Sem cacarejo off')
-  // the limits' defaults: all on but the quick blow (it came back)
-  assert.deepEqual(['babyImmortal', 'babyDropItems', 'babyNoStaffs', 'babyOneCage', 'babyNoThrow', 'babyNoMelee', 'babyPiu', 'babyMute', 'babyMineHands'].map(k => CHICKEN_PARAMS[k]), [true, true, true, true, true, false, true, true, true])
+  // the limits' defaults: all on but the quick blow (it came back) and the staffs (24/11: Kids take any item)
+  assert.deepEqual(['babyImmortal', 'babyDropItems', 'babyNoStaffs', 'babyOneCage', 'babyNoThrow', 'babyNoMelee', 'babyPiu', 'babyMute', 'babyMineHands'].map(k => CHICKEN_PARAMS[k]), [true, true, false, true, true, false, true, true, true])
 })
 
 test('how far back the head stays walking is a parameter; the Kids lean back much less', () => {
@@ -194,7 +194,7 @@ test('how far back the head stays walking is a parameter; the Kids lean back muc
   const { CHICKEN_PARAMS } = loadTs('lib/chicken/params.ts')
   assert.equal(CHICKEN_PARAMS.headLag, 0.7)
   const kid = speciesParams('chick', CHICKEN_PARAMS)
-  assert.ok(Math.abs(kid.headLag - 0.315) < 1e-9)
+  assert.ok(Math.abs(kid.headLag - 0.7 * 0.26) < 1e-9)
   assert.ok(Math.asin(kid.headLag) * 180 / Math.PI < 20, 'under 20° back')
 })
 
@@ -220,4 +220,20 @@ test('the hit-area per pose: a pose without its own frame is the standing one; o
   assert.ok(Math.abs(wall.r - 100) < 1e-9 && Math.abs(wall.l + 100) < 1e-9 && Math.abs(wall.t - 55) < 1e-9 && Math.abs(wall.b - 145) < 1e-9, JSON.stringify(wall))
   const bar = barPoint(defaultFrames(), 'chicken', 0, 0, 1, 'stand')
   assert.deepEqual(bar, { x: 0, y: -240 })
+})
+
+test('the body is as tall as the box of the pose she is in: crouching or brooding smaller lets her through narrow passages', () => {
+  const { defaultFrames, withFrame, bodyHeight } = loadTs('lib/chicken/body-frame.ts')
+  const base = defaultFrames()
+  // without boxes of their own every pose is the standing one, 200 tall
+  for (const st of ['idle', 'crouch', 'brood', 'jump']) assert.equal(bodyHeight(base, 'chicken', st, st !== 'jump'), 200)
+  const small = withFrame(withFrame(base, 'chi', 'crouch', { w: 90, h: 24, x: 0, y: 0, bar: 120 }), 'chi', 'brood', { w: 90, h: 40, x: 0, y: 6, bar: 120 })
+  assert.equal(bodyHeight(small, 'chicken', 'crouch', true), 24)
+  assert.equal(bodyHeight(small, 'chicken', 'slide', true), 24)
+  // the top of the box: its lift plus its height
+  assert.equal(bodyHeight(small, 'chicken', 'brood', true), 46)
+  assert.equal(bodyHeight(small, 'chicken', 'walk', true), 200)
+  // in the air she is no longer crouching; another class keeps its own boxes
+  assert.equal(bodyHeight(small, 'chicken', 'crouch', false), 200)
+  assert.equal(bodyHeight(small, 'pig', 'crouch', true), 200)
 })

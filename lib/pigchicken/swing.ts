@@ -71,14 +71,87 @@ export type Swing = {
   kind: SwingKind; combo: number; hitAt: number; hit: boolean; hits: number; life: number
   // the air trail: thickness at the tip (px), colour, how long it takes to dissolve (s), little curls, opacity
   trail: { width: number; color: string; time: number; wisps: number; opacity: number }
-  // where it hit, relative to the shoulder (for the impact flash)
-  impacts: { x: number; y: number }[]
+  // where it hit, relative to the shoulder (for the impact flash); t: when (s), on a Golpe desenhado that hits as it goes
+  impacts: { x: number; y: number; t?: number }[]
   seed: number
   // what it hits with: the item in the wing (it wears out), damage, knockback (px/s), whether it can break, its name
   item: unknown; damage: number; push: number; durability: boolean; name: string
   // the strong blow (a staff's Atirar, let go after charging): how much of the charge it left with (0..1) and how
   // much bigger the staff is drawn while it sweeps (×, 1 = its own size)
   heavy?: boolean; charge?: number; size?: number
+  // the Golpe desenhado: the move as it was drawn (the wing follows it and hits what it passes, when it passes),
+  // what it already hit, the instrument's note it is on (null: none yet) and when it last hit something (s)
+  path?: SwingPath; struck?: Set<unknown>; note?: number | null; lastHit?: number
+}
+
+// ---------- Golpe desenhado ----------
+// The mouse's right button or the touch Punch dragged around her: while held, the pointer's angle around her is
+// recorded; when let go, the wing makes that same move, at the same speed. t: s from the start; a: radians,
+// unwrapped (a turn and a half is 3π), screen angle (y down)
+export type SwingPath = { t: number[]; a: number[] }
+export const DRAWN_MIN_SWEEP = 20 * DEG // a drawing that covers less than this is a simple click
+export const DRAWN_MAX_TIME = 2 // s: a slower drawing is replayed faster, to fit
+export const DRAWN_MIN_TIME = 0.05 // s: a flick is never quicker than this
+export const DRAWN_STILL = 2 * DEG // the pointer resting before and after the move does not count as move
+export const DRAWN_RECOVER = 0.15 // s for the wing to go back to rest after the move
+export const DRAWN_EASE = 0.05 // s for the wing to take the blow's pose at the start
+
+// the samples taken while it was held (t in s, any origin; a in radians, as atan2 gives them): the move, or null
+// when it covers less than DRAWN_MIN_SWEEP (a simple click)
+export function drawnPath(samples: readonly { t: number; a: number }[]): SwingPath | null {
+  if (samples.length < 2) return null
+  const a: number[] = [samples[0].a]
+  for (let i = 1; i < samples.length; i++) {
+    const prev = a[i - 1], d = Math.atan2(Math.sin(samples[i].a - prev), Math.cos(samples[i].a - prev))
+    a.push(prev + d)
+  }
+  let lo = 0, hi = a.length - 1
+  while (lo < hi && Math.abs(a[lo + 1] - a[0]) <= DRAWN_STILL) lo++
+  while (hi > lo && Math.abs(a[hi - 1] - a[a.length - 1]) <= DRAWN_STILL) hi--
+  const as = a.slice(lo, hi + 1), ts = samples.slice(lo, hi + 1).map(s => s.t)
+  if (as.length < 2 || Math.max(...as) - Math.min(...as) < DRAWN_MIN_SWEEP) return null
+  const span = ts[ts.length - 1] - ts[0]
+  const k = span > DRAWN_MAX_TIME ? DRAWN_MAX_TIME / span : span < DRAWN_MIN_TIME ? DRAWN_MIN_TIME / Math.max(1e-6, span) : 1
+  // (samples at the same instant are spread a little, so the move always goes forward in time)
+  const t: number[] = []
+  ts.forEach((v, i) => t.push(Math.max((v - ts[0]) * k, i ? t[i - 1] + 1e-4 : 0)))
+  return { t, a: as }
+}
+export const pathEnd = (p: SwingPath) => p.t[p.t.length - 1]
+// the drawn angle at t (s from the start), held at the ends
+export function pathAngle(p: SwingPath, t: number) {
+  if (t <= 0) return p.a[0]
+  const n = p.t.length - 1
+  if (t >= p.t[n]) return p.a[n]
+  let i = 1
+  while (p.t[i] < t) i++
+  const k = (t - p.t[i - 1]) / Math.max(1e-6, p.t[i] - p.t[i - 1])
+  return p.a[i - 1] + (p.a[i] - p.a[i - 1]) * k
+}
+// the lowest and highest angle the move passes between t0 and t1
+export function pathSpan(p: SwingPath, t0: number, t1: number) {
+  let lo = Math.min(pathAngle(p, t0), pathAngle(p, t1)), hi = Math.max(pathAngle(p, t0), pathAngle(p, t1))
+  for (let i = 0; i < p.t.length; i++) if (p.t[i] > t0 && p.t[i] < t1) { lo = Math.min(lo, p.a[i]); hi = Math.max(hi, p.a[i]) }
+  return { lo, hi }
+}
+// the drawn trail: the angles the air shows, from the tail to the head, and how far it has faded (0..1). The whole
+// drawing up to the wing stays while it moves; once the move ends it dissolves from the tail in trail.time
+export function pathTrail(sw: Pick<Swing, 't' | 'trail'> & { path: SwingPath }) {
+  const end = pathEnd(sw.path), head = Math.min(sw.t, end)
+  const fade = sw.t <= end ? 0 : clamp01((sw.t - end) / Math.max(0.05, sw.trail.time))
+  if (fade >= 1) return null
+  const tail = end * fade * fade
+  if (tail >= head) return null
+  return { angles: pathAngles(sw.path, tail, head), fade }
+}
+// the drawn angles between two instants, at most `step` radians apart (every turn the drawing made in between too)
+export function pathAngles(p: SwingPath, t0: number, t1: number, step = 0.06) {
+  const stops = [t0, ...p.t.filter(t => t > t0 && t < t1), t1], out: number[] = [pathAngle(p, t0)]
+  for (let i = 1; i < stops.length; i++) {
+    const a = pathAngle(p, stops[i - 1]), b = pathAngle(p, stops[i]), n = Math.max(1, Math.ceil(Math.abs(b - a) / step))
+    for (let j = 1; j <= n; j++) out.push(a + (b - a) * j / n)
+  }
+  return out
 }
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
@@ -123,7 +196,14 @@ export function swingProgress(t: number, time: number, sweep: number) {
 
 // the wing's pose now: the screen angle it points at, how far it reaches (px), how much of the swing pose the rig
 // takes over the rest pose (0..1) and, for the horizontal blow, whether it passes behind her
-export function swingPose(sw: Pick<Swing, 'angle' | 'arc' | 'dir' | 'kind' | 't' | 'time' | 'range'>) {
+export function swingPose(sw: Pick<Swing, 'angle' | 'arc' | 'dir' | 'kind' | 't' | 'time' | 'range' | 'path'>) {
+  // the Golpe desenhado: the wing on the drawing, taking the pose at once and going back to rest after it
+  if (sw.path) {
+    const end = pathEnd(sw.path), k = clamp01((sw.t - end) / Math.max(1e-6, sw.time - end))
+    const blend = sw.t >= sw.time ? 0 : sw.t <= end ? easeOut(clamp01(sw.t / DRAWN_EASE)) : 1 - easeInOut(k)
+    const phase: SwingPhase = sw.t >= sw.time ? 'done' : sw.t <= end ? 'strike' : 'recover'
+    return { angle: pathAngle(sw.path, sw.t), reach: sw.range, blend, phase, behind: false }
+  }
   const sweep = swingSweep(sw.kind, sw.arc)
   const { phase, k } = swingPhase(sw.t, sw.time)
   const p = swingProgress(sw.t, sw.time, sweep)

@@ -6,6 +6,7 @@
 // DOM for the chicken's engine, with the drawing, in components/pigchicken/mine-grid-layer.tsx.
 import { defaultMineZones, normalizeMineZones, type MineZoneParams } from './mine-zone-params'
 import { defaultMineItems, normalizeMineItems, type MineItemParams } from './mine-item-params'
+import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
 
 export type MineGridParams = {
   on: boolean
@@ -43,33 +44,56 @@ export const MINE_GAP = { min: 0, max: 200, step: 4, default: 32 } as const
 export const MINE_BOMBS = { min: 0, max: 60, step: 1, default: 15 } as const
 export const MINE_WALL_OPACITY = { min: 0, max: 100, step: 5, default: 100 } as const
 export const MINE_CORNER = { min: 0, max: 100, step: 5, default: 0 } as const
-export const defaultMineGrid = (): MineGridParams => ({
-  on: false, cell: MINE_CELL.default, gap: MINE_GAP.default, pass: true, bombs: MINE_BOMBS.default,
-  blockNotes: false, toFlag: MINE_NOTES.default, toOpen: MINE_DAMAGE.default, insideBreaks: true, toDoubt: MINE_NOTES.default, turn: 0, fuse: MINE_FUSE.default, startBombs: MINE_START_BOMBS.default,
-  ...MINE_COLORS, wallOpacity: MINE_WALL_OPACITY.default, corner: MINE_CORNER.default, zones: defaultMineZones(), items: defaultMineItems(),
-})
-
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
 const snap = (v: number, r: { min: number; max: number; step: number }) => clamp(Math.round(v / r.step) * r.step, r.min, r.max)
 const color = (v: unknown, d: string) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : d)
 const turnOf = (v: unknown): MineTurn => (v === 'random' || v === 'first' ? v : (MINE_TURNS as readonly unknown[]).includes(v) ? (v as MineTurn) : 0)
 
-// what a Pátio saved (nothing saved: no grid at all)
-export function normalizeMineGrid(raw: unknown): MineGridParams | undefined {
+// the grid's settings as written in the code; the game's defaults are these with data/pigchicken/default-patio.json
+// over them (its `mineGrid`, which the Grade de blocos' panel writes with "Salvar no game")
+const codeMineGrid = (): MineGridParams => ({
+  on: false, cell: MINE_CELL.default, gap: MINE_GAP.default, pass: true, bombs: MINE_BOMBS.default,
+  blockNotes: false, toFlag: MINE_NOTES.default, toOpen: MINE_DAMAGE.default, insideBreaks: true, toDoubt: MINE_NOTES.default, turn: 0, fuse: MINE_FUSE.default, startBombs: MINE_START_BOMBS.default,
+  ...MINE_COLORS, wallOpacity: MINE_WALL_OPACITY.default, corner: MINE_CORNER.default, zones: defaultMineZones(), items: defaultMineItems(),
+})
+
+// raw read over the defaults d (a field missing takes d's)
+function readMineGrid(raw: unknown, d: MineGridParams): MineGridParams | undefined {
   if (!raw || typeof raw !== 'object') return undefined
-  const p = raw as Record<string, unknown>, d = defaultMineGrid()
+  const p = raw as Record<string, unknown>
+  const bool = (v: unknown, b: boolean) => (typeof v === 'boolean' ? v : b)
   return {
     on: p.on === true,
     cell: snap(num(p.cell, d.cell), MINE_CELL), gap: snap(num(p.gap, d.gap), MINE_GAP),
-    pass: p.pass !== false, bombs: snap(num(p.bombs, d.bombs), MINE_BOMBS),
-    blockNotes: p.blockNotes === true, toFlag: snap(num(p.toFlag, d.toFlag), MINE_NOTES), toOpen: snap(num(p.toOpen, d.toOpen), MINE_DAMAGE), insideBreaks: p.insideBreaks !== false, toDoubt: snap(num(p.toDoubt, d.toDoubt), MINE_NOTES),
-    turn: turnOf(p.turn), fuse: snap(num(p.fuse, d.fuse), MINE_FUSE), startBombs: snap(num(p.startBombs, d.startBombs), MINE_START_BOMBS),
+    pass: bool(p.pass, d.pass), bombs: snap(num(p.bombs, d.bombs), MINE_BOMBS),
+    blockNotes: bool(p.blockNotes, d.blockNotes), toFlag: snap(num(p.toFlag, d.toFlag), MINE_NOTES), toOpen: snap(num(p.toOpen, d.toOpen), MINE_DAMAGE), insideBreaks: bool(p.insideBreaks, d.insideBreaks), toDoubt: snap(num(p.toDoubt, d.toDoubt), MINE_NOTES),
+    turn: p.turn === undefined ? d.turn : turnOf(p.turn), fuse: snap(num(p.fuse, d.fuse), MINE_FUSE), startBombs: snap(num(p.startBombs, d.startBombs), MINE_START_BOMBS),
     grey: color(p.grey, d.grey), blue: color(p.blue, d.blue), red: color(p.red, d.red), orange: color(p.orange, d.orange),
     wallOpacity: snap(num(p.wallOpacity, d.wallOpacity), MINE_WALL_OPACITY), corner: snap(num(p.corner, d.corner), MINE_CORNER),
-    zones: normalizeMineZones(p.zones), items: normalizeMineItems(p.items),
+    zones: p.zones === undefined ? structuredClone(d.zones) : normalizeMineZones(p.zones),
+    items: p.items === undefined ? structuredClone(d.items) : normalizeMineItems(p.items),
   }
 }
+
+// the game's defaults: what the panel shows for a Pátio that saved no grid (a new one too), and Reverter para o
+// padrão. Always off: turning the grid on is each Pátio's
+const GAME_MINE_GRID: MineGridParams = { ...(readMineGrid((DEFAULTS_FILE as { mineGrid?: unknown }).mineGrid, codeMineGrid()) ?? codeMineGrid()), on: false }
+export const defaultMineGrid = (): MineGridParams => structuredClone(GAME_MINE_GRID)
+
+// what a Pátio saved (nothing saved: no grid at all)
+export const normalizeMineGrid = (raw: unknown): MineGridParams | undefined => readMineGrid(raw, GAME_MINE_GRID)
+
+/** The defaults file's `mineGrid` (what "Salvar no game" writes): every setting of the panel but Ligar. */
+export function mineGridDefaultsFile(grid: unknown): Omit<MineGridParams, 'on'> {
+  const { on, ...rest } = normalizeMineGrid(grid) ?? defaultMineGrid()
+  return rest
+}
+/** Reverter para o padrão (Grade de blocos): every setting back to the game's, the grid still on or off as it was. */
+export const mineGridAtDefault = (grid: MineGridParams | undefined): MineGridParams => ({ ...defaultMineGrid(), on: !!grid?.on })
+/** Whether these settings already are the game's (Ligar aside). */
+export const mineGridIsDefault = (grid: MineGridParams | undefined) =>
+  !grid || JSON.stringify(mineGridDefaultsFile(grid)) === JSON.stringify(mineGridDefaultsFile(GAME_MINE_GRID))
 
 // ---------- geometry ----------
 
@@ -210,6 +234,21 @@ export function mineSideAt(grid: MineGrid, x: number, y: number, last: MineSide)
   }
   return mineBlocksAround(g, x, y).every(s => mineCell(grid, s.c, s.r)?.open === false) ? last : 'open'
 }
+// mineSideAt with what she did to get there: `crossed`, she came into the gap she is in with Trocar de bloco. Out of
+// a closed room the only way into the gap between closed blocks is Trocar de bloco (the engine's crossings), so with
+// a gap, a body that turns up there from the closed side any other way (through a wall, a collider that crosses the
+// grid, a bug) has gone out of the rooms: the open side. Without a gap the closed blocks share their space (the
+// diamond between four of them is inside too), and nothing changes.
+export type MineSideState = { side: MineSide; crossed: boolean }
+export function mineSideNext(grid: MineGrid, x: number, y: number, last: MineSideState, crossedNow: boolean): MineSideState {
+  const side = mineSideAt(grid, x, y, last.side), g = grid.geo
+  // a definite side (in a block's room, an open block, outside the grid) clears the mark
+  if (side !== last.side || mineSideAt(grid, x, y, side === 'open' ? 'closed' : 'open') === side) return { side, crossed: false }
+  const crossed = last.crossed || crossedNow
+  // within the thickness of a block's walls she keeps it all; in the gap, only after Trocar de bloco
+  if (side === 'closed' && g.gap > 0 && !crossed && !mineCellAt(g, x, y)) return { side: 'open', crossed: false }
+  return { side, crossed }
+}
 // the blocks around a point out of the blocks (some may be outside the grid): the two beside a stretch of the gap,
 // the four where two stretches cross, and the block of a cut corner with the three around that corner
 export function mineBlocksAround(g: MineGeo, x: number, y: number): MineSpot[] {
@@ -242,14 +281,17 @@ export function mineRoomClamp(g: MineGeo, c: number, r: number, x: number, y: nu
 // The walls of one block overlap at its corners; `group` names the block, for the engine to read them as one solid
 // (`data-chicken-fused`).
 // `cross`: this wall has another room behind it (with a gap, the closed neighbour on that side), and switching sides
-// on it leads there: how far its inner face is from the inner face of that room's wall.
+// on it leads there: how far its inner face is from the inner face of that room's wall. A cut corner's slanted wall
+// leads to the closed block on that diagonal (with a gap, and when the cut is deeper than the walls are thick, so
+// that both rooms have a slanted floor or ceiling there); `skip`: how near behind it nothing counts, so that she goes
+// past its own outer face (the diamond between four blocks has no plug) straight to that room.
 // With cut corners ("Cantos em octógono") the four walls stop at the cuts and each cut corner gets its own piece,
 // `shape`: an outline in the piece's box, with the slanted wall's two faces (the outer one from cut to cut, the
 // inner one between the ends of the two walls' inner faces) and what joins it to the walls beside it. Where the
 // frontier only turns round the block (without a gap, the blocks beside it closed), the piece goes on to the
 // block's edge instead, where the next block's piece takes over. The engine reads a piece as part of the block's
 // solid (`data-chicken-join`).
-export type MineWall = MineRect & { id: string; group: string; c: number; r: number; edge: 'top' | 'bottom' | 'left' | 'right' | MineCorner; cross?: number; shape?: [number, number][] }
+export type MineWall = MineRect & { id: string; group: string; c: number; r: number; edge: 'top' | 'bottom' | 'left' | 'right' | MineCorner; cross?: number; skip?: number; shape?: [number, number][] }
 // never under 8: the chicken's engine skips a collider thinner than that
 export const mineWallThickness = (g: MineGeo) => clamp(Math.round(g.cell / 24), 8, 16)
 
@@ -290,7 +332,8 @@ export function mineWalls(grid: MineGrid, only?: (c: number, r: number) => boole
       for (const [corner, dr, flat] of [[`t${edge[0]}`, 1, top], [`b${edge[0]}`, -1, bottom]] as [MineCorner, number, boolean][]) {
         const cut = mineCornerCut(g, r, corner)
         if (!cut || !(room || !closed(c + dc, r) || !closed(c, r + dr) || !closed(c + dc, r + dr))) continue
-        out.push({ id: `mine-${c}-${r}-${corner}`, group: `mine-${c}-${r}`, c, r, edge: corner, ...cornerPiece(b, corner, cornerWall(cut, t, flat, side)) })
+        const diagonal = room && cut > t && closed(c + dc, r + dr) ? { cross: Math.SQRT2 * (g.gap + cut + t), skip: t } : {}
+        out.push({ id: `mine-${c}-${r}-${corner}`, group: `mine-${c}-${r}`, c, r, edge: corner, ...cornerPiece(b, corner, cornerWall(cut, t, flat, side)), ...diagonal })
       }
     }
   }

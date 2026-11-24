@@ -369,3 +369,59 @@ test('the combo window bar hears the main player\'s blows only while something l
   run(c, 1); step(c, { melee: true })
   assert.equal(heard.length, 1)
 })
+
+// ---------- Golpe desenhado ----------
+const DEG = Math.PI / 180
+// a drawing from a to b (degrees) over secs, sampled every frame
+const drawn = (a, b, secs, t0 = 10) => {
+  const n = Math.max(2, Math.round(secs / 0.016))
+  return Array.from({ length: n + 1 }, (_, i) => ({ t: t0 + secs * i / n, a: (a + (b - a) * i / n) * DEG }))
+}
+
+test('Golpe desenhado: a drawing under 20° is a click; the move keeps its angles and its speed', () => {
+  assert.equal(swing.drawnPath(drawn(0, 15, 0.2)), null, 'too little: a click')
+  assert.equal(swing.drawnPath([{ t: 0, a: 0 }]), null)
+  const p = swing.drawnPath(drawn(-90, 90, 0.3))
+  assert.ok(Math.abs(swing.pathEnd(p) - 0.3) < 1e-6, 'the same duration')
+  assert.ok(Math.abs(swing.pathAngle(p, 0.15) - 0) < 1e-6, 'halfway, halfway')
+  assert.equal(swing.pathAngle(p, 5), p.a[p.a.length - 1], 'held at the end')
+})
+
+test('Golpe desenhado: past ±180° the angle goes on (a turn and a half is 540°), and the rests around it do not count', () => {
+  const samples = [...drawn(150, 150, 0.3, 0), ...drawn(150, 690, 0.6, 0.31), ...drawn(690, 690, 0.4, 0.92)]
+    .map(s => ({ t: s.t, a: Math.atan2(Math.sin(s.a), Math.cos(s.a)) }))
+  const p = swing.drawnPath(samples)
+  assert.ok(Math.abs(p.a[p.a.length - 1] - p.a[0] - 540 * DEG) < 1e-6)
+  assert.ok(swing.pathEnd(p) < 0.65, 'the pointer resting before and after is not part of the move')
+})
+
+test('Golpe desenhado: a slow drawing is replayed in 2 s at most; a flick takes at least 0.05 s', () => {
+  assert.ok(Math.abs(swing.pathEnd(swing.drawnPath(drawn(0, 180, 5))) - swing.DRAWN_MAX_TIME) < 1e-6)
+  assert.ok(Math.abs(swing.pathEnd(swing.drawnPath([{ t: 0, a: 0 }, { t: 0.01, a: 1 }])) - swing.DRAWN_MIN_TIME) < 1e-6)
+})
+
+test('Golpe desenhado: the wing follows the drawing and hits each thing once, when it passes over it', () => {
+  const c = createCombat()
+  c.addTarget(60, 30); c.addTarget(-60, 30)
+  const [front, back] = c.targets, hp = front.hp
+  const path = swing.drawnPath(drawn(-100, 80, 0.3))
+  step(c, { melee: true, meleePath: path })
+  assert.ok(c.swing.path, 'a drawn blow')
+  run(c, 0.05)
+  assert.equal(front.hp, hp, 'not yet: the wing has not got there')
+  assert.ok(Math.abs(swing.swingPose(c.swing).angle - swing.pathAngle(path, c.swing.t)) < 1e-9, 'the wing on the drawing')
+  run(c, 0.25)
+  assert.equal(front.hp, hp - DEFAULT_ITEMS.wing.meleeDamage, 'hit as it passed')
+  run(c, 0.3)
+  assert.equal(front.hp, hp - DEFAULT_ITEMS.wing.meleeDamage, 'once')
+  assert.equal(back.hp, back.maxHp, 'what it never passed is left alone')
+})
+
+test('Golpe desenhado: it always strikes, even with a new item at her feet, and the next blow starts the combo over', () => {
+  const c = createCombat()
+  step(c, { melee: true }); run(c, 0.1)
+  assert.equal(c.swing.combo, 0)
+  step(c, { melee: true, meleePath: swing.drawnPath(drawn(0, 120, 0.2)) }); run(c, 0.5)
+  step(c, { melee: true })
+  assert.equal(c.swing.combo, 0, 'the combo starts over after a drawn blow')
+})

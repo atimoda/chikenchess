@@ -8,12 +8,14 @@ import { type Combat } from "@/lib/pigchicken/combat"
 import { wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
 import { drawItem, type Ctx } from "./shared"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { type InventoryAlign } from "@/lib/chicken/controls"
 
 export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
   const d = combat.def(), armed = !!combat.held && d.mag > 0 && !d.meleeOnly
   const t = performance.now() / 1000
+  // Atirar pressed while reloading: a quick side-to-side tremble that fades out
+  rx += combat.fireDeny > 0 ? Math.sin(t * 60) * 4 * combat.fireDeny : 0
   const gap = Math.max(5, Math.tan((spreadDeg / 2) * Math.PI / 180) * dist)
   const ang = Math.atan2(ry - origin.y, rx - origin.x)
   // the player's own color (their lobby color), with a dark outline so it reads on any background; aim locked
@@ -200,7 +202,7 @@ export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof w
 // instruments, then the weapons, then the utilities (xs are from the bar's left end). When it does not fit even with
 // the smallest slots, it slides so the held slot (cur) sits as near the centre as the bar's ends allow.
 // rest: where the circles of the effects whose item has left the bar start, and which way they go (-1 left, 1 right)
-export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false, cur = 0, align?: InventoryAlign) {
+export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = stageHeight(), labels = false, cur = 0, align?: InventoryAlign) {
   if (!bottom) {
     const a = align ?? "right", end = W - invRight, room = end - ROW.margin
     const size = fitSize(groups, room, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
@@ -493,7 +495,7 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
 // ---------- the inventory wheel: her items plus the empty slot (while there is room), in equal slices ----------
 // centred on the screen; the first slot at the top, then clockwise in the inventory's order
 export function wheelGeom() {
-  const W = stageWidth(), H = window.innerHeight
+  const W = stageWidth(), H = stageHeight()
   const rOut = Math.max(120, Math.min(230, Math.min(W, H) * 0.42))
   return { cx: W / 2, cy: H / 2, rOut, rIn: rOut * 0.5 }
 }
@@ -504,7 +506,7 @@ export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number)
   const ease = 1 - (1 - open) ** 3
   ctx.save()
   ctx.globalAlpha = ease
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, stageWidth(), window.innerHeight)
+  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, stageWidth(), stageHeight())
   ctx.translate(cx, cy); ctx.scale(0.88 + 0.12 * ease, 0.88 + 0.12 * ease)
   const mid = (rIn + rOut) / 2, ring = rOut - rIn
   ctx.beginPath(); ctx.arc(0, 0, rIn - 3, 0, Math.PI * 2); ctx.fillStyle = "rgba(14,17,22,0.92)"; ctx.fill()

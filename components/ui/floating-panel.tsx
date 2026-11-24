@@ -10,10 +10,10 @@
 // not remembered (the next time it covers the dock again).
 // The panel itself never scrolls: its sides and corners (the resize areas) stay on its border. What scrolls is a part
 // inside it: pass `bodyClassName` to have the whole content in one scrolling column, or give a child its own overflow.
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
-import { stageInset, stageWidth } from "@/lib/stage-size"
+import { stageDocked, stageHeight, stageTop, stageWidth } from "@/lib/stage-size"
 
 type Rect = { x: number; y: number; w: number; h: number }
 type Edge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw"
@@ -65,10 +65,11 @@ function nearOpener(r: Rect): Rect | null {
   const o = opener
   opener = null
   if (!o || performance.now() - o.at > OPENER_MS) return null
-  const vw = stageWidth(), vh = window.innerHeight, b = o.rect
+  // (the button's place on the window, on the stage: it starts stageTop() below the window's top)
+  const vw = stageWidth(), vh = stageHeight(), b = o.rect, top = b.top - stageTop(), bottom = b.bottom - stageTop()
   const w = Math.min(r.w, vw), h = Math.min(r.h, vh)
   const x = Math.min(vw - w, Math.max(0, b.left + b.width / 2 - w / 2))
-  const below = b.bottom + 8, above = b.top - 8 - h
+  const below = bottom + 8, above = top - 8 - h
   const y = below + h <= vh || above < 0 ? Math.min(vh - h, below) : above
   return { x, y: Math.max(0, y), w, h }
 }
@@ -135,15 +136,19 @@ function canDragFrom(target: Element, panel: Element, x: number, y: number, touc
   return true
 }
 
-function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean, vw = stageWidth()): Rect {
-  const vh = window.innerHeight
+function fit(r: Rect, minW: number, minH: number, keepInViewport: boolean, vw = stageWidth(), vh = stageHeight()): Rect {
   const w = Math.max(Math.min(minW, vw), Math.min(r.w, vw)), h = Math.max(Math.min(minH, vh), Math.min(r.h, vh))
   const x = keepInViewport ? Math.min(vw - w, Math.max(0, r.x)) : Math.min(vw - KEEP, Math.max(KEEP - w, r.x))
   const y = Math.min(vh - (keepInViewport ? h : KEEP), Math.max(0, r.y))
   return { w, h, x, y }
 }
 
-export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewport = false, overDock = false, className, bodyClassName, children, ...rest }: {
+// Inside a tab of the Modo editor's palette, a panel is drawn in place instead of floating: a plain column in the
+// palette's flow, without its own title bar (the tab names it, and choosing another tab closes it), border or place.
+// "esc": Esc closes it as it closes a floating one (its hidden title bar's Fechar), for the tabs that come and go.
+export const PanelInline = createContext<boolean | "esc">(false)
+
+type PanelProps = {
   id: string
   overDock?: boolean
   initial: (vw: number, vh: number) => Rect
@@ -154,7 +159,24 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   /** The content goes in one column that scrolls when it does not fit, with these classes (its padding, its gap). */
   bodyClassName?: string
   children: React.ReactNode
-} & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
+} & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">
+
+export function FloatingPanel(props: PanelProps) {
+  return useContext(PanelInline) ? <InlinePanel {...props} /> : <FloatingPanelBox {...props} />
+}
+
+function InlinePanel({ id: _id, initial: _initial, minW: _minW, minH: _minH, keepInViewport: _keep, overDock: _overDock, className: _className, bodyClassName, children, ...rest }: PanelProps) {
+  const esc = useContext(PanelInline) === "esc"
+  const ref = useRef<HTMLElement | null>(null)
+  useEffect(() => (esc && ref.current ? registerEscClose(ref.current) : undefined), [esc])
+  return (
+    <section ref={ref} data-chicken-ignore {...rest} className="flex flex-col font-mono text-xs text-[#dfe8df] [text-shadow:none] [&_[data-drag-handle]]:hidden">
+      {bodyClassName === undefined ? children : <div className={cn("flex flex-col", bodyClassName)}>{children}</div>}
+    </section>
+  )
+}
+
+function FloatingPanelBox({ id, initial, minW = 240, minH = 160, keepInViewport = false, overDock = false, className, bodyClassName, children, ...rest }: PanelProps) {
   const [rect, setRect] = useState<Rect | null>(null)
   const panelRef = useRef<HTMLElement | null>(null)
   // where it is drawn: the page's <main> (or the body), found from a mark left where it is declared
@@ -163,11 +185,12 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   // covering the docked Modo editor (decided when it opens): drawn on the body, over the whole window
   const onDock = useRef(false)
   const viewW = () => (onDock.current ? window.innerWidth : stageWidth())
+  const viewH = () => (onDock.current ? window.innerHeight : stageHeight())
   // on the body it keeps the text colour of the page it belongs to
   const [color, setColor] = useState<string | undefined>()
   useEffect(() => {
     const main = markRef.current?.parentElement?.closest("main") ?? null
-    onDock.current = overDock && stageInset() > 0
+    onDock.current = overDock && stageDocked()
     if (onDock.current && main) setColor(window.getComputedStyle(main).color)
     setHost(onDock.current ? document.body : main ?? document.body)
   }, [])
@@ -181,19 +204,21 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
   useEffect(() => { raisePanel(token); return () => dropPanel(token) }, [token])
 
   useEffect(() => {
-    const dock = overDock ? stageInset() : 0
-    let r = initial(stageWidth(), window.innerHeight)
+    // the docked panel's place (at the right, the top or the bottom), at least this panel's minimum size
+    const dock = overDock && stageDocked() ? document.querySelector("[data-patio-dock]")?.getBoundingClientRect() : undefined
+    let r = initial(stageWidth(), stageHeight())
     if (dock) {
-      const w = Math.max(dock, Math.min(minW, window.innerWidth))
-      r = { x: window.innerWidth - w, y: 0, w, h: window.innerHeight }
+      const vw = window.innerWidth, vh = window.innerHeight
+      const w = Math.min(vw, Math.max(dock.width, minW)), h = Math.min(vh, Math.max(dock.height, minH))
+      r = { x: Math.min(dock.left, vw - w), y: Math.min(dock.top, vh - h), w, h }
       opener = null
     } else {
       let saved: Rect | null = null
       try { const s = JSON.parse(window.localStorage.getItem(key) || "null"); if (s && [s.x, s.y, s.w, s.h].every(Number.isFinite)) saved = s } catch { /* ignore */ }
       r = saved ?? nearOpener(r) ?? r
     }
-    setRect(fit(r, minW, minH, keepInViewport || !!dock, dock ? window.innerWidth : stageWidth()))
-    const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport, viewW()))
+    setRect(fit(r, minW, minH, keepInViewport || !!dock, dock ? window.innerWidth : stageWidth(), dock ? window.innerHeight : stageHeight()))
+    const onResize = () => setRect(cur => cur && fit(cur, minW, minH, keepInViewport, viewW(), viewH()))
     window.addEventListener("resize", onResize)
     return () => window.removeEventListener("resize", onResize)
   }, [key])
@@ -220,13 +245,13 @@ export function FloatingPanel({ id, initial, minW = 240, minH = 160, keepInViewp
     let { x, y, w, h } = s
     if (o.edge === "move") { x += dx; y += dy }
     else {
-      const vw = viewW(), vh = window.innerHeight
+      const vw = viewW(), vh = viewH()
       if (o.edge.includes("e")) w = Math.min(vw - s.x, Math.max(minW, s.w + dx))
       if (o.edge.includes("s")) h = Math.min(vh - s.y, Math.max(minH, s.h + dy))
       if (o.edge.includes("w")) { w = Math.max(minW, s.w - dx); w = Math.min(w, s.x + s.w); x = s.x + s.w - w }
       if (o.edge.includes("n")) { h = Math.max(minH, s.h - dy); h = Math.min(h, s.y + s.h); y = s.y + s.h - h }
     }
-    setRect(fit({ x, y, w, h }, minW, minH, keepInViewport, viewW()))
+    setRect(fit({ x, y, w, h }, minW, minH, keepInViewport, viewW(), viewH()))
   }
   const end = (e: React.PointerEvent<HTMLElement>) => {
     if (op.current?.pointer !== e.pointerId) return

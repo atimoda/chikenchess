@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
-const { standSwitch, hangSwitch, wallSwitch, crossDirection } = loadTs('lib/chicken/side-switch.ts')
+const { standSwitch, hangSwitch, wallSwitch, crossDirection, crossFloor } = loadTs('lib/chicken/side-switch.ts')
 const keys = (s = '') => ({ brood: s.includes('brood'), up: s.includes('up'), down: s.includes('down'), against: s.includes('against') })
 
 test('standing on a floating floor: Brood + Jump is the other face, with Down the other side of the box', () => {
@@ -56,4 +56,17 @@ test('a wall of the Grade de blocos with a room behind it: Jump with the directi
   assert.equal(k(true, -1, false, 'up'), false)
   assert.equal(k(true, 1, false, 'up'), false)
   assert.equal(k(true, 0, false, 'up down'), false)
+})
+
+test('on the floor of a room over another one (or a slanted floor on a diagonal): Brood + Jump or Down + Jump goes through', () => {
+  const k = (s = '', dir = 0) => crossFloor({ brood: s.includes('brood'), crouch: s.includes('crouch'), up: s.includes('up'), dir })
+  assert.equal(k('brood'), true)
+  assert.equal(k('brood', 1), true)
+  assert.equal(k('crouch'), true)
+  // Down with a direction stays the sideways super jump; Up is never this gesture; Brood + Down is the shocking jump
+  assert.equal(k('crouch', -1), false)
+  assert.equal(k('crouch up'), false)
+  assert.equal(k('brood up'), false)
+  assert.equal(k('brood crouch'), false)
+  assert.equal(k(''), false)
 })

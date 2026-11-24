@@ -42,3 +42,12 @@ export function crossDirection(k: { hanging: boolean; dir: number; toward: boole
   if (k.down) return false
   return k.hanging ? k.up && k.dir === 0 : k.dir !== 0 && k.toward && !k.up
 }
+
+// standing on the floor of a room of the Grade de blocos over another room (engine.ts, crossWall), or on a cut
+// corner's slanted floor with a room on that diagonal: Brood + Jump (without Up or Crouch) takes her through, and so
+// does Down (Crouch) + Jump without Up, Brood or left/right, which is no super jump there. (Down with a direction is
+// still the sideways super jump.) dir: left/right held (-1, 0, 1)
+export function crossFloor(k: { brood: boolean; crouch: boolean; up: boolean; dir: number }): boolean {
+  if (k.up) return false
+  return k.brood ? !k.crouch : k.crouch && k.dir === 0
+}

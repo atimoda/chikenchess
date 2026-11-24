@@ -1,11 +1,11 @@
 // Flying notes, beams, zone banners, the melee swing trail and the puff that cancels a note.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
 import { type Combat, type Swing } from "@/lib/pigchicken/combat"
-import { ellipsePoint, swingPose, trailSpan } from "@/lib/pigchicken/swing"
+import { drawnPath, ellipsePoint, pathAngles, pathEnd, pathTrail, swingPose, trailSpan, type SwingPath } from "@/lib/pigchicken/swing"
 import { zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Ctx } from "./shared"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageWidth } from "@/lib/stage-size"
 
 // a note in flight: its symbol in the colour of its scale degree, swaying, with a short trail, pulsing on the beat
 export function drawNote(ctx: Ctx, b: Combat["bullets"][number], x: number, pulse: number) {
@@ -73,14 +73,16 @@ export function rigSwing(sw: Swing | null) {
 // the blow's air: a cream crescent along the sweep, thick at the tip and thin at the tail, that appears in a frame or
 // two and dissolves from the tail, letting off a few curls; a flash where it hit. The horizontal blow is a flattened
 // ellipse: its back half is drawn behind her (layer "back"), its front half over her (layer "front")
-export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back", view: ViewRect = { x: 0, y: 0, w: stageWidth(), h: window.innerHeight }) {
+export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back", view: ViewRect = { x: 0, y: 0, w: stageWidth(), h: stageHeight() }) {
   const sw = combat.swing
   if (!sw || sw.trail.opacity <= 0) return
   if (!intersectsView({ x: origin.x - sw.reach - 40, y: origin.y - sw.reach - 40, w: sw.reach * 2 + 80, h: sw.reach * 2 + 80 }, view, 8)) return
   if (layer === "front" && sw.kind !== "flat") return
-  const span = trailSpan(sw)
   ctx.save()
   ctx.translate(origin.x, origin.y)
+  // the Golpe desenhado: its air follows the drawing behind the wing
+  if (sw.path) drawPathAir(ctx, sw, sw.path)
+  const span = sw.path ? null : trailSpan(sw)
   if (span && span.head > span.tail) {
     const { tail, head, fade, sweep } = span
     const alpha = sw.trail.opacity * (1 - fade * fade)
@@ -135,11 +137,12 @@ export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: numb
       }
     }
   }
-  // the impact: a white flash where it hit, for a moment
-  const since = sw.t - sw.hitAt
-  if (layer === "back" && sw.hits > 0 && since < 0.12) {
-    const k = since / 0.12
+  // the impact: a white flash where it hit, for a moment (a Golpe desenhado's, from when each one landed)
+  if (layer === "back" && sw.hits > 0) {
     sw.impacts.forEach(p => {
+      const since = sw.t - (p.t ?? sw.hitAt)
+      if (since < 0 || since >= 0.12) return
+      const k = since / 0.12
       ctx.globalAlpha = 1 - k; ctx.fillStyle = "#ffffff"
       ctx.beginPath()
       for (let i = 0; i < 8; i++) {
@@ -154,8 +157,40 @@ export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: numb
 // the screen's jolt when a blow lands (px, fading over 0.1 s)
 export function swingShake(sw: Swing | null) {
   if (!sw || sw.hits <= 0) return 0
-  const since = sw.t - sw.hitAt
+  const since = sw.t - (sw.lastHit ?? sw.hitAt)
   return since < 0.1 ? 2.5 * (1 - since / 0.1) : 0
+}
+// the Golpe desenhado's air: a crescent along the stretch of the drawing the wing passed in the last trail.time, at
+// the blow's reach, thick at the head (the wing) and thin at the tail; once the move ends the tail catches up
+function drawPathAir(ctx: Ctx, sw: Swing, path: SwingPath) {
+  const tr = pathTrail({ t: sw.t, trail: sw.trail, path })
+  if (!tr) return
+  const R = sw.reach, W = Math.min(sw.trail.width, R * 0.6), n = tr.angles.length - 1
+  const alpha = sw.trail.opacity * (1 - tr.fade * tr.fade)
+  const pt = (a: number, r: number) => ({ x: Math.cos(a) * r, y: Math.sin(a) * r })
+  ctx.beginPath()
+  tr.angles.forEach((a, i) => { const p = pt(a, R); if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y) })
+  for (let i = n; i >= 0; i--) { const p = pt(tr.angles[i], R - W * (0.12 + 0.88 * Math.pow(i / Math.max(1, n), 0.7))); ctx.lineTo(p.x, p.y) }
+  ctx.closePath()
+  ctx.globalAlpha = alpha; ctx.fillStyle = sw.trail.color; ctx.fill()
+  ctx.beginPath()
+  tr.angles.forEach((a, i) => { const p = pt(a, R); if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y) })
+  ctx.globalAlpha = alpha * 0.9; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke()
+}
+
+// the Golpe desenhado while it is drawn: a thin line around her shoulder at the blow's reach, along the angles drawn
+// so far, brighter at the end the pointer is at. Nothing until the drawing is a move (a click shows nothing)
+export function drawDrawing(ctx: Ctx, origin: { x: number; y: number }, samples: readonly { t: number; a: number }[], reach: number) {
+  const path = drawnPath(samples)
+  if (!path) return
+  const pts = pathAngles(path, 0, pathEnd(path)).map(a => ({ x: origin.x + Math.cos(a) * reach, y: origin.y + Math.sin(a) * reach }))
+  ctx.save()
+  ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#ffffff"
+  for (let i = 1; i < pts.length; i++) {
+    ctx.globalAlpha = 0.2 + 0.6 * i / (pts.length - 1); ctx.lineWidth = 1.5 + 2 * i / (pts.length - 1)
+    ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke()
+  }
+  ctx.restore()
 }
 export const hash01 = (v: number) => { const s = Math.sin(v * 12.9898) * 43758.5453; return s - Math.floor(s) }
 

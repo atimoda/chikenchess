@@ -393,3 +393,38 @@ test('setting a scene zone keeps the others and leaves nothing when the last one
   assert.deepEqual(Object.keys(sz.withSceneZone(one, 3, z)), ['2', '3'])
   assert.equal(sz.withSceneZone(one, 2, null), undefined)
 })
+
+// ---------- Estilos ----------
+
+test('every zone style is a whole zone that fits: valid beat and bass, chords that hold the scale, a key the panel can pick', () => {
+  const st = loadTs('lib/pigchicken/zone-styles.ts')
+  const zc = loadTs('lib/pigchicken/zone-changes.ts')
+  const amb = loadTs('lib/pigchicken/zone-ambience.ts')
+  const ids = st.ZONE_PRESETS.map(p => p.id)
+  assert.equal(new Set(ids).size, ids.length, 'ids are unique')
+  assert.ok(!ids.includes('silence'))
+  for (const s of st.ZONE_STYLES) {
+    assert.ok(amb.isBeat(s.ambience.beat) && s.ambience.beat !== 'none', s.id)
+    assert.ok(amb.isBass(s.ambience.bass) && s.ambience.bass !== 'none', s.id)
+    assert.ok(zc.chordScalesFor(s.scale).includes(s.chordScale), `${s.id}: chords hold the scale`)
+    assert.equal(zc.rootOf(s.root), s.root, `${s.id}: the key sits where the Tom dropdown puts it`)
+    assert.ok(s.bpm >= sz.ZONE_BPM.min && s.bpm <= sz.ZONE_BPM.max)
+    assert.ok(s.progression.length && s.progression.every(d => d >= 0 && d <= 6))
+    assert.ok(st.ZONE_STYLE_GROUPS.includes(s.group))
+  }
+  // every rhythm has a style
+  for (const b of amb.BEATS) assert.ok(st.ZONE_PRESETS.some(p => p.ambience.beat === b.id), b.id)
+})
+
+test('a zone shows the style it still sounds like, and none once a field changes', () => {
+  const st = loadTs('lib/pigchicken/zone-styles.ts')
+  for (const p of st.ZONE_PRESETS) {
+    const z = sz.normalizeSoundZone({ ...sz.normalizeSoundZone(null), ...st.presetSequence(p), name: p.name, color: p.color })
+    assert.equal(st.presetOf(z), p.id, p.id)
+  }
+  const samba = sz.normalizeSoundZone({ ...sz.normalizeSoundZone(null), ...st.presetSequence(st.zonePreset('samba')) })
+  assert.equal(st.presetOf({ ...samba, bpm: samba.bpm + 1 }), '')
+  assert.equal(st.presetOf({ ...samba, ambience: { ...samba.ambience, drums: { kick: 'x...............' } } }), '')
+  assert.equal(st.presetOf({ ...samba, ambience: { ...samba.ambience, beatVol: 40 } }), 'samba', 'volumes are not part of the style')
+  assert.equal(st.presetOf({ ...samba, ambience: { beat: 'none', bass: 'none' } }), 'silence')
+})

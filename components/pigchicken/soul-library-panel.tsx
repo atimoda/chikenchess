@@ -277,10 +277,8 @@ export function SoulLibraryPanel({ onClose, focus, onBird }: { onClose: () => vo
               </section>
             ))}
             {editing && (
-              <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-4">
-                <button type="button" disabled={!draft} title="Volta todas as fichas para as do game" onClick={() => commit(SOUL_ENTRIES)} className={small}>Padrão</button>
-                <SaveToGameButton path="data/pigchicken/default-souls.json" save={() => saveDefaultSouls(entries)} />
-              </div>
+              <SaveToGameButton path="data/pigchicken/default-souls.json" save={() => saveDefaultSouls(entries)} className="justify-end px-4 pt-4"
+                onRevert={() => commit(SOUL_ENTRIES)} revertDisabled={!draft} />
             )}
             <div className="h-4" />
           </>

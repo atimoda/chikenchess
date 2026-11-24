@@ -106,7 +106,8 @@ import { perchLines } from "@/lib/pigchicken/perch-places"
 import { powerSpans } from "@/lib/pigchicken/power-lines"
 import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
-import { drawBeam, drawZoneBanner, rigSwing, drawSwing, swingShake } from "@/components/pigchicken/draw/effects"
+import { drawBeam, drawZoneBanner, rigSwing, drawSwing, drawDrawing, swingShake } from "@/components/pigchicken/draw/effects"
+import { drawnPath, type SwingPath } from "@/lib/pigchicken/swing"
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
 import { drawHookDot, drawHookSpin } from "@/components/pigchicken/draw/hook"
@@ -121,7 +122,7 @@ import { drumKit } from "@/lib/pigchicken/drum-kit"
 import { playKit, playKnock } from "@/lib/pigchicken/drum-synth"
 import { drumFrame, setDrumScreen } from "@/components/pigchicken/draw/drum-chart"
 import { drumBindLevels, drumKeyTokens } from "@/lib/pigchicken/drum-input"
-import { stageWidth } from "@/lib/stage-size"
+import { stageHeight, stageTop, stageWidth, stageY } from "@/lib/stage-size"
 import { createTrainingGhosts } from "@/components/pigchicken/training-ghosts"
 
 // Controles → "Incluir variações / escalas / tambores / tipos": whether a switch also goes through the held item's
@@ -184,7 +185,7 @@ export function ParquinhoWorld({ screens, worldRef, debug = false, elements = DE
       {/* the undead she can ride: one thin floor on each, moved every frame (syncRiders) */}
       <div data-chicken-platforms data-undead-riders aria-hidden="true" className="absolute inset-0" />
       {/* the scenery far behind: sky, sun, clouds, mountains and trees, in parallax along the whole world */}
-      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} bare={bare} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} bare={bare} /></div>)}
+      {backdrop > 0 && (backdrop >= 1 ? <ParallaxBackdrop worldW={width} worldTop={worldTop} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} bare={bare} /> : <div className="absolute inset-0" style={{ opacity: backdrop }}><ParallaxBackdrop worldW={width} worldTop={worldTop} look={look} mountains={mountains} forest={forest} skyline={skyline} clouds={cloudSet} snowfall={snowfall} aurora={aurora} zoomMin={zoomMin} bare={bare} /></div>)}
       {/* the ground: reaches far past the world's sides and down past any screen's bottom */}
       <div aria-hidden="true" className="absolute" style={{ left: -4000, width: width + 8000, top: WORLD_GROUND_Y, height: 4000, background: GROUND_FILL, boxShadow: "0 -1px 0 rgba(0,0,0,.35)", ...lit }} />
       {debug && Array.from({ length: screens }, (_, s) => (
@@ -345,6 +346,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   const touchAim = useRef<Stick | null>(null)
   // the on-screen Throw button's aim: dragged out of it, the drag's angle; a tap, her movement or where she faces
   const throwAim = useRef<Stick | null>(null)
+  // the touch Punch dragged out of its circle: how far the finger has turned around the button since it left it
+  // (radians, unwrapped; null: not yet) until it lifts (up), the Golpe desenhado's drawing (lib/pigchicken/swing.ts)
+  const punchDraw = useRef<{ turn: number | null; up: boolean } | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
   // the on-screen Roda dragged out of its middle: the drag's direction points at the wheel's slice (a jog)
@@ -405,7 +409,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the violin's bow: how far it has slid (0 frog .. 1 tip), which way it goes, and the mouse's travel that
     // pushes it (px since the last frame; when the mouse rests, it bows on the beat by itself)
     const bowing = { stroke: 0.5, dir: 1, travel: 0, movedAt: 0 }
-    const mouseBtn = { fire: false, melee: false }
+    const mouseBtn = { fire: false }
     // the main player sits at a fixed instrument (as the last frame left it)
     let p1Seated = false
     // whether P1 was a Filhote last frame (becoming one drops everything)
@@ -426,9 +430,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (e.pointerType === "mouse" || !p1Seated || cameraKey || fingers.filter(f => !f.up).length >= (p1Kit ? 6 : 2)) return
       if (isUi(e.target) || (e.target as Element | null)?.closest?.("[data-patio-editor]")) return
       e.preventDefault()
-      fingers.push({ id: e.pointerId, x: e.clientX, y: e.clientY, slot: fingers.some(f => !f.up && f.slot === 0) ? 1 : 0, fresh: true, up: false })
+      fingers.push({ id: e.pointerId, x: e.clientX, y: stageY(e.clientY), slot: fingers.some(f => !f.up && f.slot === 0) ? 1 : 0, fresh: true, up: false })
     }
-    const onFingerMove = (e: PointerEvent) => { const f = fingers.find(f => f.id === e.pointerId && !f.up); if (f) { f.x = e.clientX; f.y = e.clientY } }
+    const onFingerMove = (e: PointerEvent) => { const f = fingers.find(f => f.id === e.pointerId && !f.up); if (f) { f.x = e.clientX; f.y = stageY(e.clientY) } }
     const onFingerUp = (e: PointerEvent) => { const f = fingers.find(f => f.id === e.pointerId && !f.up); if (f) f.up = true }
     // the arpeggiator glyphs drawn over the instruments' slots this frame (screen units, like the inventory) and the
     // instrument each one belongs to
@@ -437,7 +441,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // neither equips, fires nor walks
     const onArpDown = (e: PointerEvent) => {
       if (e.button !== 0 || cameraKey || !arpBoxes.length) return
-      const hit = arpBoxes.find(a => e.clientX >= a.box.l && e.clientX <= a.box.r && e.clientY >= a.box.t && e.clientY <= a.box.b)
+      const hit = arpBoxes.find(a => e.clientX >= a.box.l && e.clientX <= a.box.r && stageY(e.clientY) >= a.box.t && stageY(e.clientY) <= a.box.b)
       if (!hit) return
       e.preventDefault(); e.stopImmediatePropagation()
       const all = loadItems()
@@ -478,31 +482,60 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       !(e.target as Element | null)?.closest?.("[data-patio-editor]") && !getTouchLayout().editing && !engine.getMotionState().held
     // the item at her feet is often under her own body: a press there is Pegar, not picking her up
     const takeGrabTap = (e: PointerEvent) => {
-      if (!onGrabSpot(e.clientX, e.clientY)) return false
+      if (!onGrabSpot(e.clientX, stageY(e.clientY))) return false
       e.preventDefault(); e.stopPropagation()
       grabTap = true
       return true
     }
+    // Golpe desenhado on the screen: a finger that lands around her (within one and a half blows' reach of her shoulder,
+    // ring: measured by the last frame, in client px) waits to see. Dragged more than DRAW_PX, it draws the blow from
+    // where it landed and nothing fires or walks; lifted without dragging, it is the tap it always was (a shot or a
+    // peck there, and the walk)
+    let ring: { x: number; y: number; r: number } | null = null
+    let screenDraw: { id: number; x: number; y: number; x0: number; y0: number; moved: boolean; up: boolean } | null = null
+    const DRAW_PX = 10
     const onTouchDown = (e: PointerEvent) => {
       if (e.pointerType === "mouse") return
       walkTap = null
       if (!canScreenAim(e) || takeGrabTap(e) || onChicken(e.target)) return
-      walkTap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }
-      if (!screenFinger || screenFinger.up) screenFinger = { id: e.pointerId, x: e.clientX, y: e.clientY, frames: 0, up: false }
+      walkTap = { id: e.pointerId, x: e.clientX, y: stageY(e.clientY), t: performance.now() }
+      if (screenFinger && !screenFinger.up) return
+      if (!screenDraw && ring && Math.hypot(e.clientX - ring.x, stageY(e.clientY) - ring.y) <= ring.r) {
+        screenDraw = { id: e.pointerId, x: e.clientX, y: stageY(e.clientY), x0: e.clientX, y0: stageY(e.clientY), moved: false, up: false }
+        return
+      }
+      if (!screenDraw) screenFinger = { id: e.pointerId, x: e.clientX, y: stageY(e.clientY), frames: 0, up: false }
     }
     const onScreenMove = (e: PointerEvent) => {
-      if (screenFinger && !screenFinger.up && screenFinger.id === e.pointerId) { screenFinger.x = e.clientX; screenFinger.y = e.clientY }
+      if (screenFinger && !screenFinger.up && screenFinger.id === e.pointerId) { screenFinger.x = e.clientX; screenFinger.y = stageY(e.clientY) }
+      const sd = screenDraw
+      if (sd && !sd.up && sd.id === e.pointerId) {
+        sd.x = e.clientX; sd.y = stageY(e.clientY)
+        if (!sd.moved && Math.hypot(sd.x - sd.x0, sd.y - sd.y0) > DRAW_PX) { sd.moved = true; walkTap = null }
+      }
     }
     const onTapUp = (e: PointerEvent) => {
+      const sd = screenDraw
+      if (sd && sd.id === e.pointerId) {
+        // (not dragged: the tap it always was, a shot there for two frames)
+        if (sd.moved) sd.up = true
+        else { screenDraw = null; screenFinger = { id: e.pointerId, x: sd.x, y: sd.y, frames: 0, up: true } }
+      }
       const t = walkTap
       if (!t || t.id !== e.pointerId) return
       walkTap = null
-      if (Math.hypot(e.clientX - t.x, e.clientY - t.y) <= 8 && performance.now() - t.t <= 600) engine.walkTo({ x: e.clientX, y: e.clientY })
+      if (Math.hypot(e.clientX - t.x, stageY(e.clientY) - t.y) <= 8 && performance.now() - t.t <= 600) engine.walkTo({ x: e.clientX, y: stageY(e.clientY) })
     }
-    // point-and-click Golpe (the right button, when the item's "Clique direito: point and click" is on): the press is
-    // looked at in the frame, which walks her to a point out of the blow's reach and strikes it once in reach
-    let pcPress: { x: number; y: number } | null = null
-    let pcGoal: { x: number; y: number; t: number } | null = null
+    // Golpe desenhado with the mouse (the right button): the press starts the drawing, the frame records the pointer's
+    // angle around her while it is held, and the blow comes out when it is let go (up: where). A click that drew
+    // nothing is a blow of the combo there; with the item's point-and-click (pc) it also walks her toward a point out
+    // of the blow's reach
+    let rDown: { pc: boolean } | null = null
+    let rUp: { x: number; y: number } | null = null
+    // the Golpe desenhado being drawn (mouse or touch Punch): the angle around her shoulder, frame by frame (t in s)
+    let drawing: { t: number; a: number }[] = []
+    // the aim when the touch Punch's drawing started: its turns count from there
+    let punchFrom = 0
     const canPointClick = (e: PointerEvent) => e.button === 2 && !cameraKey && !isUi(e.target) && !onChicken(e.target) &&
       !(e.target as Element | null)?.closest?.("[data-patio-editor]") && !engine.getMotionState().held
     // the mouse is someone else's (another local player holds it)
@@ -526,7 +559,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const hoverCage = (hit: CageHit | null) => { cageHover = hit ? { id: hit.id, i: hit.i } : null; document.body.classList.toggle("pigchicken-bag-hover", !!hit) }
     const onCageDown = (e: PointerEvent) => {
       if (e.button !== 0 || cameraKey || overUi(e.target)) return
-      const hit = cageBoxAt(e.clientX, e.clientY)
+      const hit = cageBoxAt(e.clientX, stageY(e.clientY))
       if (!hit) return
       e.preventDefault(); e.stopImmediatePropagation()
       cageTaps.push({ id: hit.id, i: hit.i })
@@ -535,14 +568,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (e.pointerType !== "mouse" || noMouse()) return
       mouseOverUi = overUi(e.target)
       // a Gaiola that can be pressed is a button too: the normal cursor, no reticle
-      hoverCage(mouseOverUi || cameraKey ? null : cageBoxAt(e.clientX, e.clientY))
+      hoverCage(mouseOverUi || cameraKey ? null : cageBoxAt(e.clientX, stageY(e.clientY)))
       if (cageHover) mouseOverUi = true
       if (cameraKey) {
         if (e.button === 1 && (e.buttons & 4)) resetView()
         if (panPointer === e.pointerId && (e.buttons & 1) && mouse) {
-          panDeltaX += e.clientX - mouse.x; panDeltaY += e.clientY - mouse.y
+          panDeltaX += e.clientX - mouse.x; panDeltaY += stageY(e.clientY) - mouse.y
         }
-        mouse = { x: e.clientX, y: e.clientY }
+        mouse = { x: e.clientX, y: stageY(e.clientY) }
         return
       }
       // a button pressed or let go while another one is held arrives as a pointermove (chorded buttons), not as
@@ -551,20 +584,20 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (e.buttons & (e.button === 0 ? 1 : 2)) onDown(e); else onUp(e)
       }
       if (mouse) {
-        const moved = Math.hypot(e.clientX - mouse.x, e.clientY - mouse.y)
+        const moved = Math.hypot(e.clientX - mouse.x, stageY(e.clientY) - mouse.y)
         owner.moved(moved, performance.now())
         bowing.travel += moved
         if (moved > 0) bowing.movedAt = performance.now()
         if (owner.owns) stickOwner.release()
       }
-      mouse = { x: e.clientX, y: e.clientY }
+      mouse = { x: e.clientX, y: stageY(e.clientY) }
     }
     const onDown = (e: PointerEvent) => {
       if (e.pointerType !== "mouse" || noMouse()) return
       if (cameraKey && !blocksCamera(e.target)) {
         e.preventDefault(); e.stopPropagation()
         if (e.button === 0) {
-          panPointer = e.pointerId; mouse = { x: e.clientX, y: e.clientY }
+          panPointer = e.pointerId; mouse = { x: e.clientX, y: stageY(e.clientY) }
           document.body.classList.add('pigchicken-camera-dragging')
         }
         if (e.button === 1) resetView()
@@ -576,10 +609,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (e.button === 0 && !p1Seated && !engine.getMotionState().held && takeGrabTap(e)) return
       if (e.button === 0 && onChicken(e.target) && !p1Seated) return
       // empty hands: the left button pecks as always and, on a quick click, also walks there
-      if (e.button === 0 && canWalkTap(e)) walkTap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }
+      if (e.button === 0 && canWalkTap(e)) walkTap = { id: e.pointerId, x: e.clientX, y: stageY(e.clientY), t: performance.now() }
       if (e.button === 0) mouseBtn.fire = true
-      if (e.button === 2) { mouseBtn.melee = true; pcPress = canPointClick(e) ? { x: e.clientX, y: e.clientY } : null }
-      if (e.button === 0 && p1Kit) clicks.push({ x: e.clientX, y: e.clientY })
+      if (e.button === 2) { rDown = { pc: canPointClick(e) }; rUp = null }
+      if (e.button === 0 && p1Kit) clicks.push({ x: e.clientX, y: stageY(e.clientY) })
     }
     const onUp = (e: PointerEvent) => {
       onTapUp(e)
@@ -590,7 +623,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         e.preventDefault(); e.stopPropagation()
       }
       if (e.button === 0) mouseBtn.fire = false
-      if (e.button === 2) mouseBtn.melee = false
+      if (e.button === 2 && rDown) rUp = { x: e.clientX, y: stageY(e.clientY) }
     }
     const onMenu = (e: MouseEvent) => { if (!isUi(e.target)) e.preventDefault() }
     const onCameraClick = (e: MouseEvent) => {
@@ -618,7 +651,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if ((p1Kit || extraKit.size > 0) && drumKeyTokens(drumKit(), controls, null).has("Key:" + e.code)) e.preventDefault()
       }
       if (e.code === "Backquote") {
-        e.preventDefault(); cameraKey = true; mouseBtn.fire = false; mouseBtn.melee = false
+        e.preventDefault(); cameraKey = true; mouseBtn.fire = false; rDown = null; rUp = null
         showCameraMode(true)
       }
       const slot = inventorySlotFromCode(e.code)
@@ -655,6 +688,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
 
     // camX: world x at the screen's left edge; oy: screen y of world y = 0 (null until the first frame)
     let camX = 0, oy: number | null = null, last = performance.now(), raf = 0
+    // sucked into a portal, or coming out of the other one of a pair: where the camera was when it began and where it
+    // ends, with the portal in view
+    let portalCam: { mode: 'enter' | 'arrive'; x0: number; y0: number; x1: number; y1: number } | null = null
     const extraSeated = new Set<string>()
     // the other local players sitting at a Bateria
     const extraKit = new Set<string>()
@@ -695,7 +731,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const cancelPeckInput = () => {
       drumKeys.clear()
       cancelPecks = true; mouseBtn.fire = false; cameraKey = false; panPointer = null
-      screenFinger = null; walkTap = null; grabTap = false
+      screenFinger = null; walkTap = null; grabTap = false; screenDraw = null
       panInterrupted = false; wasPanHeld = false; panDeltaX = 0; panDeltaY = 0
       document.body.classList.remove('pigchicken-camera-dragging'); showCameraMode(false)
     }
@@ -710,7 +746,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         wctx.setTransform(dpr, 0, 0, dpr, 0, 0)
         wheelCanvas.style.display = ""
       }
-      wctx.clearRect(0, 0, stageWidth(), window.innerHeight)
+      wctx.clearRect(0, 0, stageWidth(), stageHeight())
       wheelDrawn = true
     }
     // horde settings, changed by shooting their buttons
@@ -829,13 +865,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const minePlay = bindMinePlay(combat, { engines: () => [["p1", engine], ...(extras?.current ? [...extras.current.entries()] : [])], color: who => colorsRef.current?.[who] })
     const header = document.querySelector("main header")
     let drawnCamX = NaN, drawnCamY = NaN, drawnZoom = NaN, drawnW = NaN, drawnH = NaN
-    let viewTop = header?.getBoundingClientRect().bottom ?? 0
-    const measureHeader = () => { viewTop = header?.getBoundingClientRect().bottom ?? 0 }
+    // the header's foot on the stage (0 with the Modo editor docked at the top: the header is above the stage)
+    const headerFoot = () => Math.max(0, (header?.getBoundingClientRect().bottom ?? 0) - stageTop())
+    let viewTop = headerFoot()
+    const measureHeader = () => { viewTop = headerFoot() }
     const headerObserver = new ResizeObserver(measureHeader)
     if (header) headerObserver.observe(header)
     const fit = () => {
       const dpr = patioPixelRatio(window.devicePixelRatio, graphicsQuality() !== "high")
-      canvas.width = Math.round(stageWidth() * dpr); canvas.height = Math.round(window.innerHeight * dpr)
+      canvas.width = Math.round(stageWidth() * dpr); canvas.height = Math.round(stageHeight() * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       // Allocate the wheel's full buffer only while it is open.
       wheelCanvas.width = 1; wheelCanvas.height = 1
@@ -903,7 +941,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // carries), else the fixed instrument next to her, else the Baú in reach. World px around its foot, like the camera
       // draws it (scaled around the screen's middle by the zoom)
       {
-        const W = stageWidth(), H = window.innerHeight
+        const W = stageWidth(), H = stageHeight()
         const box = (x: number, y: number, half: number, up: number) => {
           const sx = (v: number) => W / 2 + (v - camX - W / 2) * zoom, sy = (v: number) => H / 2 + (v + (oy ?? 0) - H / 2) * zoom
           return { l: sx(x - half), r: sx(x + half), t: sy(y - up), b: sy(y + 16) }
@@ -991,6 +1029,27 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         nextOy = Math.max(yr.lo, Math.min(yr.hi, (oy ?? yr.lo) + dy + (padPan && rightStick ? rightStick.y * speed : 0)))
         panDeltaX = 0; panDeltaY = 0
       }
+      // sucked into a portal far from the view (switching Pátio by the entry portal, say): the camera goes with her to
+      // it on the same curve, ending where the follow camera would keep her there; a portal already in view stays put
+      // coming out of the other portal of a pair in this Pátio: instead of jumping there, the camera runs from the first
+      // portal to it while she comes out, so the way from one to the other shows
+      const into = engine.getPortalTransit()
+      if (portalCam && portalCam.mode !== into?.mode) portalCam = null
+      if (into?.mode === 'enter' && (portalCam || into.k < 1)) {
+        if (!portalCam) {
+          const x1 = cameraStep(camX, { mode: 'follow', worldX: into.x + camX, viewW, worldW, zoom, dt: 1, deadband: S.deadband / zoom, lag: 1, lead: 0 })
+          const y1 = cameraYStep(oy, { worldY: into.y + 80 * st.scale - oy, groundScreen: zoomGround, viewTop: zoomTop, dt: 1, lag: 1, top: worldTop })
+          portalCam = { mode: 'enter', x0: camX, y0: oy, x1, y1 }
+        }
+      } else if (into?.mode === 'arrive' && into.glide && (portalCam || snapToPortal)) {
+        // (this frame's camera is the jump to her: where the run ends)
+        if (!portalCam) portalCam = { mode: 'arrive', x0: camX, y0: oy, x1: next, y1: nextOy }
+      } else portalCam = null
+      if (portalCam && into) {
+        const u = into.k * into.k * (3 - 2 * into.k)
+        next = portalCam.x0 + (portalCam.x1 - portalCam.x0) * u
+        nextOy = portalCam.y0 + (portalCam.y1 - portalCam.y0) * u
+      }
       for (const id of ["p1", ...(extras?.current?.keys() ?? [])]) combat.setPlayerRoom(id, shotRooms.get(houseRoomsStore.roomOf(id) ?? "") ?? null)
       // the other local players' chickens and the chicks that follow her live in the same camera
       const others = [...(extras?.current?.values() ?? []), ...(chicks?.current?.values() ?? []), ...(ghosts?.engines() ?? [])]
@@ -1007,7 +1066,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // px), or, with it empty, calls their souls back
       const letSoulOut = (id: string) => {
         if (!combat.bagOfSouls.length) { combat.callSouls(); return }
-        const at = cageBoxes.find(b => b.id === id && b.i === 0), scx = stageWidth() / 2, scy = window.innerHeight / 2
+        const at = cageBoxes.find(b => b.id === id && b.i === 0), scx = stageWidth() / 2, scy = stageHeight() / 2
         const eng = id === "p1" ? engine : extras?.current?.get(id), es = eng?.getMotionState()
         combat.releaseSoul(at ? { x: (at.cx - scx) / zoom + scx + camX, y: (at.cy - scy) / zoom + scy - camY } : { x: (es?.x ?? 0) + camX, y: (es?.y ?? 0) - camY - 200 * (es?.scale ?? 1) })
       }
@@ -1045,13 +1104,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         players: [st, ...[...(extras?.current?.values() ?? [])].map(o => o.getMotionState())].map(os => ({ x: os.x + camX, y: os.y - camY })),
       })
       // the zoom pivots on the stage's centre, so a new stage size (the editor's dock) also redraws it
-      if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY || zoom !== drawnZoom || stageWidth() !== drawnW || window.innerHeight !== drawnH)) {
+      if (worldRef.current && (camX !== drawnCamX || camY !== drawnCamY || zoom !== drawnZoom || stageWidth() !== drawnW || stageHeight() !== drawnH)) {
         const world = worldRef.current
         world.style.transform = worldTransform(camX, camY, zoom)
         holdLayer(world, zoom)
         world.style.transformOrigin = "0 0"
         setPlatformWorldOffset(world, -camX, camY)
-        drawnCamX = camX; drawnCamY = camY; drawnZoom = zoom; drawnW = stageWidth(); drawnH = window.innerHeight
+        drawnCamX = camX; drawnCamY = camY; drawnZoom = zoom; drawnW = stageWidth(); drawnH = stageHeight()
       }
       if (fgRef?.current) {
         fgRef.current.style.transform = worldTransform(camX, camY, zoom)
@@ -1075,10 +1134,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // a click or a tap on what Pegar offers: Pegar pressed for this frame (let go on the next)
       const act = grabTap && !dragged ? { ...actNow, grab: true } : actNow
       grabTap = false
-      if (dragged) { mouseBtn.fire = false; mouseBtn.melee = false; slotPick = 0; slotTap.current = 0; barMove.current = null; wheel = 0 }
+      if (dragged) { mouseBtn.fire = false; rDown = null; rUp = null; slotPick = 0; slotTap.current = 0; barMove.current = null; wheel = 0 }
       const an = controls.analog
       const devs = devicesRef.current
-      if (noMouse() && (mouse || mouseBtn.fire || mouseBtn.melee)) { mouse = null; mouseBtn.fire = false; mouseBtn.melee = false }
+      if (noMouse() && (mouse || mouseBtn.fire || rDown)) { mouse = null; mouseBtn.fire = false; rDown = null; rUp = null }
       const rightStickForAim = stickFor(devs, 1, an.deadzoneR), leftStick = stickFor(devs, 0, an.deadzoneL) ?? readTouchMoveStick(an.deadzoneL)
 
       // ---------- the inventory wheel: open while its button is held; point at an item (mouse, right stick, touch) ----------
@@ -1159,7 +1218,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       const unzoom = (p: { x: number; y: number }) => zoom !== 1 ? {
         x: (p.x - stageWidth() / 2) / zoom + stageWidth() / 2,
-        y: (p.y - window.innerHeight / 2) / zoom + window.innerHeight / 2,
+        y: (p.y - stageHeight() / 2) / zoom + stageHeight() / 2,
       } : p
       const aimMouse = mouse && unzoom(mouse)
       // Tela serve como mira: the finger on the scene aims and fires; after it lifts (and two frames held at least)
@@ -1211,38 +1270,46 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // a soul that shakes her aim (lib/pigchicken/soul-acts.ts): it sways for a moment
       const skew = combat.aimSkew
       if (skew) { const a = aim.angle + skew; aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) } }
-      // point-and-click Golpe: a right click out of the blow's reach walks her there instead of striking the air; the
-      // blow comes out, aimed at that point, once it is in reach (or when the walk ends below it). Any other Golpe,
-      // the item's option off, the wheel, being picked up or 10 s call it off
-      let pcStrike = false
+      // Golpe desenhado (the right button, a finger dragged on the screen around her, or the touch Punch dragged out
+      // of its circle): while held, each frame records the angle around her shoulder (the pointer's or the finger's;
+      // the Punch's turns from where she aims); let go, the drawing becomes the blow's move. A click that drew less
+      // than DRAWN_MIN_SWEEP is a blow of the combo right away, aimed at the clicked point; with the item's
+      // point-and-click it also walks her toward that point when it is out of the blow's reach (the blow does not wait)
+      let meleePath: SwingPath | null = null, clickStrike = false
       {
-        const wo = { x: origin.x + camX, y: origin.y - camY }
-        if (pcPress) {
-          const p = pcPress, reach = p1Seated || wh.open || st.held ? null : combat.pointClickReach(st.scale)
-          pcPress = null; pcGoal = null
-          if (reach !== null) {
-            const at = zoom !== 1
-              ? { x: (p.x - stageWidth() / 2) / zoom + stageWidth() / 2, y: (p.y - window.innerHeight / 2) / zoom + window.innerHeight / 2 }
-              : p
-            const goal = { x: at.x + camX, y: at.y - camY, t: now }
-            // (something already touching her, a body or a projectile: the blow comes out now, without walking)
-            if (Math.hypot(goal.x - wo.x, goal.y - wo.y) > reach && !combat.touching()) {
-              engine.walkTo(p)
-              // (she cannot walk now, clinging to a wall or entering a portal: the blow comes out where she is, as before)
-              if (engine.isWalking()) { pcGoal = goal; mouseBtn.melee = false }
-            }
-          }
+        const toStage = (p: { x: number; y: number }) => zoom !== 1
+          ? { x: (p.x - stageWidth() / 2) / zoom + stageWidth() / 2, y: (p.y - stageHeight() / 2) / zoom + stageHeight() / 2 }
+          : p
+        const around = (p: { x: number; y: number }) => { const m = toStage(p); return Math.atan2(m.y - origin.y, m.x - origin.x) }
+        // where a finger on the screen draws a blow instead of aiming: around her shoulder (client px)
+        ring = { x: (origin.x - stageWidth() / 2) * zoom + stageWidth() / 2, y: (origin.y - stageHeight() / 2) * zoom + stageHeight() / 2, r: combat.drawnReach(st.scale) * 1.5 * zoom }
+        const pd = punchDraw.current, sd = screenDraw
+        if (rDown && mouse) drawing.push({ t: now / 1000, a: around(mouse) })
+        else if (sd?.moved) drawing.push({ t: now / 1000, a: around(drawing.length ? sd : { x: sd.x0, y: sd.y0 }) })
+        else if (pd && pd.turn !== null) {
+          if (!drawing.length) punchFrom = aim.angle
+          drawing.push({ t: now / 1000, a: punchFrom + pd.turn })
         }
-        if (pcGoal) {
-          const reach = p1Seated || wh.open || st.held || act.melee || now - pcGoal.t > 10000 ? null : combat.pointClickReach(st.scale)
-          const walking = engine.isWalking()
-          if (reach === null) pcGoal = null
-          else if (Math.hypot(pcGoal.x - wo.x, pcGoal.y - wo.y) <= reach || (!walking && Math.abs(pcGoal.x - wo.x) <= reach)) {
-            const a = Math.atan2(pcGoal.y - wo.y, pcGoal.x - wo.x)
+        const blocked = p1Seated || wh.open || st.held
+        if (rDown && rUp) {
+          const press = rDown, up = rUp, path = blocked ? null : drawnPath(drawing)
+          rDown = null; rUp = null; drawing = []
+          if (path) meleePath = path
+          else if (!blocked) {
+            clickStrike = true
+            const at = toStage(up), wo = { x: origin.x + camX, y: origin.y - camY }, goal = { x: at.x + camX, y: at.y - camY }
+            const a = Math.atan2(goal.y - wo.y, goal.x - wo.x)
             aim = { ...aim, angle: a, dx: Math.cos(a), dy: Math.sin(a) }
-            engine.stopWalk(); pcGoal = null; pcStrike = true
-          } else if (!walking) pcGoal = null
-        }
+            const reach = press.pc ? combat.pointClickReach(st.scale) : null
+            if (reach !== null && Math.hypot(goal.x - wo.x, goal.y - wo.y) > reach) engine.walkTo(up)
+          }
+        } else if (sd?.up || pd?.up) {
+          // (a drag too short to be a move is a blow of the combo, like a tap)
+          if (sd?.up) screenDraw = null; else punchDraw.current = null
+          meleePath = blocked ? null : drawnPath(drawing)
+          clickStrike = !blocked && !meleePath
+          drawing = []
+        } else if (!rDown && !pd && !sd?.moved) drawing = []
       }
       const muzzleAt = (a: number) => armed ? engine.heldPoint(a, d.muzzleX, d.muzzleY) : origin
       engine.setGame({
@@ -1257,7 +1324,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // ---------- combat (world coordinates) ----------
       if (fireBlock && !act.fire) fireBlock = false
       prevFire = act.fire
-      const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || screenFire || fingers.length > 0 || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || mouseBtn.melee || pcStrike)
+      const fire = !wh.open && !fireBlock && (act.fire || mouseBtn.fire || screenFire || fingers.length > 0 || (!!autoAt && now < autoUntil)), melee = !wh.open && (act.melee || clickStrike || !!meleePath)
       // Próximo item / Item anterior and the group switches repeat while held (Controles → Inventário)
       let pick = quickSwitchStep(act, prev, engine.isShiftHeld(), quickSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
       const groupPick = groupSwitchStep(act, prev, groupSwitch, dt, controls.inventory.repeatDelay, controls.inventory.repeatInterval)
@@ -1269,7 +1336,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const input = {
         deselect: act.deselectItem && !prev.deselectItem,
         cancelFire: cancelPecks || wh.open || fireBlock || document.hidden || st.held || st.state.startsWith('portal'),
-        fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee,
+        fire, firePressed: fire && !prev.fire, melee: melee && !prev.melee, meleePath,
         throwHeld: act.throw && !wh.open, throwReleased: !act.throw && !!prev.throw && !wh.open,
         reload: (() => {
           const menuReload = padButtons.has("Pad:b9")
@@ -1393,7 +1460,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // she fell onto the ground holding Chocar: the zone strip's tag under her steps to its next value (zone-slam.ts)
       if (engine.takeSlam()) zoneSlam(engine.getMotionState().x + camX)
       // (the part of the screen the Bateria's chart may use, whatever the camera's zoom: under the header's buttons)
-      { const hw = stageWidth() / 2, hh = window.innerHeight / 2; setDrumScreen({ l: hw - (hw - 8) / zoom, r: hw + (hw - 8) / zoom, t: hh - (hh - 60) / zoom, b: hh + (hh - 8) / zoom }) }
+      { const hw = stageWidth() / 2, hh = stageHeight() / 2; setDrumScreen({ l: hw - (hw - 8) / zoom, r: hw + (hw - 8) / zoom, t: hh - (hh - 60) / zoom, b: hh + (hh - 8) / zoom }) }
       // her hands over its strings: the fingers on the screen (each one a hand, its touch the pluck); else a gamepad's
       // sticks (right: the front hand, left: the back one; a stick at rest is a hand off the strings; the Harpa's
       // Sustenido bind, L3 or Shift by default); else the aim itself (the mouse's own place; the keys' direction, a plain note)
@@ -1407,7 +1474,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         let hands: (StringAim | null)[] = [null, null]
         if (fingers.length) {
           fingers.forEach(f => {
-            const fx = zoom !== 1 ? (f.x - stageWidth() / 2) / zoom + stageWidth() / 2 : f.x, fy = zoom !== 1 ? (f.y - window.innerHeight / 2) / zoom + window.innerHeight / 2 : f.y
+            const fx = zoom !== 1 ? (f.x - stageWidth() / 2) / zoom + stageWidth() / 2 : f.x, fy = zoom !== 1 ? (f.y - stageHeight() / 2) / zoom + stageHeight() / 2 : f.y
             hands[f.slot] = { angle: Math.atan2(fy - origin.y, fx - origin.x), reach: aimReach({ px: Math.hypot(fx - origin.x, fy - origin.y), radius: fanR }), kind: "point", fire: true, pressed: f.fresh }
           })
         } else if (padR || padL) hands = [padR ? stickHand(padR) : null, padL ? stickHand(padL) : null]
@@ -1421,7 +1488,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           const on = (px: number, py: number) => ({ angle: Math.atan2(py - frame.y, px - frame.x), reach: Math.hypot(px - frame.x, py - frame.y) / frame.r })
           hands = [null, null]
           if (fingers.length) fingers.forEach(f => {
-            const fx = zoom !== 1 ? (f.x - stageWidth() / 2) / zoom + stageWidth() / 2 : f.x, fy = zoom !== 1 ? (f.y - window.innerHeight / 2) / zoom + window.innerHeight / 2 : f.y
+            const fx = zoom !== 1 ? (f.x - stageWidth() / 2) / zoom + stageWidth() / 2 : f.x, fy = zoom !== 1 ? (f.y - stageHeight() / 2) / zoom + stageHeight() / 2 : f.y
             hands[f.slot] = { ...on(fx, fy), kind: "point", fire: true, pressed: f.fresh }
           })
           else if (padR) hands = [{ angle: Math.atan2(padR.y, padR.x), reach: padR.mag, kind: "stick" }, null]
@@ -1435,7 +1502,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (p1Kit) {
           const mid = drumFrame(drumKit(), origin.x, origin.y, SCALE_FAN_R * st.scale)
           const onChart = (px: number, py: number) => {
-            const fx = zoom !== 1 ? (px - stageWidth() / 2) / zoom + stageWidth() / 2 : px, fy = zoom !== 1 ? (py - window.innerHeight / 2) / zoom + window.innerHeight / 2 : py
+            const fx = zoom !== 1 ? (px - stageWidth() / 2) / zoom + stageWidth() / 2 : px, fy = zoom !== 1 ? (py - stageHeight() / 2) / zoom + stageHeight() / 2 : py
             return { x: (fx - mid.x) / mid.r, y: (fy - mid.y) / mid.r }
           }
           const stickAt = (s: Stick | null) => (s ? { x: s.x * s.mag, y: s.y * s.mag } : null)
@@ -1815,9 +1882,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       wasLocked = aimLock
 
       // ---------- draw ----------
-      ctx.clearRect(0, 0, stageWidth(), window.innerHeight)
+      ctx.clearRect(0, 0, stageWidth(), stageHeight())
       ctx.save()
-      if (zoom !== 1) { ctx.translate(stageWidth() / 2, window.innerHeight / 2); ctx.scale(zoom, zoom); ctx.translate(-stageWidth() / 2, -window.innerHeight / 2) }
+      if (zoom !== 1) { ctx.translate(stageWidth() / 2, stageHeight() / 2); ctx.scale(zoom, zoom); ctx.translate(-stageWidth() / 2, -stageHeight() / 2) }
       // the world's things show up to the top of the screen, behind the see-through header, like the world itself
       // (viewTop only frames the camera; clipping or culling at it cut tall things in a line under the header)
       // a blow that lands jolts the world for a moment
@@ -1853,6 +1920,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (!k) scopeDef = null
       }
       drawSwing(ctx, combat, origin, "back", screenView)
+      if (drawing.length > 1) drawDrawing(ctx, origin, drawing, combat.drawnReach(st.scale))
       // the item itself is drawn inside her rig, in front of her body and of the wing; in a swing the wing
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.held, sw = combat.swing
@@ -2067,8 +2135,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (cageHover && !cageBoxes.some(b => b.id === cageHover!.id && b.i === cageHover!.i && b.on)) { hoverCage(null); mouseOverUi = false }
       // where the other players are: their avatar with their cages' counters, over them or, off the screen, at its
       // edge on their side. The local ones only off the screen (their counters are by their avatars)
-      const tagBox = { l: 0, r: stageWidth(), t: viewTop, b: window.innerHeight }
-      const scx = stageWidth() / 2, scy = window.innerHeight / 2
+      const tagBox = { l: 0, r: stageWidth(), t: viewTop, b: stageHeight() }
+      const scx = stageWidth() / 2, scy = stageHeight() / 2
       extraList.forEach(([id, eng]) => {
         const s = eng.getMotionState(), sx = scx + (s.x - scx) * zoom, sy = scy + (s.y - 100 * s.scale - scy) * zoom
         if (sx >= tagBox.l && sx <= tagBox.r && sy >= tagBox.t && sy <= tagBox.b) return
@@ -2100,7 +2168,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (wh.open || fronts.length || stained) {
         if (!hudFront) clearFront()
         wctx.save()
-        if (zoom !== 1) { wctx.translate(stageWidth() / 2, window.innerHeight / 2); wctx.scale(zoom, zoom); wctx.translate(-stageWidth() / 2, -window.innerHeight / 2) }
+        if (zoom !== 1) { wctx.translate(stageWidth() / 2, stageHeight() / 2); wctx.scale(zoom, zoom); wctx.translate(-stageWidth() / 2, -stageHeight() / 2) }
         fronts.forEach(([id, at]) => { combat.use(id); drawSwing(wctx, combat, at, "front", screenView) })
         // what a dropping left on a chicken, on her
         if (stained) { wctx.save(); wctx.translate(jx, camY + jy); drawPoopStains(wctx, combat, camX, view); wctx.restore() }
@@ -2184,7 +2252,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       document.body.classList.remove("pigchicken-play", "pigchicken-bag-hover", "pigchicken-seated")
       document.body.classList.remove('pigchicken-camera-mode', 'pigchicken-camera-dragging')
       setCameraMode(false)
-      if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(window.innerHeight - groundHRef.current).lo - oy)
+      if (camX || oy !== null) engine.shift(camX, oy === null ? 0 : cameraYRange(stageHeight() - groundHRef.current).lo - oy)
       engine.setGroundHeight(groundHRef.current)
       engine.setCameraZoom(1)
       extras?.current?.forEach(o => o.setCameraZoom(1))
@@ -2238,12 +2306,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
                     onPointerDown={e => {
                       e.preventDefault(); e.stopPropagation()
                       e.currentTarget.setPointerCapture?.(e.pointerId)
-                      barDrag.current = { from: i, to: i, after: false, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, pointer: e.pointerId, active: false }
+                      barDrag.current = { from: i, to: i, after: false, x: e.clientX, y: stageY(e.clientY), x0: e.clientX, y0: stageY(e.clientY), pointer: e.pointerId, active: false }
                     }}
                     onPointerMove={e => {
                       const d = barDrag.current
                       if (!d || d.pointer !== e.pointerId) return
-                      d.x = e.clientX; d.y = e.clientY
+                      d.x = e.clientX; d.y = stageY(e.clientY)
                       if (!d.active && barItems.current[d.from] && Math.hypot(d.x - d.x0, d.y - d.y0) > BAR_DRAG_START) d.active = true
                       if (d.active) { const at = slotAt(e); d.to = at.slot; d.after = at.after }
                     }}
@@ -2265,12 +2333,12 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           aria-label="Roda do inventário"
           className="pointer-events-auto fixed inset-0 z-[189]"
           style={{ touchAction: "none" }}
-          onPointerMove={e => { wheelPtr.current = { x: e.clientX, y: e.clientY } }}
-          onPointerDown={e => { e.preventDefault(); wheelPtr.current = { x: e.clientX, y: e.clientY }; wheelTap.current = { x: e.clientX, y: e.clientY } }}
+          onPointerMove={e => { wheelPtr.current = { x: e.clientX, y: stageY(e.clientY) } }}
+          onPointerDown={e => { e.preventDefault(); wheelPtr.current = { x: e.clientX, y: stageY(e.clientY) }; wheelTap.current = { x: e.clientX, y: stageY(e.clientY) } }}
           onContextMenu={e => e.preventDefault()}
         />
       )}
-      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} throwAimRef={throwAim} tapRef={tapShot} jogRef={wheelJog} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} showStick={controls?.touchAimStick ?? false} />}
+      {showTouch && engine && <TouchAimStick engine={engine} aimRef={touchAim} throwAimRef={throwAim} punchRef={punchDraw} tapRef={tapShot} jogRef={wheelJog} bottom={lifted ? 16 + STICK + 12 : STICK_BOTTOM} grabOffer={grabOffer} showStick={controls?.touchAimStick ?? false} />}
     </>
   )
 }
@@ -2284,7 +2352,7 @@ const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 type GrabOffer = "" | "take" | "equip" | "sit" | "stand"
 const GRAB_LABELS: Record<Exclude<GrabOffer, "">, string> = { take: "Pegar", equip: "Equipar", sit: "Tocar", stand: "Sair" }
 
-function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, jogRef, bottom, grabOffer, showStick }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; throwAimRef: React.MutableRefObject<Stick | null>; tapRef: React.MutableRefObject<number>; jogRef: React.MutableRefObject<Stick | null>; bottom: number; grabOffer: GrabOffer; showStick: boolean }) {
+function TouchAimStick({ engine, aimRef, throwAimRef, punchRef, tapRef, jogRef, bottom, grabOffer, showStick }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; throwAimRef: React.MutableRefObject<Stick | null>; punchRef: PunchDraw; tapRef: React.MutableRefObject<number>; jogRef: React.MutableRefObject<Stick | null>; bottom: number; grabOffer: GrabOffer; showStick: boolean }) {
   const { editing } = useTouchLayout()
   useEffect(() => {
     if (editing) ["melee", "throw", "itemWheel", "grab", "fire"].forEach(a => engine.setVirtual(a as ChickenAction, false))
@@ -2360,7 +2428,7 @@ function TouchAimStick({ engine, aimRef, throwAimRef, tapRef, jogRef, bottom, gr
         {/* standing on an item: grab it (blue) or equip the one she already carries (grey) */}
         {(grabOffer || editing) && <Movable id="grab" className="absolute" style={{ right: 184, top: (STICK - 48) / 2 }}>{button(GRAB_LABELS[grabOffer || "take"], "grab", grabOffer === "equip" ? "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white" : "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white")}</Movable>}
         <div className="relative flex flex-col gap-2">
-          <Movable id="melee" className="relative">{button("Punch", "melee")}</Movable>
+          <Movable id="melee" className="relative"><TouchPunchButton engine={engine} drawRef={punchRef} /></Movable>
           <Movable id="throw" className="relative"><TouchThrowButton engine={engine} aimRef={throwAimRef} /></Movable>
           <Movable id="itemWheel" className="relative"><TouchWheelButton engine={engine} jogRef={jogRef} /></Movable>
         </div>
@@ -2433,6 +2501,65 @@ function TouchWheelButton({ engine, jogRef }: { engine: ChickenEngine; jogRef: R
       onContextMenu={e => e.preventDefault()}
     >
       Roda
+    </button>
+  )
+}
+
+// ---------- on-screen Punch: the Golpe acts when the finger lifts ----------
+// Lifted inside the button: a tap, a blow of the combo. Dragged out of the button: the Golpe desenhado, starting where
+// she aims, each turn of the finger around the button's middle turning the move around her as much (back near the
+// middle, it holds); it comes out when the finger lifts, wherever it is.
+type PunchDraw = React.MutableRefObject<{ turn: number | null; up: boolean } | null>
+function TouchPunchButton({ engine, drawRef }: { engine: ChickenEngine; drawRef: PunchDraw }) {
+  const { editing } = useTouchLayout()
+  const press = useRef<{ pid: number; cx: number; cy: number; r: number; out: boolean; last: number | null; turn: number } | null>(null)
+  const turn = useRef(0)
+  const [down, setDown] = useState(false)
+  const cancel = () => { press.current = null; setDown(false); turn.current++; drawRef.current = null }
+  useEffect(() => { if (editing) cancel() }, [editing])
+  useEffect(() => () => { drawRef.current = null }, [drawRef])
+  const move = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    const dx = e.clientX - p.cx, dy = e.clientY - p.cy, len = Math.hypot(dx, dy)
+    if (!p.out && len > p.r) p.out = true
+    if (!p.out || len <= p.r * 0.5) return
+    const a = Math.atan2(dy, dx)
+    if (p.last !== null) p.turn += Math.atan2(Math.sin(a - p.last), Math.cos(a - p.last))
+    p.last = a
+    drawRef.current = { turn: p.turn, up: false }
+  }
+  const lift = (e: ReactPointerEvent) => {
+    const p = press.current
+    if (!p || p.pid !== e.pointerId) return
+    press.current = null; setDown(false)
+    if (p.out) { drawRef.current = { turn: null, up: true }; return }
+    if (e.type !== "pointerup") return
+    const t = ++turn.current
+    // held for two frames: the combat needs one with the button down before the one that lets go
+    engine.setVirtual("melee", true)
+    afterFrames(2, () => { if (turn.current === t) engine.setVirtual("melee", false) })
+  }
+  return (
+    <button
+      type="button"
+      aria-label="Punch"
+      aria-pressed={down}
+      className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase text-white/80 ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/10"}`}
+      style={{ touchAction: "none" }}
+      onPointerDown={e => {
+        e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId)
+        const r = e.currentTarget.getBoundingClientRect()
+        press.current = { pid: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2, out: false, last: null, turn: 0 }
+        setDown(true)
+      }}
+      onPointerMove={move}
+      onPointerUp={lift}
+      onPointerCancel={lift}
+      onLostPointerCapture={lift}
+      onContextMenu={e => e.preventDefault()}
+    >
+      Punch
     </button>
   )
 }

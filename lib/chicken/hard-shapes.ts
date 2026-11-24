@@ -91,7 +91,7 @@ export type FusedBox = { id: string; group: string; left: number; top: number; r
 export type JoinedShape = { id: string; poly: number[][]; left: number; top: number; right: number; bottom: number }
 type FusedFace = {
   id: string; ax: number; ay: number; bx: number; by: number; len: number; anchorX: number; clipOffset?: number
-  wall: boolean; ceil?: boolean; hardN?: number[]; fused?: string; join?: string; cross?: { key: string; reach: number }
+  wall: boolean; ceil?: boolean; hardN?: number[]; fused?: string; join?: string; cross?: { key: string; reach: number; skip?: number }
 }
 
 // the pieces of another collider's line left outside the fused boxes (a line along a box's edge stays whole); the
@@ -109,6 +109,27 @@ function insideBox(q: FusedBox, ax: number, ay: number, dx: number, dy: number):
   }
   return t1 > t0 ? [t0, t1] : null
 }
+// Trocar de bloco (engine.ts, crossWall): from (px, py) on a hard wall with `n` pointing out of it, the nearest surface
+// straight behind it, up to `reach`, that faces the other way, and how far it is. On a slanted wall (a cut corner)
+// whatever is nearer than `skip` does not count, and the point may land a little past the target's ends (the
+// slanted floor she stands on and the one she comes out on are as long, but she may stand where it meets the floor)
+export function crossTarget<T extends { ax: number; ay: number; bx: number; by: number; len: number; hardN?: readonly number[] }>(
+  segs: readonly T[], n: readonly number[], px: number, py: number, reach: number, skip = 0,
+): { to: T; d: number; x: number; y: number } | null {
+  const slanted = Math.abs(n[0]) > 0.3 && Math.abs(n[1]) > 0.3, near = slanted ? skip : 0, slack = slanted ? 24 : 0.5
+  let to: T | null = null, d = reach + 1, along = 0
+  for (const o of segs) {
+    if (!o.hardN || o.hardN[0] * n[0] + o.hardN[1] * n[1] > -0.9) continue
+    const ux = (o.bx - o.ax) / o.len, uy = (o.by - o.ay) / o.len, a = (px - o.ax) * ux + (py - o.ay) * uy
+    const behind = (o.ax - px) * -n[0] + (o.ay - py) * -n[1]
+    if (a >= -slack && a <= o.len + slack && behind > Math.max(1, near) && behind < d) { to = o; d = behind; along = a }
+  }
+  if (!to) return null
+  // on the target's line, within its ends
+  const k = Math.max(0, Math.min(to.len, along))
+  return { to, d, x: to.ax + ((to.bx - to.ax) / to.len) * k, y: to.ay + ((to.by - to.ay) / to.len) * k }
+}
+
 // whether the straight way from one point to another goes through a fused box: she never takes it in one go (a
 // ceiling grabbed over the room's own, a wall or a step behind a wall)
 export function crossesFused(boxes: readonly FusedBox[], x0: number, y0: number, x1: number, y1: number) {
@@ -178,7 +199,7 @@ export function fuseFaces<T extends FusedFace>(segs: T[], boxes: readonly FusedB
     }
     if (at < hi) free.push([at, hi])
     const line = flat ? seg.ay : seg.ax, facing = flat ? n[1] : n[0]
-    const key = `${groups.get(seg.fused)}|${flat ? 'h' : 'v'}|${line.toFixed(2)}|${facing > 0 ? 1 : -1}|${seg.wall ? 1 : 0}${seg.ceil ? 1 : 0}|${seg.cross ? `${seg.cross.key},${seg.cross.reach}` : ''}`
+    const key = `${groups.get(seg.fused)}|${flat ? 'h' : 'v'}|${line.toFixed(2)}|${facing > 0 ? 1 : -1}|${seg.wall ? 1 : 0}${seg.ceil ? 1 : 0}|${seg.cross ? `${seg.cross.key},${seg.cross.reach},${seg.cross.skip ?? 0}` : ''}`
     for (const [from, to] of free) {
       if (to - from < 4) continue
       const whole = from <= lo + 1e-6 && to >= hi - 1e-6

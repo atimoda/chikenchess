@@ -583,3 +583,12 @@ test('skyline (Prédios): rows are cleaned and kept with the Pátio; without the
   assert.equal(SK.skylineSlots(near(6))[0].label, 'Entre as Montanhas 1 e 2')
   assert.ok(SD.skylineShapes(4000, { ...city, lift: 50 }, 61).feet < a.feet)
 })
+
+test('the sky\'s fade into its far colour sits 2400 above the gradient by default and wherever spaceY says', () => {
+  const S = require('./helpers/music.cjs').loadTs('lib/pigchicken/sky.ts')
+  const look = S.skyLook(undefined)
+  const def = S.skyGradient(look, -4200, -200, 870)
+  assert.ok(def.includes(`${look.space} ${-2600 + 4200}px`))
+  const tall = S.skyGradient(look, -8270, -200, 870, -6670)
+  assert.ok(tall.includes(`${look.space} ${-6670 + 8270}px`))
+})

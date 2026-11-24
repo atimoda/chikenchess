@@ -7,7 +7,7 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import { followParallax, holdLayer, onCameraMove, watchCameraRegion } from "@/lib/pigchicken/live-camera"
-import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
+import { WORLD_GROUND_Y, WORLD_TOP } from "@/lib/pigchicken/world"
 import { classicLook, mix, skyGradient, skyRadial, type SkyLook } from "@/lib/pigchicken/sky"
 import { FOREST_DEFAULT, forestDraw, type ForestParams } from "@/lib/pigchicken/forest"
 import { trees } from "@/lib/pigchicken/forest-draw"
@@ -73,10 +73,10 @@ const CLASSIC = classicLook()
 
 // the sky with its bands curved round the sun (Curvatura): the rings' centre follows the sun sideways (0.97, like
 // its layer) by a transform only, so moving the camera never repaints the gradient
-function RadialSky({ look, left, width, top, height, cx }: { look: SkyLook; left: number; width: number; top: number; height: number; cx: number }) {
+function RadialSky({ look, left, width, top, height, cx, spaceY }: { look: SkyLook; left: number; width: number; top: number; height: number; cx: number; spaceY: number }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => onCameraMove(x => { if (ref.current) { ref.current.style.transform = `translate3d(${(x * 0.97).toFixed(2)}px,0,0)`; holdLayer(ref.current) } }), [])
-  return <div ref={ref} className="absolute" style={{ left, width, top, height, background: skyRadial(look, top, -200, G - 60, cx - left) ?? undefined }} />
+  return <div ref={ref} className="absolute" style={{ left, width, top, height, background: skyRadial(look, top, -200, G - 60, cx - left, undefined, 1, spaceY) ?? undefined }} />
 }
 
 // one parallax layer: depth p (0 = with the ground, 1 = fixed on the screen)
@@ -192,7 +192,7 @@ function SkylineArt({ s, row, w, look, id, haze }: { s: SkylineShapes; row: Skyl
 // skyline: → Prédios (rows of buildings, each at its own depth among the ranges and the tree lines)
 // bare: "Qualidade e efeitos gráficos" Baixíssima (outside the Modo editor): only the sky, without its texture; the sun,
 // stars, moon, aurora, clouds, ranges, buildings, tree lines and snowfall are left out
-export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, forest = FOREST_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, skyline, zoomMin = 0.5, bare = false }: { worldW: number; look?: SkyLook; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; skyline?: SkylineParams; zoomMin?: number; bare?: boolean }) {
+export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, worldTop = WORLD_TOP, look = CLASSIC, mountains = MOUNTAINS_DEFAULT, forest = FOREST_DEFAULT, clouds: cloudSet = CLOUDS_DEFAULT, snowfall, aurora, skyline, zoomMin = 0.5, bare = false }: { worldW: number; worldTop?: number; look?: SkyLook; mountains?: MountainParams; forest?: ForestParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; skyline?: SkylineParams; zoomMin?: number; bare?: boolean }) {
   // zoomed out far enough to see the whole world, the layers repeat past their ends
   const copies = (p: number) => backdropCopies(worldW, p, zoomMin)
   const wSun = layerW(worldW, SUN_DEPTH), wCloud = layerW(worldW, CLOUD_DEPTH)
@@ -246,7 +246,10 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   )
   // the moon keeps its place; the sun may be moved sideways (Posição do sol)
   const moonX = PAD_L + 1350 + 900, sunX = PAD_L + 1350 + look.sun.x
-  const skyTop = -4200
+  // a Pátio taller than the default (Altura limite past WORLD_TOP): the sky reaches that much higher, and its fade into
+  // the far colour stretches with it, so the sky fills the whole world up to its limit
+  const taller = Math.max(0, WORLD_TOP - worldTop)
+  const skyTop = -4200 - taller, spaceY = -2600 - taller
   // the sun's layer reaches up to its highest star, glow or moon
   const sunGlowR = look.sun.r * 7.8 * look.sun.glowSize
   const sunTop = backdropLayerTop(Math.min(look.stars > 0 ? -300 - 3 * look.starSize : 0, look.sun.opacity > 0 ? look.sun.y - sunGlowR : 0, look.moon.opacity > 0 ? look.moon.y - 150 : 0,
@@ -254,10 +257,10 @@ export const ParallaxBackdrop = memo(function ParallaxBackdrop({ worldW, look = 
   const auroraShown = aurora ? auroraOpacity(aurora, look.night) : 0
   // the sky: the Pátio's gradient from y = -200 down to the horizon; it reaches far above the world's top and, in its last colour, down to the layers' foot
   const sky = look.radial.amount > 0
-    ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={BOTTOM - skyTop} cx={1350} />
+    ? <RadialSky look={look} left={-PAD_L - 4000 - worldW} width={2 * worldW + PAD_L + PAD_R + 8000} top={skyTop} height={BOTTOM - skyTop} cx={1350} spaceY={spaceY} />
     : <div className="absolute" style={{
       left: -PAD_L - 4000, width: worldW + PAD_L + PAD_R + 8000, top: skyTop, height: BOTTOM - skyTop,
-      background: skyGradient(look, skyTop, -200, G - 60),
+      background: skyGradient(look, skyTop, -200, G - 60, spaceY),
     }} />
   if (bare) return <div aria-hidden="true" className="absolute inset-0">{sky}</div>
   return (

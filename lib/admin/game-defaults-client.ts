@@ -8,8 +8,9 @@ import { scalesDefaultsFile, type ScaleParams } from '../pigchicken/scale-params
 import type { InstrumentScaleId } from '../pigchicken/instrument-scales'
 import { patioSettingsDefaultsFile, type PatioSettings } from '../pigchicken/patio-settings'
 import type { PatioLayers } from '../pigchicken/patio-layers'
-import { parquinhoDefaultsFile, type ParquinhoSettings } from '../pigchicken/settings'
+import { parquinhoDefaultsFile, parquinhoOver, type ParquinhoSettings } from '../pigchicken/settings'
 import { mixDefaultsFile, type Mix } from '../pigchicken/mixer'
+import { mineGridDefaultsFile, type MineGridParams } from '../pigchicken/mine-grid'
 
 // "Salvar no game": admins write a game defaults file of the repository through the local Admin service
 // (npm run admin:dev), which checks the session and validates the content; publishing is commit + deploy.
@@ -82,13 +83,25 @@ export const saveDefaultScales = (scales: Record<InstrumentScaleId, ScaleParams>
 export const saveDefaultSouls = (entries: readonly SoulEntry[]) => saveAdminFile('pigchicken-souls', soulsFile(entries))
 
 // data/pigchicken/default-patio.json has one part per panel: each writes its own and keeps the others as they are
-const savePatioPart = (part: 'settings' | 'layers' | 'camera' | 'volume', value: unknown) =>
-  saveAdminFile('pigchicken-patio', (current: unknown) => ({ ...(current && typeof current === 'object' ? current : {}), [part]: value }))
+// value: the part's new content, or how to make it from the part as the file has it now
+const savePatioPart = (part: 'settings' | 'layers' | 'camera' | 'volume' | 'mineGrid', value: unknown) =>
+  saveAdminFile('pigchicken-patio', (current: unknown) => {
+    const file = (current && typeof current === 'object' ? current : {}) as Record<string, unknown>
+    return { ...file, [part]: typeof value === 'function' ? value(file[part]) : value }
+  })
 /** Writes this Pátio's settings (its width as shown) as what a new empty Pátio starts with. */
 export const saveDefaultPatioSettings = (settings: PatioSettings | undefined, screens: number) => savePatioPart('settings', patioSettingsDefaultsFile(settings, screens))
 /** Writes these layers as the Camadas panel's defaults. */
 export const saveDefaultPatioLayers = (layers: PatioLayers) => savePatioPart('layers', layers)
-/** Writes these settings as the Câmera de Mira panel's defaults. */
-export const saveDefaultCamera = (settings: ParquinhoSettings) => savePatioPart('camera', parquinhoDefaultsFile(settings))
+// the file's `camera` is shared by two panels: each writes only its own fields and keeps the other's as they are
+const fileQuantize = (camera: unknown) => parquinhoOver(camera).quantize
+/** Writes these settings as the Câmera de Mira panel's defaults (Notas no ritmo stays as the file has it: Ajustes'). */
+export const saveDefaultCamera = (settings: ParquinhoSettings) =>
+  savePatioPart('camera', (camera: unknown) => parquinhoDefaultsFile({ ...settings, quantize: fileQuantize(camera) }))
+/** Writes the Ajustes panel's default (Notas no ritmo) and keeps the Câmera de Mira's fields as the file has them. */
+export const saveDefaultTuning = (settings: ParquinhoSettings) =>
+  savePatioPart('camera', (camera: unknown) => parquinhoDefaultsFile({ ...parquinhoOver(camera), quantize: settings.quantize }))
 /** Writes these volumes as the Volume panel's defaults. */
 export const saveDefaultVolume = (mix: Mix) => savePatioPart('volume', mixDefaultsFile(mix))
+/** Writes this Grade de blocos (all but Ligar) as the grid's defaults: what a Pátio that saved none starts with. */
+export const saveDefaultMineGrid = (grid: MineGridParams) => savePatioPart('mineGrid', mineGridDefaultsFile(grid))

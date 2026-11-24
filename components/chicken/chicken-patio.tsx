@@ -12,7 +12,7 @@ import { getBaby, subscribeBaby } from "@/lib/chicken/baby"
 import { variantClass } from "@/lib/chicken/beast-art"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { Bird, Crosshair, Feather, FolderOpen, Gamepad2, Ghost, Grid3x3, Maximize, Minimize, Music, Pencil, RotateCcw, Save, SlidersHorizontal, Sun, Swords, Undo2, UserPlus, Users, X } from "lucide-react"
+import { Bird, Crosshair, Eye, Feather, FolderOpen, Gamepad2, Ghost, Grid3x3, Maximize, Minimize, Music, Pencil, Save, SlidersHorizontal, Sun, Swords, Undo2, UserPlus, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -47,7 +47,8 @@ import { checkPatioTarget, MISSING_PATIO_TEXT, OFFLINE_PATIO_TEXT, targetLobbyId
 import { ChickenBodyIcon, ChickenHeadIcon, ChickenVestiario, type FramesEdit } from "./chicken-vestiario"
 import { FRAME_KEYS, FRAME_LABEL, POSE_LABEL, effectiveFrames, type FrameClass, type FramePose } from "@/lib/chicken/body-frame"
 import { cn } from "@/lib/utils"
-import { stageInset, subscribeStageInset } from "@/lib/stage-size"
+import { stageDockSnapshot, subscribeStageInset } from "@/lib/stage-size"
+import { worldPointOnStage } from "@/lib/pigchicken/live-camera"
 import { isChickenControlsListening, loadChickenControls } from "@/lib/chicken/controls"
 import { Button } from "@/components/ui/button"
 import { GlobeGridIcon } from "@/components/game-presentation"
@@ -69,8 +70,9 @@ import { startSoulSync } from "@/lib/pigchicken/soul-online"
 import { VolumeButton } from "@/components/pigchicken/volume-panel"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { CAMERA_MODES } from "@/lib/pigchicken/camera"
-import { PatioEditor } from "@/components/pigchicken/patio-editor"
-import { LayerEyes, usePatioLayers } from "@/components/pigchicken/layer-eyes"
+import { PatioEditor, type PanelShortcut } from "@/components/pigchicken/patio-editor"
+import { LayerEyes, LayersPanel, usePatioLayers } from "@/components/pigchicken/layer-eyes"
+import type { PatioLayers } from "@/lib/pigchicken/patio-layers"
 import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
 import { withSceneZone } from "@/lib/pigchicken/sound-zones"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
@@ -81,8 +83,8 @@ import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { patioGround, patioItemGlow, patioInventoryLimit, patioMineGrid, patioSceneMusic, patioScreens, patioTemple, patioWorldTop, patioZoom } from "@/lib/pigchicken/patio-settings"
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
 import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
-import { saveDefaultCamera } from "@/lib/admin/game-defaults-client"
-import { SaveToGameButton } from "@/components/admin/save-to-game-button"
+import { saveDefaultCamera, saveDefaultTuning } from "@/lib/admin/game-defaults-client"
+import { RevertToDefaultButton, SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { deviceId, forgetPatio, isPatioId, lobbyFromUrl, onPatioOpenRequest, openPatioLobby, type NewPatioKind } from "@/lib/pigchicken/patio-store"
 import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
@@ -482,9 +484,10 @@ export function ChickenPatio() {
   // through: the portal (to another Pátio) they leave by, instead of the entry portal
   const travel = async <T,>(go: () => Promise<T>, through?: () => { x: number; y: number } | null): Promise<T> => {
     const actors = () => [...(engine ? [engine] : []), ...extraEngines.current.values()]
+    // the ring's centre in the chickens' coordinates (the stage's, before the camera's zoom around its middle)
     const centre = (el: LayoutElement | null) => {
       const box = worldRef.current?.getBoundingClientRect()
-      return box && el ? { x: box.left + el.x + el.w / 2, y: box.top + el.y + el.h / 2 } : null
+      return box && el ? worldPointOnStage(box, el.x + el.w / 2, el.y + el.h / 2) : null
     }
     const from = through?.() ?? centre(entryRef.current)
     if (travelling.current || !from || !actors().length) return go()
@@ -635,28 +638,48 @@ export function ChickenPatio() {
 
   const dirty = useMemo(() => !sameChickenConfig(draft, saved.config), [draft, saved])
 
-  const update = (fn: (c: ChickenConfig) => void) => {
-    setDraft(prev => {
-      const next = structuredClone(prev)
-      fn(next)
-      writeDraft(sameChickenConfig(next, saved.config) ? null : next)
-      return next
-    })
+  // the draft as last set (several changes can come before the next render)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  const putDraft = (next: ChickenConfig) => {
+    draftRef.current = next
+    writeDraft(sameChickenConfig(next, saved.config) ? null : next)
+    setDraft(next)
     setStatus(null)
   }
-  const setParam = (key: ChickenParamKey, value: unknown) => update(c => { (c.params as Record<string, unknown>)[key] = value })
+  // Desfazer a última alteração: the draft before each change. The changes of one control in a row (a knob being
+  // dragged, a number being typed) are one step; back at the version saved in the game, there is nothing to undo.
+  const undoSteps = useRef<{ list: ChickenConfig[]; key: string | null; at: number }>({ list: [], key: null, at: 0 })
+  const clearUndo = () => { undoSteps.current = { list: [], key: null, at: 0 } }
+  // key: the control that changed (the same key within a second continues its step)
+  const update = (fn: (c: ChickenConfig) => void, key: string | null = null) => {
+    const prev = draftRef.current
+    const next = structuredClone(prev)
+    fn(next)
+    const u = undoSteps.current, now = Date.now()
+    if (!(key && key === u.key && now - u.at < 1000)) u.list.push(prev)
+    if (u.list.length > 200) u.list.shift()
+    u.key = key; u.at = now
+    if (sameChickenConfig(next, saved.config)) clearUndo()
+    putDraft(next)
+  }
+  const undo = () => {
+    const prev = undoSteps.current.list.pop() ?? saved.config
+    undoSteps.current.key = null
+    if (sameChickenConfig(prev, saved.config)) clearUndo()
+    putDraft(prev)
+  }
+  const setParam = (key: ChickenParamKey, value: unknown) => update(c => { (c.params as Record<string, unknown>)[key] = value }, `p:${key}`)
   // Pig's and Ken's columns: a factor over the chicken's value, or (the jumps in the air, the inventory) the count itself
   const setClass = (id: ClassId, key: ChickenParamKey, value: number) => update(c => {
     c.classes ??= defaultClasses()
     c.classes[id] ??= defaultClasses()[id]
     if (isClassCount(key)) c.classes[id][key] = value
     else (c.classes[id].factors as Record<string, number>)[key] = value
-  })
-  const replaceDraft = (next: ChickenConfig) => {
-    writeDraft(sameChickenConfig(next, saved.config) ? null : next)
-    setDraft(next)
-    setStatus(null)
-  }
+  }, `c:${id}:${key}`)
+  // Reverter para o padrão: every value as the game has it now (the version saved in the game), so a Salvar no game
+  // right after it has nothing to write
+  const revertDraft = () => { clearUndo(); putDraft(saved.config) }
 
   // "Salvar no game" asks first, with every change against the saved version
   const [confirmSave, saveConfirmation] = useSaveConfirm()
@@ -672,6 +695,7 @@ export function ChickenPatio() {
       setSaved(next)
       setDraft(next.config)
       writeDraft(null)
+      clearUndo()
       setStatus({ kind: "info", text: "Salvo. Todas as telas com a galinha já usam esta versão." })
     } catch (error) {
       setStatus({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar." })
@@ -681,7 +705,7 @@ export function ChickenPatio() {
   }
 
   // the Vestiário's Hit-area editor (admin): each class's frame in the same draft, saved by the same Salvar no game
-  const framesEdit: FramesEdit | undefined = isAdmin ? { value: draft.frames, saved: saved.config.frames, onChange: f => update(c => { c.frames = f }), onSave: () => void save(), saving, note: status?.text ?? null } : undefined
+  const framesEdit: FramesEdit | undefined = isAdmin ? { value: draft.frames, saved: saved.config.frames, onChange: f => update(c => { c.frames = f }, "frames"), onSave: () => void save(), saving, note: status?.text ?? null } : undefined
 
   const patioName = patio?.name ?? (patio?.id ? "Pátio sem nome" : "Pátio da Galinha")
   // the Pátio's limits (the Sun panel): its width in scenes (a Pátio saved before it had one keeps this browser's
@@ -740,14 +764,60 @@ export function ChickenPatio() {
   const portalWorld = useMemo<ChickenPortalWorld>(() => ({ host: worldRef, x: entry.x + entry.w / 2, groundY: entry.y + entry.h - 6, d: entry.w }), [entry])
 
   // the Modo editor docked at the right: the whole Pátio fits in the space left of it (its fixed layers too)
-  const dockInset = useSyncExternalStore(subscribeStageInset, stageInset, () => 0)
+  // the docked Modo editor: the Pátio shrinks to the rest of the window. Docked at the top, the header's strip stays
+  // above the panel, at the window's top: it is drawn that far above the stage, which shows nothing else up there
+  const dock = useSyncExternalStore(subscribeStageInset, stageDockSnapshot, stageDockSnapshot)
+  const docked = dock.right > 0 || dock.top > 0 || dock.bottom > 0
+  const mainStyle: React.CSSProperties | undefined = !docked ? undefined : {
+    right: dock.right, top: dock.top, bottom: dock.bottom, contain: "layout",
+    ...(dock.top ? { overflow: "visible", clipPath: `inset(-${dock.top}px 0 0 0)` } : {}),
+  }
+  const headerTop = dock.top ? { top: -dock.top } : undefined
 
+  // the panels the Modo editor's tabs show in place (with the editing on), the same ones the header opens floating
+  const saveLayers = patio && access.canEdit ? (layers: PatioLayers) => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined
+  const cameraPanel = (
+    <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+      <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
+        <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
+        <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
+      <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
+        <StepSelect aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
+          {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </StepSelect>
+      </label>
+      <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
+      <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
+      <PqRange label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
+      <PqRange label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
+      <PqRange label="Mira parada volta para o movimento" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou" />
+      <PqRange label="Mouse parado devolve a mira ao teclado" unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : "0 (nunca)")} hint="Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse" />
+      <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
+      <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
+      <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
+      {/* the camera's own fields (Ajustes keeps its own: Notas no ritmo, tambores, Debug) */}
+      <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end"
+        onRevert={() => { const next = { ...DEFAULT_PARQUINHO, debug: pq.debug, quantize: pq.quantize, ammoAround: pq.ammoAround, ammoHud: pq.ammoHud }; setPq(next); saveParquinho(next) }} />
+      </div>
+    </FloatingPanel>
+  )
+  const editorTabs: PanelShortcut[] = !patio ? [] : [
+    { key: "layers", label: "Camadas", title: "Camadas", icon: Eye, open: layersOpen, setOpen: setLayersOpen,
+      panel: <LayersPanel {...patioLayers} onSave={saveLayers} onClose={() => setLayersOpen(false)} /> },
+    { key: "grid", label: "Grade", title: "Grade de blocos", icon: Grid3x3, open: gridOpen, setOpen: setGridOpen,
+      panel: <MineGridPanel layout={patio.layout} canEdit={access.canEdit} canGrid={canGrid} onResetGrid={mineParams && canResetGrid ? mine.reset : undefined} onChange={changeLayout} onClose={() => setGridOpen(false)} /> },
+    { key: "patio", label: "Pátio", title: "Configurações do Pátio", icon: Sun, open: settingsOpen, setOpen: setSettingsOpen,
+      panel: <PatioSettingsPanel layout={patio.layout} screens={screens} canEdit={access.canEdit} onChange={changeLayout} onClose={() => setSettingsOpen(false)} /> },
+    { key: "camera", label: "Câmera", title: "Câmera de Mira", icon: Crosshair, open: pqOpen, setOpen: setPqOpen, panel: cameraPanel },
+  ]
   return (
-    <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]" style={dockInset ? { right: dockInset, contain: "layout" } : undefined}>
+    <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]" style={mainStyle}>
       {/* the header's strip, behind the world: a press between its buttons is not a shot. The buttons themselves are
           in front of everything the world draws over the characters (front elements, the Grade de blocos' faces) */}
-      <div aria-hidden="true" data-chicken-ignore className="absolute inset-x-0 top-0 z-[120] h-14" />
-      <header className="pointer-events-none @container absolute inset-x-0 top-0 z-[206] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)] [&>*]:pointer-events-auto" style={{ "--city-neon": "var(--primary)" } as React.CSSProperties}>
+      <div aria-hidden="true" data-chicken-ignore className="absolute inset-x-0 top-0 z-[120] h-14" style={headerTop} />
+      <header className={cn("pointer-events-none @container absolute inset-x-0 top-0 z-[206] flex items-center gap-2 bg-transparent px-4 py-2.5 [text-shadow:0_1px_3px_rgba(0,0,0,0.85)] [&>*]:pointer-events-auto", dock.top > 0 && "h-14 bg-[#05060c]")} style={{ "--city-neon": "var(--primary)", ...headerTop } as React.CSSProperties}>
         {/* on a wide screen (the header's own width, so the docked Modo editor counts) three groups: this one, the
             centered one (Editar to Grade de blocos) and the rest; on a narrower one, the same row as on a phone */}
         <div className="contents pointer-events-none! [&>*]:pointer-events-auto @min-[1100px]:flex @min-[1100px]:min-w-0 @min-[1100px]:flex-1 @min-[1100px]:basis-0 @min-[1100px]:items-center @min-[1100px]:gap-2">
@@ -807,7 +877,7 @@ export function ChickenPatio() {
             </div>
           )}
         </div>
-        <LayerEyes {...patioLayers} open={layersOpen} onOpenChange={setLayersOpen} onSave={patio && access.canEdit ? layers => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined} />
+        <LayerEyes {...patioLayers} open={layersOpen} onOpenChange={setLayersOpen} onSave={saveLayers} />
         <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Users className="h-4 w-4" />
           {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
@@ -897,7 +967,7 @@ export function ChickenPatio() {
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements ?? NO_ELEMENTS} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
         me={meId ?? deviceId()} signedIn={!!meId} soundLayer={patioLayers.layers.zones / 100} onSoundLayer={() => patioLayers.set({ zones: patioLayers.layers.zones ? 0 : 33 })}
-        layersOpen={layersOpen} onLayers={() => setLayersOpen(v => !v)} />}
+        onSoundLevel={zones => patioLayers.set({ zones })} shortcuts={editorTabs} />}
       {/* the "Zonas sonoras" layer outside the editor: only shown, the tags do not change anything */}
       {patioLayers.layers.zones > 0 && !(editing && patio && access.canEdit) && (
         <MusicZonesLayer elements={elementsInWorld({ v: 1, elements: patio?.layout.elements ?? [] }, screens)} screens={screens} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} editable={false} opacity={patioLayers.layers.zones / 100}
@@ -936,38 +1006,12 @@ export function ChickenPatio() {
       {jukeboxOpen && <JukeboxPanel onClose={() => setJukeboxOpen(false)} />}
       {midiOpen && <MidiPanel onClose={() => setMidiOpen(false)} />}
       {editingSong && <SongEditorPanel key={editingSong} songId={editingSong} onClose={() => setEditingSong(null)} />}
-      {pqOpen && (
-        <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-          <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
-            <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
-            <button type="button" aria-label="Padrão" title="Padrão: volta tudo para o padrão do jogo" onClick={() => { const next = { ...DEFAULT_PARQUINHO, debug: pq.debug, quantize: pq.quantize, ammoAround: pq.ammoAround, ammoHud: pq.ammoHud }; setPq(next); saveParquinho(next) }} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
-            <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
-          <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
-            <StepSelect aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
-              {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </StepSelect>
-          </label>
-          <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
-          <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
-          <PqRange label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
-          <PqRange label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
-          <PqRange label="Mira parada volta para o movimento" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou" />
-          <PqRange label="Mouse parado devolve a mira ao teclado" unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : "0 (nunca)")} hint="Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse" />
-          <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
-          <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
-          <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
-          <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end" />
-          </div>
-        </FloatingPanel>
-      )}
+      {pqOpen && cameraPanel}
       {/* Ajustes: the universal ones (the same for every character); saved in this browser, the admin's go with the camera's defaults */}
       {tuningOpen && (
         <FloatingPanel id="patio-tuning" aria-label="Ajustes" initial={(vw, vh) => { const w = Math.min(320, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(320, vh - 80) } }} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
             <h2 className="flex-1 text-sm text-white">Ajustes</h2>
-            <button type="button" aria-label="Padrão" title="Padrão: volta estes ajustes para o padrão do jogo" onClick={() => setPq(prev => { const next = { ...prev, debug: DEFAULT_PARQUINHO.debug, quantize: DEFAULT_PARQUINHO.quantize, ammoAround: DEFAULT_PARQUINHO.ammoAround, ammoHud: DEFAULT_PARQUINHO.ammoHud }; saveParquinho(next); return next })} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
             <button type="button" aria-label="Fechar" onClick={() => setTuningOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
@@ -978,7 +1022,8 @@ export function ChickenPatio() {
               <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Na mira</span><input type="checkbox" checked={pq.ammoHud} onChange={e => setPqValue("ammoHud", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
             </div>
             <label className="flex items-center justify-between gap-3 text-xs" title="A linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas"><span>Debug</span><input type="checkbox" checked={pq.debug} onChange={e => setPqValue("debug", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
-            <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end" />
+            <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultTuning(pq)} className="justify-end"
+              onRevert={() => setPq(prev => { const next = { ...prev, debug: DEFAULT_PARQUINHO.debug, quantize: DEFAULT_PARQUINHO.quantize, ammoAround: DEFAULT_PARQUINHO.ammoAround, ammoHud: DEFAULT_PARQUINHO.ammoHud }; saveParquinho(next); return next })} />
           </div>
         </FloatingPanel>
       )}
@@ -988,7 +1033,7 @@ export function ChickenPatio() {
       {saveConfirmation}
       {vestOpen && (vestPlayer?.look
         ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} profile={vestProfile} friends={vestFriends} />
-        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} profile={vestProfile} friends={vestFriends} />)}
+        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look }, "look")} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} profile={vestProfile} friends={vestFriends} />)}
 
       {playersOpen && lobby && (
         <PlayersPanel
@@ -1019,8 +1064,7 @@ export function ChickenPatio() {
           <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <h2 className="flex-1 text-sm text-white">Personagem</h2>
             {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
-            <button type="button" aria-label="Desfazer" title="Desfazer: volta à versão salva no game" disabled={!dirty} onClick={() => replaceDraft(saved.config)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-45 disabled:hover:border-white/15"><Undo2 className="h-4 w-4" /></button>
-            <button type="button" aria-label="Padrão" title="Padrão: volta todos os valores para os que vêm no código do jogo" onClick={() => replaceDraft(defaultChickenConfig())} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><RotateCcw className="h-4 w-4" /></button>
+            <button type="button" aria-label="Desfazer a última alteração" title="Desfazer a última alteração" disabled={!dirty} onClick={undo} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-45 disabled:hover:border-white/15"><Undo2 className="h-4 w-4" /></button>
             <button type="button" aria-label="Fechar" onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
 
@@ -1041,13 +1085,15 @@ export function ChickenPatio() {
                 {CHICKEN_PARAM_META.filter(p => p.group === g).map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} />)}
               </Group>
             ))}
-            {/* admin only: the draft becomes the central configuration, for every screen and everyone, at once */}
-            {isAdmin && (
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 px-4 py-3">
-                {status && <span role="status" className={cn("min-w-0 text-[11px]", status.kind === "error" ? "text-red-300" : "text-[#8a9a8a]")}>{status.text}</span>}
+            {/* Reverter para o padrão: every value (Chi, Pig, Ken, Kids, the look and the hit-areas) as the code has it;
+                admin only, Salvar no game: the draft becomes the central configuration, for every screen and everyone, at once */}
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 px-4 py-3">
+              {status && <span role="status" className={cn("min-w-0 text-[11px]", status.kind === "error" ? "text-red-300" : "text-[#8a9a8a]")}>{status.text}</span>}
+              <RevertToDefaultButton onRevert={revertDraft} disabled={!dirty} />
+              {isAdmin && (
                 <button type="button" disabled={!dirty || saving} onClick={() => void save()} title="Grava a configuração central da galinha: vale na hora para todas as telas e para todo mundo" className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50">{saving ? "Salvando…" : "Salvar no game"}</button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </FloatingPanel>
       )}

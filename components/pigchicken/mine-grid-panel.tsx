@@ -1,13 +1,17 @@
 "use client"
 
 // The Grade de blocos' own panel (the grid button in the Pátio's header): its settings, saved with the Pátio like
-// the rest of its settings (settings.mineGrid), and "Resetar grade".
+// the rest of its settings (settings.mineGrid), and "Resetar grade". At the end, Reverter para o padrão and (admin)
+// Salvar no game: the grid's settings, all but Ligar, become what a Pátio that saved none starts with.
 import { useSyncExternalStore } from "react"
 import { X } from "lucide-react"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
 import { MineGridFields } from "./mine-grid-fields"
-import { defaultMineGrid } from "@/lib/pigchicken/mine-grid"
+import { defaultMineGrid, mineGridAtDefault, mineGridIsDefault } from "@/lib/pigchicken/mine-grid"
+import { SaveToGameButton } from "@/components/admin/save-to-game-button"
+import { saveDefaultMineGrid } from "@/lib/admin/game-defaults-client"
+import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { hideActivatedMineGrid, mineActivatorStore } from "@/lib/pigchicken/mine-activator-store"
 
 // canGrid: may turn the grid on and off (the Pátio's creator, its godparent, the admin); onResetGrid: may start its
@@ -38,6 +42,9 @@ export function MineGridPanel({ layout, canEdit, canGrid, onResetGrid, onChange,
             // "Grade ligada" itself saves what was asked; any other change keeps the saved one
             onChange({ ...layout, settings: { ...layout.settings, mineGrid: { ...mineGrid, on: mineGrid.on !== shown ? mineGrid.on : !!saved?.on } } })
           }} />
+        <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultMineGrid(grid ?? defaultMineGrid())} className="justify-end px-4 py-3"
+          onRevert={canEdit ? () => { if (saved) onChange({ ...layout, settings: { ...layout.settings, mineGrid: mineGridAtDefault(saved) } }) } : undefined}
+          revertDisabled={mineGridIsDefault(saved)} />
       </div>
     </FloatingPanel>
   )

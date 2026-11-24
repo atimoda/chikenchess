@@ -696,7 +696,7 @@ test('Harpa fixa in the layout: an element of fixed size in Música; the sync pu
   assert.equal(c.seats.length, 0)
 })
 
-test('Harpa fixa in the example Pátios: the default Pátio has it on a floating island (an older one gets it once); the Training room has one on the floor', () => {
+test('Harpa fixa in the example Pátios: the default Pátio has it on a floating island (an older one gets it once); the Training room has none', () => {
   const L = loadTs('lib/pigchicken/layout.ts')
   const F = loadTs('lib/pigchicken/fixed-instruments.ts')
   const { WORLD_GROUND_Y: G, SCENE_PLATFORMS } = loadTs('lib/pigchicken/world.ts')
@@ -734,11 +734,9 @@ test('Harpa fixa in the example Pátios: the default Pátio has it on a floating
   // one that already has a Harpa somewhere keeps only that one
   const own = { v: 8, elements: [...old.elements, { id: 'mine', kind: 'pedalharp', x: 3000, y: G - F.HARP_BOX.h }] }
   assert.equal(harps(L.normalizeLayout(JSON.parse(JSON.stringify(own)), true)), 1)
-  // the Training room: one on the floor at the end
+  // the Training room has none since 24/11 (its end is the Combate e itens section)
   const training = loadTs('lib/pigchicken/example-training.ts').trainingLayout()
-  const th = training.elements.filter(e => e.kind === 'pedalharp')
-  assert.equal(th.length, 1)
-  assert.equal(th[0].y + th[0].h, G)
+  assert.equal(training.elements.filter(e => e.kind === 'pedalharp').length, 0)
 })
 
 test('Escalas panel preview: the held instrument when it plays the scale, else the first one that lists it; the Pátio\'s conductor while one runs', () => {

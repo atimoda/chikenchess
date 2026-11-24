@@ -40,6 +40,7 @@ export const PROGRESSIONS: { label: string; degrees: number[] }[] = [
   { label: 'I V vi IV (pop)', degrees: [0, 4, 5, 3] },
   { label: 'vi IV I V', degrees: [5, 3, 0, 4] },
   { label: 'I vi IV V (anos 50)', degrees: [0, 5, 3, 4] },
+  { label: 'I vi ii V (samba)', degrees: [0, 5, 1, 4] },
   { label: 'ii V I', degrees: [1, 4, 0, 0] },
   { label: 'Andaluza', degrees: [0, 6, 5, 4] },
   { label: 'I bVII IV I', degrees: [0, 6, 3, 0] },
