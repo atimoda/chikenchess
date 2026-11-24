@@ -7,15 +7,15 @@
 // applied) everything keeps working in this browser.
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { hasKeptPatio, keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type NewPatioKind, type PatioRecord } from "@/lib/pigchicken/patio-store"
+import { keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type NewPatioKind, type PatioRecord } from "@/lib/pigchicken/patio-store"
 import {
   favoritePatioLobby, fetchDefaultPatio, fetchPatioLobby, isPatioConflict, isPatioOffline, isPatioServerMissing, patioErrorMessage,
   patioOnlineAvailable, playedPatioLobby, renamePatioLobby, savePatioLobby, setDefaultPatioLobby, type PatioLobby,
 } from "@/lib/pigchicken/patio-online"
 
 export const AUTOSAVE_MS = 60_000
-// how long a Pátio this browser has never kept waits for the database before its fallback copy shows
-const HOLD_MS = 4000
+// how long an opening Pátio waits for the database before this browser's copy shows (Carregando meanwhile)
+const HOLD_MS = 6000
 
 export type PatioSaveState =
   | { kind: "idle" | "saving" | "saved" | "local" | "error"; text: string }
@@ -78,15 +78,16 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     return () => { window.removeEventListener("pagehide", flushKeep); flushKeep() }
   }, [flushKeep])
 
-  // ---------- opening a lobby: this browser's copy at once, then the database's ----------
-  // A Pátio this browser has no copy of waits for the database (an empty world meanwhile) instead of showing a copy
-  // of the default one; offline, not in the database, or after HOLD_MS without an answer, that copy stands.
+  // ---------- opening a lobby: the database's copy, or this browser's when it does not answer ----------
+  // With a server, the Pátio waits for the database (patio null meanwhile: the page shows Carregando) instead of
+  // showing this browser's copy first, which may be older (saved on another device) and was swapped a moment later.
+  // Offline, not in the database, or after HOLD_MS without an answer, this browser's copy stands.
   const loadSeq = useRef(0)
   const played = useRef(new Set<string>())
   const load = useCallback(async (id: string | null) => {
     const seq = ++loadSeq.current
     const local = loadPatio(id)
-    const hold = patioOnlineAvailable() && !hasKeptPatio(id)
+    const hold = patioOnlineAvailable()
     const showLocal = () => { if (seq === loadSeq.current && !cur.current) put(local) }
     if (hold) { cur.current = null; setPatio(null); window.setTimeout(showLocal, HOLD_MS) } else put(local)
     savedJson.current = null
