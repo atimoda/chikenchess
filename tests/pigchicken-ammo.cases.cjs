@@ -25,12 +25,37 @@ test('weapon and instrument defaults match the live PigChicken tuning', () => {
   assert.equal(DEFAULT_ITEMS.sniper.speed, 4000)
   assert.equal(DEFAULT_ITEMS.grenade.range, 3000)
   assert.deepEqual([DEFAULT_ITEMS.flute.rate, DEFAULT_ITEMS.flute.mag, DEFAULT_ITEMS.flute.throwCharge], [13, 60, 0.3])
-  assert.deepEqual([DEFAULT_ITEMS.sax.burst, DEFAULT_ITEMS.sax.recoilPush, DEFAULT_ITEMS.sax.weight, DEFAULT_ITEMS.sax.turnRate], [6, 100, 0.75, 0])
-  assert.deepEqual([DEFAULT_ITEMS.trumpet.reloadTime, DEFAULT_ITEMS.trumpet.refillTime, DEFAULT_ITEMS.trumpet.recoilPush], [0.2, 0.25, 790])
+  assert.deepEqual([DEFAULT_ITEMS.sax.burst, DEFAULT_ITEMS.sax.recoilPush, DEFAULT_ITEMS.sax.weight, DEFAULT_ITEMS.sax.turnRate], [6, 160, 0.75, 0])
+  assert.deepEqual([DEFAULT_ITEMS.trumpet.reloadTime, DEFAULT_ITEMS.trumpet.refillTime, DEFAULT_ITEMS.trumpet.recoilPush], [0.2, 0.25, 260])
   assert.deepEqual([DEFAULT_ITEMS.guitar.rate, DEFAULT_ITEMS.guitar.burst, DEFAULT_ITEMS.guitar.mag, DEFAULT_ITEMS.guitar.reloadTime, DEFAULT_ITEMS.guitar.refillTime, DEFAULT_ITEMS.guitar.refillAmount, DEFAULT_ITEMS.guitar.range, DEFAULT_ITEMS.guitar.pellets, DEFAULT_ITEMS.guitar.spreadBase, DEFAULT_ITEMS.guitar.turnRate], [17, 5, 60, 0.2, 0.55, 4, 850, 2, 20, 0])
   assert.deepEqual([DEFAULT_ITEMS.violin.speed, DEFAULT_ITEMS.violin.weight, DEFAULT_ITEMS.violin.turnRate], [4000, 0.6, 0])
   assert.deepEqual([DEFAULT_ITEMS.keys.rate, DEFAULT_ITEMS.keys.burst, DEFAULT_ITEMS.keys.chargeTime, DEFAULT_ITEMS.keys.mag, DEFAULT_ITEMS.keys.size, DEFAULT_ITEMS.keys.hitscan], [1, 4, 0.25, 33, 12, true])
   assert.deepEqual([DEFAULT_ITEMS.tambourine.range, DEFAULT_ITEMS.tambourine.size], [3000, 12])
+})
+
+test('every weapon and instrument pushes her back in the air; the wind instruments push the hardest', () => {
+  const wind = ['flute', 'sax', 'trumpet']
+  for (const id of [...WEAPON_IDS, ...INSTRUMENT_IDS]) assert.ok(DEFAULT_ITEMS[id].recoilPush > 0, id)
+  const weakestWind = Math.min(...wind.map(id => DEFAULT_ITEMS[id].recoilPush))
+  for (const id of [...WEAPON_IDS, ...INSTRUMENT_IDS].filter(id => !wind.includes(id))) assert.ok(DEFAULT_ITEMS[id].recoilPush < weakestWind, id)
+  // the trumpet: a third of the 790 it had
+  assert.equal(DEFAULT_ITEMS.trumpet.recoilPush, 260)
+})
+
+test('a shot pushes her opposite the aim, by the item\'s Recuo no ar', () => {
+  const c = createCombat(); c.give('flute')
+  const pushes = []
+  c.step(0.016, body, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: true, firePressed: true, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 }, [], 1000, (vx, vy) => pushes.push([vx, vy]))
+  assert.equal(pushes.length, 1)
+  assert.ok(Math.abs(pushes[0][0] + DEFAULT_ITEMS.flute.recoilPush) < 1e-6, 'aiming right pushes left')
+  assert.ok(Math.abs(pushes[0][1]) < 1e-6)
+})
+
+test('the violin\'s beam pushes her back per second while it plays', () => {
+  const c = createCombat(); c.give('violin')
+  let total = 0
+  for (let i = 0; i < 50; i++) c.step(0.02, body, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, { fire: true, firePressed: i === 0, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 }, [], 1000, vx => { total += vx })
+  assert.ok(Math.abs(total + DEFAULT_ITEMS.violin.recoilPush) < DEFAULT_ITEMS.violin.recoilPush * 0.1, `one second of beam: ${total}`)
 })
 
 test('gradual auto reload: one shot back per interval while not playing, firing restarts the count', () => {

@@ -1,0 +1,11 @@
+# Pátio: recuo no ar ao atirar
+
+Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md).
+
+- **Recuo no ar em todas as armas e instrumentos (20/11, v2.15.0; `pushBack` em `lib/pigchicken/combat.ts`, campo `recoilPush` em `lib/pigchicken/items.ts` e `data/pigchicken/default-items.json`, migração `V11_RECOIL_PUSH`/`ITEMS_VERSION` 12):**
+  - *Gatilho*: cada tiro ou nota que sai do item. Vale para o disparo comum (`shoot`: semi, auto, rajada, ao soltar, carga e pizzicato), as notas das Cordas soltas (`pluckString`), da Estrela (`playStar`) e da Bateria levada (`drumHit`). O arco do Violino (feixe segurado) empurra continuamente enquanto toca: o valor vale por segundo de feixe.
+  - *Efeito*: soma à velocidade de quem atirou `recoilPush` px/s no sentido contrário ao da nota ou tiro (contrário à mira; nas Cordas, na Estrela e na Bateria, contrário à direção em que a nota sai). Só no ar: no chão ou agarrada numa parede não há empurrão (`ChickenGame.impulse` sem `blast`). Tiro carregado (Arco, Harpa de Lira, Granada) empurra na proporção da carga, como a força do tiro. O Trompete empurra uma vez por nota da frase (3 por aperto).
+  - *Ajuste*: painel Itens → Manuseio → **Recuo no ar** (0–800 px/s, passo 10). 0 desliga.
+  - *Padrões* (px/s por nota ou tiro): sopros, os mais fortes, Trompete 260 (um terço dos 790 de antes), Flauta 200, Sax 160; demais instrumentos: Teclado 120, Violão 100, Violino 90 por segundo de arco, Harpa de Lira 60, Pandeiro 40, Hangdrum 30; armas: Lança-foguetes 150, Escopeta 140, Sniper 130, Pistola 50, Rifle 40, Arco 40, Granada 30, Submetralhadora 25. Instrumentos fixos (Harpa, Bateria, Piano de cauda), em que ela fica sentada, ficam em 0. Itens de golpe, consumíveis, baralhos e arremessos não empurram.
+  - *Itens salvos no navegador*: um Recuo no ar salvo antes de `_v: 12` com o padrão antigo intocado (Pistola 60, Submetralhadora 30, Rifle 50, Escopeta 420, Sniper 250, Lança-foguetes 500, Sax 100, Trompete 790, os demais 0) recebe o novo; um número personalizado continua.
+  - *Escopo*: todos os players locais e cenas do Pátio (Parquinho, Templo, Vila), com qualquer dispositivo. O empurrão da explosão (`explodePush`) continua separado: ver [Itens](items.md).

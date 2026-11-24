@@ -1147,6 +1147,13 @@ export function createCombat() {
   let cageArm: number | null = null
   // the ground's y, as the last step had it
   let floorY = 0
+  // the push of the player being stepped now (step's onRecoil): the notes that leave outside shoot() use it too
+  let recoilOut: ((vx: number, vy: number) => void) | null = null
+  // Recuo no ar: a shot pushes her back, opposite the way it leaves (only in the air: the engine ignores it on the
+  // floor or a wall); `k` scales it (the violin's beam pushes per second)
+  function pushBack(d: ItemDef, way: number, k = 1) {
+    if (d.recoilPush > 0) recoilOut?.(-Math.cos(way) * d.recoilPush * k, -Math.sin(way) * d.recoilPush * k)
+  }
   // souls on their way to a Gaiola (the world's: each one knows whose it is and which cage keeps its place)
   const abductions: Abduction[] = []
   // the birds a Passaguá without a Gaiola scared off, on their quick flight to somewhere else in sight
@@ -1452,6 +1459,7 @@ export function createCombat() {
     bullets.push(b)
     if (netOn) netShots.push(shotOf(b))
     burst(muzzle.x, muzzle.y, 2, info.color, 110, 3)
+    pushBack(d, angle)
   }
   // one frame of the kit: what the page read (the sticks, the clicks, each piece's shortcuts) becomes hits; the
   // Chimbal's pedal damps the open one as it closes and stops it when it shuts
@@ -1522,6 +1530,7 @@ export function createCombat() {
     bullets.push(b)
     if (netOn) netShots.push(shotOf(b))
     burst(muzzle.x, muzzle.y, 3, color, 110, 3)
+    pushBack(d, way)
     harp.notes.set(index, { held: sound, bullet: b, base, from, r0: r, bend: 0 })
     harp.plucked.set(index, harp.t + at)
   }
@@ -1598,6 +1607,7 @@ export function createCombat() {
     bullets.push(b)
     if (netOn) netShots.push(shotOf(b))
     burst(muzzle.x, muzzle.y, 2, color, 100, 3)
+    pushBack(d, way)
     harp.star.struck.set(index, harp.star.t + at)
   }
   // one frame of the Estrela: each hand plays the cell it presses and, held, every cell it is dragged into (a stick
@@ -1644,7 +1654,7 @@ export function createCombat() {
     stepStarRun(st.run, { ...moves, brooding }, st.t, beat).forEach(n => { if (g.cells[n.index]) playStar(h, d, n.index, n.vel, n.at, muzzle, 1) })
   }
 
-  function shoot(muzzle: { x: number; y: number }, spreadDeg: number, onRecoil: (vx: number, vy: number) => void, power = 1, ctx?: StepCtx) {
+  function shoot(muzzle: { x: number; y: number }, spreadDeg: number, power = 1, ctx?: StepCtx) {
     const h = held()!, d = items[h.item]
     const mx = muzzle.x, my = muzzle.y
     const n = Math.max(1, Math.round(d.pellets))
@@ -1706,7 +1716,8 @@ export function createCombat() {
     if (d.shellReload && h.ammo > 1) pumpT = Math.min(0.3, 0.6 / d.rate)
     if (d.infiniteAmmo) { /* the Granada: never runs out */ } else if (pz) h.ammo = Math.max(0, h.ammo - d.rate / pzRate); else h.ammo--
     if (h.refill) h.refill = 0; bloom = Math.min(d.spreadMax, bloom + d.spreadShot); cooldown = 1 / (pz ? pzRate : d.rate); kick = d.recoilKick
-    onRecoil(-Math.cos(aimAngle) * d.recoilPush, -Math.sin(aimAngle) * d.recoilPush)
+    // (a charged shot pushes as much as it was charged)
+    pushBack(d, aimAngle, power)
     if (h.ammo <= 0 && d.autoReload) startReload()
   }
 
@@ -2550,6 +2561,7 @@ export function createCombat() {
   function stepBeam(d: ItemDef, h: Owned, dt: number, muzzle: { x: number; y: number }, ctx: StepCtx) {
     const way = assistAim(d, muzzle, d.speed).angle
     const dx = Math.cos(way), dy = Math.sin(way)
+    pushBack(d, way, dt)
     let x = muzzle.x, y = muzzle.y, hit: Target | null = null, lx = x, ly = y, onWall = false
     for (let s = 0; s < d.range; s += 6) {
       x = muzzle.x + dx * s; y = muzzle.y + dy * s
@@ -3413,6 +3425,7 @@ export function createCombat() {
       // thing by thing, each on the time of where it is, and the music keeps the frame's
       let dt = frameDt * timeAt(body.x, body.y - 60 * body.scale)
       floorY = groundY
+      recoilOut = onRecoil
       let peckStarted = false
       // what calls a strong blow's charge off without hitting: the interface, empty hands, a soul's peck
       const heavyCancel = !!input.cancelFire || !!input.deselect || locks.has(active)
@@ -3720,14 +3733,14 @@ export function createCombat() {
         // pizzicato: while Atirar is held, one plucked note of the arpeggio at a time
         else if (pizzicato(d)) {
           if (reloadT > 0 || h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (h.ammo <= 0 && d.autoReload) startReload() } }
-          else if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx)
+          else if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx)
         }
         else if (reloadT > 0) { if (input.firePressed) sound('dry') }
         else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
-        else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
+        else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx) }
         // on release: aim with the button held, the shot leaves when it is let go
-        else if (d.fireMode === 'release') { if (!input.fire && prevFire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
-        else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, onRecoil, 1, ctx) }
+        else if (d.fireMode === 'release') { if (!input.fire && prevFire && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx) }
+        else if (d.fireMode === 'auto') { if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx) }
         else if (d.fireMode === 'charge') {
           // hold to charge, let go to shoot; force and precision grow with the charge
           if (input.fire && cooldown <= 0) {
@@ -3747,7 +3760,7 @@ export function createCombat() {
           if (!input.fire && prevFire && chargeT > 0) {
             const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
             if (d.gliss) glissSteps = Math.max(0, glissSteps - 1)
-            shoot(muzzle, spreadDeg * (1 - 0.7 * p), onRecoil, d.chargeMin + (1 - d.chargeMin) * p, ctx)
+            shoot(muzzle, spreadDeg * (1 - 0.7 * p), d.chargeMin + (1 - d.chargeMin) * p, ctx)
             chargeT = 0; glissSteps = 0
           }
         } else {
@@ -3755,7 +3768,7 @@ export function createCombat() {
           // only while Atirar is held: letting go keeps the rest of the burst in (the press's own shot always leaves)
           else if (d.burstHold && !input.fire) burstLeft = 0
           if (burstLeft > 0 && cooldown <= 0 && h.ammo > 0) {
-            shoot(muzzle, spreadDeg, onRecoil, 1, ctx); burstLeft--
+            shoot(muzzle, spreadDeg, 1, ctx); burstLeft--
             if (burstLeft <= 0) cooldown = 3 / d.rate
             else if (d.instrument) cooldown = 1 / Math.max(1, d.arpRate) // a phrase plays at the arpeggio's speed
           }
