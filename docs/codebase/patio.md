@@ -62,6 +62,6 @@ A pose do shocking jump aéreo é calculada por `lib/chicken/shocking-pose.ts`; 
 
 Os ímãs de 8 ângulos independentes usam `lib/chicken/analog-magnet.ts`: o engine e `input-devices.ts` aplicam a força de movimento, e `lib/pigchicken/aim.ts` e `parquinho.tsx` aplicam a força de mira; toque em `chicken-layer.tsx`.
 
-Inventários e munição: posição das barras (grande do 1º player embaixo, alinhada por `ChickenControls.inventory.align`; pequenas ao lado dos avatares) e barra de balas em `invGeom`/`drawInventory`/`drawAmmoBar` de `components/pigchicken/draw/hud.ts`; recarga gradual (`refillTime`/`refillAmount`) e golpes do Taco (`meleeOnly`) em `lib/pigchicken/combat.ts`, campos e migração `_v: 6` em `lib/pigchicken/items.ts`, grupo Munição em `items-panel.tsx`. Testes: `tests/pigchicken-ammo.cases.cjs`.
+Inventários e munição: posição das barras (grande do 1º player embaixo, alinhada por `ChickenControls.inventory.align`; pequenas ao lado dos avatares, e a do 1º player no celular em pé também alinhada por ele) e barra de balas em `invGeom`/`drawInventory`/`drawAmmoBar` de `components/pigchicken/draw/hud.ts`; recarga gradual (`refillTime`/`refillAmount`) e golpes do Taco (`meleeOnly`) em `lib/pigchicken/combat.ts`, campos e migração `_v: 6` em `lib/pigchicken/items.ts`, grupo Munição em `items-panel.tsx`. Testes: `tests/pigchicken-ammo.cases.cjs`.
 
 Escalas dos instrumentos, Cordas soltas e vozes do sintetizador: [patio-instruments.md](patio-instruments.md).

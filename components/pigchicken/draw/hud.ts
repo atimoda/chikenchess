@@ -190,7 +190,9 @@ export const SMALL_SCREEN_W = 768
 export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof window === "undefined" || stageWidth() >= SMALL_SCREEN_W)
 // where a player's bar sits. bottom: the first player's big bar at the bottom of the screen (desktop and tablet).
 // Otherwise the small row to the left of that player's avatar, in the stack at the top right (every local player
-// but the first on desktop and tablet; everyone on a phone held upright)
+// but the first on desktop and tablet; everyone on a phone held upright). The small rows end left of the avatar and
+// its souls; the first player's on a phone held upright takes align too (between the screen's left margin and that
+// end), the others' (no align) stay against it
 // groups: each shown slot's group (Combat.inventoryGroups). The page's invisible slot buttons use the same numbers.
 // labels: the big bar shows each group's key left of its first slot. align (Controles → Inventário) places the big
 // bar: split, the instruments at the left edge and the weapons and utilities at the right one (xs then span the whole
@@ -198,13 +200,27 @@ export const showKeyHints = () => (desktopPointer?.matches ?? true) && (typeof w
 // instruments, then the weapons, then the utilities (xs are from the bar's left end). When it does not fit even with
 // the smallest slots, it slides so the held slot (cur) sits as near the centre as the bar's ends allow.
 // rest: where the circles of the effects whose item has left the bar start, and which way they go (-1 left, 1 right)
-export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false, cur = 0, align: InventoryAlign = "center") {
+export function invGeom(row: number, groups: readonly number[], bottom: boolean, offset?: { x: number; y: number }, W = stageWidth(), H = window.innerHeight, labels = false, cur = 0, align?: InventoryAlign) {
   if (!bottom) {
-    const size = fitSize(groups, W - invRight - ROW.margin, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
-    const { xs, w } = barSlots(groups, size, ROW.gap, ROW.groupGap)
-    const x = Math.round(W - invRight - w + (offset?.x ?? 0))
-    return { x, y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false, lead: 0, rest: { x: x + (xs[0] ?? 0), dir: -1 as const } }
+    const a = align ?? "right", end = W - invRight, room = end - ROW.margin
+    const size = fitSize(groups, room, INV_SIZE, ROW.minSize, ROW.gap, ROW.groupGap)
+    let { xs, w } = barSlots(groups, size, ROW.gap, ROW.groupGap)
+    // split: the instruments at the left margin, the weapons and the utilities against the avatar's end
+    const right = a === "split" ? groups.findIndex(g => g !== 0) : -1, fits = w <= room
+    const atLeft = fits && (a === "left" || (a === "split" && right !== 0))
+    let x = !fits || a === "right" || (a === "split" && right === 0) ? end - w : atLeft ? ROW.margin : ROW.margin + (room - w) / 2
+    if (fits && right > 0) {
+      const shift = room - w
+      xs = xs.map((sx, i) => i >= right ? sx + shift : sx); w = room; x = ROW.margin
+    }
+    x = Math.round(x + (offset?.x ?? 0))
+    const last = xs.length - 1
+    const rest = fits && right > 0 ? { x: x + xs[right], dir: -1 as const }
+      : atLeft && last >= 0 ? { x: x + xs[last] + size, dir: 1 as const }
+      : { x: x + (xs[0] ?? 0), dir: -1 as const }
+    return { x, y: invRowY(row) + (offset?.y ?? 0), size, gap: ROW.gap, groupGap: ROW.groupGap, xs, w, tabs: false, lead: 0, rest }
   }
+  align ??= "center"
   const lead = labels ? BAR.label : 0, room = W - BAR.side * 2
   const size = fitSize(groups, room, BAR.size, BAR.minSize, BAR.gap, BAR.groupGap, lead)
   let { xs, w } = barSlots(groups, size, BAR.gap, BAR.groupGap, lead)
@@ -293,7 +309,7 @@ export function drawArpGlyph(ctx: Ctx, arp: Arp, cx: number, top: number, big: b
 // labels: each group's key (Próximo instrumento / arma / utilitário), shown left of the group's first slot on the
 // big bar (null: none)
 // Returns the arpeggiator glyphs drawn over its instruments (the item and the area a click turns to its next option).
-export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null, align: InventoryAlign = "center") {
+export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boolean, color: string | null, now: number, offset?: { x: number; y: number }, drag?: BarDrag | null, labels?: readonly (string | null)[] | null, align?: InventoryAlign) {
   const glyphs: { item: ItemId; box: { l: number; r: number; t: number; b: number } }[] = []
   const slots = combat.inventory, groups = combat.inventoryGroups
   // no item at all: the bar hides (not even the empty slot shows)
@@ -459,9 +475,10 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
     ctx.font = "400 11px ui-monospace, monospace"
     const iw = info ? ctx.measureText(info).width + 7 : 0
     const pw = Math.ceil(nw + iw)
-    // on the big bar, over the held slot (kept on the screen)
+    // on the big bar, over the held slot (kept on the screen); on the first player's row on a phone held upright,
+    // under it (kept within the row); the other small rows, under their right end
     const at = x0 + (g.xs[Math.min(combat.current, n - 1)] ?? 0) + size / 2
-    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, stageWidth() - pw - 8)) : x0 + g.w - pw), py = bottom ? y - 12 - (d?.instrument ? arpGlyphHeight(true) - 4 : 0) : y + size + 12
+    const px = Math.round(bottom ? Math.max(8, Math.min(at - pw / 2, stageWidth() - pw - 8)) : align ? Math.max(Math.max(x0, 8), Math.min(at - pw / 2, x0 + g.w - pw)) : x0 + g.w - pw), py = bottom ? y - 12 - (d?.instrument ? arpGlyphHeight(true) - 4 : 0) : y + size + 12
     ctx.globalAlpha = since > PILL_TIME - 300 ? (PILL_TIME - since) / 300 : 1
     ctx.shadowBlur = 0; ctx.shadowColor = "transparent"
     ctx.textAlign = "left"
