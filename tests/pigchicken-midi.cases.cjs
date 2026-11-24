@@ -88,3 +88,43 @@ test('generating: a fast tempo read at half, the density of the difficulty, lane
   assert.ok(Math.max(...part.song.aliens.flatMap(a => a.notes.map(n => n.beat))) < 8)
   assert.throws(() => midi.generateSong(f, { name: 'x', tracks: tracks.map(t => ({ ...t, on: false })), difficulty: 'facil' }), /pelo menos uma faixa/)
 })
+
+test('reading: a SysEx event does not throw the track off, and a chunk of another kind is skipped', () => {
+  // a GM reset (F0 len … F7) before the notes, as many files have it: the notes keep their beats
+  const sysex = [0, 0xf0, 5, 0x7e, 0x7f, 9, 1, 0xf7]
+  const withSysex = smf([[sysex, ...note(0, 1, 60), ...note(0, 2, 62)], [[0, 0xf0, 3, 0x41, 0x10, 0xf7], ...note(1, 3, 40)]])
+  const f = midi.parseMidi(withSysex)
+  assert.deepEqual(f.tracks.map(t => t.notes.map(n => [n.beat, n.midi])), [[[1, 60], [2, 62]], [[3, 40]]])
+  assert.equal(f.beats, 3.5)
+  // an unknown chunk between the header and the tracks
+  const plain = smf([note(0, 0, 60)])
+  const extra = new Uint8Array([...plain.subarray(0, 14), ...Buffer.from('XFIH'), 0, 0, 0, 2, 1, 2, ...plain.subarray(14)])
+  assert.deepEqual(midi.parseMidi(extra).tracks[0].notes.map(n => n.midi), [60])
+})
+
+test('generating a full song: steady drums do not take every place, and a long song keeps its end', () => {
+  // 64 bars: kick and snare on every beat, hats on every eighth, a bass and a melody
+  const bars = 64
+  const drums64 = Array.from({ length: bars * 4 }, (_, i) => [...note(9, i, i % 2 ? 38 : 36, 0.1), ...note(9, i + 0.5, 42, 0.1)]).flat()
+  const bass64 = Array.from({ length: bars * 2 }, (_, i) => note(1, i * 2 + 1.5, [45, 40, 41, 43][i % 4], 1)).flat()
+  const mel64 = Array.from({ length: bars * 4 }, (_, i) => note(0, i + 0.5, A_MIN[(i * 5) % A_MIN.length], 0.4)).flat()
+  const f = midi.parseMidi(smf([[tempo(120), ...mel64], bass64, drums64]))
+  const tracks = f.tracks.map(t => ({ index: t.index, on: true, variant: midi.defaultVariant(t, f.tracks) }))
+  for (const difficulty of ['facil', 'medio']) {
+    const { song } = midi.generateSong(f, { name: 'x', tracks, difficulty })
+    const notesOf = re => song.aliens.filter(a => re.test(a.variant)).reduce((s, a) => s + a.notes.length, 0)
+    const all = notesOf(/./), drumsN = notesOf(/^drum|chocalho/)
+    assert.ok(drumsN < all * 0.6, `${difficulty}: the drums share the places (${drumsN} of ${all})`)
+    assert.ok(notesOf(/flauta/) > 0 && notesOf(/baixo/) > 0, `${difficulty}: the melody and the bass come in`)
+    assert.ok(song.aliens.length > 40, `${difficulty}: a full song has many aliens (${song.aliens.length})`)
+    assert.ok(Math.max(...song.aliens.flatMap(a => a.notes.map(n => n.beat))) >= (bars - 2) * 4, `${difficulty}: to the end`)
+  }
+  // 300 bars of 8 sparse tracks: more aliens than the library keeps at first, grouped again so the end stays
+  const sparse = Array.from({ length: 8 }, (_, k) => Array.from({ length: 300 }, (_, i) => note(k, i * 4 + k * 0.5, 60 + k * 2, 0.3)).flat())
+  const long = midi.parseMidi(smf(sparse))
+  const lt = long.tracks.map(t => ({ index: t.index, on: true, variant: 'jelly' }))
+  const r = midi.generateSong(long, { name: 'x', tracks: lt, difficulty: 'insano' })
+  assert.ok(r.song.aliens.length <= lib.SONG_ALIENS_MAX)
+  assert.equal(r.dropped, 0, 'every note is kept')
+  assert.ok(Math.max(...r.song.aliens.flatMap(a => a.notes.map(n => n.beat))) >= 299 * 4, 'the end is not cut off')
+})

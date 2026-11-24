@@ -112,6 +112,11 @@ const RECENT = [
       { title: 'Teclado', items: [
         'Shift esquerdo deixa de ser tecla padrão de Usar / pegar item (continua em Correr). Quem ainda estava no padrão antigo (E + Shift esq.) perde o Shift esq. no Pegar; quem configurou outra combinação não muda.',
       ] },
+      { title: 'Pátio: Gerar de MIDI com a música inteira', items: [
+        'Arquivos MIDI com mensagens de sistema (SysEx, como o reset General MIDI que muitos arquivos trazem no começo) eram lidos errado: as notas das faixas depois da mensagem iam parar milhares de compassos adiante, e a música gerada tinha só os aliens do começo. Agora a leitura confere com a de outros programas em 18 MIDIs reais testados.',
+        'As faixas dividem os lugares: uma bateria constante não toma mais todas as notas da dificuldade. Num MIDI completo com bateria, o Médio que gerava cerca de 25 aliens só de bumbo e caixa agora gera mais de 200, com melodia, baixo e acompanhamento.',
+        'Músicas longas nas dificuldades altas não perdem mais o final: quando passariam de 400 aliens, as notas são agrupadas em aliens maiores em vez de cortar o fim.',
+      ] },
     ],
   },
   {
