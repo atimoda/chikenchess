@@ -2,7 +2,7 @@
 
 Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md).
 
-- **Recuo no ar em todas as armas e instrumentos (20/11, v2.15.0; `pushBack` em `lib/pigchicken/combat.ts`, campo `recoilPush` em `lib/pigchicken/items.ts` e `data/pigchicken/default-items.json`, migração `V11_RECOIL_PUSH`/`ITEMS_VERSION` 12):**
+- **Recuo no ar em todas as armas e instrumentos (24/11, v2.17.0; `pushBack` em `lib/pigchicken/combat.ts`, campo `recoilPush` em `lib/pigchicken/items.ts` e `data/pigchicken/default-items.json`, migração `V11_RECOIL_PUSH`/`ITEMS_VERSION` 12):**
   - *Gatilho*: cada tiro ou nota que sai do item. Vale para o disparo comum (`shoot`: semi, auto, rajada, ao soltar, carga e pizzicato), as notas das Cordas soltas (`pluckString`), da Estrela (`playStar`) e da Bateria levada (`drumHit`). O arco do Violino (feixe segurado) empurra continuamente enquanto toca: o valor vale por segundo de feixe.
   - *Efeito*: soma à velocidade de quem atirou `recoilPush` px/s no sentido contrário ao da nota ou tiro (contrário à mira; nas Cordas, na Estrela e na Bateria, contrário à direção em que a nota sai). Só no ar: no chão ou agarrada numa parede não há empurrão (`ChickenGame.impulse` sem `blast`). Tiro carregado (Arco, Harpa de Lira, Granada) empurra na proporção da carga, como a força do tiro. O Trompete empurra uma vez por nota da frase (3 por aperto).
   - *Ajuste*: painel Itens → Manuseio → **Recuo no ar** (0–800 px/s, passo 10). 0 desliga.

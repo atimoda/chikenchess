@@ -2,7 +2,7 @@
 
 Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). Disparo, retículas e mira em geral ficam em [Combate](combat.md); os números de cada item em [Itens](items.md).
 
-## Mirar com luneta — 20/11, v2.15.0
+## Mirar com luneta — 24/11, v2.17.0
 
 - **Onde:** `lib/pigchicken/scope.ts` (puro: entrada/saída, zoom, avanço da câmera, distância da retícula, lupa), `components/pigchicken/parquinho.tsx` (estado por player, câmera, retícula), `components/pigchicken/draw/lens.ts` (desenho da lupa), `cameraYStep` (`lift`) em `lib/pigchicken/world.ts`. Parâmetros em `ItemDef` (`lib/pigchicken/items.ts`), grupo **Luneta** do painel Itens.
 - **Gatilho:** segurar **Atirar** com um item de tiro que tem a luneta ligada (`scope`; `mag` > 0 e não é bastão). Vale para qualquer input (mouse, teclado, gamepad, toque) e para todos os players locais, no Parquinho, Templo e Vila, local ou online. Sentado num instrumento fixo não mira. Na Sniper (disparo ao soltar) é o “mirar” antes do tiro: segura, mira, solta e atira.

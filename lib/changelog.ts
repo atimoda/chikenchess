@@ -5,13 +5,47 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
-    version: '2.16.1',
+    version: '2.17.0',
     date: '24/11/2026',
-    title: 'Pátio: brilho dos itens com uma cor por grupo',
+    title: 'Pátio: brilho dos itens com uma cor por grupo; luneta da Sniper; recuo no ar em todas as armas e instrumentos; caminhada lenta pelo analógico; Perfil e Amigos como abas no título do Vestiário; Pátio abre com “Carregando…” em vez da versão antiga; Gerar de MIDI com a música inteira; inventário do celular em pé alinhado',
     groups: [
       { title: 'Pátio: brilho dos itens', items: [
         'O brilho dos itens no chão agora tem uma cor por grupo: armas em roxo, utilitários (esportivos, magia, chaves, itens da Grade de blocos e gaiolas) em azul, consumíveis (Bear Gummy, Cok) em verde e instrumentos no dourado de antes.',
         'Em Configurações do Pátio, embaixo do slider Brilho dos itens, um quadrado de cor para cada grupo (Instrumentos, Armas, Utilitários, Consumíveis) muda a cor daquele grupo. Pátios que já tinham uma cor escolhida a mantêm nos instrumentos.',
+      ] },
+      { title: 'Vestiário: Perfil e Amigos no título', items: [
+        'Perfil e Amigos saíram da fileira das partes do boneco e viraram abas no título do painel, ao lado de Vestiário. Cada aba troca o conteúdo do próprio painel (o seu perfil, ou a lista de amigos com Invite), sem abrir outra janela por cima; Vestiário volta para o boneco.',
+      ] },
+      { title: 'Pátio: abrir sem versão antiga e sem dicas piscando', items: [
+        'Ao abrir um Pátio (o padrão inclusive), aparece “Carregando…” até chegar a versão salva no servidor, em vez de mostrar por alguns segundos a cópia antiga guardada no aparelho e depois trocar. Sem conexão, ou se o servidor demorar mais de 6 s, a cópia do aparelho aparece como antes.',
+        'Os balões de dica dos alvos de treino não piscam mais na tela durante o carregamento do Pátio: só aparecem quando o alvo é destruído.',
+      ] },
+      { title: 'Pátio: Gerar de MIDI com a música inteira', items: [
+        'Arquivos MIDI com mensagens de sistema (SysEx, como o reset General MIDI que muitos arquivos trazem no começo) eram lidos errado: as notas das faixas depois da mensagem iam parar milhares de compassos adiante, e a música gerada tinha só os aliens do começo. Agora a leitura confere com a de outros programas em 18 MIDIs reais testados.',
+        'As faixas dividem os lugares: uma bateria constante não toma mais todas as notas da dificuldade. Num MIDI completo com bateria, o Médio que gerava cerca de 25 aliens só de bumbo e caixa agora gera mais de 200, com melodia, baixo e acompanhamento.',
+        'Músicas longas nas dificuldades altas não perdem mais o final: quando passariam de 400 aliens, as notas são agrupadas em aliens maiores em vez de cortar o fim.',
+      ] },
+      { title: 'Pátio: inventário no celular em pé', items: [
+        'No celular em pé, a fileira de itens do 1º player no alto da tela segue o alinhamento de Controles → Inventário, como a barra de baixo do desktop e do tablet. No padrão (Separado), os instrumentos ficam encostados na borda esquerda e as armas e os utilitários ficam à direita, junto do avatar; Centralizado, Esquerda e Direita também valem. O nome do item escolhido aparece embaixo da casa dele.',
+      ] },
+      { title: 'Pátio: recuo no ar ao atirar', items: [
+        'Todas as armas e instrumentos agora empurram para trás quem atira no ar, a cada tiro ou nota, no sentido contrário ao da mira. No chão nada muda.',
+        'Os sopros são os que mais empurram: Trompete (agora com um terço da força de antes), Flauta e Sax. Depois vêm Teclado, Violão, Violino (enquanto o arco toca), Harpa de Lira, Pandeiro e Hangdrum; entre as armas, Lança-foguetes, Escopeta e Sniper empurram mais, Pistola, Rifle, Arco, Granada e Submetralhadora bem pouco.',
+        'Tiros carregados (Arco, Harpa de Lira, Granada) empurram conforme a carga. A força de cada item fica em Itens → Manuseio → Recuo no ar; quem já tinha mudado esse valor mantém o seu.',
+      ] },
+      { title: 'Analógico de movimento: caminhada lenta e profundidade da mira', items: [
+        'Empurrar o analógico de movimento (gamepad ou celular) menos de 80% faz a galinha caminhar devagar; empurrado até o fim, ela anda na velocidade normal. Correr, as setas, o teclado e o direcional do gamepad continuam na velocidade normal.',
+        'A velocidade da caminhada lenta é ajustável em Controles → Analógicos (“Caminhada lenta”, padrão 0,5x).',
+        'Quando o analógico de mira não está em uso, o quanto o analógico de movimento está empurrado aproxima ou afasta a mira do boneco. Usando o analógico de mira, é ele quem decide a distância, como antes.',
+      ] },
+      { title: 'Controles de toque: arrastar o Pular', items: [
+        'Um dedo que encosta no Pular e arrasta empurra o analógico de movimento, como já fazia o Correr. Só vale para toques que começam no Pular: chegar nele arrastando do Correr ou do Chocar não muda nada.',
+      ] },
+      { title: 'Pátio: luneta da Sniper', items: [
+        'Segurando Atirar com a Sniper, ela mira pela luneta: a câmera avança na direção da mira e se afasta, mostrando mais longe, sem tirar a galinha da tela. Soltar atira e a câmera volta.',
+        'Uma lupa redonda aparece na ponta da mira e aumenta os aliens, zumbis, bonecos, itens e tiros que estão embaixo dela, para acertar com mais precisão.',
+        'No analógico e nas setas, a retícula vai mais longe enquanto mira; com o mouse ela continua no cursor.',
+        'Itens → Luneta: ligar a luneta em qualquer arma ou instrumento e ajustar o tempo para mirar, quanto a câmera avança e afasta, a distância da retícula e o tamanho e o aumento da lupa. Cada arma guarda os seus números. Só a Sniper vem com a luneta ligada.',
       ] },
     ],
   },
@@ -62,7 +96,7 @@ const RECENT = [
   {
     version: '2.15.0',
     date: '20/11/2026',
-    title: 'Simulador de voz de galinha em chickenchess.com/chicken-voice-simulator; créditos completos no About; Piano de cauda e a escala Estrela: as 12 notas numa estrela de hexágonos, tocadas por clique e arraste, com dinâmica pelo movimento e o acumulador de notas no Correr; Pátio sem piscadas no celular ao andar e qualidade gráfica Baixíssima; Tela como mira no celular: tocar atira, anda até lá e pega o item; analógico de mira atira ao soltar e fica escondido por padrão; arrastar o botão Roda escolhe o item; nova posição dos botões de toque; Shift esquerdo sai do Pegar; Perfil e Amigos como abas no título do Vestiário',
+    title: 'Simulador de voz de galinha em chickenchess.com/chicken-voice-simulator; créditos completos no About; Piano de cauda e a escala Estrela: as 12 notas numa estrela de hexágonos, tocadas por clique e arraste, com dinâmica pelo movimento e o acumulador de notas no Correr; Pátio sem piscadas no celular ao andar e qualidade gráfica Baixíssima; Tela como mira no celular: tocar atira, anda até lá e pega o item; analógico de mira atira ao soltar e fica escondido por padrão; arrastar o botão Roda escolhe o item; nova posição dos botões de toque; Shift esquerdo sai do Pegar',
     groups: [
       { title: 'Simulador de voz de galinha', items: [
         'Página nova em /chicken-voice-simulator: um sintetizador que simula o corpo da galinha (sacos aéreos, siringe, traqueia, laringe, garganta e bico) em vez de usar gravações. Ela cacareja, choca, canta de galo, pia como pintinho, dá alarme e chama para comer.',
@@ -86,12 +120,6 @@ const RECENT = [
         'Sentada no piano ela não se move, mas as binds valem como se ela se movesse: Chocar, Agachar, Correr e Pular mudam a dinâmica (Pular segurado vira ff) e o Correr acumula as notas. Por isso Pular e Correr não levantam do piano: levanta com Pegar (E no teclado), com Golpe (Y no gamepad) ou com o botão Sair do celular.',
         'Sentada, a estrela fica sempre à vista e cabe inteira na tela.',
       ] },
-      { title: 'Pátio: luneta da Sniper', items: [
-        'Segurando Atirar com a Sniper, ela mira pela luneta: a câmera avança na direção da mira e se afasta, mostrando mais longe, sem tirar a galinha da tela. Soltar atira e a câmera volta.',
-        'Uma lupa redonda aparece na ponta da mira e aumenta os aliens, zumbis, bonecos, itens e tiros que estão embaixo dela, para acertar com mais precisão.',
-        'No analógico e nas setas, a retícula vai mais longe enquanto mira; com o mouse ela continua no cursor.',
-        'Itens → Luneta: ligar a luneta em qualquer arma ou instrumento e ajustar o tempo para mirar, quanto a câmera avança e afasta, a distância da retícula e o tamanho e o aumento da lupa. Cada arma guarda os seus números. Só a Sniper vem com a luneta ligada.',
-      ] },
       { title: 'Pátio: fundo e números da grade sem piscar ao andar', items: [
         'No celular, o fundo (céu, montanhas, mata) e os números da Grade de blocos piscavam toda vez que a galinha andava. A cada passo o navegador redesenhava do zero o mundo, cada camada do fundo e as camadas da frente; agora elas só deslizam, já desenhadas. Vale em todos os Pátios, local e online, e no Modo editor.',
         'Com zoom diferente de 100%, o Pátio continua redesenhando as camadas para ficarem nítidas naquele zoom, como antes.',
@@ -112,16 +140,8 @@ const RECENT = [
         'Botão Roda: segurando, abre a roda do inventário como antes; arrastando o dedo para um lado, escolhe o item daquele lado da roda, e soltar equipa. Dá para trocar de item com um dedo só, num gesto rápido.',
         'Nova posição padrão dos botões: analógico de movimento um pouco mais para dentro e para cima, Pular, Chocar e Correr num arco baixo, Punch, Throw e Roda num arco acima deles, Pegar sobre a Roda e o analógico de mira acima do Punch. Botões que você já tinha movido ficam onde estão; “Padrão” em Editar posição dos botões volta todos para a nova posição.',
       ] },
-      { title: 'Vestiário: Perfil e Amigos no título', items: [
-        'Perfil e Amigos saíram da fileira das partes do boneco e viraram abas no título do painel, ao lado de Vestiário. Cada aba troca o conteúdo do próprio painel (o seu perfil, ou a lista de amigos com Invite), sem abrir outra janela por cima; Vestiário volta para o boneco.',
-      ] },
       { title: 'Teclado', items: [
         'Shift esquerdo deixa de ser tecla padrão de Usar / pegar item (continua em Correr). Quem ainda estava no padrão antigo (E + Shift esq.) perde o Shift esq. no Pegar; quem configurou outra combinação não muda.',
-      ] },
-      { title: 'Pátio: Gerar de MIDI com a música inteira', items: [
-        'Arquivos MIDI com mensagens de sistema (SysEx, como o reset General MIDI que muitos arquivos trazem no começo) eram lidos errado: as notas das faixas depois da mensagem iam parar milhares de compassos adiante, e a música gerada tinha só os aliens do começo. Agora a leitura confere com a de outros programas em 18 MIDIs reais testados.',
-        'As faixas dividem os lugares: uma bateria constante não toma mais todas as notas da dificuldade. Num MIDI completo com bateria, o Médio que gerava cerca de 25 aliens só de bumbo e caixa agora gera mais de 200, com melodia, baixo e acompanhamento.',
-        'Músicas longas nas dificuldades altas não perdem mais o final: quando passariam de 400 aliens, as notas são agrupadas em aliens maiores em vez de cortar o fim.',
       ] },
     ],
   },
