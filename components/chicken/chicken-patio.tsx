@@ -125,8 +125,9 @@ const fmt = (v: number, step: number) => (step >= 1 ? String(Math.round(v)) : v.
 
 // the Friends panel brings the globe's Friends list (and the online hub's code): loaded only when it opens
 const PatioFriendsPanel = dynamic(() => import("./patio-friends-panel").then(m => m.PatioFriendsPanel), { ssr: false })
-// the Profile panel (the Vestiário's Perfil shortcut): the globe's Profile tab, loaded only when it opens
-const PatioProfilePanel = dynamic(() => import("./patio-profile-panel").then(m => m.PatioProfilePanel), { ssr: false })
+// the Vestiário's Perfil and Amigos tabs: the globe's Profile tab and Friends list, loaded only when the tab opens
+const PatioProfile = dynamic(() => import("./patio-profile-panel").then(m => m.PatioProfile), { ssr: false })
+const FriendsPane = dynamic(() => import("@/components/online/online-hub").then(m => m.FriendsPane), { ssr: false })
 
 export function ChickenPatio() {
   useGamePageScrollLock()
@@ -206,7 +207,6 @@ export function ChickenPatio() {
   const [lobby, setLobby] = useState<LobbyState | null>(null)
   const [playersOpen, setPlayersOpen] = useState(false)
   const [friendsOpen, setFriendsOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
   // whose look the vestiário edits: null the first player (the central configuration's draft), else a local player
   const [vestFor, setVestFor] = useState<string | null>(null)
   const extraEngines = useRef(new Map<string, ChickenEngine>())
@@ -375,6 +375,9 @@ export function ChickenPatio() {
     await sendInvite(friend.profile.id, { kind: "patio", patioId: patioLinkId, roomId: live?.roomId ?? null })
     return live ? `Convite enviado para ${friend.profile.display_name}.` : `Convite enviado para ${friend.profile.display_name}. O modo online não conectou: o convite leva só a este Pátio.`
   }
+  // the Vestiário's Perfil and Amigos tabs (Sign in closes the Vestiário before the login opens)
+  const vestProfile = () => <PatioProfile onSignIn={() => setVestOpen(false)} />
+  const vestFriends = () => <FriendsPane friendAction={{ label: "Invite", run: inviteFriend }} />
   // name, chickens and looks reach the others as they change
   useEffect(() => { if (net.status === "online") sendNetProfile({ name: myName, chickens: localCount, looks: myLooks }) }, [net.status, myName, localCount, myLooks])
   // a notice from the server (removed by the owner, an action refused); removed: back to local
@@ -984,8 +987,8 @@ export function ChickenPatio() {
       {/* the confirmation of the central configuration's Salvar no game (Personagem and the Vestiário's Hit-area) */}
       {saveConfirmation}
       {vestOpen && (vestPlayer?.look
-        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} onProfile={() => setProfileOpen(true)} onFriends={() => setFriendsOpen(true)} />
-        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} onProfile={() => setProfileOpen(true)} onFriends={() => setFriendsOpen(true)} />)}
+        ? <ChickenVestiario key={vestPlayer.id} look={vestPlayer.look} savedLook={vestPlayer.look} onChange={(look: ChickenLook) => changeLobby(s => setPlayerLook(s, vestPlayer.id, look))} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} profile={vestProfile} friends={vestFriends} />
+        : <ChickenVestiario look={draft.look} savedLook={saved.config.look} onChange={look => update(c => { c.look = look })} onClose={() => setVestOpen(false)} admin={isAdmin} frames={framesEdit} profile={vestProfile} friends={vestFriends} />)}
 
       {playersOpen && lobby && (
         <PlayersPanel
@@ -1010,7 +1013,6 @@ export function ChickenPatio() {
       )}
 
       {friendsOpen && <PatioFriendsPanel onClose={() => setFriendsOpen(false)} onInvite={inviteFriend} />}
-      {profileOpen && <PatioProfilePanel onClose={() => setProfileOpen(false)} />}
 
       {panelOpen && (
         <FloatingPanel id="chicken-tuning" aria-label="Personagem" initial={(vw, vh) => { const w = Math.min(530, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={380} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
