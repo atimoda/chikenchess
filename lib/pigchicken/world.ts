@@ -90,7 +90,8 @@ export function cameraYRange(groundScreen: number, top: number = WORLD_TOP, view
   return { lo, hi }
 }
 
-export function cameraYStep(oy: number, o: { worldY: number; groundScreen: number; viewTop: number; dt: number; lag: number; top?: number; above?: number }) {
+// lift: px the view rises past where it would be (the luneta leaning toward an aim up; negative goes down), in its range
+export function cameraYStep(oy: number, o: { worldY: number; groundScreen: number; viewTop: number; dt: number; lag: number; top?: number; above?: number; lift?: number }) {
   const { lo, hi } = cameraYRange(o.groundScreen, o.top ?? WORLD_TOP, o.viewTop)
   // short screens: keep her (her feet) a bit below the middle of what is visible between the header and the ground's place,
   // but never show above y = 0 for that alone
@@ -99,7 +100,7 @@ export function cameraYStep(oy: number, o: { worldY: number; groundScreen: numbe
   // climbing above CAMERA_RISE_Y: the camera rises with her on every screen
   const rise = lo + Math.max(0, CAMERA_RISE_Y - o.worldY)
   const fit = o.above ? o.viewTop + o.above - o.worldY : lo
-  const target = clamp(Math.max(want, rise, fit), lo, hi)
+  const target = clamp(Math.max(want, rise, fit) + (o.lift ?? 0), lo, hi)
   const next = oy + (target - oy) * Math.min(1, o.lag * o.dt)
   return clamp(Math.abs(target - next) < 0.5 ? target : next, lo, hi)
 }

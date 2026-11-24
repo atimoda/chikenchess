@@ -18,6 +18,8 @@ import { isPadDevice, padButtonValues, padTokensFor, stickFor, type InputDeviceI
 import { fireDepth, grabIsSeatBind, harpHeld, movesOf, seatBindsOf, seatTokens } from "@/lib/pigchicken/instrument-binds"
 import { createMouseOwner, keysAimAfterMouse, keysAimFor, magnetAngle, reticleAtAngle, resolveAim, type Aim, type AimSource, type Stick } from "@/lib/pigchicken/aim"
 import { cameraBounds, cameraStep, cameraXRange, leadStep, wholeWorldZoom, zoomLimits } from "@/lib/pigchicken/camera"
+import { drawLens } from "./draw/lens"
+import { lensAt, leanWithin, scopeLean, scopeOn, scopeReachAt, scopeStep, scopeZoom, type ScopeParams } from "@/lib/pigchicken/scope"
 import { PATIO_ZOOM, type PatioZoom } from "@/lib/pigchicken/patio-settings"
 import { type ItemGlow } from "@/lib/pigchicken/item-glow"
 import { CONSUMABLE_LIMITS } from "@/lib/pigchicken/items"
@@ -74,7 +76,7 @@ import { createLayoutSync, deviceLabel, isSequencerLabel } from "@/lib/pigchicke
 import { SceneryVisibilityStyles } from "./scenery-region"
 import { graphicsQuality, subscribeQuality } from "@/lib/quality"
 import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken/platform-geometry"
-import { needsTrajectory, patioPixelRatio, trajectoryVisible, zoomedView } from "@/lib/pigchicken/viewport"
+import { needsTrajectory, patioPixelRatio, trajectoryVisible, zoomedView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { holdLayer, moveLiveCamera, setCameraRestY, worldTransform } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
 import { houseRooms, roomShotWalls, type RoomRect } from "@/lib/pigchicken/house-rooms"
@@ -445,7 +447,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let wheel = 0, slotPick = 0, escape = false
     let cameraKey = false, panPointer: number | null = null, panDeltaX = 0, panDeltaY = 0
     let resetCamera = false, padResetHeld = false
-    const resetView = () => { zoom = 1; resetCamera = true }
+    const resetView = () => { viewZoom = 1; resetCamera = true }
     let cameraModeShown = false
     const showCameraMode = (on: boolean) => {
       if (on !== cameraModeShown) { cameraModeShown = on; setCameraMode(on) }
@@ -596,7 +598,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     }
     const onWheel = (e: WheelEvent) => {
       if (noMouse()) return
-      if (cameraKey) { if (!blocksCamera(e.target)) zoom = clampZoom(zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)); return }
+      if (cameraKey) { if (!blocksCamera(e.target)) viewZoom = clampZoom(viewZoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)); return }
       if (isUi(e.target) || !e.deltaY) return
       // the open inventory wheel: rolled up, the next slice; down, the one before
       if (wh.open) { wheel -= Math.sign(e.deltaY); return }
@@ -656,7 +658,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const extraSeated = new Set<string>()
     // the other local players sitting at a Bateria
     const extraKit = new Set<string>()
-    let zoom = carryRef.current?.zoom ?? 1, forceFollow = false, panParked = false, panInterrupted = false, wasPanHeld = false, lastPlayer = { x: 0, y: 0 }, playerSeen = false
+    // viewZoom: the player's own zoom (the camera key, the pad); zoom: the camera's this frame, which aiming through a
+    // luneta pulls farther out (lib/pigchicken/scope.ts)
+    let viewZoom = carryRef.current?.zoom ?? 1, zoom = viewZoom, forceFollow = false, panParked = false, panInterrupted = false, wasPanHeld = false, lastPlayer = { x: 0, y: 0 }, playerSeen = false
     let reloadPendingAt = 0, reloadPending = false, reloadFired = false
     // the zoom's limits this frame: the Pátio's range, never farther out than the whole Pátio on this screen
     let zoomLo: number = PATIO_ZOOM.min, zoomHi: number = PATIO_ZOOM.max
@@ -675,6 +679,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const noteViews = new Map<string, NoteView>()
     const ammoWake = new Map<string, boolean>()
     const ammoAt = new Map<string, { x: number; y: number }>()
+    // the luneta, per player: how far in each one aims (0..1); the first player's item and aim also move the camera
+    const scopeK = new Map<string, number>()
+    let scopeDef: ScopeParams | null = null, scopeAngle = 0, zoomWhole = 0
     let aim: Aim | null = null
     let wasLocked = false, autoUntil = 0
     // the camera's look-ahead (px toward the side she faces) and the aim's shake after a jump (degrees, fading)
@@ -852,8 +859,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const range = zoomRangeRef.current ?? { min: PATIO_ZOOM.min, max: PATIO_ZOOM.max }
         const whole = wholeWorldZoom(viewW, worldW + 2 * LIMIT_BORDER, st.height - groundHRef.current - viewTop, WORLD_GROUND_Y - topRef.current + LIMIT_BORDER)
         const z = zoomLimits(range, whole)
-        zoomLo = z.lo; zoomHi = z.hi
-        zoom = clampZoom(zoom)
+        zoomLo = z.lo; zoomHi = z.hi; zoomWhole = whole
+        viewZoom = clampZoom(viewZoom)
+        zoom = scopeZoom(viewZoom, scopeDef, scopeK.get("p1") ?? 0, whole)
       }
       if (!placed) {
         place()
@@ -917,8 +925,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const padPan = padButtons.has("Pad:b9") && !!rightStick
       showCameraMode(cameraKey || padZoom || padButtons.has("Pad:b9"))
       const padReset = padZoom && padButtons.has("Pad:b11")
-      if (padReset) { zoom = 1; if (!padResetHeld) resetView() }
-      else if (padZoom && rightStick) zoom = clampZoom(zoom * Math.exp(-rightStick.y * rightStick.mag * dt * 0.8))
+      if (padReset) { viewZoom = 1; if (!padResetHeld) resetView() }
+      else if (padZoom && rightStick) viewZoom = clampZoom(viewZoom * Math.exp(-rightStick.y * rightStick.mag * dt * 0.8))
+      zoom = scopeZoom(viewZoom, scopeDef, scopeK.get("p1") ?? 0, zoomWhole)
       padResetHeld = padReset
       const mousePan = cameraKey && (panPointer !== null || panDeltaX !== 0 || panDeltaY !== 0)
       const panHeld = mousePan || padPan
@@ -942,7 +951,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       wasPanHeld = panHeld
       // (sitting at a fixed instrument, the camera follows her with her in the middle)
       const cameraMode = manualView ? 'fixed' : forceFollow || snapToPortal || zoom > 1 || p1Seated ? 'follow' : S.camera
-      let next = manualView || (st.held && !recenter) ? camX : cameraStep(camX, { mode: cameraMode, worldX, viewW, worldW, zoom, dt: snapToPortal || recenter ? 1 : dt, deadband: (snapToPortal || forceFollow || p1Seated) ? 0 : S.deadband / zoom, lag: snapToPortal || recenter ? 1 : forceFollow ? 12 : S.lag, lead: (snapToPortal || forceFollow) ? 0 : lead / zoom })
+      // aiming through a luneta, the view leans toward the aim, never so far that she leaves the screen
+      const lean = p1Seated || snapToPortal || recenter ? { x: 0, y: 0 } : scopeLean(scopeDef, scopeK.get("p1") ?? 0, scopeAngle)
+      const leanHalf = viewW / (2 * zoom) - 90
+      const camLead = (snapToPortal || forceFollow) && !lean.x ? 0 : lean.x ? leanWithin(lead / zoom + lean.x + Math.sign(lean.x) * S.deadband / zoom, leanHalf, leanHalf) : lead / zoom
+      let next = manualView || (st.held && !recenter) ? camX : cameraStep(camX, { mode: lean.x ? 'follow' : cameraMode, worldX, viewW, worldW, zoom, dt: snapToPortal || recenter ? 1 : dt, deadband: (snapToPortal || forceFollow || p1Seated) ? 0 : S.deadband / zoom, lag: snapToPortal || recenter ? 1 : forceFollow ? 12 : S.lag, lead: camLead })
       const groundScreen = st.height - groundHRef.current
       const worldTop = topRef.current
       const viewCentreY = st.height / 2
@@ -952,7 +965,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (oy === null) oy = yr.lo
       // (sitting at a fixed instrument, it and its strings around her have to fit under the header)
       const seatAbove = p1Star ? FIXED_INSTRUMENTS.grandpiano.box.h + 20 : p1Seated && !p1Kit ? Math.max(HARP_BOX.h + 20, st.y - engine.getState().shoulder.y + SCALE_FAN_R * seatedFanSize(scaleSizeRef.current) * st.scale * 1.12 + 16) : 0
-      let nextOy = manualView || (st.held && !recenter) ? oy : cameraYStep(oy, { worldY: st.y - oy, groundScreen: zoomGround, viewTop: zoomTop, dt: snapToPortal || recenter ? 1 : dt, lag: snapToPortal || recenter ? 1 : forceFollow ? 12 : S.lag, top: worldTop, above: seatAbove })
+      // (up or down too, as far as her feet and her head stay on the screen where the camera would be without it)
+      let lift = 0
+      if (lean.y && !manualView && !st.held) {
+        const still = cameraYStep(oy, { worldY: st.y - oy, groundScreen: zoomGround, viewTop: zoomTop, dt: 1, lag: 1, top: worldTop, above: seatAbove })
+        const feet = st.y - oy + still, bottom = viewCentreY + (st.height - viewCentreY) / zoom
+        lift = leanWithin(-lean.y, feet - 220 * st.scale - zoomTop - 24, bottom - 24 - feet)
+      }
+      let nextOy = manualView || (st.held && !recenter) ? oy : cameraYStep(oy, { worldY: st.y - oy, groundScreen: zoomGround, viewTop: zoomTop, dt: snapToPortal || recenter ? 1 : dt, lag: snapToPortal || recenter ? 1 : forceFollow ? 12 : S.lag, top: worldTop, above: seatAbove, lift })
       if (zoom > 1 && !manualView && !st.held) {
         const feetY = st.y - oy
         const minY = zoomTop + 240 * st.scale - feetY, maxY = zoomGround - feetY
@@ -1823,6 +1843,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       for (const st of stages.all) drawStageTalk(ctx, st, camX)
       ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
+      // the luneta (Atirar held with an item that has one): it eases in and out; the camera follows it next frame
+      {
+        const sd = combat.def(), on = !p1Seated && scopeOn(sd, !!combat.held, fire), was = scopeK.get("p1") ?? 0
+        if (on) scopeDef = sd
+        const k = scopeDef ? scopeStep(was, on, scopeDef.scopeTime, dt) : 0
+        if (on && !was && !aimLock) playWeaponSound("aim", combat.held?.item ?? null)
+        scopeK.set("p1", k); scopeAngle = ang
+        if (!k) scopeDef = null
+      }
       drawSwing(ctx, combat, origin, "back", screenView)
       // the item itself is drawn inside her rig, in front of her body and of the wing; in a swing the wing
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
@@ -1849,8 +1878,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       const reticle = aim.target
         ? free ? reticleAtAngle(aim.target, engine.heldPoint(ang, 0, 0), muzzle, ang) : aim.target
         : { x: muzzle.x + adx * stickDistance, y: muzzle.y + ady * stickDistance }
-      const rx = reticle.x, ry = reticle.y
-      const dist = aim.target ? Math.hypot(rx - muzzle.x, ry - muzzle.y) : stickDistance
+      // (aiming through the luneta, a stick's or the keys' reticle goes farther along the aim; the mouse's stays on the cursor)
+      const reach = !aim.target && scopeDef ? scopeReachAt(scopeDef, scopeK.get("p1") ?? 0) : 1
+      const rx = muzzle.x + (reticle.x - muzzle.x) * reach, ry = muzzle.y + (reticle.y - muzzle.y) * reach
+      const dist = aim.target ? Math.hypot(rx - muzzle.x, ry - muzzle.y) : stickDistance * reach
       // weapons whose reticle shows where the shot lands: the path a shot fired now would take
       const showPath = armed && trajectoryVisible(d.pathShow, fire, aimLock)
       const showLand = armed && trajectoryVisible(d.landShow, fire, aimLock)
@@ -1869,7 +1900,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const tints = colorsRef.current
       // over a button or panel the mouse shows its normal cursor instead of the reticle and its volume ring
+      // the luneta's lupa on a reticle: the world drawn again, magnified around it (each player's own beam)
+      const lensWorld = (x: number, y: number) => ({ x: x + camX, y: y - camY })
+      const lensPaint = (lv: ViewRect) => {
+        ctx.translate(0, camY)
+        drawWorld(ctx, combat, camX, lv, itemGlowRef.current)
+        drawPoops(ctx, combat, camX, lv)
+        drawNoteShots(ctx, combat.noteShots, camX, lv)
+        drawBeam(ctx, combat, camX, lv)
+      }
       if (!(mouseOverUi && aim.source === "mouse")) {
+        const lens = scopeDef ? lensAt(scopeDef, scopeK.get("p1") ?? 0) : null
+        if (lens) drawLens(ctx, rx, ry, { ...lens, r: lens.r / zoom }, lensWorld, lensPaint)
         drawVolumeRing(ctx, combat, rx, ry, tints?.p1 ?? "#ffffff")
         drawReticle(ctx, combat, muzzle, rx, ry, dist, combat.spread(body), aimLock, path, showPath, showLand, tints?.p1 ?? "#ffffff")
         ammoAt.set("p1", { x: rx, y: ry })
@@ -1962,7 +2004,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         combat.use(id)
         const xd = combat.def(), xs = eng.getMotionState()
         const xArmed = !!combat.held
-        const xdist = S.reticleDist * at.reach
+        // (each player's own luneta: their reticle reaches farther and their lupa rides on it; the camera stays the first player's)
+        const xk = scopeStep(scopeK.get(id) ?? 0, !extraSeated.has(id) && scopeOn(xd, xArmed, !!extraPrev.get(id)?.fire), xd.scopeTime, dt)
+        scopeK.set(id, xk)
+        const xdist = S.reticleDist * at.reach * scopeReachAt(xd, xk)
         const xrx = at.muzzle.x + Math.cos(at.angle) * xdist, xry = at.muzzle.y + Math.sin(at.angle) * xdist
         const xFire = !!extraPrev.get(id)?.fire
         const xShow = xArmed && trajectoryVisible(xd.pathShow, xFire, false)
@@ -1973,6 +2018,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           xpath = combat.predict({ x: at.muzzle.x + camX, y: at.muzzle.y - camY }, at.angle, power, { boxes, groundY: G }).points.map(p => ({ x: p.x - camX, y: p.y + camY }))
         }
         const xbody = { x: xs.x + camX, y: xs.y - camY, face: xs.face, scale: xs.scale, grounded: xs.grounded, state: bodyState(xs), vx: xs.vx, species: xs.species }
+        const xLens = lensAt(xd, xk)
+        if (xLens) drawLens(ctx, xrx, xry, { ...xLens, r: xLens.r / zoom }, lensWorld, lensPaint)
         drawVolumeRing(ctx, combat, xrx, xry, tints?.[id] ?? "#ffffff")
         drawReticle(ctx, combat, at.muzzle, xrx, xry, xdist, combat.spread(xbody), false, xpath, xShow, xLand, tints?.[id] ?? "#ffffff")
         ammoAt.set(id, { x: xrx, y: xry })
@@ -2087,7 +2134,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     raf = requestGameFrame(frame)
     return () => {
       // what crosses to the next world, if this one closes for another Pátio
-      carryRef.current = { carry: combat.exportCarry(), zoom }
+      carryRef.current = { carry: combat.exportCarry(), zoom: viewZoom }
       resetZoneLife()
       minePlay.dispose()
       setMineActivators([])
