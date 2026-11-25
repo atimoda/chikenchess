@@ -97,9 +97,10 @@ export function LocalChickens({ players, lead, groundHeight, engines }: {
 }
 
 // ---------- header: the lobby switcher ----------
-// back / forward through the public lobbies on the game server, in the order they opened; going to another one
-// leaves this lobby, and every local player of this computer goes along (onSwitch)
-export function LobbySwitcher({ mode, roomId, onStatus, onSwitch }: { mode: LobbyMode; roomId: string | null; onStatus: (text: string) => void; onSwitch: (lobby: NetLobby) => void }) {
+// The "Local (n)" / "Lobby (n)" button (n: the players in this lobby) opens and closes the Players panel; beside it,
+// two buttons of their own go back / forward through the public lobbies on the game server, in the order they opened;
+// going to another one leaves this lobby, and every local player of this computer goes along (onSwitch)
+export function LobbySwitcher({ mode, roomId, players, open, onToggle, onStatus, onSwitch }: { mode: LobbyMode; roomId: string | null; players: number; open: boolean; onToggle: () => void; onStatus: (text: string) => void; onSwitch: (lobby: NetLobby) => void }) {
   const go = async (dir: -1 | 1) => {
     if (mode !== "online") { onStatus("O passador de lobby só funciona no modo online (painel de players)."); return }
     const list = await listNetLobbies()
@@ -109,13 +110,17 @@ export function LobbySwitcher({ mode, roomId, onStatus, onSwitch }: { mode: Lobb
     onStatus(`Indo para o lobby ${next.name ?? (next.patioId === "default" ? "do Pátio padrão" : "")} (${next.players}/${next.max})…`)
     onSwitch(next)
   }
-  const btn = "inline-flex h-9 w-7 items-center justify-center text-[#b9c7b9] transition-colors hover:text-white disabled:opacity-40"
+  const online = mode === "online"
+  const arrow = cn("hidden h-9 w-9 shrink-0 items-center justify-center rounded-md border text-[#b9c7b9] transition-colors hover:border-primary hover:text-white sm:inline-flex", online ? "border-white/15" : "border-white/10 opacity-60")
+  const hint = online ? "lobbies públicos em ordem de abertura" : "só no modo online"
   return (
-    <div className={cn("hidden h-9 items-center rounded-md border sm:inline-flex", mode === "online" ? "border-white/15" : "border-white/10 opacity-60")} title={mode === "online" ? "Passador de lobby: lobbies públicos em ordem de abertura" : "Passador de lobby (só no modo online)"}>
-      <button type="button" aria-label="Lobby anterior" onClick={() => void go(-1)} className={btn}><ChevronLeft className="h-4 w-4" /></button>
-      <span className="font-mono text-[10px] uppercase tracking-wider text-[#93a79a]">{mode === "online" ? "lobby" : "local"}</span>
-      <button type="button" aria-label="Próximo lobby" onClick={() => void go(1)} className={btn}><ChevronRight className="h-4 w-4" /></button>
-    </div>
+    <>
+      <button type="button" aria-label="Lobby anterior" title={`Lobby anterior: ${hint}`} onClick={() => void go(-1)} className={arrow}><ChevronLeft className="h-4 w-4" /></button>
+      <button type="button" aria-label="Players e lobby" aria-pressed={open} title="Players e lobby" onClick={onToggle} className={cn("inline-flex h-9 shrink-0 items-center rounded-md border px-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors hover:border-primary hover:text-white", open ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        {online ? "Lobby" : "Local"} ({players})
+      </button>
+      <button type="button" aria-label="Próximo lobby" title={`Próximo lobby: ${hint}`} onClick={() => void go(1)} className={arrow}><ChevronRight className="h-4 w-4" /></button>
+    </>
   )
 }
 

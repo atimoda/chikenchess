@@ -12,7 +12,7 @@ import { getBaby, subscribeBaby } from "@/lib/chicken/baby"
 import { variantClass } from "@/lib/chicken/beast-art"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { BookOpen, Crosshair, Eye, FolderOpen, Gamepad2, Grid3x3, Maximize, Minimize, Music, Pencil, Save, SlidersHorizontal, Sun, Swords, Undo2, UserPlus, Users, X } from "lucide-react"
+import { BookOpen, Crosshair, Eye, FolderOpen, Gamepad2, Grid3x3, Maximize, Minimize, Music, Pencil, Save, SlidersHorizontal, Sun, Swords, Undo2, UserPlus, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -898,7 +898,7 @@ export function ChickenPatio() {
           {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
         </h1>
         {/* the lobby switcher and the players, right after the Pátio's name */}
-        <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} onStatus={setToast} onSwitch={target => {
+        <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} players={playersHere} open={playersOpen} onToggle={() => setPlayersOpen(v => !v)} onStatus={setToast} onSwitch={target => {
           // the other lobby's Pátio opens, and its room is the one joined
           const url = new URL(window.location.href)
           url.searchParams.set("room", target.roomId)
@@ -935,10 +935,6 @@ export function ChickenPatio() {
           )}
         </div>
         <LayerEyes {...patioLayers} open={layersOpen} onOpenChange={setLayersOpen} onSave={saveLayers} />
-        <button type="button" aria-label="Players e lobby" aria-pressed={playersOpen} title="Players e lobby" onClick={() => setPlayersOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", playersOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Users className="h-4 w-4" />
-          {playersHere > 1 && <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-[#05060c]">{playersHere}</span>}
-        </button>
         <button type="button" aria-label="Friends" aria-pressed={friendsOpen} title="Friends: chamar um amigo para este lobby" onClick={() => setFriendsOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", friendsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <UserPlus className="h-4 w-4" />
         </button>

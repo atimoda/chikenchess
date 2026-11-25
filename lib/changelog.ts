@@ -59,6 +59,7 @@ const RECENT = [
         'Catálogo de aliens, Biblioteca de almas e Guia de pássaros viraram um só painel, o Catálogo, aberto por um único botão com ícone de livro. As abas Aliens, Almas e Pássaros ficam no título, cada uma com o seu ícone, e o painel sempre abre em Aliens.',
         'Os desenhos dos aliens no Catálogo agora aparecem assim que o painel abre; antes, cada cartão só aparecia depois de passar o ponteiro por cima.',
         'O botão de Itens (armas e instrumentos) mostra o contorno do item que a galinha segura, como o botão do Personagem mostra o boneco, e passou para a esquerda do Personagem. De asas vazias, continua o ícone das espadas.',
+        'O painel Players agora abre pelo botão Local/Lobby do cabeçalho, que mostra entre parênteses quantos players há no lobby, como “Lobby (3)”. As setas de lobby anterior e próximo viraram dois botões separados, um de cada lado. Saiu o botão com o ícone de pessoas.',
       ] },
     ],
   },
