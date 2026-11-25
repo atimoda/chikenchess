@@ -419,7 +419,7 @@ export function ChickenControlsPanel({ open, onOpenChange, editLayout = false }:
           )}
         </section>
         {/* admins: these controls become the game's default (data/chicken/default-controls.json) */}
-        <SaveToGameButton path="data/chicken/default-controls.json" save={() => saveDefaultChickenControls(controls)} className="justify-end"
+        <SaveToGameButton part="controls" save={() => saveDefaultChickenControls(controls)} className="justify-end"
           onRevert={() => { const d = defaultChickenControls(); saveChickenControls(d); setControls(d); setListen(null); setDrumListen(null); saveDrumKit({ ...structuredClone(drumKit()), binds: structuredClone(DEFAULT_KIT.binds) }) }} />
       </div>
     </FloatingPanel>

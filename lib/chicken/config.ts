@@ -189,3 +189,17 @@ export async function saveChickenConfig(next: ChickenConfig): Promise<SavedChick
   if (error) throw new ChickenConfigError(saveErrorMessage(error))
   return adopt(parseRow(data))
 }
+
+/** The saved versions of the central configuration (newest first, the last 50), admin only. */
+export async function chickenConfigVersions(): Promise<{ id: number; revision: number; updatedAt: string; by: string | null }[]> {
+  const { data, error } = await requireOnlineClient().rpc('chicken_config_versions')
+  if (error) throw new ChickenConfigError(error.message.includes('chicken_config_versions') ? 'O servidor ainda não tem as versões (falta aplicar a migração 202611250002_game_defaults.sql).' : saveErrorMessage(error))
+  return ((data ?? []) as { id: number; revision: number; updated_at: string; by: string | null }[]).map(v => ({ id: Number(v.id), revision: v.revision, updatedAt: v.updated_at, by: v.by }))
+}
+/** One saved version's configuration, admin only. */
+export async function chickenConfigVersion(id: number): Promise<ChickenConfig> {
+  const { data, error } = await requireOnlineClient().rpc('chicken_config_version', { p_id: id })
+  if (error) throw new ChickenConfigError(saveErrorMessage(error))
+  if (!data?.config) throw new ChickenConfigError('Versão não encontrada.')
+  return normalizeChickenConfig(data.config)
+}

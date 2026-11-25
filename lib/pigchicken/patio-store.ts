@@ -3,7 +3,7 @@
 // Without one the page shows the default Pátio (the admin's). Each Pátio is kept in this browser as soon as it is
 // edited, so nothing is lost while offline; the database copy (lib/pigchicken/patio-online.ts) is saved over it on
 // "Salvar" and every minute, and `revision` / `dirty` say how this copy relates to the saved one.
-import { defaultLayout, normalizeLayout, type PatioLayout } from './layout'
+import { compactLayout, defaultLayout, normalizeLayout, type PatioLayout } from './layout'
 import { generatePatioLayout, type PatioRecipe } from './patio-generator'
 
 export type PatioRecord = {
@@ -141,7 +141,7 @@ export function keepPatio(rec: PatioRecord): PatioRecord {
     ? (isPatioId(rec.dbId) && storage()?.getItem(KEY + rec.dbId) != null ? rec.dbId : null)
     : (keptDefaultDbId() === rec.id ? 'default' : null)
   const json = JSON.stringify({
-    layout: next.layout, creatorId: next.creatorId, name: next.name, godparentId: next.godparentId, updatedAt: next.updatedAt,
+    layout: compactLayout(next.layout), creatorId: next.creatorId, name: next.name, godparentId: next.godparentId, updatedAt: next.updatedAt,
     revision: next.revision, dirty: next.dirty, dbId: next.dbId,
   })
   writeKept(key, json, twin ? [twin] : [])

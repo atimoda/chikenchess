@@ -3,6 +3,7 @@
 // The defaults (new players and "Restaurar padrão") come from data/chicken/default-controls.json, which an admin
 // rewrites from the panel ("Salvar no game"); the binds in CHICKEN_ACTIONS are the fallback for anything it lacks.
 import DEFAULTS_FILE from '../../data/chicken/default-controls.json'
+import { gameDefault } from '../game-defaults'
 
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
@@ -163,7 +164,7 @@ function codeDefaultChickenControls(): ChickenControls {
 /** The game's default controls: the defaults file over the code fallback (a missing or invalid field keeps the code's). */
 export function defaultChickenControls(): ChickenControls {
   const base = codeDefaultChickenControls()
-  const file = DEFAULTS_FILE as Record<string, unknown> & { [type: string]: unknown }
+  const file = gameDefault('controls', DEFAULTS_FILE) as Record<string, unknown> & { [type: string]: unknown }
   CHICKEN_INPUT_TYPES.forEach(t => {
     const binds = file?.[t.id] as Record<string, unknown> | undefined
     CHICKEN_ACTIONS.forEach(a => {

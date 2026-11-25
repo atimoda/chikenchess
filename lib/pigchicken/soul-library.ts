@@ -14,6 +14,7 @@
 // - The sheets: the game's catalogue is the code's with data/pigchicken/default-souls.json over it ("Salvar no game"),
 //   and an admin's browser may keep a draft over the code's. setSoulEntries says which one is in use.
 import DEFAULTS_FILE from '../../data/pigchicken/default-souls.json'
+import { liveDefault, onGameDefault } from '../game-defaults'
 import { guideBird, inspirationOf, isGuideBird } from './bird-guide'
 import { UNDEAD_LOOK } from './birds'
 import { SOUL_ACT_RANGES, SOUL_HELPS, SOUL_HINDERS, soulActBase, type SoulActParams } from './soul-acts'
@@ -277,13 +278,15 @@ export function soulsFileProblem(value: unknown): string | null {
 }
 
 /** The game's catalogue: the code's, with data/pigchicken/default-souls.json over it. */
-export const SOUL_ENTRIES: readonly SoulEntry[] = soulEntriesOver(DEFAULTS_FILE)
+export const SOUL_ENTRIES: readonly SoulEntry[] = liveDefault('souls', DEFAULTS_FILE, soulEntriesOver)
 // the catalogue in use: the game's, or an admin's draft. What a soul is, how it looks and how it flies read it;
 // the version tells whoever keeps something worked out from it that it changed
 let live: readonly SoulEntry[] = SOUL_ENTRIES, version = 0
 export const soulEntries = () => live
 export const soulCatalogVersion = () => version
 export function setSoulEntries(list: readonly SoulEntry[]) { if (list !== live) { live = list; version++ } }
+// a new catalogue saved in the game changes the one in use unless an admin's draft is open
+onGameDefault('souls', () => { if (live === SOUL_ENTRIES) version++ })
 
 // (a recipe that asks for nothing is nobody's)
 const fits = (r: SoulRecipe, o: SoulOrigin) =>

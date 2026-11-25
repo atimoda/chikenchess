@@ -2,7 +2,7 @@
 // a security definer function that checks who may do what; this file only names them, turns their rows into the
 // game's shapes and their errors into Portuguese.
 import { getOnlineClient, onlineConfigured, onlineRpc } from '@/lib/online/client'
-import { normalizeLayout, type PatioLayout } from './layout'
+import { compactLayout, normalizeLayout, type PatioLayout } from './layout'
 
 export const patioOnlineAvailable = () => onlineConfigured && !!getOnlineClient()
 
@@ -38,6 +38,10 @@ export type PatioLobbyInfo = {
   favorites: number
   // how many signed-in players ever played it
   plays: number
+  // entries into it (anyone, a reload within 30 min not counted) and browsers without an account that entered it;
+  // null when the server does not have the counters yet (migration 202611250001)
+  visits: number | null
+  anonPlayers: number | null
   mine: boolean
 }
 export type PatioLobby = PatioLobbyInfo & { layout: PatioLayout | null; people: PatioPerson[] }
@@ -52,7 +56,7 @@ function info(r: Row): PatioLobbyInfo {
     creatorId: str(r.creator_id), creatorName: str(r.creator_name), godparentId: str(r.godparent_id), savedBy: str(r.saved_by),
     isDefault: r.is_default === true, featured: r.featured === true, editors: Array.isArray(r.editors) ? r.editors.filter((x): x is string => typeof x === 'string') : [],
     createdAt: str(r.created_at), updatedAt: str(r.updated_at), lastEditedAt: str(r.last_edited_at), lastPlayedAt: str(r.last_played_at),
-    favorite: r.favorite === true, canEdit: r.can_edit === true, favorites: num(r.favorites), plays: num(r.plays), mine: r.mine === true,
+    favorite: r.favorite === true, canEdit: r.can_edit === true, favorites: num(r.favorites), plays: num(r.plays), visits: r.visits == null ? null : num(r.visits), anonPlayers: r.anon_players == null ? null : num(r.anon_players), mine: r.mine === true,
   }
 }
 function lobby(r: Row | null): PatioLobby | null {
@@ -109,7 +113,7 @@ export const fetchDefaultPatio = async (known?: { id: string | null; revision: n
   return lobby(await withKnown('patio_default', {}, known?.id && rev ? { p_known_id: known.id, p_known_revision: rev } : null, 'default'))
 }
 export async function savePatioLobby(id: string, layout: PatioLayout, revision: number) {
-  const r = await onlineRpc<Row>('patio_lobby_save', { p_id: id, p_layout: layout, p_revision: revision })
+  const r = await onlineRpc<Row>('patio_lobby_save', { p_id: id, p_layout: compactLayout(layout), p_revision: revision })
   return { revision: num(r.revision), updatedAt: str(r.updated_at) }
 }
 export const renamePatioLobby = async (id: string, name: string) => info(await onlineRpc<Row>('patio_lobby_rename', { p_id: id, p_name: name }))

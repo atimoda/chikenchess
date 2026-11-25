@@ -16,13 +16,17 @@ import { Bird, Crosshair, Eye, Feather, FolderOpen, Gamepad2, Ghost, Grid3x3, Ma
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
-  defaultChickenConfig, getSavedChickenConfig, normalizeChickenConfig, refreshChickenConfig, sameChickenConfig, saveChickenConfig,
+  chickenConfigVersion, chickenConfigVersions, defaultChickenConfig, getSavedChickenConfig, normalizeChickenConfig, refreshChickenConfig, sameChickenConfig, saveChickenConfig,
   setChickenConfigPreview, subscribeChickenConfig, type ChickenConfig, type SavedChickenConfig,
 } from "@/lib/chicken/config"
 import { CHICKEN_PARAM_GROUPS, CHICKEN_PARAM_META, CHICKEN_SOUND_TYPES, type ChickenParamKey, type ChickenParamMeta } from "@/lib/chicken/param-meta"
 import { CLASS_COUNT_MAX, CLASS_FACTOR_KEYS, CLASS_FACTOR_MAX, CLASS_IDS, defaultClasses, isClassCount, type ClassId } from "@/lib/chicken/species"
 import { Knob } from "@/components/knob"
 import { useSaveConfirm } from "@/components/admin/save-confirm"
+import { useGameDefaults, useTuningVersion } from "@/hooks/use-game-defaults"
+import { ResetArrow } from "@/components/ui/reset-arrow"
+import { deepOver, localTuning, keepLocalTuning, patioSaveOf, setLocalTuning, setPatioTuning, tuningLocked } from "@/lib/pigchicken/patio-tuning"
+import { LockedFieldset } from "@/components/pigchicken/tuning-lock"
 import { diffValues } from "@/lib/admin/save-diff"
 import { ChickenControlsPanel } from "./chicken-controls-panel"
 import { CombinationLabel } from "./combination-label"
@@ -82,15 +86,14 @@ import { mineActivatorStore, resetMineActivators, setMineActivatorSaved } from "
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { patioGround, patioItemGlow, patioInventoryLimit, patioMineGrid, patioSceneMusic, patioScreens, patioTemple, patioWorldTop, patioZoom } from "@/lib/pigchicken/patio-settings"
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
-import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultCamera, saveDefaultTuning } from "@/lib/admin/game-defaults-client"
-import { RevertToDefaultButton, SaveToGameButton } from "@/components/admin/save-to-game-button"
+import { RevertToDefaultButton, SaveToGameButton, SaveToPatioButton, VersionsButton } from "@/components/admin/save-to-game-button"
 import { deviceId, forgetPatio, isPatioId, lobbyFromUrl, onPatioOpenRequest, openPatioLobby, type NewPatioKind } from "@/lib/pigchicken/patio-store"
 import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
 import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
 import { PatioOpenPanel, PatioPersonPanel, PatioSavePanel, type PatioPersonCard } from "@/components/pigchicken/patio-lobby-panels"
-import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, KEYS_AIM_RELEASE_MAX, loadParquinho, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
+import { AIM_RELEASE_MAX, DEFAULT_PARQUINHO, KEYS_AIM_RELEASE_MAX, loadParquinho, parquinhoDefaultsFile, saveParquinho, type ParquinhoSettings } from "@/lib/pigchicken/settings"
 import {
   LOBBY_MAX, PLAYER_COLORS, addLocalPlayer, adoptDevices, assignDevice, createLobby, firstLocal, loadEntryMode, loadLobby, localPlayers, removePlayer,
   renameLocalPlayer, saveLobby, setEditor, setPlayerLook, type LobbyMode, type LobbyPlayer, type LobbyResult, type LobbyState,
@@ -108,18 +111,14 @@ const SPAWN_OFFSET = 110
 const EDITOR_IDLE_MS = 5 * 60_000
 
 
-function readDraft(): ChickenConfig | null {
+// Personagem's values are in three levels (lib/pigchicken/patio-tuning.ts): the version saved in the game, the open
+// Pátio's over it and this browser's changes over those. A draft kept whole before 25/11 becomes those changes once.
+function migrateDraft(saved: ChickenConfig) {
   try {
     const raw = window.localStorage.getItem(DRAFT)
-    return raw ? normalizeChickenConfig(JSON.parse(raw)) : null
-  } catch {
-    return null
-  }
-}
-function writeDraft(next: ChickenConfig | null) {
-  try {
-    if (next) window.localStorage.setItem(DRAFT, JSON.stringify(next))
-    else window.localStorage.removeItem(DRAFT)
+    if (!raw) return
+    keepLocalTuning("chicken", normalizeChickenConfig(saved), normalizeChickenConfig(JSON.parse(raw)))
+    window.localStorage.removeItem(DRAFT)
   } catch { /* storage unavailable */ }
 }
 
@@ -200,8 +199,14 @@ export function ChickenPatio() {
   useEffect(() => startSongSync(songUser), [songUser])
   // and so does the soul collection of the Biblioteca de almas
   useEffect(() => startSoulSync(songUser), [songUser])
-  useEffect(() => { setPq(loadParquinho()) }, [])
-  const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
+  // the game's defaults (lib/game-defaults.ts): read on entering, and the Câmera de Mira follows a new one
+  const defaultsVersion = useGameDefaults()
+  // ...and the open Pátio's own values (Salvar no Pátio) under this browser's
+  const tuningVersion = useTuningVersion()
+  useEffect(() => { setPq(loadParquinho()) }, [defaultsVersion, tuningVersion])
+  const setPqValue = <K extends keyof ParquinhoSettings>(key: K, value: ParquinhoSettings[K]) => tuningLocked() && !["debug", "ammoAround", "ammoHud", "screens"].includes(key) ? undefined : setPq(prev => { const next = { ...prev, [key]: value }; saveParquinho(next); return next })
+  // a Câmera de Mira value off the game's default: amber, with the small reset in front (Reverter para o padrão: all)
+  const pqReset = <K extends keyof ParquinhoSettings>(key: K) => ({ changed: pq[key] !== DEFAULT_PARQUINHO[key], onReset: () => setPqValue(key, DEFAULT_PARQUINHO[key]) })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Visual: true, Movimento: true })
 
   // ---------- players and lobby ----------
@@ -443,6 +448,25 @@ export function ChickenPatio() {
       sendNetLayout(layout)
     }, 300)
   }
+  // the open Pátio's personalized values (Câmera de Mira, Volume, Itens, Escalas, Personagem: settings.tuning) feed
+  // the panels' three levels (lib/pigchicken/patio-tuning.ts); whoever may edit saves into it with Salvar no Pátio
+  const changeLayoutRef = useRef(changeLayout)
+  changeLayoutRef.current = changeLayout
+  const patioLayoutRef = useRef(patio?.layout)
+  patioLayoutRef.current = patio?.layout
+  const patioTuningJson = JSON.stringify(patio?.layout.settings?.tuning ?? null)
+  const canSaveTuning = !!patio && access.canEdit
+  const patioLocked = patio?.layout.settings?.locked === true
+  useEffect(() => {
+    setPatioTuning(JSON.parse(patioTuningJson) ?? undefined, canSaveTuning ? (part, diff) => {
+      const layout = patioLayoutRef.current
+      if (!layout) return
+      const tuning = { ...layout.settings?.tuning, [part]: diff }
+      if (diff === undefined) delete tuning[part]
+      changeLayoutRef.current({ ...layout, settings: { ...layout.settings, tuning: Object.keys(tuning).length ? tuning : undefined } })
+    } : null, patioLocked)
+  }, [patioTuningJson, canSaveTuning, patioLocked])
+  useEffect(() => () => setPatioTuning(undefined, null), [])
   // the Modo editor (panel or editing switch) turns itself off after EDITOR_IDLE_MS with no change to the map made
   // here (changeLayout); the others' live edits do not count
   const editorIdleWatch = (editorOn || editActive) && access.canEdit
@@ -619,18 +643,19 @@ export function ChickenPatio() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  // start from this browser's unsaved draft, if any, and fetch the latest saved version
+  // the version saved in the game (fetched again on entering), the open Pátio's values over it (chickenBase) and
+  // this browser's unsaved changes over those: the draft
   useEffect(() => {
-    const local = readDraft()
     const cached = getSavedChickenConfig()
+    migrateDraft(cached.config)
     setSaved(cached)
-    setDraft(local ?? cached.config)
-    void refreshChickenConfig(true).then(next => {
-      setSaved(next)
-      if (!local) setDraft(next.config)
-    })
+    void refreshChickenConfig(true).then(setSaved)
     return subscribeChickenConfig(() => setSaved(getSavedChickenConfig()))
   }, [])
+  const patioChicken = patio?.layout.settings?.tuning?.chicken
+  const chickenBase = useMemo(() => normalizeChickenConfig(deepOver(saved.config, patioChicken)), [saved, patioChicken])
+  // (Lock: whoever may not edit the Pátio plays it with its values)
+  useEffect(() => { setDraft(normalizeChickenConfig(deepOver(chickenBase, tuningLocked() ? undefined : localTuning("chicken")))) }, [chickenBase, tuningVersion])
 
   // the chickens on screen follow the draft while the pátio is open
   useEffect(() => { setChickenConfigPreview(draft) }, [draft])
@@ -643,7 +668,7 @@ export function ChickenPatio() {
   draftRef.current = draft
   const putDraft = (next: ChickenConfig) => {
     draftRef.current = next
-    writeDraft(sameChickenConfig(next, saved.config) ? null : next)
+    keepLocalTuning("chicken", chickenBase, normalizeChickenConfig(next))
     setDraft(next)
     setStatus(null)
   }
@@ -653,6 +678,7 @@ export function ChickenPatio() {
   const clearUndo = () => { undoSteps.current = { list: [], key: null, at: 0 } }
   // key: the control that changed (the same key within a second continues its step)
   const update = (fn: (c: ChickenConfig) => void, key: string | null = null) => {
+    if (tuningLocked()) return
     const prev = draftRef.current
     const next = structuredClone(prev)
     fn(next)
@@ -677,6 +703,18 @@ export function ChickenPatio() {
     if (isClassCount(key)) c.classes[id][key] = value
     else (c.classes[id].factors as Record<string, number>)[key] = value
   }, `c:${id}:${key}`)
+  // the small reset in front of a row: the chicken's value and the classes' cells back to the version saved in the game
+  const resetRow = (key: ChickenParamKey) => update(c => {
+    (c.params as Record<string, unknown>)[key] = (saved.config.params as Record<string, unknown>)[key]
+    for (const id of CLASS_IDS) {
+      const was = classValue(saved.config, id, key)
+      if (was === undefined) continue
+      c.classes ??= defaultClasses()
+      c.classes[id] ??= defaultClasses()[id]
+      if (isClassCount(key)) c.classes[id][key] = was
+      else (c.classes[id].factors as Record<string, number>)[key] = was
+    }
+  })
   // Reverter para o padrão: every value as the game has it now (the version saved in the game), so a Salvar no game
   // right after it has nothing to write
   const revertDraft = () => { clearUndo(); putDraft(saved.config) }
@@ -692,11 +730,31 @@ export function ChickenPatio() {
     setStatus(null)
     try {
       const next = await saveChickenConfig(draft)
+      setLocalTuning("chicken", undefined)
       setSaved(next)
-      setDraft(next.config)
-      writeDraft(null)
       clearUndo()
       setStatus({ kind: "info", text: "Salvo. Todas as telas com a galinha já usam esta versão." })
+    } catch (error) {
+      setStatus({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar." })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Versões (admin): an older saved version comes back as the game's, asking first like Salvar no game
+  const [listVersions] = useState(() => chickenConfigVersions)
+  const restoreVersion = async (id: number) => {
+    const older = await chickenConfigVersion(id)
+    const seen = (c: ChickenConfig) => { const n = normalizeChickenConfig(c); return { ...n, frames: effectiveFrames(n.frames) } }
+    if (!(await confirmSave(diffValues(seen(saved.config), seen(older), chickenChangeLabel), "Traz esta versão de volta como a configuração central: vale na hora para todo mundo."))) return
+    setSaving(true)
+    setStatus(null)
+    try {
+      const next = await saveChickenConfig(older)
+      setLocalTuning("chicken", undefined)
+      setSaved(next)
+      clearUndo()
+      setStatus({ kind: "info", text: "Versão de volta no game." })
     } catch (error) {
       setStatus({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar." })
     } finally {
@@ -783,23 +841,26 @@ export function ChickenPatio() {
         <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
-      <label className="flex items-center justify-between gap-3 text-xs"><span>Câmera</span>
+      <LockedFieldset className="flex flex-col gap-field">
+      <label className="flex items-center justify-between gap-3 text-xs"><span className={cn("flex items-center gap-1", pqReset("camera").changed && "text-amber-300")}>{pqReset("camera").changed && <ResetArrow label="Câmera" onReset={pqReset("camera").onReset} />}Câmera</span>
         <StepSelect aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
           {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </StepSelect>
       </label>
-      <PqRange label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
-      <PqRange label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
-      <PqRange label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
-      <PqRange label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
-      <PqRange label="Mira parada volta para o movimento" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou" />
-      <PqRange label="Mouse parado devolve a mira ao teclado" unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : "0 (nunca)")} hint="Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse" />
-      <PqRange label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
-      <PqRange label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
-      <PqRange label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
+      <PqRange {...pqReset("deadband")} label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
+      <PqRange {...pqReset("lag")} label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
+      <PqRange {...pqReset("lookAhead")} label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
+      <PqRange {...pqReset("lookAheadSpeed")} label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
+      <PqRange {...pqReset("aimRelease")} label="Mira parada volta para o movimento" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou" />
+      <PqRange {...pqReset("keysAimRelease")} label="Mouse parado devolve a mira ao teclado" unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : "0 (nunca)")} hint="Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse" />
+      <PqRange {...pqReset("reticleDist")} label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
+      <PqRange {...pqReset("jumpShake")} label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
+      <PqRange {...pqReset("superJumpShake")} label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
       {/* the camera's own fields (Ajustes keeps its own: Notas no ritmo, tambores, Debug) */}
-      <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultCamera(pq)} className="justify-end"
+      <SaveToGameButton part="camera" save={() => saveDefaultCamera(pq)} className="justify-end"
+        patio={patioSaveOf("camera", parquinhoDefaultsFile(DEFAULT_PARQUINHO), parquinhoDefaultsFile(pq))}
         onRevert={() => { const next = { ...DEFAULT_PARQUINHO, debug: pq.debug, quantize: pq.quantize, ammoAround: pq.ammoAround, ammoHud: pq.ammoHud }; setPq(next); saveParquinho(next) }} />
+      </LockedFieldset>
       </div>
     </FloatingPanel>
   )
@@ -1023,7 +1084,7 @@ export function ChickenPatio() {
               <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Na mira</span><input type="checkbox" checked={pq.ammoHud} onChange={e => setPqValue("ammoHud", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
             </div>
             <label className="flex items-center justify-between gap-3 text-xs" title="A linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas"><span>Debug</span><input type="checkbox" checked={pq.debug} onChange={e => setPqValue("debug", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
-            <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultTuning(pq)} className="justify-end"
+            <SaveToGameButton part="camera" save={() => saveDefaultTuning(pq)} className="justify-end"
               onRevert={() => setPq(prev => { const next = { ...prev, debug: DEFAULT_PARQUINHO.debug, quantize: DEFAULT_PARQUINHO.quantize, ammoAround: DEFAULT_PARQUINHO.ammoAround, ammoHud: DEFAULT_PARQUINHO.ammoHud }; saveParquinho(next); return next })} />
           </div>
         </FloatingPanel>
@@ -1077,13 +1138,14 @@ export function ChickenPatio() {
                 <span key={k} title={k === "chick" ? "Kids (e os pintinhos que seguem a galinha)" : undefined} className={cn(k === "chi" && "text-left", k === myClass && "font-bold text-white")}>{k === "chi" ? "Chi" : k === "chick" ? "Kids" : CLASS_NAME[k]}</span>
               ))}
             </div>
+            <LockedFieldset>
             <Group title="Visual" open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
               <button type="button" onClick={() => setVestOpen(true)} className="h-8 justify-self-start rounded-md border border-white/20 px-3 hover:border-primary">Abrir o vestiário (raças e partes)</button>
-              {CHICKEN_PARAM_META.filter(p => p.group === "Visual").map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} />)}
+              {CHICKEN_PARAM_META.filter(p => p.group === "Visual").map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} onResetRow={resetRow} />)}
             </Group>
             {CHICKEN_PARAM_GROUPS.filter(g => g !== "Visual").map(g => (
               <Group key={g} title={g} open={!!openGroups[g]} onToggle={v => setOpenGroups(o => ({ ...o, [g]: v }))}>
-                {CHICKEN_PARAM_META.filter(p => p.group === g).map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} />)}
+                {CHICKEN_PARAM_META.filter(p => p.group === g).map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} onResetRow={resetRow} />)}
               </Group>
             ))}
             {/* Reverter para o padrão: every value (Chi, Pig, Ken, Kids, the look and the hit-areas) as the code has it;
@@ -1091,10 +1153,13 @@ export function ChickenPatio() {
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 px-4 py-3">
               {status && <span role="status" className={cn("min-w-0 text-[11px]", status.kind === "error" ? "text-red-300" : "text-[#8a9a8a]")}>{status.text}</span>}
               <RevertToDefaultButton onRevert={revertDraft} disabled={!dirty} />
+              {isAdmin && <VersionsButton list={listVersions} restore={restoreVersion} disabled={saving} onDone={(text, error) => { if (error) setStatus({ kind: "error", text }) }} />}
+              <SaveToPatioButton patio={patioSaveOf("chicken", normalizeChickenConfig(saved.config), normalizeChickenConfig(draft))} disabled={saving} />
               {isAdmin && (
                 <button type="button" disabled={!dirty || saving} onClick={() => void save()} title="Grava a configuração central da galinha: vale na hora para todas as telas e para todo mundo" className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50">{saving ? "Salvando…" : "Salvar no game"}</button>
               )}
             </div>
+            </LockedFieldset>
           </div>
         </FloatingPanel>
       )}
@@ -1133,13 +1198,16 @@ function chickenChangeLabel([part, a, b, c, d]: string[]) {
 const ROW = "grid grid-cols-[minmax(0,1fr)_40px_40px_40px] items-center gap-2"
 const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken", chick: "Kids" }
 
-function ParamRow({ meta, draft, saved, onChange, onClass }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void }) {
+function ParamRow({ meta, draft, saved, onChange, onClass, onResetRow }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void; onResetRow: (key: ChickenParamKey) => void }) {
   const value = draft.params[meta.key] ?? defaultChickenConfig().params[meta.key]
   const changed = value !== (saved.params[meta.key] ?? defaultChickenConfig().params[meta.key])
+  // the row (the chicken's value and Pig's, Ken's and the Kids' cells) off the game's: the small reset in front
+  const rowChanged = changed || CLASS_IDS.some(id => classValue(draft, id, meta.key) !== classValue(saved, id, meta.key))
+  const arrow = rowChanged && <ResetArrow label={meta.label} onReset={() => onResetRow(meta.key)} />
   if (meta.type === "bool") {
     return (
       <label className={ROW} title={meta.hint}>
-        <span className={cn("flex items-center justify-between gap-3", changed && "text-amber-300")}><CombinationLabel meta={meta} /><input type="checkbox" checked={!!value} onChange={e => onChange(meta.key, e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></span>
+        <span className={cn("flex items-center justify-between gap-3", changed && "text-amber-300")}><span className="flex min-w-0 items-center gap-1">{arrow}<CombinationLabel meta={meta} /></span><input type="checkbox" checked={!!value} onChange={e => onChange(meta.key, e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></span>
       </label>
     )
   }
@@ -1147,7 +1215,7 @@ function ParamRow({ meta, draft, saved, onChange, onClass }: { meta: ChickenPara
     return (
       <label className={ROW}>
         <span className="flex min-w-0 items-center justify-between gap-3">
-          <span className={cn("min-w-0", changed && "text-amber-300")}><CombinationLabel meta={meta} /></span>
+          <span className={cn("flex min-w-0 items-center gap-1", changed && "text-amber-300")}>{arrow}<CombinationLabel meta={meta} /></span>
           <StepSelect value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
             <option value="">sem som</option>
             <option value="all">sorteio</option>
@@ -1161,11 +1229,18 @@ function ParamRow({ meta, draft, saved, onChange, onClass }: { meta: ChickenPara
   return (
     <div className={ROW}>
       <PatioRange label={<CombinationLabel meta={meta} />} name={meta.label} min={meta.min} max={meta.max} step={meta.step}
-        value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed}
-        onChange={value => onChange(meta.key, value)} onReset={() => onChange(meta.key, saved.params[meta.key])} />
+        value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed} resettable={rowChanged}
+        onChange={value => onChange(meta.key, value)} onReset={() => onResetRow(meta.key)} />
       {CLASS_IDS.map(id => <ClassCell key={id} id={id} meta={meta} draft={draft} saved={saved} onClass={onClass} />)}
     </div>
   )
+}
+
+// a class's value of a param in a configuration: its count or its factor (undefined: the class has none for it)
+function classValue(c: ChickenConfig, id: ClassId, key: ChickenParamKey): number | undefined {
+  const cls = c.classes?.[id] ?? defaultClasses()[id]
+  if (isClassCount(key)) return cls[key] ?? defaultClasses()[id][key]
+  return CLASS_FACTOR_KEYS.includes(key as (typeof CLASS_FACTOR_KEYS)[number]) ? cls.factors[key as (typeof CLASS_FACTOR_KEYS)[number]] : undefined
 }
 
 // Pig's or Ken's cell: a knob with the factor over the chicken's value; the counts (the jumps in the air, the
@@ -1192,7 +1267,7 @@ function ClassCell({ id, meta, draft, saved, onClass }: { id: ClassId; meta: Chi
   )
 }
 
-function PqRange({ label, unit, min, max, step, value, onChange, hint, format }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string; format?: (v: number) => string }) {
-  return <PatioRange label={label} min={min} max={max} step={step} value={value} onChange={onChange} hint={hint}
+function PqRange({ label, unit, min, max, step, value, onChange, hint, format, changed, onReset }: { label: string; unit: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void; hint?: string; format?: (v: number) => string; changed?: boolean; onReset?: () => void }) {
+  return <PatioRange label={label} min={min} max={max} step={step} value={value} onChange={onChange} hint={hint} changed={changed} onReset={onReset}
     display={format ? format(value) : `${value}${unit ? ` ${unit}` : ""}`} />
 }

@@ -6,6 +6,7 @@
 // into standby (lib/pigchicken/scale-params.ts). hitboxes: on or off. stageDebug: the fases de notas' live numbers in a
 // corner of the screen (on or off).
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
+import { liveDefault } from '../game-defaults'
 
 export type PatioLayers = { backdrop: number; zones: number; scale: number; scaleSize: number; scaleFade: number; scaleLines: number; scaleKeep: boolean; hitboxes: boolean; stageDebug: boolean; grid: number }
 
@@ -30,7 +31,7 @@ function readLayers(raw: unknown, d: PatioLayers): PatioLayers | undefined {
   }
 }
 
-export const LAYERS_DEFAULT: PatioLayers = readLayers(DEFAULTS_FILE.layers, CODE_LAYERS) ?? CODE_LAYERS
+export const LAYERS_DEFAULT: PatioLayers = liveDefault('layers', DEFAULTS_FILE.layers, raw => readLayers(raw, CODE_LAYERS) ?? { ...CODE_LAYERS })
 export const normalizePatioLayers = (raw: unknown) => readLayers(raw, LAYERS_DEFAULT)
 
 export const sameLayers = (a: PatioLayers, b: PatioLayers) => (Object.keys(LAYERS_DEFAULT) as (keyof PatioLayers)[]).every(k => a[k] === b[k])

@@ -7,7 +7,7 @@
 import { WORLD_GROUND_Y, WORLD_TOP } from './world'
 import { INVENTORY_MAX, INVENTORY_MIN } from './inventory'
 import { normalizeSceneEdges, normalizeSceneZones, type SceneEdges, type SceneZones } from './sound-zones'
-import { normalizePatioLayers, type PatioLayers } from './patio-layers'
+import { LAYERS_DEFAULT, normalizePatioLayers, type PatioLayers } from './patio-layers'
 import { normalizeSky, type SkyParams } from './sky'
 import { MOUNTAINS_DEFAULT, normalizeMountains, type MountainParams } from './mountains'
 import { normalizeClouds, type CloudParams } from './clouds'
@@ -15,9 +15,11 @@ import { normalizeForest, type ForestParams } from './forest'
 import { normalizeSkyline, type SkylineParams } from './skyline'
 import { normalizeSnowfall, type SnowfallParams } from './snowfall'
 import { normalizeAurora, type AuroraParams } from './aurora'
-import { normalizeMineGrid, type MineGridParams } from './mine-grid'
+import { defaultMineGrid, normalizeMineGrid, type MineGridParams } from './mine-grid'
 import { ITEM_GLOW_OFF, normalizeItemGlow, type ItemGlow } from './item-glow'
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
+import { liveDefault } from '../game-defaults'
+import { deepDiff, normalizePatioTuning, type PatioTuning } from './patio-tuning'
 
 // sceneZones: the scenes' own music changed in this Pátio (the "Zonas sonoras" layer), by scene number
 // sceneEdges: the limits between the scenes' zones moved in this Pátio (world x, by scene number)
@@ -35,7 +37,10 @@ import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
 // zoom: how far the camera may zoom here (Configurações do Pátio → Zoom): min, the farthest out (0: the whole Pátio
 // fits the screen); max, the closest in. Without it, PATIO_ZOOM's min and max
 // itemGlow: the light over the items on the floor (lib/pigchicken/item-glow.ts); without it, off
-export type PatioSettings = { screens?: number; height?: number; ground?: number; inventory?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; layers?: PatioLayers; sky?: SkyParams; mountains?: MountainParams; forest?: ForestParams; skyline?: SkylineParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; temple?: boolean; sceneMusic?: boolean; mineGrid?: MineGridParams; zoom?: PatioZoom; itemGlow?: ItemGlow }
+// tuning: what this Pátio personalized of Câmera de Mira, Volume, Itens, Escalas and Personagem ("Salvar no Pátio",
+// lib/pigchicken/patio-tuning.ts), only the values that differ from the game's default
+// locked: Lock, whoever may not edit the Pátio changes none of its panels (characters, items, scales, camera, layers, volumes)
+export type PatioSettings = { screens?: number; height?: number; ground?: number; inventory?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; layers?: PatioLayers; sky?: SkyParams; mountains?: MountainParams; forest?: ForestParams; skyline?: SkylineParams; clouds?: CloudParams; snowfall?: SnowfallParams; aurora?: AuroraParams; temple?: boolean; sceneMusic?: boolean; mineGrid?: MineGridParams; zoom?: PatioZoom; itemGlow?: ItemGlow; tuning?: PatioTuning; locked?: boolean }
 
 export const PATIO_SCREENS = { min: 1, max: 8, step: 1 } as const
 export const PATIO_HEIGHT = { min: 400, max: 8000, step: 10, default: WORLD_GROUND_Y - WORLD_TOP } as const
@@ -52,7 +57,7 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
 export function normalizePatioSettings(raw: unknown): PatioSettings | undefined {
   if (!raw || typeof raw !== 'object') return undefined
-  const r = raw as { screens?: unknown; height?: unknown; ground?: unknown; inventory?: unknown; sceneZones?: unknown; sceneEdges?: unknown; layers?: unknown; sky?: unknown; mountains?: unknown; forest?: unknown; skyline?: unknown; clouds?: unknown; snowfall?: unknown; aurora?: unknown; temple?: unknown; sceneMusic?: unknown; mineGrid?: unknown; zoom?: unknown; itemGlow?: unknown }
+  const r = raw as { screens?: unknown; height?: unknown; ground?: unknown; inventory?: unknown; sceneZones?: unknown; sceneEdges?: unknown; layers?: unknown; sky?: unknown; mountains?: unknown; forest?: unknown; skyline?: unknown; clouds?: unknown; snowfall?: unknown; aurora?: unknown; temple?: unknown; sceneMusic?: unknown; mineGrid?: unknown; zoom?: unknown; itemGlow?: unknown; tuning?: unknown; locked?: unknown }
   const out: PatioSettings = {}
   if (typeof r.screens === 'number' && Number.isFinite(r.screens)) out.screens = Math.round(clamp(r.screens, PATIO_SCREENS.min, PATIO_SCREENS.max))
   if (typeof r.height === 'number' && Number.isFinite(r.height)) out.height = Math.round(clamp(r.height, PATIO_HEIGHT.min, PATIO_HEIGHT.max))
@@ -89,7 +94,28 @@ export function normalizePatioSettings(raw: unknown): PatioSettings | undefined 
   if (zoom) out.zoom = zoom
   const itemGlow = normalizeItemGlow(r.itemGlow)
   if (itemGlow) out.itemGlow = itemGlow
+  const tuning = normalizePatioTuning(r.tuning)
+  if (tuning) out.tuning = tuning
+  if (r.locked === true) out.locked = true
   return Object.keys(out).length ? out : undefined
+}
+
+/** The settings as a Pátio keeps them (database, this browser's copy): Camadas and Grade de blocos only with the
+ *  values that differ from the game's default, so the others follow it the next time the Pátio is read (reading
+ *  fills them in with the default of then). The grid keeps Ligar. */
+export function compactPatioSettings(settings: PatioSettings | undefined): PatioSettings | undefined {
+  if (!settings || (!settings.layers && !settings.mineGrid)) return settings
+  const out = { ...settings }
+  if (settings.layers) {
+    const layers = deepDiff(LAYERS_DEFAULT, settings.layers) as PatioLayers | undefined
+    if (layers) out.layers = layers
+    else delete out.layers
+  }
+  if (settings.mineGrid) {
+    const { on, ...rest } = settings.mineGrid
+    out.mineGrid = { ...(deepDiff(defaultMineGrid(), { ...rest, on: false }) as object | undefined), on } as MineGridParams
+  }
+  return out
 }
 
 // a zoom range: min 0 (or below the floor) is the whole Pátio; min never passes max
@@ -149,7 +175,7 @@ export function patioSettingsOver(raw: unknown): PatioSettings {
   const s = (normalizePatioSettings(raw) ?? {}) as Record<string, unknown>
   return Object.fromEntries(PATIO_DEFAULT_KEYS.filter(k => s[k] !== undefined).map(k => [k, s[k]])) as PatioSettings
 }
-export const DEFAULT_PATIO_SETTINGS: PatioSettings = patioSettingsOver(DEFAULTS_FILE.settings)
+export const DEFAULT_PATIO_SETTINGS: PatioSettings = liveDefault('settings', DEFAULTS_FILE.settings, patioSettingsOver)
 /** Reverter para o padrão (Configurações do Pátio): every field the panel edits (PATIO_DEFAULT_KEYS) as a new empty
  *  Pátio gets it, the width `screens`; the rest of the Pátio's settings (zones, layers, Grade de blocos) stay. */
 export function patioSettingsAtDefault(settings: PatioSettings | undefined, screens: number): PatioSettings {

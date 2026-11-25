@@ -15,7 +15,10 @@ import { INSTRUMENT_SCALES, INSTRUMENT_SCALE_IDS, type InstrumentScaleId } from 
 import { DEFAULT_KIT, saveDrumKit } from "@/lib/pigchicken/drum-kit"
 import { DrumKitEditor } from "@/components/pigchicken/drum-kit-editor"
 import { ScalePreview } from "@/components/pigchicken/scale-preview"
-import { DEFAULT_SCALES, SCALE_PARAM_GROUPS, SCALE_PARAM_META, saveScaleParams, scaleParamApplies, scaleParams, subscribeHeldScale, subscribeScaleParams, type ScaleParams } from "@/lib/pigchicken/scale-params"
+import { DEFAULT_SCALES, SCALE_PARAM_GROUPS, SCALE_PARAM_META, saveScaleParams, scaleParamApplies, scaleParams, scalesDefaultsFile, scalesTuning, subscribeHeldScale, subscribeScaleParams, type ScaleParams } from "@/lib/pigchicken/scale-params"
+import { patioSaveOf, tuningLocked } from "@/lib/pigchicken/patio-tuning"
+import { LockedFieldset } from "@/components/pigchicken/tuning-lock"
+import { useTuningVersion } from "@/hooks/use-game-defaults"
 
 export function ScalesPanel({ onClose }: { onClose: () => void }) {
   const [scales, setScales] = useState<Record<InstrumentScaleId, ScaleParams>>(DEFAULT_SCALES)
@@ -26,8 +29,11 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
     return subscribeScaleParams(setScales)
   }, [])
   useEffect(() => subscribeHeldScale(id => { if (id) setSel(id) }), [])
+  // re-render when the open Pátio's values or who may save into it change
+  useTuningVersion()
   const sc = scales[sel], base = DEFAULT_SCALES[sel]
   const update = (fn: (p: ScaleParams) => void) => {
+    if (tuningLocked()) return
     const next = structuredClone(scales)
     fn(next[sel])
     saveScaleParams(next)
@@ -46,6 +52,7 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
       {/* the scale's drawing, above the numbers and out of their scroll */}
       {sel !== "drums" && <ScalePreview scale={sel} params={sc} className="max-h-[340px] min-h-[200px] w-full shrink-0 basis-1/2 touch-none border-b border-white/10 bg-black/30" />}
       <div className="min-h-0 flex-1 overflow-y-auto">
+      <LockedFieldset>
         {/* the Bateria's setup: where each piece sits and its shortcuts */}
         {sel === "drums" && (
           <details open={open.Kit !== false} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, Kit: v })) }} className="border-b border-white/10">
@@ -70,8 +77,11 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
         ))}
         {/* admins: every scale's current numbers become the game's default (data/pigchicken/default-scales.json) */}
         {/* Reverter para o padrão: every scale (and the Bateria's kit), not only the one shown */}
-        <SaveToGameButton path="data/pigchicken/default-scales.json" save={() => saveDefaultScales(scales)} className="justify-end px-4 py-3"
+        {/* Salvar no Pátio: the numbers that differ from the game's become the open Pátio's (the Bateria's kit stays this browser's) */}
+        <SaveToGameButton part="scales" save={() => saveDefaultScales(scales)} className="justify-end px-4 py-3"
+          patio={patioSaveOf("scales", scalesTuning().game, scalesDefaultsFile(scales))}
           onRevert={() => { const next = structuredClone(DEFAULT_SCALES); saveScaleParams(next); setScales(next); saveDrumKit(structuredClone(DEFAULT_KIT)) }} />
+      </LockedFieldset>
       </div>
     </FloatingPanel>
   )

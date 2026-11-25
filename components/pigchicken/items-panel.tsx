@@ -10,7 +10,7 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { spinLabel } from "@/lib/pigchicken/note-orbit"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
@@ -18,6 +18,10 @@ import { AngleKnob, ComboWindowBar } from "./combo-controls"
 import { ChainEditor } from "./chain-editor"
 import { CagesView } from "./cages-view"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
+import { ResetArrow } from "@/components/ui/reset-arrow"
+import { patioSaveOf, tuningLocked } from "@/lib/pigchicken/patio-tuning"
+import { LockedFieldset } from "@/components/pigchicken/tuning-lock"
+import { useTuningVersion } from "@/hooks/use-game-defaults"
 import { saveDefaultItems } from "@/lib/admin/game-defaults-client"
 import { ItemPointsEditor } from "./item-points-editor"
 import { StaffPoseEditor } from "./staff-pose-editor"
@@ -93,6 +97,11 @@ const SCOPE_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS]
 // a consumable's doses are the magazine's number
 const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", unit: "", group: "Efeito", hint: "Cada Atirar usa uma; 0 = nunca acaba" }
 
+// a field's name: amber with the small reset in front while it is off the game's default
+function Named({ label, changed, onReset }: { label: string; changed: boolean; onReset: () => void }) {
+  return <span className={cn("flex min-w-0 items-center gap-1", changed && "text-amber-300")}>{changed && <ResetArrow label={label} onReset={onReset} />}{label}</span>
+}
+
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   // opens on the item the main player holds; empty-handed, on the Bicada (what she attacks with then)
@@ -107,6 +116,8 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   // Pontos: one version per class (Chi, Pig, Ken), on the class of the main player's body
   const [pcls, setPcls] = useState<PointClass>(currentPlayerClass)
   useEffect(() => subscribePlayerClass(setPcls), [])
+  // re-render when the open Pátio's values or who may save into it change
+  useTuningVersion()
   const it = items[sel], base = DEFAULT_ITEMS[sel]
   const pit = classItem(it, pcls), pbase = classItem(base, pcls)
   // the Gaiolas are one entry of the dropdown: the six models at once (sel is then any of them)
@@ -114,6 +125,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
   // items held at the hand (sports tools, consumables, a grenade charged in the hand) keep the hand's own pose
   const handHeld = it.reticle === "grenade" && it.fireMode === "charge"
   const edit = (fn: (all: Record<ItemId, ItemDef>) => void) => {
+    if (tuningLocked()) return
     const next = structuredClone(items)
     fn(next)
     saveItems(next)
@@ -154,6 +166,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
         <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
+      <LockedFieldset>
         {cages ? <CagesView items={items} onChange={(id, souls) => edit(all => { all[id].cageSouls = souls })} /> : ITEM_PARAM_GROUPS.filter(g => g !== "Gaiola" && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || ((isStaff(it) || sel === "chainBlow" || sel === "tailBlow") && !it.returnThrow && !it.grapple)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Gancho" || it.grapple) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it)) && (g !== "Luneta" || SCOPE_IDS.includes(sel))).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g === "Golpe" && isStaff(it) ? "Golpe rápido" : g}</summary>
@@ -161,47 +174,47 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Disparo" && (
                 <>
                   <label className="flex items-center justify-between gap-3">
-                    <span>Modo de disparo</span>
+                    <Named label="Modo de disparo" changed={it.fireMode !== base.fireMode} onReset={() => update(d => { d.fireMode = base.fireMode })} />
                     <StepSelect value={it.fireMode} onChange={e => { const v = e.target.value as FireMode; update(d => { d.fireMode = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {FIRE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </StepSelect>
                   </label>
-                  {it.fireMode === "burst" && <label className="flex items-center justify-between gap-3" title="Soltar Atirar interrompe a rajada; desligado, um aperto dispara a rajada inteira"><span>Rajada só enquanto segura Atirar</span><input type="checkbox" checked={it.burstHold} onChange={e => { const v = e.target.checked; update(d => { d.burstHold = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
+                  {it.fireMode === "burst" && <label className="flex items-center justify-between gap-3" title="Soltar Atirar interrompe a rajada; desligado, um aperto dispara a rajada inteira"><Named label="Rajada só enquanto segura Atirar" changed={it.burstHold !== base.burstHold} onReset={() => update(d => { d.burstHold = base.burstHold })} /><input type="checkbox" checked={it.burstHold} onChange={e => { const v = e.target.checked; update(d => { d.burstHold = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
                   <label className="flex items-center justify-between gap-3">
-                    <span>Caminho do projétil</span>
+                    <Named label="Caminho do projétil" changed={it.pathShow !== base.pathShow} onReset={() => update(d => { d.pathShow = base.pathShow })} />
                     <StepSelect value={it.pathShow} onChange={e => { const v = e.target.value as PathShow; update(d => { d.pathShow = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {PATH_SHOWS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </StepSelect>
                   </label>
                   {(it.reticle === "impact" || it.reticle === "grenade") && (
                     <label className="flex items-center justify-between gap-3">
-                      <span>Onde cai (círculo do dano)</span>
+                      <Named label="Onde cai (círculo do dano)" changed={it.landShow !== base.landShow} onReset={() => update(d => { d.landShow = base.landShow })} />
                       <StepSelect value={it.landShow} onChange={e => { const v = e.target.value as PathShow; update(d => { d.landShow = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                         {PATH_SHOWS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </StepSelect>
                     </label>
                   )}
-                  <label className="flex items-center justify-between gap-3"><span>Tiro instantâneo</span><input type="checkbox" checked={it.hitscan} onChange={e => { const v = e.target.checked; update(d => { d.hitscan = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3"><span>Atira durante o slide</span><input type="checkbox" checked={it.slideFire} onChange={e => { const v = e.target.checked; update(d => { d.slideFire = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label="Tiro instantâneo" changed={it.hitscan !== base.hitscan} onReset={() => update(d => { d.hitscan = base.hitscan })} /><input type="checkbox" checked={it.hitscan} onChange={e => { const v = e.target.checked; update(d => { d.hitscan = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label="Atira durante o slide" changed={it.slideFire !== base.slideFire} onReset={() => update(d => { d.slideFire = base.slideFire })} /><input type="checkbox" checked={it.slideFire} onChange={e => { const v = e.target.checked; update(d => { d.slideFire = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                 </>
               )}
-              {g === "Luneta" && <label className="flex items-center justify-between gap-3" title="Segurar Atirar mira pela luneta: a câmera avança e se afasta, a retícula vai mais longe e a lupa aparece na ponta da mira"><span>Mirar com luneta</span><input type="checkbox" checked={it.scope} onChange={e => { const v = e.target.checked; update(d => { d.scope = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
+              {g === "Luneta" && <label className="flex items-center justify-between gap-3" title="Segurar Atirar mira pela luneta: a câmera avança e se afasta, a retícula vai mais longe e a lupa aparece na ponta da mira"><Named label="Mirar com luneta" changed={it.scope !== base.scope} onReset={() => update(d => { d.scope = base.scope })} /><input type="checkbox" checked={it.scope} onChange={e => { const v = e.target.checked; update(d => { d.scope = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
               {g === "Munição" && (
                 <>
-                  <label className="flex items-center justify-between gap-3" title="Ao descarregar, recarrega tudo sozinho (no tempo da Recarga)"><span>Recarrega sozinho ao descarregar</span><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  {!it.meleeOnly && <label className="flex items-center justify-between gap-3"><span>Recarrega um tiro por vez</span><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
+                  <label className="flex items-center justify-between gap-3" title="Ao descarregar, recarrega tudo sozinho (no tempo da Recarga)"><Named label="Recarrega sozinho ao descarregar" changed={it.autoReload !== base.autoReload} onReset={() => update(d => { d.autoReload = base.autoReload })} /><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  {!it.meleeOnly && <label className="flex items-center justify-between gap-3"><Named label="Recarrega um tiro por vez" changed={it.shellReload !== base.shellReload} onReset={() => update(d => { d.shellReload = base.shellReload })} /><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
                 </>
               )}
               {g === "Música" && (
                 <>
                   <label className="flex items-center justify-between gap-3">
-                    <span>Som</span>
+                    <Named label="Som" changed={it.voice !== base.voice} onReset={() => update(d => { d.voice = base.voice })} />
                     <StepSelect value={it.voice} onChange={e => { const v = e.target.value as VoiceId; update(d => { d.voice = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {(Object.keys(VOICE_LABELS) as VoiceId[]).filter(v => v !== "hangSlap" && v !== "harpHarmonic").map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
                     </StepSelect>
                   </label>
                   <label className="flex items-center justify-between gap-3">
-                    <span>Notas de onde</span>
+                    <Named label="Notas de onde" changed={it.pitchSet !== base.pitchSet} onReset={() => update(d => { d.pitchSet = base.pitchSet })} />
                     <StepSelect value={it.pitchSet} onChange={e => { const v = e.target.value as ItemDef["pitchSet"]; update(d => { d.pitchSet = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       <option value="chord">Do acorde da hora</option>
                       <option value="scale">Da escala da zona</option>
@@ -225,29 +238,29 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                     ) : null}
                   </div>
                   <label className="flex items-center justify-between gap-3">
-                    <span>Arpejador</span>
+                    <Named label="Arpejador" changed={it.arp !== base.arp} onReset={() => update(d => { d.arp = base.arp })} />
                     <StepSelect value={it.arp} onChange={e => { const v = e.target.value as Arp; update(d => { d.arp = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {ARPS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                     </StepSelect>
                   </label>
-                  <label className="flex items-center justify-between gap-3"><span>No ritmo (quantizar)</span><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3"><span>Nota sustentada em feixe</span><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3"><span>Carga em glissando</span><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label="No ritmo (quantizar)" changed={it.quantize !== base.quantize} onReset={() => update(d => { d.quantize = base.quantize })} /><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label="Nota sustentada em feixe" changed={it.beam !== base.beam} onReset={() => update(d => { d.beam = base.beam })} /><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label="Carga em glissando" changed={it.gliss !== base.gliss} onReset={() => update(d => { d.gliss = base.gliss })} /><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3" title="Giro da mira: tremer a mira dentro da faixa entorta a nota. Ao longo da corda: afastar a mira dela sobe a nota, aproximar desce (nas Cordas soltas, é o glissando da corda)">
-                    <span>Tremolo: reage a</span>
+                    <Named label="Tremolo: reage a" changed={it.tremoloAxis !== base.tremoloAxis} onReset={() => update(d => { d.tremoloAxis = base.tremoloAxis })} />
                     <StepSelect value={it.tremoloAxis} onChange={e => { const v = e.target.value as TremoloAxis; update(d => { d.tremoloAxis = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {TREMOLO_AXES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                     </StepSelect>
                   </label>
                   {it.scales.includes("strings") && (
                     <label className="flex items-center justify-between gap-3" title="Cordas soltas com duas mãos (os dois analógicos ou dois dedos): apertando as duas juntas, a corda da mão da frente soa este tempo depois da corda da mão de trás, no andamento da música">
-                      <span>Atraso entre as mãos</span>
+                      <Named label="Atraso entre as mãos" changed={it.handDelay !== base.handDelay} onReset={() => update(d => { d.handDelay = base.handDelay })} />
                       <StepSelect value={it.handDelay} onChange={e => { const v = Number(e.target.value); update(d => { d.handDelay = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                         {HAND_DELAYS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                       </StepSelect>
                     </label>
                   )}
-                  <label className="flex items-center justify-between gap-3"><span>Sem trastes (tremolo livre)</span><input type="checkbox" checked={it.fretless} onChange={e => { const v = e.target.checked; update(d => { d.fretless = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label="Sem trastes (tremolo livre)" changed={it.fretless !== base.fretless} onReset={() => update(d => { d.fretless = base.fretless })} /><input type="checkbox" checked={it.fretless} onChange={e => { const v = e.target.checked; update(d => { d.fretless = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <PatioDualRange label="Volume pela distância" min={0} max={1} step={0.01} lo={it.volMin} hi={it.volMax} snap={VOLUME_SNAP}
                     display={it.volMin === it.volMax ? "sem variação" : `${Math.round(it.volMin * 100)}–${Math.round(it.volMax * 100)}%`}
                     changed={it.volMin !== DEFAULT_ITEMS[it.id].volMin || it.volMax !== DEFAULT_ITEMS[it.id].volMax}
@@ -268,13 +281,13 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Efeito" && (
                 <>
                   <label className="flex items-center justify-between gap-3">
-                    <span>Curva da arrancada</span>
+                    <Named label="Curva da arrancada" changed={it.effectCurve !== base.effectCurve} onReset={() => update(d => { d.effectCurve = base.effectCurve })} />
                     <StepSelect value={it.effectCurve} onChange={e => { const v = e.target.value as AccelCurve; update(d => { d.effectCurve = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {ACCEL_CURVES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </StepSelect>
                   </label>
                   <label className="flex items-center justify-between gap-3">
-                    <span>Estado (visual)</span>
+                    <Named label="Estado (visual)" changed={it.effectLook !== base.effectLook} onReset={() => update(d => { d.effectLook = base.effectLook })} />
                     <StepSelect value={it.effectLook} onChange={e => { const v = e.target.value as EffectLook; update(d => { d.effectLook = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                       {EFFECT_LOOKS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </StepSelect>
@@ -292,7 +305,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Pontos" && (isStaff(it) ? <StaffPoseEditor id={sel} item={pit} onChange={updatePoints} /> : <ItemPointsEditor id={sel} item={pit} base={pbase} onChange={updatePoints} />)}
               {g === "Golpe forte" && (
                 <label className="flex items-center justify-between gap-3" title="O golpe forte é sempre o mesmo movimento; segure Atirar para carregar e solte para bater">
-                  <span>Movimento</span>
+                  <Named label="Movimento" changed={it.heavyKind !== base.heavyKind} onReset={() => update(d => { d.heavyKind = base.heavyKind })} />
                   <StepSelect value={it.heavyKind} onChange={e => { const v = e.target.value as BlowKind; update(d => { d.heavyKind = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                     {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </StepSelect>
@@ -300,7 +313,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               {g === "Especial" && (
                 <label className="flex items-center justify-between gap-3" title="Trovão: um raio cai do céu em quem levou o golpe. Raio: arcos longos entre todos">
-                  <span>Efeito</span>
+                  <Named label="Efeito" changed={it.specialKind !== base.specialKind} onReset={() => update(d => { d.specialKind = base.specialKind })} />
                   <StepSelect value={it.specialKind} onChange={e => { const v = e.target.value as SpecialKind; update(d => { d.specialKind = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
                     {SPECIAL_KINDS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </StepSelect>
@@ -336,14 +349,14 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Rebate" && (
                 <>
                   <ChainEditor chain={it.rebateChain} changed={JSON.stringify(it.rebateChain) !== JSON.stringify(base.rebateChain)} onChange={fn => update(d => fn(d.rebateChain))} onReset={() => update(d => { d.rebateChain = structuredClone(base.rebateChain) })} />
-                  <label className="flex items-center justify-between gap-3" title="Um tok de madeira junto com a nota, como uma rebatida de verdade"><span>Som de tacada (tok)</span><input type="checkbox" checked={it.rebateTok} onChange={e => { const v = e.target.checked; update(d => { d.rebateTok = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3" title="Um tok de madeira junto com a nota, como uma rebatida de verdade"><Named label="Som de tacada (tok)" changed={it.rebateTok !== base.rebateTok} onReset={() => update(d => { d.rebateTok = base.rebateTok })} /><input type="checkbox" checked={it.rebateTok} onChange={e => { const v = e.target.checked; update(d => { d.rebateTok = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                 </>
               )}
               {g === "Golpe" && sel !== "peck" && (
-                <label className="flex items-center justify-between gap-3" title="Desligado: um golpe apertado durante o anterior espera ele terminar"><span>Golpe novo interrompe o anterior</span><input type="checkbox" checked={it.meleeInterrupt} onChange={e => { const v = e.target.checked; update(d => { d.meleeInterrupt = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                <label className="flex items-center justify-between gap-3" title="Desligado: um golpe apertado durante o anterior espera ele terminar"><Named label="Golpe novo interrompe o anterior" changed={it.meleeInterrupt !== base.meleeInterrupt} onReset={() => update(d => { d.meleeInterrupt = base.meleeInterrupt })} /><input type="checkbox" checked={it.meleeInterrupt} onChange={e => { const v = e.target.checked; update(d => { d.meleeInterrupt = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
               {g === "Golpe" && sel !== "peck" && (
-                <label className="flex items-center justify-between gap-3" title="Clique direito do mouse num ponto fora do alcance: anda até lá e golpeia ao chegar"><span>Clique direito: point and click</span><input type="checkbox" checked={it.pointClick} onChange={e => { const v = e.target.checked; update(d => { d.pointClick = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                <label className="flex items-center justify-between gap-3" title="Clique direito do mouse num ponto fora do alcance: anda até lá e golpeia ao chegar"><Named label="Clique direito: point and click" changed={it.pointClick !== base.pointClick} onReset={() => update(d => { d.pointClick = base.pointClick })} /><input type="checkbox" checked={it.pointClick} onChange={e => { const v = e.target.checked; update(d => { d.pointClick = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
               {g === "Golpe" && sel !== "peck" && (
                 <label className="flex items-center justify-between gap-3">
@@ -368,18 +381,21 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               })}
               </div>
               {g === "Hangdrum" && it.hangSpin > 0 && (
-                <label className="flex items-center justify-between gap-3" title="Desligado: a nota já nasce girando na bola"><span>Nota é disparada até a região da nota</span><input type="checkbox" checked={it.hangTravel} onChange={e => { const v = e.target.checked; update(d => { d.hangTravel = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                <label className="flex items-center justify-between gap-3" title="Desligado: a nota já nasce girando na bola"><Named label="Nota é disparada até a região da nota" changed={it.hangTravel !== base.hangTravel} onReset={() => update(d => { d.hangTravel = base.hangTravel })} /><input type="checkbox" checked={it.hangTravel} onChange={e => { const v = e.target.checked; update(d => { d.hangTravel = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
               {g === "Hangdrum" && (
-                <label className="flex items-center justify-between gap-3" title="Tocar uma bola que ainda soa corta a nota anterior dela; bolas diferentes soam juntas"><span>Cada nota interrompe a anterior</span><input type="checkbox" checked={it.hangChoke} onChange={e => { const v = e.target.checked; update(d => { d.hangChoke = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                <label className="flex items-center justify-between gap-3" title="Tocar uma bola que ainda soa corta a nota anterior dela; bolas diferentes soam juntas"><Named label="Cada nota interrompe a anterior" changed={it.hangChoke !== base.hangChoke} onReset={() => update(d => { d.hangChoke = base.hangChoke })} /><input type="checkbox" checked={it.hangChoke} onChange={e => { const v = e.target.checked; update(d => { d.hangChoke = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
             </div>
           </details>
         ))}
         {/* admins: every item's current numbers become the game's default (data/pigchicken/default-items.json) */}
         {/* Reverter para o padrão: every item (not only the one shown) as the game has it */}
-        <SaveToGameButton path="data/pigchicken/default-items.json" save={() => saveDefaultItems(items)} className="justify-end px-4 py-3"
+        {/* Salvar no Pátio: the numbers that differ from the game's become the open Pátio's */}
+        <SaveToGameButton part="items" save={() => saveDefaultItems(items)} className="justify-end px-4 py-3"
+          patio={patioSaveOf("items", itemsTuning().game, itemsDefaultsFile(items))}
           onRevert={() => edit(all => { for (const id of Object.keys(all) as ItemId[]) all[id] = structuredClone(DEFAULT_ITEMS[id]) })} />
+      </LockedFieldset>
       </div>
     </FloatingPanel>
   )

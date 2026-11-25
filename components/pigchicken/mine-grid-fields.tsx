@@ -16,9 +16,10 @@ import { MINE_ZONE_RHYTHM, mineZoneHas, mineZonePoolLabel, toggleMineZoneBeat, t
 import { BEATS, BEAT_GROUPS } from "@/lib/pigchicken/beats"
 import { MINE_ITEM_CHANCE, MINE_ITEM_GROUPS, MINE_ITEM_GROUP_CHANCE, MINE_ITEM_MAX, MINE_ITEM_WEIGHT, defaultMineItems, mineItemWeight, setMineItemWeight, type MineItemParams } from "@/lib/pigchicken/mine-item-params"
 import { DEFAULT_ITEMS } from "@/lib/pigchicken/items"
+import { ResetArrow } from "@/components/ui/reset-arrow"
+import { useGameDefaults } from "@/hooks/use-game-defaults"
+import { cn } from "@/lib/utils"
 
-// the game's defaults (data/pigchicken/default-patio.json → mineGrid): what each field's own reset goes back to
-const D = defaultMineGrid()
 const ROW = "flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3"
 // the seesaw's turn: where the blue grows from (the red comes from the other side)
 const TURN_LABELS: Record<string, string> = {
@@ -32,6 +33,11 @@ const MENU_ITEM = "cursor-pointer font-mono text-xs text-white focus:bg-white/10
 const TOP_BUTTON = "flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-md border px-1 hover:text-white disabled:opacity-40 disabled:hover:text-inherit"
 const TOP_ON = "border-[#ffd166] bg-[#ffd166]/15 text-[#ffd166]"
 const TOP_OFF = "border-white/15 bg-[#0b110e] enabled:hover:border-[#ffd166]"
+
+// a field's name: amber with the small reset in front while it is off the game's default
+function Named({ label, changed, onReset }: { label: string; changed: boolean; onReset: () => void }) {
+  return <span className={cn("flex min-w-0 items-center gap-1", changed && "text-amber-300")}>{changed && <ResetArrow label={label} onReset={onReset} />}{label}</span>
+}
 
 // the rhythms that go into the blocks' draw: "Todos" and each rhythm, by group, with a check on the chosen ones
 function RhythmPool({ zones, disabled, onChange }: { zones: MineZoneParams; disabled: boolean; onChange: (z: MineZoneParams) => void }) {
@@ -58,23 +64,24 @@ function RhythmPool({ zones, disabled, onChange }: { zones: MineZoneParams; disa
 
 // "Spawn de itens": how many blocks are born with items, how many each gets, and the chances of each group and item
 function ItemSpawnFields({ items, canToggle, onChange }: { items: MineItemParams; canToggle: boolean; onChange: (items: MineItemParams) => void }) {
+  const D = defaultMineGrid()
   const set = (p: Partial<MineItemParams>) => onChange({ ...items, ...p })
   return <>
     <PatioRange label="Blocos com itens" min={MINE_ITEM_CHANCE.min} max={MINE_ITEM_CHANCE.max} step={MINE_ITEM_CHANCE.step} value={items.chance} display={`${items.chance}%`}
-      onChange={v => set({ chance: v })} onReset={() => set({ chance: D.items.chance })}
+      onChange={v => set({ chance: v })} changed={items.chance !== D.items.chance} onReset={() => set({ chance: D.items.chance })}
       hint="Chance de cada bloco nascer com itens, numa plataforma em algum lugar do meio dele." />
     <PatioRange label="Itens por bloco" min={MINE_ITEM_MAX.min} max={MINE_ITEM_MAX.max} step={MINE_ITEM_MAX.step} value={items.max} display={`até ${items.max}`}
-      onChange={v => set({ max: v })} onReset={() => set({ max: D.items.max })} />
+      onChange={v => set({ max: v })} changed={items.max !== D.items.max} onReset={() => set({ max: D.items.max })} />
     {MINE_ITEM_GROUPS.map(g => <div key={g.id} className="grid gap-field">
       <PatioRange label={g.label} min={MINE_ITEM_GROUP_CHANCE.min} max={MINE_ITEM_GROUP_CHANCE.max} step={MINE_ITEM_GROUP_CHANCE.step} value={items.groups[g.id]} display={`${items.groups[g.id]}%`}
-        onChange={v => set({ groups: { ...items.groups, [g.id]: v } })} onReset={() => set({ groups: { ...items.groups, [g.id]: D.items.groups[g.id] } })}
+        onChange={v => set({ groups: { ...items.groups, [g.id]: v } })} changed={items.groups[g.id] !== D.items.groups[g.id]} onReset={() => set({ groups: { ...items.groups, [g.id]: D.items.groups[g.id] } })}
         hint="Chance de cada item vir deste grupo, em proporção aos outros grupos. Em 0 o grupo não sai." />
       <details className="rounded-md border border-white/10">
         <summary className="cursor-pointer px-3 py-2 text-white/70 hover:text-white">Itens de {g.label.toLowerCase()}</summary>
         <div className="grid gap-field px-2 pb-2">
           {g.items.map(id => { const w = mineItemWeight(items, id); return (
             <PatioRange key={id} label={DEFAULT_ITEMS[id].name} min={MINE_ITEM_WEIGHT.min} max={MINE_ITEM_WEIGHT.max} step={MINE_ITEM_WEIGHT.step} value={w} display={`${w}%`}
-              onChange={v => onChange(setMineItemWeight(items, id, v))} onReset={() => onChange(setMineItemWeight(items, id, mineItemWeight(D.items, id)))} />
+              onChange={v => onChange(setMineItemWeight(items, id, v))} changed={w !== mineItemWeight(D.items, id)} onReset={() => onChange(setMineItemWeight(items, id, mineItemWeight(D.items, id)))} />
           ) })}
         </div>
       </details>
@@ -89,7 +96,10 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
   grid: MineGridParams | undefined; canEdit: boolean; canToggle: boolean
   onChange: (grid: MineGridParams) => void; onReset?: () => void
 }) {
-  const g = grid ?? defaultMineGrid()
+  // the game's defaults (lib/game-defaults.ts → mineGrid): a field off them is amber with the small reset in front
+  useGameDefaults()
+  const D = defaultMineGrid()
+  const g = grid ?? D
   const set = (p: Partial<MineGridParams>) => onChange({ ...g, ...p })
   // the admin's debug: this browser's alone, gone with the page
   const debug = useSyncExternalStore(mineStore.subscribe, () => mineStore.debug, () => mineStore.debug)
@@ -100,9 +110,9 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
   const group = (title: string, children: React.ReactNode) => (
     <PatioDisclosure title={title} open={!!open[title]} onToggle={v => setOpen(o => ({ ...o, [title]: v }))}>{open[title] && <div className="grid gap-field px-4 pb-4">{children}</div>}</PatioDisclosure>
   )
-  const check = (label: string, title: string, checked: boolean, onCheck: (on: boolean) => void) => (
+  const check = (label: string, title: string, checked: boolean, onCheck: (on: boolean) => void, def?: boolean) => (
     <label className={ROW} title={title}>
-      <span>{label}</span>
+      <Named label={label} changed={def !== undefined && checked !== def} onReset={() => onCheck(!!def)} />
       <input type="checkbox" checked={checked} onChange={e => onCheck(e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
     </label>
   )
@@ -122,39 +132,39 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
       <fieldset disabled={!canEdit} className="m-0 min-w-0 border-0 p-0 disabled:opacity-60 [&:disabled_input]:cursor-default">
         {group("Blocos", <>
           <PatioRange label="Tamanho do bloco" min={MINE_CELL.min} max={MINE_CELL.max} step={MINE_CELL.step} value={g.cell} display={`${g.cell} u`}
-            onChange={v => set({ cell: v })} onReset={() => set({ cell: D.cell })} />
+            onChange={v => set({ cell: v })} changed={g.cell !== D.cell} onReset={() => set({ cell: D.cell })} />
           <PatioRange label="Vão entre blocos" min={MINE_GAP.min} max={MINE_GAP.max} step={MINE_GAP.step} value={g.gap} display={g.gap ? `${g.gap} u` : "sem vão"}
-            onChange={v => set({ gap: v })} onReset={() => set({ gap: D.gap })}
+            onChange={v => set({ gap: v })} changed={g.gap !== D.gap} onReset={() => set({ gap: D.gap })}
             hint="Com vão, cada bloco fechado é uma sala com quatro paredes e dá para andar entre os blocos. Sem vão, os blocos encostam e só há parede entre um bloco fechado e um aberto." />
           <PatioRange label="Cantos em octógono" min={MINE_CORNER.min} max={MINE_CORNER.max} step={MINE_CORNER.step} value={g.corner} display={g.corner ? `${g.corner}%` : "quadrado"}
-            onChange={v => set({ corner: v })} onReset={() => set({ corner: D.corner })}
+            onChange={v => set({ corner: v })} changed={g.corner !== D.corner} onReset={() => set({ corner: D.corner })}
             hint="Corta os quatro cantos de cada bloco. Em 100% o bloco é um octógono de lados iguais. O que sai do canto vira espaço entre os blocos." />
-          {check("Bloqueia passagem", "As paredes dos blocos fechados barram os bonecos. Desligado, a grade é só desenho.", g.pass, on => set({ pass: on }))}
+          {check("Bloqueia passagem", "As paredes dos blocos fechados barram os bonecos. Desligado, a grade é só desenho.", g.pass, on => set({ pass: on }), D.pass)}
           <PatioRange label="Opacidade das paredes" min={MINE_WALL_OPACITY.min} max={MINE_WALL_OPACITY.max} step={MINE_WALL_OPACITY.step} value={g.wallOpacity} display={`${g.wallOpacity}%`}
-            onChange={v => set({ wallOpacity: v })} onReset={() => set({ wallOpacity: D.wallOpacity })}
+            onChange={v => set({ wallOpacity: v })} changed={g.wallOpacity !== D.wallOpacity} onReset={() => set({ wallOpacity: D.wallOpacity })}
             hint="O quanto os blocos fechados cobrem o que está atrás e dentro deles. Abaixo de 100% dá para ver quem está do outro lado. A gangorra, a bandeira e a interrogação não mudam." />
         </>)}
         {group("Música e dano", <>
-          {check("Notas quicam nas paredes", "Ligado, as notas quicam nas paredes dos blocos fechados. Desligado, elas atravessam e contam ao entrar no bloco.", g.blockNotes, on => set({ blockNotes: on }))}
+          {check("Notas quicam nas paredes", "Ligado, as notas quicam nas paredes dos blocos fechados. Desligado, elas atravessam e contam ao entrar no bloco.", g.blockNotes, on => set({ blockNotes: on }), D.blockNotes)}
           <PatioRange label="Notas até a bandeira" min={MINE_NOTES.min} max={MINE_NOTES.max} step={MINE_NOTES.step} value={g.toFlag} display={`${g.toFlag}`}
-            onChange={v => set({ toFlag: v })} onReset={() => set({ toFlag: D.toFlag })} hint="Notas do lado aberto que levam um bloco do cinza até a bandeira." />
+            onChange={v => set({ toFlag: v })} changed={g.toFlag !== D.toFlag} onReset={() => set({ toFlag: D.toFlag })} hint="Notas do lado aberto que levam um bloco do cinza até a bandeira." />
           <PatioRange label="Notas até a dúvida" min={MINE_NOTES.min} max={MINE_NOTES.max} step={MINE_NOTES.step} value={g.toDoubt} display={`${g.toDoubt}`}
-            onChange={v => set({ toDoubt: v })} onReset={() => set({ toDoubt: D.toDoubt })} hint="Notas em cima de uma bandeira até ela virar interrogação." />
+            onChange={v => set({ toDoubt: v })} changed={g.toDoubt !== D.toDoubt} onReset={() => set({ toDoubt: D.toDoubt })} hint="Notas em cima de uma bandeira até ela virar interrogação." />
           <PatioRange label="Dano até liberar o bloco" min={MINE_DAMAGE.min} max={MINE_DAMAGE.max} step={MINE_DAMAGE.step} value={g.toOpen} display={g.toOpen ? `${g.toOpen}` : "não quebra"}
-            onChange={v => set({ toOpen: v })} onReset={() => set({ toOpen: D.toOpen })} hint="Dano de armas de fogo que leva um bloco do cinza até abrir." />
-          {check("Lado de dentro quebra paredes", "Ligado, os tiros, as explosões e os golpes de quem está do lado fechado também contam como dano nos blocos. Desligado, só o lado aberto quebra.", g.insideBreaks, on => set({ insideBreaks: on }))}
+            onChange={v => set({ toOpen: v })} changed={g.toOpen !== D.toOpen} onReset={() => set({ toOpen: D.toOpen })} hint="Dano de armas de fogo que leva um bloco do cinza até abrir." />
+          {check("Lado de dentro quebra paredes", "Ligado, os tiros, as explosões e os golpes de quem está do lado fechado também contam como dano nos blocos. Desligado, só o lado aberto quebra.", g.insideBreaks, on => set({ insideBreaks: on }), D.insideBreaks)}
           <label className={ROW}>
-            <span>Giro da gangorra</span>
+            <Named label="Giro da gangorra" changed={g.turn !== D.turn} onReset={() => set({ turn: D.turn })} />
             <StepSelect wrap="max-w-[60%]" aria-label="Giro da gangorra" value={String(g.turn)} onChange={e => set({ turn: (e.target.value === "random" || e.target.value === "first" ? e.target.value : Number(e.target.value)) as MineTurn })} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2">
               {[...MINE_TURNS, "random", "first"].map(t => <option key={t} value={t}>{TURN_LABELS[t]}</option>)}
             </StepSelect>
           </label>
         </>)}
         {group("Zonas", <>
-          {check("Blocos são zonas", "Cada bloco é uma Zona: o tom, a escala, o andamento e o baixo da cena onde ele está, com a percussão sorteada para ele.", g.zones.on, on => set({ zones: { ...g.zones, on } }))}
+          {check("Blocos são zonas", "Cada bloco é uma Zona: o tom, a escala, o andamento e o baixo da cena onde ele está, com a percussão sorteada para ele.", g.zones.on, on => set({ zones: { ...g.zones, on } }), D.zones.on)}
           {g.zones.on && <>
             <PatioRange label="Blocos com ritmo" min={MINE_ZONE_RHYTHM.min} max={MINE_ZONE_RHYTHM.max} step={MINE_ZONE_RHYTHM.step} value={g.zones.rhythm} display={`${g.zones.rhythm}%`}
-              onChange={v => set({ zones: { ...g.zones, rhythm: v } })} onReset={() => set({ zones: { ...g.zones, rhythm: D.zones.rhythm } })}
+              onChange={v => set({ zones: { ...g.zones, rhythm: v } })} changed={g.zones.rhythm !== D.zones.rhythm} onReset={() => set({ zones: { ...g.zones, rhythm: D.zones.rhythm } })}
               hint="Quantos blocos tocam um ritmo sorteado. Os outros ficam em silêncio." />
             <div className={ROW}>
               <span>Ritmos do sorteio</span>
@@ -168,14 +178,14 @@ export function MineGridFields({ grid, canEdit, canToggle, onChange, onReset }: 
         {group("Spawn de itens", <ItemSpawnFields items={g.items ?? defaultMineItems()} canToggle={canToggle && canEdit} onChange={items => set({ items })} />)}
         {group("Bombas", <>
           <PatioRange label="Chance de bomba por bloco" min={MINE_BOMBS.min} max={MINE_BOMBS.max} step={MINE_BOMBS.step} value={g.bombs} display={`${g.bombs}%`}
-            onChange={v => set({ bombs: v })} onReset={() => set({ bombs: D.bombs })} />
+            onChange={v => set({ bombs: v })} changed={g.bombs !== D.bombs} onReset={() => set({ bombs: D.bombs })} />
           <PatioRange label="Tempo do detonador" min={MINE_FUSE.min} max={MINE_FUSE.max} step={MINE_FUSE.step} value={g.fuse} display={`${g.fuse} s`}
-            onChange={v => set({ fuse: v })} onReset={() => set({ fuse: D.fuse })} />
+            onChange={v => set({ fuse: v })} changed={g.fuse !== D.fuse} onReset={() => set({ fuse: D.fuse })} />
           <PatioRange label="Bombas de quem nasce do lado fechado" min={MINE_START_BOMBS.min} max={MINE_START_BOMBS.max} step={MINE_START_BOMBS.step} value={g.startBombs} display={`${g.startBombs}`}
-            onChange={v => set({ startBombs: v })} onReset={() => set({ startBombs: D.startBombs })} />
+            onChange={v => set({ startBombs: v })} changed={g.startBombs !== D.startBombs} onReset={() => set({ startBombs: D.startBombs })} />
         </>)}
         {group("Cores", COLOR_ROWS.map(([key, label]) => <label key={key} className={ROW}>
-          <span>{label}</span>
+          <Named label={label} changed={g[key] !== D[key]} onReset={() => set({ [key]: D[key] })} />
           <input type="color" value={g[key]} onChange={e => set({ [key]: e.target.value })} onDoubleClick={() => set({ [key]: D[key] })} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
         </label>))}
         {admin && group("Debug", <>

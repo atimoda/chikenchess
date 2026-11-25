@@ -7,6 +7,7 @@
 import { defaultMineZones, normalizeMineZones, type MineZoneParams } from './mine-zone-params'
 import { defaultMineItems, normalizeMineItems, type MineItemParams } from './mine-item-params'
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
+import { liveDefault } from '../game-defaults'
 
 export type MineGridParams = {
   on: boolean
@@ -78,7 +79,8 @@ function readMineGrid(raw: unknown, d: MineGridParams): MineGridParams | undefin
 
 // the game's defaults: what the panel shows for a Pátio that saved no grid (a new one too), and Reverter para o
 // padrão. Always off: turning the grid on is each Pátio's
-const GAME_MINE_GRID: MineGridParams = { ...(readMineGrid((DEFAULTS_FILE as { mineGrid?: unknown }).mineGrid, codeMineGrid()) ?? codeMineGrid()), on: false }
+const GAME_MINE_GRID: MineGridParams = liveDefault('mineGrid', (DEFAULTS_FILE as { mineGrid?: unknown }).mineGrid,
+  raw => ({ ...(readMineGrid(raw, codeMineGrid()) ?? codeMineGrid()), on: false }))
 export const defaultMineGrid = (): MineGridParams => structuredClone(GAME_MINE_GRID)
 
 // what a Pátio saved (nothing saved: no grid at all)

@@ -7,6 +7,7 @@
 // applied) everything keeps working in this browser.
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
+import { visitPatioLobby } from "@/lib/pigchicken/patio-visits"
 import { keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type NewPatioKind, type PatioRecord } from "@/lib/pigchicken/patio-store"
 import {
   favoritePatioLobby, fetchDefaultPatio, fetchPatioLobby, isPatioConflict, isPatioOffline, isPatioServerMissing, patioErrorMessage,
@@ -124,6 +125,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
       if (!mine) markSaved(next.layout)
       setRemote(row)
       if (stale) setSave({ kind: "conflict", text: "Este Pátio foi salvo em outro lugar depois das suas mudanças neste navegador.", remote: row })
+      void visitPatioLobby(row.id).then(n => { if (n) setRemote(r => r && r.id === row.id ? { ...r, ...n } : r) })
       if (ctx.current.isAccount && !played.current.has(row.id)) { played.current.add(row.id); playedPatioLobby(row.id).then(() => fetchPatioLobby(row.id, row.revision)).then(r => { if (r && cur.current?.dbId === r.id) setRemote(r) }).catch(() => {}) }
     } catch (e) {
       showLocal()

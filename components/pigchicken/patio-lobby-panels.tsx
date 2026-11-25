@@ -164,7 +164,7 @@ export function PatioSavePanel({ patio, remote, save, canEdit, canRename, rename
         <PeopleRow label="Editaram" people={people.filter(p => p.roles.includes("Editou"))} onOpen={onPerson} />
         <PeopleRow label="Jogaram" people={people.filter(p => p.roles.includes("Jogou"))} onOpen={onPerson} />
         {!remote && !patioOnlineAvailable() && <p className="text-[10px] text-[#5f6f65]">Sem servidor agora.</p>}
-        {remote && <p className="text-[10px] text-[#5f6f65]">“Jogaram” conta só quem entrou com conta.</p>}
+        {remote?.visits != null && remote.anonPlayers != null && <p className="text-[10px] text-[#5f6f65]">{remote.visits} {remote.visits === 1 ? "visita" : "visitas"} · {remote.anonPlayers} {remote.anonPlayers === 1 ? "anônimo" : "anônimos"}</p>}
       </div>
 
       <div className={cn("flex flex-col gap-1 rounded-md border px-2 py-1.5 text-[11px] leading-relaxed", named || isDefault ? "border-primary/30 text-[#b9e3c6]" : "border-[#ffd166]/40 text-[#ffd166]")}>

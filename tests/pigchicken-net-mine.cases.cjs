@@ -26,7 +26,7 @@ function browser(pid, locals = ['p1']) {
     cache.set(file, mod)
     mod.filename = file; mod.paths = module.paths
     const original = mod.require.bind(mod)
-    mod.require = name => (name.startsWith('./') ? load(path.resolve(path.dirname(file), `${name}.ts`)) : original(name))
+    mod.require = name => (name.startsWith('.') && !name.endsWith('.json') ? load(path.resolve(path.dirname(file), `${name}.ts`)) : original(name))
     mod._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, file)
     return mod.exports
   }

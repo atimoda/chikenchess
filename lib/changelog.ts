@@ -7,8 +7,19 @@ const RECENT = [
   {
     version: '2.18.0',
     date: '25/11/2026',
-    title: 'Agarrar a parede ao apertar Cima; música da Zona com botão de ligar, fundo mais sutil e dinâmico e estilos lo-fi; notas giratórias no Hangdrum',
+    title: 'Ajustes do jogo salvos no servidor e por Pátio, com Lock; agarrar a parede ao apertar Cima; música da Zona com botão de ligar, fundo mais sutil e dinâmico e estilos lo-fi; notas giratórias no Hangdrum',
     groups: [
+      { title: 'Pátio: ajustes do jogo no servidor', items: [
+        'O Salvar no game de Câmera de Mira, Ajustes, Volume, Camadas, Configurações do Pátio, Grade de blocos, Itens, Controles, Escalas e Biblioteca de almas agora grava no servidor, como o Personagem já fazia: vale na hora para todo mundo, de qualquer endereço, sem precisar publicar o jogo.',
+        'Novo botão Versões (só admin), ao lado do Salvar no game de cada painel e do Personagem: lista as 50 últimas versões salvas e traz uma delas de volta, mostrando antes o que muda.',
+      ] },
+      { title: 'Pátio: ajustes de cada Pátio', items: [
+        'Novo botão Salvar no Pátio, à esquerda do Salvar no game, na Câmera de Mira, Volume, Camadas, Itens, Escalas e Personagem: guarda no Pátio aberto só os valores diferentes do padrão do jogo. Só funciona para quem pode editar o Pátio; o resto continua seguindo o padrão do jogo, mesmo quando ele muda.',
+        'Na Grade de blocos e nas Camadas, o Pátio também passa a guardar só o que difere do padrão: o resto acompanha o padrão do jogo da próxima vez que o Pátio abrir.',
+        'Cada valor diferente do padrão do jogo fica amarelo e ganha na frente uma setinha girando, que volta só aquele valor ao padrão. O Reverter para o padrão continua voltando o painel inteiro.',
+        'O que cada pessoa muda sem salvar fica só no navegador dela e só nos valores que ela mexeu. O volume Master continua sendo de cada um.',
+        'Lock, em Configurações do Pátio: travado, quem não pode editar o Pátio joga com os valores dele e não muda nada em Personagem, Itens, Escalas, Câmera de Mira, Camadas e volumes das camadas.',
+      ] },
       { title: 'Pátio: música da Zona', items: [
         'O primeiro controle do painel da Zona e da Zona da cena é agora um botão com uma nota musical, à esquerda do nome: aceso, a zona toca o som de fundo dela (batida, baixo e drone); apagado, fica em silêncio. Vem desligado, inclusive nas zonas que já existiam: para ouvir a zona é preciso ligar.',
         'Com a música desligada continuam valendo o tom, a escala e o andamento para os instrumentos, além de gravidade, tempo, raio-x e tags. Desligar corta o som na hora, com um efeitinho rápido de disco parando na vitrola. Ligar entra na próxima barra, com a batida chegando aos poucos.',
@@ -30,6 +41,10 @@ const RECENT = [
       ] },
       { title: 'Pátio: dropdowns dos painéis', items: [
         'O botão de próximo item ao lado dos dropdowns ficou grudado no dropdown, sem espaço entre os dois, e a seta dele agora aponta para baixo.',
+      ] },
+      { title: 'Pátio: visitas e anônimos', items: [
+        'O painel Salvar do Pátio mostra, abaixo das pessoas, quantas visitas o Pátio já teve e quantos players anônimos (sem conta) já entraram nele. Nada da pessoa é guardado: são só os dois números.',
+        'Cada entrada conta uma visita, com ou sem conta; voltar ao mesmo Pátio em menos de 30 minutos (ou recarregar a página) não conta de novo. Cada navegador sem conta conta como anônimo uma vez por Pátio.',
       ] },
       { title: 'Pátio: aviso de Pátio alheio', items: [
         'O aviso que aparece ao tentar editar um Pátio que não é seu agora fica no centro da tela, com o texto “Este Pátio não é seu. Crie um Pátio novo para poder editar, ou receba a permissão do dono deste pátio.” e os botões “Criar um Pátio novo” e “Fechar”.',

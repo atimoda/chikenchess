@@ -277,7 +277,7 @@ export function SoulLibraryPanel({ onClose, focus, onBird }: { onClose: () => vo
               </section>
             ))}
             {editing && (
-              <SaveToGameButton path="data/pigchicken/default-souls.json" save={() => saveDefaultSouls(entries)} className="justify-end px-4 pt-4"
+              <SaveToGameButton part="souls" save={() => saveDefaultSouls(entries)} className="justify-end px-4 pt-4"
                 onRevert={() => commit(SOUL_ENTRIES)} revertDisabled={!draft} />
             )}
             <div className="h-4" />

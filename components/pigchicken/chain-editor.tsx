@@ -4,6 +4,7 @@
 import { StepSelect } from "@/components/ui/step-select"
 import { cn } from "@/lib/utils"
 import { CHAIN_MAX, TRANSFORMS, TRANSFORM_KINDS, newTransform, type Transform, type TransformKind } from "@/lib/pigchicken/transforms"
+import { ResetArrow } from "@/components/ui/reset-arrow"
 
 // the rebate's chain of transformations: one row per step (what, its chance, its number and its mode), in order
 const GROUPS = [...new Set(TRANSFORM_KINDS.map(k => TRANSFORMS[k].group))]
@@ -53,7 +54,7 @@ export function ChainEditor({ chain, changed, onChange, onReset, title = "Cadeia
       })}
       <div className="flex items-center gap-1.5">
         {chain.length < CHAIN_MAX && kindSelect("", k => onChange(c => { c.push(newTransform(k)) }), "Adicionar transformação", "+ adicionar…")}
-        {changed && onReset && <button type="button" title="Volta a cadeia do código" onClick={onReset} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>}
+        {changed && onReset && <ResetArrow label={title} onReset={onReset} />}
       </div>
     </div>
   )

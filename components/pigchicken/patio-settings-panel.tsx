@@ -10,7 +10,6 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { PatioDualRange } from "@/components/ui/patio-dual-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
 import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioItemGlow, patioSceneMusic, patioSettingsAtDefault, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
-import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { saveDefaultPatioSettings } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
@@ -73,6 +72,12 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
       <div className="min-h-0 flex-1 overflow-y-auto">
       {canEdit ? (
         <>
+          {/* Lock: whoever may not edit this Pátio plays it as it is, changing nothing in the panels of characters,
+              items, scales, camera, layers and volumes (lib/pigchicken/patio-tuning.ts) */}
+          <label className="mx-4 mb-3 flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title="Trava os ajustes deste Pátio (personagens, itens, escalas, câmera, camadas e volumes): só quem pode editá-lo muda">
+            <span className={layout.settings?.locked ? "text-[#ffd166]" : undefined}>Lock</span>
+            <input type="checkbox" checked={!!layout.settings?.locked} onChange={e => { const { locked: _l, ...rest } = layout.settings ?? {}; onChange({ ...layout, settings: e.target.checked ? { ...rest, locked: true } : rest }) }} className="h-5 w-5 accent-[#ffd166]" />
+          </label>
           <div className="grid gap-field border-b border-white/10 px-4 pb-4">
           <PatioRange label="Largura limite" min={PATIO_SCREENS.min} max={PATIO_SCREENS.max} step={PATIO_SCREENS.step} value={screens}
             display={`${screens} ${screens === 1 ? "tela" : "telas"}`} onChange={v => set({ screens: v })}
@@ -163,10 +168,11 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>Zonas das cenas</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? "Ligadas" : "Desligadas"}</dd>
           <dt>Céu</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : "Clássico"}</dd>
           <dt>Fundo da Vila</dt><dd className="font-bold">{patioTemple(layout.settings) ? "Sim" : "Não"}</dd>
+          <dt>Lock</dt><dd className="font-bold">{layout.settings?.locked ? "Travado" : "Livre"}</dd>
           <dt>Montanhas</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? "Escondidas" : "Visíveis"}</dd>
         </dl>
       )}
-      <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultPatioSettings(layout.settings, screens)} onRevert={canEdit ? revert : undefined} className="justify-end px-4 py-3" />
+      <SaveToGameButton part="settings" save={() => saveDefaultPatioSettings(layout.settings, screens)} onRevert={canEdit ? revert : undefined} className="justify-end px-4 py-3" />
       {!canEdit && <p className="px-4 py-3 text-[10px] leading-relaxed text-[#93a79a]">Só quem pode editar este Pátio muda as configurações.</p>}
       </div>
     </FloatingPanel>

@@ -11,7 +11,6 @@ import { MineGridFields } from "./mine-grid-fields"
 import { defaultMineGrid, mineGridAtDefault, mineGridIsDefault } from "@/lib/pigchicken/mine-grid"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { saveDefaultMineGrid } from "@/lib/admin/game-defaults-client"
-import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
 import { hideActivatedMineGrid, mineActivatorStore } from "@/lib/pigchicken/mine-activator-store"
 
 // canGrid: may turn the grid on and off (the Pátio's creator, its godparent, the admin); onResetGrid: may start its
@@ -42,7 +41,7 @@ export function MineGridPanel({ layout, canEdit, canGrid, onResetGrid, onChange,
             // "Grade ligada" itself saves what was asked; any other change keeps the saved one
             onChange({ ...layout, settings: { ...layout.settings, mineGrid: { ...mineGrid, on: mineGrid.on !== shown ? mineGrid.on : !!saved?.on } } })
           }} />
-        <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultMineGrid(grid ?? defaultMineGrid())} className="justify-end px-4 py-3"
+        <SaveToGameButton part="mineGrid" save={() => saveDefaultMineGrid(grid ?? defaultMineGrid())} className="justify-end px-4 py-3"
           onRevert={canEdit ? () => { if (saved) onChange({ ...layout, settings: { ...layout.settings, mineGrid: mineGridAtDefault(saved) } }) } : undefined}
           revertDisabled={mineGridIsDefault(saved)} />
       </div>

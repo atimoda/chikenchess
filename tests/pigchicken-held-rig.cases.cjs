@@ -2,14 +2,17 @@ const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { loadTs } = require('./helpers/music.cjs')
 const items = loadTs('lib/pigchicken/items.ts')
+const tuning = loadTs('lib/pigchicken/patio-tuning.ts')
 const { LOOK_ART } = loadTs('lib/chicken/look-art.ts')
 
 function withStorage(saved, run) {
   const previous = globalThis.window
-  const store = { value: saved === undefined ? null : JSON.stringify(saved) }
-  globalThis.window = { localStorage: { getItem: () => store.value, setItem: (_k, v) => { store.value = v } }, dispatchEvent() {} }
+  // one slot per key: the items' old store (pigchicken-items-v1) and this browser's changes (patio-tuning)
+  const store = new Map(saved === undefined ? [] : [['pigchicken-items-v1', JSON.stringify(saved)]])
+  globalThis.window = { localStorage: { getItem: k => store.get(k) ?? null, setItem: (k, v) => { store.set(k, v) }, removeItem: k => { store.delete(k) } }, dispatchEvent() {} }
   globalThis.CustomEvent ??= class { constructor(type) { this.type = type } }
-  try { return run(store) } finally { globalThis.window = previous }
+  tuning.forgetLocalTuning()
+  try { return run(store) } finally { globalThis.window = previous; tuning.forgetLocalTuning() }
 }
 
 test('the wind instruments turn around their mouthpiece, which sits on her mouth', () => {

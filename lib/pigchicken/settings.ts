@@ -2,6 +2,8 @@
 import type { CameraMode } from './camera'
 import { migrateLegacyBackpedal } from '../chicken/config'
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
+import { liveDefault } from '../game-defaults'
+import { deepDiff, effectiveTuning, keepLocalTuning, setLocalTuning } from './patio-tuning'
 
 export type ParquinhoSettings = {
   camera: CameraMode
@@ -59,7 +61,8 @@ function readParquinho(base: ParquinhoSettings, saved: unknown, file = false): P
 
 /** The code's settings with a defaults file's `camera` over them. */
 export const parquinhoOver = (camera: unknown) => readParquinho(CODE_PARQUINHO, camera, true)
-export const DEFAULT_PARQUINHO: ParquinhoSettings = parquinhoOver(DEFAULTS_FILE.camera)
+// the game's (Supabase's `camera`, else the file's), kept current in place (lib/game-defaults.ts)
+export const DEFAULT_PARQUINHO: ParquinhoSettings = liveDefault('camera', DEFAULTS_FILE.camera, parquinhoOver)
 
 /** The defaults file's `camera` for these settings (what "Salvar no game" writes): no width (the Pátio's own) nor Debug. */
 export function parquinhoDefaultsFile(s: ParquinhoSettings) {
@@ -70,14 +73,36 @@ export function parquinhoDefaultsFile(s: ParquinhoSettings) {
   }
 }
 
+// The panel's values in three levels (lib/pigchicken/patio-tuning.ts), as the defaults file has them: game, the
+// open Pátio's over it (base) and this browser's over that (value)
+export function parquinhoTuning() {
+  const game = parquinhoDefaultsFile(DEFAULT_PARQUINHO)
+  return { game, ...effectiveTuning('camera', game, raw => parquinhoDefaultsFile(parquinhoOver(raw))) }
+}
+
+// This browser keeps in STORE only what is each person's own (the width, Debug, the tambores' view); the rest is
+// this browser's changes over the Pátio's (patio-tuning). A STORE from before (all the values) becomes those changes once.
+function readOwn(): Record<string, unknown> | null {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(STORE) || 'null')
+    if (!raw || typeof raw !== 'object') return null
+    if (!raw.tuned) {
+      const old = parquinhoDefaultsFile(readParquinho(DEFAULT_PARQUINHO, raw))
+      setLocalTuning('camera', deepDiff(parquinhoDefaultsFile(DEFAULT_PARQUINHO), old))
+      window.localStorage.setItem(STORE, JSON.stringify({ ...raw, tuned: true }))
+    }
+    return raw
+  } catch { return null }
+}
+
 export function loadParquinho(): ParquinhoSettings {
   migrateLegacyBackpedal()
-  try {
-    return readParquinho(DEFAULT_PARQUINHO, JSON.parse(window.localStorage.getItem(STORE) || 'null'))
-  } catch { /* storage unavailable */ }
-  return { ...DEFAULT_PARQUINHO }
+  const own = readParquinho(DEFAULT_PARQUINHO, typeof window === 'undefined' ? null : readOwn())
+  const { value } = parquinhoTuning()
+  return { ...parquinhoOver(value), screens: own.screens, debug: own.debug, ammoAround: own.ammoAround, ammoHud: own.ammoHud }
 }
 
 export function saveParquinho(next: ParquinhoSettings) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...next, aimV2: true })) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ screens: next.screens, debug: next.debug, ammoAround: next.ammoAround, ammoHud: next.ammoHud, aimV2: true, tuned: true })) } catch { /* ignore */ }
+  keepLocalTuning('camera', parquinhoTuning().base, parquinhoDefaultsFile(next))
 }

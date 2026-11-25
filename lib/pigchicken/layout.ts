@@ -8,7 +8,7 @@
 import { CAGE_SOULS_MAX, CONSUMABLE_IDS, INSTRUMENT_IDS, RACK_ITEM_IDS, WEAPON_IDS, isCage, type ItemId } from './items'
 import { DUMMY_DEFAULTS, DUMMY_HP_RANGE, dummyTip } from './dummies'
 import { SCENE_PLATFORMS, SCENE_W, SHELF_TOP, WORLD_GROUND_Y, templeScene, villageScene, worldScenes } from './world'
-import { DEFAULT_PATIO_SETTINGS, PATIO_LOWEST_TOP, PATIO_SCREENS, normalizePatioSettings, type PatioSettings } from './patio-settings'
+import { DEFAULT_PATIO_SETTINGS, PATIO_LOWEST_TOP, PATIO_SCREENS, compactPatioSettings, normalizePatioSettings, type PatioSettings } from './patio-settings'
 import type { Box } from './combat'
 import { outlineTops } from './box-tops'
 import { RACK_TABLE, rackRefillLimit, rackRespawnDelay } from './racks'
@@ -632,6 +632,13 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     ...(e.gravity === true && depth === 0 ? { gravity: true } : {}),
     params,
   }
+}
+
+/** The layout as a Pátio keeps it: Camadas and Grade de blocos only with what differs from the game's default
+ *  (compactPatioSettings), so the rest follows the default the next time it is read. */
+export function compactLayout(layout: PatioLayout): PatioLayout {
+  const settings = compactPatioSettings(layout.settings)
+  return settings === layout.settings ? layout : { ...layout, ...(settings ? { settings } : {}) }
 }
 
 export function normalizeLayout(raw: unknown, isDefault = false): PatioLayout | null {

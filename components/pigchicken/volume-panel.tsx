@@ -2,16 +2,18 @@
 
 // The Pátio header's volume button and its popup: the master volume on top and one slider per sound layer
 // (lib/pigchicken/mixer.ts). Everything is saved in this browser and heard at once. Mute, in the header,
-// silences the whole mixer: the sliders turn grey but still move, and their values come back when it is off. An admin also sees
-// "Salvar no game": the volumes become the game's defaults (data/pigchicken/default-patio.json).
+// silences the whole mixer: the sliders turn grey but still move, and their values come back when it is off. A layer
+// off the game's default shows the small reset in front; Salvar no Pátio keeps the layers in the open Pátio (whoever may
+// edit it) and an admin's "Salvar no game" makes the volumes the game's defaults (lib/game-defaults.ts).
 import { PatioRange } from "@/components/ui/patio-range"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { Volume1, Volume2, VolumeX, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
-import { DEFAULT_MIX, MIX_LAYERS, getMix, isMuted, setMix, setMuted, subscribeMix, type Mix } from "@/lib/pigchicken/mixer"
-import { PATIO_DEFAULTS_PATH } from "@/lib/pigchicken/patio-defaults"
+import { DEFAULT_MIX, MIX_LAYERS, getMix, isMuted, mixLayersOf, mixTuning, setMix, setMuted, subscribeMix, type Mix } from "@/lib/pigchicken/mixer"
+import { patioSaveOf } from "@/lib/pigchicken/patio-tuning"
+import { LockedFieldset, useTuningLocked } from "@/components/pigchicken/tuning-lock"
 import { saveDefaultVolume } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { loadChickenControls, saveChickenControls, subscribeChickenControls } from "@/lib/chicken/controls"
@@ -32,6 +34,7 @@ export function VolumeButton({ className }: { className?: string }) {
     return subscribeChickenControls(c => setClucks(c.sound))
   }, [])
   const toggleClucks = (on: boolean) => { const next = structuredClone(loadChickenControls()); next.sound = on; saveChickenControls(next); setClucks(on) }
+  const locked = useTuningLocked()
   const Icon = muted || mix.master <= 0 ? VolumeX : mix.master < 0.5 ? Volume1 : Volume2
 
   return (
@@ -50,15 +53,18 @@ export function VolumeButton({ className }: { className?: string }) {
           <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto px-4 py-3">
           <VolumeRange label="Master volume" value={mix.master} onChange={v => setMix({ master: v })} strong dimmed={muted} />
           <div className="grid gap-field border-t border-white/10 pt-3">
-            <div className="grid gap-field">
-              {MIX_LAYERS.map(l => <VolumeRange key={l.key} label={l.label} hint={l.hint} value={mix[l.key]} onChange={v => setMix({ [l.key]: v })} dimmed={muted} />)}
-            </div>
+            <LockedFieldset className="grid gap-field">
+              {MIX_LAYERS.map(l => <VolumeRange key={l.key} label={l.label} hint={l.hint} value={mix[l.key]} onChange={v => setMix({ [l.key]: v })} dimmed={muted}
+                changed={mix[l.key] !== DEFAULT_MIX[l.key]} onReset={() => setMix({ [l.key]: DEFAULT_MIX[l.key] })} />)}
+            </LockedFieldset>
             <label className="flex items-center gap-2" title="Liga e desliga os cacarejos da galinha">
               <input type="checkbox" checked={clucks} onChange={e => toggleClucks(e.target.checked)} className="accent-[var(--primary)]" />
               Cacarejos
             </label>
           </div>
-          <SaveToGameButton path={PATIO_DEFAULTS_PATH} save={() => saveDefaultVolume(mix)} className="justify-end" onRevert={() => setMix(DEFAULT_MIX)} />
+          {/* Salvar no Pátio: the layers that differ from the game's become the open Pátio's (not the master, each person's own) */}
+          <SaveToGameButton part="volume" save={() => saveDefaultVolume(mix)} className="justify-end" onRevert={() => setMix(DEFAULT_MIX)} revertDisabled={locked}
+            patio={patioSaveOf("volume", mixTuning().game, mixLayersOf(mix))} />
           </div>
         </FloatingPanel>,
         document.body,
@@ -67,8 +73,8 @@ export function VolumeButton({ className }: { className?: string }) {
   )
 }
 
-function VolumeRange({ label, hint, value, onChange, strong, dimmed }: { label: string; hint?: string; value: number; onChange: (v: number) => void; strong?: boolean; dimmed?: boolean }) {
+function VolumeRange({ label, hint, value, onChange, strong, dimmed, changed, onReset }: { label: string; hint?: string; value: number; onChange: (v: number) => void; strong?: boolean; dimmed?: boolean; changed?: boolean; onReset?: () => void }) {
   const pct = Math.round(value * 100)
   return <PatioRange label={strong ? <strong>{label}</strong> : label} name={label} min={0} max={100} step={5}
-    value={pct} display={`${pct}%`} hint={hint} dimmed={dimmed} onChange={v => onChange(v / 100)} />
+    value={pct} display={`${pct}%`} hint={hint} dimmed={dimmed} changed={changed} onReset={onReset} onChange={v => onChange(v / 100)} />
 }

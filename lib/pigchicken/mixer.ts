@@ -4,6 +4,8 @@
 // The defaults are the code's with data/pigchicken/default-patio.json over them (its `volume`, which the Volume
 // panel writes with "Salvar no game"): they apply to who never moved a slider here and to Padrão.
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
+import { liveDefault, onGameDefault } from '../game-defaults'
+import { deepDiff, effectiveTuning, keepLocalTuning, setLocalTuning, subscribeTuning, tuningLocked } from './patio-tuning'
 
 export type MixLayer = 'notes' | 'ambience' | 'weapons' | 'effects' | 'chicken'
 export type Mix = { master: number } & Record<MixLayer, number>
@@ -36,26 +38,39 @@ export function mixOver(raw: unknown): Mix {
   if (raw && typeof raw === 'object') (Object.keys(out) as (keyof Mix)[]).forEach(k => { const v = clamp((raw as Record<string, unknown>)[k]); if (v !== null) out[k] = v })
   return out
 }
-export const DEFAULT_MIX: Mix = mixOver(DEFAULTS_FILE.volume)
+export const DEFAULT_MIX: Mix = liveDefault('volume', DEFAULTS_FILE.volume, mixOver)
 /** The defaults file's `volume` for these volumes (what "Salvar no game" writes). */
 export const mixDefaultsFile = (m: Mix): Mix => mixOver(m)
 
+// The layers (all but the master) in three levels (lib/pigchicken/patio-tuning.ts): the game's, the open Pátio's
+// over them (base) and this browser's over those (value). The master is each person's own, in STORE.
+export type MixLayers = Omit<Mix, 'master'>
+export const mixLayersOf = (m: Mix): MixLayers => { const { master: _master, ...rest } = m; return rest }
+const layersOf = mixLayersOf
+export function mixTuning() {
+  const game = layersOf(DEFAULT_MIX)
+  return { game, ...effectiveTuning('volume', game, raw => layersOf(mixOver(raw))) }
+}
+
 function load(): Mix {
-  const base = { ...DEFAULT_MIX }
-  if (typeof window === 'undefined') return base
-  try {
+  let master = DEFAULT_MIX.master
+  if (typeof window !== 'undefined') try {
     const saved = JSON.parse(window.localStorage.getItem(STORE) || 'null')
-    if (saved) {
-      (Object.keys(base) as (keyof Mix)[]).forEach(k => { const v = clamp(saved[k]); if (v !== null) base[k] = v })
-      return base
-    }
-    const old = JSON.parse(window.localStorage.getItem(OLD_STORE) || 'null')
-    if (old) {
-      const pairs: [MixLayer, string][] = [['weapons', 'weaponVolume'], ['notes', 'noteVolume'], ['ambience', 'ambienceVolume']]
-      pairs.forEach(([k, o]) => { const v = clamp(old[o]); if (v !== null) base[k] = v })
+    const old = saved ? null : JSON.parse(window.localStorage.getItem(OLD_STORE) || 'null')
+    if (saved) master = clamp(saved.master) ?? master
+    // a STORE from before (every layer) becomes this browser's changes once
+    if ((saved && !saved.tuned) || old) {
+      const before = { ...DEFAULT_MIX }
+      if (saved) (Object.keys(before) as (keyof Mix)[]).forEach(k => { const v = clamp(saved[k]); if (v !== null) before[k] = v })
+      else {
+        const pairs: [MixLayer, string][] = [['weapons', 'weaponVolume'], ['notes', 'noteVolume'], ['ambience', 'ambienceVolume']]
+        pairs.forEach(([k, o]) => { const v = clamp(old[o]); if (v !== null) before[k] = v })
+      }
+      setLocalTuning('volume', deepDiff(layersOf(DEFAULT_MIX), layersOf(before)))
+      window.localStorage.setItem(STORE, JSON.stringify({ master, tuned: true }))
     }
   } catch { /* storage unavailable */ }
-  return base
+  return { ...mixTuning().value, master } as Mix
 }
 
 export function getMix(): Mix {
@@ -64,10 +79,19 @@ export function getMix(): Mix {
 }
 
 export function setMix(next: Partial<Mix>) {
+  // Lock (patio-tuning): the layers are the Pátio's; the master stays each person's
+  if (tuningLocked()) next = next.master === undefined ? {} : { master: next.master }
   mix = { ...getMix(), ...next }
-  try { window.localStorage.setItem(STORE, JSON.stringify(mix)) } catch { /* ignore */ }
+  try { window.localStorage.setItem(STORE, JSON.stringify({ master: mix.master, tuned: true })) } catch { /* ignore */ }
+  keepLocalTuning('volume', mixTuning().base, layersOf(mix))
   listeners.forEach(fn => fn())
 }
+
+// a new default saved in the game: the volumes nobody personalized follow it
+const reload = () => { if (mix) { mix = load(); listeners.forEach(fn => fn()) } }
+onGameDefault('volume', reload)
+// another Pátio, or its own volumes saved or changed
+subscribeTuning(part => { if (part === 'volume') reload() })
 
 export function subscribeMix(fn: () => void) {
   listeners.add(fn)

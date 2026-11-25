@@ -6,6 +6,8 @@ import type { PitchSet } from './music'
 import { cleanScales, type InstrumentScaleId } from './instrument-scales'
 import type { VoiceId } from './synth'
 import DEFAULTS_FILE from '../../data/pigchicken/default-items.json'
+import { liveDefault, onGameDefault } from '../game-defaults'
+import { deepDiff, effectiveTuning, keepLocalTuning, setLocalTuning, subscribeTuning, tuningLocked } from './patio-tuning'
 import { CHAIN_MAX, cleanTransform, newTransform, type Transform, type TransformKind } from './transforms'
 import { SPIN_FOREVER, SPIN_NOTE } from './note-orbit'
 
@@ -1069,7 +1071,7 @@ export function itemsOver(file: unknown): Record<ItemId, ItemDef> {
   return out
 }
 /** The game's default items: the code's, with data/pigchicken/default-items.json over them. */
-export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = itemsOver(DEFAULTS_FILE)
+export const DEFAULT_ITEMS: Record<ItemId, ItemDef> = liveDefault('items', DEFAULTS_FILE, itemsOver)
 
 /** The defaults file's content for a set of items (what "Salvar no game" writes). */
 export function itemsDefaultsFile(items: Record<ItemId, ItemDef>) {
@@ -1124,20 +1126,40 @@ export function subscribeHeldItem(onChange: (id: ItemId | null) => void) {
 const STORE = 'pigchicken-items-v1'
 const EVENT = 'pigchicken-items'
 
-export function loadItems(): Record<ItemId, ItemDef> {
-  const out = structuredClone(DEFAULT_ITEMS)
+// The items in three levels (lib/pigchicken/patio-tuning.ts), as the defaults file has them: the game's, the open
+// Pátio's over them (base) and this browser's over those (value)
+export function itemsTuning() {
+  const game = itemsDefaultsFile(DEFAULT_ITEMS)
+  return { game, ...effectiveTuning('items', game, raw => itemsDefaultsFile(itemsOver(raw))) }
+}
+
+// STORE (before 25/11: every item as this browser had it) becomes this browser's changes once, and goes
+function migrateStore() {
   try {
     const saved = JSON.parse(window.localStorage.getItem(STORE) || 'null')
-    if (!saved) return out
+    if (!saved) return
+    const out = structuredClone(DEFAULT_ITEMS)
     ITEM_IDS.forEach(id => { if (saved[id]) applySavedItem(out, id, saved[id], typeof saved._v === 'number' ? saved._v : 0) })
+    setLocalTuning('items', deepDiff(itemsDefaultsFile(DEFAULT_ITEMS), itemsDefaultsFile(out)))
+    window.localStorage.removeItem(STORE)
   } catch { /* storage unavailable */ }
-  return out
+}
+
+export function loadItems(): Record<ItemId, ItemDef> {
+  if (typeof window !== 'undefined') migrateStore()
+  return itemsOver(itemsTuning().value)
 }
 
 export function saveItems(items: Record<ItemId, ItemDef>) {
-  try { window.localStorage.setItem(STORE, JSON.stringify({ ...items, _v: ITEMS_VERSION })) } catch { /* ignore */ }
+  if (tuningLocked()) return
+  keepLocalTuning('items', itemsTuning().base, itemsDefaultsFile(items))
   window.dispatchEvent(new CustomEvent(EVENT))
 }
+
+// a new default saved in the game: whoever holds the items reads them again
+onGameDefault('items', () => { if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(EVENT)) })
+// another Pátio, or its own items saved into it
+subscribeTuning(part => { if (part === 'items' && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(EVENT)) })
 
 export function subscribeItems(onChange: (items: Record<ItemId, ItemDef>) => void) {
   const handler = () => onChange(loadItems())

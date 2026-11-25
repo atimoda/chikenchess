@@ -8,6 +8,8 @@
 // outside the zone's scale show next to the ones in it.
 // Saved in this browser (like the Itens panel); "Salvar no game" writes data/pigchicken/default-scales.json.
 import DEFAULTS_FILE from '../../data/pigchicken/default-scales.json'
+import { liveDefault, onGameDefault } from '../game-defaults'
+import { deepDiff, effectiveTuning, keepLocalTuning, setLocalTuning, subscribeTuning, tuningLocked } from './patio-tuning'
 import { CHART_HOLE, INSTRUMENT_SCALES, INSTRUMENT_SCALE_IDS, RING_SPLIT, STRINGS_DEFAULT, STRINGS_MAX, STRINGS_MIN, type InstrumentScaleId } from './instrument-scales'
 import { STAR_ARM_DEFAULT, STAR_ARM_MAX, STAR_ARM_MIN, STAR_OFF_SCALE, STAR_OPACITY } from './star-grid'
 
@@ -51,7 +53,7 @@ function over(base: Record<InstrumentScaleId, ScaleParams>, raw: unknown): Recor
 }
 
 /** The game's default scale numbers: the code's, with data/pigchicken/default-scales.json over them. */
-export const DEFAULT_SCALES = over(CODE_SCALES, DEFAULTS_FILE)
+export const DEFAULT_SCALES = liveDefault('scales', DEFAULTS_FILE, raw => over(CODE_SCALES, raw))
 
 /** The defaults file's content (what "Salvar no game" writes). */
 export const scalesDefaultsFile = (scales: Record<InstrumentScaleId, ScaleParams>) =>
@@ -81,10 +83,23 @@ const STORE = 'pigchicken-scales-v1'
 const EVENT = 'pigchicken-scales'
 let live: Record<InstrumentScaleId, ScaleParams> | null = null
 
+// The numbers in three levels (lib/pigchicken/patio-tuning.ts): the game's, the open Pátio's over them (base) and
+// this browser's over those (value)
+export function scalesTuning() {
+  const game = scalesDefaultsFile(DEFAULT_SCALES)
+  return { game, ...effectiveTuning('scales', game, raw => scalesDefaultsFile(over(CODE_SCALES, raw))) }
+}
+
 export function loadScaleParams(): Record<InstrumentScaleId, ScaleParams> {
-  let out = structuredClone(DEFAULT_SCALES)
-  try { out = over(DEFAULT_SCALES, JSON.parse(window.localStorage.getItem(STORE) || 'null')) } catch { /* storage unavailable */ }
-  return out
+  // STORE (before 25/11: every scale as this browser had it) becomes this browser's changes once, and goes
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(STORE) || 'null')
+    if (saved) {
+      setLocalTuning('scales', deepDiff(scalesDefaultsFile(DEFAULT_SCALES), scalesDefaultsFile(over(DEFAULT_SCALES, saved))))
+      window.localStorage.removeItem(STORE)
+    }
+  } catch { /* storage unavailable */ }
+  return over(CODE_SCALES, scalesTuning().value)
 }
 
 /** The numbers in use now (this browser's, loaded once). */
@@ -94,11 +109,18 @@ export function scaleParams(): Record<InstrumentScaleId, ScaleParams> {
 }
 
 export function saveScaleParams(scales: Record<InstrumentScaleId, ScaleParams>) {
+  if (tuningLocked()) return
   live = structuredClone(scales)
   apply(live)
-  try { window.localStorage.setItem(STORE, JSON.stringify(scales)) } catch { /* ignore */ }
+  keepLocalTuning('scales', scalesTuning().base, scalesDefaultsFile(scales))
   window.dispatchEvent(new CustomEvent(EVENT))
 }
+
+// a new default saved in the game: the numbers this browser never changed follow it
+const reload = () => { if (live && typeof window !== 'undefined') { live = loadScaleParams(); apply(live); window.dispatchEvent(new CustomEvent(EVENT)) } }
+onGameDefault('scales', reload)
+// another Pátio, or its own numbers saved into it (this browser's own changes come through saveScaleParams)
+subscribeTuning(part => { if (part === 'scales' && live && JSON.stringify(scalesDefaultsFile(live)) !== JSON.stringify(scalesTuning().value)) reload() })
 
 export function subscribeScaleParams(onChange: (scales: Record<InstrumentScaleId, ScaleParams>) => void) {
   const handler = () => onChange(scaleParams())

@@ -2,6 +2,7 @@
 
 import { useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { ResetArrow } from './reset-arrow'
 
 // A slider with two points in the look of PatioRange: drag either point (the nearest to the press); points closer
 // than `snap` join (same value). Arrow keys move the focused point; a double click resets.
@@ -40,7 +41,8 @@ export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0,
       }}
       onPointerMove={e => { if (e.currentTarget.hasPointerCapture(e.pointerId)) set(which.current, valueAt(e.clientX)) }}>
       <div className="pointer-events-none absolute inset-y-0 bg-primary/50" style={{ left: `${pct(lo)}%`, width: `${Math.max(0.6, pct(hi) - pct(lo))}%` }} />
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-between gap-2 px-3 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)]">
+      {changed && onReset && <ResetArrow onReset={onReset} label={typeof label === 'string' ? label : undefined} className="absolute left-1.5 top-1/2 z-10 -translate-y-1/2" />}
+      <div className={cn('pointer-events-none absolute inset-0 flex items-center justify-between gap-2 px-3 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.75)]', changed && onReset && 'pl-8')}>
         <span className="min-w-0 truncate">{label}</span>
         <output className={cn('shrink-0 font-bold tabular-nums', changed && 'text-amber-300')}>{display}</output>
       </div>
