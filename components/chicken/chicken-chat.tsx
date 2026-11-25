@@ -6,7 +6,7 @@ import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 // Esc cancels. The message shows as a speech bubble above the sender's chicken (lib/chicken/chat.ts). While
 // the field has the focus, the game keys go to the text and not to the chicken.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { MessageCircle, Send } from "lucide-react"
+import { GripVertical, MessageCircle, Send } from "lucide-react"
 import type { ChickenEngine } from "@/lib/chicken/engine"
 import { isChickenControlsListening } from "@/lib/chicken/controls"
 import { CHAT_MAX, LOCAL_CHAT_PLAYER, getChickenChatHistory, getChickenChats, sendChickenChat, subscribeChickenChat, type ChickenChatMessage } from "@/lib/chicken/chat"
@@ -141,9 +141,16 @@ export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { p
 
 // The chat history: the last messages of this visit (CHAT_HISTORY_MAX), "nick: text", newest at the bottom, with no
 // background (a shadow under the letters keeps them readable). Each line fades away HISTORY_SHOW ms after it arrives;
-// all of them come back while the mouse is over the history's place (or the field to write is open). It never takes
-// the mouse: the aim and the clicks go through to the game, and the hover is found by the pointer's position.
+// all of them come back while the mouse is over the history's place (or the field to write is open). Only its grip
+// takes the mouse (a micro icon left of the newest line, shown with it): dragging it moves the history anywhere on
+// the screen, kept in this browser; the rest lets the aim and the clicks through to the game, and the hover is found
+// by the pointer's position.
 const HISTORY_SHOW = 5000
+const HISTORY_POS = "chickenchess:chat-history-pos:v1"
+type HistoryPos = { left: number; bottom: number }
+function loadHistoryPos(): HistoryPos | null {
+  try { const p = JSON.parse(window.localStorage.getItem(HISTORY_POS) || "null"); return p && Number.isFinite(p.left) && Number.isFinite(p.bottom) ? p : null } catch { return null }
+}
 function ChatHistory({ bottom, open }: { bottom: number; open: boolean }) {
   const lines = useSyncExternalStore(subscribeChickenChat, getChickenChatHistory, getChickenChatHistory)
   const ref = useRef<HTMLDivElement>(null)
@@ -170,19 +177,60 @@ function ChatHistory({ bottom, open }: { bottom: number; open: boolean }) {
     window.addEventListener("pointermove", onMove, { passive: true })
     return () => window.removeEventListener("pointermove", onMove)
   }, [lines.length])
+  // where it was dragged to (null: its place in the corner, which goes up with the field to write)
+  const [pos, setPos] = useState<HistoryPos | null>(null)
+  useEffect(() => { setPos(loadHistoryPos()) }, [])
+  const drag = useRef<{ id: number; x: number; y: number; start: HistoryPos } | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const grab = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0 || !ref.current) return
+    e.preventDefault(); e.stopPropagation()
+    const r = ref.current.getBoundingClientRect()
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, start: { left: r.left, bottom: window.innerHeight - r.bottom } }
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setDragging(true)
+  }
+  const move = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const d = drag.current, el = ref.current
+    if (!d || d.id !== e.pointerId || !el) return
+    const w = el.offsetWidth, h = el.offsetHeight
+    setPos({
+      left: Math.round(Math.min(window.innerWidth - 24, Math.max(-w + 40, d.start.left + e.clientX - d.x))),
+      bottom: Math.round(Math.min(window.innerHeight - h, Math.max(0, d.start.bottom - (e.clientY - d.y)))),
+    })
+  }
+  const drop = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (drag.current?.id !== e.pointerId) return
+    drag.current = null
+    setDragging(false)
+    setPos(p => { if (p) { try { window.localStorage.setItem(HISTORY_POS, JSON.stringify(p)) } catch { /* ignore */ } } return p })
+  }
   if (!lines.length) return null
-  const all = hover || open
+  const all = hover || open || dragging
+  const last = lines[lines.length - 1]
   return (
     <div
       ref={ref}
       aria-label="Histórico do chat"
       role="log"
-      className="pointer-events-none fixed left-3 z-[203] w-[min(340px,calc(100vw-1.5rem))] px-1 font-mono text-xs leading-relaxed text-white [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_0_4px_rgba(0,0,0,0.8)]"
-      style={{ bottom }}
+      className="pointer-events-none fixed z-[203] w-[min(340px,calc(100vw-1.5rem))] pl-4 pr-1 font-mono text-xs leading-relaxed text-white [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_0_4px_rgba(0,0,0,0.8)]"
+      style={pos ? { left: pos.left, bottom: pos.bottom } : { left: 8, bottom }}
     >
       {lines.map(l => {
         const shown = all || now - (seen.current.get(l.id) ?? now) < HISTORY_SHOW
-        return <p key={l.id} className={cn("transition-opacity", shown ? "opacity-100 duration-150" : "opacity-0 duration-700")}><span className="font-bold text-primary">{l.name}:</span> {l.text}</p>
+        return (
+          <p key={l.id} className={cn("relative transition-opacity", shown ? "opacity-100 duration-150" : "opacity-0 duration-700")}>
+            {l === last && (
+              <button type="button" data-chicken-ignore aria-label="Mover o chat" title="Arraste para mover o chat"
+                onPointerDown={grab} onPointerMove={move} onPointerUp={drop} onPointerCancel={drop}
+                style={{ cursor: dragging ? "grabbing" : "grab" }}
+                className={cn("pointer-events-auto absolute -left-4 top-0.5 inline-flex h-4 w-3.5 touch-none items-center justify-center rounded-sm hover:text-white", shown ? "text-white/60" : "pointer-events-none")}>
+                <GripVertical className="h-3 w-3" />
+              </button>
+            )}
+            <span className="font-bold text-primary">{l.name}:</span> {l.text}
+          </p>
+        )
       })}
     </div>
   )

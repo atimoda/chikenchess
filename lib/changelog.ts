@@ -60,7 +60,7 @@ const RECENT = [
         'Os desenhos dos aliens no Catálogo agora aparecem assim que o painel abre; antes, cada cartão só aparecia depois de passar o ponteiro por cima.',
         'O botão de Itens (armas e instrumentos) mostra o contorno do item que a galinha segura, como o botão do Personagem mostra o boneco, e passou para a esquerda do Personagem. De asas vazias, continua o ícone das espadas.',
         'O painel Players agora abre pelo botão Local/Lobby do cabeçalho, que mostra entre parênteses quantos players há no lobby, como “Lobby (3)”. As setas de lobby anterior e próximo viraram dois botões separados, um de cada lado. Saiu o botão com o ícone de pessoas.',
-        'Histórico do chat: sem fundo cinza, só com as últimas 10 mensagens. Cada mensagem some 5 segundos depois de chegar e todas voltam ao passar o mouse por cima (ou com o campo de escrever aberto). O histórico não atrapalha mais a mira: o mouse passa direto para o jogo.',
+        'Histórico do chat: sem fundo cinza, só com as últimas 10 mensagens. Cada mensagem some 5 segundos depois de chegar e todas voltam ao passar o mouse por cima (ou com o campo de escrever aberto). O histórico não atrapalha mais a mira: o mouse passa direto para o jogo, menos numa pequena alça à esquerda da última mensagem, que arrasta o chat para outro lugar da tela (a posição fica guardada).',
       ] },
     ],
   },
