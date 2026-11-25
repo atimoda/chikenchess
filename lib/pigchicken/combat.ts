@@ -33,7 +33,8 @@ import { BOLT_HOP, BOLT_LIFE, BOLT_LIFE_SPECIAL, SHOCK_POWER, addShock, shockCha
 import { curveSide, launchDir, outPath, steerCurve } from './return-flight'
 import { HOOK_ARRIVE, HOOK_ARRIVE_TARGET, HOOK_KEEP, HOOK_REEL, HOOK_STEP, hookCast, hookPullSpeed, pullDelta, pullStep, spinRate, type HookHit } from './grapple'
 import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
-import { STAR_SCALE, STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
+import { HangScale, STAR_SCALE, STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
+import { ORBIT_MAX, ballAt, newOrbit, spinSeconds, spreadPhases, stepOrbit, type Orbit } from './note-orbit'
 import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, seatKeepsJump, type FixedKind, type Seat } from './fixed-instruments'
 import { starPath, starPoint, starCellAt } from './star-grid'
 import { DYNAMIC_VEL, NO_MOVES, bindDynamic, bodyDynamic, newStarHand, newStarRun, recordRun, stepStarHand, stepStarRun, type Dynamic, type MoveBinds, type StarHand, type StarRun } from './star-play'
@@ -73,7 +74,8 @@ const newKit = (): KitState => ({ st: newDrumState(), hat: null, struck: new Map
 // where the instruments' sound goes (the Parquinho plugs the synth in)
 export type MusicOut = {
   // vib: the item's "Vibrato natural" (the note's whole vibrato; missing = the voice's own)
-  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, fade?: number, vib?: Vibrato) => void
+  // (it may give back the note, so it can be cut short: the Hangdrum's "Cada nota interrompe a anterior")
+  note: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, fade?: number, vib?: Vibrato) => Held | null | void
   hold: (voice: VoiceId, midi: number, vib?: Vibrato) => Held | null
   // a note that can still be slid or cut short after it starts (the Cordas soltas' strings); without it, `note`
   pluck?: (voice: VoiceId, midi: number, at: number, dur: number, vel: number, vib?: Vibrato) => Held | null
@@ -178,7 +180,12 @@ export type Bullet = {
   remote?: boolean // another browser's shot (online): it flies and shows, never damages
   by?: string // the local player who fired it (the Grade de blocos counts whose note or shot it was)
   room?: ShotRoom // fired inside a house: it stops at that room's walls and touches nothing outside
+  orbit?: Spin // a note spinning on one of the Hangdrum's balls (lib/pigchicken/note-orbit.ts)
 }
+// a spinning note: its orbit, whose it is (the local player) and its number (online, to tell the others it ended).
+// net: another browser's (pid), its ball's middle from that browser's chicken (dx, dy), its orbit's radius and where
+// that chicken was last step (bx, by)
+export type Spin = Orbit & { owner: string; id: number; net?: { pid: number; dx: number; dy: number; r: number; bx: number; by: number } }
 // the room of a house for what is fired inside it (lib/pigchicken/house-rooms.ts): its walls and its floor
 export type ShotRoom = { id: string; boxes: Box[]; groundY: number }
 export type Boom = { x: number; y: number; r: number; life: number; color?: string }
@@ -517,6 +524,8 @@ export function createCombat() {
       note: () => sc.noteFor(music, q),
       // the aim between the Hangdrum's notes: a percussive slap instead of the clean note
       slap: () => sc.isSlap(music, q),
+      // the Hangdrum's layout and the ball (or the gap) under the aim; null on another scale
+      hang: () => { if (!(sc instanceof HangScale)) return null; const lay = sc.layout(music, q); return { lay, ...sc.touch(lay, angle, reach) } },
       pool: () => sc.pool(music, q),
       walk: (from: number, n: number, set: PitchSet) => sc.walk(music, from, n, set, angle, reach, q),
       color: (m: number) => DEGREE_COLORS[sc.degreeOf(music, m, angle, reach) % DEGREE_COLORS.length],
@@ -525,6 +534,51 @@ export function createCombat() {
   // ---------- Aim Assist (lib/pigchicken/aim-assist.ts) ----------
   // each player's scale drawing in the world: its middle (her shoulder) and radius (setScaleFan)
   const scaleFans = new Map<string, { x: number; y: number; r: number }>()
+  // ---------- Notas giratórias (lib/pigchicken/note-orbit.ts) ----------
+  // each player's Hangdrum balls that still ring: the sound of the last note played on each ball and its notes
+  // (spinning or not), so the next one on the same ball can cut them
+  const hangBalls = new Map<string, Map<number, { held: Held[]; bullets: Bullet[] }>>()
+  const ballsOf = (id: string) => { let m = hangBalls.get(id); if (!m) hangBalls.set(id, m = new Map()); return m }
+  // a new note on that ball: the last one stops ringing (fast, like a hand on the steel) and stops spinning
+  function cutBall(id: string, ball: number) {
+    const last = hangBalls.get(id)?.get(ball)
+    if (!last) return
+    for (const h of last.held) h.stop(0.04)
+    for (const b of last.bullets) if (b.orbit) b.orbit.left = 0
+    hangBalls.get(id)!.delete(ball)
+  }
+  // at most ORBIT_MAX notes spinning per player: the oldest one goes
+  function spinCap(id: string) {
+    const mine = bullets.filter(b => b.orbit && !b.orbit.net && b.orbit.owner === id && b.orbit.left > 0)
+    for (let k = 0; k < mine.length - ORBIT_MAX; k++) mine[k].orbit!.left = 0
+  }
+  // where a spinning note's ball is now: one's own on her layer; another browser's on that browser's chicken nearest
+  // to where it was (null: she is not here any more)
+  function orbitCenter(o: Spin): { x: number; y: number; r: number } | null {
+    if (!o.net) { const fan = scaleFans.get(o.owner); return fan ? ballAt(fan, o) : null }
+    const n = o.net
+    let best: { x: number; y: number } | null = null, bestD = Infinity
+    for (const c of netBodies) {
+      if (c.pid !== n.pid) continue
+      const d = Math.hypot(c.x - n.bx, c.y - n.by)
+      if (d < bestD) { bestD = d; best = c }
+    }
+    if (!best) return null
+    n.bx = best.x; n.by = best.y
+    return { x: best.x + n.dx, y: best.y + n.dy, r: n.r }
+  }
+  // the notes spinning on the same ball (of the same player) spread out round it
+  function spreadOrbits(dt: number) {
+    const groups = new Map<string, Spin[]>()
+    for (const b of bullets) {
+      const o = b.orbit
+      if (!o?.arrived) continue
+      const key = `${o.net ? `n${o.net.pid}` : o.owner}:${o.ball}`
+      const g = groups.get(key)
+      if (g) g.push(o); else groups.set(key, [o])
+    }
+    groups.forEach(g => { if (g.length > 1) spreadPhases(g.map(o => o.phase), dt).forEach((p, i) => { g[i].phase = p }) })
+  }
   // where an instrument's shot leaving `from` at `speed` goes: toward the enemy standing in the cell of its scale the
   // aim (angle, reach) is on, by the item's Aim Assist (an enemy's reach is its distance from her over the drawing's
   // radius, so a cell goes on past the drawing like the aim does); with nobody there, where the aim is.
@@ -584,7 +638,7 @@ export function createCombat() {
   let netOn = false
   const netShots: NetShot[] = []
   // the other browsers' chickens (world units): the zombies go for the nearest chicken, local or not
-  let netBodies: { x: number; y: number }[] = []
+  let netBodies: { x: number; y: number; pid?: number }[] = []
 
   // sitting at a fixed instrument: it is what she holds (never in the inventory), until she gets up
   let seated: { seat: Seat; owned: Owned } | null = null
@@ -1674,6 +1728,13 @@ export function createCombat() {
     const pz = pizzicato(d), pzRate = Math.max(1, d.arpRate)
     // the Hangdrum's aim between its notes: the hit is a percussive slap (its voice), ringing the nearest note
     const voice: VoiceId = pz ? 'pizz' : d.instrument && tones(d).slap() ? 'hangSlap' : d.voice
+    // the Hangdrum's ball under the aim (none: another scale, or the gap between them): its note may spin there
+    // (Giro na bola) and cut the one still ringing on it (Cada nota interrompe a anterior)
+    const onHang = d.instrument && !pz ? tones(d).hang() : null, ball = onHang && !onHang.slap ? onHang.index : -1
+    const fan = scaleFans.get(active)
+    const spin = ball >= 0 && fan && !d.hitscan ? spinSeconds(d.hangSpin, d.noteLen) : 0
+    const rung: Held[] = []
+    if (ball >= 0 && d.hangChoke) cutBall(active, ball)
     if (d.instrument) {
       notes = shotNotes(d, n)
       const g = music.toGrid()
@@ -1682,8 +1743,10 @@ export function createCombat() {
         bonus = d.beatBonus
         if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
-      notes.forEach((m, i) => out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d), undefined, vibOf(d)))
+      notes.forEach((m, i) => { const h = out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d), undefined, vibOf(d)); if (h) rung.push(h) })
     }
+    const rang = ball >= 0 ? { held: rung, bullets: [] as Bullet[] } : null
+    if (rang) ballsOf(active).set(ball, rang)
     const speed = d.speed * power
     const aim = assistAim(d, muzzle, speed)
     const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
@@ -1700,6 +1763,14 @@ export function createCombat() {
         // (a soul singing out of tune near her: the note itself goes off, not only its sound)
         b.note = { midi: m + detuneNow(), color: tones(d).color(m), sym: NOTE_SYMBOLS[(m + i) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice }
         b.ring = d.ringNotes; b.ghost = true
+        // Giro na bola: to the ball (or born on it), then round inside it
+        if (spin > 0 && onHang && fan) {
+          const f = onHang.lay.fields[ball], o = newOrbit(f, ball, { seconds: spin, bpm: music.zone.bpm, travel: d.hangTravel, speed, aim: a })
+          if (!o.arrived) { /* it leaves from the muzzle */ } else { const c = ballAt(fan, o); b.x = c.x + Math.cos(a) * c.r; b.y = c.y + Math.sin(a) * c.r }
+          b.orbit = { ...o, owner: active, id: nextId++ }
+          spinCap(active)
+          rang?.bullets.push(b)
+        }
       }
       b.by = active
       // instant shots travel their whole way now and leave a tracer
@@ -1734,14 +1805,26 @@ export function createCombat() {
   const shotOf = (b: Bullet): NetShot => ({
     k: 'b', i: b.item, x: b.x, y: b.y, vx: b.vx, vy: b.vy, sz: b.size, dr: b.drop, rg: b.range, fu: b.fuse, bo: b.bounce, ex: b.explode, ep: b.explodePush, pi: b.pierce,
     ...(b.note ? { n: { m: b.note.midi, c: b.note.color, s: b.note.sym, w: b.note.wave, v: b.note.voice } } : {}), ...(b.ring ? { rn: b.ring } : {}), ...(b.ghost ? { gh: true } : {}),
+    ...(b.orbit ? orbitOut(b.orbit) : {}),
   })
+  // a spinning note as the others see it: its ball's middle from her body (they put it on her chicken there), the
+  // orbit's radius and speed, its seconds (-1: ∞), its number, whether it is still on its way, its angle and ball
+  function orbitOut(o: Spin): { ob?: number[] } {
+    const c = orbitCenter(o)
+    if (!c || !lastBody || o.net) return {}
+    const r = (v: number) => Math.round(v * 100) / 100
+    return { ob: [r(c.x - lastBody.x), r(c.y - lastBody.y), r(c.r), r(o.speed), Number.isFinite(o.left) ? r(o.left) : -1, o.id, o.arrived ? 0 : 1, r(o.phase), o.ball] }
+  }
   // another browser's shots: they fly here too, only to be seen (and heard when they are in this scene)
   // roomAt: the room a shot of that browser begins in ('hidden': a house closed on this screen, nothing shows)
-  function addRemoteShots(list: readonly NetShot[], roomAt?: (x: number, y: number) => ShotRoom | 'hidden' | null) {
+  // pid: the browser they come from (its spinning notes go round its chicken)
+  function addRemoteShots(list: readonly NetShot[], roomAt?: (x: number, y: number) => ShotRoom | 'hidden' | null, pid?: number) {
     let heard = 0
     for (const s of list) {
       const d = items[s.i]
       if (!d) continue
+      // a spinning note of that browser ended there
+      if (s.k === 'ox') { for (const b of bullets) if (b.orbit?.net && b.orbit.net.pid === pid && b.orbit.id === s.c) b.orbit.left = 0; continue }
       const x = s.k === 't' ? s.x1 : s.k === 'z' ? s.p[0] ?? 0 : s.k === 'cb' ? 0 : s.x
       const where = s.k === 'cb' ? null : roomAt?.(x, s.k === 't' ? s.y1 : s.k === 'z' ? s.p[1] ?? 0 : s.y) ?? null
       if (where === 'hidden') continue
@@ -1796,6 +1879,7 @@ export function createCombat() {
         bullets.push({
           x: s.x, y: s.y, vx: s.vx, vy: s.vy, dist: 0, damage: 0, pierce: s.pi, hits: new Set(), size: s.sz, drop: s.dr, range: s.rg, item: s.i, t: 0,
           explode: s.ex, explodeDamage: 0, explodePush: s.ep, fuse: s.fu, bounce: s.bo, note, ring: s.rn, ghost: s.gh, remote: true, room,
+          ...(s.ob && pid !== undefined ? { orbit: remoteOrbit(s.ob, pid, s) } : {}),
         })
         // its note, softer than one's own
         if (note && near && heard < 4) out.note(note.voice, note.midi, 0, d.noteLen, 0.4)
@@ -1804,6 +1888,14 @@ export function createCombat() {
     }
   }
 
+  // another browser's spinning note: round the ball on its chicken nearest to where the note left from
+  function remoteOrbit(ob: readonly number[], pid: number, s: { x: number; y: number; vx: number; vy: number }): Spin {
+    const [dx, dy, r, w, life, id, travel, phase, ball] = ob
+    let bx = s.x, by = s.y, bestD = Infinity
+    for (const c of netBodies) if (c.pid === pid) { const d = Math.hypot(c.x - s.x, c.y - s.y); if (d < bestD) { bestD = d; bx = c.x; by = c.y } }
+    const o: Orbit = { ball, fx: 0, fy: 0, fr: 0, phase, speed: w, left: life < 0 ? Infinity : life, arrived: !travel, travel: Math.max(60, Math.hypot(s.vx, s.vy)) }
+    return { ...o, owner: '', id, net: { pid, dx, dy, r, bx, by } }
+  }
   // a burst pushes away whoever is in its radius: the players (the one who made it too) and the enemies.
   // damage: the burst's at its centre; a player takes it fading to the edge like the push (it only counts for
   // falling off a grab)
@@ -1999,14 +2091,23 @@ export function createCombat() {
     const { boxes, groundY } = b.room ?? ctx
     const px = b.x, py = b.y
     b.t += dt
-    // (a grenade lying on the ground stays there)
-    if (!(b.fuse > 0 && !b.drop)) magnetize(b, dt, b.hits)
-    if (b.drop) b.vy += b.drop * gravityAt(b.x, b.y) * dt
-    b.x += b.vx * dt; b.y += b.vy * dt
-    b.dist += Math.hypot(b.x - px, b.y - py)
+    // a note spinning on a Hangdrum ball: it goes there and round it, with her (no range, pull, walls or floor);
+    // its time over, or her gone, it is gone
+    const spin = b.orbit
+    if (spin) {
+      const c = orbitCenter(spin), p = c && stepOrbit(spin, b, c, dt)
+      if (!p) return true
+      b.x = p.x; b.y = p.y; b.vx = p.vx; b.vy = p.vy
+    } else {
+      // (a grenade lying on the ground stays there)
+      if (!(b.fuse > 0 && !b.drop)) magnetize(b, dt, b.hits)
+      if (b.drop) b.vy += b.drop * gravityAt(b.x, b.y) * dt
+      b.x += b.vx * dt; b.y += b.vy * dt
+      b.dist += Math.hypot(b.x - px, b.y - py)
+    }
     const gone = (x: number, y: number) => { if (b.explode > 0 && !dry) explode(x, y, b.explode, b.explodeDamage, b); return true }
-    if (b.fuse > 0 && b.t >= b.fuse) return gone(b.x, b.y)
-    if (b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
+    if (!spin && b.fuse > 0 && b.t >= b.fuse) return gone(b.x, b.y)
+    if (!spin && b.dist > b.range) return b.explode > 0 && b.fuse === 0 ? gone(b.x, b.y) : true
     const steps = Math.max(1, Math.ceil(Math.hypot(b.x - px, b.y - py) / 8))
     // an instrument's note that reaches a Filhote (not the one who played it) fills its music bar
     if (b.note && !b.room) {
@@ -2037,6 +2138,7 @@ export function createCombat() {
         }
       }
     }
+    if (spin) return false
     // the instruments' notes: a "Rebate notas" surface bounces them back, playing (a few times at most); crossing
     // the map's fixed lanes tunes them to the lane
     if (b.note) {
@@ -3065,6 +3167,8 @@ export function createCombat() {
         pickups.push({ id: nextId++, owned: o, x: (l.lastBody?.x ?? 0) + rand(-50, 50), y: (l.lastBody?.y ?? floorY) - 40, vy: -220, resting: false, noPick: 0.6 })
       }
       loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id); shotRooms.delete(id)
+      // (her spinning notes go with her)
+      hangBalls.delete(id); scaleFans.delete(id)
       for (const f of freed) if (f.owner === id && f.away === null) { letGo(f); f.away = 0 }
     },
     // the players in a portal this frame (by player; world px), for their souls flying free
@@ -3360,7 +3464,7 @@ export function createCombat() {
     // while online, the shots fired here are kept for the sync to send (it empties the list)
     setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; chestOpens.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
     netShots,
-    setNetBodies(list: { x: number; y: number }[]) { netBodies = list },
+    setNetBodies(list: { x: number; y: number; pid?: number }[]) { netBodies = list },
     addRemoteShots,
     // the owner applies another browser's hit on one of its enemies, as if it were its own
     applyNetHit(h: NetHit) {
@@ -3884,7 +3988,16 @@ export function createCombat() {
       const ctx = { boxes, groundY }
       // from here on, the world: each thing on the time of the Zona where it is
       dt = frameDt
-      if (world) for (let i = bullets.length - 1; i >= 0; i--) if (stepBullet(bullets[i], dt * timeAt(bullets[i].x, bullets[i].y), ctx)) bullets.splice(i, 1)
+      if (world) {
+        spreadOrbits(dt)
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          const b = bullets[i]
+          if (!stepBullet(b, dt * timeAt(b.x, b.y), ctx)) continue
+          bullets.splice(i, 1)
+          // (one's own spinning note: the others drop theirs too, whatever ended it)
+          if (b.orbit && !b.remote && netOn) netShots.push({ k: 'ox', i: b.item, c: b.orbit.id })
+        }
+      }
       if (world) stepNoteShots(dt, ctx)
       if (world) for (let i = booms.length - 1; i >= 0; i--) { booms[i].life -= dt; if (booms[i].life <= 0) booms.splice(i, 1) }
       if (world) for (let i = tracers.length - 1; i >= 0; i--) { tracers[i].life -= dt; if (tracers[i].life <= 0) tracers.splice(i, 1) }

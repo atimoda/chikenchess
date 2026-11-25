@@ -23,7 +23,11 @@ export type NetHit = {
 
 // a projectile someone fired: a bullet / note ('b'), an instant shot's tracer ('t'), a thrown item ('th')
 export type NetShot =
-  | { k: 'b'; i: ItemId; x: number; y: number; vx: number; vy: number; sz: number; dr: number; rg: number; fu: number; bo: number; ex: number; ep?: number; pi: number; n?: { m: number; c: string; s: string; w: number; v: string }; rn?: number; gh?: boolean }
+  | { k: 'b'; i: ItemId; x: number; y: number; vx: number; vy: number; sz: number; dr: number; rg: number; fu: number; bo: number; ex: number; ep?: number; pi: number; n?: { m: number; c: string; s: string; w: number; v: string }; rn?: number; gh?: boolean; ob?: number[] }
+  // a note spinning on a Hangdrum ball (lib/pigchicken/note-orbit.ts) goes as a 'b' with `ob` (its ball's middle from
+  // the chicken, the orbit's radius and speed, its seconds or -1 for ∞, its number, 1 while on its way, its angle and
+  // ball); 'ox': that note (c: its number) ended
+  | { k: 'ox'; i: ItemId; c: number }
   | { k: 't'; i: ItemId; x1: number; y1: number; x2: number; y2: number }
   | { k: 'th'; i: ItemId; x: number; y: number; vx: number; vy: number; sp: number; a: number }
   // the bolts of a shock ('z': five numbers each, x1, y1, x2, y2 and its hop, -1 for the one from the sky; s: 1 for
@@ -227,9 +231,18 @@ export function cleanShot(s: unknown, items: Record<string, unknown>): NetShot |
     const shot = { ...(o as NetShot & { k: 'b' }) }
     shot.rg = Math.min(shot.rg, 20000); shot.fu = Math.min(shot.fu, 30); shot.ex = Math.min(shot.ex, 1000)
     if (shot.n && !(typeof shot.n === 'object' && num(shot.n.m) && typeof shot.n.c === 'string')) delete shot.n
+    if (shot.ob !== undefined) {
+      const ob = shot.ob
+      if (Array.isArray(ob) && ob.length === 9 && ob.every(v => num(v) && Math.abs(v) < LIMIT)) {
+        const [dx, dy, r, w, life, id, travel, phase, ball] = ob
+        const cap = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+        shot.ob = [cap(dx, -2000, 2000), cap(dy, -2000, 2000), cap(r, 0, 2000), cap(w, -100, 100), life < 0 ? -1 : Math.min(life, 600), id, travel ? 1 : 0, phase, cap(Math.round(ball), 0, 63)]
+      } else delete shot.ob
+    }
     return shot
   }
   if (o.k === 't' && all('x1', 'y1', 'x2', 'y2')) return o as NetShot
+  if (o.k === 'ox' && num(o.c)) return { k: 'ox', i: o.i as ItemId, c: o.c as number }
   if (o.k === 'th' && all('x', 'y', 'vx', 'vy', 'sp', 'a')) return o as NetShot
   if (o.k === 'z' && Array.isArray(o.p) && o.p.length >= 5 && o.p.length <= 5 * 48 && o.p.length % 5 === 0 && o.p.every(v => num(v) && Math.abs(v as number) < LIMIT)) return { k: 'z', i: o.i as ItemId, p: o.p as number[], s: o.s ? 1 : 0 }
   if (o.k === 'cd' && all('c', 'r', 'x', 'y', 'tx', 'ty', 'sp')) return { k: 'cd', i: o.i as ItemId, c: o.c as number, r: Math.max(0, Math.min(13, Math.round(o.r as number))), x: o.x as number, y: o.y as number, tx: o.tx as number, ty: o.ty as number, sp: Math.max(100, Math.min(4000, o.sp as number)), ...(typeof o.col === 'string' && /^#[0-9a-f]{3,8}$/i.test(o.col) ? { col: o.col } : {}) }

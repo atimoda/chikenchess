@@ -778,7 +778,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const soulPortals = new Map<string, SoulPortal>()
     // instruments, the enemies' answers and the zone's ambience play on PigChicKen's own synth
     combat.setMusicOut({
-      note: (voice, midi, at, dur, vel, fade, vib) => { playNote(voice, midi, { at, dur, vel, fade, vib }) },
+      note: (voice, midi, at, dur, vel, fade, vib) => playNote(voice, midi, { at, dur, vel, fade, vib }),
       hold: (voice, midi, vib) => playNote(voice, midi, { sustain: true, vel: 0.8, vib }),
       pluck: (voice, midi, at, dur, vel, vib) => playNote(voice, midi, { at, dur, vel, vib }),
       drum: (kind, at, vel) => playDrum(kind, at, vel ?? 1),
