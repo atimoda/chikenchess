@@ -12,7 +12,7 @@ import { getBaby, subscribeBaby } from "@/lib/chicken/baby"
 import { variantClass } from "@/lib/chicken/beast-art"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import { Bird, Crosshair, Eye, Feather, FolderOpen, Gamepad2, Ghost, Grid3x3, Maximize, Minimize, Music, Pencil, Save, SlidersHorizontal, Sun, Swords, Undo2, UserPlus, Users, X } from "lucide-react"
+import { BookOpen, Crosshair, Eye, FolderOpen, Gamepad2, Grid3x3, Maximize, Minimize, Music, Pencil, Save, SlidersHorizontal, Sun, Swords, Undo2, UserPlus, Users, X } from "lucide-react"
 import { useOnline } from "@/components/online/online-provider"
 import { isAdminUser } from "@/lib/admin/access"
 import {
@@ -62,9 +62,8 @@ import type { ChickenEngine } from "@/lib/chicken/engine"
 import { INV_STACK, ParquinhoForeground, ParquinhoPlay, ParquinhoWorld } from "@/components/pigchicken/parquinho"
 import { ItemsPanel } from "@/components/pigchicken/items-panel"
 import { ScalesPanel } from "@/components/pigchicken/scales-panel"
-import { AlienCatalogPanel } from "@/components/pigchicken/alien-catalog-panel"
-import { SoulLibraryPanel } from "@/components/pigchicken/soul-library-panel"
-import { BirdGuidePanel } from "@/components/pigchicken/bird-guide-panel"
+import { CatalogPanel } from "@/components/pigchicken/catalog-panel"
+import { HeldItemIcon } from "@/components/pigchicken/held-item-icon"
 import { JukeboxPanel } from "@/components/pigchicken/jukebox-panel"
 import { SongEditorPanel } from "@/components/pigchicken/song-editor-panel"
 import { MidiPanel } from "@/components/pigchicken/midi-panel"
@@ -181,12 +180,8 @@ export function ChickenPatio() {
   const [gridOpen, setGridOpen] = useState(false)
   const [itemsOpen, setItemsOpen] = useState(false)
   const [scalesOpen, setScalesOpen] = useState(false)
-  const [aliensOpen, setAliensOpen] = useState(false)
-  const [soulsOpen, setSoulsOpen] = useState(false)
-  // the Guia de pássaros, and what each of the two panels was asked to open on by the other (n: a new ask each time)
-  const [birdsOpen, setBirdsOpen] = useState(false)
-  const [soulFocus, setSoulFocus] = useState<{ id: string; n: number } | null>(null)
-  const [birdFocus, setBirdFocus] = useState<{ id: string; n: number } | null>(null)
+  // the Catálogo (aliens, almas and pássaros, in tabs)
+  const [catalogOpen, setCatalogOpen] = useState(false)
   // the jukebox in the temple opens the songs' panel when she strikes it
   const [jukeboxOpen, setJukeboxOpen] = useState(false)
   const [editingSong, setEditingSong] = useState<string | null>(null)
@@ -957,26 +952,20 @@ export function ChickenPatio() {
         </button>}
         </div>
         <div className="contents [&>*]:shrink-0 [&>*]:pointer-events-auto @min-[1100px]:pointer-events-none! @min-[1100px]:flex @min-[1100px]:flex-1 @min-[1100px]:basis-0 @min-[1100px]:items-center @min-[1100px]:justify-end @min-[1100px]:gap-2">
-        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false); setBirdsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Swords className="h-4 w-4" />
-        </button>
-        <button type="button" aria-label="Escalas" aria-pressed={scalesOpen} title="Escalas dos instrumentos" onClick={() => { setScalesOpen(v => !v); setItemsOpen(false); setPqOpen(false); setAliensOpen(false); setSoulsOpen(false); setBirdsOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", scalesOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Escalas" aria-pressed={scalesOpen} title="Escalas dos instrumentos" onClick={() => { setScalesOpen(v => !v); setItemsOpen(false); setPqOpen(false); setCatalogOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", scalesOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Music className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Catálogo de aliens" aria-pressed={aliensOpen} title="Catálogo de aliens" onClick={() => { setAliensOpen(v => !v); setItemsOpen(false); setPqOpen(false); setSoulsOpen(false); setBirdsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", aliensOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Ghost className="h-4 w-4" />
+        <button type="button" aria-label="Catálogo" aria-pressed={catalogOpen} title="Catálogo: aliens, almas e pássaros" onClick={() => { setCatalogOpen(v => !v); setItemsOpen(false); setPqOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", catalogOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <BookOpen className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Biblioteca de almas" aria-pressed={soulsOpen} title="Biblioteca de almas" onClick={() => { setSoulsOpen(v => !v); setSoulFocus(null); setBirdsOpen(false); setItemsOpen(false); setAliensOpen(false); setPqOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", soulsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Bird className="h-4 w-4" />
-        </button>
-        <button type="button" aria-label="Guia de pássaros" aria-pressed={birdsOpen} title="Guia de pássaros" onClick={() => { setBirdsOpen(v => !v); setBirdFocus(null); setSoulsOpen(false); setItemsOpen(false); setAliensOpen(false); setPqOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", birdsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-          <Feather className="h-4 w-4" />
-        </button>
-        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false); setAliensOpen(false); setSoulsOpen(false); setBirdsOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false); setCatalogOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
         <button type="button" aria-label="Controles" title="Controles" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setCatalogOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+          <HeldItemIcon className="h-8 w-8" fallback={<Swords className="h-4 w-4" />} />
         </button>
         <button type="button" aria-label="Personagem" aria-pressed={panelOpen} title="Personagem" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <ChickenBodyIcon look={draft.look} outline className="h-8 w-8" />
@@ -1062,9 +1051,7 @@ export function ChickenPatio() {
       {person && <PatioPersonPanel key={person.userId} person={person} onClose={() => setPerson(null)} />}
       {itemsOpen && <ItemsPanel onClose={() => setItemsOpen(false)} />}
       {scalesOpen && <ScalesPanel onClose={() => setScalesOpen(false)} />}
-      {aliensOpen && <AlienCatalogPanel onClose={() => setAliensOpen(false)} />}
-      {soulsOpen && <SoulLibraryPanel onClose={() => setSoulsOpen(false)} focus={soulFocus} onBird={id => { setBirdFocus(f => ({ id, n: (f?.n ?? 0) + 1 })); setSoulsOpen(false); setBirdsOpen(true) }} />}
-      {birdsOpen && <BirdGuidePanel onClose={() => setBirdsOpen(false)} focus={birdFocus} onSoul={id => { setSoulFocus(f => ({ id, n: (f?.n ?? 0) + 1 })); setBirdsOpen(false); setSoulsOpen(true) }} />}
+      {catalogOpen && <CatalogPanel onClose={() => setCatalogOpen(false)} />}
       {jukeboxOpen && <JukeboxPanel onClose={() => setJukeboxOpen(false)} />}
       {midiOpen && <MidiPanel onClose={() => setMidiOpen(false)} />}
       {editingSong && <SongEditorPanel key={editingSong} songId={editingSong} onClose={() => setEditingSong(null)} />}

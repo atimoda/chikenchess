@@ -21,12 +21,12 @@ Código: `lib/pigchicken/bird-guide.ts` (puro: as aves, as gravações e a ave q
 
 ## Painel (17/11, v2.13.0)
 
-- **Abrir:** botão da pena no cabeçalho do Pátio (fecha os outros painéis do cabeçalho), ou a linha Inspiration da ficha de uma alma, que abre o guia já naquela ave e fecha a Biblioteca.
+- **Abrir:** aba **Pássaros** do painel Catálogo (desde 25/11, v2.18.0; antes, botão da pena no cabeçalho; ver [Biblioteca de almas](soul-library.md)), ou a linha Inspiration da ficha de uma alma, que passa o Catálogo para esta aba já naquela ave.
 - **Lista:** um cartão por ave, com o desenho, o nome do jogo e o nome popular. Todas as aves aparecem desde o início; não há ave escondida.
 - **Clique numa ave:** abre a ficha e toca a primeira gravação dela. Cada clique no desenho da ave aberta toca a gravação seguinte, em roda. Uma gravação nova corta a anterior.
 - **Ficha:** nome popular, nome científico, família, tamanho, onde vive, a curiosidade, “Cantos reais” e “Almas inspiradas”.
 - **Cantos reais:** um botão por gravação (Canto 1, 2, 3, Chamado); o que está tocando fica destacado e um clique nele para. Ao lado, quem gravou e o número XC, com link para a gravação no xeno-canto (a licença e o país aparecem ao passar o mouse).
-- **Almas inspiradas:** miniaturas das almas cuja ficha aponta para a ave. A que ainda não foi capturada é só o contorno, com “???”, e não responde ao clique; clicar numa capturada fecha o guia e abre a Biblioteca de almas nela.
+- **Almas inspiradas:** miniaturas das almas cuja ficha aponta para a ave. A que ainda não foi capturada é só o contorno, com “???”, e não responde ao clique; clicar numa capturada passa o Catálogo para a aba Almas, já nela.
 - **Fechar ou voltar:** para a gravação que estava tocando.
 - **Escopo:** Pátio e Templo, local e online; é só deste navegador.
 

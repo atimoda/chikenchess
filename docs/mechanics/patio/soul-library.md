@@ -72,7 +72,7 @@ Banco em `supabase/migrations/202611110001_pigchicken_souls.sql` (uma linha por 
 
 ## Painel (10/11, v2.7.0)
 
-- **Gatilho:** o botão do pássaro no cabeçalho do Pátio (“Biblioteca de almas”). Abrir fecha Itens, Catálogo de aliens e Câmera de Mira; Esc ou o X fecha.
+- **Gatilho:** a aba **Almas** do painel **Catálogo** (`components/pigchicken/catalog-panel.tsx`, 25/11, v2.18.0). O Catálogo junta numa janela só o Catálogo de aliens, a Biblioteca de almas e o Guia de pássaros, que antes tinham um botão e um painel cada. Um único botão no cabeçalho, com ícone de livro (“Catálogo”), abre e fecha; abrir fecha Itens, Escalas e Câmera de Mira; Esc ou o X fecha. As abas ficam no título, cada uma com o ícone antes do nome: **Aliens** (fantasma), **Almas** (pássaro) e **Pássaros** (pena). O painel sempre abre em Aliens; só a aba aberta fica montada, de modo que trocar de aba volta a lista daquela aba ao começo. O nome de cada seção não se repete abaixo das abas: só aparece uma linha extra quando há algo dela (a ficha aberta com o botão de voltar, ou, em Almas, a contagem e o lápis do admin).
 - **Lista:** uma seção por espécie, depois Pintinho e Raras, cada uma com quantas já foram encontradas. No cabeçalho, almas encontradas de 88 e estrelas ganhas do total.
 - **Nunca capturada:** só a silhueta preta e “???”; não abre. Nas entradas da regra, parar o mouse em cima diz o estado e a família; as raras não dão dica.
 - **Capturada:** o desenho com brilho, o nome, a raridade na sua cor e as estrelas (ganhas de possíveis). Só o cartão sob o ponteiro ou em foco bate as asas.
@@ -95,7 +95,7 @@ Só para contas admin (`useIsAdmin`); para as outras o painel não muda.
 ## Receita, Inspiration e som (17/11, v2.13.0)
 
 - **Receita:** a ficha aberta de uma alma capturada mostra uma frase que diz como conseguir uma alma igual (`recipeText`): qual alien, se enchendo a harmonia (viva) ou matando e ressuscitando (morta, com a arma quando a receita pede), com qual família de instrumento e, nas raras, qual tem de ser a última nota. O pintinho: capturar um pintinho com o Passaguá.
-- **Inspiration:** a ficha mostra a ave real que inspira a alma, com o nome científico e o popular. Um clique abre o Guia de pássaros naquela ave ([bird-guide.md](bird-guide.md)) e fecha a Biblioteca. A Biblioteca também abre já numa alma quando o clique vem da lista “Almas inspiradas” do guia.
+- **Inspiration:** a ficha mostra a ave real que inspira a alma, com o nome científico e o popular. Um clique passa o Catálogo para a aba Pássaros, já naquela ave ([bird-guide.md](bird-guide.md)). A aba Almas também abre já numa alma quando o clique vem da lista “Almas inspiradas” do guia.
 - **Som:** clicar no cartão de uma alma capturada, ou no desenho da alma aberta, toca o som dela: três notas na voz da ave que a inspira, acorde maior para a viva e menor para a morta.
 - **Editor:** a aba Ficha tem o campo Inspiration (lista das aves do guia) e a aba Ações tem “Canto real” (a chance do canto gravado). A ficha publicada guarda `bird` só quando difere da regra do código.
 

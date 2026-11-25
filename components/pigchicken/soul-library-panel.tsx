@@ -1,6 +1,6 @@
 "use client"
 
-// Popup with the library of souls: a card for each soul of the catalogue, by species and then the rare ones. One
+// The Almas tab of the Catálogo (catalog-panel.tsx), the library of souls: a card for each soul of the catalogue, by species and then the rare ones. One
 // never caught is only its outline in black; the first capture reveals its drawing, its name and what it is, and a
 // card opens with how many were caught and the notes and weapons already seen (the ones missing stay hidden).
 // The cards stand still: only the one under the pointer or focused beats its wings, so the whole library costs one
@@ -13,8 +13,7 @@
 // it to the game's file.
 import { StepSelect } from "@/components/ui/step-select"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowDown, ArrowLeft, ArrowUp, Cloud, CloudOff, Copy, Pencil, Plus, Trash2, X } from "lucide-react"
-import { FloatingPanel } from "@/components/ui/floating-panel"
+import { ArrowDown, ArrowLeft, ArrowUp, Cloud, CloudOff, Copy, Pencil, Plus, Trash2 } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { SaveToGameButton, useIsAdmin } from "@/components/admin/save-to-game-button"
 import { saveDefaultSouls } from "@/lib/admin/game-defaults-client"
@@ -100,7 +99,7 @@ function NameInput({ name, onName }: { name: string; onName: (name: string) => v
   return <input aria-label="Nome" value={typed ?? name} maxLength={SOUL_NAME_MAX} onChange={e => { setTyped(e.target.value); if (e.target.value.trim()) onName(e.target.value) }} onBlur={() => setTyped(null)} onKeyDown={e => e.stopPropagation()} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white" />
 }
 
-export function SoulLibraryPanel({ onClose, focus, onBird }: { onClose: () => void; focus?: { id: string; n: number } | null; onBird?: (bird: string) => void }) {
+export function SoulLibraryBody({ focus, onBird }: { focus?: { id: string; n: number } | null; onBird?: (bird: string) => void }) {
   const [col, setCol] = useState<SoulCollection>(() => loadCollection())
   const [entries, setEntries] = useState<readonly SoulEntry[]>(() => loadSoulEntries())
   const [sel, setSel] = useState<string | null>(null)
@@ -224,15 +223,14 @@ export function SoulLibraryPanel({ onClose, focus, onBird }: { onClose: () => vo
   )
 
   return (
-    <FloatingPanel id="pigchicken-souls" aria-label="Biblioteca de almas" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(560, vw - 24), h: vh - 104 })} minW={300} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <>
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         {v && <button type="button" aria-label="Voltar à biblioteca" title="Voltar à biblioteca" onClick={() => pick(null)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><ArrowLeft className="h-4 w-4" /></button>}
         {v && editing
           ? <NameInput key={v.id} name={v.name} onName={name => update(o => ({ ...o, name }))} />
-          : <h2 className="min-w-0 flex-1 truncate text-sm text-white">{v ? v.name : "Biblioteca de almas"}</h2>}
-        {!v && <span className="shrink-0 text-[#93a79a]" title="Almas encontradas e estrelas de notas e armas">{progress.found}/{progress.total} · <span className="text-[#ffd166]">★</span> {progress.stars}/{progress.allStars}</span>}
+          : v ? <h2 className="min-w-0 flex-1 truncate text-sm text-white">{v.name}</h2> : null}
+        {!v && <span className="min-w-0 flex-1 text-[#93a79a]" title="Almas encontradas e estrelas de notas e armas">{progress.found}/{progress.total} · <span className="text-[#ffd166]">★</span> {progress.stars}/{progress.allStars}</span>}
         {admin && <button type="button" aria-label="Editar fichas" aria-pressed={edit} title="Editar fichas (admin)" onClick={() => setEdit(x => !x)} className={edit ? "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary text-white" : "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"}><Pencil className="h-4 w-4" /></button>}
-        <button type="button" aria-label="Fechar biblioteca" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div ref={setScroller} className="min-h-0 flex-1 overflow-y-auto">
         {!v && (
@@ -449,6 +447,6 @@ export function SoulLibraryPanel({ onClose, focus, onBird }: { onClose: () => vo
           </>
         )}
       </div>
-    </FloatingPanel>
+    </>
   )
 }

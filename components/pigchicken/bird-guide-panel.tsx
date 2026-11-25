@@ -1,13 +1,12 @@
 "use client"
 
-// Popup with the Guia de pássaros: the real birds the souls take after (lib/pigchicken/bird-guide.ts). A card for each
+// The Pássaros tab of the Catálogo (catalog-panel.tsx), the Guia de pássaros: the real birds the souls take after (lib/pigchicken/bird-guide.ts). A card for each
 // bird; a click opens it and plays one of its real songs (each click on its drawing plays the next one). The open bird
 // shows what it is, its recordings with who made each one, and the souls it inspires: the ones not caught yet are
 // only their outline, as in the Biblioteca de almas, and a click on one caught opens the library on it (onSoul).
 // `focus` opens the guide on a bird (from a soul's Inspiration).
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeft, X } from "lucide-react"
-import { FloatingPanel } from "@/components/ui/floating-panel"
+import { ArrowLeft } from "lucide-react"
 import { SoulCanvas } from "@/components/pigchicken/draw/soul-card"
 import { GUIDE_BIRDS, birdClips, type BirdClip, type GuideBird } from "@/lib/pigchicken/bird-guide"
 import { playBirdClip, stopBirdClip } from "@/lib/pigchicken/bird-song"
@@ -20,7 +19,7 @@ const clipName = (c: BirdClip, all: readonly BirdClip[]) => {
   return `${c.kind === "song" ? "Canto" : "Chamado"}${same.length > 1 ? ` ${same.indexOf(c) + 1}` : ""}`
 }
 
-export function BirdGuidePanel({ onClose, focus, onSoul }: { onClose: () => void; focus?: { id: string; n: number } | null; onSoul?: (soul: string) => void }) {
+export function BirdGuideBody({ focus, onSoul }: { focus?: { id: string; n: number } | null; onSoul?: (soul: string) => void }) {
   const [sel, setSel] = useState<string | null>(focus?.id ?? null)
   const [col, setCol] = useState<SoulCollection>(() => loadCollection())
   const [entries, setEntries] = useState<readonly SoulEntry[]>(() => loadSoulEntries())
@@ -48,13 +47,13 @@ export function BirdGuidePanel({ onClose, focus, onSoul }: { onClose: () => void
   const head = "text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]"
 
   return (
-    <FloatingPanel id="pigchicken-birds" aria-label="Guia de pássaros" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(560, vw - 24), h: vh - 104 })} minW={300} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        {b && <button type="button" aria-label="Voltar ao guia" title="Voltar ao guia" onClick={() => pick(null)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><ArrowLeft className="h-4 w-4" /></button>}
-        <h2 className="min-w-0 flex-1 truncate text-sm text-white">{b ? b.game : "Guia de pássaros"}</h2>
-        {!b && <span className="shrink-0 text-[#93a79a]" title="Aves do guia">{GUIDE_BIRDS.length}</span>}
-        <button type="button" aria-label="Fechar guia" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
-      </div>
+    <>
+      {b && (
+        <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
+          <button type="button" aria-label="Voltar ao guia" title="Voltar ao guia" onClick={() => pick(null)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><ArrowLeft className="h-4 w-4" /></button>
+          <h2 className="min-w-0 flex-1 truncate text-sm text-white">{b.game}</h2>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!b && (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(108px,1fr))] gap-2 p-4">
@@ -110,6 +109,6 @@ export function BirdGuidePanel({ onClose, focus, onSoul }: { onClose: () => void
           </div>
         )}
       </div>
-    </FloatingPanel>
+    </>
   )
 }

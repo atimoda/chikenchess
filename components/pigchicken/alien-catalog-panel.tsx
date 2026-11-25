@@ -1,13 +1,12 @@
 "use client"
 
-// Popup with the aliens' catalogue: a card for each variation (its drawing, its name and its species; it stands still
-// and only the card under the pointer or focused moves, so a long catalogue costs one drawing a frame);
+// The Aliens tab of the Catálogo (catalog-panel.tsx): a card for each variation (its drawing, its name and its species;
+// it stands still and only the card under the pointer or focused moves, so a long catalogue costs one drawing a frame);
 // clicking one opens its parameters, with buttons to hear its shot and its two deaths, duplicate it, bring a code's
 // one back to its values or delete one made here. Saved in this browser; the songs take it live.
 import { StepSelect } from "@/components/ui/step-select"
-import { useEffect, useRef, useState } from "react"
-import { ArrowLeft, Copy, Trash2, Volume2, X } from "lucide-react"
-import { FloatingPanel } from "@/components/ui/floating-panel"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { ArrowLeft, Copy, Trash2, Volume2 } from "lucide-react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { drawTempleAlien } from "@/components/pigchicken/temple-draw"
 import { drawNoteShots } from "@/components/pigchicken/note-stage-draw"
@@ -95,7 +94,7 @@ function hearDeath(v: AlienVariant, which: "physical" | "musical") {
 
 // ---------- the panel ----------
 
-export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
+export function AlienCatalogBody() {
   const [catalog, setCatalog] = useState<Catalog>(() => loadCatalog())
   const [sel, setSel] = useState<string | null>(null)
   const [open, setOpen] = useState<Record<string, boolean>>({ Corpo: true, Movimento: false, Tiro: true, Rebate: false, Sons: true, "Morto-vivo": false })
@@ -111,8 +110,9 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
   useEffect(() => subscribeCatalog(setCatalog), [])
   const v = sel ? catalog.find(x => x.id === sel) ?? null : null
 
-  // the cards are drawn still, once (again when the catalogue changes or the panel's width does); one loop moves
-  // only the card under the pointer or focused, or the open variation's preview
+  // the cards are drawn still, each one when its canvas comes in (the panel puts its content in a moment after it
+  // opens, so there is none yet when the effects first run) and again when the catalogue changes or the panel's width
+  // does; one loop moves only the card under the pointer or focused, or the open variation's preview
   const live = useRef({ catalog, v })
   live.current = { catalog, v }
   const moving = useRef<string | null>(null)
@@ -129,15 +129,23 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
     moving.current = id
     if (was && was !== id) drawStill(was)
   }
+  const still = useRef(drawStill)
+  still.current = drawStill
   useEffect(() => { if (!v) drawStill() }, [catalog, v])
-  useEffect(() => {
-    const el = scroller.current
+  const watch = useRef<ResizeObserver | null>(null)
+  const setScroller = useCallback((el: HTMLDivElement | null) => {
+    watch.current?.disconnect(); watch.current = null
+    scroller.current = el
     if (!el || typeof ResizeObserver === "undefined") return
     let w = el.clientWidth
-    const ro = new ResizeObserver(() => { if (el.clientWidth !== w) { w = el.clientWidth; if (!live.current.v) drawStill() } })
-    ro.observe(el)
-    return () => ro.disconnect()
+    watch.current = new ResizeObserver(() => { if (el.clientWidth !== w) { w = el.clientWidth; if (!live.current.v) still.current() } })
+    watch.current.observe(el)
   }, [])
+  const setCard = (x: AlienVariant) => (el: HTMLCanvasElement | null) => {
+    if (!el) { cards.current.delete(x.id); return }
+    cards.current.set(x.id, el)
+    if (moving.current !== x.id) drawCard(el, x, null)
+  }
   useEffect(() => {
     let raf = 0
     const frame = () => {
@@ -174,17 +182,14 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
   const changed = !!(v && base && JSON.stringify(v) !== JSON.stringify(base))
 
   return (
-    <FloatingPanel id="pigchicken-aliens" aria-label="Catálogo de aliens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(560, vw - 24), h: vh - 104 })} minW={300} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-      <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        {v ? (
-          <>
+    <>
+      {v && (
+        <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
             <button type="button" aria-label="Voltar ao catálogo" title="Voltar ao catálogo" onClick={() => pick(null)} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><ArrowLeft className="h-4 w-4" /></button>
             <input aria-label="Nome" value={v.name} onChange={e => { const n = e.target.value; update(d => { d.name = n }) }} onKeyDown={e => e.stopPropagation()} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white" />
-          </>
-        ) : <h2 className="min-w-0 flex-1 truncate text-sm text-white">Catálogo de aliens</h2>}
-        <button type="button" aria-label="Fechar catálogo" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
-      </div>
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+        </div>
+      )}
+      <div ref={setScroller} className="min-h-0 flex-1 overflow-y-auto">
         {!v && (
           <>
             <p className="px-4 pt-3 text-[10px] text-[#93a79a]">Cada alien é uma variação: a espécie (o desenho) e os parâmetros. Clique num cartão para mexer, ouvir o tiro e as mortes, ou duplicar. As músicas usam o catálogo na hora, e ele fica salvo neste navegador.</p>
@@ -196,7 +201,7 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
                     <button key={x.id} type="button" onClick={() => { hover(null); pick(x.id) }}
                       onPointerEnter={() => hover(x.id)} onPointerLeave={() => { if (moving.current === x.id) hover(null) }}
                       onFocus={() => hover(x.id)} onBlur={() => { if (moving.current === x.id) hover(null) }} className="grid min-w-0 gap-1 rounded-lg border border-white/10 bg-[#0b110e] p-1.5 text-left hover:border-primary">
-                      <canvas ref={el => { if (el) cards.current.set(x.id, el); else cards.current.delete(x.id) }} aria-hidden="true" className="h-20 w-full rounded-md bg-[#141c26]" />
+                      <canvas ref={setCard(x)} aria-hidden="true" className="h-20 w-full rounded-md bg-[#141c26]" />
                       <span className="truncate px-0.5 text-[12px] text-white">{x.name}</span>
                       <span className="truncate px-0.5 text-[10px] text-[#93a79a]">{x.id === sp ? "Base" : SPECIES[x.species].name}{!x.builtin ? " · sua" : ""}</span>
                     </button>
@@ -333,6 +338,6 @@ export function AlienCatalogPanel({ onClose }: { onClose: () => void }) {
           </>
         )}
       </div>
-    </FloatingPanel>
+    </>
   )
 }

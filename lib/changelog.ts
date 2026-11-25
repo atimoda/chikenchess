@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.18.0',
     date: '25/11/2026',
-    title: 'Ajustes do jogo salvos no servidor e por Pátio, com Lock; agarrar a parede ao apertar Cima; música da Zona com botão de ligar, fundo mais sutil e dinâmico e estilos lo-fi; notas giratórias no Hangdrum',
+    title: 'Ajustes do jogo salvos no servidor e por Pátio, com Lock; agarrar a parede ao apertar Cima; música da Zona com botão de ligar, fundo mais sutil e dinâmico e estilos lo-fi; notas giratórias no Hangdrum; Catálogo único de aliens, almas e pássaros',
     groups: [
       { title: 'Pátio: ajustes do jogo no servidor', items: [
         'O Salvar no game de Câmera de Mira, Ajustes, Volume, Camadas, Configurações do Pátio, Grade de blocos, Itens, Controles, Escalas e Biblioteca de almas agora grava no servidor, como o Personagem já fazia: vale na hora para todo mundo, de qualquer endereço, sem precisar publicar o jogo.',
@@ -54,6 +54,11 @@ const RECENT = [
         'As notas girando acertam como as notas comuns e somem ao acertar. Trocar de arma ou de instrumento não para o giro: dá para espalhar notas em volta e trocar de item.',
         'Itens → Hangdrum: Giro na bola (Desligado, 1 a 60 s, Duração da nota ou ∞; padrão Duração da nota), Nota é disparada até a região da nota (desligado, a nota já nasce na bola) e Cada nota interrompe a anterior: tocar uma bola corta a nota que ainda soava nela e a que girava ali, enquanto bolas diferentes soam juntas. Também vale em outros instrumentos com a escala Hangdrum ligada.',
         'Online, os outros jogadores veem as notas girando em volta da sua galinha.',
+      ] },
+      { title: 'Pátio: Catálogo e botão de Itens', items: [
+        'Catálogo de aliens, Biblioteca de almas e Guia de pássaros viraram um só painel, o Catálogo, aberto por um único botão com ícone de livro. As abas Aliens, Almas e Pássaros ficam no título, cada uma com o seu ícone, e o painel sempre abre em Aliens.',
+        'Os desenhos dos aliens no Catálogo agora aparecem assim que o painel abre; antes, cada cartão só aparecia depois de passar o ponteiro por cima.',
+        'O botão de Itens (armas e instrumentos) mostra o contorno do item que a galinha segura, como o botão do Personagem mostra o boneco, e passou para a esquerda do Personagem. De asas vazias, continua o ícone das espadas.',
       ] },
     ],
   },
