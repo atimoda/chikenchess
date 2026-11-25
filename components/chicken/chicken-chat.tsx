@@ -100,7 +100,7 @@ export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { p
     <>
       <style>{`@keyframes chicken-chat-in { from { opacity: 0; transform: translateY(6px) scale(.9); } } @keyframes chicken-chat-out { to { opacity: 0; } }`}</style>
       {chats.map(m => <ChatBubble key={m.id} msg={m} engine={players[m.player] ?? null} />)}
-      <ChatHistory bottom={bottom + (open ? 60 : 0)} />
+      <ChatHistory bottom={bottom + (open ? 60 : 0)} open={open} />
       {open && (
         <form
           data-chicken-ignore
@@ -139,28 +139,51 @@ export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { p
   )
 }
 
-// The chat history: a small see-through panel with every message of this visit, "nick: text", newest at the
-// bottom; it scrolls, and follows new messages unless the player scrolled up to read older ones.
-function ChatHistory({ bottom }: { bottom: number }) {
+// The chat history: the last messages of this visit (CHAT_HISTORY_MAX), "nick: text", newest at the bottom, with no
+// background (a shadow under the letters keeps them readable). Each line fades away HISTORY_SHOW ms after it arrives;
+// all of them come back while the mouse is over the history's place (or the field to write is open). It never takes
+// the mouse: the aim and the clicks go through to the game, and the hover is found by the pointer's position.
+const HISTORY_SHOW = 5000
+function ChatHistory({ bottom, open }: { bottom: number; open: boolean }) {
   const lines = useSyncExternalStore(subscribeChickenChat, getChickenChatHistory, getChickenChatHistory)
   const ref = useRef<HTMLDivElement>(null)
-  const atEnd = useRef(true)
+  // when each line got here, on this computer's clock (another browser's `at` is on its own clock)
+  const seen = useRef(new Map<string, number>())
+  const now = Date.now()
+  for (const l of lines) if (!seen.current.has(l.id)) seen.current.set(l.id, now)
+  if (seen.current.size > lines.length * 2) { const keep = new Set(lines.map(l => l.id)); seen.current.forEach((_, id) => { if (!keep.has(id)) seen.current.delete(id) }) }
+  const [hover, setHover] = useState(false)
+  const [, tick] = useState(0)
+  // re-render when the newest shown line is due to fade
   useEffect(() => {
-    const el = ref.current
-    if (el && atEnd.current) el.scrollTop = el.scrollHeight
-  }, [lines])
+    const due = lines.map(l => (seen.current.get(l.id) ?? 0) + HISTORY_SHOW - Date.now()).filter(t => t > 0)
+    if (!due.length) return
+    const t = window.setTimeout(() => tick(n => n + 1), Math.min(...due) + 30)
+    return () => window.clearTimeout(t)
+  })
+  useEffect(() => {
+    if (!lines.length) return
+    const onMove = (e: PointerEvent) => {
+      const r = ref.current?.getBoundingClientRect()
+      setHover(!!r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom)
+    }
+    window.addEventListener("pointermove", onMove, { passive: true })
+    return () => window.removeEventListener("pointermove", onMove)
+  }, [lines.length])
   if (!lines.length) return null
+  const all = hover || open
   return (
     <div
       ref={ref}
-      data-chicken-ignore
       aria-label="Histórico do chat"
       role="log"
-      onScroll={e => { const el = e.currentTarget; atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 8 }}
-      className="pointer-events-auto fixed left-3 z-[203] max-h-40 w-[min(340px,calc(100vw-1.5rem))] overflow-y-auto rounded-lg bg-black/45 px-2.5 py-1.5 font-mono text-xs leading-relaxed text-white [overflow-wrap:anywhere] [scrollbar-width:thin]"
+      className="pointer-events-none fixed left-3 z-[203] w-[min(340px,calc(100vw-1.5rem))] px-1 font-mono text-xs leading-relaxed text-white [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_0_4px_rgba(0,0,0,0.8)]"
       style={{ bottom }}
     >
-      {lines.map(l => <p key={l.id}><span className="font-bold text-primary">{l.name}:</span> {l.text}</p>)}
+      {lines.map(l => {
+        const shown = all || now - (seen.current.get(l.id) ?? now) < HISTORY_SHOW
+        return <p key={l.id} className={cn("transition-opacity", shown ? "opacity-100 duration-150" : "opacity-0 duration-700")}><span className="font-bold text-primary">{l.name}:</span> {l.text}</p>
+      })}
     </div>
   )
 }

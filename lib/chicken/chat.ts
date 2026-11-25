@@ -10,7 +10,8 @@ export const LOCAL_CHAT_PLAYER = 'p1'
 export type ChickenChatMessage = { id: string; player: string; text: string; at: number; until: number; name?: string }
 // the chat history panel: every message of this visit, oldest first, with who sent it
 export type ChickenChatLine = { id: string; player: string; name: string; text: string; at: number }
-export const CHAT_HISTORY_MAX = 200
+// the chat history keeps (and shows) only the last messages
+export const CHAT_HISTORY_MAX = 10
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
