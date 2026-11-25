@@ -35,7 +35,7 @@ test('version.json route publishes current RELEASE_LABEL with no-store cache hea
   assert.equal(response.status, 200)
   assert.match(response.headers.get('cache-control') || '', /no-store/)
   const payload = await response.json()
-  assert.deepEqual(payload, { version: RELEASE_LABEL })
+  assert.deepEqual(payload, { version: RELEASE_LABEL, build: '' })
 })
 
 test('version check detects only newer semantic versions and handles fetch errors gracefully', async () => {
@@ -61,6 +61,16 @@ test('version check detects only newer semantic versions and handles fetch error
     json: async () => ({ version: 'v1.6.4' }),
   }))
   assert.equal(same, null)
+
+  // another deploy of the same version (the changes of a day share one number)
+  const redeploy = async () => ({ ok: true, json: async () => ({ version: 'v1.6.4', build: 'bbb' }) })
+  assert.equal(await checkForNewReleaseVersion('v1.6.4', redeploy, 'aaa'), 'v1.6.4')
+  assert.equal(await checkForNewReleaseVersion('v1.6.4', redeploy, 'bbb'), null)
+  // unknown on either side (a deploy from before the build id, or a page without one): only the number counts
+  assert.equal(await checkForNewReleaseVersion('v1.6.4', redeploy, ''), null)
+  assert.equal(await checkForNewReleaseVersion('v1.6.4', async () => ({ ok: true, json: async () => ({ version: 'v1.6.4' }) }), 'aaa'), null)
+  // an older number from another deploy is never offered
+  assert.equal(await checkForNewReleaseVersion('v1.6.5', redeploy, 'aaa'), null)
 
   const failed = await fetchPublishedReleaseVersion(async () => {
     throw new Error('network error')

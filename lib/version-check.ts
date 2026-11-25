@@ -1,4 +1,5 @@
 import { RELEASE_LABEL } from './release'
+import { BUILD_ID } from './build-id'
 
 /* global fetch */
 
@@ -7,6 +8,12 @@ export const VERSION_CHECK_INTERVAL_MS = 60_000
 
 export interface ReleaseVersionPayload {
   version: string
+  // the deploy (lib/build-id.ts); absent on deploys made before it existed
+  build?: string
+}
+export interface PublishedRelease {
+  version: string
+  build: string
 }
 
 export function parseReleaseVersion(value: unknown): [number, number, number] | null {
@@ -35,10 +42,18 @@ export function isNewVersionAvailable(currentVersion: unknown, remoteVersion: un
   return comparison !== null && comparison > 0
 }
 
-export async function fetchPublishedReleaseVersion(
+// A newer version number, or the same number from another deploy (both builds known). An older number never is.
+export function isNewReleaseAvailable(currentVersion: unknown, currentBuild: string, remote: PublishedRelease): boolean {
+  const comparison = compareReleaseVersions(remote.version, currentVersion)
+  if (comparison === null) return false
+  if (comparison > 0) return true
+  return comparison === 0 && !!currentBuild && !!remote.build && remote.build !== currentBuild
+}
+
+export async function fetchPublishedRelease(
   fetchImpl: typeof fetch = fetch,
   endpoint: string = VERSION_ENDPOINT,
-): Promise<string | null> {
+): Promise<PublishedRelease | null> {
   try {
     const separator = endpoint.includes('?') ? '&' : '?'
     const response = await fetchImpl(`${endpoint}${separator}t=${Date.now()}`, {
@@ -53,17 +68,26 @@ export async function fetchPublishedReleaseVersion(
     if (!payload || typeof payload.version !== 'string') return null
     const parsed = parseReleaseVersion(payload.version)
     if (!parsed) return null
-    return `v${parsed[0]}.${parsed[1]}.${parsed[2]}`
+    return { version: `v${parsed[0]}.${parsed[1]}.${parsed[2]}`, build: typeof payload.build === 'string' ? payload.build : '' }
   } catch {
     return null
   }
 }
 
+export async function fetchPublishedReleaseVersion(
+  fetchImpl: typeof fetch = fetch,
+  endpoint: string = VERSION_ENDPOINT,
+): Promise<string | null> {
+  return (await fetchPublishedRelease(fetchImpl, endpoint))?.version ?? null
+}
+
+// the published version when there is a newer release (or another deploy of the same version), else null
 export async function checkForNewReleaseVersion(
   currentVersion: string = RELEASE_LABEL,
   fetchImpl: typeof fetch = fetch,
+  currentBuild: string = BUILD_ID,
 ): Promise<string | null> {
-  const remoteVersion = await fetchPublishedReleaseVersion(fetchImpl)
-  if (!remoteVersion) return null
-  return isNewVersionAvailable(currentVersion, remoteVersion) ? remoteVersion : null
+  const remote = await fetchPublishedRelease(fetchImpl)
+  if (!remote) return null
+  return isNewReleaseAvailable(currentVersion, currentBuild, remote) ? remote.version : null
 }

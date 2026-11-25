@@ -64,7 +64,7 @@ export function VersionUpdateNotice() {
       onPointerDown={event => event.stopPropagation()}
       className="pointer-events-auto fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] z-[170] flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg border border-black/15 bg-white px-3.5 py-2.5 font-mono text-xs text-neutral-900 shadow-lg"
     >
-      <span>There is a new version available!</span>
+      <span>Há uma versão nova!</span>
       <a
         href=""
         onClick={event => {
@@ -73,7 +73,7 @@ export function VersionUpdateNotice() {
         }}
         className="shrink-0 font-bold text-neutral-950 underline underline-offset-4 transition-colors hover:text-emerald-700"
       >
-        Update
+        Atualizar
       </a>
     </div>
   )

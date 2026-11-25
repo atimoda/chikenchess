@@ -55,6 +55,9 @@ const RECENT = [
         'Itens → Hangdrum: Giro na bola (Desligado, 1 a 60 s, Duração da nota ou ∞; padrão Duração da nota), Nota é disparada até a região da nota (desligado, a nota já nasce na bola) e Cada nota interrompe a anterior: tocar uma bola corta a nota que ainda soava nela e a que girava ali, enquanto bolas diferentes soam juntas. Também vale em outros instrumentos com a escala Hangdrum ligada.',
         'Online, os outros jogadores veem as notas girando em volta da sua galinha.',
       ] },
+      { title: 'Aviso de versão nova', items: [
+        'O aviso de versão nova agora aparece a cada deploy, mesmo quando o número da versão é o mesmo do dia, inclusive no site instalado como app. O texto ficou em português: “Há uma versão nova!” com o link Atualizar.',
+      ] },
       { title: 'Pátio: Catálogo e botão de Itens', items: [
         'Catálogo de aliens, Biblioteca de almas e Guia de pássaros viraram um só painel, o Catálogo, aberto por um único botão com ícone de livro. As abas Aliens, Almas e Pássaros ficam no título, cada uma com o seu ícone, e o painel sempre abre em Aliens.',
         'Os desenhos dos aliens no Catálogo agora aparecem assim que o painel abre; antes, cada cartão só aparecia depois de passar o ponteiro por cima.',

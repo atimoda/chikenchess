@@ -2,10 +2,13 @@ import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const projectRoot = dirname(fileURLToPath(import.meta.url))
+// one id per deploy (lib/build-id.ts): the commit on Vercel, else the build's time
+const buildId = (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 12) || String(Date.now())
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  env: { NEXT_PUBLIC_BUILD_ID: buildId },
   distDir: process.env.CHICKENCHESS_NEXT_BUILD_DIR || '.next',
   turbopack: { root: projectRoot },
   outputFileTracingRoot: projectRoot,
