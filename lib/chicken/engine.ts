@@ -695,7 +695,9 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     let jumpPressed = (J && !prevJump) || (tapped('jump') && !(J && prevJump))
     const crouchPressed = tapped('crouch') || (C && !S.prevCrouch)
     const downPressed = (Dk && !S.prevD) || tapped('down')
-    prevJump = J; S.prevCrouch = C; pressed.clear(); virtTapped.clear()
+    // the moment Up goes down: touching a wall, it grabs it whatever else is held (tryCling)
+    const upPressed = (U && !S.prevU) || tapped('up')
+    prevJump = J; S.prevCrouch = C; S.prevU = U; pressed.clear(); virtTapped.clear()
     if (game.seat && !S.held) { seatStep(dt, jumpPressed); return }
     // Releasing Brood at rest latches it. Chickens keep this pose until Brood again, Jump or Run with a direction;
     // other bird profiles can opt into the previous automatic stand-up behavior.
@@ -997,7 +999,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
 
     if (S.grounded && !S.sliding && (!brooding || broodWalking) && !crouching && dir !== 0) stepUp()
     // walking to a clicked spot never grabs the screen walls
-    if (!S.shocking && tryCling(auto ? 0 : dir, U)) return
+    if (!S.shocking && tryCling(auto ? 0 : dir, U, upPressed)) return
     const speed = Math.abs(S.vx) * movementFactor()
     let st: string
     if (!S.grounded) st = mode || 'jump'
@@ -1302,14 +1304,15 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   }
 
   // walls: solid ones grab when pushing toward them; floating ones when her feet touch them in the
-  // air while no movement control is held
-  function tryCling(dir: number, up = false) {
+  // air while no movement control is held. Pressing Up (its press, `upPress`) grabs any wall she touches,
+  // on the ground or in the air, whatever else is held, like Up held on the ground
+  function tryCling(dir: number, up = false, upPress = false) {
     // a species that does not climb (Pig) never grabs a wall
     if (R.climbSpeed <= 0) return false
     const bodyY = S.y - 40 * R.scale, footY = S.y - 4 * R.scale
     for (const sg of SEGS) {
-      if (!sg.wall || sg.ceil || (S.clCool > 0 && sg.id === S.clLast)) continue
-      const climbFromGround = up && S.grounded
+      if (!sg.wall || sg.ceil || (S.clCool > 0 && sg.id === S.clLast && !upPress)) continue
+      const climbFromGround = (up && S.grounded) || upPress
       if (!sg.solid && !climbFromGround && (S.grounded || S.noGrab)) continue
       const py = sg.solid || climbFromGround ? bodyY : footY, reach = (sg.solid || climbFromGround ? 46 : 24) * R.scale
       if (py < Math.min(sg.ay, sg.by) || py > Math.max(sg.ay, sg.by)) continue

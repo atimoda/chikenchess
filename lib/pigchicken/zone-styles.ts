@@ -34,6 +34,16 @@ export const ZONE_STYLES: ZoneStyle[] = [
   style('Mundo', { id: 'reggae', name: 'Reggae', root: 55, scale: 'majorPenta', chordScale: 'major', bpm: 76, feel: 'straight', progression: [0, 3, 4, 3], color: '#34a853', ambience: { beat: 'reggae', bass: 'reggae' } }),
   style('Mundo', { id: 'reggaeton', name: 'Reggaeton', root: 61, scale: 'minor', chordScale: 'minor', bpm: 95, feel: 'straight', progression: [0, 5, 2, 6], color: '#f77f00', ambience: { beat: 'dembow', bass: 'pulse' } }),
   style('Mundo', { id: 'afrobeat', name: 'Afrobeat', root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 110, feel: 'straight', progression: [0, 3, 0, 3], color: '#e76f51', ambience: { beat: 'afro', bass: 'funk' } }),
+  // ---------- Lo-fi ----------
+  // the game's own lo-fi tracks: seventh chords on a worn electric piano over a sleepy, dusty kit
+  // Eb: ii7 V7 Imaj7 vi7, the soft turnaround
+  style('Lo-fi', { id: 'lofi', name: 'Lo-fi', root: 63, scale: 'majorPenta', chordScale: 'major', bpm: 78, feel: 'straight', progression: [1, 4, 0, 5], color: '#b8a1d9', ambience: { beat: 'lofi', bass: 'keys' } }),
+  // F: IVmaj7 iii7 ii7 Imaj7, walking down to home
+  style('Lo-fi', { id: 'cafe', name: 'Café', root: 65, scale: 'major', chordScale: 'major', bpm: 86, feel: 'straight', progression: [3, 2, 1, 0], color: '#d4a59a', ambience: { beat: 'cafe', bass: 'keysWalk' } }),
+  // A dorian: i7 and the bright IV7, swaying slowly
+  style('Lo-fi', { id: 'chuva', name: 'Chuva', root: 57, scale: 'dorian', chordScale: 'dorian', bpm: 70, feel: 'straight', progression: [0, 3], color: '#8fb3c9', ambience: { beat: 'chuva', bass: 'keysHeld' } }),
+  // C minor: VImaj7 iv7 i7 i7, late at night
+  style('Lo-fi', { id: 'madrugada', name: 'Madrugada', root: 60, scale: 'minorPenta', chordScale: 'minor', bpm: 72, feel: 'straight', progression: [5, 3, 0, 0], color: '#6d6a9c', ambience: { beat: 'lofi', bass: 'lofiBass' } }),
   // ---------- Suave ----------
   style('Suave', { id: 'pulse', name: 'Pulso', root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 72, feel: 'straight', progression: [0, 1, 0, 1], color: '#bde0fe', ambience: { beat: 'pulse', bass: 'pad' } }),
 ]

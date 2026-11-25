@@ -3,6 +3,7 @@
 import { audio } from './sfx'
 import { midiHz } from './music'
 import type { BassTone, DroneTone } from './zone-ambience'
+import { RECORD_STOP, recordStopCurve } from './zone-dynamics'
 import { pieceOfMidi } from './drum-kit'
 import { playKit } from './drum-synth'
 
@@ -21,6 +22,11 @@ export const isHangVoice = (v: VoiceId) => v === 'hang' || v === 'handpan' || v 
 const MAX_VOICES = 24
 let bus: GainNode | null = null, amb: GainNode | null = null, comp: DynamicsCompressorNode | null = null
 let noteVol = 0.7, ambVol = 0.35
+let zoneLp: BiquadFilterNode | null = null, zoneGate: GainNode | null = null
+// the voices of the zones' background still sounding or about to (what a record stop slows down)
+type ZoneVoice = AudioScheduledSourceNode & { detune: AudioParam }
+const zoneVoices = new Set<ZoneVoice>()
+function zoneVoice(v: ZoneVoice) { zoneVoices.add(v); v.addEventListener('ended', () => zoneVoices.delete(v)) }
 type Live = { end: number; kill: (t: number) => void }
 const live: Live[] = []
 
@@ -31,6 +37,10 @@ function ctx() {
     comp = a.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(a.destination)
     bus = a.createGain(); bus.gain.value = noteVol; bus.connect(comp)
     amb = a.createGain(); amb.gain.value = ambVol; amb.connect(comp)
+    // the zones' own background (beat, bass, drone) goes through a filter and a gate of its own into the ambience,
+    // so the zone's music switch can stop it at once (stopZoneAmbience)
+    zoneLp = a.createBiquadFilter(); zoneLp.type = 'lowpass'; zoneLp.frequency.value = 20000; zoneLp.Q.value = 0.7
+    zoneGate = a.createGain(); zoneGate.gain.value = 1; zoneLp.connect(zoneGate); zoneGate.connect(amb)
   }
   return a
 }
@@ -50,7 +60,23 @@ export function noteBus() {
 /** The ambience's bus, for the voices written outside this file (lib/pigchicken/kit-player.ts); null: no sound now. */
 export function ambienceBus() {
   const a = ctx()
-  return a && amb && ambVol > 0 ? { a, amb } : null
+  return a && amb && zoneLp && ambVol > 0 ? { a, amb, zone: zoneLp, voice: zoneVoice } : null
+}
+
+// the zone's music switched off: everything of the zones' background that sounds or is scheduled stops now, like a
+// record when the turntable is switched off (the speed falls to nothing in RECORD_STOP seconds, the sound darkening
+// and fading with it); then the gate opens again for what comes next
+export function stopZoneAmbience() {
+  const a = ctx()
+  if (!a || !zoneLp || !zoneGate) return
+  const now = a.currentTime, end = now + RECORD_STOP, curve = recordStopCurve()
+  zoneVoices.forEach(v => {
+    try { v.detune.cancelScheduledValues(now); v.detune.setValueCurveAtTime(curve, now, RECORD_STOP); v.stop(end + 0.02) } catch { /* already over */ }
+  })
+  zoneVoices.clear()
+  const g = zoneGate.gain, f = zoneLp.frequency
+  g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0.0001, end); g.setValueAtTime(1, end + 0.05)
+  f.cancelScheduledValues(now); f.setValueAtTime(9000, now); f.exponentialRampToValueAtTime(250, end); f.setValueAtTime(20000, end + 0.05)
 }
 
 // keeps the number of voices down: the oldest one fades out fast
@@ -396,11 +422,12 @@ export function playNote(voice: VoiceId, midi: number, opts: { at?: number; dur?
 
 // ---------- ambience: percussion and drone from the scenery ----------
 export type Drum = 'kick' | 'snare' | 'hat' | 'openHat' | 'shaker' | 'jingle' | 'clap' | 'taiko' | 'wood' | 'crash'
-export function playDrum(kind: Drum, at = 0, vel = 1) {
+// zone: one of a zone's background (it goes through the zones' gate)
+export function playDrum(kind: Drum, at = 0, vel = 1, zone = false) {
   const a = ctx()
   if (!a || !amb || ambVol <= 0) return
   const t = a.currentTime + Math.max(0, at)
-  const g = a.createGain(); g.connect(kind === 'jingle' ? bus! : amb)
+  const g = a.createGain(); g.connect(kind === 'jingle' ? bus! : zone && zoneLp ? zoneLp : amb)
   const hit = (filter: BiquadFilterType, fq: number, q: number, peak: number, dec: number, start = 0) => {
     const n = noise(a), bf = a.createBiquadFilter(); bf.type = filter; bf.frequency.value = fq; bf.Q.value = q
     const ng = a.createGain(); env(a, ng, t + start, peak * vel, 0.002, 0, dec); n.connect(bf); bf.connect(ng); ng.connect(g)
@@ -441,8 +468,23 @@ export function playBass(tone: BassTone, midi: number, at = 0, dur = 0.2, vel = 
   const a = ctx()
   if (!a || !amb || ambVol <= 0) return
   const t = a.currentTime + Math.max(0, at), f = midiHz(midi)
-  const g = a.createGain(); g.connect(amb)
+  const g = a.createGain(); g.connect(zoneLp ?? amb)
   const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.connect(g)
+  if (tone === 'keys') {
+    // a soft electric piano, a little out of tune like an old one: two sines a hair apart and an octave above
+    // them, a quick bell of the tine on the attack, the body fading while it is held and a gentle release
+    const tine = osc(a, 'sine', f * 4.02, t), tg = a.createGain()
+    tg.gain.setValueAtTime(0.0001, t); tg.gain.exponentialRampToValueAtTime(0.035 * vel, t + 0.004); tg.gain.exponentialRampToValueAtTime(0.0001, t + 0.35)
+    tine.connect(tg); tg.connect(lp)
+    const body = [osc(a, 'sine', f * 0.9985, t), osc(a, 'sine', f * 1.0015, t), osc(a, 'triangle', f * 2, t)]
+    const bg = a.createGain(); bg.gain.value = 1; body.forEach(x => x.connect(bg)); bg.connect(lp)
+    lp.frequency.setValueAtTime(2600, t); lp.frequency.exponentialRampToValueAtTime(900, t + Math.max(0.3, dur))
+    const peak = 0.06 * vel, hold = Math.max(0.05, dur), end = t + 0.012 + hold + 0.45
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.012)
+    g.gain.exponentialRampToValueAtTime(peak * 0.45, t + 0.012 + hold); g.gain.exponentialRampToValueAtTime(0.0001, end)
+    ;[tine, ...body].forEach(x => { x.start(t); x.stop(end + 0.05); zoneVoice(x) })
+    return
+  }
   const sweep = (from: number, to: number, time: number) => { lp.frequency.setValueAtTime(from, t); lp.frequency.exponentialRampToValueAtTime(to, t + Math.max(0.03, Math.min(dur, time))) }
   let o: OscillatorNode[], peak: number
   switch (tone) {
@@ -452,7 +494,7 @@ export function playBass(tone: BassTone, midi: number, at = 0, dur = 0.2, vel = 
     case 'saw': o = [osc(a, 'sawtooth', f, t)]; lp.Q.value = 9; sweep(2600, 300, 0.18); peak = 0.15; break
   }
   const end = env(a, g, t, peak * vel, 0.006, Math.max(0, dur - 0.06), 0.08)
-  o.forEach(x => { x.connect(lp); x.start(t); x.stop(end + 0.05) })
+  o.forEach(x => { x.connect(lp); x.start(t); x.stop(end + 0.05); zoneVoice(x) })
 }
 
 // the drone: soft voices on the chord's root, fifth and third, sustained and changing note with the chord.
@@ -481,7 +523,7 @@ export function createDrone() {
         const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = d.cutoff; lp.Q.value = 0.8
         const lfo = osc(a, 'sine', 0.13, now), lg = a.createGain(); lg.gain.value = d.sweep; lfo.connect(lg); lg.connect(lp.frequency)
         const o = [osc(a, d.waves[0], r, now), osc(a, d.waves[1], r * 1.004, now), osc(a, d.waves[2], r * f5, now), osc(a, d.waves[3], r * f3, now), lfo]
-        o.slice(0, 4).forEach(x => x.connect(lp)); lp.connect(g); g.connect(amb); o.forEach(x => x.start(now))
+        o.slice(0, 4).forEach(x => x.connect(lp)); lp.connect(g); g.connect(zoneLp ?? amb); o.forEach(x => { x.start(now); zoneVoice(x) })
         nodes = { o, g, lp, tone }
       } else {
         const [a1, a2, a3, a4] = nodes.o

@@ -6,12 +6,14 @@
 
 export type DrumRow = 'kick' | 'snare' | 'clap' | 'hat' | 'openHat' | 'shaker' | 'tom' | 'perc'
 // label: the row's name in the panel; file: bank/asset under /samples (take and extension are added); takes: how
-// many takes the asset has (played in turn); gain: its level in the mix; rate: playback speed (tuning)
-export type KitVoice = { label: string; file: string; takes?: number; gain?: number; rate?: number }
+// many takes the asset has (played in turn); gain: its level in the mix; rate: playback speed (tuning); lp: the
+// brightest it gets (Hz: a worn, dusty recording; every hit goes through it and its speed wavers a hair, like tape)
+export type KitVoice = { label: string; file: string; takes?: number; gain?: number; rate?: number; lp?: number }
 export type KitId =
   | 'acoustic' | 'rock' | 'disco' | 'funk' | 'jazz' | 'boombap' | 'soft'
   | 'house' | 'techno' | 'trap' | 'dembow'
   | 'bossa' | 'samba' | 'baiao' | 'reggae' | 'afro'
+  | 'lofi'
 export type Kit = Partial<Record<DrumRow, KitVoice>>
 
 const P = 'chicken-percussion-v1/', Y = 'chicken-patio-v1/', B = 'chicken-bateria-v1/', S = 'chicken-samba-reggae-v2/', M = 'chicken-machines-v1/'
@@ -72,6 +74,13 @@ export const KITS: Record<KitId, Kit> = {
     kick: v('Zabumba', Y + 'zabumba', 1, 1.1), snare: v('Bacalhau', Y + 'bacalhau', 1, 0.9), hat: v('Triângulo fechado', Y + 'triangle-closed', 2, 0.7),
     openHat: v('Triângulo aberto', Y + 'triangle-open', 1, 0.6), shaker: v('Ganzá', Y + 'ganza', 2, 0.7), tom: v('Zabumba aberta', Y + 'zabumba-aberta'),
     clap: v('Pandeiro', S + 'pandeiro', 1, 0.8), perc: v('Agogô', S + 'agogo-agudo', 1, 0.5),
+  },
+  // lo-fi: the acoustic kit slowed down and dulled, like a drum break sampled off a worn record
+  lofi: {
+    kick: { ...v('Bumbo', P + 'kick', 2, 0.95, 0.86), lp: 2600 }, snare: { ...v('Caixa abafada', P + 'snare', 2, 0.7, 0.8), lp: 3400 },
+    clap: { ...v('Estalo', Y + 'clap', 2, 0.45, 0.84), lp: 3800 }, hat: { ...v('Chimbal', P + 'hat', 2, 0.5, 0.78), lp: 5200 },
+    openHat: { ...v('Aberto', P + 'open-hat', 2, 0.35, 0.76), lp: 4800 }, shaker: { ...v('Vassourinha', P + 'shaker', 2, 0.5, 0.72), lp: 4200 },
+    tom: { ...v('Tom', P + 'tom', 2, 0.6, 0.8), lp: 2400 }, perc: { ...v('Aro', Y + 'sidestick', 2, 0.65, 0.88), lp: 3600 },
   },
   // the world
   reggae: {

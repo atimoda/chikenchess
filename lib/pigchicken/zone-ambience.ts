@@ -97,17 +97,19 @@ export function toggleDrumStep(grid: DrumGrid, row: DrumRow, step: number): Drum
 
 // sustained under the chord (the drone's timbre)
 export type DroneTone = 'saw' | 'dark' | 'pad'
-// a note of a line or figure (the synth's playBass)
-export type BassTone = 'sub' | 'pluck' | 'square' | 'saw'
+// a note of a line or figure (the synth's playBass); keys: a soft electric piano
+export type BassTone = 'sub' | 'pluck' | 'square' | 'saw' | 'keys'
 export type BassId =
   | 'none' | 'drone' | 'droneDark' | 'pad'
   | 'pulse' | 'eighths' | 'octaves' | 'walking' | 'funk' | 'reggae' | 'baiao' | 'bossa'
   | 'arp' | 'arpFast' | 'acid' | 'offbeat' | 'stabs'
+  | 'lofiBass' | 'keys' | 'keysHeld' | 'keysWalk'
 // lines: one bar in sixteenths per entry, played in turn. "1" the chord's root, "3" its third, "5" its fifth,
-// "7" its seventh, "8" the root an octave up, "c" the whole chord, "." rest. len: sixteenths each note lasts.
+// "7" its seventh, "8" the root an octave up, "c" the whole chord, "j" the chord voiced open like on a piano (the
+// root, its seventh above it, the third and the fifth an octave up: four notes that always belong to the key), "." rest. len: sixteenths each note lasts.
 // oct: octaves above the bass register (two octaves under the key)
 export type Bass = {
-  id: BassId; label: string; group: 'Sustentado' | 'Baixo' | 'Synth'
+  id: BassId; label: string; group: 'Sustentado' | 'Baixo' | 'Synth' | 'Teclado'
   drone?: DroneTone; lines?: string[]; tone?: BassTone; len?: number; oct?: number
 }
 export const BASSES: Bass[] = [
@@ -127,8 +129,13 @@ export const BASSES: Bass[] = [
   { id: 'acid', label: 'Sequência ácida', group: 'Synth', tone: 'saw', len: 1, lines: ['1.18.1.31.8.1.71', '1.18.1.51.8.3.18'] },
   { id: 'offbeat', label: 'Contratempo', group: 'Synth', tone: 'saw', len: 2, lines: ['..1...1...1...1.'] },
   { id: 'stabs', label: 'Acordes no contratempo', group: 'Synth', tone: 'square', len: 2, oct: 2, lines: ['..c...c...c...c.'] },
+  // lo-fi: a round bass that lingers, and an electric piano comping the chord of the bar in open voicings
+  { id: 'lofiBass', label: 'Baixo lo-fi', group: 'Baixo', tone: 'sub', len: 6, lines: ['1.........5..1..', '1.......8.....5.'] },
+  { id: 'keys', label: 'Teclado lo-fi', group: 'Teclado', tone: 'keys', len: 9, oct: 1, lines: ['j.........j.....', '......j.....j...'] },
+  { id: 'keysHeld', label: 'Teclado sustentado', group: 'Teclado', tone: 'keys', len: 15, oct: 1, lines: ['j...............'] },
+  { id: 'keysWalk', label: 'Teclado e baixo', group: 'Teclado', tone: 'keys', len: 6, oct: 1, lines: ['j.....5...j...3.', '1...j.....7.j...'] },
 ]
-export const BASS_GROUPS = ['Sustentado', 'Baixo', 'Synth'] as const
+export const BASS_GROUPS = ['Sustentado', 'Baixo', 'Synth', 'Teclado'] as const
 export const BASS_IDS: BassId[] = ['none', ...BASSES.map(b => b.id)]
 export const isBass = (v: unknown): v is BassId => typeof v === 'string' && (BASS_IDS as string[]).includes(v)
 export const bassLabel = (id: BassId) => BASSES.find(b => b.id === id)?.label ?? 'Silêncio'
@@ -240,6 +247,7 @@ export function bassNotes(a: ZoneAmbience, chord: number[], low: number, step: n
   const up = (i: number) => base + ((((chord[i] ?? chord[0]) - chord[0]) % 12) + 12) % 12
   const note = (midi: number, vel = 1) => ({ midi, tone, len, vel: vel * vol })
   if (t === 'c') return [note(up(0), 0.6), note(up(1), 0.6), note(up(2), 0.6)]
+  if (t === 'j') return [note(base, 0.55), note(base + ((((chord[3] ?? chord[2]) - chord[0]) % 12) + 12) % 12, 0.42), note(up(1) + 12, 0.48), note(up(2) + 12, 0.4)]
   if (t === '8') return [note(base + 12)]
   const i = ({ '1': 0, '3': 1, '5': 2, '7': 3 } as Record<string, number>)[t]
   return i === undefined ? [] : [note(up(i))]

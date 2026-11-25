@@ -262,3 +262,154 @@ test("the grid the players' notes are pulled to follows the groove of the zone",
   const half = createConductor(); half.setZone(sz.soundZoneOf('h', { ...sz.defaultSoundZone(), bpm: 120, feel: 'half', ambience: { beat: 'samba', bass: 'none' } })); half.step(1e-7); half.step(0.0625)
   near(half.toGrid(), 0.1875, 'Meio tempo: the next eighth')
 })
+
+// ---------- the zone's music toggle and the dynamics of its ambience (25/11) ----------
+
+const dyn = loadTs('lib/pigchicken/zone-dynamics.ts')
+const mz = loadTs('lib/pigchicken/mine-zones.ts')
+const mg = loadTs('lib/pigchicken/mine-grid.ts')
+const mp = loadTs('lib/pigchicken/mine-zone-params.ts')
+
+test("the zone's music toggle: absent is off (new and old zones), only `true` is kept, off quiets the ambience and nothing else", () => {
+  assert.equal(sz.defaultSoundZone().ambienceOn, undefined)
+  assert.equal(sz.normalizeSoundZone({ name: 'Velha', ambience: { beat: 'samba', bass: 'pulse' } }).ambienceOn, undefined, 'saved before the toggle: off')
+  assert.equal(sz.normalizeSoundZone({ ambienceOn: 'sim' }).ambienceOn, undefined)
+  assert.equal(sz.normalizeSoundZone({ ambienceOn: true }).ambienceOn, true)
+  assert.equal(sz.applyZoneChange(sz.normalizeSoundZone({ ambienceOn: true }), 'beat').ambienceOn, true, 'a change of the walls keeps it')
+  const a = { ...sz.defaultSoundZone(), ambience: { beat: 'samba', bass: 'drone' } }
+  const off = sz.soundZoneOf('t', a), on = sz.soundZoneOf('t', { ...a, ambienceOn: true })
+  assert.equal(off.quiet, true); assert.equal(on.quiet, undefined)
+  assert.notEqual(off.id, on.id, 'the conductor takes the switch on the next bar')
+  for (const k of ['root', 'scale', 'chordScale', 'bpm', 'feel', 'progression', 'ambience']) assert.deepEqual(off[k], on[k], k)
+  // with blocks: every block is quiet with the zone, and plays its pattern as chosen (arranged)
+  const two = sz.addZoneBlock(a, 0)
+  assert.ok(sz.soundZoneOf('t', two).blocks.every(b => b.zone.quiet && b.zone.arranged))
+  assert.equal(sz.soundZoneOf('t', two, 1).arranged, true); assert.equal(on.arranged, undefined)
+  // the scenes' own zones: off by default too
+  assert.equal(sz.sceneZoneParams(undefined, 0).ambienceOn, undefined)
+  assert.equal(sz.normalizeSceneZones({ 0: { ambienceOn: true } }, 3)['0'].ambienceOn, true)
+})
+
+test("the Grade de blocos: a block with a rhythm plays it whatever the scene's toggle; the scene's bass only with the scene's music on", () => {
+  const geo = mg.mineGeometry({ cell: 288, gap: 32 }, { width: 1920 * 2, top: -2000, ground: 930 })
+  const params = { ...mp.defaultMineZones(), rhythm: 50 }
+  const scene = (on) => ({ 0: { ...sz.sceneZoneParams(undefined, 0), ...(on ? { ambienceOn: true } : {}), ambience: { beat: 'none', bass: 'pulse' } }, 1: sz.sceneZoneParams(undefined, 1) })
+  const offBoxes = mz.mineZoneBoxes(geo, params, { zones: scene(false), screens: 2 }).filter(b => b.id.startsWith('bloco:cena0'))
+  const beat = offBoxes.find(b => b.beat !== 'none'), still = offBoxes.find(b => b.beat === 'none')
+  assert.equal(beat.zone.ambienceOn, true); assert.equal(beat.zone.ambience.bass, 'none')
+  assert.equal(still.zone.ambienceOn, undefined)
+  const onBeat = mz.mineZoneBoxes(geo, params, { zones: scene(true), screens: 2 }).find(b => b.id === beat.id)
+  assert.equal(onBeat.zone.ambienceOn, true); assert.equal(onBeat.zone.ambience.bass, 'pulse')
+})
+
+test('every rhythm rotates to one of its own variations, never a fill', () => {
+  for (const b of amb.BEATS) {
+    assert.ok(Number.isInteger(b.rotate) && b.rotate >= 1 && b.rotate <= b.variations.length, b.id)
+    assert.equal(b.variations[b.rotate - 1].beats, undefined, `${b.id}: not a Virada`)
+  }
+  const a = { beat: 'rock', bass: 'none' }
+  assert.deepEqual([0, 7, 8, 11, 12, 24].map(bar => dyn.rotatedAmbience(a, bar).variant ?? 0), [0, 0, 5, 5, 0, 5])
+  assert.equal(dyn.rotatedAmbience(a, 9, true), a, 'a block of a cycle plays as chosen')
+  assert.equal(dyn.rotatedAmbience({ ...a, variant: 2 }, 9).variant, 2, 'a variation chosen in the panel stays')
+  const own = { ...a, drums: { kick: 'X...............' } }
+  assert.equal(dyn.rotatedAmbience(own, 9), own)
+})
+
+const barOf = (a, bar, opts) => Array.from({ length: 16 }, (_, st) => dyn.zoneHits(a, st, bar, opts)).flat()
+const written = (a, st) => amb.drumRow(amb.ambienceGrid(a), 'snare')[st]
+
+test('the dynamics: softer than written, accents that vary, the same every time it plays, still under the Volume knob', () => {
+  const a = { beat: 'straight', bass: 'none' }
+  const hits = barOf(a, 3)
+  assert.deepEqual(barOf(a, 3), hits, 'deterministic')
+  assert.ok(hits.every(h => h.vel > 0 && h.vel < 1 && h.tone > 0 && h.tone <= 1))
+  assert.ok(Math.max(...hits.map(h => h.vel)) <= dyn.ZONE_MIX.beat * 1.1, 'the background sits back')
+  const kicks = hits.filter(h => h.drum === 'kick').map(h => h.vel), hats = hits.filter(h => h.drum === 'hat').map(h => h.vel)
+  assert.ok(Math.max(...hats) < Math.max(...kicks), 'the cymbals further back')
+  assert.ok(new Set(hats.map(v => v.toFixed(4))).size > 2, 'the accents are not flat')
+  const half = barOf({ ...a, beatVol: 50 }, 3)
+  hits.forEach((h, i) => near(half[i].vel, h.vel / 2, h.drum))
+})
+
+test('the dynamics: layers come in bar by bar, early bars of a phrase are lighter, phrases breathe and end in a pickup', () => {
+  const samba = { beat: 'samba', bass: 'none' }, rows = hits => new Set(hits.map(h => h.drum))
+  assert.deepEqual([...rows(barOf(samba, 2, { warm: 0 }))].sort(), ['kick', 'tom'], 'first the low drums')
+  assert.ok(rows(barOf(samba, 2, { warm: 1 })).has('shaker'))
+  assert.ok(!rows(barOf(samba, 2, { warm: 1 })).has('snare'))
+  assert.equal(rows(barOf(samba, 2)).size, 5, 'the whole kit later in the phrase')
+  assert.ok(rows(barOf(samba, 0)).size <= 4, 'at most 4 rows in the first bars of a phrase')
+  // over 16 bars: fewer hits than the patterns write
+  const rock = { beat: 'rock', bass: 'none' }, kit = kits.KITS.rock
+  let wrote = 0, played = 0
+  for (let bar = 0; bar < 16; bar++) { wrote += Array.from({ length: 16 }, (_, st) => amb.beatHits(dyn.rotatedAmbience(rock, bar), st)).flat().length; played += barOf(rock, bar, { kit }).length }
+  assert.ok(played < wrote, `${played} < ${wrote}`)
+  // the 6th bar of 8 keeps only the eighths on the cymbals
+  const funk = { beat: 'funk', bass: 'none' }, semis = { beat: 'funk', variant: 1, bass: 'none' }
+  assert.ok(barOf(semis, 5).some(h => h.drum === 'hat'))
+  assert.ok(Array.from({ length: 8 }, (_, i) => 2 * i + 1).every(st => !dyn.zoneHits(semis, st, 5).some(h => h.drum === 'hat')))
+  // the pickup: snares added at the end of bar 8, the tom closing bar 16
+  const added = bar => [13, 14, 15].filter(st => written(funk, st) === '.' && dyn.zoneHits(funk, st, bar, { kit: kits.KITS.funk }).some(h => h.drum === 'snare'))
+  assert.ok(added(7).length >= 2, `bar 8: ${added(7)}`)
+  assert.ok(dyn.zoneHits(funk, 15, 15, { kit: kits.KITS.funk }).some(h => h.drum === 'tom'))
+  // a calm rhythm and a Virada get no pickup
+  assert.ok(barOf({ beat: 'pulse', bass: 'none' }, 7).every(h => h.drum === 'kick'))
+  const virada = { beat: 'rock', variant: 6, bass: 'none' }, grid = amb.ambienceGrid(virada)
+  for (const bar of [3, 7, 15]) for (let st = 12; st < 16; st++) {
+    assert.deepEqual(dyn.zoneHits(virada, st, bar, { kit }).filter(h => amb.drumRow(grid, h.drum)[st] === '.'), [], `a Virada gets no pickup (bar ${bar}, step ${st})`)
+  }
+})
+
+test("a zone's own grid keeps every note it wrote (only the weights change)", () => {
+  const own = { beat: 'straight', bass: 'none', drums: { kick: 'X...X...X...X...', hat: 'xoxoxoxoxoxoxoxo', snare: '....X.......X...', openHat: '..o...o...o...o.', shaker: 'oooooooooooooooo' } }
+  for (const bar of [0, 3, 5, 7, 15]) {
+    const raw = Array.from({ length: 16 }, (_, st) => amb.beatHits(own, st).map(h => h.drum)).flat()
+    assert.deepEqual(barOf(own, bar).map(h => h.drum), raw, `bar ${bar}`)
+  }
+})
+
+test('the bass sits back with the beat; the entry counts bars and starts again after a bar of silence', () => {
+  assert.ok(dyn.zoneBassLevel(0, 0) > 0 && dyn.zoneBassLevel(0, 0) < 0.8)
+  assert.ok(dyn.zoneBassLevel(0, 5) > 0, 'the beat itself never rests')
+  assert.ok(dyn.zoneBassLevel(0, 0, 0) < dyn.zoneBassLevel(0, 0, 3), 'softer while it comes in')
+  const e = dyn.createAmbienceEntry(), run = (audible, steps, from = 0) => { let w = 0; for (let i = 0; i < steps; i++) w = e.at(audible, (from + i) % 16); return w }
+  assert.equal(run(true, 1), 0); assert.equal(run(true, 16, 1), 1); assert.equal(run(true, 32, 1), 3)
+  assert.equal(run(false, 8), 0); assert.equal(run(true, 1, 0), 4, 'a short gap: it goes on')
+  run(false, 16)
+  assert.equal(run(true, 1, 0), 0, 'a bar of silence: from the start again')
+  assert.equal(dyn.chance(3, 4, 5), dyn.chance(3, 4, 5)); assert.ok(dyn.chance(3, 4, 5) >= 0 && dyn.chance(3, 4, 5) < 1)
+})
+
+test('lo-fi: a dulled, slowed kit, three grooves of its own, an electric piano voicing that stays in the key', () => {
+  const lofi = kits.KITS.lofi
+  for (const [row, voice] of Object.entries(lofi)) { assert.ok(voice.lp > 1000 && voice.lp < 8000, row); assert.ok((voice.rate ?? 1) < 1, `${row}: slowed`) }
+  assert.deepEqual(amb.BEATS.filter(b => b.group === 'Lo-fi').map(b => b.id), ['lofi', 'cafe', 'chuva'])
+  for (const id of ['lofi', 'cafe', 'chuva']) assert.equal(amb.beatOf(id).kit, 'lofi')
+  assert.ok(amb.BEAT_GROUPS.includes('Lo-fi'))
+  // the chord of the bar voiced open: root, its seventh above, the third and the fifth an octave up
+  const cmaj7 = [60, 64, 67, 71], am7 = [57, 60, 64, 67]
+  assert.deepEqual(amb.bassNotes({ beat: 'none', bass: 'keys' }, cmaj7, 36, 0, 0).map(n => n.midi), [48, 59, 64, 67])
+  assert.deepEqual(amb.bassNotes({ beat: 'none', bass: 'keys' }, am7, 33, 0, 0).map(n => n.midi), [45, 55, 60, 64])
+  assert.ok(amb.bassNotes({ beat: 'none', bass: 'keysHeld' }, cmaj7, 36, 0, 0).every(n => n.tone === 'keys' && n.len === 15 && n.vel < 0.6))
+  const keysWalk = amb.bassNotes({ beat: 'none', bass: 'keysWalk' }, cmaj7, 36, 6, 0)
+  assert.deepEqual(keysWalk.map(n => n.midi), [55], 'a single note of the left hand between the chords')
+  // the four lo-fi styles: keys or the lo-fi bass, slow tempos
+  const st = loadTs('lib/pigchicken/zone-styles.ts')
+  const styles = st.ZONE_STYLES.filter(s => s.group === 'Lo-fi')
+  assert.deepEqual(styles.map(s => s.id), ['lofi', 'cafe', 'chuva', 'madrugada'])
+  assert.ok(styles.every(s => s.bpm <= 90 && ['keys', 'keysHeld', 'keysWalk', 'lofiBass'].includes(s.ambience.bass)))
+})
+
+test('the music switch: off in the panel stops the zone at once, like a record stopping; walking into a quiet zone does not', () => {
+  const curve = dyn.recordStopCurve()
+  assert.equal(curve[0], 0)
+  for (let i = 1; i < curve.length; i++) assert.ok(curve[i] < curve[i - 1], 'the pitch only falls')
+  assert.ok(curve[1] - curve[0] > curve.at(-1) - curve.at(-2), 'slowly at first, plunging at the end')
+  assert.ok(curve.at(-1) < -5000)
+  assert.ok(dyn.RECORD_STOP > 0.1 && dyn.RECORD_STOP <= 0.5, 'quick')
+  const w = dyn.createZoneSwitchWatch()
+  assert.equal(w.off('z1', true), false); assert.equal(w.off('z1', true), false)
+  assert.equal(w.off('z1', false), true, 'switched off'); assert.equal(w.off('z1', false), false, 'once')
+  assert.equal(w.off('z1', true), false, 'switched on: it comes in on the bar line')
+  assert.equal(w.off('z2', false), false, 'into a quiet zone: no cut')
+  w.off('z3', true); assert.equal(w.off(null, false), false, 'out of every zone: no cut')
+})

@@ -868,10 +868,11 @@ export function ChickenPatio() {
             <Pencil className="h-4 w-4" />
           </button>
           {editHint && !access.canEdit && (
-            <div role="dialog" aria-label="Sem permissão para editar" className="fixed right-3 top-14 z-[130] w-64 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-3 font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
-              <p>{access.reason === "default" ? "Este é o Pátio padrão: só o admin edita." : access.reason === "notAllowed" ? "O dono deste Pátio não liberou a edição para você." : "Este Pátio não é seu."} Crie um Pátio seu (uma cópia do padrão) para editar.</p>
-              <div className="mt-2 flex gap-2">
-                <button type="button" onClick={() => startNewPatio()} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">Criar meu Pátio</button>
+            <div role="dialog" aria-label="Sem permissão para editar" className="fixed left-1/2 top-1/2 z-[330] w-[min(20rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-4 text-center font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
+              <p className="font-bold text-white">Este Pátio não é seu.</p>
+              <p className="mt-1">Crie um Pátio novo para poder editar, ou receba a permissão do dono deste pátio.</p>
+              <div className="mt-3 flex justify-center gap-2">
+                <button type="button" onClick={() => startNewPatio()} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">Criar um Pátio novo</button>
                 <button type="button" onClick={() => setEditHint(false)} className="h-8 rounded-md border border-white/20 px-3">Fechar</button>
               </div>
             </div>

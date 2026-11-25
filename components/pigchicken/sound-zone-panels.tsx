@@ -4,6 +4,7 @@
 // a zone of the map and for a scene's own zone); the
 // Faixas fixas' layout and notes; and the "Rebate notas" collision of any surface.
 import { useEffect, useRef, useState } from "react"
+import { Music } from "lucide-react"
 import { PatioDisclosure } from "@/components/ui/patio-disclosure"
 import { PatioRange } from "@/components/ui/patio-range"
 import { StepSelect } from "@/components/ui/step-select"
@@ -106,7 +107,12 @@ export function SoundZoneFields({ zone, onChange, scene = false }: { zone: Sound
   const ofBlock = blocks.length > 1 ? ` · bloco ${at + 1}` : ""
   return (
     <>
-      <div className="grid grid-cols-[1fr_auto] gap-field">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-field">
+        <button type="button" aria-label="Música da zona" aria-pressed={!!zone.ambienceOn} title="Música da zona: batida, baixo e drone"
+          onClick={() => set({ ambienceOn: zone.ambienceOn ? undefined : true })}
+          className={"grid h-9 w-9 place-items-center rounded-md border transition-colors " + (zone.ambienceOn ? "border-primary bg-primary/25 text-white" : "border-white/15 text-[#5f6f65] hover:border-white/40 hover:text-[#93a79a]")}>
+          <Music className="h-4 w-4" aria-hidden="true" />
+        </button>
         <input aria-label="Nome da zona" title="Nome" placeholder="Nome" maxLength={40} value={nameText} onChange={e => {
           const z = normalizeSoundZone({ ...zone, name: e.target.value })
           setNameText(e.target.value); typedName.current = z.name; onChange(z, "zone-name")

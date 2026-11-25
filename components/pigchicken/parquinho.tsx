@@ -41,8 +41,9 @@ import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
 import { ALIEN_PATTERNS, alienPattern } from "@/lib/pigchicken/alien-patterns"
 import type { ParquinhoSettings } from "@/lib/pigchicken/settings"
-import { audioTime, createDrone, playBass, playDrum, playNote, setMusicVolumes } from "@/lib/pigchicken/synth"
-import { SILENCE, ambienceDrone, ambienceKit, bassNotes, beatHits, grooveOf, legacyAmbience } from "@/lib/pigchicken/zone-ambience"
+import { audioTime, createDrone, playBass, playDrum, playNote, setMusicVolumes, stopZoneAmbience } from "@/lib/pigchicken/synth"
+import { SILENCE, ambienceDrone, ambienceKit, ambienceSilent, bassNotes, grooveOf, legacyAmbience } from "@/lib/pigchicken/zone-ambience"
+import { ZONE_MIX, createAmbienceEntry, createZoneSwitchWatch, zoneBassLevel, zoneHits } from "@/lib/pigchicken/zone-dynamics"
 import { playKitHit, preloadKit } from "@/lib/pigchicken/kit-player"
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { playBirdSong } from "@/lib/pigchicken/bird-song"
@@ -822,6 +823,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // dev only: lets the test scripts reach the combat and the temple
     if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStages: stages, __chickenEngine: engine })
     const drone = createDrone()
+    // how long the zone's ambience has been sounding: after a silence its layers come in one by one
+    const ambEntry = createAmbienceEntry()
+    // the zone's music switched off in its panel: what still plays of it until the bar line (null: nothing cut)
+    const zoneSwitch = createZoneSwitchWatch()
+    let cutFamily: Zone | null = null
     let zoneShown: Zone | null = null, zoneBanner = 0
     let clockOff: number | null = null
     const unsubItems = subscribeItems(next => combat.setItems(next))
@@ -1832,6 +1838,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // with the scenes' zones off (Configurações do Pátio), outside a Zona sonora there is no ambience at all
       const zone = inZone ? soundZoneOf(inZone.id, inZone.zone, zoneBlockSolo()) : musicHere ? templeMusic?.zone ?? TEMPLE_IDLE : NO_SCENE_ZONE
       combat.music.setZone(zone)
+      // the music of the zone she is in switched off: its background stops at once, like a record when the
+      // turntable is switched off, and the zone that would play on until the bar line stays silent
+      if (zoneSwitch.off(inZone?.id ?? null, !!inZone?.zone.ambienceOn)) { cutFamily = combat.music.family; drone.set(null); stopZoneAmbience() }
+      if (cutFamily && combat.music.family !== cutFamily) cutFamily = null
       // back in the zone of a song playing: the Pátio's clock follows that song's own (its bars and beats)
       if (here?.clock && combat.music.family.id === here.song.music.zone.id && Math.abs(combat.music.beat - here.clock.beat) > 1e-3) combat.music.restore(here.clock.snapshot())
       combat.setQuantize(S.quantize)
@@ -1847,19 +1857,24 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       events.forEach(e => {
         if (mixGain("ambience") <= 0) return
         if (e.kind === "bar" && !here?.silent) {
-          // the temple keeps its drone; a zone plays the sustained voice it chose, if any
-          const z = combat.music.zone, voice = templeZone ? { tone: "saw" as const, vol: 1, oct: 0 } : ambienceDrone(z.ambience ?? legacyAmbience(z.feel))
-          if (voice) { const d = droneOf(z, combat.music.chord()); drone.set(d.root + 12 * voice.oct, d.fifth, d.third, voice.tone, voice.vol) }
+          // the temple keeps its drone; a zone plays the sustained voice it chose, if any (none with its music off:
+          // the drone fades out)
+          const z = combat.music.zone, voice = templeZone ? { tone: "saw" as const, vol: 1, oct: 0 } : z.quiet || cutFamily ? null : ambienceDrone(z.ambience ?? legacyAmbience(z.feel))
+          if (voice) { const d = droneOf(z, combat.music.chord()); drone.set(d.root + 12 * voice.oct, d.fifth, d.third, voice.tone, voice.vol * (templeZone ? 1 : ZONE_MIX.drone)) }
           else drone.set(null)
         }
         // the recordings of the zone that takes over on the next bar (and of its variation blocks) load ahead
-        if (e.kind === "beat") { const p = combat.music.pending; if (p) for (const z of p.blocks?.map(b => b.zone) ?? [p]) preloadKit(ambienceKit(z.ambience ?? legacyAmbience(z.feel))) }
+        if (e.kind === "beat") { const p = combat.music.pending; if (p) for (const z of p.blocks?.map(b => b.zone) ?? [p]) if (!z.quiet) preloadKit(ambienceKit(z.ambience ?? legacyAmbience(z.feel))) }
         if (e.kind === "step") {
           // a pause in total silence: no background
           if (templeZone) { if (!here?.silent) templeAmbience(templeMusic && combat.music.zone.id === templeMusic.zone.id ? templeMusic : null, e.n % 16, combat.music.bar, combat.music.chord(), combat.music.secondsPerBeat()) }
           // a zone's ambience is scheduled one sixteenth ahead (the Templo's own music plays on the sixteenth)
           const up = combat.music.ahead()
-          if (!up.zone.id.startsWith("templo")) ambience(up.zone, up.step, up.bar, up.chord, up.spb, up.wait + clockFix)
+          // a zone about to fall quiet (its music switched off, or a quiet zone taking over) fades over the bar
+          const p = combat.music.pending, fade = p?.quiet && !up.zone.quiet ? 1 - 0.8 * up.step / 16 : 1
+          if (cutFamily) ambEntry.at(false, up.step)
+          else if (!up.zone.id.startsWith("templo")) ambience(up.zone, up.step, up.bar, up.chord, up.spb, up.wait + clockFix, ambEntry, fade)
+          else ambEntry.at(false, up.step)
         }
       })
       if (mixGain("ambience") <= 0 || here?.silent) drone.set(null)
@@ -2643,15 +2658,19 @@ function effectGame(e: Effect | null, weight: number, doses: readonly Effect[] =
 
 // ---------- the zone's ambience on a sixteenth: its percussion and its bass line (the sustained voices follow the
 // bars). It is scheduled one sixteenth ahead (music.ts ahead), `wait` seconds before the sixteenth, so every note
-// lands exactly where its microtiming puts it, early or late: each drum by its own time, the bass by the groove ----------
-function ambience(zone: Zone, step: number, bar: number, chord: number[], spb: number, wait: number) {
+// lands exactly where its microtiming puts it, early or late: each drum by its own time, the bass by the groove.
+// How each hit is weighed (the mix, the phrase, the layers coming in) is zone-dynamics.ts; a zone with its music
+// off plays nothing. fade: the level while the bar ends before a quiet zone takes over ----------
+function ambience(zone: Zone, step: number, bar: number, chord: number[], spb: number, wait: number, entry: ReturnType<typeof createAmbienceEntry>, fade = 1) {
   const a = zone.ambience ?? legacyAmbience(zone.feel), s16 = spb / 4, kit = ambienceKit(a)
+  const warm = entry.at(!zone.quiet && !ambienceSilent(a), step)
+  if (zone.quiet) return
   if (step % 4 === 0) preloadKit(kit)
-  for (const hit of beatHits(a, step, zone.feel)) playKitHit(kit, hit.drum, Math.max(0, wait + hit.shift * s16), hit.vel)
-  const notes = bassNotes(a, chord, droneOf(zone, chord).root - 24, step, bar)
-  if (!notes.length) return
+  for (const hit of zoneHits(a, step, bar, { feel: zone.feel, warm, arranged: !!zone.arranged, kit })) playKitHit(kit, hit.drum, Math.max(0, wait + hit.shift * s16), hit.vel * fade, hit.tone)
+  const notes = bassNotes(a, chord, droneOf(zone, chord).root - 24, step, bar), level = notes.length ? zoneBassLevel(step, bar, warm) * fade : 0
+  if (level <= 0) return
   const late = Math.max(0, wait + grooveOf(a, zone.feel)[step] * s16)
-  for (const n of notes) playBass(n.tone, n.midi, late, n.len * s16, n.vel)
+  for (const n of notes) playBass(n.tone, n.midi, late, n.len * s16, n.vel * level)
 }
 
 export { BAR, BAR_GROUND_H, INV_STACK } from "@/components/pigchicken/draw/hud"

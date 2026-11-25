@@ -288,7 +288,7 @@ test('the ambience of a zone: silence by default, the old sound for zones saved 
 
 test('beats and basses: every pattern has 16 steps; hits, lines over the chord of the bar and the sustained voice', () => {
   for (const b of amb.BEATS) for (const [row, steps] of Object.entries(b.grid)) { assert.equal(steps.length, 16, `${b.id} ${row}`); assert.match(steps, /^[oxX.]+$/, `${b.id} ${row}`) }
-  for (const b of amb.BASSES) { assert.ok(b.drone || b.lines?.length, b.id); for (const l of b.lines ?? []) { assert.equal(l.length, 16, b.id); assert.match(l, /^[13578c.]+$/, b.id) } }
+  for (const b of amb.BASSES) { assert.ok(b.drone || b.lines?.length, b.id); for (const l of b.lines ?? []) { assert.equal(l.length, 16, b.id); assert.match(l, /^[13578cj.]+$/, b.id) } }
   assert.deepEqual(amb.beatHits({ beat: 'none', bass: 'none' }, 0), [])
   assert.deepEqual(amb.beatHits({ beat: 'straight', bass: 'none' }, 4).map(h => h.drum), ['snare', 'hat'])
   assert.equal(amb.beatHits({ beat: 'straight', bass: 'none', beatVol: 50 }, 0)[0].vel, 0.5)

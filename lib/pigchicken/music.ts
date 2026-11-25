@@ -35,6 +35,12 @@ export type Zone = {
   inKey?: InKeyRule
   // its percussion and bass (zone-ambience.ts); without it, the ones that follow the feel
   ambience?: ZoneAmbience
+  // the zone's music engine off (a Zona sonora with its music toggle off): its ambience is not heard (no beat, no
+  // bass, no drone) while the key, the scale, the tempo and the groove still apply
+  quiet?: true
+  // a block of a cycle (or one heard alone while edited): the ambience plays the pattern chosen for it as it is,
+  // without the rotation of the beat's variations (zone-dynamics.ts)
+  arranged?: true
   // variation blocks (sound-zones.ts): the zone is a cycle of them, each one a zone of its own that plays its first
   // `beats` beats `reps` times and hands over to the next. The conductor plays the blocks, never the zone itself
   blocks?: ZoneBlock[]

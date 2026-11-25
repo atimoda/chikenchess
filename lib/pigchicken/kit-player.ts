@@ -26,25 +26,28 @@ export function preloadKit(kit: Kit) {
   if (bus) for (const file of kitFiles(kit)) load(bus.a, file)
 }
 
-// one hit of a row of the kit, `at` seconds from now: its takes in turn, the level and the brightness following
-// how hard it is hit (a soft hit is duller, as on the instrument), a touch of chance in the level so two hits are
-// never the same
-export function playKitHit(kit: Kit, row: DrumRow, at = 0, vel = 1) {
+// one hit of a row of the kit, `at` seconds from now: its takes in turn, the level `vel` and the brightness
+// following how hard it is struck (`tone`, 0..1: a soft hit is duller and starts a little rounder, as on the
+// instrument), a touch of chance in the level so two hits are never the same
+export function playKitHit(kit: Kit, row: DrumRow, at = 0, vel = 1, tone = vel) {
   const bus = ambienceBus()
   if (!bus) return
   const voice = kit[row]
-  if (!voice) { playDrum(SYNTH[row], at, vel); return }
+  if (!voice) { playDrum(SYNTH[row], at, vel, true); return }
   const takes = voice.takes ?? 1, n = turn.get(voice.file) ?? 0
   turn.set(voice.file, (n + 1) % takes)
   const file = `${voice.file}-${n % takes}`, buffer = buffers.get(file)
-  if (!buffer || typeof buffer === 'string') { if (!buffer) load(bus.a, file); playDrum(SYNTH[row], at, vel); return }
-  const { a, amb } = bus, t = a.currentTime + Math.max(0, at)
-  const src = a.createBufferSource(); src.buffer = buffer; src.playbackRate.value = voice.rate ?? 1
-  const g = a.createGain(); g.gain.value = (voice.gain ?? 1) * 0.8 * Math.pow(Math.min(1, vel), 1.4) * (0.94 + Math.random() * 0.12)
-  if (vel < 0.75) {
-    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2500 + 9500 * Math.max(0, vel) / 0.75
+  if (!buffer || typeof buffer === 'string') { if (!buffer) load(bus.a, file); playDrum(SYNTH[row], at, vel, true); return }
+  const { a, zone } = bus, t = a.currentTime + Math.max(0, at), hard = Math.max(0, Math.min(1, tone))
+  // a dusty voice (lp) wavers a hair in speed, like tape
+  const src = a.createBufferSource(); src.buffer = buffer; src.playbackRate.value = (voice.rate ?? 1) * (voice.lp ? 0.994 + Math.random() * 0.012 : 1)
+  const level = (voice.gain ?? 1) * 0.8 * Math.pow(Math.min(1, vel), 1.3) * (0.96 + Math.random() * 0.08)
+  // a short fade in (2 ms on an accent, up to 6 ms on a ghost note) takes the edge off the attack
+  const g = a.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(level, t + 0.002 + 0.004 * (1 - hard))
+  if (hard < 0.85 || voice.lp) {
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(voice.lp ?? Infinity, 1800 + 12000 * Math.pow(hard, 1.5))
     src.connect(lp); lp.connect(g)
   } else src.connect(g)
-  g.connect(amb)
-  src.start(t)
+  g.connect(zone)
+  src.start(t); bus.voice(src)
 }

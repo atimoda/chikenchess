@@ -56,6 +56,9 @@ export type SoundZoneParams = ZoneSequence & {
   gravity?: GravityId
   time?: number
   xray?: true
+  // the zone's music engine (the first toggle of its panel): on, its ambience plays (beat, bass, drone); absent,
+  // off: the zone is silent, every zone saved before the toggle as well. Key, scale, physics and tags stay
+  ambienceOn?: true
 }
 export const ZONE_PRIORITY = { min: 1, max: 9 }
 export { ZONE_BPM, ZONE_LIFE }
@@ -113,6 +116,7 @@ export function normalizeSoundZone(raw: unknown): SoundZoneParams {
     ...(isGravity(z.gravity) && z.gravity !== 'earth' ? { gravity: z.gravity } : {}),
     ...(typeof z.time === 'number' && Number.isFinite(z.time) && Math.round(clamp(z.time, ZONE_TIME.min, ZONE_TIME.max)) !== 100 ? { time: Math.round(clamp(z.time, ZONE_TIME.min, ZONE_TIME.max)) } : {}),
     ...(z.xray === true ? { xray: true as const } : {}),
+    ...(z.ambienceOn === true ? { ambienceOn: true as const } : {}),
   }
 }
 
@@ -168,15 +172,18 @@ export function soundZoneOf(id: string, p: SoundZoneParams, solo: number | null 
   if (!made) zoneCache.set(p, made = new Map())
   const hit = made.get(slot)
   if (hit) return hit
-  const one = (q: ZoneSequence, zid: string): Zone => ({ id: zid, name: p.name, root: q.root, scale: q.scale, chordScale: q.chordScale, bpm: q.bpm, feel: q.feel, progression: q.progression, color: p.color, ...(p.inKey ? { inKey: p.inKey } : {}), ambience: q.ambience })
-  const key = (q: ZoneSequence) => `${seqKey(q)}${p.inKey ? `:${p.inKey}` : ''}:${ambienceKey(q.ambience)}`
+  // the music toggle off: the zone stays (key, scale, tempo, groove) but its ambience is quiet. Part of the id, so
+  // switching it in play reaches the conductor on the next bar
+  const quiet = !p.ambienceOn
+  const one = (q: ZoneSequence, zid: string, arranged = false): Zone => ({ id: zid, name: p.name, root: q.root, scale: q.scale, chordScale: q.chordScale, bpm: q.bpm, feel: q.feel, progression: q.progression, color: p.color, ...(p.inKey ? { inKey: p.inKey } : {}), ambience: q.ambience, ...(quiet ? { quiet: true as const } : {}), ...(arranged ? { arranged: true as const } : {}) })
+  const key = (q: ZoneSequence) => `${seqKey(q)}${p.inKey ? `:${p.inKey}` : ''}:${ambienceKey(q.ambience)}${quiet ? ':mudo' : ''}`
   const all = zoneBlocks(p)
   let zone: Zone
   if (all.length < 2) zone = one(p, `zona:${id}:${key(p)}`)
-  else if (solo !== null && all[solo]) zone = one(all[solo], `zona:${id}:solo${solo}:${key(all[solo])}`)
+  else if (solo !== null && all[solo]) zone = one(all[solo], `zona:${id}:solo${solo}:${key(all[solo])}`, true)
   else {
     const fid = `zona:${id}:${all.map(b => `${key(b)}*${b.beats}x${b.reps}`).join('|')}`
-    const blocks: ZoneBlock[] = all.map((b, i) => ({ zone: one(b, `${fid}#${i}`), beats: b.beats, reps: b.reps }))
+    const blocks: ZoneBlock[] = all.map((b, i) => ({ zone: one(b, `${fid}#${i}`, true), beats: b.beats, reps: b.reps }))
     zone = { ...one(p, fid), blocks }
   }
   made.set(slot, zone)

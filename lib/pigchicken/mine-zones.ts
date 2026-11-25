@@ -41,7 +41,11 @@ export function mineZoneBoxes(geo: MineGeo, z: MineZoneParams, scenes: { zones?:
       const scene = sceneZoneParams(scenes.zones, s)
       // the scene's zone with the block's percussion (its variation blocks would bring their own beats back)
       const { blocks: _b, beats: _n, reps: _r, ...base } = scene
-      zone = { ...base, name: beat === 'none' ? scene.name : `${scene.name} · ${beatLabel(beat)}`, life: 0, priority: MINE_ZONE_PRIORITY, ambience: { bass: scene.ambience.bass, ...(scene.ambience.bassVol !== undefined ? { bassVol: scene.ambience.bassVol } : {}), ...(scene.ambience.bassOct !== undefined ? { bassOct: scene.ambience.bassOct } : {}), beat } }
+      // a block with a rhythm plays it (its music on, whatever the scene's toggle), with the scene's bass only when
+      // the scene's music is on; a block in Silêncio sounds like the scene
+      const bass = scene.ambienceOn ? { bass: scene.ambience.bass, ...(scene.ambience.bassVol !== undefined ? { bassVol: scene.ambience.bassVol } : {}), ...(scene.ambience.bassOct !== undefined ? { bassOct: scene.ambience.bassOct } : {}) } : { bass: 'none' as const }
+      const { ambienceOn: _on, ...rest } = base
+      zone = { ...rest, name: beat === 'none' ? scene.name : `${scene.name} · ${beatLabel(beat)}`, life: 0, priority: MINE_ZONE_PRIORITY, ambience: { ...bass, beat }, ...(beat !== 'none' || scene.ambienceOn ? { ambienceOn: true as const } : {}) }
       made.set(id, zone)
     }
     out.push({ id, c, r, beat, x: b.x - half, y: b.y - half, w: b.w + geo.gap, h: b.h + geo.gap, zone })

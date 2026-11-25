@@ -1,7 +1,7 @@
 "use client"
 
 import { useId } from "react"
-import { ChevronRight } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { STEP_BUTTON } from "./step-select"
 
@@ -13,12 +13,14 @@ export function PatioSelect<K extends string>({ label, name = label, options, va
   const id = useId()
   const keys = Object.keys(options) as K[]
   const next = keys[(keys.indexOf(value) + 1) % keys.length]
-  return <div className="grid min-w-0 grid-cols-[5.75rem_minmax(0,1fr)_2rem] items-center gap-2">
+  return <div className="grid min-w-0 grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-2">
     <label htmlFor={id}>{label}</label>
-    <select id={id} aria-label={name} className={FIELD} value={value} onChange={e => onChange(e.target.value as K)}>
+    <span className="flex min-w-0">
+      <select id={id} aria-label={name} className={cn(FIELD, "rounded-r-none border-r-0")} value={value} onChange={e => onChange(e.target.value as K)}>
       {keys.map(key => <option key={key} value={key}>{options[key]}</option>)}
     </select>
     <button type="button" aria-label={`Avançar em ${name.toLowerCase()}`} title={`Próximo: ${options[next]}`} onClick={() => onChange(next)}
-      className={cn(STEP_BUTTON, "h-8 w-full")}><ChevronRight size={16} /></button>
+      className={cn(STEP_BUTTON, "h-8 w-8")}><ChevronDown size={16} /></button>
+    </span>
   </div>
 }
