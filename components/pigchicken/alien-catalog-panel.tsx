@@ -192,7 +192,6 @@ export function AlienCatalogBody() {
       <div ref={setScroller} className="min-h-0 flex-1 overflow-y-auto">
         {!v && (
           <>
-            <p className="px-4 pt-3 text-[10px] text-[#93a79a]">Cada alien é uma variação: a espécie (o desenho) e os parâmetros. Clique num cartão para mexer, ouvir o tiro e as mortes, ou duplicar. As músicas usam o catálogo na hora, e ele fica salvo neste navegador.</p>
             {CATALOG_SPECIES.map(sp => (
               <section key={sp} className="px-4 pt-3">
                 <h3 className="pb-2 text-[11px] font-semibold uppercase tracking-widest text-[#93a79a]">{SPECIES[sp].name}</h3>
