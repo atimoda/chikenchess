@@ -7,8 +7,14 @@ const RECENT = [
   {
     version: '2.17.0',
     date: '24/11/2026',
-    title: 'Pátio: brilho dos itens com uma cor por grupo; luneta da Sniper; recuo no ar em todas as armas e instrumentos; caminhada lenta pelo analógico; Perfil e Amigos como abas no título do Vestiário; Pátio abre com “Carregando…” em vez da versão antiga; Gerar de MIDI com a música inteira; inventário do celular em pé alinhado',
+    title: 'Pátio: brilho dos itens com uma cor por grupo; luneta da Sniper; recuo no ar em todas as armas e instrumentos; caminhada lenta pelo analógico; Perfil e Amigos como abas no título do Vestiário; Pátio abre com “Carregando…” em vez da versão antiga; Gerar de MIDI com a música inteira; inventário do celular em pé alinhado; notas giratórias no Hangdrum',
     groups: [
+      { title: 'Pátio: notas giratórias no Hangdrum', items: [
+        'No Hangdrum, a nota tocada numa bola viaja até ela e fica girando dentro do círculo, acompanhando a galinha, uma volta por tempo da música. A nota do ding (a bola grande do meio) gira em volta da própria galinha. Tocando entre as bolas, a batida continua indo reta.',
+        'As notas girando acertam como as notas comuns e somem ao acertar. Trocar de arma ou de instrumento não para o giro: dá para espalhar notas em volta e trocar de item.',
+        'Itens → Hangdrum: Giro na bola (Desligado, 1 a 60 s, Duração da nota ou ∞; padrão Duração da nota), Nota é disparada até a região da nota (desligado, a nota já nasce na bola) e Cada nota interrompe a anterior: tocar uma bola corta a nota que ainda soava nela e a que girava ali, enquanto bolas diferentes soam juntas. Também vale em outros instrumentos com a escala Hangdrum ligada.',
+        'Online, os outros jogadores veem as notas girando em volta da sua galinha.',
+      ] },
       { title: 'Pátio: brilho dos itens', items: [
         'O brilho dos itens no chão agora tem uma cor por grupo: armas em roxo, utilitários (esportivos, magia, chaves, itens da Grade de blocos e gaiolas) em azul, consumíveis (Bear Gummy, Cok) em verde e instrumentos no dourado de antes.',
         'Em Configurações do Pátio, embaixo do slider Brilho dos itens, um quadrado de cor para cada grupo (Instrumentos, Armas, Utilitários, Consumíveis) muda a cor daquele grupo. Pátios que já tinham uma cor escolhida a mantêm nos instrumentos.',

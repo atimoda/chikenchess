@@ -89,11 +89,11 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
 
       // the other browsers' chickens: the zombies go for the nearest one; the ones sitting at a fixed instrument (the
       // Harpa) hold its seat here too (two that sat at the same time: the browser that comes first keeps it)
-      const bodies: { x: number; y: number }[] = [], sitting: { x: number; y: number; first: boolean }[] = []
+      const bodies: { x: number; y: number; pid: number }[] = [], sitting: { x: number; y: number; first: boolean }[] = []
       for (const p of others) for (let slot = 0; slot < p.chickens; slot++) {
         const c = remoteChicken(p.pid, slot, now)
         if (!c) continue
-        bodies.push({ x: c.x, y: c.y })
+        bodies.push({ x: c.x, y: c.y, pid: p.pid })
         if (stateName(c.state) === 'seat') sitting.push({ x: c.x, y: c.y, first: p.pid < s.myPid! })
       }
       combat.setNetBodies(bodies)
@@ -141,7 +141,7 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
         else if (m.type === 'shots') {
           const list = m.list.slice(0, BATCH).map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
           const pid = m.pid, shotRoom = opts.shotRoom
-          if (list.length) combat.addRemoteShots(list, shotRoom && ((x, y) => shotRoom(pid, x, y)))
+          if (list.length) combat.addRemoteShots(list, shotRoom && ((x, y) => shotRoom(pid, x, y)), pid)
         }
       }
 

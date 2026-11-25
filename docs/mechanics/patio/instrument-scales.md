@@ -34,6 +34,7 @@ Parte do [índice de mecânica](../../../GAME_MECHANICS.md). Código: `lib/pigch
 - **Outros instrumentos:** Itens → Música → Escalas → Hangdrum liga a escala em qualquer instrumento (desligada por padrão); a batida entre as notas usa sempre a voz `hangSlap`. O grupo Hangdrum do painel aparece com a escala ligada.
 - **Camada Escalas** (`drawHang` em `draw/scale-fan.ts`): o disco do hang, o ding e as notas como círculos na cor do grau, cada um com a nota em cifra e o número do grau em cima; a nota da mira acesa; numa batida, o círculo da nota mais próxima ganha contorno claro e um anel pequeno marca onde a mão bate.
 - **Almas:** o Hangdrum e as vozes de hang contam como percussão (`souls.ts`).
+- **Notas giratórias** (24/11): a nota tocada numa bola vai até ela e gira dentro do círculo; “Cada nota interrompe a anterior” corta a nota da mesma bola. Regras em [Notas giratórias](hang-spin.md).
 - Vale para todos os players locais no Parquinho, Templo e Vila. Testes: últimos casos de `tests/pigchicken-scales.cases.cjs` e `tests/pigchicken-layout.cases.cjs`. Não testado no navegador nem ouvido: o timbre precisa de confirmação de ouvido.
 
 ## Editor de escalas e standby — 12/11, v2.9.0
