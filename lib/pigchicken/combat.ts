@@ -227,7 +227,8 @@ export type Hook = {
   owned: Owned; owner: string; hit: HookHit | null; ax: number; ay: number; ox: number; oy: number
   pull: number; damage: number; t: number; best: number; stall: number; scale: number; flew?: boolean; room?: ShotRoom; remote?: boolean; latched?: boolean; home?: { x: number; y: number }
 }
-export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean; room?: ShotRoom }
+// by: the local player who threw it (Dano entre jogadores leaves her out)
+export type Thrown = { x: number; y: number; vx: number; vy: number; spin: number; angle: number; owned: Owned; damage: number; hit: boolean; remote?: boolean; room?: ShotRoom; by?: string }
 // x: centre, y: bottom. dummy targets break in stages and stay wrecked until notes mend them; aliens and zombies are removed; buttons never fall
 // undead: what an alien leaves when its life runs out (lib/pigchicken/undead.ts); data is its UndeadState
 export type TargetKind = 'dummy' | 'alien' | 'zombie' | 'button' | 'undead'
@@ -319,6 +320,8 @@ export type FrameInput = {
 }
 
 export const SLOTS = INVENTORY_MAX
+// Dano entre jogadores: a hit's push to the side at least this (px/s), and its knock up as a share of it
+const PVP_MIN_PUSH = 90, PVP_LIFT = 0.35
 // the inputs that switch items, cleared when something blocks switching
 const NO_SWITCH = { pick: 0, slot: 0, groupPick: null }
 const THROW_GRAVITY = 1500
@@ -739,6 +742,32 @@ export function createCombat() {
 
   // a button can be pressed: its limit allows it (lib/pigchicken/button-limit.ts), or, without one, 0.3 s after the last press
   const buttonFree = (t: Target) => t.flash <= 0 && (!t.press || canPress(t.press))
+  // ---------- Dano entre jogadores (Configurações do Pátio; docs/mechanics/patio/combat.md) ----------
+  // on: the shots, blows, throws and the hook of one player hurt the other players of this browser, and another
+  // browser's shots and throws hurt the players here (its item's damage stands for it, as for its explosions). The
+  // health and what zero does (the Filhote) are the engine's
+  let pvp = false
+  // who each shot, blow or staff in the air already hurt (one hit on each player)
+  const pvpHits = new WeakMap<object, Set<string>>()
+  const firstPvpHit = (o: object, id: string) => {
+    let s = pvpHits.get(o)
+    if (!s) pvpHits.set(o, s = new Set())
+    if (s.has(id)) return false
+    s.add(id); return true
+  }
+  // the local player (not `skip`) whose body is at (x, y), `pad` px around it included
+  const playerAt = (x: number, y: number, pad = 0, skip?: string) =>
+    blastActors.find(a => a.id && a.id !== skip && x >= a.box.l - pad && x <= a.box.r + pad && y >= a.box.t - pad && y <= a.box.b + pad)
+  // another browser's chicken at (x, y): a shot from here stops there (that browser decides what it does)
+  const netBodyAt = (x: number, y: number, pad = 0) => netBodies.some(c => x >= c.x - 45 - pad && x <= c.x + 45 + pad && y >= c.y - 200 - pad && y <= c.y + pad)
+  function hurtPlayer(a: (typeof blastActors)[number], damage: number, pushX: number, x: number, y: number) {
+    if (!(damage > 0)) return
+    // (she flinches even from a weapon that does not push)
+    const px = Math.sign(pushX || 1) * Math.max(PVP_MIN_PUSH, Math.abs(pushX))
+    a.push(px, -Math.abs(px) * PVP_LIFT, damage)
+    addText(x, y - 10, String(Math.round(damage)), '#ff8a7a')
+    burst(x, y, 5, '#ff6b5b', 160, 2)
+  }
   function hitTarget(t: Target, damage: number, pushX: number, x: number, y: number, by: SoulWeapon | null = null) {
     if (t.deadT > 0 || damage <= 0) return
     // a button: any hit presses it
@@ -918,6 +947,7 @@ export function createCombat() {
     const a = actorOf(hit.id)
     if (!a) { k.phase = 'back'; return }
     k.ox = k.x - (a.box.l + a.box.r) / 2; k.oy = k.y - (a.box.t + a.box.b) / 2
+    if (pvp) hurtPlayer(a, k.damage, 0, k.x, k.y)
   }
   // the pull is over: a pulled player keeps a part of her speed, a pulled target falls from where it is (a zombie or
   // an undead stays there; an alien goes back to its row and a dummy to its post, as after a blast)
@@ -1931,7 +1961,17 @@ export function createCombat() {
         if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
         continue
       }
-      if (s.k === 't') { tracers.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, life: 0.12 }); burst(s.x2, s.y2, 4, '#fff3b0', 120, 2) }
+      if (s.k === 't') {
+        tracers.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, life: 0.12 }); burst(s.x2, s.y2, 4, '#fff3b0', 120, 2)
+        // Dano entre jogadores: an instant shot of that browser hurts the first player here along its line
+        if (pvp && !d.instrument && !room) {
+          const n = Math.max(1, Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / 8))
+          for (let k = 0; k <= n; k++) {
+            const x = s.x1 + (s.x2 - s.x1) * k / n, y = s.y1 + (s.y2 - s.y1) * k / n, a = playerAt(x, y, d.size)
+            if (a) { hurtPlayer(a, d.damage, Math.sign(s.x2 - s.x1) * 120, x, y); break }
+          }
+        }
+      }
       else if (s.k === 'th') {
         thrown.push({ x: s.x, y: s.y, vx: s.vx, vy: s.vy, spin: s.sp, angle: s.a, owned: fresh(s.i), damage: 0, hit: false, remote: true, room })
       } else {
@@ -2204,6 +2244,26 @@ export function createCombat() {
           b.hits.add(t.id)
           if (b.hits.size > b.pierce) return true
           break
+        }
+      }
+    }
+    // Dano entre jogadores: a shot (not a note) hurts the other players here; one of this browser's also stops at
+    // another browser's chicken, which decides what it does over there
+    if (pvp && !b.note && !b.room && !b.float) {
+      for (let k = 1; k <= steps; k++) {
+        const x = px + (b.x - px) * k / steps, y = py + (b.y - py) * k / steps
+        const a = playerAt(x, y, b.size, b.remote ? undefined : b.by)
+        if (a?.id) {
+          if (pvpHits.get(b)?.has(a.id)) continue
+          if (b.explode > 0 || dry) { b.x = x; b.y = y; return gone(x, y) }
+          firstPvpHit(b, a.id)
+          hurtPlayer(a, b.remote ? items[b.item].damage : b.damage, Math.sign(b.vx) * 120, x, y)
+          if (pvpHits.get(b)!.size + b.hits.size > b.pierce) { b.x = x; b.y = y; return true }
+          break
+        }
+        if (!b.remote && netBodyAt(x, y, b.size)) {
+          if (b.explode > 0 || dry) { b.x = x; b.y = y; return gone(x, y) }
+          b.x = x; b.y = y; burst(x, y, 4, '#ff6b5b', 120, 2); return true
         }
       }
     }
@@ -2618,6 +2678,20 @@ export function createCombat() {
       hits++
       if (t.kind !== 'button') struck.push(t)
     })
+    // Dano entre jogadores: the other players here in the blow's sector
+    if (pvp && sw.damage > 0) for (const a of blastActors) {
+      if (!a.id || a.id === active || pvpHits.get(blow)?.has(a.id)) continue
+      const cx = (a.box.l + a.box.r) / 2, cy = (a.box.t + a.box.b) / 2, half = (a.box.r - a.box.l) / 2
+      const dx = cx - origin.x, dy = cy - origin.y, dist = Math.hypot(dx, dy) - half
+      let diff = Math.atan2(dy, dx) - sw.angle
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+      if (dist > sw.reach || (Math.abs(diff) > sw.arc / 2 && dist > 10)) continue
+      firstPvpHit(blow, a.id)
+      const hx = cx - Math.sign(dx) * half
+      hurtPlayer(a, sw.damage, Math.sign(dx || 1) * sw.push, hx, cy)
+      blow.impacts.push({ x: hx - origin.x, y: cy - origin.y, ...(seg ? { t: blow.t } : {}) })
+      hits++
+    }
     blow.hits += hits
     if (hits && seg) blow.lastHit = blow.t
     // items wear out on hits; the wing never breaks
@@ -3143,6 +3217,8 @@ export function createCombat() {
     setBlastActors(actors: { id?: string; box: BlastBox; v?: { x: number; y: number }; push: (vx: number, vy: number, damage?: number) => void }[]) { blastActors = actors },
     /** What damage to this browser's own player does (its health, lib/chicken/engine.ts): a zombie's bite. */
     setHurt(fn: ((amount: number, fromX: number) => void) | null) { hurtSelf = fn },
+    // Configurações do Pátio → Dano entre jogadores
+    setPvp(on: boolean) { pvp = on },
     /** The Filhotes the notes can reach: each note that does fills a share of its music bar. */
     setBabies(list: { by?: string; box: BlastBox; fill: () => void }[]) { babies = list },
     /** Whether the local player `id` is a Filhote (what it can carry and do). */
@@ -3863,6 +3939,9 @@ export function createCombat() {
                 hit.add(t.id)
                 hitTarget(t, d.meleeDamage, Math.cos(peck!.angle) * d.meleePush, x, y, 'impact')
               })
+              // Dano entre jogadores: the beak hurts the other players here too
+              const pal = pvp ? playerAt(x, y, 0, active) : undefined
+              if (pal?.id && firstPvpHit(peck!, pal.id)) hurtPlayer(pal, d.meleeDamage, Math.cos(peck!.angle) * d.meleePush, x, y)
               for (const p of pickups) if (Math.hypot(x - p.x, y - (p.y - PICKUP_HIT_R)) <= PICKUP_HIT_R) touched.add(p)
             }
           }
@@ -4049,7 +4128,7 @@ export function createCombat() {
           sound('throw', null)
           const throwFrom = opts.throwOrigin ?? origin
           const spin = (Math.cos(throwAngle) >= 0 ? 1 : -1) * (8 + 10 * p)
-          thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin, angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false, room: shotRooms.get(active) })
+          thrown.push({ x: throwFrom.x, y: throwFrom.y, vx, vy, spin, angle: throwAngle, owned: t, damage: d.throwDamage * (0.4 + 0.6 * p), hit: false, room: shotRooms.get(active), by: active })
           if (netOn) netShots.push({ k: 'th', i: t.item, x: throwFrom.x, y: throwFrom.y, vx, vy, sp: spin, a: throwAngle })
           const thrownAt = cur
           removeHeld(); reloadT = 0
@@ -4094,6 +4173,11 @@ export function createCombat() {
             t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200)
           }
         }
+        // Dano entre jogadores: it hits the other players here once (another browser's, with its item's damage)
+        if (pvp && !t.hit && !t.room) {
+          const a = playerAt(t.x, t.y, 10, t.remote ? undefined : t.by)
+          if (a) { hurtPlayer(a, t.remote ? items[t.owned.item].throwDamage : t.damage, Math.sign(t.vx) * 220, t.x, t.y); t.hit = true; t.vx *= -0.3; t.vy = Math.min(t.vy, -200) }
+        }
         const top = landing(tBoxes, t.x, py, t.y, b => b.solid !== false)
         const side = !top && solidAt(tBoxes, t.x, t.y)
         if (side) { t.vx *= -0.4; t.x += t.vx * dt * 2 }
@@ -4121,6 +4205,9 @@ export function createCombat() {
             hitTarget(g, f.damage, Math.sign(f.vx || 1) * f.push, f.x, f.y, 'impact')
             if (g.kind !== 'button') zap({ x: f.x, y: f.y }, [g], fd, false, f.owned)
           }
+          // Dano entre jogadores: the other players here it crosses (another browser's, with its item's numbers)
+          const a = pvp ? playerAt(f.x, f.y, 16, f.remote ? undefined : f.owner) : undefined
+          if (a?.id && firstPvpHit(f, a.id)) hurtPlayer(a, f.remote ? fd.returnDamage : f.damage, Math.sign(f.vx || 1) * (f.remote ? fd.returnPush : f.push), f.x, f.y)
         }
         // it bends to the side she turned the aim to since the throw; the bend follows the aim in about a tenth of a
         // second, so a change of side is a smooth turn
