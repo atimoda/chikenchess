@@ -113,6 +113,12 @@ export function noteSlot(look: NoteLook, j: number): NoteSlot {
     case 'links': return slot(j * TAU / n, 0.86)
   }
 }
+/** Carga em glissando: dot j (of max) of the arpeggio's row over the reticle's horizon (in R), left to right. */
+export function glissSlot(j: number, max: number) {
+  const a = (-160 + (max > 1 ? j * 140 / (max - 1) : 70)) * DEG
+  return { a, x: Math.cos(a) * GLISS_R, y: Math.sin(a) * GLISS_R }
+}
+export const GLISS_R = 1.3
 /** The angle of the Hangdrum's field i (of 8). */
 export const fieldAngle = (i: number) => TOP + i * TAU / 8
 /** The field (of 8) nearest an aim angle. */
@@ -148,6 +154,7 @@ export type NoteFrame = {
   spin: number // the Corrente-gancho's chain angle
   cadence: number // 1 → 0 until the next shot may go (the Granada)
   away: readonly number[] // the cards of the deck that are out
+  gliss?: { spent: number; max: number } | null // Carga em glissando: the arpeggio's notes spent in this charge
   out: number // the Boomerangs out / the Martelo thrown
   special: number | null // the special's fullness (1: ready)
   wake: boolean // Próxima variação pressed
@@ -168,9 +175,10 @@ export type NoteView = {
   ripples: { field: number; t: number; color: string }[] // the Hangdrum's fields struck
   slap: number // s left of the Hangdrum's slap
   arp: number // the Sax's arpeggio step
+  glissSpent: number // the arpeggio's notes spent (Carga em glissando)
   t: number
 }
-export const newNoteView = (): NoteView => ({ owned: null, look: null, f: null, ammo: 0, away: [], out: 0, special: 0, charge: 0, sweep: -1, bits: [], flash: [], twang: null, ripples: [], slap: 0, arp: 0, t: 0 })
+export const newNoteView = (): NoteView => ({ owned: null, look: null, f: null, ammo: 0, away: [], out: 0, special: 0, charge: 0, sweep: -1, bits: [], flash: [], twang: null, ripples: [], slap: 0, arp: 0, glissSpent: 0, t: 0 })
 
 const SWEEP_TIME = 0.5
 const MAX_BITS = 48
@@ -236,6 +244,12 @@ export function stepNoteView(v: NoteView, f: NoteFrame, dt: number, rand: () => 
     }
     v.charge = f.charge
   }
+  // Carga em glissando: each note of the arpeggio spent leaves its dot over the horizon and floats up
+  const spent = f.gliss?.spent ?? 0
+  if (f.gliss && spent > v.glissSpent) {
+    for (let j = v.glissSpent; j < Math.min(spent, f.gliss.max); j++) { const s = glissSlot(j, f.gliss.max); v.bits.push(bit({ x: s.x, y: s.y, vx: Math.cos(s.a) * 0.4, vy: -0.9, color: f.color ?? NOTE_CYAN, size: 1.3, life: 0.6 })) }
+  }
+  v.glissSpent = spent
   v.ammo = f.ammo
   v.t += dt
   if (v.sweep >= 0) { v.sweep += dt / SWEEP_TIME; if (v.sweep >= 1) v.sweep = -1 }

@@ -2081,7 +2081,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           owned: h ?? null, look: nl, ammo: h?.ammo ?? 0, reload, refill: h && d.refillTime > 0 ? (h.refill ?? 0) / d.refillTime : 0, amount: d.refillAmount,
           charge: Math.max(combat.fireCharge, combat.heavyCharge), firing: combat.firing, color: tone?.color ?? null, slap: !!tone?.slap, aim: combat.aimAngle,
           spin: combat.hookSpin, cadence: combat.cadence, away: h && nl?.style === "cards" ? combat.cards.filter(c => c.owned === h).map(c => c.rank) : [],
-          out: h ? h.out ?? 0 : 0, special: h ? combat.special(h) : null, wake: !!ammoWake.get(id),
+          out: h ? h.out ?? 0 : 0, special: h ? combat.special(h) : null, wake: !!ammoWake.get(id), gliss: h ? combat.gliss : null,
         }, dt)
         ammoWake.delete(id)
         if (around) drawAmmoAround(ctx, v, o.x, o.y, around.scale, aroundVisibility(v, sp.standbyAfter, sp.fadeTime), reload, d.shellReload)
