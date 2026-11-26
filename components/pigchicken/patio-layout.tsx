@@ -23,6 +23,7 @@ import { SurfaceArt } from "./surface-art"
 import { ChalkboardArt } from "./chalkboard-art"
 import { BalustradeArt, BuildingArt } from "./building-art"
 import { BALUSTRADE_FLOOR, buildingSurfaces, normalizeBalustrade, normalizeBuilding } from "@/lib/pigchicken/buildings"
+import { chessStool, chessTop } from "@/lib/pigchicken/chess-table"
 
 // one element's art filling its box
 // placed: the element as it stands in the Pátio (a house there opens when someone goes in), not a preview of it
@@ -148,6 +149,19 @@ const ShapeCollider = memo(function ShapeCollider({ id, outline, hard, depth }: 
   return <div data-chicken-id={id} data-chicken-depth={depth} data-chicken-world-box={box} data-chicken-shape={shape} data-chicken-hard={hard || undefined} data-chicken-nearby className="absolute" />
 })
 
+// a Mesa de chickenchess (lib/pigchicken/chess-table.ts): its table a hard block from its top to the floor, each stool
+// a floating floor to stand on
+function ChessTableCollider({ el, depth }: { el: LayoutElement; depth: number }) {
+  const t = chessTop(el), w = t.r - t.l, h = t.floorY - t.top
+  return <>
+    <div data-chicken-id={`${el.id}:table`} data-chicken-depth={depth} data-chicken-world-box={`${t.l},${t.top},${w},${h}`} data-chicken-shape={`0,0 ${w},0 ${w},${h} 0,${h}`} data-chicken-hard data-chicken-nearby className="absolute" />
+    {([0, 1] as const).map(side => {
+      const s = chessStool(el, side)
+      return <div key={side} data-chicken-id={`${el.id}:stool${side}`} data-chicken-depth={depth} data-chicken-world-box={`${s.l},${s.top},${s.r - s.l},${s.floor - s.top}`} className="absolute" style={{ left: s.l, top: s.top, width: s.r - s.l, height: s.floor - s.top }} />
+    })}
+  </>
+}
+
 // The rooms of the houses with someone of this browser inside (lib/pigchicken/house-rooms.ts): a hard ground floor
 // and the storeys' one-way floors, read only by the engines of whoever is in that room (`data-chicken-room`; its
 // walls and ceiling are her engine's limits, see parquinho.tsx). Nothing in front hides them.
@@ -180,6 +194,8 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
           if (!tree.climbTrunk && !tree.walkBranches && !tree.walkCrown) return null
           return <TreeCollider key={el.id} id={el.id} x={el.x} y={el.y} w={el.w} h={el.h} rot={el.rot} tree={tree} depth={depth} />
         }
+        // a Mesa de chickenchess: the table is hard (a slam with Chocar lands on its top), the stools are platforms
+        if (el.kind === "chesstable") return <ChessTableCollider key={el.id} el={el} depth={depth} />
         // a Suporte de item's table: a platform to stand on and climb
         if (el.kind === "rack") {
           const t = rackTable(el)

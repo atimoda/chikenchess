@@ -2,7 +2,7 @@
 
 Parte da mecânica em funcionamento; índice em [GAME_MECHANICS.md](../../../GAME_MECHANICS.md). Os Pátios de exemplo em geral ficam em [lobbies.md](lobbies.md); os Baús e a Chave em [chests.md](chests.md); as fases de notas e o Prêmio ao vencer em [note-stages.md](note-stages.md).
 
-Código: `lib/pigchicken/example-deadlock.ts` (`deadlockLayout`), entrada em `lib/pigchicken/example-seed.ts` (id `5e7a0c11-0008-4e5a-9c0d-ec5a3b1e0008`), migração gerada por `scripts/example-patios-migration.cjs`. Teste: `tests/pigchicken-chests.cases.cjs`.
+Código: `lib/pigchicken/example-deadlock.ts` (`deadlockLayout`), entrada em `lib/pigchicken/example-seed.ts` (id `5e7a0c11-0008-4e5a-9c0d-ec5a3b1e0008`), migração gerada por `scripts/example-patios-migration.cjs` (a Mesa de chickenchess entrou no layout do banco pela `202611260001_arquipelago_chess_table.sql`). Teste: `tests/pigchicken-chests.cases.cjs`.
 
 ## O que é (23/11)
 
@@ -17,7 +17,7 @@ Um Pátio grande inspirado nos jogos de faixas (Deadlock), feito só com o que o
 - **Faixa de cima:** três ilhas de cada lado, ligadas por torres Cabeça de gato da Torre até o Santuário. Jardins Suspensos a oeste (harpa, flauta, sax) e Feira no Céu a leste (trompete, guitarra, sax), com Cok e Maryjane e botões de Aliens.
 - **Entre as faixas:** ilhotas com trampolins para subir de uma faixa à outra. Entre o chão e o meio, duas de cada lado com um suporte e um Baú livre que fecha de novo depois de 90 s (qualquer item e 35% de chave). Entre o meio e o alto, quatro de cada lado: Gaiolas, Passaguá, Baús livres (qualquer item e 40% de chave, fecham de novo em 120 s) e uma Vitrola com prêmio (Chave e um item qualquer).
 - **Centro**, de baixo para cima, cada lugar na sua Zona sonora:
-  - *Arena das Almas* (chão): Jukebox (precisão mínima 40%, 4 corações; prêmio: Chave), Gongo, um Baú simples de chave (uma arma e uma habilidade) e os dois baralhos.
+  - *Arena das Almas* (chão): no meio, a Mesa de chickenchess (26/11, v2.19.0; quem vence a partida ganha uma Chave de ouro, em [chess-table.md](chess-table.md)); à esquerda a Jukebox (precisão mínima 40%, 4 corações; prêmio: Chave), à direita o Gongo e um Baú simples de chave (uma arma e uma habilidade), e os dois baralhos nas pontas.
   - *Coração do Arquipélago* (ilha do meio): Vitrola (60%, 3 corações; prêmio: Chave e 50% de magia), Gongo e dois Baús lendários de chave.
   - *Santuário* (ilha alta): Jukebox (70%, 3 corações; prêmio: Chave e uma arma) e um Baú lendário de chave só com magia.
   - *Altar da Lua* (no topo, com a gravidade da Lua): Vitrola (80%, 2 corações; prêmio: Chave, magia e instrumento) e dois Baús lendários de chave (Mjölnir ou cajado de Odin; duas armas).

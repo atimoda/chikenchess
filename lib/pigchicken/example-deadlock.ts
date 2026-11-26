@@ -27,6 +27,7 @@ import { MOUNTAINS_DEFAULT, type MountainParams } from './mountains'
 import { CLOUDS_DEFAULT, type CloudParams } from './clouds'
 import { AURORA_DEFAULT, type AuroraParams } from './aurora'
 import type { ItemId } from './items'
+import { CHESS_TABLE_BOX, defaultChessTable } from './chess-table'
 
 const G = WORLD_GROUND_Y
 export const DEADLOCK_SCREENS = 8
@@ -330,10 +331,11 @@ export function deadlockLayout(): PatioLayout {
   link(lowLines[0][lowLines[0].length - 1], lowLines[1][lowLines[1].length - 1])
 
   // ---------- the centre ----------
-  // the Arena das Almas (ground): a Jukebox whose won song gives a key, a Gongo, a Baú with a lock; ladders up
-  sequencer('jukebox', CX - 260, undefined, { minAccuracy: 40, hearts: 4, prize: PRIZE_KEY })
-  gong(CX + 40)
-  chest(CX + 330, undefined, { lock: 'key', reopen: 120, loot: [{ pick: 'weapons', chance: 100 }, { pick: 'consumables', chance: 100 }] })
+  // the Arena das Almas (ground): a Jukebox whose won song gives a key, a Gongo, a Baú with a lock (to the sides of the
+  // Mesa de chickenchess in the middle, added last so the ids of the rest stay those of the database); ladders up
+  sequencer('jukebox', CX - 480, undefined, { minAccuracy: 40, hearts: 4, prize: PRIZE_KEY })
+  gong(CX + 400)
+  chest(CX + 620, undefined, { lock: 'key', reopen: 120, loot: [{ pick: 'weapons', chance: 100 }, { pick: 'consumables', chance: 100 }] })
   rack('cardsRed', CX - 750)
   rack('cardsBlue', CX + 750)
   ladder(heart.l - 150, floor(heart.l - 150), heart.y, 70)
@@ -359,6 +361,9 @@ export function deadlockLayout(): PatioLayout {
   sequencer('vitrola', CX, on(altar), { minAccuracy: 80, hearts: 2, prize: [{ pick: 'key', chance: 100 }, { pick: 'magic', chance: 100 }, { pick: 'instruments', chance: 100 }] })
   chest(CX - 205, on(altar), { rarity: 'legendary', lock: 'key', reopen: 240, loot: [{ pick: 'mjolnir', chance: 50 }, { pick: 'odinstaff', chance: 50 }, { pick: 'magic', chance: 100 }] })
   chest(CX + 205, on(altar), { rarity: 'legendary', lock: 'key', reopen: 240, loot: [{ pick: 'weapons', chance: 100 }, { pick: 'weapons', chance: 100 }, { pick: 'key', chance: 50 }] })
+
+  // the Mesa de chickenchess right in the middle of the arena: whoever wins its match gets a Chave de ouro
+  add('chesstable', { x: CX - CHESS_TABLE_BOX.w / 2, y: floor(CX) - CHESS_TABLE_BOX.h, params: { chessTable: defaultChessTable() } })
 
   // ---------- the Portais de nascimento share the chances equally ----------
   const born = [out.find(e => e.kind === 'entry')!, ...spawns]

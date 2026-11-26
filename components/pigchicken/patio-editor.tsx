@@ -51,6 +51,8 @@ import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfa
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
 import { CHALK_TEXT_MAX, DEMO_IDS, GHOST_OFFSET, GHOST_REACH, TRAINING_DEMOS, chalkboardForDemo, type ChalkboardParams, type DemoId } from "@/lib/pigchicken/chalkboard"
 import { MINE_ACTIVATOR_DAMAGE, MINE_ACTIVATOR_NOTES, defaultMineActivator, type MineActivatorParams } from "@/lib/pigchicken/mine-activator"
+import { CHESS_RADII, CHESS_RANDOM, chessRadiusLabel, defaultChessTable, type ChessTableParams } from "@/lib/pigchicken/chess-table"
+import { chessCityLabel, chessCityOrder } from "./draw/chess-table"
 import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, PLAYER_ACCURACY, PLAYER_HEARTS, defaultGong, defaultPlayer, type GongParams, type PlayerParams } from "@/lib/pigchicken/gong"
 import { BUILDING_COLUMNS, BUILDING_LANTERNS, BUILDING_ROOFS, defaultBuilding, type BuildingParams } from "@/lib/pigchicken/buildings"
 import { BalustradeArt, BuildingArt } from "./building-art"
@@ -852,6 +854,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
           <input type="checkbox" checked={!!el.params.flip} onChange={e => set({ flip: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
         </label>
       )}
+      {el.kind === "chesstable" && <ChessTableFields table={el.params.chessTable ?? defaultChessTable()} onChange={chessTable => set({ chessTable })} />}
       {el.kind === "mineactivator" && <MineActivatorFields activator={el.params.mineActivator ?? defaultMineActivator()} onChange={(mineActivator, step) => set({ mineActivator }, step && `${step}:${el.id}`)} />}
       {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
       {(el.kind === "jukebox" || el.kind === "vitrola") && <PlayerFields player={el.params.player ?? defaultPlayer()} onChange={(player, step) => set({ player }, step && `${step}:${el.id}`)} />}
@@ -948,6 +951,24 @@ function MineActivatorFields({ activator: a, onChange }: { activator: MineActiva
   </div>
 }
 
+// a Mesa de chickenchess: the options its matches start with (a slam on its top changes them while the Pátio is open)
+function ChessTableFields({ table: t, onChange }: { table: ChessTableParams; onChange: (table: ChessTableParams) => void }) {
+  return <div className="grid gap-field">
+    <label className="grid gap-1">
+      <span>Ano/cidade</span>
+      <StepSelect aria-label="Ano/cidade" value={t.city} onChange={e => onChange({ ...t, city: e.target.value })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        {[CHESS_RANDOM, ...chessCityOrder()].map(id => <option key={id} value={id}>{chessCityLabel(id)}</option>)}
+      </StepSelect>
+    </label>
+    <label className="grid gap-1">
+      <span>Raio do som</span>
+      <StepSelect aria-label="Raio do som" value={String(t.radius)} onChange={e => onChange({ ...t, radius: Number(e.target.value) })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        {CHESS_RADII.map(r => <option key={r} value={r}>{chessRadiusLabel(r)}</option>)}
+      </StepSelect>
+    </label>
+  </div>
+}
+
 // a Jukebox or a Vitrola toca-discos: what its songs ask (the least accuracy at the end, the hearts)
 function PlayerFields({ player, onChange }: { player: PlayerParams; onChange: (player: PlayerParams, step?: string) => void }) {
   const set = (patch: Partial<PlayerParams>, step?: string) => onChange({ ...player, ...patch }, step)
@@ -1013,6 +1034,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Treino", items: [{ key: "chalkboard", kind: "chalkboard", label: ELEMENT_DEFS.chalkboard.label }] },
+  { group: "Jogos", items: [{ key: "chesstable", kind: "chesstable", label: ELEMENT_DEFS.chesstable.label }] },
   { group: "Música", items: (["zone", "lanes", "gong", "jukebox", "vitrola", "resetstone", "pedalharp", "drumkit", "grandpiano"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   // the Templo do Gongo's pieces: its halls and its gong
   { group: "Templo", items: [
@@ -1053,6 +1075,12 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "chest") return <ChestThumb rarity={entry.params?.chest?.rarity ?? "simple"} />
   if (entry.kind === "spawn") return <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#7cc4ff] bg-blue-950/60 shadow-[0_0_6px_#408cff]"><span className="h-2 w-2 rounded-full bg-[#ffd166]" /></span>
   if (entry.kind === "chalkboard") return <span aria-hidden="true" className="block h-7 w-11 rounded-[3px] border-[3px] border-[#7a4f27] bg-[#2f5b3f]" />
+  if (entry.kind === "chesstable") return <span aria-hidden="true" className="relative block h-8 w-12">
+    <span className="absolute left-[10px] right-[10px] top-[9px] h-1 bg-[repeating-linear-gradient(90deg,#e9dcc4_0_3px,#3b2b22_3px_6px)]" />
+    <span className="absolute left-[8px] right-[8px] top-[13px] h-1.5 rounded-sm bg-[#8d5a36]" />
+    <span className="absolute bottom-0 left-[11px] top-[18px] w-1 bg-[#43271a]" /><span className="absolute bottom-0 right-[11px] top-[18px] w-1 bg-[#43271a]" />
+    <span className="absolute bottom-0 left-0 h-3 w-[7px] rounded-t-sm border-t-[3px] border-[#b8323a] bg-[#6b4226]" /><span className="absolute bottom-0 right-0 h-3 w-[7px] rounded-t-sm border-t-[3px] border-[#b8323a] bg-[#6b4226]" />
+  </span>
   // the Mureta com cerca draws in its own units (posts, floor, wall): drawn at its size, scaled down into the card
   if (entry.kind === "balustrade") { const k = Math.min(48 / d.w, 34 / d.h); return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><BalustradeArt balustrade={{ courtyard: false }} w={d.w} h={d.h} /></span> }
   if (entry.kind === "button") return <HordeButtonThumb action={entry.params?.action ?? "aliens"} />
@@ -1240,7 +1268,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       if (drag.entry.size) { el.w = drag.entry.size.w; el.h = drag.entry.size.h; el.x = p.x - el.w / 2; el.y = p.y - el.h / 2 }
       // dummies and racks stand on the floor right under where they were dropped
-      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "vitrola" || el.kind === "resetstone" || el.kind === "chest" || el.kind === "mineactivator" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "vitrola" || el.kind === "resetstone" || el.kind === "chest" || el.kind === "mineactivator" || el.kind === "chesstable" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       // postes and torres in their model's proportions, planted on the floor under where they were dropped
       if (el.params.power) {

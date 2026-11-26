@@ -225,3 +225,7 @@ html[data-power-targeting-cursor="grabbing"] * {
   .zone-flip-out { display: none; }
   .zone-flip-in { animation: none; }
 }
+
+/* A Mesa de chickenchess's match over the Pátio (components/pigchicken/patio-chess.tsx): its menus open above the
+   Pátio's canvas and header, not under them */
+body.patio-chess [data-radix-popper-content-wrapper] { z-index: 260 !important; }

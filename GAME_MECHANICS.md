@@ -39,6 +39,7 @@
 | Pátio: instrumentos fixos (Harpa de pedais: sentar, tocar parada, duas mãos, dedos na tela, levantar; Bateria: peças, baquetas, atalhos, pedal do chimbal, rufo, editor do kit; Piano de cauda: Estrela sentada, dinâmica pelas binds, levantar com Golpe) | [Instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) |
 | Pátio: Baú do Modo editor (abrir por chave ou merecimento, itens com chance, raridade, Pátio online) e item Chave | [Baú e Chave](docs/mechanics/patio/chests.md) |
 | Pátio: Quadro de lousa, fantasma de treino e o Pátio Training room | [Treino](docs/mechanics/patio/training.md) |
+| Pátio: Mesa de chickenchess (fila nos banquinhos, partida contra bot ou entre dois players sobre o Pátio, opções por slam no tampo, raio do som, Chave de ouro) | [Mesa de chickenchess](docs/mechanics/patio/chess-table.md) |
 | Pátio: Arquipélago das Almas (Pátio de exemplo de faixas, inspirado em Deadlock: bases, três faixas de ilhas e fios, centro com prêmios e Baús de chave) | [Arquipélago das Almas](docs/mechanics/patio/arquipelago.md) |
 | Pátio: céu e luz (hora, degradê, Randomize, contraluz), profundidade de cenário, postes e torres com fios, presos às camadas do fundo, pássaros nos fios, Pátio de exemplo | [Céu, postes e torres](docs/mechanics/patio/sky-and-power.md) |
 | Pátio: aurora no céu (Configurações do Pátio → Aurora) | [Aurora](docs/mechanics/patio/aurora.md) |

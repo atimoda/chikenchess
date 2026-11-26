@@ -380,8 +380,16 @@ export function GameActionCostHint({ visible, amount }: { visible: boolean; amou
 }
 
 /** Keep the campaign action groups in their shared board-width row. */
-export function GameActionRow({ visible, children }: { visible: boolean; children: React.ReactNode }) {
-  return <div className={cn("relative z-50 mb-2 sm:mb-4 grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-2 transition-opacity duration-1000 pointer-events-none max-[360px]:grid-cols-2 max-[360px]:[&>div:nth-child(2)]:col-span-2 max-[360px]:[&>div:nth-child(2)]:order-3", visible ? "opacity-100" : "opacity-0")}>
+/** The buttons mode of the powers. `move`: dragging the row's empty background moves it, like the cards' hand. */
+export function GameActionRow({ visible, children, rowRef, move }: { visible: boolean; children: React.ReactNode; rowRef?: React.Ref<HTMLDivElement>; move?: { translate: string; moving: boolean; onPointerDown: (event: React.PointerEvent<HTMLElement>) => void } }) {
+  return <div ref={rowRef} data-movable={move && visible ? "true" : undefined}
+    className={cn("relative z-50 mb-2 sm:mb-4 grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-2 transition-opacity duration-1000 pointer-events-none max-[360px]:grid-cols-2 max-[360px]:[&>div:nth-child(2)]:col-span-2 max-[360px]:[&>div:nth-child(2)]:order-3", visible ? "opacity-100" : "opacity-0", move && visible && "pointer-events-auto cursor-grab touch-none", move?.moving && "cursor-grabbing")}
+    onPointerDown={move ? event => {
+      // Only the background: the buttons keep their own clicks.
+      if ((event.target as HTMLElement).closest("button, a, input, select, [role='button'], [role='menuitem']")) return
+      move.onPointerDown(event)
+    } : undefined}
+    style={move ? { translate: move.translate } : undefined}>
     {children}
   </div>
 }
