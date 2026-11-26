@@ -12,7 +12,6 @@ import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
-import { spinLabel } from "@/lib/pigchicken/note-orbit"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
 import { AngleKnob, ComboWindowBar } from "./combo-controls"
 import { ChainEditor } from "./chain-editor"
@@ -371,7 +370,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 const label = m === DOSES ? m.label : (it.instrument || sel === "piu") && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
                 const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? "golpes" : m.unit
-                const display = m.key === "durability" && v === 0 ? "0 (nunca quebra)" : m.key === "refillTime" && v === 0 ? "0 (desligada)" : m.key === "hangSpin" ? spinLabel(v) : `${v}${unit ? ` ${unit}` : ""}`
+                const display = m.key === "durability" && v === 0 ? "0 (nunca quebra)" : m.key === "refillTime" && v === 0 ? "0 (desligada)" : `${v}${unit ? ` ${unit}` : ""}`
                 const range = <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
                   display={display} changed={changed} hint={m.hint}
                   onChange={n => up(d => { (d as Record<string, unknown>)[m.key] = n })}
@@ -380,12 +379,6 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 return m.key === "comboWindow" && open[g] ? <div key={m.key} className="grid gap-1">{range}<ComboWindowBar /></div> : range
               })}
               </div>
-              {g === "Hangdrum" && it.hangSpin > 0 && (
-                <label className="flex items-center justify-between gap-3" title="Desligado: a nota já nasce girando na bola"><Named label="Nota é disparada até a região da nota" changed={it.hangTravel !== base.hangTravel} onReset={() => update(d => { d.hangTravel = base.hangTravel })} /><input type="checkbox" checked={it.hangTravel} onChange={e => { const v = e.target.checked; update(d => { d.hangTravel = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-              )}
-              {g === "Hangdrum" && (
-                <label className="flex items-center justify-between gap-3" title="Tocar uma bola que ainda soa corta a nota anterior dela; bolas diferentes soam juntas"><Named label="Cada nota interrompe a anterior" changed={it.hangChoke !== base.hangChoke} onReset={() => update(d => { d.hangChoke = base.hangChoke })} /><input type="checkbox" checked={it.hangChoke} onChange={e => { const v = e.target.checked; update(d => { d.hangChoke = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-              )}
             </div>
           </details>
         ))}
