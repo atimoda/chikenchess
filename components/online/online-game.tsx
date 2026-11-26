@@ -1884,6 +1884,9 @@ export function OnlineMatchBoard({
       <GameFooter
         visible={!intro}
         moves={replay.game.history()}
+        game={replay.game}
+        cityColor={city.color}
+        orientation={color === "w" ? "white" : "black"}
         tickerRef={tickerRef}
         score={analysis.score}
         mate={analysis.mate}

@@ -2599,6 +2599,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       <GameFooter
         visible={introPhase >= 3}
         moves={moveHistory}
+        game={game}
+        cityColor={city.color}
+        orientation={boardOrientation}
         tickerRef={movesTickerRef}
         score={lastEvalScore}
         mate={lastEvalMate}
