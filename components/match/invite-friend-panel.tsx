@@ -14,11 +14,13 @@ import { LOBBY_INVITE_TEXT, SHARE_APPS, lobbyInviteLink, shareAppTarget, type Sh
 import type { OnlineFriend, OnlineRoom } from "@/lib/online/types"
 import { cn } from "@/lib/utils"
 import { ShareAppIcon } from "./share-app-icons"
+import { msg, useT } from "@/lib/i18n"
 
 const RANDOM_KIT = "random"
 
 export function InviteFriendPanel({ cityId, lobby, onLobby }: { cityId: string; lobby: OnlineRoom | null; onLobby: (room: OnlineRoom) => void }) {
   const { configured, ensureGuest, refreshProfile } = useOnline()
+  const t = useT()
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -43,7 +45,7 @@ export function InviteFriendPanel({ cityId, lobby, onLobby }: { cityId: string; 
         if (cityId !== RANDOM_KIT && /INVALID_KIT/.test(String((cause as { message?: unknown })?.message ?? ""))) return create(RANDOM_KIT)
         throw cause
       })
-      if (!created) throw new Error("Não deu para abrir o lobby. Tente de novo.")
+      if (!created) throw new Error(msg("Não deu para abrir o lobby. Tente de novo."))
       return created
     })()
     pending.current = run
@@ -60,7 +62,7 @@ export function InviteFriendPanel({ cityId, lobby, onLobby }: { cityId: string; 
   const inviteFriend = async (friend: OnlineFriend) => {
     const room = await openLobby()
     await sendInvite(friend.profile.id, { kind: "room", code: room.code })
-    return `Convite enviado para ${friend.profile.display_name}.`
+    return t("Convite enviado para {name}.", { name: friend.profile.display_name })
   }
 
   const copy = async () => {
@@ -72,7 +74,7 @@ export function InviteFriendPanel({ cityId, lobby, onLobby }: { cityId: string; 
       copiedTimer.current = setTimeout(() => setCopied(false), 1600)
       return true
     } catch {
-      setNotice(`Não deu para copiar. O link é: ${link}`)
+      setNotice(t("Não deu para copiar. O link é: {link}", { link }))
       return false
     }
   }
@@ -80,27 +82,27 @@ export function InviteFriendPanel({ cityId, lobby, onLobby }: { cityId: string; 
   const share = async (app: ShareApp, label: string) => {
     if (!link) return
     setNotice(null)
-    const target = shareAppTarget(app, link)
+    const target = shareAppTarget(app, link, t(LOBBY_INVITE_TEXT))
     if (!target.copyFirst) { window.open(target.href, "_blank", "noopener,noreferrer"); return }
     // no share page for this app on the web: the phone's share sheet lists it; elsewhere, copy and open its messages
     if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
-      try { await navigator.share({ text: LOBBY_INVITE_TEXT, url: link }); return }
+      try { await navigator.share({ text: t(LOBBY_INVITE_TEXT), url: link }); return }
       catch (cause) { if (cause instanceof DOMException && cause.name === "AbortError") return }
     }
     const ok = await copy()
     window.open(target.href, "_blank", "noopener,noreferrer")
-    if (ok) setNotice(`Link copiado: cole no ${label}.`)
+    if (ok) setNotice(t("Link copiado: cole no {app}.", { app: label }))
   }
 
   const ready = Boolean(link)
   return <div className="flex min-h-0 flex-1 flex-col">
     <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4">
-      <FriendsPane friendAction={{ label: "Invite", run: inviteFriend }} />
+      <FriendsPane friendAction={{ label: msg("Invite"), run: inviteFriend }} />
     </div>
     <div className="shrink-0 space-y-3 border-t border-white/10 p-4">
       <div className={cn("flex items-center gap-2 rounded-md border border-white/15 bg-black/20 py-1 pl-3 pr-1 transition-opacity", !ready && "opacity-40")}>
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-white/70 select-all">{link || "…"}</span>
-        <button type="button" disabled={!ready} onClick={() => void copy()} aria-label={copied ? "Link copiado" : "Copiar link"} title="Copy link"
+        <button type="button" disabled={!ready} onClick={() => void copy()} aria-label={t(copied ? "Link copiado" : "Copiar link")} title={t("Copy link")}
           className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:pointer-events-none", copied ? "text-primary" : "text-white/80 hover:text-white")}>
           {copied ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" />}
         </button>

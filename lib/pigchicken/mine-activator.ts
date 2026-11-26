@@ -8,6 +8,7 @@
 // Before the grid appears everyone in the Pátio gets a 3, 2, 1. Pure: its params, its box, what meets it and its
 // bars; the runtime is in mine-activator-store.ts and its drawing in components/pigchicken/draw/mine-activator.ts.
 import { MINE_CELL, MINE_CORNER, MINE_GAP, defaultMineGrid, type MineGridParams } from './mine-grid'
+import { t } from '../i18n'
 
 export type MineActivatorParams = {
   notes: number // "Notas até ativar": the notes that fill the music bar
@@ -73,8 +74,8 @@ export function nextMineActivatorOption(p: MineActivatorParams, option: MineActi
   return { ...p, [option]: next }
 }
 export function mineActivatorOptionLabel(option: MineActivatorOption, v: number | null) {
-  const name = option === 'cell' ? 'bloco' : option === 'gap' ? 'vão' : 'cantos'
-  return v === null ? `${name} do Pátio` : option === 'corner' ? `${name} ${v}%` : `${name} ${v}`
+  const name = t(option === 'cell' ? 'bloco' : option === 'gap' ? 'vão' : 'cantos')
+  return v === null ? t('{name} do Pátio', { name }) : option === 'corner' ? `${name} ${v}%` : `${name} ${v}`
 }
 
 // how it turned the grid on: its music bar (with the blocks as Zonas sonoras) or its damage bar (without them)

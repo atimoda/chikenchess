@@ -2,6 +2,7 @@
 // queues and the match): Usar on a stool, a slam on a table's top, the players of the match held on their stools,
 // whoever walked away leaving the queue, and the Chaves de ouro the match won.
 import type { ChickenEngine } from "@/lib/chicken/engine"
+import { t as tr } from "@/lib/i18n"
 import type { Combat, FrameInput } from "@/lib/pigchicken/combat"
 import { liveCamera } from "@/lib/pigchicken/live-camera"
 import { CHESS_QUEUE_REACH, chessPrompt, chessSlamOption, chessStool, onChessTop, whoOf, type ChessPrompt, type ChessSide } from "@/lib/pigchicken/chess-table"
@@ -46,7 +47,7 @@ export function bindChessTablePlay(combat: Combat, o: { engines: () => [string, 
         combat.use(who)
         combat.grant("chesskey")
         const e = engines.get(who)!, b = bodyOf(e)
-        combat.addText(b.x, b.y - 180, "Chave de ouro!", "#ffd34a", 22)
+        combat.addText(b.x, b.y - 180, tr("Chave de ouro!"), "#ffd34a", 22)
         combat.burst(b.x, b.y - 120, 28, "#ffd34a", 260, 3)
       }
       combat.use("p1")

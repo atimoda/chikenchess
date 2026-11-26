@@ -15,6 +15,7 @@ import { INVITE_NOTICE_MS } from "@/lib/online/invites"
 import { roomArrivalNames } from "@/lib/online/lobby-updates"
 import { lobbyInviteLink } from "@/lib/online/share-links"
 import type { OnlineRoom } from "@/lib/online/types"
+import { t as tr, useT } from "@/lib/i18n"
 
 // the panel carries the friends list and the lobby actions: loaded only when opened
 const InviteFriendPanel = dynamic(() => import("./invite-friend-panel").then(module => module.InviteFriendPanel), {
@@ -26,6 +27,7 @@ let lobbyChannelSequence = 0
 
 export function InviteFriendButton({ cityId, cityColor }: { cityId: string; cityColor: string }) {
   const { user, notify } = useOnline()
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [lobby, setLobby] = useState<OnlineRoom | null>(null)
   const userId = user?.id ?? null
@@ -49,7 +51,7 @@ export function InviteFriendButton({ cityId, cityColor }: { cityId: string; city
         if (!active) return
         const arrivals = known ? roomArrivalNames(known, next, userId) : []
         if (arrivals.length) playLobbyJoinSound()
-        for (const name of arrivals) notify(`${name} entrou no seu lobby.`, { action: { label: "Ir ao lobby", href: lobbyInviteLink(lobbyCode, window.location.origin) }, ms: INVITE_NOTICE_MS })
+        for (const name of arrivals) notify(tr("{name} entrou no seu lobby.", { name }), { action: { label: tr("Ir ao lobby"), href: lobbyInviteLink(lobbyCode, window.location.origin) }, ms: INVITE_NOTICE_MS })
         known = next
         if (!next || next.status !== "open" || !next.members.some(member => member.user_id === userId)) setLobby(null)
       }).catch(() => {})
@@ -66,17 +68,17 @@ export function InviteFriendButton({ cityId, cityColor }: { cityId: string; city
       <Button
         variant="outline"
         size="sm"
-        aria-label="Invite a friend"
-        title="Invite a friend"
+        aria-label={t("Invite a friend")}
+        title={t("Invite a friend")}
         className="justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-black/70 active:border-[var(--hover-color)] active:text-[var(--hover-color)] focus-visible:border-[var(--hover-color)] focus-visible:text-[var(--hover-color)] data-[state=open]:border-[var(--hover-color)] data-[state=open]:text-white"
         style={{ "--hover-color": cityColor } as CSSProperties}
       >
         <UserPlus aria-hidden="true" className="size-4 md:hidden" />
-        <span className="hidden px-1 text-xs font-mono md:inline">Invite a friend</span>
+        <span className="hidden px-1 text-xs font-mono md:inline">{t("Invite a friend")}</span>
       </Button>
     </Popover.Trigger>
     <Popover.Portal>
-      <Popover.Content align="end" sideOffset={6} collisionPadding={12} aria-label="Invite a friend"
+      <Popover.Content align="end" sideOffset={6} collisionPadding={12} aria-label={t("Invite a friend")}
         onOpenAutoFocus={event => event.preventDefault()}
         className="z-[200] flex max-h-[min(640px,var(--radix-popover-content-available-height))] w-[min(380px,calc(100vw-24px))] flex-col overflow-hidden rounded-xl border border-white/15 bg-[#101713] text-white shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
         <InviteFriendPanel cityId={cityId} lobby={lobby} onLobby={setLobby} />
