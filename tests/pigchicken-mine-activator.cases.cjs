@@ -34,14 +34,19 @@ const box = (id, x = 1000, params = { notes: 4, damage: 100 }) => ({ id, x, y: 6
 
 test('its params are kept in their limits, and the element is in the editor’s Grade de blocos', () => {
   assert.deepEqual(A.normalizeMineActivator(undefined), A.defaultMineActivator())
-  assert.deepEqual(A.normalizeMineActivator({ notes: 1, damage: 99999 }), { notes: A.MINE_ACTIVATOR_NOTES.min, damage: A.MINE_ACTIVATOR_DAMAGE.max })
-  assert.deepEqual(A.normalizeMineActivator({ notes: 30.4, damage: 1220 }), { notes: 30, damage: 1200 })
+  const own = { lock: false, cell: null, gap: null, corner: null }
+  assert.deepEqual(A.normalizeMineActivator({ notes: 1, damage: 99999 }), { notes: A.MINE_ACTIVATOR_NOTES.min, damage: A.MINE_ACTIVATOR_DAMAGE.max, ...own })
+  assert.deepEqual(A.normalizeMineActivator({ notes: 30.4, damage: 1220 }), { notes: 30, damage: 1200, ...own })
+  // locked, and the grid it turns on with its own block, gap and corners (kept in the grid's limits)
+  const p = A.normalizeMineActivator({ lock: true, cell: 448, gap: -5, corner: 300 })
+  assert.deepEqual([p.lock, p.cell, p.gap, p.corner], [true, 448, M.MINE_GAP.min, M.MINE_CORNER.max])
+  assert.equal(A.normalizeMineActivator({ lock: 'yes' }).lock, false)
   const el = L.createElement('mineactivator', 500, 500)
   assert.equal(L.ELEMENT_DEFS.mineactivator.group, 'Grade de blocos')
   assert.deepEqual(el.params.mineActivator, A.defaultMineActivator())
   assert.deepEqual([el.w, el.h], [A.MINE_ACTIVATOR_BOX.w, A.MINE_ACTIVATOR_BOX.h])
-  const back = L.normalizeElement(wire({ ...el, params: { mineActivator: { notes: 12, damage: 300 } } }))
-  assert.deepEqual(back.params.mineActivator, { notes: 12, damage: 300 })
+  const back = L.normalizeElement(wire({ ...el, params: { mineActivator: { notes: 12, damage: 300, lock: true, cell: 256 } } }))
+  assert.deepEqual(back.params.mineActivator, { notes: 12, damage: 300, lock: true, cell: 256, gap: null, corner: null })
 })
 
 test('music turns the grid on with the Zonas sonoras, damage without them', () => {
@@ -52,6 +57,70 @@ test('music turns the grid on with the Zonas sonoras, damage without them', () =
   assert.equal(A.activatedMineGrid(saved, 'damage').cell, 400)
   assert.equal(A.activatedMineGrid(undefined, 'damage').cell, M.defaultMineGrid().cell)
   assert.equal(saved.zones.on, true, 'the saved settings stay as they are')
+  // an activator's own block, gap and corners over the Pátio's (null: the Pátio's)
+  const g = A.activatedMineGrid(saved, 'music', { cell: 448, gap: null, corner: 30 })
+  assert.deepEqual([g.cell, g.gap, g.corner], [448, saved.gap, 30])
+})
+
+test('a slam on its top steps the option under it: block, gap, corners, and past the last back to the Pátio’s', () => {
+  const el = box('a', 1000)
+  const t = A.mineActivatorTile(el)
+  assert.deepEqual(t, { l: 1045, r: 1195, top: 650, bottom: 800 }, 'centred, standing on its bottom')
+  assert.equal(A.mineActivatorSlamOption(el, 1050), 'cell')
+  assert.equal(A.mineActivatorSlamOption(el, 1120), 'gap')
+  assert.equal(A.mineActivatorSlamOption(el, 1195), 'corner')
+  assert.equal(A.mineActivatorSlamOption(el, 1030), null, 'off the tile')
+  assert.equal(A.onMineActivatorTop(el, 1100, 652), true)
+  assert.equal(A.onMineActivatorTop(el, 1100, 700), false, 'not on its top')
+  let p = A.defaultMineActivator()
+  p = A.nextMineActivatorOption(p, 'gap'); assert.equal(p.gap, A.MINE_ACTIVATOR_STEPS.gap[1])
+  for (let i = 1; i < A.MINE_ACTIVATOR_STEPS.gap.length; i++) p = A.nextMineActivatorOption(p, 'gap')
+  assert.equal(p.gap, null, 'past the last: the Pátio’s')
+  assert.equal(A.nextMineActivatorOption({ ...p, cell: 300 }, 'cell').cell, 352, 'a value off the list: the next one up')
+  assert.equal(A.mineActivatorOptionLabel('corner', 30), 'cantos 30%')
+  assert.equal(A.mineActivatorOptionLabel('cell', null), 'bloco do Pátio')
+  // the store: only whoever listens (the Pátio's editor) saves it; and only while it can be filled
+  const me = browser(1), heard = []
+  me.act.setMineActivators([el])
+  const off = me.act.onMineActivatorSlam((id, option) => heard.push([id, option]))
+  me.act.mineActivatorSlam(1190, 650)
+  me.act.mineActivatorSlam(1190, 720)
+  assert.deepEqual(heard, [['a', 'corner']])
+  me.act.setMineActivators([{ ...el, params: { ...el.params, corner: 30 } }])
+  assert.deepEqual({ ...me.act.mineActivatorStore.optionsChanged, at: 0 }, { id: 'a', at: 0, option: 'corner' }, 'the grid flashes')
+  me.act.setMineActivatorSaved(true)
+  me.act.mineActivatorSlam(1190, 650)
+  assert.equal(heard.length, 1, 'waiting: only a landing')
+  off()
+})
+
+test('locked: no bar fills; a Chave de ouro turns the grid on after the 3, 2, 1, with its own options', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const me = browser(1)
+  const el = box('a', 1000, { ...A.defaultMineActivator(), notes: 4, damage: 100, lock: true, cell: 448, corner: 30 })
+  me.act.setMineActivators([el])
+  for (let i = 0; i < 6; i++) me.act.mineActivatorNote(1235, 700, 1245, 700, 'p1', '#00f')
+  me.act.mineActivatorShot(990, 700, 1004, 700, 500, 'p1')
+  assert.equal(me.act.mineActivatorStore.via, null, 'notes and damage do nothing')
+  assert.equal(me.act.openMineActivator('x'), false, 'not one of them')
+  assert.equal(me.act.openMineActivator('a'), true)
+  assert.equal(me.act.mineActivatorStore.via, 'music')
+  assert.notEqual(me.act.mineActivatorStore.countStart, null, 'the count is on')
+  assert.equal(me.act.mineActivatorStore.shownVia, null, 'no grid yet')
+  assert.deepEqual(me.act.mineActivatorStore.pendingParams, el.params)
+  assert.equal(me.act.openMineActivator('a'), false, 'it waits now')
+  t.mock.timers.tick(A.MINE_ACTIVATOR_COUNT_MS)
+  assert.equal(me.act.mineActivatorStore.countStart, null)
+  assert.equal(me.act.mineActivatorStore.shownVia, 'music')
+  assert.equal(me.act.mineActivatorStore.shown, 1)
+  assert.deepEqual(me.act.mineActivatorStore.shownParams, el.params)
+  // hidden: no grid, and a hide during the count stops it
+  me.act.hideActivatedMineGrid()
+  assert.equal(me.act.mineActivatorStore.shownVia, null)
+  me.act.openMineActivator('a')
+  me.act.hideActivatedMineGrid()
+  t.mock.timers.tick(A.MINE_ACTIVATOR_COUNT_MS)
+  assert.equal(me.act.mineActivatorStore.shown, 1, 'the count was stopped')
 })
 
 test('it can be filled only with no grid shown, or once the round of the grid shown is over', () => {
@@ -145,4 +214,30 @@ test('online: the lobby’s owner fills them and turns the grid on for everyone,
   assert.equal(A.cleanNetMineActivator({ v: 5, a: 1, b: [] }), null)
   assert.deepEqual(A.cleanNetMineActivator({ v: 1, a: 2, i: 'x', b: [['x', 3, -1], [7, 0, 0]] }), { v: 1, a: 2, i: 'x', b: [['x', 1, 0]] })
   assert.deepEqual(A.cleanNetMineActivatorHits([['x', 2, 5], ['y', -1, 0], 'z']), [['x', 2, 5]])
+  assert.equal(A.cleanNetMineActivatorKey('a'), 'a')
+  assert.equal(A.cleanNetMineActivatorKey(7), null)
+})
+
+test('online: a guest’s Chave de ouro asks the owner, who turns the grid on; everyone counts', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const owner = browser(1), guest = browser(2)
+  let now = 1000
+  const all = [owner, guest]
+  const frame = () => {
+    now += 200
+    for (const b of all) { b.sync.become(b === owner ? 'owner' : 'follower', b.pid); b.sync.frame(now, all.filter(x => x !== b).map(x => x.pid)) }
+    for (const b of all) for (const m of b.out.splice(0)) for (const to of b === owner ? [guest] : [owner]) to.sync.receive(b.pid, m, owner.pid)
+  }
+  const el = box('a', 1000, { ...A.defaultMineActivator(), lock: true, gap: 64 })
+  for (const b of all) b.act.setMineActivators([el])
+  frame()
+  assert.equal(guest.act.openMineActivator('a'), true)
+  assert.equal(guest.act.mineActivatorStore.via, null, 'not by itself')
+  frame(); frame()
+  assert.equal(owner.act.mineActivatorStore.via, 'music')
+  assert.equal(guest.act.mineActivatorStore.via, 'music')
+  assert.notEqual(guest.act.mineActivatorStore.countStart, null, 'the count there too')
+  t.mock.timers.tick(A.MINE_ACTIVATOR_COUNT_MS)
+  assert.equal(guest.act.mineActivatorStore.shownParams.gap, 64)
+  assert.equal(owner.act.mineActivatorStore.shownParams.gap, 64)
 })

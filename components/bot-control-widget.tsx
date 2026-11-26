@@ -5,6 +5,7 @@ import { useRef, forwardRef } from "react"
 import { Power, Save } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
+import { useWidgetResize } from "@/hooks/use-widget-resize"
 import { cn } from "@/lib/utils"
 import type { BotConfigParams, BotProfile } from "@/lib/chess-bots"
 import { StepperButton, stepValue } from "@/components/compact-number-input"
@@ -108,7 +109,19 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
   const t = useT()
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
-  const initialPosRef = useRef<{ x: number; y: number } | null>(null)
+  const resize = useWidgetResize({
+    isStatic,
+    left: true,
+    position,
+    onPositionChange,
+    handleStyles: {
+      bottom: { zIndex: 90, height: 14, bottom: -7, cursor: "ns-resize" },
+      bottomRight: { zIndex: 90, width: 16, height: 16, right: -6, bottom: -6, cursor: "nwse-resize" },
+      bottomLeft: { zIndex: 90, width: 16, height: 16, left: -6, bottom: -6, cursor: "nesw-resize" },
+      right: { zIndex: 90, width: 12, right: -6, cursor: "ew-resize" },
+      left: { zIndex: 90, width: 12, left: -6, cursor: "ew-resize" },
+    },
+  })
   const isChicken = bot.kind === 'chicken'
 
   return (
@@ -130,14 +143,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
         minHeight={isStatic ? undefined : 160}
         maxWidth={isStatic ? undefined : "92vw"}
         maxHeight={isStatic ? undefined : "85vh"}
-        enable={isStatic ? false : { top: false, right: true, bottom: true, left: true, topRight: false, bottomRight: true, bottomLeft: true, topLeft: false }}
-        handleStyles={{
-          bottom: { zIndex: 90, height: 14, bottom: -7, cursor: "ns-resize" },
-          bottomRight: { zIndex: 90, width: 16, height: 16, right: -6, bottom: -6, cursor: "nwse-resize" },
-          bottomLeft: { zIndex: 90, width: 16, height: 16, left: -6, bottom: -6, cursor: "nesw-resize" },
-          right: { zIndex: 90, width: 12, right: -6, cursor: "ew-resize" },
-          left: { zIndex: 90, width: 12, left: -6, cursor: "ew-resize" },
-        }}
+        {...resize}
         handleWrapperStyle={{ zIndex: 90 }}
         handleComponent={{
           bottom: (
@@ -149,20 +155,10 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           bottomLeft: <div data-no-drag="true" className="h-full w-full" />,
           right: <div data-no-drag="true" className="h-full w-full" />,
           left: <div data-no-drag="true" className="h-full w-full" />,
+          top: <div data-no-drag="true" className="h-full w-full" />,
+          topRight: <div data-no-drag="true" className="h-full w-full" />,
         }}
         className="relative flex flex-col"
-        onResizeStart={event => {
-          event.stopPropagation()
-          initialPosRef.current = position || { x: 0, y: 0 }
-        }}
-        onResize={(_event, direction, _elementRef, delta) => {
-          if (direction.includes("left") && initialPosRef.current) {
-            onPositionChange?.({
-              x: initialPosRef.current.x - delta.width,
-              y: initialPosRef.current.y,
-            })
-          }
-        }}
       >
         <div
           className="absolute inset-0 z-0 rounded-md border bg-black/85 backdrop-blur-md transition-all duration-300"

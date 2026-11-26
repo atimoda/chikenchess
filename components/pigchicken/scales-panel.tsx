@@ -7,6 +7,8 @@
 import { useT } from "@/lib/i18n"
 import { StepSelect } from "@/components/ui/step-select"
 import { PatioRange } from "@/components/ui/patio-range"
+import { ResetArrow } from "@/components/ui/reset-arrow"
+import { cn } from "@/lib/utils"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
@@ -25,7 +27,7 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
   const t = useT()
   const [scales, setScales] = useState<Record<InstrumentScaleId, ScaleParams>>(DEFAULT_SCALES)
   const [sel, setSel] = useState<InstrumentScaleId>("primary")
-  const [open, setOpen] = useState<Record<string, boolean>>({ Standby: true, Forma: true })
+  const [open, setOpen] = useState<Record<string, boolean>>({ Standby: true, Forma: true, "Notas giratórias": true })
   useEffect(() => {
     setScales(scaleParams())
     return subscribeScaleParams(setScales)
@@ -66,11 +68,18 @@ export function ScalesPanel({ onClose }: { onClose: () => void }) {
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
             <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{t(g)}</summary>
             <div className="grid gap-[3px] px-4 pb-4">
-              {metas.filter(m => m.group === g).map(m => {
+              {metas.filter(m => m.group === g && (!m.shown || m.shown(sc))).map(m => {
                 const v = sc[m.key]
-                const display = m.unit === "%" ? `${v}%` : m.unit ? `${v.toFixed(1)} ${m.unit}` : v.toFixed(2)
+                // a switch (0/1): the checkbox, with the small reset in front of the name while it is off the default
+                if (m.toggle) return (
+                  <label key={m.key} title={m.hint ? t(m.hint) : undefined} className="flex min-h-10 items-center justify-between gap-3">
+                    <span className={cn("flex min-w-0 items-center gap-1", v !== base[m.key] && "text-amber-300")}>{v !== base[m.key] && <ResetArrow label={t(m.label)} onReset={() => update(p => { p[m.key] = base[m.key] })} />}{t(m.label)}</span>
+                    <input type="checkbox" checked={v > 0} onChange={e => { const on = e.target.checked ? 1 : 0; update(p => { p[m.key] = on }) }} className="h-5 w-5 accent-[var(--primary)]" />
+                  </label>
+                )
+                const display = m.format ? m.format(v) : m.unit === "%" ? `${v}%` : m.unit ? `${v.toFixed(1)} ${m.unit}` : v.toFixed(2)
                 return <PatioRange key={m.key} label={t(m.label)} min={m.min} max={m.max} step={m.step} value={v} display={display}
-                  changed={v !== base[m.key]} hint={t(m.hint ?? "")}
+                  changed={v !== base[m.key]} hint={m.hint ? t(m.hint) : m.hint}
                   onChange={n => update(p => { p[m.key] = n })}
                   onReset={() => update(p => { p[m.key] = base[m.key] })} />
               })}

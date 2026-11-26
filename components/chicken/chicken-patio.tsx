@@ -33,7 +33,7 @@ import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
 import { OnlineChickens, netColor, useNet, type NetChickMirror } from "./online-chickens"
-import { clearNetNotice, gameServerAvailable, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, netCan, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic, subscribeNet } from "@/lib/chicken/online-room"
+import { clearNetNotice, gameServerAvailable, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, netCan, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic, subscribeNet, type NetRoomInfo } from "@/lib/chicken/online-room"
 import { elementsInWorld, normalizeLayout, spawnPortalsIn, type LayoutElement, type PatioLayout } from "@/lib/pigchicken/layout"
 import { pickSpawn, spawnChances } from "@/lib/pigchicken/spawn-portals"
 import { MineGridLayer, useMineGrid, useMineItems } from "@/components/pigchicken/mine-grid-layer"
@@ -81,14 +81,17 @@ import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
 import { withSceneZone } from "@/lib/pigchicken/sound-zones"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
 import { MineGridPanel } from "@/components/pigchicken/mine-grid-panel"
-import { activatedMineGrid } from "@/lib/pigchicken/mine-activator"
-import { mineActivatorStore, resetMineActivators, setMineActivatorSaved } from "@/lib/pigchicken/mine-activator-store"
+import { activatedMineGrid, defaultMineActivator, nextMineActivatorOption } from "@/lib/pigchicken/mine-activator"
+import { mineActivatorStore, onMineActivatorSlam, resetMineActivators, setMineActivatorSaved } from "@/lib/pigchicken/mine-activator-store"
+import { MineActivatorOverlay } from "@/components/pigchicken/mine-activator-overlay"
+import { resetChessTables } from "@/lib/pigchicken/chess-table-store"
+import { PatioChess } from "@/components/pigchicken/patio-chess"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { patioGround, patioItemGlow, patioInventoryLimit, patioMineGrid, patioSceneMusic, patioScreens, patioTemple, patioWorldTop, patioZoom } from "@/lib/pigchicken/patio-settings"
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
 import { saveDefaultCamera, saveDefaultTuning } from "@/lib/admin/game-defaults-client"
 import { RevertToDefaultButton, SaveToGameButton, SaveToPatioButton, VersionsButton } from "@/components/admin/save-to-game-button"
-import { deviceId, forgetPatio, isPatioId, lobbyFromUrl, onPatioOpenRequest, openPatioLobby, type NewPatioKind } from "@/lib/pigchicken/patio-store"
+import { deviceId, forgetPatio, isPatioId, lobbyFromUrl, onPatioOpenRequest, openPatioLobby, roomFitsPatio, roomFromUrl, setRoomInUrl, type NewPatioKind } from "@/lib/pigchicken/patio-store"
 import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
 import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
@@ -259,6 +262,12 @@ export function ChickenPatio() {
     others.forEach(p => { if (p.color) out[p.id] = p.color })
     return out
   }, [me, others])
+  // each local player's name: over a Mesa de chickenchess's stool while in its queue
+  const playerNames = useMemo(() => {
+    const out: Record<string, string> = { p1: meName ?? me?.name ?? "Player 1" }
+    others.forEach(p => { out[p.id] = p.name })
+    return out
+  }, [meName, me, others])
   // each local player's look: the avatar the Parquinho draws at the screen's edge when one of them leaves it
   const playerLooks = useMemo(() => {
     const out: Record<string, Record<string, string> | null> = { p1: draft.look }
@@ -339,6 +348,8 @@ export function ChickenPatio() {
   patioKeyRef.current = patioKey
   // a switch of Pátio that ended in the same one (it left the lobby on the way out): join it again
   const [rejoin, setRejoin] = useState(0)
+  // the Pátio the address's ?room= belongs to (undefined: not known yet, the link's own)
+  const roomFor = useRef<string | null | undefined>(undefined)
   useEffect(() => {
     if (mode !== "online" || !patioKey) { void leavePatioOnline(); return }
     let alive = true
@@ -346,13 +357,34 @@ export function ChickenPatio() {
       const session = (await getOnlineClient()?.auth.getSession())?.data.session ?? null
       const token = session && !session.user.is_anonymous ? session.access_token : null
       const j = netJoin.current
-      const roomId = new URLSearchParams(window.location.search).get("room")
+      // the room in the address is only for the Pátio it was opened for (the link's or the lobby switcher's); any
+      // other Pátio opened since (a portal, Playgrounds) leaves it behind and joins its own lobby
+      const urlRoom = roomFromUrl()
+      if (urlRoom && roomFor.current === undefined) roomFor.current = lobbyFromUrl() ?? "default"
+      const roomId = urlRoom && roomFitsPatio(roomFor.current, patioKey) ? urlRoom : null
+      if (urlRoom && !roomId) { setRoomInUrl(null); roomFor.current = null }
+      // the default Pátio goes as "default", never left out: a join without patioId is matched by the game server
+      // (filterBy patioId) to the oldest public room of any Pátio, and that room's live map came into this one
       const r = await joinPatioOnline({
-        patioId: j.patio?.id ?? null, roomId: roomId || null, token, name: j.name, chickens: j.chickens, looks: j.looks,
+        patioId: j.patio?.id ?? "default", roomId, token, name: j.name, chickens: j.chickens, looks: j.looks,
         claimed: { name: j.patio?.name ?? null, creatorId: j.patio?.creatorId ?? null, godparentId: j.patio?.godparentId ?? null },
       })
       if (!alive) return
       if (!r.ok) { setToast(r.reason); changeLobby(s => ({ ...s, mode: "local" })) }
+      if (!r.ok || !roomId) return
+      // a room link of another Pátio: once the room says which, that Pátio opens (and joins this room again)
+      const info = await new Promise<NetRoomInfo | null>(resolve => {
+        const check = () => {
+          const s = getNetState()
+          if (!alive || s.status === "off") { off(); resolve(null) }
+          else if (s.status === "online" && s.info) { off(); resolve(s.info) }
+        }
+        const off = subscribeNet(check)
+        check()
+      })
+      if (!alive || !info || roomFitsPatio(info.patioId, patioKey)) return
+      roomFor.current = info.patioId
+      openPatioLobby(info.patioId === "default" ? null : info.patioId)
     })()
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -484,8 +516,14 @@ export function ChickenPatio() {
   const liveRef = useRef({ apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby })
   liveRef.current = { apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby }
   useEffect(() => {
-    const offLayout = onNetLayout(raw => { const layout = normalizeLayout(raw, liveRef.current.isDefault); if (layout) liveRef.current.apply(layout) })
-    const offSaved = onNetSaved(rev => liveRef.current.adopt(rev))
+    // only from a room of the open Pátio: another Pátio's map or revision would be saved over this one
+    const fits = () => roomFitsPatio(getNetState().info?.patioId, patioKeyRef.current)
+    const offLayout = onNetLayout(raw => {
+      if (!fits()) return
+      const layout = normalizeLayout(raw, liveRef.current.isDefault)
+      if (layout) liveRef.current.apply(layout)
+    })
+    const offSaved = onNetSaved(rev => { if (fits()) liveRef.current.adopt(rev) })
     return () => { offLayout(); offSaved() }
   }, [])
   // online, the lobby decides who edits (the owner and whoever it allowed); the default Pátio stays the admin's
@@ -799,11 +837,27 @@ export function ChickenPatio() {
   // An Ativador de grid de campo minado also turns it on, for everyone in the Pátio (mine-activator-store.ts): by
   // music with the blocks as Zonas sonoras, by damage without them.
   const savedGrid = patio?.layout.settings?.mineGrid
-  const activatorVia = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.via, () => null)
-  const activations = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.activations, () => 0)
-  const mineParams = useMemo(() => (activatorVia ? activatedMineGrid(savedGrid, activatorVia) : patioMineGrid({ mineGrid: savedGrid })), [savedGrid, activatorVia])
+  // (the grid an activator turned on shows after its count of 3 s, with that activator's block, gap and corners)
+  const activatorVia = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shownVia, () => null)
+  const activations = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shown, () => 0)
+  const activatorParams = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shownParams, () => null)
+  const mineParams = useMemo(() => (activatorVia ? activatedMineGrid(savedGrid, activatorVia, activatorParams) : patioMineGrid({ mineGrid: savedGrid })), [savedGrid, activatorVia, activatorParams])
   useEffect(() => { setMineActivatorSaved(!!savedGrid?.on) }, [savedGrid?.on])
+  // a slam on an activator's top steps its grid option there; whoever may edit the Pátio saves it in the layout (so
+  // the online Pátio's browsers turn on the same grid), for the others it is only a landing
+  const canEditRef = useRef(false)
+  canEditRef.current = !!patio && access.canEdit
+  useEffect(() => onMineActivatorSlam((id, option) => {
+    const layout = patioLayoutRef.current
+    if (!canEditRef.current || !layout) return
+    const el = layout.elements.find(e => e.id === id && e.kind === "mineactivator")
+    if (!el) return
+    const next = nextMineActivatorOption(el.params.mineActivator ?? defaultMineActivator(), option)
+    changeLayoutRef.current({ ...layout, elements: layout.elements.map(e => (e === el ? { ...e, params: { ...e.params, mineActivator: next } } : e)) })
+  }), [])
   useEffect(() => { resetMineActivators() }, [patioKey])
+  // the Mesas de chickenchess: no queue nor match of the last Pátio stays
+  useEffect(() => { resetChessTables() }, [patioKey])
   const mine = useMineGrid({ patioKey, params: mineParams, width: screens * SCENE_W, top: worldTop, ground: WORLD_GROUND_Y, portals: spawnPortals })
   // the layout plus the platforms and items the blocks were born with ("Spawn de itens"), for the game alone
   const gameElements = useMineItems(patio?.layout.elements ?? NO_ELEMENTS, mineParams, mine.grid?.geo)
@@ -902,9 +956,8 @@ export function ChickenPatio() {
         {/* the lobby switcher and the players, right after the Pátio's name */}
         <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} players={playersHere} open={playersOpen} onToggle={() => setPlayersOpen(v => !v)} onStatus={setToast} onSwitch={target => {
           // the other lobby's Pátio opens, and its room is the one joined
-          const url = new URL(window.location.href)
-          url.searchParams.set("room", target.roomId)
-          window.history.replaceState(null, "", url)
+          setRoomInUrl(target.roomId)
+          roomFor.current = target.patioId
           void leavePatioOnline()
           if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
           else openPatioLobby(target.patioId === "default" ? null : target.patioId)
@@ -1011,7 +1064,7 @@ export function ChickenPatio() {
       <HouseDoors engine={engine} extras={extraEngines} elements={patio?.layout.elements ?? NO_ELEMENTS} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={gameElements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} stageDebug={patioLayers.layers.stageDebug} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} names={playerNames} looks={playerLooks} elements={gameElements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} stageDebug={patioLayers.layers.stageDebug} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements ?? NO_ELEMENTS} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
@@ -1024,8 +1077,16 @@ export function ChickenPatio() {
             const settings = { ...patio.layout.settings, sceneZones: withSceneZone(patio.layout.settings?.sceneZones, scene, zone) }
             if (!settings.sceneZones) delete settings.sceneZones
             changeLayout({ ...patio.layout, settings })
+          } : undefined}
+          onFall={patio && access.canEdit ? changes => {
+            const next = new Map(changes.map(c => [c.el.id, c.zone]))
+            changeLayout({ ...patio.layout, elements: patio.layout.elements.map(e => (next.has(e.id) ? { ...e, params: { ...e.params, zone: next.get(e.id)! } } : e)) })
           } : undefined} />
       )}
+      {/* a match of a Mesa de chickenchess, over the Pátio */}
+      <PatioChess />
+      {/* an Ativador de grid: the count before its grid and the flash of its options */}
+      <MineActivatorOverlay saved={savedGrid} world={{ width: screens * SCENE_W, top: worldTop, ground: WORLD_GROUND_Y }} />
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
         <PatioSavePanel

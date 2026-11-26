@@ -1,13 +1,13 @@
-// Notas giratórias (the Hangdrum's spinning notes): a note played on one of the hang's balls goes to that ball and
-// spins inside its circle, following her, for a while. Pure: no sound, no drawing, no combat state.
+// Notas giratórias (the Hangdrum scale's spinning notes, on any instrument playing on it): a note played on one of
+// the hang's balls goes to that ball and spins inside its circle, following her, for a while. Pure: no sound, no drawing, no combat state.
 //
 // The ball's place: the hang's fields are in units of the Escalas layer's radius, around her shoulder
 // (HangScale.layout); `fan` is that layer in the world (combat's setScaleFan). A note that travels chases the ball
 // (it moves with her) and starts spinning once it is inside the orbit; one that does not travel is born on it.
 
-// "Giro na bola" (ItemDef.hangSpin): 0 = off (the note goes straight, as always), 1..60 s, then the two last stops
 import { t } from '../i18n'
 
+// "Giro na bola" (the Hangdrum scale's hangSpin, lib/pigchicken/scale-params.ts): 0 = off (the note goes straight, as always), 1..60 s, then the two last stops
 export const SPIN_MAX_S = 60
 export const SPIN_NOTE = 61 // as long as the item's Duração da nota
 export const SPIN_FOREVER = 62 // ∞: until it hits, is cut or she leaves

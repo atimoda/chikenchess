@@ -11,9 +11,8 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, TROPHY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
-import { spinLabel } from "@/lib/pigchicken/note-orbit"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
 import { AngleKnob, ComboWindowBar } from "./combo-controls"
 import { ChainEditor } from "./chain-editor"
@@ -64,7 +63,7 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   tailBlow: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
   // a key only opens Baús: it has no effect, just its slap and its throw
-  ...Object.fromEntries(KEY_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
+  ...Object.fromEntries([...KEY_IDS, ...TROPHY_IDS].map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
   ...Object.fromEntries(MINE_ITEM_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
 }
 // Pontos of a staff (how she carries it, lib/pigchicken/staff-pose.ts); the other items have the pivot and the wings' points
@@ -160,7 +159,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label={t("Instrumentos fixos")}>{FIXED_IDS.map(id => <option key={id} value={id}>{t(items[id].name)} ({t(items[id].family)})</option>)}</optgroup>
           <optgroup label={t("Habilidades especiais")}>{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
           <optgroup label={t("Magia")}>{MAGIC_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
-          <optgroup label={t("Chaves")}>{KEY_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
+          <optgroup label={t("Chaves")}>{[...KEY_IDS, ...TROPHY_IDS].map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
           <optgroup label={t("Grade de blocos")}>{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
           <option value={CAGE_IDS[0]}>{t("Gaiolas")}</option>
         </StepSelect>
@@ -373,7 +372,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 const label = m === DOSES ? m.label : (it.instrument || sel === "piu") && m.key === "damage" ? msg("Harmonia por nota") : it.instrument && m.key === "explodeDamage" ? msg("Harmonia no estouro") : it.beam && m.key === "mag" ? msg("Arco (segundos)") : it.meleeOnly && m.key === "mag" ? msg("Golpes seguidos") : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
                 const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? msg("golpes") : m.unit
-                const display = m.key === "durability" && v === 0 ? t("0 (nunca quebra)") : m.key === "refillTime" && v === 0 ? t("0 (desligada)") : m.key === "hangSpin" ? spinLabel(v) : `${v}${unit ? ` ${t(unit)}` : ""}`
+                const display = m.key === "durability" && v === 0 ? t("0 (nunca quebra)") : m.key === "refillTime" && v === 0 ? t("0 (desligada)") : `${v}${unit ? ` ${t(unit)}` : ""}`
                 const range = <PatioRange key={m.key} label={t(label)} name={t(m.label)} min={m.min} max={m.max} step={m.step} value={v}
                   display={display} changed={changed} hint={m.hint ? t(m.hint) : m.hint}
                   onChange={n => up(d => { (d as Record<string, unknown>)[m.key] = n })}
@@ -382,12 +381,6 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                 return m.key === "comboWindow" && open[g] ? <div key={m.key} className="grid gap-1">{range}<ComboWindowBar /></div> : range
               })}
               </div>
-              {g === "Hangdrum" && it.hangSpin > 0 && (
-                <label className="flex items-center justify-between gap-3" title={t("Desligado: a nota já nasce girando na bola")}><Named label={t("Nota é disparada até a região da nota")} changed={it.hangTravel !== base.hangTravel} onReset={() => update(d => { d.hangTravel = base.hangTravel })} /><input type="checkbox" checked={it.hangTravel} onChange={e => { const v = e.target.checked; update(d => { d.hangTravel = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-              )}
-              {g === "Hangdrum" && (
-                <label className="flex items-center justify-between gap-3" title={t("Tocar uma bola que ainda soa corta a nota anterior dela; bolas diferentes soam juntas")}><Named label={t("Cada nota interrompe a anterior")} changed={it.hangChoke !== base.hangChoke} onReset={() => update(d => { d.hangChoke = base.hangChoke })} /><input type="checkbox" checked={it.hangChoke} onChange={e => { const v = e.target.checked; update(d => { d.hangChoke = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-              )}
             </div>
           </details>
         ))}

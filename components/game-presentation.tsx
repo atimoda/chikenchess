@@ -1,6 +1,7 @@
 "use client"
 
-import React, { type RefObject, type TransitionEventHandler } from "react"
+import React, { useMemo, useState, type PointerEvent as ReactPointerEvent, type RefObject, type TransitionEventHandler } from "react"
+import type { Chess } from "chess.js"
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
@@ -8,6 +9,7 @@ import { formatEvaluation } from "@/lib/chess-evaluation"
 import type { WidgetConnection } from "@/hooks/use-game-widget-layout"
 import type { ChancePosition } from "@/hooks/use-chance-position"
 import { useT } from "@/lib/i18n"
+import { MoveBoardPreview } from "./move-board-preview"
 
 export function GameWidgetEntranceStyles() {
   return (
@@ -336,9 +338,16 @@ export function GameFooter({
   dimmed,
   chancePosition = "board",
   className,
+  game,
+  cityColor,
+  orientation = "white",
 }: {
   visible: boolean
   moves: readonly string[]
+  /** Game whose verbose history gives the position after each listed move. */
+  game?: Chess | null
+  cityColor?: string
+  orientation?: "white" | "black"
   tickerRef: RefObject<HTMLDivElement | null>
   score: number | null
   mate: number | null
@@ -354,11 +363,43 @@ export function GameFooter({
     ? (score < 0 ? 0 : 100)
     : 50 + 50 * score / (Math.abs(score) + 300)
 
+  const [hovered, setHovered] = useState<{ index: number; center: number } | null>(null)
+  // Replaying the history is only needed while a move is hovered.
+  const preview = useMemo(() => {
+    if (!hovered || !game || !cityColor) return null
+    const move = game.history({ verbose: true })[hovered.index]
+    return move ? { fen: move.after, from: move.from, to: move.to } : null
+  }, [hovered, game, cityColor, moves.length])
+  const showPreview = (index: number) => (event: ReactPointerEvent<HTMLSpanElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setHovered({ index, center: rect.left + rect.width / 2 })
+  }
+  const hidePreview = () => setHovered(null)
+  const previewSize = 176
+
   return (
     <div className={cn("fixed inset-x-0 bottom-0 z-[40] w-full pointer-events-none transition-opacity duration-1000", !visible ? "opacity-0" : "opacity-100", className)}>
+      {visible && preview && hovered && cityColor && (
+        <MoveBoardPreview
+          fen={preview.fen}
+          from={preview.from}
+          to={preview.to}
+          cityColor={cityColor}
+          orientation={orientation}
+          className="absolute bottom-full mb-2"
+          style={{ width: previewSize, left: `clamp(8px, ${hovered.center - previewSize / 2}px, calc(100vw - ${previewSize + 8}px))` }}
+        />
+      )}
       <div aria-label={t("Histórico de jogadas")} className="flex h-6 w-full items-center overflow-hidden bg-transparent px-3 md:px-6 pointer-events-none">
         <div ref={tickerRef} className="flex w-full items-center justify-start gap-3 overflow-x-auto whitespace-nowrap font-mono text-xs scrollbar-hide" style={{ textShadow: "1px 1px 1px black" }}>
-          {moves.map((move, i) => <span key={i} className={i % 2 === 0 ? "text-white" : "text-muted-foreground"}>
+          {moves.map((move, i) => <span
+            key={i}
+            className={cn(i % 2 === 0 ? "text-white" : "text-muted-foreground", game && cityColor && "pointer-events-auto cursor-default")}
+            style={hovered?.index === i && preview ? { color: cityColor } : undefined}
+            onPointerEnter={game && cityColor ? showPreview(i) : undefined}
+            onPointerLeave={hidePreview}
+            onPointerCancel={hidePreview}
+          >
             {i % 2 === 0 ? `${Math.floor(i / 2) + 1}.` : ""} {move}
           </span>)}
         </div>
@@ -384,8 +425,16 @@ export function GameActionCostHint({ visible, amount }: { visible: boolean; amou
 }
 
 /** Keep the campaign action groups in their shared board-width row. */
-export function GameActionRow({ visible, children }: { visible: boolean; children: React.ReactNode }) {
-  return <div className={cn("relative z-50 mb-2 sm:mb-4 grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-2 transition-opacity duration-1000 pointer-events-none max-[360px]:grid-cols-2 max-[360px]:[&>div:nth-child(2)]:col-span-2 max-[360px]:[&>div:nth-child(2)]:order-3", visible ? "opacity-100" : "opacity-0")}>
+/** The buttons mode of the powers. `move`: dragging the row's empty background moves it, like the cards' hand. */
+export function GameActionRow({ visible, children, rowRef, move }: { visible: boolean; children: React.ReactNode; rowRef?: React.Ref<HTMLDivElement>; move?: { translate: string; moving: boolean; onPointerDown: (event: React.PointerEvent<HTMLElement>) => void } }) {
+  return <div ref={rowRef} data-movable={move && visible ? "true" : undefined}
+    className={cn("relative z-50 mb-2 sm:mb-4 grid w-[var(--game-board-width)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:gap-2 transition-opacity duration-1000 pointer-events-none max-[360px]:grid-cols-2 max-[360px]:[&>div:nth-child(2)]:col-span-2 max-[360px]:[&>div:nth-child(2)]:order-3", visible ? "opacity-100" : "opacity-0", move && visible && "pointer-events-auto cursor-grab touch-none", move?.moving && "cursor-grabbing")}
+    onPointerDown={move ? event => {
+      // Only the background: the buttons keep their own clicks.
+      if ((event.target as HTMLElement).closest("button, a, input, select, [role='button'], [role='menuitem']")) return
+      move.onPointerDown(event)
+    } : undefined}
+    style={move ? { translate: move.translate } : undefined}>
     {children}
   </div>
 }

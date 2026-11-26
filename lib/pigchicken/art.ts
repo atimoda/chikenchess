@@ -278,6 +278,17 @@ const ART: Partial<Record<ItemId, Art>> = {
     <path d="M22 2.4 L22 8.5 L26 8.5 L26 2.4 M28 2.4 L28 6.5 L31 6.5 L31 2.4 M33 2.4 L33 9 L36.5 9 L36.5 2.4" fill="#ffd34a" stroke="#9a6a10" stroke-width="1.2"/>
     <path d="M-10 -6 Q-5 -10 1 -7.5 M9 -1.2 L34 -1.2" stroke="#fff8d6" stroke-width="1.1" fill="none" opacity="0.9"/>`,
   },
+  // Chave de ouro (the prize of a Mesa de chickenchess): a heavy gold key whose bow is a crown, three teeth
+  chesskey: {
+    box: [-18, -16, 60, 30],
+    svg: `<path d="M-15 -2 L-15 -12 L-10 -6 L-5 -14 L0 -6 L5 -12 L5 -2 Z" fill="#ffcf3a" stroke="#8a5a0c" stroke-width="1.4" stroke-linejoin="round"/>
+    <circle cx="-5" cy="4" r="9" fill="#ffcf3a" stroke="#8a5a0c" stroke-width="1.6"/>
+    <circle cx="-5" cy="4" r="3.4" fill="#5a3a06"/>
+    <circle cx="-10" cy="-12.5" r="1.4" fill="#fff2b0"/><circle cx="-5" cy="-14.5" r="1.4" fill="#fff2b0"/><circle cx="0" cy="-12.5" r="1.4" fill="#fff2b0"/>
+    <rect x="4" y="1.6" width="34" height="4.8" rx="1.4" fill="#ffcf3a" stroke="#8a5a0c" stroke-width="1.2"/>
+    <path d="M24 6 L24 12 L28 12 L28 6 M30 6 L30 10 L33 10 L33 6 M35 6 L35 13 L38.5 13 L38.5 6" fill="#ffcf3a" stroke="#8a5a0c" stroke-width="1.2"/>
+    <path d="M-11 -1 Q-6 -4 -1 -2 M7 2.8 L36 2.8" stroke="#fff8d6" stroke-width="1.1" fill="none" opacity="0.9"/>`,
+  },
   // Bomba (Grade de blocos): a disarmed one, a bundle of dynamite with its timer off and a cut wire
   minebomb: { box: MINE_BOMB_BOX, svg: mineBombSvg() },
   // Hangdrum: the hang seen from the side, two steel domes joined at the rim, the ding on top and dents of notes

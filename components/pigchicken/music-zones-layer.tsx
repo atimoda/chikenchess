@@ -9,7 +9,7 @@
 // line between two scenes' zones.
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import { useT } from "@/lib/i18n"
-import { onZoneSlam, sceneAtX, tagUnder, type TagSpan, type ZoneTagKey, nextZoneTag } from "@/lib/pigchicken/zone-slam"
+import { onZoneFall, onZoneSlam, sceneAtX, tagUnder, tagsCrossed, type FallTag, type TagSpan, type ZoneTagKey, nextZoneTag } from "@/lib/pigchicken/zone-slam"
 import { elementBounds, type LayoutElement } from "@/lib/pigchicken/layout"
 import { followCamera, liveCamera } from "@/lib/pigchicken/live-camera"
 import { cn } from "@/lib/utils"
@@ -114,7 +114,7 @@ function BlockZones({ screens, sceneZones, sceneEdges }: { screens: number; scen
 
 // sceneMusic: false when the Pátio turned the scenes' own zones off (their strips are not shown)
 // onSlam: a slam stepped on a scene's tag (only for whoever may edit the Pátio: without it slams change nothing)
-export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, onSceneEdge = noop, onResizeZones = noop, onSlam, opacity = 1 }: {
+export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sceneMusic = true, editable, onZone = noop, onScene = noop, onOpenZone = noop, onOpenScene = noop, onSceneEdge = noop, onResizeZones = noop, onSlam, onFall, opacity = 1 }: {
   elements: LayoutElement[]; screens: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; editable: boolean
   // a dragged limit: between scene - 1 and scene, at world x; or the zones' new boxes
   onSceneEdge?: (scene: number, x: number, step: string) => void; onResizeZones?: (changes: ZoneResize[], step: string) => void
@@ -122,6 +122,8 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
   onScene?: (scene: number, zone: SoundZoneParams, step?: string) => void
   onOpenZone?: (el: LayoutElement) => void; onOpenScene?: (scene: number) => void
   onSlam?: (scene: number, zone: SoundZoneParams, step: string) => void
+  // a fall holding Chocar through floating zones' tags: each zone with its tag's next value
+  onFall?: (changes: { el: LayoutElement; zone: SoundZoneParams }[], step: string) => void
   // how strongly the layer shows (the layers menu's Zonas slider)
   opacity?: number
 }) {
@@ -149,6 +151,26 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
     const tag = tagUnder(tags, x)
     const next = tag && nextZoneTag(sceneZoneParams(zones, s), tag.key)
     if (next) save(s, next, `slam:${s}:${tag.key}:${Math.round(performance.now())}`)
+  }), [])
+  // a fall holding Chocar: the floating zones' tags it went through, measured where they are drawn, each to its next value
+  const fall = useRef({ onFall, zoneEls })
+  useEffect(() => { fall.current = { onFall, zoneEls } })
+  useEffect(() => onZoneFall((x0, y0, x1, y1) => {
+    const { onFall: save, zoneEls: els } = fall.current, origin = ref.current
+    if (!save || !origin || !els.length) return
+    const o = origin.getBoundingClientRect(), z = liveCamera.zoom || 1
+    const tags: FallTag[] = Array.from(origin.querySelectorAll<HTMLElement>("[data-zone-el] [data-zone-tag]"), el => {
+      const r = el.getBoundingClientRect()
+      return { zone: el.closest<HTMLElement>("[data-zone-el]")!.dataset.zoneEl!, key: el.dataset.zoneTag as ZoneTagKey, l: (r.left - o.left) / z, r: (r.right - o.left) / z, top: (r.top - o.top) / z, bottom: (r.bottom - o.top) / z }
+    })
+    const changes: { el: LayoutElement; zone: SoundZoneParams }[] = []
+    for (const tag of tagsCrossed(tags, x0, y0, x1, y1)) {
+      const el = els.find(e => e.id === tag.zone), was = changes.find(c => c.el === el)
+      const next = el && nextZoneTag(was?.zone ?? el.params.zone!, tag.key)
+      if (!el || !next) continue
+      if (was) was.zone = next; else changes.push({ el, zone: next })
+    }
+    if (changes.length) save(changes, `fall:${changes.map(c => c.el.id).join(",")}:${Math.round(performance.now())}`)
   }), [])
   return (
     <div aria-label={t("Zonas")} className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
@@ -190,7 +212,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
             // viewing: the zone as it plays now; editing: as it is saved
             const z = !editable && live?.src === saved ? live.zone : saved
             return (
-              <div key={el.id} className="absolute" style={{ left: el.x, top: el.y, width: el.w, height: el.h, background: `${z.color}24`, border: `2px ${z.music ? "solid" : "dashed"} ${z.color}`, boxShadow: z.life ? `inset 0 0 0 4px ${z.color}55` : undefined }}>
+              <div key={el.id} data-zone-el={el.id} className="absolute" style={{ left: el.x, top: el.y, width: el.w, height: el.h, background: `${z.color}24`, border: `2px ${z.music ? "solid" : "dashed"} ${z.color}`, boxShadow: z.life ? `inset 0 0 0 4px ${z.color}55` : undefined }}>
                 <div className="absolute left-2 top-2 flex max-w-[calc(100%-16px)] flex-wrap gap-1">
                   <ZoneTags zone={z} editable={editable} live={live && live.src === saved ? { hp: live.hp } : undefined}
                     onChange={(zone, step) => onZone(el, zone, step && `${step}:${el.id}`)} onOpen={() => onOpenZone(el)} />

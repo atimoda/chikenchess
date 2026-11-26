@@ -34,7 +34,7 @@ Parte do [índice de mecânica](../../../GAME_MECHANICS.md). Código: `lib/pigch
 - **Outros instrumentos:** Itens → Música → Escalas → Hangdrum liga a escala em qualquer instrumento (desligada por padrão); a batida entre as notas usa sempre a voz `hangSlap`. O grupo Hangdrum do painel aparece com a escala ligada.
 - **Camada Escalas** (`drawHang` em `draw/scale-fan.ts`): o disco do hang, o ding e as notas como círculos na cor do grau, cada um com a nota em cifra e o número do grau em cima; a nota da mira acesa; numa batida, o círculo da nota mais próxima ganha contorno claro e um anel pequeno marca onde a mão bate.
 - **Almas:** o Hangdrum e as vozes de hang contam como percussão (`souls.ts`).
-- **Notas giratórias** (24/11): a nota tocada numa bola vai até ela e gira dentro do círculo; “Cada nota interrompe a anterior” corta a nota da mesma bola. Regras em [Notas giratórias](hang-spin.md).
+- **Notas giratórias** (24/11; da escala desde 26/11): em qualquer instrumento com a escala Hangdrum, a nota tocada numa bola vai até ela e gira dentro do círculo; “Cada nota interrompe a anterior” corta a nota da mesma bola. Controles no painel Escalas. Regras em [Notas giratórias](hang-spin.md).
 - Vale para todos os players locais no Parquinho, Templo e Vila. Testes: últimos casos de `tests/pigchicken-scales.cases.cjs` e `tests/pigchicken-layout.cases.cjs`. Não testado no navegador nem ouvido: o timbre precisa de confirmação de ouvido.
 
 ## Editor de escalas e standby — 12/11, v2.9.0
@@ -51,6 +51,7 @@ Parte do [índice de mecânica](../../../GAME_MECHANICS.md). Código: `lib/pigch
   - Retorno: tocar, trocar de escala ou de item traz a escala de volta em 0,12 s.
   - **Camadas → Prevenir fadeout das escalas** (desligado por padrão; `PatioLayers.scaleKeep`, salvo no Pátio e no Salvar no game como as outras camadas): ligado, nenhuma escala entra em standby.
 - **Forma:** Ciclo de quintas e Tensão e resolução têm **Divisa dos anéis** (0,3 a 0,9 do raio, padrão 0,6: o alcance da mira abaixo dela toca o anel de dentro; muda o som, não só o desenho) e **Miolo vazio** (0 a 0,5, padrão 0,2; só desenho). O Campo harmônico tem **Miolo vazio**. Os valores chegam à escala por `InstrumentScale.shape`. As Cordas soltas têm **Cordas**, **Começo das cordas**, **Fim das cordas** e **Largura do harmônico** (ver a seção delas). Fileiras e notas do Hangdrum e a Espiral descendente continuam por instrumento, em Itens.
+- **Notas giratórias** (só a escala Hangdrum): Giro na bola, Nota é disparada até a região da nota e Cada nota interrompe a anterior; valem para qualquer instrumento tocando nessa escala. Ver [Notas giratórias](hang-spin.md).
 - Vale para todos os players locais no Parquinho, Templo e Vila. Testes: últimos casos de `tests/pigchicken-scales.cases.cjs` e `tests/admin.cases.cjs`.
 
 ## Cordas soltas — 15/11, v2.11.0

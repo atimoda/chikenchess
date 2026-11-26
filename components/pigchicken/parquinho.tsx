@@ -51,7 +51,7 @@ import { songVolume } from "@/lib/pigchicken/soul-acts"
 import { ZONES, chordName, droneOf, zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { Movable, useTouchControls, useTouchLayout } from "@/components/chicken/chicken-layer"
 import { getTouchLayout } from "@/lib/chicken/touch-layout"
-import { zoneSlam } from "@/lib/pigchicken/zone-slam"
+import { zoneFall, zoneSlam } from "@/lib/pigchicken/zone-slam"
 import { SCENE_W, WORLD_GROUND_Y, WORLD_TOP, cameraYRange, cameraYStep, sceneAt, templeScene, villageScene, worldScenes } from "@/lib/pigchicken/world"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { defaultLayout, elementsInWorld, layoutBoxes, layoutCollisionMasks, layoutMusic, type LayoutElement } from "@/lib/pigchicken/layout"
@@ -60,9 +60,13 @@ import { setLiveZones, zoneEffectsAt } from "@/lib/pigchicken/zone-physics"
 import { hitZone, liveZones, resetZoneLife, zoneWallHit } from "@/lib/pigchicken/zone-life"
 import { bindMinePlay } from "./mine-grid-play"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
-import { setMineActivators } from "@/lib/pigchicken/mine-activator-store"
+import { mineActivatorSlam, setMineActivators } from "@/lib/pigchicken/mine-activator-store"
 import { defaultMineActivator } from "@/lib/pigchicken/mine-activator"
 import { drawMineActivators } from "./draw/mine-activator"
+import { chessCityOrder, drawChessTables } from "./draw/chess-table"
+import { bindChessTablePlay } from "./chess-table-play"
+import { setChessCities, setChessTables } from "@/lib/pigchicken/chess-table-store"
+import { defaultChessTable } from "@/lib/pigchicken/chess-table"
 import { mineZoneBoxes } from "@/lib/pigchicken/mine-zones"
 import { drawScaleFan, SCALE_FAN_R, seatedFanSize } from "@/components/pigchicken/draw/scale-fan"
 import { starSeatFrame } from "@/components/pigchicken/draw/star-grid"
@@ -78,7 +82,7 @@ import { SceneryVisibilityStyles } from "./scenery-region"
 import { graphicsQuality, subscribeQuality } from "@/lib/quality"
 import { setPlatformWorldOcclusion, setPlatformWorldOffset } from "@/lib/chicken/platform-geometry"
 import { needsTrajectory, patioPixelRatio, trajectoryVisible, zoomedView, type ViewRect } from "@/lib/pigchicken/viewport"
-import { holdLayer, moveLiveCamera, setCameraRestY, worldTransform } from "@/lib/pigchicken/live-camera"
+import { holdLayer, liveCamera, moveLiveCamera, setCameraRestY, worldTransform } from "@/lib/pigchicken/live-camera"
 import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "@/components/pigchicken/patio-layout"
 import { houseRooms, roomShotWalls, type RoomRect } from "@/lib/pigchicken/house-rooms"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
@@ -280,7 +284,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // devices: the input devices of the player she belongs to (null: all of them); without the mouse she ignores it
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
-export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, stageDebug = false, patioKey = null, zoomRange, itemGlow }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; stageDebug?: boolean; patioKey?: string | null; zoomRange?: PatioZoom; itemGlow?: ItemGlow }) {
+export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, names, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, stageDebug = false, patioKey = null, zoomRange, itemGlow }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; names?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; stageDebug?: boolean; patioKey?: string | null; zoomRange?: PatioZoom; itemGlow?: ItemGlow }) {
   const t = useT()
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
@@ -338,6 +342,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // each local player's lobby color (p1: the first one, the others by their id): their reticle's color
   const colorsRef = useRef(colors)
   colorsRef.current = colors
+  const namesRef = useRef(names)
+  namesRef.current = names
   // each local player's look, for the avatar that says where they are when they leave the screen
   const looksRef = useRef(looks)
   looksRef.current = looks
@@ -870,7 +876,18 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       return { flipX: hit.flipX, color: (died ?? hit.box.zone).color, died: !!died }
     })
     // the Grade de blocos: what the combat does to its blocks, the bombs and the Filhotes (mine-grid-play.ts)
+    // where each local player's feet were last frame (world): a fall holding Chocar goes through the floating zones'
+    // tags on its way (zone-slam.ts)
+    const fellFrom = new WeakMap<ChickenEngine, { x: number; y: number }>()
+    const dive = (e: ChickenEngine) => {
+      const st = e.getMotionState(), x = st.x + liveCamera.x, y = st.y - liveCamera.y, was = fellFrom.get(e)
+      fellFrom.set(e, { x, y })
+      if (was && e.diving()) zoneFall(was.x, was.y, x, y)
+    }
     const minePlay = bindMinePlay(combat, { engines: () => [["p1", engine], ...(extras?.current ? [...extras.current.entries()] : [])], color: who => colorsRef.current?.[who] })
+    // the Mesas de chickenchess: their queues, slams, seats and Chaves de ouro (chess-table-play.ts)
+    const chessPlay = bindChessTablePlay(combat, { engines: () => [["p1", engine], ...(extras?.current ? [...extras.current.entries()] : [])] })
+    setChessCities(chessCityOrder())
     const header = document.querySelector("main header")
     let drawnCamX = NaN, drawnCamY = NaN, drawnZoom = NaN, drawnW = NaN, drawnH = NaN
     // the header's foot on the stage (0 with the Modo editor docked at the top: the header is above the stage)
@@ -922,6 +939,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         layoutSync.sync(syncedElements, S.screens)
         // the Ativadores de grid de campo minado (mine-activator-store.ts)
         setMineActivators(shown.filter(el => el.kind === "mineactivator").map(el => ({ id: el.id, x: el.x, y: el.y, w: el.w, h: el.h, params: el.params.mineActivator ?? defaultMineActivator() })))
+        // the Mesas de chickenchess (chess-table-store.ts)
+        setChessTables(shown.filter(el => el.kind === "chesstable").map(el => ({ id: el.id, x: el.x, y: el.y, w: el.w, h: el.h, params: el.params.chessTable ?? defaultChessTable() })))
         gongSet.clear()
         for (const el of syncedElements) if (el.kind === "gong" && el.params.gong && !el.params.gong.temple) gongSet.set(el.id, el.params.gong)
         playerSet.clear()
@@ -1467,6 +1486,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (engine.takeSeatLeft()) combat.standUp()
       // she fell onto the ground holding Chocar: the zone strip's tag under her steps to its next value (zone-slam.ts)
       if (engine.takeSlam()) zoneSlam(engine.getMotionState().x + camX)
+      dive(engine)
+      // she landed holding Chocar on something else: a Mesa de chickenchess's top steps its option there
+      { const ls = engine.takeLandSlam(); if (ls) { chessPlay.slam(ls.x + camX, ls.y - camY); mineActivatorSlam(ls.x + camX, ls.y - camY) } }
       // (the part of the screen the Bateria's chart may use, whatever the camera's zoom: under the header's buttons)
       { const hw = stageWidth() / 2, hh = stageHeight() / 2; setDrumScreen({ l: hw - (hw - 8) / zoom, r: hw + (hw - 8) / zoom, t: hh - (hh - 60) / zoom, b: hh + (hh - 8) / zoom }) }
       // her hands over its strings: the fingers on the screen (each one a hand, its touch the pluck); else a gamepad's
@@ -1524,6 +1546,10 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       clicks.length = 0
       for (let i = fingers.length - 1; i >= 0; i--) { if (fingers[i].up || !combat.seated) fingers.splice(i, 1); else fingers[i].fresh = false }
       minePlay.step(dt)
+      chessPlay.step(now)
+      // on a Mesa de chickenchess's stool Usar is the stool's (its queue), not Pegar's
+      chessPlay.player("p1", engine, input, grabLabel(controls, devs))
+      minePlay.activator("p1", engine, input, grabLabel(controls, devs))
       minePlay.player("p1", engine, input)
       // a Filhote (lib/chicken/baby.ts): with its limits on (Personagem → Filhote), becoming one every item and Gaiola
       // falls around her, it carries one of each category and one Gaiola, never throws, and its empty hand peeps
@@ -1541,7 +1567,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       engine.setBareCharge(!combat.held && combat.heavyCharging ? combat.heavyCharge : null)
       combat.step(dt, body, worldOrigin, { x: m0.x + camX, y: m0.y - camY }, aim.angle, input, boxes, G, (vx, vy) => engine.impulse(vx, vy), { peckOrigin: (() => { const p = engine.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), hand: (() => { const p = engine.rigPoint("hand"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = engine.heldPoint(aim.angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
       // (she stays where its stool is, in the seated pose, until she gets up)
-      { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face, keepJump: seatKeepsJump(seat!.kind) } : null }) }
+      { const seat = combat.seated, at = seat && seatSpot(seat); if (p1Seated !== !!seat) document.body.classList.toggle("pigchicken-seated", !!seat); p1Seated = !!seat; const cs = at ? null : chessPlay.seat("p1"); engine.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face, keepJump: seatKeepsJump(seat!.kind) } : cs ? { ...cs, x: cs.x - camX, y: cs.y + camY } : null }) }
       engine.setGame({ throwCharging: !!combat.held && !wh.open && (combat.throwCharge > 0 || (d.reticle === 'grenade' && d.fireMode === 'charge' && combat.fireCharge > 0)) })
       // the Itens panel follows the item the main player holds
       // (empty-handed, Pig and Ken hit with the chain and the tail: the panel opens on them)
@@ -1598,6 +1624,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         { const xdist = S.reticleDist * (aimStick ? stickAimDepth("rightStick", aimStick.mag) : 1); combat.setAimPoint({ x: xm.x + Math.cos(angle) * xdist + camX, y: xm.y + Math.sin(angle) * xdist - camY }) }
         if (eng.takeSeatLeft()) combat.standUp()
         if (eng.takeSlam()) zoneSlam(xs.x + camX)
+        dive(eng)
+        { const ls = eng.takeLandSlam(); if (ls) { chessPlay.slam(ls.x + camX, ls.y - camY); mineActivatorSlam(ls.x + camX, ls.y - camY) } }
         // (her hands over the Harpa's strings: the two sticks; with the keys, the direction they aim)
         if (combat.seated) {
           const padL = stickFor(devs, 0, an.deadzoneL), pad = !!devs?.some(isPadDevice)
@@ -1613,12 +1641,14 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             combat.setDrumInput({ sticks: [stickAt(rs), stickAt(padL)], taps: [], binds: drumBindLevels(drumKit(), controls, devs, drumKeys, padButtonValues(devs)) })
           } else extraKit.delete(id)
         } else extraKit.delete(id)
+        chessPlay.player(id, eng, xin, grabLabel(controls, devs))
+        minePlay.activator(id, eng, xin, grabLabel(controls, devs))
         minePlay.player(id, eng, xin)
         combat.step(dt, xbody, { x: xo.x + camX, y: xo.y - camY }, { x: xm.x + camX, y: xm.y - camY }, angle, xin, boxes, G, (vx, vy) => eng.impulse(vx, vy), { world: false, peckOrigin: (() => { const p = eng.rigPoint("neck"); return { x: p.x + camX, y: p.y - camY } })(), hand: (() => { const p = eng.rigPoint("hand"); return { x: p.x + camX, y: p.y - camY } })(), throwOrigin: (() => { const p = eng.heldPoint(angle, 0, 0); return { x: p.x + camX, y: p.y - camY } })() })
         markHover(combat, grabLabel(controls, devs))
         scalePlaying.set(id, xin.fire || xin.melee)
         if (xin.variation) ammoWake.set(id, true)
-        { const seat = combat.seated, at = seat && seatSpot(seat); if (seat) extraSeated.add(id); else extraSeated.delete(id); eng.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face, keepJump: seatKeepsJump(seat!.kind) } : null }) }
+        { const seat = combat.seated, at = seat && seatSpot(seat); if (seat) extraSeated.add(id); else extraSeated.delete(id); const cs = at ? null : chessPlay.seat(id); eng.setGame({ seat: at ? { x: at.x - camX, y: at.y + camY, face: seat!.face, keepJump: seatKeepsJump(seat!.kind) } : cs ? { ...cs, x: cs.x - camX, y: cs.y + camY } : null }) }
         eng.setGame({ throwCharging: !!combat.held && (combat.throwCharge > 0 || (xd.reticle === 'grenade' && xd.fireMode === 'charge' && combat.fireCharge > 0)), throwHeld: xa.throw && !!combat.held && !combat.throwVoid, aimFace: xa.throw && rs && Math.abs(rs.x) > 0.2 ? Math.sign(rs.x) : null, lookAngle: aimStick || xKeys ? angle : null, ...effectGame(combat.effect, xd.weight, combat.effects) })
         const xsw = combat.swing
         eng.setPeck(combat.peck)
@@ -1917,6 +1947,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       inWorld()
       drawWorld(ctx, combat, camX, view, itemGlowRef.current)
       drawMineActivators(ctx, camX, view, { blue: mineStore.params?.blue ?? "#4d9bff", red: mineStore.params?.red ?? "#ff5a5a" })
+      drawChessTables(ctx, camX, view, { names: namesRef.current, colors: colorsRef.current })
       // online, the other browsers' souls wear a ring in their browser's colour
       const netPlayers = combat.netSouls.length ? getNetState().info?.players : null
       drawFreedSouls(ctx, combat, camX, view, extraList.length ? colorsRef.current : null, netPlayers ? pid => { const p = netPlayers.find(q => q.pid === pid); return p ? PLAYER_COLORS[p.color % PLAYER_COLORS.length] : undefined } : undefined)
@@ -2223,6 +2254,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       resetZoneLife()
       minePlay.dispose()
       setMineActivators([])
+      setChessTables([])
       dropScaleStage(combat.music)
       templeDraw.gongs.clear()
       headerObserver.disconnect()

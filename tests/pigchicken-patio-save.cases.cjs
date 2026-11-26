@@ -129,3 +129,16 @@ test('no migration after the conflict fix raises SQLSTATE 40001 again', () => {
   const later = fs.readdirSync(dir).filter(f => f.endsWith('.sql') && f > '202611160002')
   for (const f of later) assert.doesNotMatch(fs.readFileSync(path.join(dir, f), 'utf8'), /errcode\s*=\s*'40001'/i, f)
 })
+
+test('an online room hands its live layout only to the Pátio it is of', () => {
+  const praca = '5e7a0c11-0005-4e5a-9c0d-ec5a3b1e0005', sala = '5e7a0c11-0006-4e5a-9c0d-ec5a3b1e0006'
+  assert.equal(store.roomFitsPatio('default', 'default'), true)
+  assert.equal(store.roomFitsPatio(sala, sala.toUpperCase()), true)
+  // the Sala's room never writes over the default Pátio (or the Praça opened by its id)
+  assert.equal(store.roomFitsPatio(sala, 'default'), false)
+  assert.equal(store.roomFitsPatio(sala, praca), false)
+  assert.equal(store.roomFitsPatio('default', praca), false)
+  // no room yet, or no Pátio open: nothing applies
+  assert.equal(store.roomFitsPatio(null, 'default'), false)
+  assert.equal(store.roomFitsPatio('default', null), false)
+})
