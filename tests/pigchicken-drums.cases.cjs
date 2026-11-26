@@ -137,6 +137,40 @@ test('Bateria, clicks: one hit per click on the piece under it, softer toward it
   assert.deepEqual(K.stepDrums(st, k, idle(), DT).hits, [])
 })
 
+test('Bateria, dragging a held click or finger: every piece it goes into hits at once, in order; the landing is the tap\'s; staying, nothing', () => {
+  const k = kit(), st = K.newDrumState()
+  const at = p => padOf(k, p)
+  const frame = (drags, taps = []) => K.stepDrums(st, k, { sticks: [null, null], taps, binds: {}, drags }, DT).hits
+  // the press on the Caixa: the tap hits it once, the drag's landing does not hit it again
+  const sn = at('snare'), hat = at('hat'), tom1 = at('tom1'), tom2 = at('tom2'), ride = at('ride'), bell = at('bell')
+  assert.deepEqual(frame([{ id: 1, x: sn.x, y: sn.y, from: { x: sn.x, y: sn.y } }], [{ x: sn.x, y: sn.y }]).map(h => h.piece), ['snare'])
+  // held still: nothing
+  assert.deepEqual(frame([{ id: 1, x: sn.x, y: sn.y }]), [])
+  // one fast sweep in a single frame up through the Chimbal to the Splash: both, in order, right now
+  const splash = at('splash')
+  assert.deepEqual(frame([{ id: 1, x: splash.x, y: splash.y }]).map(h => h.piece), ['hat', 'splash'])
+  // across to the Tom 1, on to the Tom 2 and the Condução, then onto its Sino (a hit) and back to the Condução (no new hit)
+  assert.deepEqual(frame([{ id: 1, x: tom1.x, y: tom1.y }]).map(h => h.piece), ['tom1'])
+  assert.deepEqual(frame([{ id: 1, x: tom2.x, y: tom2.y }]).map(h => h.piece), ['tom2'])
+  assert.deepEqual(frame([{ id: 1, x: ride.x, y: ride.y + ride.r * 0.6 }]).map(h => h.piece), ['ride'])
+  assert.deepEqual(frame([{ id: 1, x: bell.x, y: bell.y }]).map(h => h.piece), ['bell'])
+  assert.deepEqual(frame([{ id: 1, x: ride.x - ride.r * 0.6, y: ride.y }]).map(h => h.piece), [])
+  // a held click reaches the pieces behind where they show (the Ataque above the Tom 1)
+  const crash = at('crash')
+  frame([{ id: 1, x: tom1.x, y: tom1.y }])
+  assert.deepEqual(frame([{ id: 1, x: crash.x - crash.r * 0.5, y: crash.y - crash.r * 0.5 }]).map(h => h.piece), ['crash'])
+  // let go and pressed again elsewhere: a new drag, from where it landed
+  frame([])
+  assert.deepEqual(frame([{ id: 2, x: hat.x, y: hat.y, from: { x: hat.x, y: hat.y } }]), [])
+  // a fast drag is about as hard as a click, a slow one softer; never harder
+  const slow = K.dragVel(0.5), fast = K.dragVel(50)
+  assert.ok(slow < fast && fast <= K.PLAIN_VEL + 1e-9 && slow >= 0.5)
+  // two fingers at once are independent
+  frame([])
+  frame([{ id: 3, x: sn.x, y: sn.y, from: { x: sn.x, y: sn.y } }, { id: 4, x: tom2.x, y: tom2.y, from: { x: tom2.x, y: tom2.y } }])
+  assert.deepEqual(frame([{ id: 3, x: at('kick').x, y: at('kick').y }, { id: 4, x: at('floor').x, y: at('floor').y }]).map(h => h.piece).sort(), ['floor', 'kick'])
+})
+
 test('Bateria, clicks between the pieces: a knock on the hardware, drawn at random and never the same twice in a row; the sticks never knock', () => {
   const k = kit(), st = K.newDrumState()
   assert.equal(K.padAt(k, 0, 0.1, true), null)
@@ -323,6 +357,15 @@ test('Bateria fixa: Pegar sits at the kit; clicks, sticks and shortcuts hit with
     assert.equal(played.length, 1)
     assert.ok(c.bullets.length <= nb)
     assert.deepEqual(c.drumKnocks.map(k => [k.x, k.y]), [[0, 0.1]]) }
+  // a click held on the Bumbo and dragged onto the Caixa: the Caixa plays right away, once, even with the input
+  // kept for the next frames
+  { const n = played.length
+    c.setDrumInput({ sticks: [null, null], taps: [{ x: kick.x, y: kick.y }], binds: {}, drags: [{ id: -1, x: kick.x, y: kick.y, from: { x: kick.x, y: kick.y } }] })
+    step()
+    c.setDrumInput({ sticks: [null, null], taps: [], binds: {}, drags: [{ id: -1, x: snare.x, y: snare.y }] })
+    step(); step()
+    assert.deepEqual(played.slice(n).map(p => p.piece), ['kick', 'snare'])
+    played.splice(n) }
   // a stick onto the Caixa
   c.setDrumInput({ sticks: [{ x: snare.x, y: snare.y }, null], taps: [], binds: {} })
   step()
@@ -373,4 +416,40 @@ test('Bateria no Pátio: a Música element of fixed size that can be turned arou
   const s = INSTRUMENT_SCALES.drums, kick = padOf(K.DEFAULT_KIT, 'kick')
   assert.equal(s.label, 'Bateria')
   assert.equal(s.noteFor(createConductor(), { angle: Math.atan2(kick.y, kick.x), reach: Math.hypot(kick.x, kick.y), set: 'scale', octave: 0, span: 2 }), 36)
+})
+
+test('Bateria, recorded kit: every piece has its recordings (Ogg Opus and the AAC twin), soft to hard, two takes in turn; the pedal picks how open the Chimbal sounds', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const S = loadTs('lib/pigchicken/drum-samples.ts')
+  const files = S.drumFiles()
+  assert.equal(new Set(files).size, files.length)
+  let bytes = 0
+  for (const f of files) {
+    const ogg = fs.readFileSync(path.resolve(__dirname, '../public/samples', f + '.ogg')), m4a = fs.readFileSync(path.resolve(__dirname, '../public/samples', f + '.m4a'))
+    assert.equal(ogg.toString('ascii', 28, 36), 'OpusHead', f)
+    assert.equal(m4a.toString('ascii', 4, 8), 'ftyp', f)
+    bytes += Math.max(ogg.length, m4a.length)
+  }
+  assert.ok(bytes < 1_100_000, `the recorded kit stays small (${bytes} bytes)`)
+  // the manifest names the CC0 source of every file
+  const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../public/samples', S.DRUM_BANK, 'manifest.json'), 'utf8'))
+  assert.equal(manifest.license, 'CC0-1.0')
+  assert.deepEqual(manifest.recordings.map(r => `${S.DRUM_BANK}/${r.file.replace(/\.wav$/, '')}`).sort(), [...files].sort())
+  // every piece of the kit plays a recording of its own
+  K.DRUM_IDS.forEach(id => assert.ok(files.includes(S.drumSampleOf(id, 0.8).file), id))
+  // soft, medium, hard: the layer nearest the strength; a touch louder above it
+  const layer = (piece, vel, light) => S.drumSampleOf(piece, vel, 0, light).file.split('-').slice(-2)[0]
+  assert.deepEqual([layer('snare', 0.2), layer('snare', 0.6), layer('snare', 0.95)], ['0', '1', '2'])
+  assert.ok(S.drumSampleOf('snare', 1).gain > S.drumSampleOf('snare', 0.9).gain)
+  // the roll's light strokes are the soft ones; a crash has no soft layer, so its softest is the medium
+  assert.equal(layer('snare', 0.7, true), '0')
+  assert.equal(layer('crash', 0.1), '1')
+  // a soft hit on a skin is darker; on bronze it stays bright
+  assert.ok(S.drumSampleOf('tom1', 0.2).dull > 0 && S.drumSampleOf('tom1', 0.9).dull === 0 && S.drumSampleOf('ride', 0.2).dull === 0)
+  // two takes, in turn
+  assert.notEqual(S.drumSampleOf('kick', 0.9, 0, false, 0).file, S.drumSampleOf('kick', 0.9, 0, false, 1).file)
+  assert.equal(S.drumSampleOf('kick', 0.9, 0, false, 0).file, S.drumSampleOf('kick', 0.9, 0, false, 2).file)
+  // the Chimbal: closed; the pedal a little, halfway or wide open; the Chimbal aberto wide
+  assert.deepEqual([S.drumStem('hat', 0), S.drumStem('hat', 0.3), S.drumStem('hat', 0.6), S.drumStem('hat', 1), S.drumStem('hatOpen')], ['hat', 'hat-half', 'hat-34', 'hat-open', 'hat-open'])
 })

@@ -1,5 +1,7 @@
-// The Bateria's sound (lib/pigchicken/drum-kit.ts): an acoustic kit made of plain Web Audio, on the notes' bus of
-// PigChicKen's synth (lib/pigchicken/synth.ts, voice `kit`).
+// The Bateria's sound (lib/pigchicken/drum-kit.ts), on the notes' bus of PigChicKen's synth (lib/pigchicken/synth.ts,
+// voice `kit`). In the game a hit plays the recorded kit (playKit: a real acoustic kit's strokes, chosen by
+// lib/pigchicken/drum-samples.ts and fetched the first time the kit is played or sat at); until its files are ready,
+// or where they cannot be loaded, it plays the kit synthesized in plain Web Audio below (renderKit):
 //   drums: a skin is a sine that drops in pitch right after the stroke (the head stretched by the stick), a second
 //     mode above it that dies fast, and the stick's tick. The Bumbo adds the beater's click and a short low thud;
 //     the Caixa its snare wires (bright noise that outlasts the shell).
@@ -11,7 +13,9 @@
 // A soft hit is duller as well as quieter (a low-pass that opens with the stroke).
 // The knocks (a click between the pieces): short dry noises of the kit's hardware, each a few partials and a tick,
 // tuned a little differently every time so two of the same never sound alike.
+import { sampleUrl } from '@/lib/music/sample-format'
 import type { DrumKnock, DrumPiece } from './drum-kit'
+import { drumFiles, drumSampleOf, drumStem } from './drum-samples'
 import { noteBus, type Held } from './synth'
 
 const METAL = [1, 1.342, 1.2312, 1.6532, 1.9523, 2.1523]
@@ -25,7 +29,66 @@ const DRIVE = (() => { const c = new Float32Array(257); for (let i = 0; i < 257;
  */
 export function playKit(piece: DrumPiece, opts: KitHit = {}): Held | null {
   const b = noteBus()
-  return b ? renderKit(b, piece, opts) : null
+  if (!b) return null
+  loadDrumSamples(b.a)
+  return playKitSample(b, piece, opts) ?? renderKit(b, piece, opts)
+}
+
+// ---------- the recorded kit ----------
+const buffers = new Map<string, AudioBuffer | 'loading' | 'failed'>()
+const turns = new Map<string, number>()
+let asked = false
+function loadDrumSamples(a: BaseAudioContext) {
+  if (asked) return
+  asked = true
+  for (const file of drumFiles()) {
+    buffers.set(file, 'loading')
+    fetch(sampleUrl(`/samples/${file}.ogg`))
+      .then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+      .then(data => a.decodeAudioData(data))
+      .then(buffer => { buffers.set(file, buffer) }, () => { buffers.set(file, 'failed') })
+  }
+}
+/** Fetches the recorded kit now (sitting at the Bateria), so its first hits are already recorded ones. */
+export function preloadDrumKit() {
+  const b = noteBus()
+  if (b) loadDrumSamples(b.a)
+}
+// one hit of the recorded kit (null: its file is not ready, the synthesized kit plays instead)
+function playKitSample(b: KitBus, piece: DrumPiece, opts: KitHit): Held | null {
+  const { a, bus } = b, vel = opts.vel ?? 0.8, open = piece === 'hatOpen' ? 1 : opts.open ?? 0
+  const stem = drumStem(piece, open), n = turns.get(stem) ?? 0
+  const pick = drumSampleOf(piece, vel, open, opts.light, n), buffer = buffers.get(pick.file)
+  if (!buffer || typeof buffer === 'string') return null
+  turns.set(stem, n + 1)
+  const t = a.currentTime + Math.max(0, opts.at ?? 0)
+  const src = a.createBufferSource(); src.buffer = buffer
+  // (a touch of chance in the level, so two hits are never quite the same)
+  const g = a.createGain(), peak = 0.85 * pick.gain * (0.96 + Math.random() * 0.08)
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + 0.0015)
+  let end = t + buffer.duration
+  // an open Chimbal rings as long as its pedal lets it (the chosen stroke already rings about that long)
+  if ((piece === 'hat' || piece === 'hatOpen') && open > 0.06) {
+    const ring = 0.3 + 1.7 * Math.min(1, open)
+    if (ring < buffer.duration) { g.gain.setValueAtTime(peak, t + ring * 0.6); g.gain.linearRampToValueAtTime(0, t + ring); end = t + ring }
+  }
+  // the damper of a ringing cymbal (the Chimbal's pedal closing on it)
+  const level = a.createGain(); level.gain.value = 1
+  let head: AudioNode = src
+  if (pick.dull > 0) {
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 16000 - 13000 * pick.dull; lp.Q.value = 0.3
+    src.connect(lp); head = lp
+  }
+  head.connect(g); g.connect(level); level.connect(bus)
+  const stopAt = end + 0.02
+  src.start(t); src.stop(stopAt)
+  const v = { end: stopAt, kill: (at: number) => { g.gain.cancelScheduledValues(at); g.gain.setValueAtTime(g.gain.value, at); g.gain.linearRampToValueAtTime(0, at + 0.04); try { src.stop(at + 0.06) } catch { /* already stopped */ } } }
+  b.admit(v)
+  return {
+    setPitch() { /* a drum has one pitch */ },
+    setVolume(x: number) { level.gain.setTargetAtTime(Math.max(0, Math.min(1, x)), a.currentTime, 0.02) },
+    stop(fade = 0.03) { const now = a.currentTime, d = Math.max(0.01, fade); v.end = now; level.gain.cancelScheduledValues(now); level.gain.setTargetAtTime(0, now, d / 3); try { src.stop(now + d + 0.05) } catch { /* already stopped */ } },
+  }
 }
 export type KitHit = { at?: number; vel?: number; open?: number; light?: boolean }
 // where a hit is built: the audio context, the node it plays into, a source of white noise and the voices' cap

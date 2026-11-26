@@ -7,6 +7,7 @@
 //     "behind" the others (the Ataque and the China) are out of the sticks' reach.
 //   toques: a click or a finger on a piece hits it once. Between the pieces (inside the chart) it knocks on the
 //     kit's hardware instead: a rim, the sticks, a shell, a stand… one of DRUM_KNOCKS, drawn at random each time.
+//     Held and dragged, it hits at once every piece it goes into on its way (the pieces behind too, where they show).
 //   atalhos: each piece has its keys and buttons. A plain one hits on the press. A gamepad's analog trigger
 //     (LT, RT) knows how deep it is: a sudden pull hits, harder the faster it is pulled; on the Caixa a slow move
 //     rolls (the rufo), louder the deeper; on the Chimbal aberto the depth is how far the pedal opens.
@@ -180,15 +181,20 @@ export type DrumInput = {
   sticks: ({ x: number; y: number } | null)[] // each drumstick's place on the chart (null: at rest)
   taps: { x: number; y: number }[] // the clicks and fingers that landed since the last frame
   binds: Partial<Record<DrumPiece, BindLevel>>
+  drags?: DrumDrag[] // the clicks and fingers held down now
 }
+// a click or finger held on the chart: `id` tells one from another; (x, y): where it is now; `from`: where it landed,
+// only on the frame it landed (its tap already hit the piece there: the drag goes on from it)
+export type DrumDrag = { id: number; x: number; y: number; from?: { x: number; y: number } }
+type DragState = { id: number; x: number; y: number; on: DrumPiece | null }
 type StickState = { x: number; y: number; on: DrumPiece | null; live: boolean }
 type BindState = { digital: boolean; depth: number; speed: number; fast: boolean; wait: number; cool: number; rollIn: number }
 // knock: the last hardware noise drawn (never the same twice in a row)
-export type DrumState = { sticks: StickState[]; binds: Record<DrumPiece, BindState>; open: number; knock: number }
+export type DrumState = { sticks: StickState[]; binds: Record<DrumPiece, BindState>; open: number; knock: number; drags: DragState[] }
 const newBind = (): BindState => ({ digital: false, depth: 0, speed: 0, fast: false, wait: 0, cool: 0, rollIn: 0 })
 export const newDrumState = (): DrumState => ({
   sticks: [0, 1].map(() => ({ x: 0, y: 0, on: null, live: false })),
-  binds: Object.fromEntries(DRUM_IDS.map(id => [id, newBind()])) as Record<DrumPiece, BindState>, open: 0, knock: -1,
+  binds: Object.fromEntries(DRUM_IDS.map(id => [id, newBind()])) as Record<DrumPiece, BindState>, open: 0, knock: -1, drags: [],
 })
 
 // the pedal counts as open from here on (below it the Chimbal is closed)
@@ -199,7 +205,7 @@ export const TRIGGER_FAST = 5
 export const TRIGGER_ROLL = 0.3
 // a plain key or button hits this hard; a click in the middle of a piece too (softer toward its edge)
 export const PLAIN_VEL = 0.9
-const STICK_STEP = 0.025, STICK_HITS_MAX = 4
+const STICK_STEP = 0.025, STICK_HITS_MAX = 4, DRAG_HITS_MAX = 8
 // no roll for this long (s) after a sudden move of the trigger, either way: its slowing down is not a roll
 const ROLL_COOL = 0.22
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
@@ -207,28 +213,57 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
 export const triggerVel = (speed: number) => 0.25 + 0.75 * clamp01(speed / 20)
 /** How hard a drumstick moving at `speed` (chart radii per second) hits. */
 export const stickVel = (speed: number) => 0.35 + 0.65 * clamp01(speed / 12)
+/** How hard a held click or finger dragged at `speed` (chart radii per second) hits: never harder than a click. */
+export const dragVel = (speed: number) => 0.55 + (PLAIN_VEL - 0.55) * clamp01(speed / 8)
 /** How hard a click at (x, y) on a piece hits it: whole in its middle, softer at its edge. */
 export const tapVel = (p: DrumPad, x: number, y: number) => PLAIN_VEL * (1 - 0.3 * clamp01(Math.hypot(x - p.x, y - p.y) / Math.max(1e-6, p.r)))
+
+// The pieces met on the way from (fx, fy) to (tx, ty), starting on `on`, in order: entering a piece hits it, staying
+// in it does not; coming off a piece onto the one it sits on (the Sino back onto the Condução) is no new hit.
+// `first`: the starting point counts (a stick leaving its rest). Returns the hits and the piece it ends on.
+function walkPads(kit: DrumKit, fx: number, fy: number, tx: number, ty: number, on: DrumPiece | null, back: boolean, vel: number, first: boolean) {
+  const n = Math.max(1, Math.min(60, Math.ceil(Math.hypot(tx - fx, ty - fy) / STICK_STEP)))
+  const hits: DrumHit[] = []
+  for (let k = first ? 0 : 1; k <= n; k++) {
+    const x = fx + ((tx - fx) * k) / n, y = fy + ((ty - fy) * k) / n
+    const p = padAt(kit, x, y, back), piece = p?.piece ?? null
+    if (piece === on) continue
+    const from = on ? kit.pads.find(q => q.piece === on) : null
+    if (p && !(from && inside(from, p))) hits.push({ piece: p.piece, vel, x, y })
+    on = piece
+  }
+  return { hits, on }
+}
 
 /** One frame of a drumstick: the pieces it went into on its way to `to` (null: back at rest), in order. */
 export function stepStick(s: StickState, to: { x: number; y: number } | null, kit: DrumKit, dt: number): DrumHit[] {
   if (!to) { s.live = false; s.on = null; s.x = 0; s.y = 0; return [] }
   // leaving its rest, it comes from her shoulder
-  const fx = s.live ? s.x : 0, fy = s.live ? s.y : 0, dist = Math.hypot(to.x - fx, to.y - fy)
-  const n = Math.max(1, Math.min(60, Math.ceil(dist / STICK_STEP))), vel = stickVel(dist / Math.max(1e-3, dt))
+  const fx = s.live ? s.x : 0, fy = s.live ? s.y : 0
+  const w = walkPads(kit, fx, fy, to.x, to.y, s.live ? s.on : null, false, stickVel(Math.hypot(to.x - fx, to.y - fy) / Math.max(1e-3, dt)), !s.live)
+  s.x = to.x; s.y = to.y; s.on = w.on; s.live = true
+  return w.hits.slice(-STICK_HITS_MAX)
+}
+
+/**
+ * One frame of the clicks and fingers held on the chart: each one hits, at once, every piece it went into since the
+ * last frame (the pieces behind too, where they show), harder the faster it moves. The landing is the tap's.
+ */
+export function stepDrags(st: DragState[], drags: DrumDrag[], kit: DrumKit, dt: number): DrumHit[] {
   const out: DrumHit[] = []
-  let on = s.live ? s.on : null
-  for (let k = s.live ? 1 : 0; k <= n; k++) {
-    const x = fx + ((to.x - fx) * k) / n, y = fy + ((to.y - fy) * k) / n
-    const p = padAt(kit, x, y, false), piece = p?.piece ?? null
-    if (piece === on) continue
-    // (coming off a piece onto the one it sits on, the Sino back onto the Condução, is no new hit)
-    const from = on ? kit.pads.find(q => q.piece === on) : null
-    if (p && !(from && inside(from, p))) out.push({ piece: p.piece, vel, x, y })
-    on = piece
+  const next: DragState[] = []
+  for (const d of drags) {
+    let s = d.from ? undefined : st.find(q => q.id === d.id)
+    if (!s) {
+      const at = d.from ?? d
+      s = { id: d.id, x: at.x, y: at.y, on: padAt(kit, at.x, at.y, true)?.piece ?? null }
+    }
+    const w = walkPads(kit, s.x, s.y, d.x, d.y, s.on, true, dragVel(Math.hypot(d.x - s.x, d.y - s.y) / Math.max(1e-3, dt)), false)
+    out.push(...w.hits.slice(-DRAG_HITS_MAX))
+    next.push({ id: d.id, x: d.x, y: d.y, on: w.on })
   }
-  s.x = to.x; s.y = to.y; s.on = on; s.live = true
-  return out.slice(-STICK_HITS_MAX)
+  st.length = 0; st.push(...next)
+  return out
 }
 
 /**
@@ -284,6 +319,7 @@ export function stepDrums(st: DrumState, kit: DrumKit, input: DrumInput, dt: num
     st.knock = k
     hits.push({ piece: nearestPad(kit, t.x, t.y).piece, vel: PLAIN_VEL * (0.65 + 0.35 * rand()), knock: DRUM_KNOCKS[k], x: t.x, y: t.y })
   }
+  hits.push(...stepDrags(st.drags, input.drags ?? [], kit, dt))
   st.sticks.forEach((s, i) => hits.push(...stepStick(s, input.sticks[i] ?? null, kit, dt)))
   // a Chimbal hit sounds as open as the pedal is
   hits.forEach(h => { if (h.piece === 'hat' && h.open === undefined && open > HAT_OPEN_MIN) h.open = open })

@@ -123,8 +123,8 @@ import { templeDraw, pickupMarks, markHover, grabLabel, groupBindLabels, drawWor
 import { chestMarks } from "@/components/pigchicken/draw/chests"
 import { seatMarks } from "@/components/pigchicken/draw/harp"
 import { FIXED_INSTRUMENTS, HARP_BOX, seatKeepsJump, seatSpot } from "@/lib/pigchicken/fixed-instruments"
-import { drumKit } from "@/lib/pigchicken/drum-kit"
-import { playKit, playKnock } from "@/lib/pigchicken/drum-synth"
+import { drumKit, type DrumDrag } from "@/lib/pigchicken/drum-kit"
+import { playKit, playKnock, preloadDrumKit } from "@/lib/pigchicken/drum-synth"
 import { drumFrame, setDrumScreen } from "@/components/pigchicken/draw/drum-chart"
 import { drumBindLevels, drumKeyTokens } from "@/lib/pigchicken/drum-input"
 import { stageHeight, stageTop, stageWidth, stageY } from "@/lib/stage-size"
@@ -435,6 +435,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // the main player sits at the Piano de cauda (its Estrela fits the screen; the camera keeps the piano in sight)
     let p1Star = false
     const clicks: { x: number; y: number }[] = []
+    // the left button held since a click on the Bateria's chart: dragged, it hits every piece it goes into (from: where
+    // it landed, until the next frame takes it)
+    let kitPress: { from: { x: number; y: number } | null } | null = null
     const drumKeys = new Set<string>()
     const onFingerDown = (e: PointerEvent) => {
       if (e.pointerType === "mouse" || !p1Seated || cameraKey || fingers.filter(f => !f.up).length >= (p1Kit ? 6 : 2)) return
@@ -627,7 +630,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (e.button === 0 && canWalkTap(e)) walkTap = { id: e.pointerId, x: e.clientX, y: stageY(e.clientY), t: performance.now() }
       if (e.button === 0) mouseBtn.fire = true
       if (e.button === 2) { rDown = { pc: canPointClick(e) }; rUp = null }
-      if (e.button === 0 && p1Kit) clicks.push({ x: e.clientX, y: stageY(e.clientY) })
+      if (e.button === 0 && p1Kit) { clicks.push({ x: e.clientX, y: stageY(e.clientY) }); kitPress = { from: { x: e.clientX, y: stageY(e.clientY) } } }
     }
     const onUp = (e: PointerEvent) => {
       onTapUp(e)
@@ -637,7 +640,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         document.body.classList.remove('pigchicken-camera-dragging')
         e.preventDefault(); e.stopPropagation()
       }
-      if (e.button === 0) mouseBtn.fire = false
+      if (e.button === 0) { mouseBtn.fire = false; kitPress = null }
       if (e.button === 2 && rDown) rUp = { x: e.clientX, y: stageY(e.clientY) }
     }
     const onMenu = (e: MouseEvent) => { if (!isUi(e.target)) e.preventDefault() }
@@ -745,7 +748,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     let cancelPecks = false
     const cancelPeckInput = () => {
       drumKeys.clear()
-      cancelPecks = true; mouseBtn.fire = false; cameraKey = false; panPointer = null
+      cancelPecks = true; mouseBtn.fire = false; kitPress = null; cameraKey = false; panPointer = null
       screenFinger = null; walkTap = null; grabTap = false; screenDraw = null
       panInterrupted = false; wasPanHeld = false; panDeltaX = 0; panDeltaY = 0
       document.body.classList.remove('pigchicken-camera-dragging'); showCameraMode(false)
@@ -1542,15 +1545,22 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         // every piece's shortcuts as her keys and gamepad say them
         p1Kit = combat.scale.id === "drums"
         if (p1Kit) {
+          // (the recorded kit's files, fetched once: its first hits sound recorded already)
+          preloadDrumKit()
           const mid = drumFrame(drumKit(), origin.x, origin.y, SCALE_FAN_R * st.scale)
           const onChart = (px: number, py: number) => {
             const fx = zoom !== 1 ? (px - stageWidth() / 2) / zoom + stageWidth() / 2 : px, fy = zoom !== 1 ? (py - stageHeight() / 2) / zoom + stageHeight() / 2 : py
             return { x: (fx - mid.x) / mid.r, y: (fy - mid.y) / mid.r }
           }
           const stickAt = (s: Stick | null) => (s ? { x: s.x * s.mag, y: s.y * s.mag } : null)
+          // the held left button and the fingers on the screen, dragged over the pieces
+          const drags: DrumDrag[] = []
+          if (kitPress && mouseBtn.fire && mouse) { drags.push({ id: -1, ...onChart(mouse.x, mouse.y), ...(kitPress.from ? { from: onChart(kitPress.from.x, kitPress.from.y) } : {}) }); kitPress.from = null }
+          fingers.forEach(f => { if (!f.up) { const at = onChart(f.x, f.y); drags.push({ id: f.id, ...at, ...(f.fresh ? { from: at } : {}) }) } })
           combat.setDrumInput({
             sticks: [stickAt(padR), stickAt(padL)],
             taps: wh.open ? [] : [...clicks.map(c => onChart(c.x, c.y)), ...fingers.filter(f => f.fresh).map(f => onChart(f.x, f.y))],
+            drags: wh.open ? [] : drags,
             binds: wh.open ? {} : drumBindLevels(drumKit(), controls, devs, drumKeys, padButtonValues(devs)),
           })
         }
@@ -1648,7 +1658,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           else combat.setStringHands(rs || padL ? [rs ? stickHand(rs) : null, padL ? stickHand(padL) : null] : pad ? [null, null] : [{ angle, reach: 1, kind: "none", sharp }, null])
           // (at the Bateria: their sticks are the drumsticks, their keys and buttons the pieces' shortcuts)
           if (combat.scale.id === "drums") {
-            extraKit.add(id)
+            extraKit.add(id); preloadDrumKit()
             const stickAt = (s: Stick | null) => (s ? { x: s.x * s.mag, y: s.y * s.mag } : null)
             combat.setDrumInput({ sticks: [stickAt(rs), stickAt(padL)], taps: [], binds: drumBindLevels(drumKit(), controls, devs, drumKeys, padButtonValues(devs)) })
           } else extraKit.delete(id)

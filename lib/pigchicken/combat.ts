@@ -1582,7 +1582,8 @@ export function createCombat() {
   function stepKit(h: Owned, d: ItemDef, muzzle: { x: number; y: number }, dt: number) {
     kit.t += dt
     const r = stepDrums(kit.st, drumKit(), kit.input ?? { sticks: [], taps: [], binds: {} }, dt)
-    if (kit.input) kit.input = { ...kit.input, taps: [] }
+    // (a tap and a drag's landing count once)
+    if (kit.input) kit.input = { ...kit.input, taps: [], drags: kit.input.drags?.map(d => ({ id: d.id, x: d.x, y: d.y })) }
     if (r.hits.length) {
       let bonus = 1
       if (music.offBeat() < 0.07) {
