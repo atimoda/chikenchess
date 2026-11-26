@@ -5,12 +5,13 @@ import styles from "./power-card-hand.module.css"
 import { MULLIGAN_ANIMATION_MS } from "@/lib/power-presentation"
 import { BoardResizeHandles } from "./board-resize-handles"
 import type { BoardResizeCorner } from "@/hooks/use-board-resize"
+import { msg, useT } from "@/lib/i18n"
 
 export type PowerCardKind = "best" | "worst" | "undo" | "freeze" | "shield"
 export type PowerCardAction = React.ButtonHTMLAttributes<HTMLButtonElement> & { ref?: React.Ref<HTMLButtonElement> }
 const cards = [
-  { kind: "best", name: "Best moves", cost: 1, color: "#39ff72", art: [42, 140, 345, 377] },
-  { kind: "worst", name: "Worst moves", cost: 1, color: "#ff454e", art: [445, 140, 345, 377] },
+  { kind: "best", name: msg("Best moves"), cost: 1, color: "#39ff72", art: [42, 140, 345, 377] },
+  { kind: "worst", name: msg("Worst moves"), cost: 1, color: "#ff454e", art: [445, 140, 345, 377] },
   { kind: "undo", name: "Mulligan", cost: 2, color: "#cf65ff", art: [845, 140, 345, 377] },
   { kind: "freeze", name: "Freeze", cost: 3, color: "#36dcff", art: [217, 718, 368, 398] },
   { kind: "shield", name: "Shield", cost: 3, color: "#ffc337", art: [638, 718, 368, 398] },
@@ -36,6 +37,7 @@ export interface PowerCardMove {
  * `move` lets the empty background of the container drag the whole hand.
  */
 export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resize, move, hideCost = false }: { visible: boolean; actions: Record<PowerCardKind, PowerCardAction>; undoAnimationKey?: number; rowRef?: React.Ref<HTMLDivElement>; resize?: PowerCardResize; move?: PowerCardMove; /** Creative cards are free: no egg price. */ hideCost?: boolean }) {
+  const t = useT()
   const [active, setActive] = useState<number | null>(null)
   const [angles, setAngles] = useState([-10, -5, 0, 5, 10])
   const [mulliganAnimating, setMulliganAnimating] = useState(false)
@@ -72,14 +74,14 @@ export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resi
       move.onPointerDown(event)
     } : undefined}
     style={{ opacity: visible ? 1 : 0, visibility: visible ? "visible" : "hidden", translate: move?.translate }}>
-    <div className={styles.hand} aria-label="Super-powers" onPointerLeave={() => setActive(null)}>
+    <div className={styles.hand} aria-label={t("Super-powers")} onPointerLeave={() => setActive(null)}>
       {resize && <BoardResizeHandles target="cards" enabled={resize.enabled && visible} onStart={resize.onStart} onResizeBy={resize.onResizeBy} onCancel={resize.onCancel} />}
       {cards.map((card, index) => {
         const action = actions[card.kind]
         const [x, y, width, height] = card.art
         const focused = active === index
         return <button key={card.kind} {...action} type="button" className={styles.card}
-          aria-label={hideCost ? card.name : `${card.name} · ${card.cost} golden egg${card.cost === 1 ? "" : "s"}`}
+          aria-label={hideCost ? t(card.name) : card.cost === 1 ? t("{name} · 1 golden egg", { name: t(card.name) }) : t("{name} · {n} golden eggs", { name: t(card.name), n: card.cost })}
           data-power-card={card.kind} data-match-power-action={card.kind === "freeze" || card.kind === "shield" ? card.kind : undefined}
           data-ranked-move-action={card.kind === "best" || card.kind === "worst" ? card.kind : undefined}
           onPointerDown={event => {
@@ -118,7 +120,7 @@ export function PowerCardHand({ visible, actions, undoAnimationKey, rowRef, resi
           data-entry-animating={entryAnimating ? "true" : undefined}
           data-visible={visible ? "true" : undefined}
           data-mulligan-animating={mulliganAnimating && card.kind === "undo" ? "true" : undefined}>
-          <span className={styles.title}>{card.name}</span>
+          <span className={styles.title}>{t(card.name)}</span>
           {!hideCost && <span className={styles.cost} aria-hidden="true">{card.cost}<span className={styles.egg} /></span>}
           <span className={styles.art} aria-hidden="true" style={{ aspectRatio: `${width}/${height}` }}>
             <img src="/power-cards/powers-art.png" alt="" draggable={false} style={{ width: `${1254 / width * 100}%`, left: `${-x / width * 100}%`, top: `${-y / height * 100}%` }} />

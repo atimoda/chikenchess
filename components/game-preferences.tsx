@@ -6,6 +6,8 @@ import { Settings2 } from "lucide-react"
 import { Button } from "./ui/button"
 import { FpsCounter, FpsPreferences } from "./fps-preferences"
 import { QualityPreferences } from "./quality-preferences"
+import { LanguageField } from "./language-select"
+import { useT } from "@/lib/i18n"
 import { getServerSimultaneousPulses, getSimultaneousPulses, setSimultaneousPulses, subscribeSimultaneousPulses } from "@/lib/music/pulse-preference"
 import type { PowerDisplay } from "@/hooks/use-power-display"
 import type { ChancePosition } from "@/hooks/use-chance-position"
@@ -41,6 +43,7 @@ export function GamePreferences({
   className?: string
 }) {
   const [open, setOpen] = useState(false)
+  const t = useT()
   const simultaneousPulses = useSyncExternalStore(subscribeSimultaneousPulses, getSimultaneousPulses, getServerSimultaneousPulses)
   const titleId = useId()
   const switchLabelId = useId()
@@ -56,18 +59,20 @@ export function GamePreferences({
   }
   return <><Popover.Root open={open} onOpenChange={setOpen} modal={false}>
     <Popover.Trigger asChild>
-      <Button variant="outline" size="icon" aria-label="Preferências" title="Preferências" className={className}>
+      <Button variant="outline" size="icon" aria-label={t("Preferências")} title={t("Preferências")} className={className}>
         <Settings2 className="size-4" />
       </Button>
     </Popover.Trigger>
     <Popover.Portal>
       <Popover.Content align="end" sideOffset={4} aria-labelledby={titleId}
         className="z-[200] max-h-[var(--radix-popover-content-available-height)] min-w-64 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-        <h2 id={titleId} className="px-2 py-1.5 text-sm font-medium">Preferências</h2>
+        <h2 id={titleId} className="px-2 py-1.5 text-sm font-medium">{t("Preferências")}</h2>
+        <LanguageField rowClassName="flex cursor-pointer items-center justify-between gap-5 border-t border-border/40 px-2 py-2 text-sm"
+          selectClassName="rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-sm" />
         {display && onDisplayChange && <>
         <div className="flex items-center justify-between gap-5 px-2 py-2">
-          <div><div className="text-sm font-medium" id={switchLabelId}>Super-power</div>
-            <div className="text-xs text-muted-foreground">{display === "cards" ? "Modo cards" : "Modo botões"}</div>
+          <div><div className="text-sm font-medium" id={switchLabelId}>{t("Super-power")}</div>
+            <div className="text-xs text-muted-foreground">{display === "cards" ? t("Modo cards") : t("Modo botões")}</div>
           </div>
           <button type="button" role="switch" aria-checked={display === "cards"} aria-labelledby={switchLabelId}
             onClick={() => onDisplayChange(display === "cards" ? "buttons" : "cards")}
@@ -77,8 +82,8 @@ export function GamePreferences({
           </button>
         </div>
         <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
-          <div><div className="text-sm font-medium" id={chanceLabelId}>Chance position</div>
-            <div className="text-xs text-muted-foreground">{chancePosition === "board" ? "Board's side" : "Footer"}</div>
+          <div><div className="text-sm font-medium" id={chanceLabelId}>{t("Chance position")}</div>
+            <div className="text-xs text-muted-foreground">{chancePosition === "board" ? t("Board's side") : t("Footer")}</div>
           </div>
           <button type="button" role="switch" aria-checked={chancePosition === "board"} aria-labelledby={chanceLabelId}
             onClick={() => onChancePositionChange?.(chancePosition === "board" ? "footer" : "board")}
@@ -88,8 +93,8 @@ export function GamePreferences({
           </button>
         </div>
         <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
-          <div><div className="text-sm font-medium" id={spectrogramLabelId}>Spectrogram</div>
-            <div className="text-xs text-muted-foreground">{spectrogramMode === "widget" ? "Widget" : "as Crossfader background"}</div>
+          <div><div className="text-sm font-medium" id={spectrogramLabelId}>{t("Spectrogram")}</div>
+            <div className="text-xs text-muted-foreground">{spectrogramMode === "widget" ? t("Widget") : t("as Crossfader background")}</div>
           </div>
           <button type="button" role="switch" aria-checked={spectrogramMode === "crossfader"} aria-labelledby={spectrogramLabelId}
             onClick={() => onSpectrogramModeChange?.(spectrogramMode === "widget" ? "crossfader" : "widget")}
@@ -99,8 +104,8 @@ export function GamePreferences({
           </button>
         </div>
         <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
-          <div><div className="text-sm font-medium" id={crossfaderLabelId}>Crossfader</div>
-            <div className="text-xs text-muted-foreground">{crossfaderSync ? "Sync with player's chance" : "Manual only"}</div>
+          <div><div className="text-sm font-medium" id={crossfaderLabelId}>{t("Crossfader")}</div>
+            <div className="text-xs text-muted-foreground">{crossfaderSync ? t("Sync with player's chance") : t("Manual only")}</div>
           </div>
           <button type="button" role="switch" aria-checked={crossfaderSync} aria-labelledby={crossfaderLabelId}
             onClick={() => onCrossfaderSyncChange?.(!crossfaderSync)}
@@ -110,8 +115,8 @@ export function GamePreferences({
           </button>
         </div>
         <div className="flex items-center justify-between gap-5 px-2 py-2 border-t border-border/40">
-          <div><div className="text-sm font-medium" id={awardLabelId}>Award animations</div>
-            <div className="text-xs text-muted-foreground">{awardAnimations ? "Flying eggs and sounds" : "No flying eggs and sounds"}</div>
+          <div><div className="text-sm font-medium" id={awardLabelId}>{t("Award animations")}</div>
+            <div className="text-xs text-muted-foreground">{awardAnimations ? t("Flying eggs and sounds") : t("No flying eggs and sounds")}</div>
           </div>
           <button type="button" role="switch" aria-checked={awardAnimations} aria-labelledby={awardLabelId}
             onClick={() => onAwardAnimationsChange?.(!awardAnimations)}
@@ -122,13 +127,13 @@ export function GamePreferences({
         </div>
         </>}
         {onCopyMatchLog && <div className="flex items-center justify-between gap-5 border-t border-border/40 px-2 py-2">
-          <div className="text-sm font-medium">Match log</div>
+          <div className="text-sm font-medium">{t("Match log")}</div>
           <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs hover:text-foreground" onClick={() => { void copyMatchLog() }}>
-            <span aria-live="polite">{matchLogCopy === "copied" ? "Copied" : matchLogCopy === "failed" ? "Copy failed" : "Copy"}</span>
+            <span aria-live="polite">{matchLogCopy === "copied" ? t("Copied") : matchLogCopy === "failed" ? t("Copy failed") : t("Copy")}</span>
           </Button>
         </div>}
         <label className="flex cursor-pointer items-center justify-between gap-5 border-t border-border/40 px-2 py-2 text-sm">
-          Pulsos simultâneos no tabuleiro
+          {t("Pulsos simultâneos no tabuleiro")}
           <input type="checkbox" className="size-4 accent-primary" checked={simultaneousPulses}
             onChange={e => setSimultaneousPulses(e.target.checked)} />
         </label>

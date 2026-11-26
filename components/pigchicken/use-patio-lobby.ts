@@ -6,11 +6,12 @@
 // the player resolves (open the saved one, or keep mine). Without a server (offline, not configured, migration not
 // applied) everything keeps working in this browser.
 import { useCallback, useEffect, useRef, useState } from "react"
+import { t as tr } from "@/lib/i18n"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
 import { visitPatioLobby } from "@/lib/pigchicken/patio-visits"
 import { keepPatio, loadPatio, newPatio, newPatioId, setLobbyInUrl, type NewPatioKind, type PatioRecord } from "@/lib/pigchicken/patio-store"
 import {
-  favoritePatioLobby, fetchDefaultPatio, fetchPatioLobby, isPatioConflict, isPatioOffline, isPatioServerMissing, patioErrorMessage,
+  favoritePatioLobby, fetchDefaultPatio, fetchPatioLobby, isPatioConflict, isPatioEditForbidden, isPatioOffline, isPatioServerMissing, patioErrorMessage,
   patioOnlineAvailable, playedPatioLobby, renamePatioLobby, savePatioLobby, setDefaultPatioLobby, type PatioLobby,
 } from "@/lib/pigchicken/patio-online"
 
@@ -124,7 +125,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
       put(keepPatio(next))
       if (!mine) markSaved(next.layout)
       setRemote(row)
-      if (stale) setSave({ kind: "conflict", text: "Este Pátio foi salvo em outro lugar depois das suas mudanças neste navegador.", remote: row })
+      if (stale) setSave({ kind: "conflict", text: tr("Este Pátio foi salvo em outro lugar depois das suas mudanças neste navegador."), remote: row })
       void visitPatioLobby(row.id).then(n => { if (n) setRemote(r => r && r.id === row.id ? { ...r, ...n } : r) })
       if (ctx.current.isAccount && !played.current.has(row.id)) { played.current.add(row.id); playedPatioLobby(row.id).then(() => fetchPatioLobby(row.id, row.revision)).then(r => { if (r && cur.current?.dbId === r.id) setRemote(r) }).catch(() => {}) }
     } catch (e) {
@@ -146,20 +147,20 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     flushKeep()
     const p = cur.current
     if (!p || saving.current) return false
-    if (!p.dirty && !(force && p.revision === 0)) { if (!silent) setSave({ kind: "saved", text: "Tudo salvo." }); return true }
+    if (!p.dirty && !(force && p.revision === 0)) { if (!silent) setSave({ kind: "saved", text: tr("Tudo salvo.") }); return true }
     // changed and changed back: the database already has exactly this
     if (p.dirty && p.revision > 0 && !force && revision === undefined && savedJson.current === JSON.stringify(p.layout)) {
       put(keepPatio({ ...p, dirty: false }))
-      if (!silent) setSave({ kind: "saved", text: "Tudo salvo." })
+      if (!silent) setSave({ kind: "saved", text: tr("Tudo salvo.") })
       return true
     }
     if (!ctx.current.canEdit || !ctx.current.saver) return false
     if (!patioOnlineAvailable() || !ctx.current.userId) {
-      setSave({ kind: "local", text: patioOnlineAvailable() ? "Entre para salvar no servidor. Ficou salvo neste navegador." : "Sem servidor: ficou salvo neste navegador." })
+      setSave({ kind: "local", text: patioOnlineAvailable() ? tr("Entre para salvar no servidor. Ficou salvo neste navegador.") : tr("Sem servidor: ficou salvo neste navegador.") })
       return false
     }
     saving.current = true
-    setSave({ kind: "saving", text: "Salvando…" })
+    setSave({ kind: "saving", text: tr("Salvando…") })
     try {
       // the admin's first save of the default Pátio makes its database row
       const firstDefault = p.id === null && !p.dbId
@@ -174,7 +175,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
       })
       put(next)
       markSaved(p.layout)
-      setSave({ kind: "saved", text: `Salvo às ${time(res.updatedAt)}.` })
+      setSave({ kind: "saved", text: tr("Salvo às {time}.", { time: time(res.updatedAt) }) })
       ctx.current.onSaved?.(res.revision)
       // the panels' data (who edited) is read again after a save by hand; the minute's autosave skips that read
       if (!silent) void refreshRemote()
@@ -183,9 +184,9 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
       if (isPatioConflict(e)) {
         const row = p.dbId ? await fetchPatioLobby(p.dbId).catch(() => null) : null
         setSave({ kind: "conflict", text: patioErrorMessage(e), remote: row })
-      } else if (patioErrorMessage(e).includes("permissão para editar") && !ctx.current.isAdmin) {
+      } else if (isPatioEditForbidden(e) && !ctx.current.isAdmin) {
         // online, the lobby owner may edit a Pátio it cannot save (not its creator): the changes stay in the lobby
-        setSave({ kind: "local", text: "As mudanças valem neste lobby e ficam neste navegador. Só quem criou o Pátio (ou quem ele liberou) salva no servidor." })
+        setSave({ kind: "local", text: tr("As mudanças valem neste lobby e ficam neste navegador. Só quem criou o Pátio (ou quem ele liberou) salva no servidor.") })
       } else setSave({ kind: isPatioServerMissing(e) || isPatioOffline(e) ? "local" : "error", text: patioErrorMessage(e) })
       return false
     } finally {
@@ -210,7 +211,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
     if (choice === "saved") {
       if (row?.layout) { put(keepPatio({ ...p, layout: row.layout, revision: row.revision, dirty: false, name: row.name, godparentId: row.godparentId })); markSaved(row.layout) }
       if (row) setRemote(row)
-      setSave({ kind: "saved", text: "Abri a versão salva." })
+      setSave({ kind: "saved", text: tr("Abri a versão salva.") })
       return
     }
     setSave({ kind: "idle", text: "" })
@@ -232,7 +233,7 @@ export function usePatioLobby({ userId, isAccount, isAdmin, canEdit, saver = tru
       if (latest?.dbId === row.id) put(keepPatio({ ...latest, name: row.name, godparentId: row.godparentId }))
       setRemote(prev => (prev && prev.id === row.id ? { ...prev, ...row } : prev))
       void refreshRemote()
-      setSave({ kind: "saved", text: `Salvo como “${row.name}”.` })
+      setSave({ kind: "saved", text: tr("Salvo como “{name}”.", { name: row.name ?? "" }) })
       return true
     } catch (e) {
       setSave({ kind: "error", text: patioErrorMessage(e) })

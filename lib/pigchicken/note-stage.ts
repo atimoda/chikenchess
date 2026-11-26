@@ -9,6 +9,7 @@
 //
 // Plain data stepped with dt and the conductor's clock, like the temple: the same state and inputs give the same
 // game (the aliens' hit points live in the combat's targets).
+import { msg, t as tr } from '../i18n'
 import type { Target } from './combat'
 import { createConductor, DEGREE_COLORS, SCALES, type Conductor } from './music'
 import type { RebateRule } from './transforms'
@@ -25,8 +26,8 @@ const DEG = Math.PI / 180
 // the five movements (the angle is always around her)
 export type MoveMode = 'straight' | 'zigzag' | 'pass' | 'spiral' | 'still'
 export const MOVE_MODES: { value: MoveMode; label: string }[] = [
-  { value: 'straight', label: 'Reto' }, { value: 'zigzag', label: 'Zigue-zague' }, { value: 'pass', label: 'Passante' },
-  { value: 'spiral', label: 'Espiral' }, { value: 'still', label: 'Parado' },
+  { value: 'straight', label: msg('Reto') }, { value: 'zigzag', label: msg('Zigue-zague') }, { value: 'pass', label: msg('Passante') },
+  { value: 'spiral', label: msg('Espiral') }, { value: 'still', label: msg('Parado') },
 ]
 // the shot type (tipo de tiro): radius (px), glow (0..1), colour ('degree' = the scale degree's) and speed (px/s)
 export type ShotType = { size: number; glow: number; color: 'degree' | string; speed: number }
@@ -65,13 +66,13 @@ export type Song = {
 // the Diálogos lane: pauses (bars with no aliens, the background playing or total silence) and lines (someone says
 // something, in a pause or over the aliens). Who: 'gongo', 'galinha', 'narrador' or 'alien:<variation id>'
 export type LinePlace = 'banner' | 'balao' | 'faixa'
-export const LINE_PLACES: { value: LinePlace; label: string }[] = [{ value: 'banner', label: 'Banner' }, { value: 'balao', label: 'Balão' }, { value: 'faixa', label: 'Faixa' }]
+export const LINE_PLACES: { value: LinePlace; label: string }[] = [{ value: 'banner', label: msg('Banner') }, { value: 'balao', label: msg('Balão') }, { value: 'faixa', label: msg('Faixa') }]
 export type SongLine = { beat: number; who: string; text: string; secs: number; place: LinePlace; blip: boolean }
 export type SongPause = { beat: number; bars: number; silent: boolean }
 export const SPEAKERS: { value: string; label: string; color: string; voice: VoiceId; octave: number }[] = [
-  { value: 'narrador', label: 'Narrador', color: '#c9ced6', voice: 'keys', octave: 0 },
-  { value: 'gongo', label: 'Gongo', color: '#ffd166', voice: 'bells', octave: -12 },
-  { value: 'galinha', label: 'Galinha', color: '#f4f1e8', voice: 'bird', octave: 12 },
+  { value: 'narrador', label: msg('Narrador'), color: '#c9ced6', voice: 'keys', octave: 0 },
+  { value: 'gongo', label: msg('Gongo'), color: '#ffd166', voice: 'bells', octave: -12 },
+  { value: 'galinha', label: msg('Galinha'), color: '#f4f1e8', voice: 'bird', octave: 12 },
 ]
 // who says a line: its name, colour and voice (an alien speaks in its variation's firing voice)
 export function speakerOf(who: string, catalog: Catalog = BUILTIN_VARIANTS): { name: string; color: string; voice: VoiceId; octave: number; variant: string | null } {
@@ -80,7 +81,7 @@ export function speakerOf(who: string, catalog: Catalog = BUILTIN_VARIANTS): { n
   const id = who.startsWith('alien:') ? who.slice(6) : ''
   const v = catalog.find(x => x.id === id)
   if (v) return { name: v.name, color: v.color, voice: v.fire.voice === 'none' ? 'chip' : v.fire.voice, octave: 12, variant: v.id }
-  return { name: 'Narrador', color: '#c9ced6', voice: 'keys', octave: 0, variant: null }
+  return { name: msg('Narrador'), color: '#c9ced6', voice: 'keys', octave: 0, variant: null }
 }
 export const STAGE_RULE: RebateRule = 'ambiente-taco'
 
@@ -97,7 +98,7 @@ export const AFINA_MISS = 0.06, AFINA_CONTACT = 0.05, AFINA_HIT = 0.03
 
 // ---------- the test song ----------
 const TEST_MUSIC: StageMusic = {
-  zone: { id: 'templo-teste', name: 'Teste das Notas', root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 96, feel: 'straight', progression: [0, 5, 3, 4], color: '#7bdff2' },
+  zone: { id: 'templo-teste', name: msg('Teste das Notas'), root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 96, feel: 'straight', progression: [0, 5, 3, 4], color: '#7bdff2' },
   layers: ['gong', 'taiko', 'wood', 'hat', 'bass'], melody: [0, 1, 2, 4, 3, 2, 1, 0], groove: 1,
 }
 const TEST_FAN = songFan(62, 'majorPenta')
@@ -105,8 +106,8 @@ const TEST_FAN = songFan(62, 'majorPenta')
 const lane = (i: number) => fanNotes(TEST_FAN)[i] as number
 const ns = (...pairs: [number, number][]) => pairs.map(([beat, l]) => ({ beat, midi: lane(l) }))
 export const TEST_SONG: Song = {
-  id: 'teste', name: 'Teste das Notas', noteMode: 'fan', introBars: 2, music: TEST_MUSIC, fan: TEST_FAN,
-  intro: 'Rebata cada nota com um golpe quando ela chegar no anel. Mande de volta nos aliens para virarem passarinhos. A bicada só anula.',
+  id: 'teste', name: msg('Teste das Notas'), noteMode: 'fan', introBars: 2, music: TEST_MUSIC, fan: TEST_FAN,
+  intro: msg('Rebata cada nota com um golpe quando ela chegar no anel. Mande de volta nos aliens para virarem passarinhos. A bicada só anula.'),
   aliens: [
     { species: 'jelly', move: 'straight', notes: ns([0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [6, 3]) },
     { species: 'lantern', move: 'zigzag', notes: ns([8, 4], [9, 5], [10, 6], [11, 5], [12, 4], [13, 3], [14, 2]) },
@@ -342,8 +343,8 @@ export function createNoteStage(catalogOf: () => Catalog = () => BUILTIN_VARIANT
       said: from > 0 ? lines.filter(l => l.beat < from).length : 0,
     })
     skipped = new Set(from > 0 ? order().filter(k => lastBeat(song().aliens[k]) < from) : [])
-    if (from === 0) banner(song().name, song().intro, song().music.zone.color, 5)
-    else banner(song().name, `Do compasso ${from / 4 + 1}`, song().music.zone.color, 2.5)
+    if (from === 0) banner(tr(song().name), tr(song().intro), song().music.zone.color, 5)
+    else banner(tr(song().name), tr('Do compasso {n}', { n: from / 4 + 1 }), song().music.zone.color, 2.5)
     io.sound({ kind: 'start', root: song().music.zone.root })
   }
 
@@ -396,17 +397,17 @@ export function createNoteStage(catalogOf: () => Catalog = () => BUILTIN_VARIANT
     if (io.music.time > clock.time) clock.step(io.music.time - clock.time)
     clock.events.length = 0
     const music = clock, spb = music.secondsPerBeat(), now = music.time
-    if (stopAsked) { stopAsked = false; stop(io, 'idle'); banner('Música parada', again().trim(), '#7bdff2', 2.5); finish(false, 'stopped'); return }
+    if (stopAsked) { stopAsked = false; stop(io, 'idle'); banner(tr('Música parada'), again().trim(), '#7bdff2', 2.5); finish(false, 'stopped'); return }
     const sg = song()
     // the reset stone stops it (a few strikes)
     if (s.resetHits > 0 && s.resetRing > 4) s.resetHits = 0
     if (io.resetHit) {
       s.resetRing = 0; s.resetHits++
       io.sound({ kind: 'reset', hit: s.resetHits, need: RESET_NEED })
-      if (s.resetHits >= RESET_NEED) { stop(io, 'idle'); banner('Música parada', again().trim(), '#7bdff2', 3); finish(false, 'stopped'); return }
+      if (s.resetHits >= RESET_NEED) { stop(io, 'idle'); banner(tr('Música parada'), again().trim(), '#7bdff2', 3); finish(false, 'stopped'); return }
     }
     // leaving its zone in the middle of the song loses it
-    if (!io.inside) { s.outsideT += dt; if (s.outsideT > 2.5) { fail(io, 'Você saiu da zona da música.', 'left'); return } } else s.outsideT = 0
+    if (!io.inside) { s.outsideT += dt; if (s.outsideT > 2.5) { fail(io, tr('Você saiu da zona da música.'), 'left'); return } } else s.outsideT = 0
 
     // the song's clock starts on the first bar of its zone, after the intro bars
     if (Number.isNaN(s.t0)) {
@@ -507,12 +508,12 @@ export function createNoteStage(catalogOf: () => Catalog = () => BUILTIN_VARIANT
           s.hearts--; s.invuln = HURT_SAFE; s.hurtT = 0
           io.fx.text(s.center.x, s.center.y - 150, '-♥', '#ff6b5b', 26)
           io.sound({ kind: 'hurt' })
-          if (s.hearts <= 0) { s.hearts = 0; fail(io, 'Os aliens te derrubaram.', 'hearts'); return }
+          if (s.hearts <= 0) { s.hearts = 0; fail(io, tr('Os aliens te derrubaram.'), 'hearts'); return }
         }
       }
     }
 
-    if (s.afina <= 1e-6) { s.afina = 0; fail(io, 'A música desafinou: notas demais passaram.', 'afina'); return }
+    if (s.afina <= 1e-6) { s.afina = 0; fail(io, tr('A música desafinou: notas demais passaram.'), 'afina'); return }
     // the end: every alien out and gone, no note left in the air
     if (s.spawned >= ord.length && !s.aliens.length && io.incoming === 0 && !s.talk.length && beat > songEnd(sg)) done(io)
   }
@@ -559,7 +560,7 @@ export function createNoteStage(catalogOf: () => Catalog = () => BUILTIN_VARIANT
 
   function fail(io: NoteStageIO, why: string, end: StageEnd) {
     stop(io, 'failed')
-    banner('Música perdida', `${why}${again()}`, '#ff6b5b', 5)
+    banner(tr('Música perdida'), `${why}${again()}`, '#ff6b5b', 5)
     io.sound({ kind: 'fail' })
     finish(false, end)
   }
@@ -568,10 +569,10 @@ export function createNoteStage(catalogOf: () => Catalog = () => BUILTIN_VARIANT
     const acc = accuracy(s.counts, s.fired), pct = Math.round(acc * 100)
     const goal = req?.goal ?? GOAL_DEFAULT
     // below the goal of who asked: lost, however far it went
-    if (acc + 1e-9 < goal.minAccuracy) { fail(io, `${pct}% de precisão, a meta era ${Math.round(goal.minAccuracy * 100)}%.`, 'accuracy'); return }
+    if (acc + 1e-9 < goal.minAccuracy) { fail(io, tr('{pct}% de precisão, a meta era {goal}%.', { pct, goal: Math.round(goal.minAccuracy * 100) }), 'accuracy'); return }
     stop(io, 'done')
     const c = s.counts
-    banner(`${song().name}: ${pct}%`, `${s.score.toLocaleString('pt-BR')} pontos · ${c.perfect} perfeitas, ${c.good} boas, ${c.fora} fora, ${c.miss} perdidas · combo máximo ${s.bestCombo} · ${c.birds} passarinhos.${again()}`, '#ffd166', 8)
+    banner(`${tr(song().name)}: ${pct}%`, `${tr('{score} pontos · {perfect} perfeitas, {good} boas, {fora} fora, {miss} perdidas · combo máximo {combo} · {birds} passarinhos.', { score: s.score.toLocaleString('pt-BR'), perfect: c.perfect, good: c.good, fora: c.fora, miss: c.miss, combo: s.bestCombo, birds: c.birds })}${again()}`, '#ffd166', 8)
     io.sound({ kind: 'done', root: song().music.zone.root, chord: (clock ?? io.music).chord() })
     finish(true, 'done')
   }

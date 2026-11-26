@@ -4,6 +4,7 @@
 // Blows in a row alternate: down, up, horizontal (a flattened ellipse around her) and a full spin on the 4th.
 // Pure functions: combat keeps the swing, the Parquinho draws its air trail, the rig turns the wing.
 
+import { msg } from '../i18n'
 const DEG = Math.PI / 180
 
 export type SwingKind = 'down' | 'up' | 'flat' | 'spin'
@@ -11,8 +12,8 @@ export type SwingPhase = 'prep' | 'strike' | 'follow' | 'recover' | 'done'
 // what a blow is set to: one of the moves, or "relative to the aim" (up when she aims above the horizon, down otherwise)
 export type BlowKind = SwingKind | 'aim'
 export const SWING_KINDS: { value: BlowKind; label: string }[] = [
-  { value: 'down', label: 'Para baixo' }, { value: 'up', label: 'Para cima' }, { value: 'flat', label: 'Horizontal' }, { value: 'spin', label: 'Giro 360°' },
-  { value: 'aim', label: 'Relativo à mira' },
+  { value: 'down', label: msg("Para baixo") }, { value: 'up', label: msg("Para cima") }, { value: 'flat', label: msg("Horizontal") }, { value: 'spin', label: msg("Giro 360°") },
+  { value: 'aim', label: msg("Relativo à mira") },
 ]
 // the move a blow makes with this aim (screen angle, y down: a negative sine points above the horizon)
 export function blowKind(kind: BlowKind, aim: number): SwingKind {

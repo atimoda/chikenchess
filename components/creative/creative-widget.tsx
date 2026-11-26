@@ -5,6 +5,7 @@
 import { useRef, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { Power } from 'lucide-react'
 import { Draggable } from '../ui/draggable'
+import { useT } from '@/lib/i18n'
 import styles from '../creative-studio.module.css'
 
 export interface CreativeWidgetSize { width: number; height?: number }
@@ -38,6 +39,7 @@ const MIN_HEIGHT = 96
  * the corner, resize grip at the bottom right. Turning it off collapses it to its title bar.
  */
 export function CreativeWidget({ id, title, titleNote, on, onToggle, position, onPositionChange, size, onSizeChange, zIndex, onFront, cityColor, stacked, widgetRef, info, children }: CreativeWidgetProps) {
+  const t = useT()
   const headerRef = useRef<HTMLDivElement | null>(null)
   const bodyRef = useRef<HTMLDivElement | null>(null)
 
@@ -84,8 +86,8 @@ export function CreativeWidget({ id, title, titleNote, on, onToggle, position, o
     onTouchStart={onFront}
   >
     <div ref={headerRef} className={styles.widgetHeader}>
-      <button type="button" data-no-drag className={styles.widgetPower} aria-pressed={on} aria-label={`${on ? 'Turn off' : 'Turn on'} ${title}`} title={`${on ? 'Turn off' : 'Turn on'} ${title}`} onClick={event => { event.stopPropagation(); onToggle() }}><Power size={15} /></button>
-      <span className={styles.widgetTitle}>{title}{titleNote && <span className={styles.widgetTitleNote}> {titleNote}</span>}</span>
+      <button type="button" data-no-drag className={styles.widgetPower} aria-pressed={on} aria-label={on ? t('Turn off {title}', { title: t(title) }) : t('Turn on {title}', { title: t(title) })} title={on ? t('Turn off {title}', { title: t(title) }) : t('Turn on {title}', { title: t(title) })} onClick={event => { event.stopPropagation(); onToggle() }}><Power size={15} /></button>
+      <span className={styles.widgetTitle}>{t(title)}{titleNote && <span className={styles.widgetTitleNote}> {titleNote}</span>}</span>
       {info && <span data-no-drag className={styles.widgetInfo}>{info}</span>}
     </div>
     {on && <div ref={bodyRef} className={styles.widgetBody} style={stacked ? undefined : size.height ? { height: size.height } : { maxHeight: `max(${MIN_HEIGHT}px, calc(100dvh - ${position.y + 56}px))` }}>

@@ -9,6 +9,7 @@ import type { Instrument } from "@/lib/music/model";
 import type { SquareEffects } from "@/lib/types";
 import type { PendingMatchCommand } from "@/lib/online/pending-move";
 import { diffObject, mergeObject } from "@/lib/online/piece-patch";
+import { msg, t } from "@/lib/i18n";
 /* global Response, crypto */
 
 export interface SharedPiece {
@@ -119,7 +120,7 @@ export function useOnlineMatch(matchId: string) {
           if (ownColor && prevTurn !== ownColor && nextTurn === ownColor) {
             playLobbyJoinSound();
             if (opponent?.profile.display_name) {
-              notify(`Your turn against ${opponent.profile.display_name}.`);
+              notify(t('Your turn against {name}.', { name: opponent.profile.display_name }));
             }
           }
         }
@@ -258,7 +259,7 @@ export function useOnlineMatch(matchId: string) {
           hasSubscribedOnce = true;
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           isSubscribed = false;
-          setError("Connection lost. Reconnecting…");
+          setError(msg("Connection lost. Reconnecting…"));
         } else if (status === "CLOSED") {
           isSubscribed = false;
         }
@@ -304,7 +305,7 @@ export function useOnlineMatch(matchId: string) {
     async (request: PendingMatchCommand) => {
       if (activeRequest.current) return;
       const client = getOnlineClient();
-      if (!client) throw new Error("Online is not configured");
+      if (!client) throw new Error(t("Online is not configured"));
       activeRequest.current = true;
       setBusy(true);
       setError(null);
@@ -348,7 +349,7 @@ export function useOnlineMatch(matchId: string) {
       } catch (e) {
         if (requestScope.current !== localKey) return;
         setError(
-          e instanceof Error ? e.message : "Could not confirm this action",
+          e instanceof Error ? e.message : msg("Could not confirm this action"),
         );
         void refresh({ match: true, pieces: false });
         throw e;
@@ -387,8 +388,8 @@ export function useOnlineMatch(matchId: string) {
   const send = useCallback(
     (command: MatchCommand) => {
       if (pending)
-        return Promise.reject(new Error("Retry the pending action first"));
-      if (!current.current) return Promise.reject(new Error("Loading match"));
+        return Promise.reject(new Error(t("Retry the pending action first")));
+      if (!current.current) return Promise.reject(new Error(t("Loading match")));
       return execute({
         matchId,
         commandId: crypto.randomUUID(),

@@ -6,13 +6,14 @@ import type { BassTone, DroneTone } from './zone-ambience'
 import { RECORD_STOP, recordStopCurve } from './zone-dynamics'
 import { pieceOfMidi } from './drum-kit'
 import { playKit } from './drum-synth'
+import { msg } from '../i18n'
 
 export type VoiceId = 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'harp' | 'bells' | 'chip' | 'hum' | 'bird' | 'guzheng' | 'bass' | 'pizz'
   | 'hang' | 'handpan' | 'hangSteel' | 'hangSlap' | 'pedalHarp' | 'harpHarmonic' | 'kit' | 'grandPiano'
 export const VOICE_LABELS: Record<VoiceId, string> = {
-  flute: 'Flauta', sax: 'Sax', trumpet: 'Trompete', guitar: 'Violão', violin: 'Violino', keys: 'Teclado', harp: 'Harpa de Lira', bells: 'Sinos', chip: 'Chip (alien)', hum: 'Coro (zumbi)', bird: 'Passarinho', guzheng: 'Guzheng', bass: 'Baixo', pizz: 'Violino pizzicato',
-  hang: 'Hang clássico', handpan: 'Handpan nitretado', hangSteel: 'Handpan inox', hangSlap: 'Hang (batida entre notas)',
-  pedalHarp: 'Harpa', harpHarmonic: 'Harpa (harmônico)', kit: 'Bateria acústica', grandPiano: 'Piano de cauda',
+  flute: msg('Flauta'), sax: msg('Sax'), trumpet: msg('Trompete'), guitar: msg('Violão'), violin: msg('Violino'), keys: msg('Teclado'), harp: msg('Harpa de Lira'), bells: msg('Sinos'), chip: msg('Chip (alien)'), hum: msg('Coro (zumbi)'), bird: msg('Passarinho'), guzheng: msg('Guzheng'), bass: msg('Baixo'), pizz: msg('Violino pizzicato'),
+  hang: msg('Hang clássico'), handpan: msg('Handpan nitretado'), hangSteel: msg('Handpan inox'), hangSlap: msg('Hang (batida entre notas)'),
+  pedalHarp: msg('Harpa'), harpHarmonic: msg('Harpa (harmônico)'), kit: msg('Bateria acústica'), grandPiano: msg('Piano de cauda'),
 }
 // the hangdrum's kinds of sound (its "Tipo de som"): each one a voice below
 export const HANG_VOICES: VoiceId[] = ['hang', 'handpan', 'hangSteel']

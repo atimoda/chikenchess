@@ -6,6 +6,7 @@
 // eyes; the legs keep the rig's joints with thicker strokes and a hoof or paw for a foot.
 import type { ChickenArtVariant, ChickenSlot } from './look-art'
 import { reach, type ArmSpec } from './arm-rig'
+import { msg, t as tr } from '../i18n'
 
 type P = [number, number]
 const fx = (n: number) => Math.round(n * 10) / 10
@@ -81,9 +82,9 @@ const cuff = (p: P, deg: number, w = 40, h = 84) => at(p, deg, `<rect x="${-w / 
 // ---------- Pig ----------
 type PigStyle = { id: string; label: string; skin: string; snout: string; inner: string; cheek: string; vest: string; hoof: string; nostril: string; white: string; pupil: string; brow: string; mouth: string; tongue: string; belt?: string; wool?: string; flop?: boolean }
 export const PIG_STYLES: PigStyle[] = [
-  { id: 'rosa', label: 'Rosa', skin: '#f4917f', snout: '#f9c2a4', inner: '#e86c5b', cheek: '#ec6467', vest: '#d93d1d', hoof: '#5a2b28', nostril: '#8a3437', white: '#fbe9cf', pupil: '#2e1613', brow: '#5b2a22', mouth: '#7b1e27', tongue: '#df5a5e' },
-  { id: 'hampshire', label: 'Hampshire', skin: '#2e2d34', snout: '#4a4851', inner: '#45434c', cheek: '#6d4c58', vest: '#d93d1d', hoof: '#1d1c21', nostril: '#141317', white: '#fbe9cf', pupil: '#1a1517', brow: '#141317', mouth: '#4a1218', tongue: '#c9545a', belt: '#efe8dc' },
-  { id: 'mangalica', label: 'Mangalica', skin: '#ecd19c', snout: '#4f3832', inner: '#d9b578', cheek: '#e7a27f', vest: '#d93d1d', hoof: '#33231f', nostril: '#1f1412', white: '#fbf1dc', pupil: '#2e1613', brow: '#7a5a3a', mouth: '#6e2a24', tongue: '#d4625a', wool: '#cfac6a', flop: true },
+  { id: 'rosa', label: msg('Rosa'), skin: '#f4917f', snout: '#f9c2a4', inner: '#e86c5b', cheek: '#ec6467', vest: '#d93d1d', hoof: '#5a2b28', nostril: '#8a3437', white: '#fbe9cf', pupil: '#2e1613', brow: '#5b2a22', mouth: '#7b1e27', tongue: '#df5a5e' },
+  { id: 'hampshire', label: msg('Hampshire'), skin: '#2e2d34', snout: '#4a4851', inner: '#45434c', cheek: '#6d4c58', vest: '#d93d1d', hoof: '#1d1c21', nostril: '#141317', white: '#fbe9cf', pupil: '#1a1517', brow: '#141317', mouth: '#4a1218', tongue: '#c9545a', belt: '#efe8dc' },
+  { id: 'mangalica', label: msg('Mangalica'), skin: '#ecd19c', snout: '#4f3832', inner: '#d9b578', cheek: '#e7a27f', vest: '#d93d1d', hoof: '#33231f', nostril: '#1f1412', white: '#fbf1dc', pupil: '#2e1613', brow: '#7a5a3a', mouth: '#6e2a24', tongue: '#d4625a', wool: '#cfac6a', flop: true },
 ]
 const PIG = {
   head: 'M300 40 C 395 38, 462 100, 470 190 C 476 282, 410 346, 300 348 C 196 350, 124 290, 128 205 C 130 115, 200 42, 300 40 Z',
@@ -136,16 +137,16 @@ function pigParts(s: PigStyle): Record<ChickenSlot, ChickenArtVariant> {
   const f = PIG_FRAME, { defs, wool } = woolOf(s), back = shade(s.belt ?? s.skin, 0.18)
   const hand = toRig(f, PIG_FRONT[2]), shoulder = toRig(f, PIG_ARM[0])
   return {
-    comb: { label: 'Sem crista', svg: '' },
-    wattle: { label: 'Sem barbela', svg: '' },
-    beak: { label: 'Focinho', svg: '', mouth: toRig(f, [345, 284]) },
-    neck: { label: 'Sem pescoço', svg: '' },
-    face: { label: `Cabeça de porco ${s.label.toLowerCase()}`, ownEyes: true, svg: inFrame(f, pigHead(s)) },
-    torso: { label: `Corpo de porco ${s.label.toLowerCase()} com colete`, svg: inFrame(f, defs + `<path d="${PIG.body}" fill="${s.skin}"/>${wool(PIG.body)}` + (s.belt ? `<path d="${PIG.belt}" fill="${s.belt}"/>` : '') + `<path d="${PIG.vestL}" fill="${s.vest}"/><path d="${PIG.vestR}" fill="${s.vest}"/>`) },
-    wing: { label: 'Braços com algemas', back, backPath: capsule(shoulder, hand, 7.5), arms: pigArms(s), hand, holdDrop: 16, svg: '' },
-    tail: { label: 'Rabinho enrolado', swing: 0.6, svg: inFrame(f, `<path d="${PIG.tail}" stroke="${s.skin}" stroke-width="15" fill="none" stroke-linecap="round"/>`) },
+    comb: { label: msg('Sem crista'), svg: '' },
+    wattle: { label: msg('Sem barbela'), svg: '' },
+    beak: { label: msg('Focinho'), svg: '', mouth: toRig(f, [345, 284]) },
+    neck: { label: msg('Sem pescoço'), svg: '' },
+    face: { get label() { return tr('Cabeça de porco {style}', { style: tr(s.label).toLowerCase() }) }, ownEyes: true, svg: inFrame(f, pigHead(s)) },
+    torso: { get label() { return tr('Corpo de porco {style} com colete', { style: tr(s.label).toLowerCase() }) }, svg: inFrame(f, defs + `<path d="${PIG.body}" fill="${s.skin}"/>${wool(PIG.body)}` + (s.belt ? `<path d="${PIG.belt}" fill="${s.belt}"/>` : '') + `<path d="${PIG.vestL}" fill="${s.vest}"/><path d="${PIG.vestR}" fill="${s.vest}"/>`) },
+    wing: { label: msg('Braços com algemas'), back, backPath: capsule(shoulder, hand, 7.5), arms: pigArms(s), hand, holdDrop: 16, svg: '' },
+    tail: { label: msg('Rabinho enrolado'), swing: 0.6, svg: inFrame(f, `<path d="${PIG.tail}" stroke="${s.skin}" stroke-width="15" fill="none" stroke-linecap="round"/>`) },
     legs: {
-      label: 'Pernas de porco', front: { drum: s.skin, shank: s.skin }, back: { drum: shade(s.skin, 0.12), shank: shade(s.skin, 0.12) },
+      label: msg('Pernas de porco'), front: { drum: s.skin, shank: s.skin }, back: { drum: shade(s.skin, 0.12), shank: shade(s.skin, 0.12) },
       shape: { thigh: 18, tib: 18, shin: 17, dxFront: 1, dxBack: -36, foot: `<path d="M-9 -2 C -8 -6, 9 -6, 10 -2 L 11 6 L 2 6 L 0.5 2 L -1 6 L -10 6 Z" fill="${s.hoof}"/>` },
     },
   }
@@ -154,16 +155,16 @@ function pigParts(s: PigStyle): Record<ChickenSlot, ChickenArtVariant> {
 // ---------- Ken (the foxes) ----------
 type FoxStyle = { id: string; label: string; coat: string; band: string; cream: string; dark: string; tip: string; nose: string; iris: string; lid: string; tail: string; silver?: string; pupil?: boolean; tailCoat?: string; mask?: string; patch?: string; patches?: number[][]; headPatches?: number[][]; earScale?: number; squint?: boolean }
 export const FOX_STYLES: FoxStyle[] = [
-  { id: 'vermelha', label: 'Raposa-vermelha', coat: '#f0801f', band: '#d0611a', cream: '#fae4c8', dark: '#5a2a20', tip: '#4a2219', nose: '#3a1c16', iris: '#3e1d17', lid: '#3a1a14', tail: '#fae4c8' },
-  { id: 'prateada', label: 'Raposa-prateada', coat: '#383840', band: '#2a2a31', cream: '#d9dbe0', dark: '#18181c', tip: '#121215', nose: '#0d0d0f', iris: '#e5a62b', lid: '#0d0d0f', tail: '#f4f4f1', silver: '#b9bcc4', pupil: true },
-  { id: 'marmorizada', label: 'Raposa-marmorizada', coat: '#f1f1ef', band: '#55555e', cream: '#ffffff', dark: '#6a6a73', tip: '#2a2a30', nose: '#141416', iris: '#7a4e26', lid: '#1a1a1e', tail: '#ffffff', tailCoat: '#8a8a94', mask: '#3a3a42', patch: '#4a4a53', patches: [[376, 430, 30, 46, 20], [458, 480, 16, 40, -10], [392, 560, 26, 34, 0]], headPatches: [[340, 196, 46, 26, -24], [452, 160, 30, 16, 6]] },
-  { id: 'artico', label: 'Raposa-do-ártico', coat: '#f3f2ee', band: '#e2e0d9', cream: '#ffffff', dark: '#d6d3cb', tip: '#e9e7e1', nose: '#2a2626', iris: '#3a2e28', lid: '#4a4540', tail: '#ffffff', tailCoat: '#f3f2ee', earScale: 0.72 },
-  { id: 'cinzenta', label: 'Raposa-cinzenta', coat: '#8e8c8b', band: '#a8653a', cream: '#f1ece4', dark: '#b2622f', tip: '#6a4a36', nose: '#1a1717', iris: '#3a2a1e', lid: '#2a2422', tail: '#1d1b1c', silver: '#dcdad6', patch: '#b8673a', patches: [[352, 430, 20, 46, 12], [470, 440, 16, 40, -10]] },
-  { id: 'corsac', label: 'Raposa-corsac', coat: '#cdb58f', band: '#b89d74', cream: '#f3ecdf', dark: '#b8996b', tip: '#8a7558', nose: '#2a211b', iris: '#3a2a1e', lid: '#5a4632', tail: '#4a3a2c', silver: '#ebe0c9' },
-  { id: 'tibetana', label: 'Raposa-tibetana', coat: '#c98a4c', band: '#a8703e', cream: '#efe6d6', dark: '#9e8a74', tip: '#a8703e', nose: '#2a1f1a', iris: '#4a3220', lid: '#3a2a1e', tail: '#f4f0e8', earScale: 0.74, squint: true, patch: '#aaa49b', patches: [[344, 560, 30, 70, 8], [476, 560, 24, 70, -8]] },
-  { id: 'feneco', label: 'Feneco', coat: '#e8c68e', band: '#d6ae6e', cream: '#fbf2df', dark: '#c49a5f', tip: '#e8c68e', nose: '#2c1f19', iris: '#2c1d15', lid: '#6b4a2e', tail: '#4a3426', earScale: 1.4 },
-  { id: 'deserto', label: 'Raposa-do-deserto', coat: '#c8b491', band: '#b8875a', cream: '#f4ede0', dark: '#c08a58', tip: '#9a7550', nose: '#2a211b', iris: '#3a2a1e', lid: '#4a3a2a', tail: '#2a2320', silver: '#e6dcc8', earScale: 1.24 },
-  { id: 'morcego', label: 'Raposa-orelhas-de-morcego', coat: '#9c8c74', band: '#5a4c3e', cream: '#e6dccb', dark: '#2a2522', tip: '#2a2522', nose: '#141212', iris: '#2a2018', lid: '#141212', tail: '#1f1b19', silver: '#d4c8b2', mask: '#2a2522', earScale: 1.5 },
+  { id: 'vermelha', label: msg('Raposa-vermelha'), coat: '#f0801f', band: '#d0611a', cream: '#fae4c8', dark: '#5a2a20', tip: '#4a2219', nose: '#3a1c16', iris: '#3e1d17', lid: '#3a1a14', tail: '#fae4c8' },
+  { id: 'prateada', label: msg('Raposa-prateada'), coat: '#383840', band: '#2a2a31', cream: '#d9dbe0', dark: '#18181c', tip: '#121215', nose: '#0d0d0f', iris: '#e5a62b', lid: '#0d0d0f', tail: '#f4f4f1', silver: '#b9bcc4', pupil: true },
+  { id: 'marmorizada', label: msg('Raposa-marmorizada'), coat: '#f1f1ef', band: '#55555e', cream: '#ffffff', dark: '#6a6a73', tip: '#2a2a30', nose: '#141416', iris: '#7a4e26', lid: '#1a1a1e', tail: '#ffffff', tailCoat: '#8a8a94', mask: '#3a3a42', patch: '#4a4a53', patches: [[376, 430, 30, 46, 20], [458, 480, 16, 40, -10], [392, 560, 26, 34, 0]], headPatches: [[340, 196, 46, 26, -24], [452, 160, 30, 16, 6]] },
+  { id: 'artico', label: msg('Raposa-do-ártico'), coat: '#f3f2ee', band: '#e2e0d9', cream: '#ffffff', dark: '#d6d3cb', tip: '#e9e7e1', nose: '#2a2626', iris: '#3a2e28', lid: '#4a4540', tail: '#ffffff', tailCoat: '#f3f2ee', earScale: 0.72 },
+  { id: 'cinzenta', label: msg('Raposa-cinzenta'), coat: '#8e8c8b', band: '#a8653a', cream: '#f1ece4', dark: '#b2622f', tip: '#6a4a36', nose: '#1a1717', iris: '#3a2a1e', lid: '#2a2422', tail: '#1d1b1c', silver: '#dcdad6', patch: '#b8673a', patches: [[352, 430, 20, 46, 12], [470, 440, 16, 40, -10]] },
+  { id: 'corsac', label: msg('Raposa-corsac'), coat: '#cdb58f', band: '#b89d74', cream: '#f3ecdf', dark: '#b8996b', tip: '#8a7558', nose: '#2a211b', iris: '#3a2a1e', lid: '#5a4632', tail: '#4a3a2c', silver: '#ebe0c9' },
+  { id: 'tibetana', label: msg('Raposa-tibetana'), coat: '#c98a4c', band: '#a8703e', cream: '#efe6d6', dark: '#9e8a74', tip: '#a8703e', nose: '#2a1f1a', iris: '#4a3220', lid: '#3a2a1e', tail: '#f4f0e8', earScale: 0.74, squint: true, patch: '#aaa49b', patches: [[344, 560, 30, 70, 8], [476, 560, 24, 70, -8]] },
+  { id: 'feneco', label: msg('Feneco'), coat: '#e8c68e', band: '#d6ae6e', cream: '#fbf2df', dark: '#c49a5f', tip: '#e8c68e', nose: '#2c1f19', iris: '#2c1d15', lid: '#6b4a2e', tail: '#4a3426', earScale: 1.4 },
+  { id: 'deserto', label: msg('Raposa-do-deserto'), coat: '#c8b491', band: '#b8875a', cream: '#f4ede0', dark: '#c08a58', tip: '#9a7550', nose: '#2a211b', iris: '#3a2a1e', lid: '#4a3a2a', tail: '#2a2320', silver: '#e6dcc8', earScale: 1.24 },
+  { id: 'morcego', label: msg('Raposa-orelhas-de-morcego'), coat: '#9c8c74', band: '#5a4c3e', cream: '#e6dccb', dark: '#2a2522', tip: '#2a2522', nose: '#141212', iris: '#2a2018', lid: '#141212', tail: '#1f1b19', silver: '#d4c8b2', mask: '#2a2522', earScale: 1.5 },
 ]
 const FOX = {
   earA: 'M235 15 C 215 80, 225 180, 270 262 L 352 175 C 320 110, 280 50, 235 15 Z',
@@ -226,34 +227,39 @@ function foxParts(s: FoxStyle): Record<ChickenSlot, ChickenArtVariant> {
   const f = FOX_FRAME, { defs, frost } = frostOf(s), tc = uidOf('tz'), tl = uidOf('tl')
   const hand = toRig(f, FOX_FRONT[2]), shoulder = toRig(f, FOX_ARM[0])
   return {
-    comb: { label: 'Sem crista', svg: '' },
-    wattle: { label: 'Sem barbela', svg: '' },
-    beak: { label: 'Focinho', svg: '', mouth: toRig(f, [440, 326]) },
-    neck: { label: 'Pescoço', svg: '' },
-    face: { label: `Cabeça de ${s.label.toLowerCase()}`, ownEyes: true, svg: inFrame(f, foxHead(s)) },
+    comb: { label: msg('Sem crista'), svg: '' },
+    wattle: { label: msg('Sem barbela'), svg: '' },
+    beak: { label: msg('Focinho'), svg: '', mouth: toRig(f, [440, 326]) },
+    neck: { label: msg('Pescoço'), svg: '' },
+    face: { get label() { return tr('Cabeça de {style}', { style: tr(s.label).toLowerCase() }) }, ownEyes: true, svg: inFrame(f, foxHead(s)) },
     torso: {
-      label: `Corpo de ${s.label.toLowerCase()}`,
+      get label() { return tr('Corpo de {style}', { style: tr(s.label).toLowerCase() }) },
       svg: inFrame(f, defs + `<path d="${FOX.neck}" fill="${s.coat}"/><path d="${FOX.torso}" fill="${s.coat}"/>${frost(FOX.torso)}` +
         (s.patches ? `<clipPath id="${tc}"><path d="${FOX.torso}"/></clipPath><g clip-path="url(#${tc})">${ells(s.patches, s.patch!)}</g>` : '') +
         `<path d="${FOX.bib}" fill="${s.cream}"/><path d="${FOX.hipTuft}" fill="${s.coat}"/>`),
     },
-    wing: { label: 'Braços de raposa', back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), arms: foxArms(s), hand, holdDrop: 24, svg: '' },
+    wing: { label: msg('Braços de raposa'), back: shade(s.coat, 0.2), backPath: capsule(shoulder, hand, 3.2), arms: foxArms(s), hand, holdDrop: 24, svg: '' },
     tail: {
-      label: `Rabo de ${s.label.toLowerCase()}`, swing: 0.5,
+      get label() { return tr('Rabo de {style}', { style: tr(s.label).toLowerCase() }) }, swing: 0.5,
       svg: inFrame(f, `<clipPath id="${tl}"><path d="${FOX.tail}"/></clipPath><path d="${FOX.tail}" fill="${s.tailCoat ?? s.coat}"/>${frost(FOX.tail)}<g clip-path="url(#${tl})"><path d="${FOX.tailTip}" fill="${s.tail}"/></g>`),
     },
     legs: {
-      label: 'Pernas de raposa', front: { drum: s.coat, shank: s.dark }, back: { drum: shade(s.coat, 0.15), shank: shade(s.dark, 0.15) },
+      label: msg('Pernas de raposa'), front: { drum: s.coat, shank: s.dark }, back: { drum: shade(s.coat, 0.15), shank: shade(s.dark, 0.15) },
       shape: { thigh: 11, tib: 9, shin: 8, dxFront: 8, dxBack: 34, foot: `<path d="M-8 -3 C -5 -7, 9 -7, 14 -2 C 16 1, 15 5, 11 5 L -9 5 C -12 4, -11 -1, -8 -3 Z" fill="FILL"/>` },
     },
   }
 }
 
+// the fox style's name after "Ken" (Ken prateada, Ken do-ártico...)
+const FOX_SHORT: Record<string, string> = {
+  prateada: msg('prateada'), marmorizada: msg('marmorizada'), artico: msg('do-ártico'), cinzenta: msg('cinzenta'), corsac: msg('corsac'),
+  tibetana: msg('tibetana'), deserto: msg('do-deserto'), morcego: msg('orelhas-de-morcego'),
+}
 // ---------- the breeds ----------
 export type BeastClass = 'porco' | 'raposa'
 export const BEAST_BREEDS = [
-  ...PIG_STYLES.map(s => ({ id: `porco-${s.id}`, label: s.id === 'rosa' ? 'Pig' : `Pig ${s.label}`, cat: 'porcos', klass: 'porco' as BeastClass, parts: pigParts(s) })),
-  ...FOX_STYLES.map(s => ({ id: `raposa-${s.id}`, label: s.id === 'vermelha' ? 'Ken' : `Ken ${s.label.replace('Raposa-', '')}`, cat: 'raposas', klass: 'raposa' as BeastClass, parts: foxParts(s) })),
+  ...PIG_STYLES.map(s => ({ id: `porco-${s.id}`, get label() { return s.id === 'rosa' ? 'Pig' : tr('Pig {style}', { style: tr(s.label) }) }, cat: 'porcos', klass: 'porco' as BeastClass, parts: pigParts(s) })),
+  ...FOX_STYLES.map(s => ({ id: `raposa-${s.id}`, get label() { return s.id === 'vermelha' ? 'Ken' : tr('Ken {style}', { style: tr(FOX_SHORT[s.id] ?? s.label) }) }, cat: 'raposas', klass: 'raposa' as BeastClass, parts: foxParts(s) })),
 ]
 /** The species class of a breed or part variant id: the chickens' are 'galinha'. */
 export function variantClass(id: string): 'galinha' | BeastClass {

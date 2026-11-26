@@ -9,6 +9,7 @@ import { chessTableStore, type ChessTableBox } from "@/lib/pigchicken/chess-tabl
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { chessHints } from "../chess-table-play"
 import { type Ctx } from "./shared"
+import { t as tr } from "@/lib/i18n"
 
 const WOOD = "#6b4226", WOOD_DARK = "#43271a", WOOD_LIGHT = "#8d5a36"
 const GOLD = "#ffd34a"
@@ -28,7 +29,7 @@ let order: string[] | null = null
 export const chessCityOrder = () => (order ??= [...cities].sort((a, b) => a.year - b.year || a.name.localeCompare(b.name)).map(c => c.id))
 
 export const chessCityLabel = (city: string) => {
-  if (city === CHESS_RANDOM) return "Random"
+  if (city === CHESS_RANDOM) return tr("Random")
   const c = getCityById(city)
   return c ? `${c.year} ${c.name}` : city
 }
@@ -168,7 +169,7 @@ function drawSeats(ctx: Ctx, b: ChessTableBox, camX: number, people: { names?: R
     }
     const hint = chessHints.get(`${b.id}:${side}`)
     if (hint) {
-      const text = `${hint.key ? `${hint.key} - ` : ""}${CHESS_PROMPT_LABELS[hint.prompt]}`
+      const text = `${hint.key ? `${hint.key} - ` : ""}${tr(CHESS_PROMPT_LABELS[hint.prompt])}`
       ctx.font = "bold 11px ui-monospace, monospace"
       ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.strokeText(text, x, s.floor + 16)
       ctx.fillStyle = GOLD; ctx.fillText(text, x, s.floor + 16)

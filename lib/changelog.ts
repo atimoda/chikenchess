@@ -7,8 +7,13 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal; prévia do Golpe desenhado fiel ao desenho; Correr guarda o item do chão no inventário',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal; prévia do Golpe desenhado fiel ao desenho; Correr guarda o item do chão no inventário; o jogo inteiro em 8 idiomas, com o Idioma nas Preferências',
     groups: [
+      { title: 'Idiomas', items: [
+        'O jogo inteiro agora fala 8 idiomas: português, inglês, espanhol, francês, russo, hindi, chinês e japonês. Menus, painéis, avisos, cidades, campanhas, dicas, itens e instrumentos do Pátio mudam juntos.',
+        'Novo campo Idioma no topo das Preferências, no mapa, na partida, no online e no Criativo; no Pátio, fica no painel Camadas. A troca vale na hora, sem recarregar a página, e fica salva no navegador.',
+        'Na primeira visita o jogo abre no idioma do navegador (inglês quando ele não é um dos 8).',
+      ] },
       { title: 'Pátio: Mesa de chickenchess', items: [
         'Nova Mesa de chickenchess no Modo editor (grupo Jogos): uma mesinha com tabuleiro e dois banquinhos. Já está no meio da Arena das Almas, no Arquipélago das Almas.',
         'Em pé num banquinho aparece “E - Entrar na fila” e o seu nome sobe acima dele. Com alguém no outro banquinho, a partida começa. Pronto num banquinho, vá para o outro e aparece “Iniciar contra um bot”; durante a partida contra o bot, quem pisa no banquinho dele vê “Entrar no lugar do bot”.',

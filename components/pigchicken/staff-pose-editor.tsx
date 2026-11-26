@@ -3,6 +3,7 @@
 // How she carries a staff (taco, passaguá), dragged with the pointer: the point of the staff's drawing the wing's hand
 // grips, and, on her body, where that hand sits and how the staff leans, carried and with the strong blow fully charged
 // (lib/pigchicken/staff-pose.ts). The carried and charged poses share the drawing: one is edited, the other is a ghost.
+import { msg, useT } from "@/lib/i18n"
 import { useMemo, useRef, useState } from "react"
 import { ITEM_BOX, ITEM_SVG } from "@/lib/pigchicken/art"
 import type { ItemDef, ItemId } from "@/lib/pigchicken/items"
@@ -12,8 +13,8 @@ import { CHICKEN_SHOULDER, wingReachTransform } from "@/lib/chicken/engine"
 
 type Which = "carry" | "wind"
 const FIELDS: Record<Which, { x: "staffX" | "windX"; y: "staffY" | "windY"; angle: "staffAngle" | "windAngle"; label: string }> = {
-  carry: { x: "staffX", y: "staffY", angle: "staffAngle", label: "Parado" },
-  wind: { x: "windX", y: "windY", angle: "windAngle", label: "Carregando" },
+  carry: { x: "staffX", y: "staffY", angle: "staffAngle", label: msg("Parado") },
+  wind: { x: "windX", y: "windY", angle: "windAngle", label: msg("Carregando") },
 }
 const HAND = "#ffd166", TIP = "#4cc9f0"
 const DEG = Math.PI / 180
@@ -24,6 +25,7 @@ const BODY_VIEW = { l: -170, t: -262, w: 300, h: 290 }
 const PAD = 14
 
 export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: ItemDef; onChange: (fn: (d: ItemDef) => void) => void }) {
+  const t = useT()
   const gripRef = useRef<SVGSVGElement>(null), bodyRef = useRef<SVGSVGElement>(null)
   const [which, setWhich] = useState<Which>("carry")
   const [drag, setDrag] = useState<"grip" | "grip2" | "hand" | "tip" | null>(null)
@@ -73,21 +75,21 @@ export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: Item
   const tip = tipOf(cur)
   return (
     <div className="grid gap-field">
-      <svg ref={gripRef} viewBox={`${gripView.l} ${gripView.t} ${gripView.w} ${gripView.h}`} preserveAspectRatio="xMidYMid meet" aria-label="Ponto do bastão que a mão da asa segura: arraste para mudar"
+      <svg ref={gripRef} viewBox={`${gripView.l} ${gripView.t} ${gripView.w} ${gripView.h}`} preserveAspectRatio="xMidYMid meet" aria-label={t("Ponto do bastão que a mão da asa segura: arraste para mudar")}
         onPointerMove={moveGrip} onPointerUp={stop} onPointerCancel={stop}
         className="h-24 w-full touch-none select-none rounded-md border border-white/10 bg-[#a9bcb1]">
         <g dangerouslySetInnerHTML={{ __html: art }} style={{ pointerEvents: "none" }} />
-        {ball("grip", item.gripX, item.gripY, 3.2, HAND, `Mão da asa: ${item.gripX}, ${item.gripY}`)}
-        {item.grip2On && ball("grip2", item.grip2X, item.grip2Y, 3.2, "#ffd166", `Segunda mão: ${item.grip2X}, ${item.grip2Y}`)}
+        {ball("grip", item.gripX, item.gripY, 3.2, HAND, `${t("Mão da asa")}: ${item.gripX}, ${item.gripY}`)}
+        {item.grip2On && ball("grip2", item.grip2X, item.grip2Y, 3.2, "#ffd166", `${t("Segunda mão")}: ${item.grip2X}, ${item.grip2Y}`)}
       </svg>
       <div className="flex gap-field">
         {(Object.keys(FIELDS) as Which[]).map(k => (
           <button key={k} type="button" aria-pressed={which === k} onClick={() => setWhich(k)}
-            title={k === "carry" ? "Como ela carrega o bastão" : "Como ela fica com o golpe forte todo carregado"}
-            className={`h-8 flex-1 rounded-md border px-2 ${which === k ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-primary"}`}>{FIELDS[k].label}</button>
+            title={k === "carry" ? t("Como ela carrega o bastão") : t("Como ela fica com o golpe forte todo carregado")}
+            className={`h-8 flex-1 rounded-md border px-2 ${which === k ? "border-primary bg-primary/15 text-white" : "border-white/15 hover:border-primary"}`}>{t(FIELDS[k].label)}</button>
         ))}
       </div>
-      <svg ref={bodyRef} viewBox={`${BODY_VIEW.l} ${BODY_VIEW.t} ${BODY_VIEW.w} ${BODY_VIEW.h}`} preserveAspectRatio="xMidYMid meet" aria-label={`Bastão no corpo (${f.label}): arraste a mão e a ponta`}
+      <svg ref={bodyRef} viewBox={`${BODY_VIEW.l} ${BODY_VIEW.t} ${BODY_VIEW.w} ${BODY_VIEW.h}`} preserveAspectRatio="xMidYMid meet" aria-label={t("Bastão no corpo ({pose}): arraste a mão e a ponta", { pose: t(f.label) })}
         onPointerMove={moveBody} onPointerUp={stop} onPointerCancel={stop}
         className="h-72 w-full touch-none select-none rounded-md border border-white/10 bg-[#a9bcb1]">
         <g style={{ pointerEvents: "none" }}>
@@ -96,20 +98,20 @@ export function StaffPoseEditor({ id, item, onChange }: { id: ItemId; item: Item
           <g transform={wingReachTransform(cur.x, cur.y, item.wingFlip)} dangerouslySetInnerHTML={{ __html: chicken.wing }} />
           <g transform={place(cur)} dangerouslySetInnerHTML={{ __html: art }} />
         </g>
-        {ball("tip", tip.x, tip.y, 7, TIP, `Inclinação: ${item[f.angle]}°`)}
-        {ball("hand", S.x + cur.x, S.y + cur.y, 7, HAND, `Mão da asa no corpo: ${item[f.x]}, ${item[f.y]}`)}
+        {ball("tip", tip.x, tip.y, 7, TIP, `${t("Inclinação")}: ${item[f.angle]}°`)}
+        {ball("hand", S.x + cur.x, S.y + cur.y, 7, HAND, `${t("Mão da asa no corpo")}: ${item[f.x]}, ${item[f.y]}`)}
       </svg>
-      <label className="flex items-center gap-2" title="Espelha a asa que segura o bastão ao longo do comprimento, para não ficar de cabeça para baixo quando gira muito">
+      <label className="flex items-center gap-2" title={t("Espelha a asa que segura o bastão ao longo do comprimento, para não ficar de cabeça para baixo quando gira muito")}>
         <input type="checkbox" checked={item.wingFlip} onChange={e => { const v = e.target.checked; onChange(d => { d.wingFlip = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
-        <span>Inverter asa (vertical)</span>
+        <span>{t("Inverter asa (vertical)")}</span>
       </label>
-      <label className="flex items-center gap-2" title="Pig e Ken: o item fica na mão de trás, e a da frente vira a segunda mão">
+      <label className="flex items-center gap-2" title={t("Pig e Ken: o item fica na mão de trás, e a da frente vira a segunda mão")}>
         <input type="checkbox" checked={item.swapHands} onChange={e => { const v = e.target.checked; onChange(d => { d.swapHands = v }) }} className="h-4 w-4 accent-[var(--primary)]" />
-        <span>Segurar com a outra mão (dois braços)</span>
+        <span>{t("Segurar com a outra mão (dois braços)")}</span>
       </label>
-      <label className="flex items-center gap-2" title="Pig e Ken: a outra mão também segura o bastão, no ponto “Segunda mão no bastão”">
+      <label className="flex items-center gap-2" title={t("Pig e Ken: a outra mão também segura o bastão, no ponto “Segunda mão no bastão”")}>
         <input type="checkbox" checked={item.grip2On} onChange={e => { const v = e.target.checked; onChange(d => { d.grip2On = v; if (v && !d.grip2X && !d.grip2Y) { d.grip2X = d.gripX + 20; d.grip2Y = d.gripY } }) }} className="h-4 w-4 accent-[var(--primary)]" />
-        <span>Segunda mão no bastão (dois braços)</span>
+        <span>{t("Segunda mão no bastão (dois braços)")}</span>
       </label>
     </div>
   )

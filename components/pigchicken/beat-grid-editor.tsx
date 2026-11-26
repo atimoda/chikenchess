@@ -5,6 +5,7 @@
 // on a note goes normal → accent → rest; dragging a note sideways moves it in time, as far as half a sixteenth
 // from any step, so it can sit anywhere in the bar. The cells behind are the rigid grid, for reference.
 import { useRef, useState } from "react"
+import { useT } from "@/lib/i18n"
 import { SHIFT_MAX, STEPS, drumRow, drumShift, moveDrumNote, toggleDrumNote, type DrumPattern, type DrumRow } from "@/lib/pigchicken/zone-ambience"
 
 // px a pointer travels before a press on a note is a drag and not a click
@@ -22,6 +23,7 @@ export function BeatGridEditor({ pattern, rows, color, bpm, seed, onChange }: {
   seed: (step: number) => number
   onChange: (p: DrumPattern) => void
 }) {
+  const t = useT()
   const drag = useRef<Drag | null>(null)
   // the grid while a note is dragged, and the note being dragged in it
   const [draft, setDraft] = useState<{ pattern: DrumPattern; row: DrumRow; from: number; step: number } | null>(null)
@@ -33,16 +35,16 @@ export function BeatGridEditor({ pattern, rows, color, bpm, seed, onChange }: {
   }
   const nudge = (row: DrumRow, step: number, by: number) => onChange(moveDrumNote(pattern, row, step, step + (drumShift(pattern.time, row, step) + by) / 100).pattern)
   return (
-    <div className="grid gap-field" aria-label="Grade da batida">
+    <div className="grid gap-field" aria-label={t("Grade da batida")}>
       {rows.map(r => {
         const row = drumRow(shown.grid, r.id)
         return (
           <div key={r.id} className="grid grid-cols-[84px_minmax(0,1fr)] items-center gap-1.5">
-            <span className="truncate text-[10px] text-[#93a79a]" title={r.label}>{r.label}</span>
+            <span className="truncate text-[10px] text-[#93a79a]" title={t(r.label)}>{t(r.label)}</span>
             <div data-no-drag className="relative h-5 touch-none select-none">
               <div className="absolute inset-0 grid grid-cols-[repeat(16,minmax(0,1fr))] gap-px">
                 {Array.from({ length: STEPS }, (_, i) => (
-                  <button key={i} type="button" tabIndex={row[i] === "." ? 0 : -1} aria-label={`${r.label}, passo ${i + 1}`} aria-pressed={false}
+                  <button key={i} type="button" tabIndex={row[i] === "." ? 0 : -1} aria-label={t("{label}, passo {n}", { label: t(r.label), n: i + 1 })} aria-pressed={false}
                     onClick={() => { if (row[i] === ".") onChange(toggleDrumNote(pattern, r.id, i, seed(i))) }}
                     className="rounded-[2px]" style={{ background: i % 8 < 4 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)" }} />
                 ))}
@@ -50,10 +52,10 @@ export function BeatGridEditor({ pattern, rows, color, bpm, seed, onChange }: {
               {Array.from(row, (c, i) => {
                 if (c === ".") return null
                 const shift = drumShift(shown.time, r.id, i), held = draft?.row === r.id && draft.step === i
-                const ms = msOf(shift, bpm), when = shift ? `${signed(ms)} ms (${signed(shift)}% de semicolcheia)` : "na grade"
+                const ms = msOf(shift, bpm), when = shift ? t("{ms} ms ({pct}% de semicolcheia)", { ms: signed(ms), pct: signed(shift) }) : t("na grade")
                 return (
                   // a dragged note keeps the key of the step it left, so it stays the same element across steps
-                  <button key={held ? `n${draft.from}` : `n${i}`} type="button" aria-label={`${r.label}, passo ${i + 1}: ${when}`} aria-pressed title={when}
+                  <button key={held ? `n${draft.from}` : `n${i}`} type="button" aria-label={t("{label}, passo {n}: {when}", { label: t(r.label), n: i + 1, when })} aria-pressed title={when}
                     onPointerDown={e => {
                       if (e.button !== 0) return
                       e.currentTarget.setPointerCapture(e.pointerId)

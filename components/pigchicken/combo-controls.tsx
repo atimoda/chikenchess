@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { useT } from "@/lib/i18n"
 import { COMBO_ARC_MAX, COMBO_ARC_MIN, subscribeComboBlow, type ComboBlowEvent } from "@/lib/pigchicken/swing"
 
 const ARC_STEP = 5 // degrees the knob moves in
@@ -9,13 +10,14 @@ const KNOB_KEYS: Record<string, number> = { ArrowRight: 1, ArrowUp: 1, ArrowLeft
 // The angle a combo blow covers, as a little dial: the wedge is the hit area (centred on the aim, to the right) and
 // dragging sideways or up/down changes it like a knob. The number beside it is only a reference
 export function AngleKnob({ value, label, disabled, onChange }: { value: number; label: string; disabled?: boolean; onChange: (value: number) => void }) {
+  const t = useT()
   const drag = useRef<{ x: number; y: number; from: number; last: number } | null>(null)
   const snap = (v: number) => Math.min(COMBO_ARC_MAX, Math.max(COMBO_ARC_MIN, Math.round(v / ARC_STEP) * ARC_STEP))
   const half = value / 2 * Math.PI / 180, r = 11, c = 14
   const x = c + r * Math.cos(half), y = r * Math.sin(half)
   return (
     <span role="slider" tabIndex={disabled ? -1 : 0} aria-label={label} aria-valuemin={COMBO_ARC_MIN} aria-valuemax={COMBO_ARC_MAX} aria-valuenow={value} aria-valuetext={`${value}°`} aria-disabled={disabled || undefined}
-      title="Ângulo que o golpe cobre: arraste para os lados ou para cima/baixo"
+      title={t("Ângulo que o golpe cobre: arraste para os lados ou para cima/baixo")}
       onPointerDown={e => { if (disabled) return; e.preventDefault(); e.currentTarget.focus(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, from: value, last: value } }}
       onPointerMove={e => {
         const d = drag.current

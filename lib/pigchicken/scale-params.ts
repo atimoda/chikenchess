@@ -10,6 +10,7 @@
 // there (`hangSpin`), whether it flies there first (`hangTravel`) and whether a note cuts the one still ringing on the
 // same ball (`hangChoke`); the two last are switches (0/1).
 // Saved in this browser (like the Itens panel); "Salvar no game" writes data/pigchicken/default-scales.json.
+import { msg, t } from '../i18n'
 import DEFAULTS_FILE from '../../data/pigchicken/default-scales.json'
 import { liveDefault, onGameDefault } from '../game-defaults'
 import { deepDiff, effectiveTuning, keepLocalTuning, setLocalTuning, subscribeTuning, tuningLocked } from './patio-tuning'
@@ -24,24 +25,24 @@ export type ScaleParamMeta = { key: ScaleParamKey; label: string; min: number; m
   toggle?: boolean; format?: (v: number) => string; shown?: (p: ScaleParams) => boolean
 }
 
-export const SCALE_PARAM_GROUPS = ['Standby', 'Forma', 'Transparência', 'Notas giratórias'] as const
+export const SCALE_PARAM_GROUPS = [msg('Standby'), msg('Forma'), msg('Transparência'), msg('Notas giratórias')] as const
 export const SCALE_PARAM_META: ScaleParamMeta[] = [
-  { key: 'standbyAfter', label: 'Fade out (standby) depois de', min: 0.1, max: 3, step: 0.1, unit: 's', group: 'Standby', hint: 'Tempo sem tocar o instrumento até a escala começar a sumir' },
-  { key: 'fadeTime', label: 'Tempo do fade out', min: 0.1, max: 5, step: 0.1, unit: 's', group: 'Standby', hint: 'Quanto o fade out dura' },
-  { key: 'standbyVis', label: 'Visibilidade em standby', min: 0, max: 100, step: 1, unit: '%', group: 'Standby', hint: 'Quanto da camada Escalas fica visível depois do fade out' },
-  { key: 'aimedVis', label: 'Visibilidade da célula mirada', min: 0, max: 100, step: 1, unit: '%', group: 'Standby', hint: 'Quanto a célula da mira fica acima do resto em standby; 0 = some junto com a escala' },
-  { key: 'ringSplit', label: 'Divisa dos anéis', min: 0.3, max: 0.9, step: 0.05, unit: '', group: 'Forma', hint: 'Até onde vai o anel de dentro (fração do raio e do alcance da mira)', only: ['fifths', 'tension'] },
-  { key: 'hole', label: 'Miolo vazio', min: 0, max: 0.5, step: 0.01, unit: '', group: 'Forma', hint: 'O vazio do meio (fração do raio); só o desenho', only: ['fifths', 'tension', 'harmonic'] },
-  { key: 'strings', label: 'Cordas', min: STRINGS_MIN, max: STRINGS_MAX, step: 1, unit: '', group: 'Forma', hint: 'Quantas cordas a harpa tem (uma por nota, a partir de um Dó)', only: ['strings'] },
-  { key: 'stringStart', label: 'Começo das cordas', min: 0.1, max: 0.45, step: 0.01, unit: '', group: 'Forma', hint: 'Onde as cordas começam (fração do raio); abaixo disso, o toque é o bemol da corda', only: ['strings'] },
-  { key: 'stringEnd', label: 'Fim das cordas', min: 0.6, max: 0.95, step: 0.01, unit: '', group: 'Forma', hint: 'Onde as cordas terminam (fração do raio); acima disso, o toque é o sustenido da corda', only: ['strings'] },
-  { key: 'starArm', label: 'Níveis de notas', min: STAR_ARM_MIN, max: STAR_ARM_MAX, step: 1, unit: '', group: 'Forma', hint: 'Quantas casas vão do meio até cada ponta; a estrela fica do mesmo tamanho, então menos níveis = menos notas e casas maiores (8: a extensão do piano; 3: as 12 notas em umas 3 oitavas)', only: ['star'] },
-  { key: 'starOpacity', label: 'Opacidade da estrela', min: 0, max: 100, step: 1, unit: '%', group: 'Transparência', hint: 'Quanto a estrela inteira aparece; as mãos, as notas tocadas e os anéis ficam por cima', only: ['star'] },
-  { key: 'starOffScale', label: 'Notas fora da escala', min: 0, max: 100, step: 1, unit: '%', group: 'Transparência', hint: 'Quanto as notas que não são da escala da zona aparecem, perto das da escala (100 = iguais)', only: ['star'] },
-  { key: 'hangSpin', label: 'Giro na bola', min: 0, max: SPIN_FOREVER, step: 1, unit: '', group: 'Notas giratórias', hint: 'A nota tocada numa bola fica girando dentro dela, em qualquer instrumento com esta escala; fora das bolas vai reta. Depois de 60 s: Duração da nota (a do instrumento) e ∞', only: ['hang'], format: spinLabel },
-  { key: 'hangTravel', label: 'Nota é disparada até a região da nota', min: 0, max: 1, step: 1, unit: '', group: 'Notas giratórias', hint: 'Desligado: a nota já nasce girando na bola', only: ['hang'], toggle: true, shown: p => p.hangSpin > 0 },
-  { key: 'hangChoke', label: 'Cada nota interrompe a anterior', min: 0, max: 1, step: 1, unit: '', group: 'Notas giratórias', hint: 'Tocar uma bola que ainda soa corta a nota anterior dela; bolas diferentes soam juntas', only: ['hang'], toggle: true },
-  { key: 'harmonicWidth', label: 'Largura do harmônico', min: 0.02, max: 0.2, step: 0.01, unit: '', group: 'Forma', hint: 'Tamanho do ponto no meio da corda onde o toque sai como harmônico (fração do raio)', only: ['strings'] },
+  { key: 'standbyAfter', label: msg('Fade out (standby) depois de'), min: 0.1, max: 3, step: 0.1, unit: 's', group: msg('Standby'), hint: msg('Tempo sem tocar o instrumento até a escala começar a sumir') },
+  { key: 'fadeTime', label: msg('Tempo do fade out'), min: 0.1, max: 5, step: 0.1, unit: 's', group: msg('Standby'), hint: msg('Quanto o fade out dura') },
+  { key: 'standbyVis', label: msg('Visibilidade em standby'), min: 0, max: 100, step: 1, unit: '%', group: msg('Standby'), hint: msg('Quanto da camada Escalas fica visível depois do fade out') },
+  { key: 'aimedVis', label: msg('Visibilidade da célula mirada'), min: 0, max: 100, step: 1, unit: '%', group: msg('Standby'), hint: msg('Quanto a célula da mira fica acima do resto em standby; 0 = some junto com a escala') },
+  { key: 'ringSplit', label: msg('Divisa dos anéis'), min: 0.3, max: 0.9, step: 0.05, unit: '', group: msg('Forma'), hint: msg('Até onde vai o anel de dentro (fração do raio e do alcance da mira)'), only: ['fifths', 'tension'] },
+  { key: 'hole', label: msg('Miolo vazio'), min: 0, max: 0.5, step: 0.01, unit: '', group: msg('Forma'), hint: msg('O vazio do meio (fração do raio); só o desenho'), only: ['fifths', 'tension', 'harmonic'] },
+  { key: 'strings', label: msg('Cordas'), min: STRINGS_MIN, max: STRINGS_MAX, step: 1, unit: '', group: msg('Forma'), hint: msg('Quantas cordas a harpa tem (uma por nota, a partir de um Dó)'), only: ['strings'] },
+  { key: 'stringStart', label: msg('Começo das cordas'), min: 0.1, max: 0.45, step: 0.01, unit: '', group: msg('Forma'), hint: msg('Onde as cordas começam (fração do raio); abaixo disso, o toque é o bemol da corda'), only: ['strings'] },
+  { key: 'stringEnd', label: msg('Fim das cordas'), min: 0.6, max: 0.95, step: 0.01, unit: '', group: msg('Forma'), hint: msg('Onde as cordas terminam (fração do raio); acima disso, o toque é o sustenido da corda'), only: ['strings'] },
+  { key: 'starArm', label: msg('Níveis de notas'), min: STAR_ARM_MIN, max: STAR_ARM_MAX, step: 1, unit: '', group: msg('Forma'), hint: msg('Quantas casas vão do meio até cada ponta; a estrela fica do mesmo tamanho, então menos níveis = menos notas e casas maiores (8: a extensão do piano; 3: as 12 notas em umas 3 oitavas)'), only: ['star'] },
+  { key: 'starOpacity', label: msg('Opacidade da estrela'), min: 0, max: 100, step: 1, unit: '%', group: msg('Transparência'), hint: msg('Quanto a estrela inteira aparece; as mãos, as notas tocadas e os anéis ficam por cima'), only: ['star'] },
+  { key: 'starOffScale', label: msg('Notas fora da escala'), min: 0, max: 100, step: 1, unit: '%', group: msg('Transparência'), hint: msg('Quanto as notas que não são da escala da zona aparecem, perto das da escala (100 = iguais)'), only: ['star'] },
+  { key: 'hangSpin', label: msg('Giro na bola'), min: 0, max: SPIN_FOREVER, step: 1, unit: '', group: msg('Notas giratórias'), hint: msg('A nota tocada numa bola fica girando dentro dela, em qualquer instrumento com esta escala; fora das bolas vai reta. Depois de 60 s: Duração da nota (a do instrumento) e ∞'), only: ['hang'], format: spinLabel },
+  { key: 'hangTravel', label: msg('Nota é disparada até a região da nota'), min: 0, max: 1, step: 1, unit: '', group: msg('Notas giratórias'), hint: msg('Desligado: a nota já nasce girando na bola'), only: ['hang'], toggle: true, shown: p => p.hangSpin > 0 },
+  { key: 'hangChoke', label: msg('Cada nota interrompe a anterior'), min: 0, max: 1, step: 1, unit: '', group: msg('Notas giratórias'), hint: msg('Tocar uma bola que ainda soa corta a nota anterior dela; bolas diferentes soam juntas'), only: ['hang'], toggle: true },
+  { key: 'harmonicWidth', label: msg('Largura do harmônico'), min: 0.02, max: 0.2, step: 0.01, unit: '', group: msg('Forma'), hint: msg('Tamanho do ponto no meio da corda onde o toque sai como harmônico (fração do raio)'), only: ['strings'] },
 ]
 export const scaleParamApplies = (m: ScaleParamMeta, id: InstrumentScaleId) => !m.only || m.only.includes(id)
 
@@ -71,14 +72,14 @@ export const scalesDefaultsFile = (scales: Record<InstrumentScaleId, ScaleParams
 
 /** Why a defaults file is not valid (an unknown scale or field, or a value the game would change), or null. */
 export function scalesFileProblem(value: unknown): string | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return 'O arquivo precisa ser um objeto com um campo por escala.'
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return t('O arquivo precisa ser um objeto com um campo por escala.')
   const applied = over(CODE_SCALES, value)
   for (const [id, fields] of Object.entries(value)) {
-    if (!(INSTRUMENT_SCALE_IDS as string[]).includes(id)) return `${id}: escala desconhecida.`
-    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return `${id}: precisa ser um objeto.`
+    if (!(INSTRUMENT_SCALE_IDS as string[]).includes(id)) return t('{id}: escala desconhecida.', { id })
+    if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return t('{id}: precisa ser um objeto.', { id })
     for (const [key, v] of Object.entries(fields)) {
-      if (!SCALE_PARAM_META.some(m => m.key === key && scaleParamApplies(m, id as InstrumentScaleId))) return `${id}.${key}: campo desconhecido.`
-      if (applied[id as InstrumentScaleId][key as ScaleParamKey] !== v) return `${id}.${key}: valor inválido ou fora dos limites.`
+      if (!SCALE_PARAM_META.some(m => m.key === key && scaleParamApplies(m, id as InstrumentScaleId))) return t('{id}.{key}: campo desconhecido.', { id, key })
+      if (applied[id as InstrumentScaleId][key as ScaleParamKey] !== v) return t('{id}.{key}: valor inválido ou fora dos limites.', { id, key })
     }
   }
   return null

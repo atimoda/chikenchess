@@ -10,6 +10,7 @@
 // (Sortear forma); tint/tintAmount: a colour mixed into the trees (0 to 100%).
 // The drawing itself: components/pigchicken/parallax.tsx.
 
+import { msg } from '../i18n'
 export type ForestLine = { show: boolean; density: number; size: number; pines: number; round: number; cloud: number; umbrella: number; shape: number; tint: string; tintAmount: number }
 export type ForestParams = { far: ForestLine; near: ForestLine }
 export type ForestLineId = keyof ForestParams
@@ -21,7 +22,7 @@ export const FOREST_SHAPES = 1000
 
 export const FOREST_LINE_DEFAULT: ForestLine = { show: true, density: 100, size: 100, pines: 45, round: 55, cloud: 0, umbrella: 0, shape: 0, tint: '#3f6b45', tintAmount: 0 }
 export const FOREST_DEFAULT: ForestParams = { far: FOREST_LINE_DEFAULT, near: FOREST_LINE_DEFAULT }
-export const FOREST_LINES: { id: ForestLineId; label: string }[] = [{ id: 'far', label: 'Mata ao longe' }, { id: 'near', label: 'Mata perto' }]
+export const FOREST_LINES: { id: ForestLineId; label: string }[] = [{ id: 'far', label: msg("Mata ao longe") }, { id: 'near', label: msg("Mata perto") }]
 
 // what each line draws with its settings: the usual tree height and spacing (layer units), and its seed
 export const FOREST_BASE: Record<ForestLineId, { size: number; gap: number; seed: number }> = {

@@ -1,5 +1,6 @@
 // Draws a song's cover (lib/pigchicken/song-cover.ts) on a canvas: kept in a small cache by the song's content, so
 // the jukebox's screen, its panel and the end of a song draw it without working it out every frame.
+import { t as tr } from "@/lib/i18n"
 import { coverArt, SULCO_IN, SULCO_OUT } from "@/lib/pigchicken/song-cover"
 import { CAMPAIGN, type LibrarySong } from "@/lib/pigchicken/song-library"
 import type { Catalog } from "@/lib/pigchicken/alien-catalog"
@@ -57,7 +58,7 @@ function title(ctx: Ctx, S: number, text: string, color: string) {
   if (S < 56) return
   const fs = Math.max(8, Math.round(S * 0.075))
   ctx.font = `bold ${fs}px ui-monospace, monospace`; ctx.textAlign = "left"; ctx.textBaseline = "bottom"
-  let t = text.toUpperCase()
+  let t = tr(text).toUpperCase()
   while (t.length > 3 && ctx.measureText(t).width > S * 0.86) t = t.slice(0, -2) + "…"
   ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillText(t, S * 0.06 + 1, S * 0.97 + 1)
   ctx.fillStyle = color; ctx.fillText(t, S * 0.06, S * 0.97)

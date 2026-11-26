@@ -1,5 +1,6 @@
 // The Invite a friend panel of the match header: the link to a 1v1 lobby and where each app button sends it.
 // Docs: docs/mechanics/online/lobby.md (Invite a friend na partida).
+import { msg } from "../i18n"
 
 export type ShareApp = 'whatsapp' | 'discord' | 'instagram' | 'tiktok' | 'facebook' | 'x'
 
@@ -12,7 +13,7 @@ export const SHARE_APPS: readonly { id: ShareApp; label: string }[] = [
   { id: 'x', label: 'X' },
 ]
 
-export const LOBBY_INVITE_TEXT = 'Bora jogar ChickenChess comigo?'
+export const LOBBY_INVITE_TEXT: string = msg('Bora jogar ChickenChess comigo?')
 
 /** The link that admits a visitor straight into the lobby (the same as Copy invite in the lobby itself). */
 export function lobbyInviteLink(code: string, origin = ''): string {

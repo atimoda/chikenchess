@@ -51,6 +51,7 @@ import { checkPatioTarget, MISSING_PATIO_TEXT, OFFLINE_PATIO_TEXT, targetLobbyId
 import { ChickenBodyIcon, ChickenHeadIcon, ChickenVestiario, type FramesEdit } from "./chicken-vestiario"
 import { FRAME_KEYS, FRAME_LABEL, POSE_LABEL, effectiveFrames, type FrameClass, type FramePose } from "@/lib/chicken/body-frame"
 import { cn } from "@/lib/utils"
+import { msg, t as tr, useT } from "@/lib/i18n"
 import { stageDockSnapshot, subscribeStageInset } from "@/lib/stage-size"
 import { worldPointOnStage } from "@/lib/pigchicken/live-camera"
 import { isChickenControlsListening, loadChickenControls } from "@/lib/chicken/controls"
@@ -133,6 +134,7 @@ const PatioProfile = dynamic(() => import("./patio-profile-panel").then(m => m.P
 const FriendsPane = dynamic(() => import("@/components/online/online-hub").then(m => m.FriendsPane), { ssr: false })
 
 export function ChickenPatio() {
+  const t = useT()
   useGamePageScrollLock()
   const online = useOnline()
   const isAdmin = isAdminUser(online.user)
@@ -407,11 +409,11 @@ export function ChickenPatio() {
     }
     const live = getNetState().status === "online" ? getNetState().info : null
     await sendInvite(friend.profile.id, { kind: "patio", patioId: patioLinkId, roomId: live?.roomId ?? null })
-    return live ? `Convite enviado para ${friend.profile.display_name}.` : `Convite enviado para ${friend.profile.display_name}. O modo online não conectou: o convite leva só a este Pátio.`
+    return live ? t("Convite enviado para {name}.", { name: friend.profile.display_name }) : t("Convite enviado para {name}. O modo online não conectou: o convite leva só a este Pátio.", { name: friend.profile.display_name })
   }
   // the Vestiário's Perfil and Amigos tabs (Sign in closes the Vestiário before the login opens)
   const vestProfile = () => <PatioProfile onSignIn={() => setVestOpen(false)} />
-  const vestFriends = () => <FriendsPane friendAction={{ label: "Invite", run: inviteFriend }} />
+  const vestFriends = () => <FriendsPane friendAction={{ label: t("Invite"), run: inviteFriend }} />
   // name, chickens and looks reach the others as they change
   useEffect(() => { if (net.status === "online") sendNetProfile({ name: myName, chickens: localCount, looks: myLooks }) }, [net.status, myName, localCount, myLooks])
   // a notice from the server (removed by the owner, an action refused); removed: back to local
@@ -506,7 +508,7 @@ export function ChickenPatio() {
       if (left > 0) { timer = window.setTimeout(check, left); return }
       setEditorOn(false)
       setEditActive(false)
-      setToast("Modo editor desligado depois de 5 minutos sem edição.")
+      setToast(t("Modo editor desligado depois de 5 minutos sem edição."))
     }
     timer = window.setTimeout(check, EDITOR_IDLE_MS)
     return () => window.clearTimeout(timer)
@@ -594,8 +596,8 @@ export function ChickenPatio() {
     }
     if (travelling.current) { actor.setPortalEntry(null); return }
     void checkPatioTarget(target).then(status => {
-      if (status !== "ok") { back(status === "missing" ? MISSING_PATIO_TEXT : OFFLINE_PATIO_TEXT); return }
-      switchLobby(targetLobbyId(target), true, portal.centre).catch(() => back(OFFLINE_PATIO_TEXT))
+      if (status !== "ok") { back(t(status === "missing" ? MISSING_PATIO_TEXT : OFFLINE_PATIO_TEXT)); return }
+      switchLobby(targetLobbyId(target), true, portal.centre).catch(() => back(t(OFFLINE_PATIO_TEXT)))
     })
   }
   const switchRef = useRef(switchLobby)
@@ -614,7 +616,7 @@ export function ChickenPatio() {
     })
   }
   const canRename = !!patio && isAccount && (isDefaultLobby ? isAdmin : patio.name ? isAdmin || patio.creatorId === meId || patio.godparentId === meId : access.canEdit)
-  const renameHint = !isAccount ? "Entre com sua conta para dar nome ao Pátio." : isDefaultLobby ? "Só o admin renomeia o Pátio padrão." : patio?.name ? "Só o criador ou o padrinho renomeiam este Pátio." : "Só quem pode editar este Pátio dá o primeiro nome."
+  const renameHint = !isAccount ? t("Entre com sua conta para dar nome ao Pátio.") : isDefaultLobby ? t("Só o admin renomeia o Pátio padrão.") : patio?.name ? t("Só o criador ou o padrinho renomeiam este Pátio.") : t("Só quem pode editar este Pátio dá o primeiro nome.")
   const toggleEditor = () => {
     if (!access.canEdit) { setEditHint(v => !v); return }
     setEditHint(false)
@@ -758,7 +760,7 @@ export function ChickenPatio() {
     // the hit-area as the game sees it: a pose that takes the standing frame counts as that frame
     const seen = (c: ChickenConfig) => { const n = normalizeChickenConfig(c); return { ...n, frames: effectiveFrames(n.frames) } }
     const changes = diffValues(seen(saved.config), seen(draft), chickenChangeLabel)
-    if (!(await confirmSave(changes, "Grava a configuração central dos personagens: vale na hora para todas as telas e para todo mundo."))) return
+    if (!(await confirmSave(changes, t("Grava a configuração central dos personagens: vale na hora para todas as telas e para todo mundo.")))) return
     setSaving(true)
     setStatus(null)
     try {
@@ -766,9 +768,9 @@ export function ChickenPatio() {
       setLocalTuning("chicken", undefined)
       setSaved(next)
       clearUndo()
-      setStatus({ kind: "info", text: "Salvo. Todas as telas com a galinha já usam esta versão." })
+      setStatus({ kind: "info", text: t("Salvo. Todas as telas com a galinha já usam esta versão.") })
     } catch (error) {
-      setStatus({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar." })
+      setStatus({ kind: "error", text: error instanceof Error ? error.message : t("Não foi possível salvar.") })
     } finally {
       setSaving(false)
     }
@@ -779,7 +781,7 @@ export function ChickenPatio() {
   const restoreVersion = async (id: number) => {
     const older = await chickenConfigVersion(id)
     const seen = (c: ChickenConfig) => { const n = normalizeChickenConfig(c); return { ...n, frames: effectiveFrames(n.frames) } }
-    if (!(await confirmSave(diffValues(seen(saved.config), seen(older), chickenChangeLabel), "Traz esta versão de volta como a configuração central: vale na hora para todo mundo."))) return
+    if (!(await confirmSave(diffValues(seen(saved.config), seen(older), chickenChangeLabel), t("Traz esta versão de volta como a configuração central: vale na hora para todo mundo.")))) return
     setSaving(true)
     setStatus(null)
     try {
@@ -787,9 +789,9 @@ export function ChickenPatio() {
       setLocalTuning("chicken", undefined)
       setSaved(next)
       clearUndo()
-      setStatus({ kind: "info", text: "Versão de volta no game." })
+      setStatus({ kind: "info", text: t("Versão de volta no game.") })
     } catch (error) {
-      setStatus({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar." })
+      setStatus({ kind: "error", text: error instanceof Error ? error.message : t("Não foi possível salvar.") })
     } finally {
       setSaving(false)
     }
@@ -798,7 +800,7 @@ export function ChickenPatio() {
   // the Vestiário's Hit-area editor (admin): each class's frame in the same draft, saved by the same Salvar no game
   const framesEdit: FramesEdit | undefined = isAdmin ? { value: draft.frames, saved: saved.config.frames, onChange: f => update(c => { c.frames = f }, "frames"), onSave: () => void save(), saving, note: status?.text ?? null } : undefined
 
-  const patioName = patio?.name ?? (patio?.id ? "Pátio sem nome" : "Pátio da Galinha")
+  const patioName = patio?.name ?? (patio?.id ? t("Pátio sem nome") : t("Pátio da Galinha"))
   // the Pátio's limits (the Sun panel): its width in scenes (a Pátio saved before it had one keeps this browser's
   // old "Largura do mundo") and its ceiling; the Câmera de Mira settings with that width
   const screens = patioScreens(patio?.layout.settings, pq.screens)
@@ -884,27 +886,27 @@ export function ChickenPatio() {
   // the panels the Modo editor's tabs show in place (with the editing on), the same ones the header opens floating
   const saveLayers = patio && access.canEdit ? (layers: PatioLayers) => changeLayout({ ...patio.layout, settings: { ...patio.layout.settings, layers } }) : undefined
   const cameraPanel = (
-    <FloatingPanel id="parquinho" aria-label="Câmera de Mira" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <FloatingPanel id="parquinho" aria-label={t("Câmera de Mira")} initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(320, vw - 24), h: Math.min(560, vh - 80) })} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
-        <h2 className="flex-1 text-sm text-white">Câmera de Mira</h2>
-        <button type="button" aria-label="Fechar" onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+        <h2 className="flex-1 text-sm text-white">{t("Câmera de Mira")}</h2>
+        <button type="button" aria-label={t("Fechar")} onClick={() => setPqOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
       <LockedFieldset className="flex flex-col gap-field">
-      <label className="flex items-center justify-between gap-3 text-xs"><span className={cn("flex items-center gap-1", pqReset("camera").changed && "text-amber-300")}>{pqReset("camera").changed && <ResetArrow label="Câmera" onReset={pqReset("camera").onReset} />}Câmera</span>
-        <StepSelect aria-label="Câmera" value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
-          {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+      <label className="flex items-center justify-between gap-3 text-xs"><span className={cn("flex items-center gap-1", pqReset("camera").changed && "text-amber-300")}>{pqReset("camera").changed && <ResetArrow label={t("Câmera")} onReset={pqReset("camera").onReset} />}{t("Câmera")}</span>
+        <StepSelect aria-label={t("Câmera")} value={pq.camera} onChange={e => setPqValue("camera", e.target.value as ParquinhoSettings["camera"])} className="h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 font-mono text-xs">
+          {CAMERA_MODES.map(m => <option key={m.value} value={m.value}>{t(m.label)}</option>)}
         </StepSelect>
       </label>
-      <PqRange {...pqReset("deadband")} label="Folga da câmera" unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint="Quanto ela anda a partir do centro antes da câmera seguir" />
-      <PqRange {...pqReset("lag")} label="Velocidade da câmera" unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
-      <PqRange {...pqReset("lookAhead")} label="Desvio da tela de acordo com o lado" unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint="Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)" />
-      <PqRange {...pqReset("lookAheadSpeed")} label="Velocidade do desvio" unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint="Quão rápido a tela passa para o outro lado quando ela vira" />
-      <PqRange {...pqReset("aimRelease")} label="Mira parada volta para o movimento" unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? "∞ (nunca)" : `${v} s`)} hint="Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou" />
-      <PqRange {...pqReset("keysAimRelease")} label="Mouse parado devolve a mira ao teclado" unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : "0 (nunca)")} hint="Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse" />
-      <PqRange {...pqReset("reticleDist")} label="Distância da retícula" unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint="No analógico e nas setas" />
-      <PqRange {...pqReset("jumpShake")} label="Tremida da mira quando pula" unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint="Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga" />
-      <PqRange {...pqReset("superJumpShake")} label="Tremida da mira quando super-pulo" unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint="Quanto a mira treme no super pulo (agachar + pular). 0 desliga" />
+      <PqRange {...pqReset("deadband")} label={t("Folga da câmera")} unit="px" min={0} max={400} step={10} value={pq.deadband} onChange={v => setPqValue("deadband", v)} hint={t("Quanto ela anda a partir do centro antes da câmera seguir")} />
+      <PqRange {...pqReset("lag")} label={t("Velocidade da câmera")} unit="" min={1} max={20} step={1} value={pq.lag} onChange={v => setPqValue("lag", v)} />
+      <PqRange {...pqReset("lookAhead")} label={t("Desvio da tela de acordo com o lado")} unit="px" min={0} max={500} step={10} value={pq.lookAhead} onChange={v => setPqValue("lookAhead", v)} hint={t("Quanto a tela se desloca para o lado em que ela está olhando (câmera seguindo; 0 deixa ela no centro)")} />
+      <PqRange {...pqReset("lookAheadSpeed")} label={t("Velocidade do desvio")} unit="" min={0.5} max={12} step={0.5} value={pq.lookAheadSpeed} onChange={v => setPqValue("lookAheadSpeed", v)} hint={t("Quão rápido a tela passa para o outro lado quando ela vira")} />
+      <PqRange {...pqReset("aimRelease")} label={t("Mira parada volta para o movimento")} unit="s" min={0} max={AIM_RELEASE_MAX + 0.25} step={0.25} value={Number.isFinite(pq.aimRelease) ? pq.aimRelease : AIM_RELEASE_MAX + 0.25} onChange={v => setPqValue("aimRelease", v > AIM_RELEASE_MAX ? Infinity : v)} format={v => (v > AIM_RELEASE_MAX ? t("∞ (nunca)") : `${v} s`)} hint={t("Depois de quantos segundos com o mouse / analógico de mira parados o analógico esquerdo ou as teclas de movimento voltam a mirar. No fim da barra (∞) a mira fica sempre onde você deixou")} />
+      <PqRange {...pqReset("keysAimRelease")} label={t("Mouse parado devolve a mira ao teclado")} unit="s" min={0} max={KEYS_AIM_RELEASE_MAX} step={0.5} value={pq.keysAimRelease} onChange={v => setPqValue("keysAimRelease", v)} format={v => (v > 0 ? `${v} s` : t("0 (nunca)"))} hint={t("Com teclado e mouse no mesmo player: depois de quantos segundos com o mouse parado as teclas de movimento voltam a mirar. Mexer o mouse pega a mira de volta. 0 deixa a mira sempre com o mouse")} />
+      <PqRange {...pqReset("reticleDist")} label={t("Distância da retícula")} unit="px" min={60} max={500} step={10} value={pq.reticleDist} onChange={v => setPqValue("reticleDist", v)} hint={t("No analógico e nas setas")} />
+      <PqRange {...pqReset("jumpShake")} label={t("Tremida da mira quando pula")} unit="°" min={0} max={30} step={0.5} value={pq.jumpShake} onChange={v => setPqValue("jumpShake", v)} hint={t("Quanto a mira treme ao pular (também no ar e na parede); some em meio segundo. 0 desliga")} />
+      <PqRange {...pqReset("superJumpShake")} label={t("Tremida da mira quando super-pulo")} unit="°" min={0} max={30} step={0.5} value={pq.superJumpShake} onChange={v => setPqValue("superJumpShake", v)} hint={t("Quanto a mira treme no super pulo (agachar + pular). 0 desliga")} />
       {/* the camera's own fields (Ajustes keeps its own: Notas no ritmo, tambores, Debug) */}
       <SaveToGameButton part="camera" save={() => saveDefaultCamera(pq)} className="justify-end"
         patio={patioSaveOf("camera", parquinhoDefaultsFile(DEFAULT_PARQUINHO), parquinhoDefaultsFile(pq))}
@@ -914,13 +916,13 @@ export function ChickenPatio() {
     </FloatingPanel>
   )
   const editorTabs: PanelShortcut[] = !patio ? [] : [
-    { key: "layers", label: "Camadas", title: "Camadas", icon: Eye, open: layersOpen, setOpen: setLayersOpen,
+    { key: "layers", label: t("Camadas"), title: t("Camadas"), icon: Eye, open: layersOpen, setOpen: setLayersOpen,
       panel: <LayersPanel {...patioLayers} onSave={saveLayers} onClose={() => setLayersOpen(false)} /> },
-    { key: "grid", label: "Grade", title: "Grade de blocos", icon: Grid3x3, open: gridOpen, setOpen: setGridOpen,
+    { key: "grid", label: t("Grade"), title: t("Grade de blocos"), icon: Grid3x3, open: gridOpen, setOpen: setGridOpen,
       panel: <MineGridPanel layout={patio.layout} canEdit={access.canEdit} canGrid={canGrid} onResetGrid={mineParams && canResetGrid ? mine.reset : undefined} onChange={changeLayout} onClose={() => setGridOpen(false)} /> },
-    { key: "patio", label: "Pátio", title: "Configurações do Pátio", icon: Sun, open: settingsOpen, setOpen: setSettingsOpen,
+    { key: "patio", label: t("Pátio"), title: t("Configurações do Pátio"), icon: Sun, open: settingsOpen, setOpen: setSettingsOpen,
       panel: <PatioSettingsPanel layout={patio.layout} screens={screens} canEdit={access.canEdit} onChange={changeLayout} onClose={() => setSettingsOpen(false)} /> },
-    { key: "camera", label: "Câmera", title: "Câmera de Mira", icon: Crosshair, open: pqOpen, setOpen: setPqOpen, panel: cameraPanel },
+    { key: "camera", label: t("Câmera"), title: t("Câmera de Mira"), icon: Crosshair, open: pqOpen, setOpen: setPqOpen, panel: cameraPanel },
   ]
   return (
     <main data-disable-text-selection className="fixed inset-0 overflow-hidden bg-[#05060c] text-[#dfe8df]" style={mainStyle}>
@@ -938,18 +940,18 @@ export function ChickenPatio() {
           size="icon"
           className="shrink-0 text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all"
         >
-          <Link href="/" aria-label="Voltar ao globo" title="Voltar ao globo"><GlobeGridIcon maskId="patio" /></Link>
+          <Link href="/" aria-label={t("Voltar ao globo")} title={t("Voltar ao globo")}><GlobeGridIcon maskId="patio" /></Link>
         </Button>
-        <button type="button" aria-label="Playgrounds" aria-pressed={openOpen} title="Playgrounds" onClick={() => setOpenOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", openOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Playgrounds")} aria-pressed={openOpen} title={t("Playgrounds")} onClick={() => setOpenOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", openOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <FolderOpen className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Salvar Pátio" aria-pressed={saveOpen} title={patio?.dirty ? "Salvar Pátio (há mudanças)" : "Salvar Pátio"} onClick={() => setSaveOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", saveOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Salvar Pátio")} aria-pressed={saveOpen} title={patio?.dirty ? t("Salvar Pátio (há mudanças)") : t("Salvar Pátio")} onClick={() => setSaveOpen(v => !v)} className={cn("relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", saveOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Save className="h-4 w-4" />
           {patio?.dirty && <span aria-hidden="true" className={cn("absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full", pl.save.kind === "conflict" || pl.save.kind === "error" ? "bg-[#ff8a7a]" : "bg-[#ffd166]")} />}
         </button>
         <h1 className="hidden min-w-0 items-baseline gap-1.5 whitespace-nowrap font-mono text-sm font-bold sm:flex">
           <span className="truncate" title={patioName}>{patioName}</span>
-          {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> (não salvo)</span>}
+          {patio?.dirty && <span className="shrink-0 text-[11px] font-normal text-[#93a79a]"> {t("(não salvo)")}</span>}
         </h1>
         {/* the lobby switcher and the players, right after the Pátio's name */}
         <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} players={playersHere} open={playersOpen} onToggle={() => setPlayersOpen(v => !v)} onStatus={setToast} onSwitch={target => {
@@ -968,62 +970,62 @@ export function ChickenPatio() {
         <div className="relative">
           <button
             type="button"
-            aria-label="Modo editor"
+            aria-label={t("Modo editor")}
             aria-pressed={editorOn}
-            title={access.canEdit ? "Modo editor (=)" : "Modo editor: este Pátio não é seu"}
+            title={access.canEdit ? t("Modo editor (=)") : t("Modo editor: este Pátio não é seu")}
             onClick={toggleEditor}
             className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", editorOn ? "border-[#ffd166] bg-[#ffd166]/15 text-white" : "border-white/15 text-[#b9c7b9]", !access.canEdit && "opacity-60")}
           >
             <Pencil className="h-4 w-4" />
           </button>
           {editHint && !access.canEdit && (
-            <div role="dialog" aria-label="Sem permissão para editar" className="fixed left-1/2 top-1/2 z-[330] w-[min(20rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-4 text-center font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
-              <p className="font-bold text-white">Este Pátio não é seu.</p>
-              <p className="mt-1">Crie um Pátio novo para poder editar, ou receba a permissão do dono deste pátio.</p>
+            <div role="dialog" aria-label={t("Sem permissão para editar")} className="fixed left-1/2 top-1/2 z-[330] w-[min(20rem,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[#ffd166]/50 bg-[#101713] p-4 text-center font-mono text-[11px] leading-relaxed text-[#dfe8df] shadow-lg [text-shadow:none]">
+              <p className="font-bold text-white">{t("Este Pátio não é seu.")}</p>
+              <p className="mt-1">{t("Crie um Pátio novo para poder editar, ou receba a permissão do dono deste pátio.")}</p>
               <div className="mt-3 flex justify-center gap-2">
-                <button type="button" onClick={() => startNewPatio()} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">Criar um Pátio novo</button>
-                <button type="button" onClick={() => setEditHint(false)} className="h-8 rounded-md border border-white/20 px-3">Fechar</button>
+                <button type="button" onClick={() => startNewPatio()} className="h-8 rounded-md border border-[#ffd166] bg-[#ffd166] px-3 font-bold text-[#05060c]">{t("Criar um Pátio novo")}</button>
+                <button type="button" onClick={() => setEditHint(false)} className="h-8 rounded-md border border-white/20 px-3">{t("Fechar")}</button>
               </div>
             </div>
           )}
         </div>
         <LayerEyes {...patioLayers} open={layersOpen} onOpenChange={setLayersOpen} onSave={saveLayers} />
-        <button type="button" aria-label="Friends" aria-pressed={friendsOpen} title="Friends: chamar um amigo para este lobby" onClick={() => setFriendsOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", friendsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Friends")} aria-pressed={friendsOpen} title={t("Friends: chamar um amigo para este lobby")} onClick={() => setFriendsOpen(v => !v)} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", friendsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <UserPlus className="h-4 w-4" />
         </button>
         <ChickenChatButton open={chatOpen} onToggle={() => setChatOpen(v => !v)} />
-        <button type="button" aria-label="Configurações do Pátio" aria-pressed={settingsOpen} title="Configurações do Pátio" onClick={() => setSettingsOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", settingsOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Configurações do Pátio")} aria-pressed={settingsOpen} title={t("Configurações do Pátio")} onClick={() => setSettingsOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", settingsOpen ? "border-[#ffd166] text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Sun className="h-4 w-4" />
         </button>
         {/* the Grade de blocos: for whoever may change it and, while it is on, for everyone (the grid lit: it is on) */}
-        {(access.canEdit || !!mineParams) && <button type="button" aria-label="Grade de blocos" aria-pressed={gridOpen} title="Grade de blocos" onClick={() => setGridOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", gridOpen ? "border-[#ffd166]" : "border-white/15", mineParams ? "text-[#ffd166]" : gridOpen ? "text-white" : "text-[#b9c7b9]")}>
+        {(access.canEdit || !!mineParams) && <button type="button" aria-label={t("Grade de blocos")} aria-pressed={gridOpen} title={t("Grade de blocos")} onClick={() => setGridOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-[#ffd166] hover:text-white", gridOpen ? "border-[#ffd166]" : "border-white/15", mineParams ? "text-[#ffd166]" : gridOpen ? "text-white" : "text-[#b9c7b9]")}>
           <Grid3x3 className="h-4 w-4" />
         </button>}
         </div>
         <div className="contents [&>*]:shrink-0 [&>*]:pointer-events-auto @min-[1100px]:pointer-events-none! @min-[1100px]:flex @min-[1100px]:flex-1 @min-[1100px]:basis-0 @min-[1100px]:items-center @min-[1100px]:justify-end @min-[1100px]:gap-2">
-        <button type="button" aria-label="Escalas" aria-pressed={scalesOpen} title="Escalas dos instrumentos" onClick={() => { setScalesOpen(v => !v); setItemsOpen(false); setPqOpen(false); setCatalogOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", scalesOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Escalas")} aria-pressed={scalesOpen} title={t("Escalas dos instrumentos")} onClick={() => { setScalesOpen(v => !v); setItemsOpen(false); setPqOpen(false); setCatalogOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", scalesOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Music className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Catálogo" aria-pressed={catalogOpen} title="Catálogo: aliens, almas e pássaros" onClick={() => { setCatalogOpen(v => !v); setItemsOpen(false); setPqOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", catalogOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Catálogo")} aria-pressed={catalogOpen} title={t("Catálogo: aliens, almas e pássaros")} onClick={() => { setCatalogOpen(v => !v); setItemsOpen(false); setPqOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", catalogOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <BookOpen className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Câmera de Mira" aria-pressed={pqOpen} title="Câmera de Mira" onClick={() => { setPqOpen(v => !v); setItemsOpen(false); setCatalogOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Câmera de Mira")} aria-pressed={pqOpen} title={t("Câmera de Mira")} onClick={() => { setPqOpen(v => !v); setItemsOpen(false); setCatalogOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", pqOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <Crosshair className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Controles" title="Controles" onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
+        <button type="button" aria-label={t("Controles")} title={t("Controles")} onClick={() => setControlsOpen(v => !v)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] transition-colors hover:border-primary hover:text-white">
           <Gamepad2 className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Itens" aria-pressed={itemsOpen} title="Armas e instrumentos" onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setCatalogOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Itens")} aria-pressed={itemsOpen} title={t("Armas e instrumentos")} onClick={() => { setItemsOpen(v => !v); setPqOpen(false); setCatalogOpen(false); setScalesOpen(false) }} className={cn("inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border transition-colors hover:border-primary hover:text-white", itemsOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <HeldItemIcon className="h-8 w-8" fallback={<Swords className="h-4 w-4" />} />
         </button>
-        <button type="button" aria-label="Personagem" aria-pressed={panelOpen} title="Personagem" onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Personagem")} aria-pressed={panelOpen} title={t("Personagem")} onClick={() => setPanelOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-md border transition-colors hover:border-primary hover:text-white", panelOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <ChickenBodyIcon look={draft.look} outline className="h-8 w-8" />
         </button>
-        <button type="button" aria-label="Ajustes" aria-pressed={tuningOpen} title="Ajustes" onClick={() => setTuningOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", tuningOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={t("Ajustes")} aria-pressed={tuningOpen} title={t("Ajustes")} onClick={() => setTuningOpen(v => !v)} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", tuningOpen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           <SlidersHorizontal className="h-4 w-4" />
         </button>
         <VolumeButton />
-        <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"} aria-pressed={fullscreen} title={fullscreen ? "Sair da tela cheia" : "Tela cheia"} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        <button type="button" aria-label={fullscreen ? t("Sair da tela cheia") : t("Tela cheia")} aria-pressed={fullscreen} title={fullscreen ? t("Sair da tela cheia") : t("Tela cheia")} onClick={toggleFullscreen} className={cn("inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:border-primary hover:text-white", fullscreen ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
           {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
         </button>
         </div>
@@ -1036,7 +1038,7 @@ export function ChickenPatio() {
         {[{ id: null as string | null, look: draft.look, name: meName ?? "Player 1", color: colors.p1 }, ...others.map(p => ({ id: p.id as string | null, look: p.look ?? draft.look, name: p.name, color: colors[p.id] ?? PLAYER_COLORS[0] }))].map(row => {
           const on = vestOpen && vestFor === row.id
           return (
-            <button key={row.id ?? "me"} type="button" aria-label={`Vestiário · ${row.name}`} aria-pressed={on} title={`Vestiário · ${row.name}`} onClick={() => { if (on) setVestOpen(false); else openVestiario(row.id) }} className={cn("pointer-events-auto shrink-0 overflow-hidden rounded-full border-[3px] bg-[#101713] transition-shadow", on && "ring-2 ring-white/80 ring-offset-1 ring-offset-black")} style={{ width: INV_STACK.size, height: INV_STACK.size, borderColor: row.color }}>
+            <button key={row.id ?? "me"} type="button" aria-label={t("Vestiário · {name}", { name: row.name })} aria-pressed={on} title={t("Vestiário · {name}", { name: row.name })} onClick={() => { if (on) setVestOpen(false); else openVestiario(row.id) }} className={cn("pointer-events-auto shrink-0 overflow-hidden rounded-full border-[3px] bg-[#101713] transition-shadow", on && "ring-2 ring-white/80 ring-offset-1 ring-offset-black")} style={{ width: INV_STACK.size, height: INV_STACK.size, borderColor: row.color }}>
               <ChickenHeadIcon look={row.look} />
             </button>
           )
@@ -1054,7 +1056,7 @@ export function ChickenPatio() {
 
       <MineGridLayer pass={!!mineParams?.pass} engine={engine} extras={extraEngines} worldRef={worldRef} width={worldScenes(screens) * SCENE_W} opacity={patioLayers.layers.grid / 100} houses={mineHouses} />
       <ChickenLayer dropIn={false} fixedScale controlsFront onEngine={setEngine} groundHeight={groundHeight} controlsBottom={controlsBottom} chickEngines={chickEngines} chickKey={patio ? patio.id ?? "default" : null} />
-      <ChickenPortal engine={engine} id={spawn === entry ? "patio" : "patio-exit"} href="/" world={portalWorld} label="Back to the globe?" enabled={!editing} actors={patioActors} birth={spawn === entry ? takeBirth : undefined} closeAfterSpawn holdOpen={editing} startClosed={spawn !== entry} />
+      <ChickenPortal engine={engine} id={spawn === entry ? "patio" : "patio-exit"} href="/" world={portalWorld} label={msg("Back to the globe?")} enabled={!editing} actors={patioActors} birth={spawn === entry ? takeBirth : undefined} closeAfterSpawn holdOpen={editing} startClosed={spawn !== entry} />
       {/* the Portais de nascimento: the same ring, leading nowhere; the one drawn for this visit is where they arrive.
           Every one of these rings closes once the chickens came out of it (back to the globe: the Globe button) */}
       {spawnPortals.slice(1).map(el => <ChickenPortal key={el.id} engine={engine} id={el === spawn ? "patio" : el.id} href="/" world={{ host: worldRef, x: el.x + el.w / 2, groundY: el.y + el.h - 6, d: el.w }} enabled={false} actors={patioActors} birth={el === spawn ? takeBirth : undefined} closeAfterSpawn holdOpen={editing} startClosed={el !== spawn} />)}
@@ -1115,19 +1117,19 @@ export function ChickenPatio() {
       {pqOpen && cameraPanel}
       {/* Ajustes: the universal ones (the same for every character); saved in this browser, the admin's go with the camera's defaults */}
       {tuningOpen && (
-        <FloatingPanel id="patio-tuning" aria-label="Ajustes" initial={(vw, vh) => { const w = Math.min(320, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(320, vh - 80) } }} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <FloatingPanel id="patio-tuning" aria-label={t("Ajustes")} initial={(vw, vh) => { const w = Math.min(320, vw - 24); return { x: vw - w - 12, y: 64, w, h: Math.min(320, vh - 80) } }} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-4">
-            <h2 className="flex-1 text-sm text-white">Ajustes</h2>
-            <button type="button" aria-label="Fechar" onClick={() => setTuningOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+            <h2 className="flex-1 text-sm text-white">{t("Ajustes")}</h2>
+            <button type="button" aria-label={t("Fechar")} onClick={() => setTuningOpen(false)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-field overflow-y-auto px-4 pb-4">
-            <label className="flex items-center justify-between gap-3 text-xs"><span>Notas no ritmo (quantizar)</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+            <label className="flex items-center justify-between gap-3 text-xs"><span>{t("Notas no ritmo (quantizar)")}</span><input type="checkbox" checked={pq.quantize} onChange={e => setPqValue("quantize", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
             <div className="flex flex-col gap-1.5 text-xs">
-              <span>Tambores e pentes</span>
-              <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Em volta</span><input type="checkbox" checked={pq.ammoAround} onChange={e => setPqValue("ammoAround", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
-              <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>Na mira</span><input type="checkbox" checked={pq.ammoHud} onChange={e => setPqValue("ammoHud", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+              <span>{t("Tambores e pentes")}</span>
+              <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>{t("Em volta")}</span><input type="checkbox" checked={pq.ammoAround} onChange={e => setPqValue("ammoAround", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+              <label className="flex items-center justify-between gap-3 pl-3 text-[#b9c7b9]"><span>{t("Na mira")}</span><input type="checkbox" checked={pq.ammoHud} onChange={e => setPqValue("ammoHud", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
             </div>
-            <label className="flex items-center justify-between gap-3 text-xs" title="A linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas"><span>Debug</span><input type="checkbox" checked={pq.debug} onChange={e => setPqValue("debug", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
+            <label className="flex items-center justify-between gap-3 text-xs" title={t("A linha de estado no rodapé, os nomes das cenas e as linhas dos telhados que são plataformas")}><span>{t("Debug")}</span><input type="checkbox" checked={pq.debug} onChange={e => setPqValue("debug", e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></label>
             <SaveToGameButton part="camera" save={() => saveDefaultTuning(pq)} className="justify-end"
               onRevert={() => setPq(prev => { const next = { ...prev, debug: DEFAULT_PARQUINHO.debug, quantize: DEFAULT_PARQUINHO.quantize, ammoAround: DEFAULT_PARQUINHO.ammoAround, ammoHud: DEFAULT_PARQUINHO.ammoHud }; saveParquinho(next); return next })} />
           </div>
@@ -1166,12 +1168,12 @@ export function ChickenPatio() {
       {friendsOpen && <PatioFriendsPanel onClose={() => setFriendsOpen(false)} onInvite={inviteFriend} />}
 
       {panelOpen && (
-        <FloatingPanel id="chicken-tuning" aria-label="Personagem" initial={(vw, vh) => { const w = Math.min(530, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={380} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+        <FloatingPanel id="chicken-tuning" aria-label={t("Personagem")} initial={(vw, vh) => { const w = Math.min(530, vw - 24); return { x: vw - w - 12, y: 64, w, h: vh - 104 } }} minW={380} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
           <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-            <h2 className="flex-1 text-sm text-white">Personagem</h2>
-            {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">rascunho</span>}
-            <button type="button" aria-label="Desfazer a última alteração" title="Desfazer a última alteração" disabled={!dirty} onClick={undo} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-45 disabled:hover:border-white/15"><Undo2 className="h-4 w-4" /></button>
-            <button type="button" aria-label="Fechar" onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+            <h2 className="flex-1 text-sm text-white">{t("Personagem")}</h2>
+            {dirty && <span className="rounded-full border border-amber-300/50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-300">{t("rascunho")}</span>}
+            <button type="button" aria-label={t("Desfazer a última alteração")} title={t("Desfazer a última alteração")} disabled={!dirty} onClick={undo} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary disabled:opacity-45 disabled:hover:border-white/15"><Undo2 className="h-4 w-4" /></button>
+            <button type="button" aria-label={t("Fechar")} onClick={() => setPanelOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -1179,12 +1181,12 @@ export function ChickenPatio() {
             {/* the column of the character you are now is lit: its values are the ones your boneco uses */}
             <div className={cn(ROW, "sticky top-0 z-30 border-b border-white/10 bg-[#101713] px-4 py-1.5 text-center text-[10px] uppercase tracking-wider text-[#8a9a8a]")}>
               {(["chi", "pig", "fox", "chick"] as const).map(k => (
-                <span key={k} title={k === "chick" ? "Kids (e os pintinhos que seguem a galinha)" : undefined} className={cn(k === "chi" && "text-left", k === myClass && "font-bold text-white")}>{k === "chi" ? "Chi" : k === "chick" ? "Kids" : CLASS_NAME[k]}</span>
+                <span key={k} title={k === "chick" ? t("Kids (e os pintinhos que seguem a galinha)") : undefined} className={cn(k === "chi" && "text-left", k === myClass && "font-bold text-white")}>{k === "chi" ? "Chi" : t(CLASS_NAME[k])}</span>
               ))}
             </div>
             <LockedFieldset>
-            <Group title="Visual" open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
-              <button type="button" onClick={() => setVestOpen(true)} className="h-8 justify-self-start rounded-md border border-white/20 px-3 hover:border-primary">Abrir o vestiário (raças e partes)</button>
+            <Group title={msg("Visual")} open={!!openGroups.Visual} onToggle={v => setOpenGroups(o => ({ ...o, Visual: v }))}>
+              <button type="button" onClick={() => setVestOpen(true)} className="h-8 justify-self-start rounded-md border border-white/20 px-3 hover:border-primary">{t("Abrir o vestiário (raças e partes)")}</button>
               {CHICKEN_PARAM_META.filter(p => p.group === "Visual").map(p => <ParamRow key={p.key} meta={p} draft={draft} saved={saved.config} onChange={setParam} onClass={setClass} onResetRow={resetRow} />)}
             </Group>
             {CHICKEN_PARAM_GROUPS.filter(g => g !== "Visual").map(g => (
@@ -1200,7 +1202,7 @@ export function ChickenPatio() {
               {isAdmin && <VersionsButton list={listVersions} restore={restoreVersion} disabled={saving} onDone={(text, error) => { if (error) setStatus({ kind: "error", text }) }} />}
               <SaveToPatioButton patio={patioSaveOf("chicken", normalizeChickenConfig(saved.config), normalizeChickenConfig(draft))} disabled={saving} />
               {isAdmin && (
-                <button type="button" disabled={!dirty || saving} onClick={() => void save()} title="Grava a configuração central da galinha: vale na hora para todas as telas e para todo mundo" className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50">{saving ? "Salvando…" : "Salvar no game"}</button>
+                <button type="button" disabled={!dirty || saving} onClick={() => void save()} title={t("Grava a configuração central da galinha: vale na hora para todas as telas e para todo mundo")} className="h-8 rounded border border-primary/60 bg-primary/10 px-3 text-xs transition-colors hover:bg-primary/25 disabled:opacity-50">{saving ? t("Salvando…") : t("Salvar no game")}</button>
               )}
             </div>
             </LockedFieldset>
@@ -1218,8 +1220,9 @@ export function ChickenPatio() {
 }
 
 function Group({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: (open: boolean) => void; children: React.ReactNode }) {
+  const t = useT()
   return (
-    <PatioDisclosure title={title} open={open} onToggle={onToggle}>
+    <PatioDisclosure title={t(title)} open={open} onToggle={onToggle}>
       <div className="grid gap-field px-4 pb-4">{children}</div>
     </PatioDisclosure>
   )
@@ -1227,30 +1230,32 @@ function Group({ title, open, onToggle, children }: { title: string; open: boole
 
 // a change of the central configuration in words: the setting's label, Pig's and Ken's factors, the look's parts
 const PARAM_LABEL: Record<string, string> = Object.fromEntries(CHICKEN_PARAM_META.map(m => [m.key, m.label]))
+const paramLabel = (k: string) => tr(PARAM_LABEL[k] ?? k)
 function chickenChangeLabel([part, a, b, c, d]: string[]) {
-  if (part === "params") return PARAM_LABEL[a] ?? a
-  if (part === "classes") return `${CLASS_NAME[a as ClassId] ?? a} › ${isClassCount(b) ? PARAM_LABEL[b] : `${PARAM_LABEL[c] ?? c} (fator)`}`
-  if (part === "look") return `Visual › ${a}`
+  if (part === "params") return paramLabel(a)
+  if (part === "classes") return `${tr(CLASS_NAME[a as ClassId] ?? a)} › ${isClassCount(b) ? paramLabel(b) : tr("{label} (fator)", { label: paramLabel(c) })}`
+  if (part === "look") return `${tr("Visual")} › ${a}`
   if (part === "frames") {
-    const key = (k: string) => FRAME_KEYS.find(f => f.key === k)?.label ?? k
-    return b === "poses" ? `Hit-area › ${FRAME_LABEL[a as FrameClass] ?? a} › ${c ? POSE_LABEL[c as FramePose] ?? c : "poses"}${d ? ` › ${key(d)}` : ""}` : `Hit-area › ${FRAME_LABEL[a as FrameClass] ?? a} › ${POSE_LABEL.stand} › ${key(b)}`
+    const key = (k: string) => tr(FRAME_KEYS.find(f => f.key === k)?.label ?? k)
+    return b === "poses" ? `${tr("Hit-area")} › ${tr(FRAME_LABEL[a as FrameClass] ?? a)} › ${c ? tr(POSE_LABEL[c as FramePose] ?? c) : "poses"}${d ? ` › ${key(d)}` : ""}` : `${tr("Hit-area")} › ${tr(FRAME_LABEL[a as FrameClass] ?? a)} › ${tr(POSE_LABEL.stand)} › ${key(b)}`
   }
   return [part, a, b, c].filter(Boolean).join(" › ")
 }
 
 // a row of the Personagem panel: the chicken's value, then Pig's, Ken's and the Filhote's
 const ROW = "grid grid-cols-[minmax(0,1fr)_40px_40px_40px] items-center gap-2"
-const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken", chick: "Kids" }
+const CLASS_NAME: Record<ClassId, string> = { pig: "Pig", fox: "Ken", chick: msg("Kids") }
 
 function ParamRow({ meta, draft, saved, onChange, onClass, onResetRow }: { meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onChange: (key: ChickenParamKey, value: unknown) => void; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void; onResetRow: (key: ChickenParamKey) => void }) {
+  const t = useT()
   const value = draft.params[meta.key] ?? defaultChickenConfig().params[meta.key]
   const changed = value !== (saved.params[meta.key] ?? defaultChickenConfig().params[meta.key])
   // the row (the chicken's value and Pig's, Ken's and the Kids' cells) off the game's: the small reset in front
   const rowChanged = changed || CLASS_IDS.some(id => classValue(draft, id, meta.key) !== classValue(saved, id, meta.key))
-  const arrow = rowChanged && <ResetArrow label={meta.label} onReset={() => onResetRow(meta.key)} />
+  const arrow = rowChanged && <ResetArrow label={t(meta.label)} onReset={() => onResetRow(meta.key)} />
   if (meta.type === "bool") {
     return (
-      <label className={ROW} title={meta.hint}>
+      <label className={ROW} title={meta.hint ? t(meta.hint) : undefined}>
         <span className={cn("flex items-center justify-between gap-3", changed && "text-amber-300")}><span className="flex min-w-0 items-center gap-1">{arrow}<CombinationLabel meta={meta} /></span><input type="checkbox" checked={!!value} onChange={e => onChange(meta.key, e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" /></span>
       </label>
     )
@@ -1261,9 +1266,9 @@ function ParamRow({ meta, draft, saved, onChange, onClass, onResetRow }: { meta:
         <span className="flex min-w-0 items-center justify-between gap-3">
           <span className={cn("flex min-w-0 items-center gap-1", changed && "text-amber-300")}>{arrow}<CombinationLabel meta={meta} /></span>
           <StepSelect value={String(value)} onChange={e => onChange(meta.key, e.target.value)} className="h-8 w-36 shrink-0 rounded-md border border-white/15 bg-[#0b110e] px-2">
-            <option value="">sem som</option>
-            <option value="all">sorteio</option>
-            {CHICKEN_SOUND_TYPES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            <option value="">{t("sem som")}</option>
+            <option value="all">{t("sorteio")}</option>
+            {CHICKEN_SOUND_TYPES.map(([id, label]) => <option key={id} value={id}>{t(label)}</option>)}
           </StepSelect>
         </span>
       </label>
@@ -1272,8 +1277,8 @@ function ParamRow({ meta, draft, saved, onChange, onClass, onResetRow }: { meta:
   const n = value as number
   return (
     <div className={ROW}>
-      <PatioRange label={<CombinationLabel meta={meta} />} name={meta.label} min={meta.min} max={meta.max} step={meta.step}
-        value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${meta.unit}` : ""}`} hint={meta.hint} changed={changed} resettable={rowChanged}
+      <PatioRange label={<CombinationLabel meta={meta} />} name={t(meta.label)} min={meta.min} max={meta.max} step={meta.step}
+        value={n} display={`${fmt(n, meta.step)}${meta.unit ? ` ${t(meta.unit)}` : ""}`} hint={meta.hint ? t(meta.hint) : undefined} changed={changed} resettable={rowChanged}
         onChange={value => onChange(meta.key, value)} onReset={() => onResetRow(meta.key)} />
       {CLASS_IDS.map(id => <ClassCell key={id} id={id} meta={meta} draft={draft} saved={saved} onClass={onClass} />)}
     </div>
@@ -1290,7 +1295,8 @@ function classValue(c: ChickenConfig, id: ClassId, key: ChickenParamKey): number
 // Pig's or Ken's cell: a knob with the factor over the chicken's value; the counts (the jumps in the air, the
 // inventory's limits) are a number of their own
 function ClassCell({ id, meta, draft, saved, onClass }: { id: ClassId; meta: ChickenParamMeta; draft: ChickenConfig; saved: ChickenConfig; onClass: (id: ClassId, key: ChickenParamKey, value: number) => void }) {
-  const name = `${meta.label}: ${CLASS_NAME[id]}`
+  const t = useT()
+  const name = `${t(meta.label)}: ${t(CLASS_NAME[id])}`
   // (a draft kept from before the classes were saved with it has none)
   const now = draft.classes?.[id] ?? defaultClasses()[id], before = saved.classes?.[id] ?? defaultClasses()[id]
   if (isClassCount(meta.key)) {
@@ -1305,7 +1311,7 @@ function ClassCell({ id, meta, draft, saved, onClass }: { id: ClassId; meta: Chi
   const f = now.factors[key], was = before.factors[key]
   return (
     <div onDoubleClick={() => onClass(id, meta.key, was)}>
-      <Knob value={f} min={0} max={CLASS_FACTOR_MAX} step={0.01} logarithmic label={name} ariaLabel={`${name} (× o valor da galinha)`} hideLabel
+      <Knob value={f} min={0} max={CLASS_FACTOR_MAX} step={0.01} logarithmic label={name} ariaLabel={t("{name} (× o valor da galinha)", { name })} hideLabel
         formatValue={x => `${Math.round(x * 100) / 100}`} accentColor={f !== was ? "#fcd34d" : undefined} onChange={x => onClass(id, meta.key, x)} />
     </div>
   )

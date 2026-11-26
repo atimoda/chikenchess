@@ -9,6 +9,7 @@ import { mineActivatorStore } from "@/lib/pigchicken/mine-activator-store"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { activatorHints } from "../mine-grid-play"
 import { type Ctx } from "./shared"
+import { t as tr } from "@/lib/i18n"
 
 const GOLD = "#ffd34a"
 const TAG_H = 18, FLIP_MS = 260
@@ -49,7 +50,7 @@ function drawOptionIcon(ctx: Ctx, option: MineActivatorOption, x: number, y: num
 }
 const optionText = (option: MineActivatorOption, p: MineActivatorParams) => {
   const v = p[option]
-  return v === null ? "Pátio" : option === "corner" ? `${v}%` : `${v}`
+  return v === null ? tr("Pátio") : option === "corner" ? `${v}%` : `${v}`
 }
 
 function drawPadlock(ctx: Ctx, x: number, y: number, s: number) {
@@ -125,7 +126,7 @@ export function drawMineActivators(ctx: Ctx, camX: number, view: ViewRect, color
     // what Usar does at a locked one
     const hint = activatorHints.get(b.id)
     if (hint) {
-      const text = hint.has ? `${hint.key ? `${hint.key} - ` : ""}Usar a Chave de ouro` : "Precisa de uma Chave de ouro"
+      const text = hint.has ? `${hint.key ? `${hint.key} - ` : ""}${tr("Usar a Chave de ouro")}` : tr("Precisa de uma Chave de ouro")
       ctx.save()
       ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"
       ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.strokeText(text, cx, tile.bottom + 16)

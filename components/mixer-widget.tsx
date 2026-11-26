@@ -16,6 +16,7 @@ import type { MusicMonitor } from "@/lib/music/monitor"
 import { SpectrogramCanvas } from "./spectrogram-widget"
 import type { SpectrogramMode } from "@/hooks/use-spectrogram-mode"
 import styles from "./mixer-widget.module.css"
+import { useT } from "@/lib/i18n"
 
 interface MixerWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   teamMixes: TeamMixes
@@ -59,6 +60,7 @@ function calculateBpmHoverPreview(wrapper: HTMLDivElement, x: number, y: number,
 }
 
 function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityColor }: Pick<MixerWidgetProps, "effects" | "monitor" | "onEffectChange" | "isOn" | "cityColor">) {
+  const t = useT()
   const panelStyle = { "--city-neon": cityColor } as React.CSSProperties
   const liveBpm = useMonitorSelector(monitor, frame => frame.transport?.bpm)
   const bpm = liveBpm ?? effects.bpm
@@ -133,10 +135,10 @@ function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityCo
   }, [bpm])
 
   return <fieldset disabled={!isOn} className="grid gap-2">
-    <legend className="sr-only">Controles gerais de áudio</legend>
+    <legend className="sr-only">{t("Controles gerais de áudio")}</legend>
     <div className={cn("relative", !isOn && "pointer-events-none")}>
       <Slider
-        aria-label="Volume geral"
+        aria-label={t("Volume geral")}
         value={[effects.volume]}
         min={0}
         max={1}
@@ -146,7 +148,7 @@ function GlobalPlaybackControls({ effects, monitor, onEffectChange, isOn, cityCo
         style={panelStyle}
       />
       <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-[3px]">
-        <span className="pl-[6px] text-[10px] font-mono leading-none text-black/[0.69]">VOLUME</span>
+        <span className="pl-[6px] text-[10px] font-mono leading-none text-black/[0.69]">{t("VOLUME")}</span>
         <span className="pr-[5px] text-[10px] font-mono leading-none text-white/50">{(effects.volume * 100).toFixed(0)}%</span>
       </div>
     </div>
@@ -193,6 +195,7 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
   evalScore, evalMate, turn, crossfaderSync = true,
   isPlaying = false, onTogglePlay, spectrogramMode = "crossfader", getTeamFrequencyData, getFrequencyData, ...props
 }, ref) => {
+  const t = useT()
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
   const [compactLayout, setCompactLayout] = useState(true)
@@ -321,7 +324,7 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
     >
     <div className={cn("absolute inset-0 z-50 rounded-md border backdrop-blur-md transition-all duration-300", isOn ? "bg-black/80" : "bg-black/60 opacity-60")}
       style={{ borderColor, boxShadow: isOn ? `0 0 20px ${cityColor}40` : "none" }} />
-    <button ref={toggleRef} type="button" aria-label={isOn ? "Desligar Mixer" : "Ligar Mixer"} aria-hidden={togglePortalized || undefined} tabIndex={togglePortalized ? -1 : 0}
+    <button ref={toggleRef} type="button" aria-label={isOn ? t("Desligar Mixer") : t("Ligar Mixer")} aria-hidden={togglePortalized || undefined} tabIndex={togglePortalized ? -1 : 0}
       className={cn("absolute z-70 -left-2 -top-1 w-8 h-8 flex items-center justify-center rounded-full bg-background border shadow-md cursor-pointer transition-all hover:text-[#60a5fa]", togglePortalized && "invisible pointer-events-none", !isOn && "hover:drop-shadow-[0_0_8px_#60a5fa]", isOn ? "text-[var(--city-neon)]" : "text-white")}
       style={{ borderColor, backgroundColor: isOn ? undefined : "color-mix(in srgb, var(--background) 50%, transparent)", "--city-neon": cityColor } as React.CSSProperties}
       onClick={event => { event.stopPropagation(); onToggle() }}>
@@ -334,9 +337,9 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
       <div className="mt-3">
         <GlobalPlaybackControls effects={effects} monitor={monitor} onEffectChange={onEffectChange} isOn={isOn} cityColor={cityColor} />
       </div>
-      <fieldset disabled={!isOn} aria-label="Mixer por equipe" className={cn("mt-5 grid justify-center", compactLayout ? "grid-cols-[40px_40px_40px] gap-x-1" : "grid-cols-[40px_64px_40px] gap-x-5")}>
+      <fieldset disabled={!isOn} aria-label={t("Mixer por equipe")} className={cn("mt-5 grid justify-center", compactLayout ? "grid-cols-[40px_40px_40px] gap-x-1" : "grid-cols-[40px_64px_40px] gap-x-5")}>
         {([topColor, topColor === 'w' ? 'b' : 'w'] as const).map((color, index) => <div key={color} className={index === 0 ? "col-start-1 row-start-1 flex flex-col items-center gap-1" : "col-start-3 row-start-1 flex flex-col items-center gap-1"}>
-          <span className="h-3 text-[8px] font-mono text-muted-foreground">{color === 'b' ? 'BLACKS' : 'WHITES'}</span>
+          <span className="h-3 text-[8px] font-mono text-muted-foreground">{color === 'b' ? t('BLACKS') : t('WHITES')}</span>
           <Knob label="LPF/HPF" ariaLabel="LPF/HPF" value={teamMixes[color].filter} min={-1} max={1} step={.01} formatValue={filterDialLabel} onChange={filter => onTeamMixChange(color, { filter })} neon={isOn} hideLabel />
           {(['highs', 'mids', 'bass'] as const).map((band, i) => <Knob key={band} label={['Hi', 'Mid', 'Low'][i]} ariaLabel={['Hi', 'Mid', 'Low'][i]} value={teamMixes[color][band]} min={-12} max={12} onChange={value => onTeamMixChange(color, { [band]: value })} neon={isOn} hideLabel />)}
           <Knob label="Gain" ariaLabel="Gain" value={teamMixes[color].gain} min={0} max={TEAM_GAIN_MAX} onChange={gain => onTeamMixChange(color, { gain })} neon={isOn} hideLabel />
@@ -346,8 +349,8 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
           {['LPF/HPF', 'HI', 'MID', 'LOW', 'GAIN'].map(label => <span key={label} className="flex h-10 w-full items-center justify-center whitespace-nowrap">{label}</span>)}
         </div>
       </fieldset>
-      <fieldset disabled={!isOn} aria-label="Crossfader de equipe" className="mt-4 min-w-0 px-0.5">
-        <legend className="sr-only">Crossfader de equipe</legend>
+      <fieldset disabled={!isOn} aria-label={t("Crossfader de equipe")} className="mt-4 min-w-0 px-0.5">
+        <legend className="sr-only">{t("Crossfader de equipe")}</legend>
         <div className={cn("relative mx-auto mb-1 h-3 w-full font-mono font-bold tracking-wide text-muted-foreground", compactLayout ? "text-[8px]" : "text-[9px]")}>
           <span className="absolute top-0 left-1/2 -translate-x-1/2 text-foreground/70">CROSSFADER</span>
         </div>

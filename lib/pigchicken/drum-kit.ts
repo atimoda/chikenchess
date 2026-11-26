@@ -14,21 +14,23 @@
 //     is pulled. Any hit on the Chimbal sounds as open as the pedal is, and closing the pedal stops the ring at once.
 // Units: the chart's radius is 1, like the aim's reach; x to the right, y down, her shoulder at (0, 0).
 
+import { msg } from '../i18n'
+
 export type DrumPiece = 'kick' | 'snare' | 'hat' | 'hatOpen' | 'tom1' | 'tom2' | 'floor' | 'ride' | 'bell' | 'crash' | 'china' | 'splash'
 // gm: the piece's number on the General MIDI drum map (what a batida in flight carries as its note)
 export const DRUM_PIECES: { id: DrumPiece; label: string; gm: number; color: string; cymbal: boolean }[] = [
-  { id: 'kick', label: 'Bumbo', gm: 36, color: '#c8553d', cymbal: false },
-  { id: 'snare', label: 'Caixa', gm: 38, color: '#e9e4d8', cymbal: false },
-  { id: 'hat', label: 'Chimbal', gm: 42, color: '#e3b23c', cymbal: true },
-  { id: 'hatOpen', label: 'Chimbal aberto', gm: 46, color: '#e3b23c', cymbal: true },
-  { id: 'tom1', label: 'Tom 1', gm: 48, color: '#4f8fc0', cymbal: false },
-  { id: 'tom2', label: 'Tom 2', gm: 45, color: '#3f73a8', cymbal: false },
-  { id: 'floor', label: 'Surdo', gm: 41, color: '#2f5a8c', cymbal: false },
-  { id: 'ride', label: 'Condução', gm: 51, color: '#d9a441', cymbal: true },
-  { id: 'bell', label: 'Sino', gm: 53, color: '#f0cf7a', cymbal: true },
-  { id: 'crash', label: 'Ataque', gm: 49, color: '#e8c15a', cymbal: true },
-  { id: 'china', label: 'China', gm: 52, color: '#c98f2e', cymbal: true },
-  { id: 'splash', label: 'Splash', gm: 55, color: '#f2d98a', cymbal: true },
+  { id: 'kick', label: msg('Bumbo'), gm: 36, color: '#c8553d', cymbal: false },
+  { id: 'snare', label: msg('Caixa'), gm: 38, color: '#e9e4d8', cymbal: false },
+  { id: 'hat', label: msg('Chimbal'), gm: 42, color: '#e3b23c', cymbal: true },
+  { id: 'hatOpen', label: msg('Chimbal aberto'), gm: 46, color: '#e3b23c', cymbal: true },
+  { id: 'tom1', label: msg('Tom 1'), gm: 48, color: '#4f8fc0', cymbal: false },
+  { id: 'tom2', label: msg('Tom 2'), gm: 45, color: '#3f73a8', cymbal: false },
+  { id: 'floor', label: msg('Surdo'), gm: 41, color: '#2f5a8c', cymbal: false },
+  { id: 'ride', label: msg('Condução'), gm: 51, color: '#d9a441', cymbal: true },
+  { id: 'bell', label: msg('Sino'), gm: 53, color: '#f0cf7a', cymbal: true },
+  { id: 'crash', label: msg('Ataque'), gm: 49, color: '#e8c15a', cymbal: true },
+  { id: 'china', label: msg('China'), gm: 52, color: '#c98f2e', cymbal: true },
+  { id: 'splash', label: msg('Splash'), gm: 55, color: '#f2d98a', cymbal: true },
 ]
 export const DRUM_IDS = DRUM_PIECES.map(p => p.id)
 const BY_ID = Object.fromEntries(DRUM_PIECES.map(p => [p.id, p])) as Record<DrumPiece, (typeof DRUM_PIECES)[number]>

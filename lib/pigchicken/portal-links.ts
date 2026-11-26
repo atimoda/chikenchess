@@ -3,13 +3,14 @@
 // cleaned up after 30 days) answers "Este pátio não existe mais...", and the portal stays where it is for whoever
 // edits this Pátio to point it elsewhere. Making a new Pátio for a portal uses the same generator as Playgrounds.
 import { DEFAULT_PATIO_TARGET, type LayoutElement } from './layout'
+import { msg } from '../i18n'
 import { isPatioId, keepPatio, keptPatio, newPatio, type PatioRecord } from './patio-store'
 import type { PatioRecipe } from './patio-generator'
 import { fetchPatioLobby, isPatioServerMissing, patioOnlineAvailable, renamePatioLobby, savePatioLobby } from './patio-online'
 
 export { DEFAULT_PATIO_TARGET }
-export const MISSING_PATIO_TEXT = 'Este pátio não existe mais...'
-export const OFFLINE_PATIO_TEXT = 'Sem conexão para abrir este Pátio agora.'
+export const MISSING_PATIO_TEXT = msg('Este pátio não existe mais...')
+export const OFFLINE_PATIO_TEXT = msg('Sem conexão para abrir este Pátio agora.')
 
 // undefined: the portal leads to its pair; '' : to another Pátio, not chosen yet
 export const portalTarget = (el: Pick<LayoutElement, 'kind' | 'params'>) => (el.kind === 'portal' ? el.params.portalTarget : undefined)

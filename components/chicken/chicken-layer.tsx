@@ -13,6 +13,7 @@ import { magnetVector } from "@/lib/chicken/analog-magnet"
 import { LIMIT_BORDER, LIMIT_BORDER_COLOR } from "@/lib/chicken/limits"
 import { clampDelta, finishTouchLayoutEdit, getServerTouchLayout, getTouchLayout, resetTouchLayout, setTouchOffset, subscribeTouchLayout, touchOffset, type TouchControlId } from "@/lib/chicken/touch-layout"
 import { stageHeight, stageTop, stageWidth } from "@/lib/stage-size"
+import { useT } from "@/lib/i18n"
 
 // Height of the ground strip at the bottom of the screen; the footer buttons stick up above it.
 export const CHICKEN_GROUND_H = 30
@@ -58,6 +59,7 @@ export function useTouchControls(mode: ChickenTouchMode) {
 // A touch control that sits at its default place plus the saved offset. In edit mode a dashed layer over it takes
 // the drag (so the control itself does not react) and the offset follows the finger.
 export function Movable({ id, className = "", style, children }: { id: TouchControlId; className?: string; style?: CSSProperties; children: ReactNode }) {
+  const t = useT()
   const { offsets, editing } = useTouchLayout()
   const off = touchOffset(offsets, id)
   const ref = useRef<HTMLDivElement>(null)
@@ -70,8 +72,8 @@ export function Movable({ id, className = "", style, children }: { id: TouchCont
   const move = (e: ReactPointerEvent) => {
     const d = drag.current
     if (!d || d.pid !== e.pointerId) return
-    const r = d.rect, t = stageTop()
-    const c = clampDelta({ left: r.left, right: r.right, top: r.top - t, bottom: r.bottom - t }, e.clientX - d.sx, e.clientY - d.sy, stageWidth(), stageHeight())
+    const r = d.rect, top0 = stageTop()
+    const c = clampDelta({ left: r.left, right: r.right, top: r.top - top0, bottom: r.bottom - top0 }, e.clientX - d.sx, e.clientY - d.sy, stageWidth(), stageHeight())
     setTouchOffset(id, { x: Math.round(d.ox + c.x), y: Math.round(d.oy + c.y) })
   }
   const up = () => { drag.current = null }
@@ -80,7 +82,7 @@ export function Movable({ id, className = "", style, children }: { id: TouchCont
       {children}
       {editing && (
         <div
-          aria-label="Arrastar para mudar a posição"
+          aria-label={t("Arrastar para mudar a posição")}
           className="pointer-events-auto absolute inset-0 z-10 cursor-move rounded-[inherit] border-2 border-dashed border-[#ffd166] bg-[#ffd166]/10"
           style={{ touchAction: "none", borderRadius: 16 }}
           onPointerDown={down}
@@ -95,10 +97,11 @@ export function Movable({ id, className = "", style, children }: { id: TouchCont
 
 // top of the screen while placing the controls
 function TouchLayoutBar() {
+  const t = useT()
   return (
     <div data-chicken-ignore className="pointer-events-auto fixed left-1/2 z-[320] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#ffd166]/60 bg-black/80 px-3 py-2 font-mono text-xs text-white backdrop-blur" style={{ top: 64 }}>
-      <span className="hidden sm:inline">Arraste os controles</span>
-      <button type="button" onClick={resetTouchLayout} className="h-8 rounded-md border border-white/25 px-3 hover:border-primary">Padrão</button>
+      <span className="hidden sm:inline">{t("Arraste os controles")}</span>
+      <button type="button" onClick={resetTouchLayout} className="h-8 rounded-md border border-white/25 px-3 hover:border-primary">{t("Padrão")}</button>
       <button type="button" onClick={finishTouchLayoutEdit} className="h-8 rounded-md border border-primary bg-primary/25 px-5 font-bold hover:bg-primary/40">Ok</button>
     </div>
   )
@@ -107,9 +110,10 @@ function TouchLayoutBar() {
 // Footer button (touch screens): shows / hides the chicken's on-screen controls. The globe keeps its own choice
 // (off at first), apart from the "Na tela (celular)" setting of the controls panel.
 export function ChickenTouchToggle({ active, onToggle, className = "" }: { active: boolean; onToggle: () => void; className?: string }) {
+  const t = useT()
   const coarse = useCoarsePointer()
   if (!coarse) return null
-  const label = active ? "Esconder controles da galinha" : "Mostrar controles da galinha"
+  const label = active ? t("Esconder controles da galinha") : t("Mostrar controles da galinha")
   return (
     <button
       type="button"
@@ -227,6 +231,7 @@ const PAD_ACTIONS: readonly PadAction[] = ["run", "down", "jump"]
 type PadTouch = { origin: Set<PadAction>; over: Set<PadAction>; stick: boolean; sx: number; sy: number }
 
 function TouchControls({ set, bottom, front }: { set: (action: ChickenAction, on: boolean) => void; bottom: number; front: boolean }) {
+  const t = useT()
   const [knob, setKnob] = useState({ x: 0, y: 0 })
   const stickRef = useRef<HTMLDivElement>(null)
   const active = useRef<Partial<Record<ChickenAction, boolean>>>({})
@@ -341,7 +346,7 @@ function TouchControls({ set, bottom, front }: { set: (action: ChickenAction, on
       <Movable id="move" className="absolute" style={{ width: STICK, height: STICK, left: 20, bottom }}>
       <div
         ref={stickRef}
-        aria-label="Analógico"
+        aria-label={t("Analógico")}
         className="pointer-events-auto absolute inset-0 rounded-full border-2 border-white/30 bg-white/10 backdrop-blur-[2px]"
         style={{ touchAction: "none" }}
         onPointerDown={e => { pointerId.current = e.pointerId; stickBy.current = "stick"; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
@@ -358,9 +363,9 @@ function TouchControls({ set, bottom, front }: { set: (action: ChickenAction, on
       </Movable>
       {/* buttons in one row, centred on the stick's vertical centre */}
       <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
-        {pad("run", "Correr", 54, <Footprints className="h-6 w-6" />)}
-        {pad("down", "Chocar", 54, <Egg className="h-6 w-6" />)}
-        {pad("jump", "Pular", 68, <ChevronsUp className="h-8 w-8" />)}
+        {pad("run", t("Correr"), 54, <Footprints className="h-6 w-6" />)}
+        {pad("down", t("Chocar"), 54, <Egg className="h-6 w-6" />)}
+        {pad("jump", t("Pular"), 68, <ChevronsUp className="h-8 w-8" />)}
       </div>
     </div>
   )

@@ -3,6 +3,7 @@
 // Popup with every number of the PigChicKen items (weapons and instruments), one item at a time
 // picked in the dropdown at the top. Saved in this browser; the Parquinho follows it live.
 import { cn } from "@/lib/utils"
+import { msg, useT } from "@/lib/i18n"
 import { StepSelect } from "@/components/ui/step-select"
 import { PatioRange } from "@/components/ui/patio-range"
 import { PatioDualRange } from "@/components/ui/patio-dual-range"
@@ -27,11 +28,11 @@ import { StaffPoseEditor } from "./staff-pose-editor"
 import { INSTRUMENT_SCALES, INSTRUMENT_SCALE_IDS } from "@/lib/pigchicken/instrument-scales"
 
 const FIRE_MODES: { value: FireMode; label: string }[] = [
-  { value: "semi", label: "Semi (um por toque)" },
-  { value: "auto", label: "Automático" },
-  { value: "burst", label: "Rajada" },
-  { value: "charge", label: "Carga (segura e solta)" },
-  { value: "release", label: "Ao soltar o botão" },
+  { value: "semi", label: msg("Semi (um por toque)") },
+  { value: "auto", label: msg("Automático") },
+  { value: "burst", label: msg("Rajada") },
+  { value: "charge", label: msg("Carga (segura e solta)") },
+  { value: "release", label: msg("Ao soltar o botão") },
 ]
 
 // what each item uses; the wing has no ammo, projectile or throw; a consumable has its effect (and its doses), a slap and a
@@ -87,14 +88,14 @@ const COMBO_KIND = `${COMBO_BOX} w-[144px] shrink-0`
 // the numbers of a combo blow that come as lists, as narrow as what they show: duration (× the item's), the block on
 // the next blow (s) and the reach (× the item's)
 const COMBO_LISTS: { key: "time" | "cooldown" | "reach"; name: string; hint: string; values: number[]; show: (v: number) => string }[] = [
-  { key: "time", name: "duração", hint: "Duração deste golpe, em vezes a Duração do giro do item: mais = golpe mais lento", values: COMBO_TIMES, show: v => `×${v}` },
-  { key: "cooldown", name: "cooldown", hint: "Cooldown: por quanto tempo, a partir do início deste golpe, o próximo fica bloqueado", values: COMBO_COOLDOWNS, show: v => `${v}s` },
-  { key: "reach", name: "alcance", hint: "Alcance deste golpe, em vezes o alcance do item", values: COMBO_REACHES, show: v => `×${v}` },
+  { key: "time", name: msg("duração"), hint: msg("Duração deste golpe, em vezes a Duração do giro do item: mais = golpe mais lento"), values: COMBO_TIMES, show: v => `×${v}` },
+  { key: "cooldown", name: msg("cooldown"), hint: msg("Cooldown: por quanto tempo, a partir do início deste golpe, o próximo fica bloqueado"), values: COMBO_COOLDOWNS, show: v => `${v}s` },
+  { key: "reach", name: msg("alcance"), hint: msg("Alcance deste golpe, em vezes o alcance do item"), values: COMBO_REACHES, show: v => `×${v}` },
 ]
 // the items that shoot can aim through a luneta (on by default only on the Sniper)
 const SCOPE_IDS: ItemId[] = [...WEAPON_IDS, ...INSTRUMENT_IDS]
 // a consumable's doses are the magazine's number
-const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: "Doses", unit: "", group: "Efeito", hint: "Cada Atirar usa uma; 0 = nunca acaba" }
+const DOSES = { ...ITEM_PARAM_META.find(m => m.key === "mag")!, label: msg("Doses"), unit: "", group: msg("Efeito"), hint: msg("Cada Atirar usa uma; 0 = nunca acaba") }
 
 // a field's name: amber with the small reset in front while it is off the game's default
 function Named({ label, changed, onReset }: { label: string; changed: boolean; onReset: () => void }) {
@@ -102,6 +103,7 @@ function Named({ label, changed, onReset }: { label: string; changed: boolean; o
 }
 
 export function ItemsPanel({ onClose }: { onClose: () => void }) {
+  const t = useT()
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   // opens on the item the main player holds; empty-handed, on the Bicada (what she attacks with then)
   const [sel, setSel] = useState<ItemId>(() => currentHeldItem() ?? "peck")
@@ -141,160 +143,160 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
     d.classPoints = { ...d.classPoints, [pcls]: pointsOf(view) }
   })
   return (
-    <FloatingPanel id="pigchicken-items" aria-label="Itens" initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+    <FloatingPanel id="pigchicken-items" aria-label={t("Itens")} initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(380, vw - 24), h: vh - 104 })} minW={280} className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
-        <StepSelect aria-label="Item" value={cages ? CAGE_IDS[0] : sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
-          <optgroup label="Golpes">
-            <option value="peck">{items.peck.name} (Chi sem item)</option>
-            <option value="wing">{items.wing.name} (Chi sem item)</option>
-            <option value="piu">{items.piu.name} (kid sem item)</option>
-            <option value="chainBlow">{items.chainBlow.name} (Pig sem item)</option>
-            <option value="tailBlow">{items.tailBlow.name} (Ken sem item)</option>
+        <StepSelect aria-label={t("Item")} value={cages ? CAGE_IDS[0] : sel} onChange={e => setSel(e.target.value as ItemId)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+          <optgroup label={t("Golpes")}>
+            <option value="peck">{t(items.peck.name)} {t("(Chi sem item)")}</option>
+            <option value="wing">{t(items.wing.name)} {t("(Chi sem item)")}</option>
+            <option value="piu">{t(items.piu.name)} {t("(kid sem item)")}</option>
+            <option value="chainBlow">{t(items.chainBlow.name)} {t("(Pig sem item)")}</option>
+            <option value="tailBlow">{t(items.tailBlow.name)} {t("(Ken sem item)")}</option>
           </optgroup>
-          <optgroup label="Esportivos">{SPORTS_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Armas">{WEAPON_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Instrumentos">{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
-          <optgroup label="Instrumentos fixos">{FIXED_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
-          <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Chaves">{[...KEY_IDS, ...TROPHY_IDS].map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Grade de blocos">{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <option value={CAGE_IDS[0]}>Gaiolas</option>
+          <optgroup label={t("Esportivos")}>{SPORTS_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
+          <optgroup label={t("Armas")}>{WEAPON_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
+          <optgroup label={t("Instrumentos")}>{INSTRUMENT_IDS.map(id => <option key={id} value={id}>{t(items[id].name)} ({t(items[id].family)})</option>)}</optgroup>
+          <optgroup label={t("Instrumentos fixos")}>{FIXED_IDS.map(id => <option key={id} value={id}>{t(items[id].name)} ({t(items[id].family)})</option>)}</optgroup>
+          <optgroup label={t("Habilidades especiais")}>{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
+          <optgroup label={t("Magia")}>{MAGIC_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
+          <optgroup label={t("Chaves")}>{[...KEY_IDS, ...TROPHY_IDS].map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
+          <optgroup label={t("Grade de blocos")}>{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{t(items[id].name)}</option>)}</optgroup>
+          <option value={CAGE_IDS[0]}>{t("Gaiolas")}</option>
         </StepSelect>
-        <button type="button" onClick={() => edit(all => (cages ? CAGE_IDS : [sel]).forEach(id => { all[id] = structuredClone(DEFAULT_ITEMS[id]) }))} title={cages ? "Volta as gaiolas para os valores do código" : "Volta este item para os valores do código"} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
-        <button type="button" aria-label="Fechar itens" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+        <button type="button" onClick={() => edit(all => (cages ? CAGE_IDS : [sel]).forEach(id => { all[id] = structuredClone(DEFAULT_ITEMS[id]) }))} title={cages ? t("Volta as gaiolas para os valores do código") : t("Volta este item para os valores do código")} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">{t("Padrão")}</button>
+        <button type="button" aria-label={t("Fechar itens")} onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
       <LockedFieldset>
         {cages ? <CagesView items={items} onChange={(id, souls) => edit(all => { all[id].cageSouls = souls })} /> : ITEM_PARAM_GROUPS.filter(g => g !== "Gaiola" && !HIDDEN[sel]?.includes(g) && (g !== "Bicada" || sel === "peck") && (g !== "Música" || it.instrument) && (g !== "Hangdrum" || (it.instrument && it.scales.includes("hang"))) && (g !== "Efeito" || it.consumable) && (g !== "Pontos" || !handHeld) && (g !== "Golpe forte" || ((isStaff(it) || sel === "chainBlow" || sel === "tailBlow") && !it.returnThrow && !it.grapple)) && (g !== "Arremesso que volta" || it.returnThrow) && (g !== "Gancho" || it.grapple) && (g !== "Baralho" || it.deck) && ((g !== "Choque" && g !== "Especial") || isStaff(it)) && (g !== "Luneta" || SCOPE_IDS.includes(sel))).map(g => (
           <details key={g} open={!!open[g]} onToggle={e => { const v = (e.currentTarget as HTMLDetailsElement).open; setOpen(o => ({ ...o, [g]: v })) }} className="border-b border-white/10">
-            <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g === "Golpe" && isStaff(it) ? "Golpe rápido" : g}</summary>
+            <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#ffd166] hover:text-white">{g === "Golpe" && isStaff(it) ? t("Golpe rápido") : t(g)}</summary>
             <div className="grid gap-field px-4 pb-4">
               {g === "Disparo" && (
                 <>
                   <label className="flex items-center justify-between gap-3">
-                    <Named label="Modo de disparo" changed={it.fireMode !== base.fireMode} onReset={() => update(d => { d.fireMode = base.fireMode })} />
+                    <Named label={t("Modo de disparo")} changed={it.fireMode !== base.fireMode} onReset={() => update(d => { d.fireMode = base.fireMode })} />
                     <StepSelect value={it.fireMode} onChange={e => { const v = e.target.value as FireMode; update(d => { d.fireMode = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {FIRE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      {FIRE_MODES.map(m => <option key={m.value} value={m.value}>{t(m.label)}</option>)}
                     </StepSelect>
                   </label>
-                  {it.fireMode === "burst" && <label className="flex items-center justify-between gap-3" title="Soltar Atirar interrompe a rajada; desligado, um aperto dispara a rajada inteira"><Named label="Rajada só enquanto segura Atirar" changed={it.burstHold !== base.burstHold} onReset={() => update(d => { d.burstHold = base.burstHold })} /><input type="checkbox" checked={it.burstHold} onChange={e => { const v = e.target.checked; update(d => { d.burstHold = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
+                  {it.fireMode === "burst" && <label className="flex items-center justify-between gap-3" title={t("Soltar Atirar interrompe a rajada; desligado, um aperto dispara a rajada inteira")}><Named label={t("Rajada só enquanto segura Atirar")} changed={it.burstHold !== base.burstHold} onReset={() => update(d => { d.burstHold = base.burstHold })} /><input type="checkbox" checked={it.burstHold} onChange={e => { const v = e.target.checked; update(d => { d.burstHold = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
                   <label className="flex items-center justify-between gap-3">
-                    <Named label="Caminho do projétil" changed={it.pathShow !== base.pathShow} onReset={() => update(d => { d.pathShow = base.pathShow })} />
+                    <Named label={t("Caminho do projétil")} changed={it.pathShow !== base.pathShow} onReset={() => update(d => { d.pathShow = base.pathShow })} />
                     <StepSelect value={it.pathShow} onChange={e => { const v = e.target.value as PathShow; update(d => { d.pathShow = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {PATH_SHOWS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {PATH_SHOWS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
                     </StepSelect>
                   </label>
                   {(it.reticle === "impact" || it.reticle === "grenade") && (
                     <label className="flex items-center justify-between gap-3">
-                      <Named label="Onde cai (círculo do dano)" changed={it.landShow !== base.landShow} onReset={() => update(d => { d.landShow = base.landShow })} />
+                      <Named label={t("Onde cai (círculo do dano)")} changed={it.landShow !== base.landShow} onReset={() => update(d => { d.landShow = base.landShow })} />
                       <StepSelect value={it.landShow} onChange={e => { const v = e.target.value as PathShow; update(d => { d.landShow = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                        {PATH_SHOWS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        {PATH_SHOWS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
                       </StepSelect>
                     </label>
                   )}
-                  <label className="flex items-center justify-between gap-3"><Named label="Tiro instantâneo" changed={it.hitscan !== base.hitscan} onReset={() => update(d => { d.hitscan = base.hitscan })} /><input type="checkbox" checked={it.hitscan} onChange={e => { const v = e.target.checked; update(d => { d.hitscan = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3"><Named label="Atira durante o slide" changed={it.slideFire !== base.slideFire} onReset={() => update(d => { d.slideFire = base.slideFire })} /><input type="checkbox" checked={it.slideFire} onChange={e => { const v = e.target.checked; update(d => { d.slideFire = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label={t("Tiro instantâneo")} changed={it.hitscan !== base.hitscan} onReset={() => update(d => { d.hitscan = base.hitscan })} /><input type="checkbox" checked={it.hitscan} onChange={e => { const v = e.target.checked; update(d => { d.hitscan = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label={t("Atira durante o slide")} changed={it.slideFire !== base.slideFire} onReset={() => update(d => { d.slideFire = base.slideFire })} /><input type="checkbox" checked={it.slideFire} onChange={e => { const v = e.target.checked; update(d => { d.slideFire = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                 </>
               )}
-              {g === "Luneta" && <label className="flex items-center justify-between gap-3" title="Segurar Atirar mira pela luneta: a câmera avança e se afasta, a retícula vai mais longe e a lupa aparece na ponta da mira"><Named label="Mirar com luneta" changed={it.scope !== base.scope} onReset={() => update(d => { d.scope = base.scope })} /><input type="checkbox" checked={it.scope} onChange={e => { const v = e.target.checked; update(d => { d.scope = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
+              {g === "Luneta" && <label className="flex items-center justify-between gap-3" title={t("Segurar Atirar mira pela luneta: a câmera avança e se afasta, a retícula vai mais longe e a lupa aparece na ponta da mira")}><Named label={t("Mirar com luneta")} changed={it.scope !== base.scope} onReset={() => update(d => { d.scope = base.scope })} /><input type="checkbox" checked={it.scope} onChange={e => { const v = e.target.checked; update(d => { d.scope = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
               {g === "Munição" && (
                 <>
-                  <label className="flex items-center justify-between gap-3" title="Ao descarregar, recarrega tudo sozinho (no tempo da Recarga)"><Named label="Recarrega sozinho ao descarregar" changed={it.autoReload !== base.autoReload} onReset={() => update(d => { d.autoReload = base.autoReload })} /><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  {!it.meleeOnly && <label className="flex items-center justify-between gap-3"><Named label="Recarrega um tiro por vez" changed={it.shellReload !== base.shellReload} onReset={() => update(d => { d.shellReload = base.shellReload })} /><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
+                  <label className="flex items-center justify-between gap-3" title={t("Ao descarregar, recarrega tudo sozinho (no tempo da Recarga)")}><Named label={t("Recarrega sozinho ao descarregar")} changed={it.autoReload !== base.autoReload} onReset={() => update(d => { d.autoReload = base.autoReload })} /><input type="checkbox" checked={it.autoReload} onChange={e => { const v = e.target.checked; update(d => { d.autoReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  {!it.meleeOnly && <label className="flex items-center justify-between gap-3"><Named label={t("Recarrega um tiro por vez")} changed={it.shellReload !== base.shellReload} onReset={() => update(d => { d.shellReload = base.shellReload })} /><input type="checkbox" checked={it.shellReload} onChange={e => { const v = e.target.checked; update(d => { d.shellReload = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>}
                 </>
               )}
               {g === "Música" && (
                 <>
                   <label className="flex items-center justify-between gap-3">
-                    <Named label="Som" changed={it.voice !== base.voice} onReset={() => update(d => { d.voice = base.voice })} />
+                    <Named label={t("Som")} changed={it.voice !== base.voice} onReset={() => update(d => { d.voice = base.voice })} />
                     <StepSelect value={it.voice} onChange={e => { const v = e.target.value as VoiceId; update(d => { d.voice = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {(Object.keys(VOICE_LABELS) as VoiceId[]).filter(v => v !== "hangSlap" && v !== "harpHarmonic").map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
+                      {(Object.keys(VOICE_LABELS) as VoiceId[]).filter(v => v !== "hangSlap" && v !== "harpHarmonic").map(v => <option key={v} value={v}>{t(VOICE_LABELS[v])}</option>)}
                     </StepSelect>
                   </label>
                   <label className="flex items-center justify-between gap-3">
-                    <Named label="Notas de onde" changed={it.pitchSet !== base.pitchSet} onReset={() => update(d => { d.pitchSet = base.pitchSet })} />
+                    <Named label={t("Notas de onde")} changed={it.pitchSet !== base.pitchSet} onReset={() => update(d => { d.pitchSet = base.pitchSet })} />
                     <StepSelect value={it.pitchSet} onChange={e => { const v = e.target.value as ItemDef["pitchSet"]; update(d => { d.pitchSet = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      <option value="chord">Do acorde da hora</option>
-                      <option value="scale">Da escala da zona</option>
+                      <option value="chord">{t("Do acorde da hora")}</option>
+                      <option value="scale">{t("Da escala da zona")}</option>
                     </StepSelect>
                   </label>
-                  <div className="grid gap-field" title="A rodinha / troca rápida passa pelas escalas ligadas antes do próximo item">
-                    <span>Escalas</span>
+                  <div className="grid gap-field" title={t("A rodinha / troca rápida passa pelas escalas ligadas antes do próximo item")}>
+                    <span>{t("Escalas")}</span>
                     {INSTRUMENT_SCALE_IDS.map(id => (
                       <label key={id} className="flex items-center justify-between gap-3 pl-3">
-                        <span>{INSTRUMENT_SCALES[id].label}</span>
+                        <span>{t(INSTRUMENT_SCALES[id].label)}</span>
                         <input type="checkbox" checked={it.scales.includes(id)} disabled={it.scales.length === 1 && it.scales.includes(id)}
                           onChange={e => { const on = e.target.checked; update(d => { d.scales = INSTRUMENT_SCALE_IDS.filter(k => k === id ? on : d.scales.includes(k)) }) }}
                           className="h-5 w-5 accent-[var(--primary)]" />
                       </label>
                     ))}
                     {it.scales.includes("spiral") ? (
-                      <label className="flex items-center justify-between gap-3 pl-3" title="Desligado: de fora para dentro, do grave ao agudo">
-                        <span>Espiral descendente (agudo → grave)</span>
+                      <label className="flex items-center justify-between gap-3 pl-3" title={t("Desligado: de fora para dentro, do grave ao agudo")}>
+                        <span>{t("Espiral descendente (agudo → grave)")}</span>
                         <input type="checkbox" checked={it.spiralDescending} onChange={e => { const v = e.target.checked; update(d => { d.spiralDescending = v }) }} className="h-5 w-5 accent-[var(--primary)]" />
                       </label>
                     ) : null}
                   </div>
                   <label className="flex items-center justify-between gap-3">
-                    <Named label="Arpejador" changed={it.arp !== base.arp} onReset={() => update(d => { d.arp = base.arp })} />
+                    <Named label={t("Arpejador")} changed={it.arp !== base.arp} onReset={() => update(d => { d.arp = base.arp })} />
                     <StepSelect value={it.arp} onChange={e => { const v = e.target.value as Arp; update(d => { d.arp = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {ARPS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                      {ARPS.map(a => <option key={a.value} value={a.value}>{t(a.label)}</option>)}
                     </StepSelect>
                   </label>
-                  <label className="flex items-center justify-between gap-3"><Named label="No ritmo (quantizar)" changed={it.quantize !== base.quantize} onReset={() => update(d => { d.quantize = base.quantize })} /><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3"><Named label="Nota sustentada em feixe" changed={it.beam !== base.beam} onReset={() => update(d => { d.beam = base.beam })} /><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3" title="Segurando Atirar, cada nota da escala por onde a mira passa toca e fica flutuando em volta dela; ao soltar, sai a nota principal (mais rápida quanto mais longe a mira) e as do arpejo vão junto"><Named label="Arpejo ao arrastar a mira" changed={it.gliss !== base.gliss} onReset={() => update(d => { d.gliss = base.gliss })} /><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3" title="Giro da mira: tremer a mira dentro da faixa entorta a nota. Ao longo da corda: afastar a mira dela sobe a nota, aproximar desce (nas Cordas soltas, é o glissando da corda)">
-                    <Named label="Tremolo: reage a" changed={it.tremoloAxis !== base.tremoloAxis} onReset={() => update(d => { d.tremoloAxis = base.tremoloAxis })} />
+                  <label className="flex items-center justify-between gap-3"><Named label={t("No ritmo (quantizar)")} changed={it.quantize !== base.quantize} onReset={() => update(d => { d.quantize = base.quantize })} /><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3"><Named label={t("Nota sustentada em feixe")} changed={it.beam !== base.beam} onReset={() => update(d => { d.beam = base.beam })} /><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3" title={t("Segurando Atirar, cada nota da escala por onde a mira passa toca e fica flutuando em volta dela; ao soltar, sai a nota principal (mais rápida quanto mais longe a mira) e as do arpejo vão junto")}><Named label={t("Arpejo ao arrastar a mira")} changed={it.gliss !== base.gliss} onReset={() => update(d => { d.gliss = base.gliss })} /><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3" title={t("Giro da mira: tremer a mira dentro da faixa entorta a nota. Ao longo da corda: afastar a mira dela sobe a nota, aproximar desce (nas Cordas soltas, é o glissando da corda)")}>
+                    <Named label={t("Tremolo: reage a")} changed={it.tremoloAxis !== base.tremoloAxis} onReset={() => update(d => { d.tremoloAxis = base.tremoloAxis })} />
                     <StepSelect value={it.tremoloAxis} onChange={e => { const v = e.target.value as TremoloAxis; update(d => { d.tremoloAxis = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {TREMOLO_AXES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                      {TREMOLO_AXES.map(a => <option key={a.value} value={a.value}>{t(a.label)}</option>)}
                     </StepSelect>
                   </label>
                   {it.scales.includes("strings") && (
-                    <label className="flex items-center justify-between gap-3" title="Cordas soltas com duas mãos (os dois analógicos ou dois dedos): apertando as duas juntas, a corda da mão da frente soa este tempo depois da corda da mão de trás, no andamento da música">
-                      <Named label="Atraso entre as mãos" changed={it.handDelay !== base.handDelay} onReset={() => update(d => { d.handDelay = base.handDelay })} />
+                    <label className="flex items-center justify-between gap-3" title={t("Cordas soltas com duas mãos (os dois analógicos ou dois dedos): apertando as duas juntas, a corda da mão da frente soa este tempo depois da corda da mão de trás, no andamento da música")}>
+                      <Named label={t("Atraso entre as mãos")} changed={it.handDelay !== base.handDelay} onReset={() => update(d => { d.handDelay = base.handDelay })} />
                       <StepSelect value={it.handDelay} onChange={e => { const v = Number(e.target.value); update(d => { d.handDelay = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                        {HAND_DELAYS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                        {HAND_DELAYS.map(a => <option key={a.value} value={a.value}>{t(a.label)}</option>)}
                       </StepSelect>
                     </label>
                   )}
-                  <label className="flex items-center justify-between gap-3"><Named label="Sem trastes (tremolo livre)" changed={it.fretless !== base.fretless} onReset={() => update(d => { d.fretless = base.fretless })} /><input type="checkbox" checked={it.fretless} onChange={e => { const v = e.target.checked; update(d => { d.fretless = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <PatioDualRange label="Volume pela distância" min={0} max={1} step={0.01} lo={it.volMin} hi={it.volMax} snap={VOLUME_SNAP}
-                    display={it.volMin === it.volMax ? "sem variação" : `${Math.round(it.volMin * 100)}–${Math.round(it.volMax * 100)}%`}
+                  <label className="flex items-center justify-between gap-3"><Named label={t("Sem trastes (tremolo livre)")} changed={it.fretless !== base.fretless} onReset={() => update(d => { d.fretless = base.fretless })} /><input type="checkbox" checked={it.fretless} onChange={e => { const v = e.target.checked; update(d => { d.fretless = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <PatioDualRange label={t("Volume pela distância")} min={0} max={1} step={0.01} lo={it.volMin} hi={it.volMax} snap={VOLUME_SNAP}
+                    display={it.volMin === it.volMax ? t("sem variação") : `${Math.round(it.volMin * 100)}–${Math.round(it.volMax * 100)}%`}
                     changed={it.volMin !== DEFAULT_ITEMS[it.id].volMin || it.volMax !== DEFAULT_ITEMS[it.id].volMax}
-                    hint="Mira perto dela: volume mínimo; longe: máximo. Pontos juntos = sem variação"
+                    hint={t("Mira perto dela: volume mínimo; longe: máximo. Pontos juntos = sem variação")}
                     onChange={(lo, hi) => update(d => { d.volMin = lo; d.volMax = hi })}
                     onReset={() => update(d => { d.volMin = DEFAULT_ITEMS[d.id].volMin; d.volMax = DEFAULT_ITEMS[d.id].volMax })} />
                 </>
               )}
               {g === "Hangdrum" && (
-                <label className="flex items-center justify-between gap-3" title="O timbre do hangdrum; a batida entre as notas é sempre a mesma">
-                  <span>Tipo de som</span>
+                <label className="flex items-center justify-between gap-3" title={t("O timbre do hangdrum; a batida entre as notas é sempre a mesma")}>
+                  <span>{t("Tipo de som")}</span>
                   <StepSelect value={HANG_VOICES.includes(it.voice) ? it.voice : ""} onChange={e => { const v = e.target.value as VoiceId; update(d => { d.voice = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                    {!HANG_VOICES.includes(it.voice) && <option value="">{VOICE_LABELS[it.voice]}</option>}
-                    {HANG_VOICES.map(v => <option key={v} value={v}>{VOICE_LABELS[v]}</option>)}
+                    {!HANG_VOICES.includes(it.voice) && <option value="">{t(VOICE_LABELS[it.voice])}</option>}
+                    {HANG_VOICES.map(v => <option key={v} value={v}>{t(VOICE_LABELS[v])}</option>)}
                   </StepSelect>
                 </label>
               )}
               {g === "Efeito" && (
                 <>
                   <label className="flex items-center justify-between gap-3">
-                    <Named label="Curva da arrancada" changed={it.effectCurve !== base.effectCurve} onReset={() => update(d => { d.effectCurve = base.effectCurve })} />
+                    <Named label={t("Curva da arrancada")} changed={it.effectCurve !== base.effectCurve} onReset={() => update(d => { d.effectCurve = base.effectCurve })} />
                     <StepSelect value={it.effectCurve} onChange={e => { const v = e.target.value as AccelCurve; update(d => { d.effectCurve = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {ACCEL_CURVES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      {ACCEL_CURVES.map(c => <option key={c.value} value={c.value}>{t(c.label)}</option>)}
                     </StepSelect>
                   </label>
                   <label className="flex items-center justify-between gap-3">
-                    <Named label="Estado (visual)" changed={it.effectLook !== base.effectLook} onReset={() => update(d => { d.effectLook = base.effectLook })} />
+                    <Named label={t("Estado (visual)")} changed={it.effectLook !== base.effectLook} onReset={() => update(d => { d.effectLook = base.effectLook })} />
                     <StepSelect value={it.effectLook} onChange={e => { const v = e.target.value as EffectLook; update(d => { d.effectLook = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                      {EFFECT_LOOKS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                      {EFFECT_LOOKS.map(c => <option key={c.value} value={c.value}>{t(c.label)}</option>)}
                     </StepSelect>
                   </label>
                 </>
               )}
               {g === "Pontos" && (
-                <div role="radiogroup" aria-label="Classe" className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
+                <div role="radiogroup" aria-label={t("Classe")} className="grid grid-cols-3 overflow-hidden rounded-md border border-white/15">
                   {(["chi", "pig", "fox"] as const).map(c => (
                     <button key={c} type="button" role="radio" aria-checked={pcls === c} onClick={() => setPcls(c)}
                       className={cn("h-8", pcls === c ? "bg-primary/25 text-white" : "text-[#93a79a] hover:text-white")}>{CLASS_LABEL[c]}</button>
@@ -303,33 +305,33 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               )}
               {g === "Pontos" && (isStaff(it) ? <StaffPoseEditor id={sel} item={pit} onChange={updatePoints} /> : <ItemPointsEditor id={sel} item={pit} base={pbase} onChange={updatePoints} />)}
               {g === "Golpe forte" && (
-                <label className="flex items-center justify-between gap-3" title="O golpe forte é sempre o mesmo movimento; segure Atirar para carregar e solte para bater">
-                  <Named label="Movimento" changed={it.heavyKind !== base.heavyKind} onReset={() => update(d => { d.heavyKind = base.heavyKind })} />
+                <label className="flex items-center justify-between gap-3" title={t("O golpe forte é sempre o mesmo movimento; segure Atirar para carregar e solte para bater")}>
+                  <Named label={t("Movimento")} changed={it.heavyKind !== base.heavyKind} onReset={() => update(d => { d.heavyKind = base.heavyKind })} />
                   <StepSelect value={it.heavyKind} onChange={e => { const v = e.target.value as BlowKind; update(d => { d.heavyKind = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                    {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
                   </StepSelect>
                 </label>
               )}
               {g === "Especial" && (
-                <label className="flex items-center justify-between gap-3" title="Trovão: um raio cai do céu em quem levou o golpe. Raio: arcos longos entre todos">
-                  <Named label="Efeito" changed={it.specialKind !== base.specialKind} onReset={() => update(d => { d.specialKind = base.specialKind })} />
+                <label className="flex items-center justify-between gap-3" title={t("Trovão: um raio cai do céu em quem levou o golpe. Raio: arcos longos entre todos")}>
+                  <Named label={t("Efeito")} changed={it.specialKind !== base.specialKind} onReset={() => update(d => { d.specialKind = base.specialKind })} />
                   <StepSelect value={it.specialKind} onChange={e => { const v = e.target.value as SpecialKind; update(d => { d.specialKind = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">
-                    {SPECIAL_KINDS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {SPECIAL_KINDS.map(o => <option key={o.value} value={o.value}>{t(o.label)}</option>)}
                   </StepSelect>
                 </label>
               )}
               {g === "Combo" && (
                 <div className="grid gap-1.5">
-                  <span title="Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com direção, ângulo que cobre, duração, cooldown e alcance">Direção / Ângulo / Duração / Cooldown / Alcance</span>
+                  <span title={t("Golpes seguidos dentro da janela seguem esta ordem e depois recomeçam; cada um com direção, ângulo que cobre, duração, cooldown e alcance")}>{t("Direção / Ângulo / Duração / Cooldown / Alcance")}</span>
                   {it.combo.map((c, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-1">
-                      <StepSelect aria-label={`Golpe ${i + 1} do combo: direção`} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { ...c, kind: v as BlowKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as BlowKind) : c.arc } }) }} className={COMBO_KIND}>
-                        {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{i + 1}. {o.label}</option>)}
-                        {it.combo.length > 1 && <option value="" data-skip>remover</option>}
+                      <StepSelect aria-label={t("Golpe {n} do combo: direção", { n: i + 1 })} value={c.kind} onChange={e => { const v = e.target.value; update(d => { if (v === "") d.combo.splice(i, 1); else d.combo[i] = { ...c, kind: v as BlowKind, arc: v === "spin" ? 360 : c.kind === "spin" ? comboArc(d.combo, base, v as BlowKind) : c.arc } }) }} className={COMBO_KIND}>
+                        {SWING_KINDS.map(o => <option key={o.value} value={o.value}>{i + 1}. {t(o.label)}</option>)}
+                        {it.combo.length > 1 && <option value="" data-skip>{t("remover")}</option>}
                       </StepSelect>
-                      <AngleKnob label={`Golpe ${i + 1} do combo: ângulo`} value={c.arc} disabled={c.kind === "spin"} onChange={v => update(d => { d.combo[i] = { ...c, arc: v } })} />
+                      <AngleKnob label={t("Golpe {n} do combo: ângulo", { n: i + 1 })} value={c.arc} disabled={c.kind === "spin"} onChange={v => update(d => { d.combo[i] = { ...c, arc: v } })} />
                       {COMBO_LISTS.map(l => (
-                        <select key={l.key} aria-label={`Golpe ${i + 1} do combo: ${l.name}`} title={l.hint} value={c[l.key]} onChange={e => { const v = Number(e.target.value); update(d => { d.combo[i] = { ...c, [l.key]: v } }) }} className={COMBO_SELECT}>
+                        <select key={l.key} aria-label={t("Golpe {n} do combo: {name}", { n: i + 1, name: t(l.name) })} title={t(l.hint)} value={c[l.key]} onChange={e => { const v = Number(e.target.value); update(d => { d.combo[i] = { ...c, [l.key]: v } }) }} className={COMBO_SELECT}>
                           {(l.values.includes(c[l.key]) ? l.values : [...l.values, c[l.key]].sort((x, y) => x - y)).map(v => <option key={v} value={v}>{l.show(v)}</option>)}
                         </select>
                       ))}
@@ -337,10 +339,10 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   ))}
                   <div className="flex items-center gap-field">
                     {it.combo.length < COMBO_MAX && (
-                      <button type="button" aria-label="Adicionar golpe ao combo" title="Adicionar golpe" onClick={() => update(d => { d.combo.push(comboBlow("down", comboArc(d.combo, base, "down"))) })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
+                      <button type="button" aria-label={t("Adicionar golpe ao combo")} title={t("Adicionar golpe")} onClick={() => update(d => { d.combo.push(comboBlow("down", comboArc(d.combo, base, "down"))) })} className="h-8 w-8 rounded-md border border-white/20 hover:border-primary">+</button>
                     )}
                     {JSON.stringify(it.combo) !== JSON.stringify(base.combo) && (
-                      <button type="button" title="Volta os golpes do código" onClick={() => update(d => { d.combo = structuredClone(base.combo) })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">Padrão</button>
+                      <button type="button" title={t("Volta os golpes do código")} onClick={() => update(d => { d.combo = structuredClone(base.combo) })} className="h-8 rounded-md border border-white/20 px-2 hover:border-primary">{t("Padrão")}</button>
                     )}
                   </div>
                 </div>
@@ -348,34 +350,34 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
               {g === "Rebate" && (
                 <>
                   <ChainEditor chain={it.rebateChain} changed={JSON.stringify(it.rebateChain) !== JSON.stringify(base.rebateChain)} onChange={fn => update(d => fn(d.rebateChain))} onReset={() => update(d => { d.rebateChain = structuredClone(base.rebateChain) })} />
-                  <label className="flex items-center justify-between gap-3" title="Um tok de madeira junto com a nota, como uma rebatida de verdade"><Named label="Som de tacada (tok)" changed={it.rebateTok !== base.rebateTok} onReset={() => update(d => { d.rebateTok = base.rebateTok })} /><input type="checkbox" checked={it.rebateTok} onChange={e => { const v = e.target.checked; update(d => { d.rebateTok = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3" title={t("Um tok de madeira junto com a nota, como uma rebatida de verdade")}><Named label={t("Som de tacada (tok)")} changed={it.rebateTok !== base.rebateTok} onReset={() => update(d => { d.rebateTok = base.rebateTok })} /><input type="checkbox" checked={it.rebateTok} onChange={e => { const v = e.target.checked; update(d => { d.rebateTok = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                 </>
               )}
               {g === "Golpe" && sel !== "peck" && (
-                <label className="flex items-center justify-between gap-3" title="Desligado: um golpe apertado durante o anterior espera ele terminar"><Named label="Golpe novo interrompe o anterior" changed={it.meleeInterrupt !== base.meleeInterrupt} onReset={() => update(d => { d.meleeInterrupt = base.meleeInterrupt })} /><input type="checkbox" checked={it.meleeInterrupt} onChange={e => { const v = e.target.checked; update(d => { d.meleeInterrupt = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                <label className="flex items-center justify-between gap-3" title={t("Desligado: um golpe apertado durante o anterior espera ele terminar")}><Named label={t("Golpe novo interrompe o anterior")} changed={it.meleeInterrupt !== base.meleeInterrupt} onReset={() => update(d => { d.meleeInterrupt = base.meleeInterrupt })} /><input type="checkbox" checked={it.meleeInterrupt} onChange={e => { const v = e.target.checked; update(d => { d.meleeInterrupt = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
               {g === "Golpe" && sel !== "peck" && (
-                <label className="flex items-center justify-between gap-3" title="Clique direito do mouse num ponto fora do alcance: anda até lá e golpeia ao chegar"><Named label="Clique direito: point and click" changed={it.pointClick !== base.pointClick} onReset={() => update(d => { d.pointClick = base.pointClick })} /><input type="checkbox" checked={it.pointClick} onChange={e => { const v = e.target.checked; update(d => { d.pointClick = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                <label className="flex items-center justify-between gap-3" title={t("Clique direito do mouse num ponto fora do alcance: anda até lá e golpeia ao chegar")}><Named label={t("Clique direito: point and click")} changed={it.pointClick !== base.pointClick} onReset={() => update(d => { d.pointClick = base.pointClick })} /><input type="checkbox" checked={it.pointClick} onChange={e => { const v = e.target.checked; update(d => { d.pointClick = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
               {g === "Golpe" && sel !== "peck" && (
-                <label className="flex items-center justify-between gap-3" title="Golpe desenhado: a prévia durante o arraste mostra só os ângulos no raio do golpe, em vez de uma miniatura do desenho"><Named label="Simplificar raio do golpe" changed={it.drawnSimple !== base.drawnSimple} onReset={() => update(d => { d.drawnSimple = base.drawnSimple })} /><input type="checkbox" checked={it.drawnSimple} onChange={e => { const v = e.target.checked; update(d => { d.drawnSimple = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                <label className="flex items-center justify-between gap-3" title={t("Golpe desenhado: a prévia durante o arraste mostra só os ângulos no raio do golpe, em vez de uma miniatura do desenho")}><Named label={t("Simplificar raio do golpe")} changed={it.drawnSimple !== base.drawnSimple} onReset={() => update(d => { d.drawnSimple = base.drawnSimple })} /><input type="checkbox" checked={it.drawnSimple} onChange={e => { const v = e.target.checked; update(d => { d.drawnSimple = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
               )}
               {g === "Golpe" && sel !== "peck" && (
                 <label className="flex items-center justify-between gap-3">
-                  <span>Rastro: cor</span>
-                  <input type="color" aria-label="Cor do rastro" value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? "Nos instrumentos o rastro pega a cor da nota do acorde" : "Duplo clique volta a cor do código"} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
+                  <span>{t("Rastro: cor")}</span>
+                  <input type="color" aria-label={t("Cor do rastro")} value={it.trailColor} onChange={e => { const v = e.target.value; update(d => { d.trailColor = v }) }} onDoubleClick={() => update(d => { d.trailColor = base.trailColor })} title={it.instrument ? t("Nos instrumentos o rastro pega a cor da nota do acorde") : t("Duplo clique volta a cor do código")} className="h-8 w-14 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
                 </label>
               )}
               <div className="grid gap-field">
-              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Luneta" || it.scope) && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(BARE_BLOWS.includes(sel) && m.key === "durability") && !(sel === "piu" && !PIU_KEYS.includes(m.key)) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(m.key === "aimAssist" && it.scales.every(sc => sc === "drums")) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: "Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui" } : it.deck && m.key === "returnCount" ? { ...m, label: "Cartas fora ao mesmo tempo", hint: "Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)" } : BARE_BLOWS.includes(sel) && (m.key === "meleeRange" || m.key === "heavyRange") ? { ...m, label: sel === "chainBlow" ? "Alcance da corrente" : "Alcance do rabo" } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? "Alcance da bicada" : m.key === "meleeTime" ? "Duração da bicada" : m.label, hint: m.key === "meleeTime" ? "Avanço rápido e retorno do pescoço" : m.hint } : m)].map(m => {
+              {[...(g === "Efeito" ? [DOSES] : []), ...ITEM_PARAM_META.filter(m => m.group === g && (g !== "Luneta" || it.scope) && (g !== "Pontos" || STAFF_POINTS.includes(m.key) === isStaff(it)) && (m.key !== "drawLen" || (it.archery && it.fireMode === "charge")) && !(sel === "peck" && (m.key === "durability" || m.key.startsWith("trail"))) && !(BARE_BLOWS.includes(sel) && m.key === "durability") && !(sel === "piu" && !PIU_KEYS.includes(m.key)) && !(sel !== "peck" && m.key === "meleeArc") && !(m.key === "hangNotes2" && it.hangRows < 2) && !(m.key === "aimAssist" && it.scales.every(sc => sc === "drums")) && !(it.returnThrow && HEAVY_SHOCK.includes(m.key)) && !(it.deck && DECK_UNUSED.includes(m.key))).map(m => it.deck && m.key === "returnRange" ? { ...m, hint: msg("Até onde uma carta vai; com a mira mais longe do que isto, ela para aqui") } : it.deck && m.key === "returnCount" ? { ...m, label: msg("Cartas fora ao mesmo tempo"), hint: msg("Quantas cartas do baralho podem estar no cenário de uma vez (o baralho tem 14)") } : BARE_BLOWS.includes(sel) && (m.key === "meleeRange" || m.key === "heavyRange") ? { ...m, label: sel === "chainBlow" ? msg("Alcance da corrente") : msg("Alcance do rabo") } : sel === "peck" ? { ...m, label: m.key === "meleeRange" ? msg("Alcance da bicada") : m.key === "meleeTime" ? msg("Duração da bicada") : m.label, hint: m.key === "meleeTime" ? msg("Avanço rápido e retorno do pescoço") : m.hint } : m)].map(m => {
                 const pts = g === "Pontos", src = pts ? pit : it, ref = pts ? pbase : base, up = pts ? updatePoints : update
                 const v = src[m.key] as number, changed = v !== ref[m.key]
-                const label = m === DOSES ? m.label : (it.instrument || sel === "piu") && m.key === "damage" ? "Harmonia por nota" : it.instrument && m.key === "explodeDamage" ? "Harmonia no estouro" : it.beam && m.key === "mag" ? "Arco (segundos)" : it.meleeOnly && m.key === "mag" ? "Golpes seguidos" : m.label
+                const label = m === DOSES ? m.label : (it.instrument || sel === "piu") && m.key === "damage" ? msg("Harmonia por nota") : it.instrument && m.key === "explodeDamage" ? msg("Harmonia no estouro") : it.beam && m.key === "mag" ? msg("Arco (segundos)") : it.meleeOnly && m.key === "mag" ? msg("Golpes seguidos") : m.label
                 // the taco's ammo is blows; 0 in "breaks after" and in the gradual reload are words, not numbers
-                const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? "golpes" : m.unit
-                const display = m.key === "durability" && v === 0 ? "0 (nunca quebra)" : m.key === "refillTime" && v === 0 ? "0 (desligada)" : `${v}${unit ? ` ${unit}` : ""}`
-                const range = <PatioRange key={m.key} label={label} name={m.label} min={m.min} max={m.max} step={m.step} value={v}
-                  display={display} changed={changed} hint={m.hint}
+                const unit = it.meleeOnly && m !== DOSES && (m.key === "mag" || m.key === "refillAmount") ? msg("golpes") : m.unit
+                const display = m.key === "durability" && v === 0 ? t("0 (nunca quebra)") : m.key === "refillTime" && v === 0 ? t("0 (desligada)") : `${v}${unit ? ` ${t(unit)}` : ""}`
+                const range = <PatioRange key={m.key} label={t(label)} name={t(m.label)} min={m.min} max={m.max} step={m.step} value={v}
+                  display={display} changed={changed} hint={m.hint ? t(m.hint) : m.hint}
                   onChange={n => up(d => { (d as Record<string, unknown>)[m.key] = n })}
                   onReset={() => up(d => { (d as Record<string, unknown>)[m.key] = ref[m.key] })} />
                 // under the combo window: its timer bar, listening to the blows only while this section is open

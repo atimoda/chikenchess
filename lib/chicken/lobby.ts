@@ -5,6 +5,7 @@
 // side (joining public lobbies, invites, other players) is a stub until the Supabase project is back: the store only
 // ever holds this computer's players for now.
 import type { ChickenLook } from './look-art'
+import { t as tr } from '../i18n'
 import { sortDevices, isPadDevice, type InputDeviceId } from './input-devices'
 
 // an online lobby holds 13 browsers; each computer has at most 4 local players (in Local mode too)
@@ -132,7 +133,7 @@ export function spareDevice(s: LobbyState): InputDeviceId | null {
 export type LobbyResult = { ok: true; state: LobbyState; player?: LobbyPlayer } | { ok: false; state: LobbyState; reason: string }
 
 export function addLocalPlayer(s: LobbyState, now = Date.now(), look?: ChickenLook): LobbyResult {
-  if (localPlayers(s).length >= LOCAL_MAX) return { ok: false, state: s, reason: `Até ${LOCAL_MAX} players locais neste computador.` }
+  if (localPlayers(s).length >= LOCAL_MAX) return { ok: false, state: s, reason: tr('Até {max} players locais neste computador.', { max: LOCAL_MAX }) }
   const n = localPlayers(s).length + 1
   const used = new Set(s.players.map(p => p.name))
   let k = n
@@ -148,11 +149,11 @@ export const isProtectedPlayer = (s: LobbyState, p: LobbyPlayer) => !!p.userId &
 
 // Only the owner removes players (never themselves, nor the Pátio's creator or padrinho); a local player's devices go back to the first local player.
 export function removePlayer(s: LobbyState, actorId: string, targetId: string): LobbyResult {
-  if (!isOwner(s, actorId)) return { ok: false, state: s, reason: 'Só o dono do lobby remove players.' }
-  if (actorId === targetId) return { ok: false, state: s, reason: 'O dono não remove a si mesmo.' }
+  if (!isOwner(s, actorId)) return { ok: false, state: s, reason: tr('Só o dono do lobby remove players.') }
+  if (actorId === targetId) return { ok: false, state: s, reason: tr('O dono não remove a si mesmo.') }
   const target = s.players.find(p => p.id === targetId)
-  if (!target) return { ok: false, state: s, reason: 'Player não está no lobby.' }
-  if (isProtectedPlayer(s, target)) return { ok: false, state: s, reason: 'O criador e o padrinho do Pátio não podem ser removidos.' }
+  if (!target) return { ok: false, state: s, reason: tr('Player não está no lobby.') }
+  if (isProtectedPlayer(s, target)) return { ok: false, state: s, reason: tr('O criador e o padrinho do Pátio não podem ser removidos.') }
   let players = s.players.filter(p => p.id !== targetId)
   if (target.kind === 'local' && target.inputs.length) {
     const p1 = players.find(p => p.kind === 'local')
@@ -172,7 +173,7 @@ export function leavePlayer(s: LobbyState, playerId: string): LobbyState {
 
 // A player in the lobby makes it public (listed, and online again) or private. Only the owner decides.
 export function setPublic(s: LobbyState, actorId: string, on: boolean): LobbyResult {
-  if (!isOwner(s, actorId)) return { ok: false, state: s, reason: 'Só o dono do lobby abre ou fecha o lobby.' }
+  if (!isOwner(s, actorId)) return { ok: false, state: s, reason: tr('Só o dono do lobby abre ou fecha o lobby.') }
   return { ok: true, state: { ...s, visibility: on ? 'public' : 'private', status: on ? 'online' : s.status ?? 'online' } }
 }
 
@@ -188,9 +189,9 @@ export function moveLocalsTo(s: LobbyState, target: { id: string; createdAt: num
 
 // Only the owner changes who may edit; the owner always may.
 export function setEditor(s: LobbyState, actorId: string, targetId: string, on: boolean): LobbyResult {
-  if (!isOwner(s, actorId)) return { ok: false, state: s, reason: 'Só o dono do lobby muda quem edita.' }
+  if (!isOwner(s, actorId)) return { ok: false, state: s, reason: tr('Só o dono do lobby muda quem edita.') }
   if (targetId === s.ownerId) return { ok: true, state: s }
-  if (!s.players.some(p => p.id === targetId)) return { ok: false, state: s, reason: 'Player não está no lobby.' }
+  if (!s.players.some(p => p.id === targetId)) return { ok: false, state: s, reason: tr('Player não está no lobby.') }
   const editors = on ? [...new Set([...s.editors, targetId])] : s.editors.filter(id => id !== targetId)
   return { ok: true, state: { ...s, editors } }
 }
@@ -198,7 +199,7 @@ export function setEditor(s: LobbyState, actorId: string, targetId: string, on: 
 // Gives a device to a local player (taking it from whoever had it). Online players' devices are not ours to change.
 export function assignDevice(s: LobbyState, device: InputDeviceId, playerId: string): LobbyResult {
   const target = s.players.find(p => p.id === playerId)
-  if (!target || target.kind !== 'local') return { ok: false, state: s, reason: 'Só players locais recebem inputs deste computador.' }
+  if (!target || target.kind !== 'local') return { ok: false, state: s, reason: tr('Só players locais recebem inputs deste computador.') }
   const players = s.players.map(p => {
     if (p.kind !== 'local') return p
     const rest = p.inputs.filter(d => d !== device)

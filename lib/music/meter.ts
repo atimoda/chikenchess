@@ -1,5 +1,7 @@
 /** One cycle is one notated bar. Odd eighth-note meters count equal eighths;
  * their unequal dance groups are accents, not equal-duration metronome beats. */
+import { t } from '@/lib/i18n'
+
 export const METER_IDS = ['4/4', '2/4', '3/4', '6/8', '9/8', '12/8', '2/2', '5/4', '5/8', '7/4', '7/8'] as const
 export const METERS = {
   '4/4': { beatsPerBar: 4, subdivisions: 2, unit: 'quarter', groups: [1, 1, 1, 1] },
@@ -23,7 +25,7 @@ export function groupStarts(meter: Meter = '4/4'): number[] {
   return METERS[meter].groups.map(length => { const start = offset; offset += length; return start })
 }
 export function meterLabel(meter: Meter = '4/4') {
-  const unit = { quarter: 'quarter note', 'dotted-quarter': 'dotted quarter', half: 'half note', eighth: 'eighth note' }[beatUnit(meter)]
+  const unit = t({ quarter: 'quarter note', 'dotted-quarter': 'dotted quarter', half: 'half note', eighth: 'eighth note' }[beatUnit(meter)])
   const groups = METERS[meter].groups
   return `${meter} · BPM = ${unit}${groups.some(n => n > 1) ? ` · ${groups.join('+')}` : ''}`
 }

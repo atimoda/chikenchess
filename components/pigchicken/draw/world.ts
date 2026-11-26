@@ -10,6 +10,7 @@ import { WORLD_GROUND_Y } from "@/lib/pigchicken/world"
 import { RACK_ITEM_START, rackCountdown } from "@/lib/pigchicken/racks"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Temple } from "@/lib/pigchicken/temple"
+import { t as tr } from "@/lib/i18n"
 import type { NoteStages } from "@/lib/pigchicken/note-stages"
 import { drawJukebox, drawVitrola } from "@/components/pigchicken/note-stage-draw"
 import { coverCanvas } from "@/components/pigchicken/song-cover-draw"
@@ -41,8 +42,8 @@ const MARK_GREY = "#9aa0a8"
 export function markHover(combat: Combat, key: string) {
   const at = (p: Pickup | null, c: string, t: string) => { if (p && !pickupMarks.has(p)) pickupMarks.set(p, { c, t: key ? `${key}: ${t}` : t }) }
   // blue: a new item, taken; grey: something of hers changes places (swapped out with no room, or hers equipped)
-  at(combat.hover, combat.hoverSwaps ? MARK_GREY : "#4cc9f0", combat.hoverSwaps ? "trocar" : "pegar")
-  at(combat.hoverOwned, MARK_GREY, "equipar")
+  at(combat.hover, combat.hoverSwaps ? MARK_GREY : "#4cc9f0", combat.hoverSwaps ? tr("trocar") : tr("pegar"))
+  at(combat.hoverOwned, MARK_GREY, tr("equipar"))
   const near = combat.chestNear
   if (near && !chestMarks.has(near.chest)) chestMarks.set(near.chest, { key, block: near.block, souls: combat.capturedSouls })
   const seat = combat.seatNear
@@ -73,7 +74,7 @@ export function drawWorld(ctx: Ctx, combat: Combat, camX: number, view: ViewRect
     if (!visible(r.x, groundY)) return
     ctx.fillStyle = "#5b4630"; ctx.fillRect(x - 34, groundY - 52, 6, 52); ctx.fillRect(x + 28, groundY - 52, 6, 52)
     ctx.fillStyle = "#7a5f40"; ctx.fillRect(x - 38, groundY - 56, 76, 7)
-    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(r.label, x, groundY - 62)
+    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.font = "10px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillText(tr(combat.item(r.item).name).toUpperCase(), x, groundY - 62)
     // waiting to put its item back: the time left, where the item appears
     const left = rackCountdown(r)
     if (left) { ctx.textBaseline = "top"; ctx.fillText(left, x, groundY - RACK_ITEM_START); ctx.textBaseline = "alphabetic" }

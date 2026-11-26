@@ -5,6 +5,8 @@
 // (HangScale.layout); `fan` is that layer in the world (combat's setScaleFan). A note that travels chases the ball
 // (it moves with her) and starts spinning once it is inside the orbit; one that does not travel is born on it.
 
+import { t } from '../i18n'
+
 // "Giro na bola" (the Hangdrum scale's hangSpin, lib/pigchicken/scale-params.ts): 0 = off (the note goes straight, as always), 1..60 s, then the two last stops
 export const SPIN_MAX_S = 60
 export const SPIN_NOTE = 61 // as long as the item's Duração da nota
@@ -12,8 +14,8 @@ export const SPIN_FOREVER = 62 // ∞: until it hits, is cut or she leaves
 // how the slider writes its value
 export function spinLabel(v: number): string {
   const s = cleanSpin(v)
-  if (s === 0) return 'Desligado'
-  if (s === SPIN_NOTE) return 'Duração da nota'
+  if (s === 0) return t('Desligado')
+  if (s === SPIN_NOTE) return t('Duração da nota')
   if (s === SPIN_FOREVER) return '∞'
   return `${s} s`
 }

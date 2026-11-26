@@ -5,6 +5,7 @@ import { CAMPAIGNS, citiesInCampaign } from '@/lib/campaigns'
 import { getCityEras, type CityData } from '@/lib/cities-data'
 import { cityFlagColor } from '@/lib/globe-flags'
 import styles from './campaign-city-list.module.css'
+import { useT } from '@/lib/i18n'
 
 // Delay between rows when the list appears or vanishes; matches the CSS.
 const ROW_STEP_MS = 18
@@ -20,6 +21,7 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
   /** Entering a city: rows vanish one by one, first to last. */
   leaving?: boolean
 }) {
+  const t = useT()
   const viewport = useRef<HTMLDivElement>(null)
   const drag = useRef<{ id: number; y: number; scroll: number; moved: boolean } | null>(null)
   const suppressClick = useRef(false)
@@ -116,13 +118,13 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
     window.setTimeout(() => { suppressClick.current = false }, 0)
   }
 
-  return <aside className="absolute left-3 md:left-6 top-[6.25rem] md:top-24 bottom-0 z-40 flex w-[min(30rem,calc(100vw-1rem))] flex-col pointer-events-none pl-2" aria-label="Campanhas e cidades">
-    <button type="button" className="pointer-events-auto md:hidden mb-2 -ml-2 self-start rounded-md border border-white/20 bg-[#10131c]/90 px-3 py-2 text-left text-[13px] text-white" onClick={() => { if (collapsing) return; if (expanded) setCollapsing(true); else setExpanded(true) }} aria-expanded={expanded && !collapsing}>Campanhas {expanded && !collapsing ? '−' : '+'}</button>
+  return <aside className="absolute left-3 md:left-6 top-[6.25rem] md:top-24 bottom-0 z-40 flex w-[min(30rem,calc(100vw-1rem))] flex-col pointer-events-none pl-2" aria-label={t("Campanhas e cidades")}>
+    <button type="button" className="pointer-events-auto md:hidden mb-2 -ml-2 self-start rounded-md border border-white/20 bg-[#10131c]/90 px-3 py-2 text-left text-[13px] text-white" onClick={() => { if (collapsing) return; if (expanded) setCollapsing(true); else setExpanded(true) }} aria-expanded={expanded && !collapsing}>{t('Campanhas')} {expanded && !collapsing ? '−' : '+'}</button>
     <div ref={viewport} className={`${expanded ? 'block' : 'hidden md:block'} ${styles.viewport} ${hidingRows ? styles.leaving : ''} pointer-events-none min-h-0 flex-1 overflow-y-auto overscroll-contain pb-24 text-[13px] select-none`}
       onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd} onPointerLeave={() => onFocus(null)}
       onClickCapture={event => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation() } }}>
       {CAMPAIGNS.map((campaign, index) => <section key={campaign.id} className={index === 0 ? undefined : 'mt-5 sm:mt-[22px] md:mt-[26px]'}>
-        <h2 style={{ fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums', '--row': rowIndex.get(campaign.id) } as CSSProperties} className={`${styles.row} m-0 text-[14.5px] font-semibold uppercase leading-5 tracking-[0.025em] text-[#b6c9bb]/50 sm:text-base sm:leading-[22px] md:text-[18.5px] md:leading-[26px]`}>{campaign.name}</h2>
+        <h2 style={{ fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums', '--row': rowIndex.get(campaign.id) } as CSSProperties} className={`${styles.row} m-0 text-[14.5px] font-semibold uppercase leading-5 tracking-[0.025em] text-[#b6c9bb]/50 sm:text-base sm:leading-[22px] md:text-[18.5px] md:leading-[26px]`}>{t(campaign.name)}</h2>
         <ul className="space-y-0">
           {citiesInCampaign(cities, campaign.id).map(city => {
             const conquered = getCityEras(city).some(era => conqueredCities.includes(era.id))
@@ -133,7 +135,7 @@ export function CampaignCityList({ cities, conqueredCities = [], openCityIds = [
                 onClick={() => { if (!suppressClick.current) { onFocus(city.id); onOpen(city) } }}>
                 <span className="pointer-events-auto shrink-0">{city.year} {city.name}</span>
                 {active && <span className={styles.genre}>{city.genre}</span>}
-                {conquered && <span className={`${styles.flagIcon} ${active ? styles.flagIconActive : ''}`} style={{ '--flag-color': cityFlagColor(city.color) } as CSSProperties} aria-label="Conquistada" title="Conquistada"><svg viewBox="0 0 16 16" aria-hidden="true"><path className={styles.flagPole} d="M3.2 14V2.2"/><path className={styles.flagCloth} d="M3.7 2.7c3-1.6 5 1.1 9-.4v5.2c-3.8 1.5-6-1.1-9 .4z"/></svg></span>}
+                {conquered && <span className={`${styles.flagIcon} ${active ? styles.flagIconActive : ''}`} style={{ '--flag-color': cityFlagColor(city.color) } as CSSProperties} aria-label={t("Conquistada")} title={t("Conquistada")}><svg viewBox="0 0 16 16" aria-hidden="true"><path className={styles.flagPole} d="M3.2 14V2.2"/><path className={styles.flagCloth} d="M3.7 2.7c3-1.6 5 1.1 9-.4v5.2c-3.8 1.5-6-1.1-9 .4z"/></svg></span>}
               </button>
             </li>
           })}

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, Crown, Link2, Plus, UserPlus, Users, X } from "lucide-react"
 import { createChickenEngine, type ChickenEngine } from "@/lib/chicken/engine"
 import { LOOK_ART, type ChickenLook } from "@/lib/chicken/look-art"
-import { connectedPads, inputDeviceLabel, sortDevices, type InputDeviceId } from "@/lib/chicken/input-devices"
+import { connectedPads, inputDeviceLabel, inputDeviceText, sortDevices, type InputDeviceId } from "@/lib/chicken/input-devices"
 import {
   LOCAL_MAX, canEditPatio, isProtectedPlayer, firstLocal, isOwner, localPlayers, neighbourLobby,
   type LobbyMode, type LobbyPlayer, type LobbyState,
@@ -15,6 +15,7 @@ import { ONLINE_OFF, listNetLobbies, type NetLobby } from "@/lib/chicken/online-
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { ChickenHeadIcon } from "./chicken-vestiario"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 
 // ---------- the input devices this computer has ----------
 // Keyboards can not be detected: a computer with a fine pointer (or one that typed a key) has both of them.
@@ -101,25 +102,26 @@ export function LocalChickens({ players, lead, groundHeight, engines }: {
 // two buttons of their own go back / forward through the public lobbies on the game server, in the order they opened;
 // going to another one leaves this lobby, and every local player of this computer goes along (onSwitch)
 export function LobbySwitcher({ mode, roomId, players, open, onToggle, onStatus, onSwitch }: { mode: LobbyMode; roomId: string | null; players: number; open: boolean; onToggle: () => void; onStatus: (text: string) => void; onSwitch: (lobby: NetLobby) => void }) {
+  const t = useT()
   const go = async (dir: -1 | 1) => {
-    if (mode !== "online") { onStatus("O passador de lobby só funciona no modo online (painel de players)."); return }
+    if (mode !== "online") { onStatus(t("O passador de lobby só funciona no modo online (painel de players).")); return }
     const list = await listNetLobbies()
     const pick = neighbourLobby(list.map(l => ({ id: l.roomId, createdAt: Date.parse(l.createdAt) || 0, players: l.players })), roomId, dir)
     const next = pick && pick.id !== roomId ? list.find(l => l.roomId === pick.id) ?? null : null
-    if (!next) { onStatus(list.length ? "Nenhum outro lobby público aberto." : ONLINE_OFF); return }
-    onStatus(`Indo para o lobby ${next.name ?? (next.patioId === "default" ? "do Pátio padrão" : "")} (${next.players}/${next.max})…`)
+    if (!next) { onStatus(list.length ? t("Nenhum outro lobby público aberto.") : t(ONLINE_OFF)); return }
+    onStatus(t("Indo para o lobby {name} ({players}/{max})…", { name: next.name ?? (next.patioId === "default" ? t("do Pátio padrão") : ""), players: next.players, max: next.max }))
     onSwitch(next)
   }
   const online = mode === "online"
   const arrow = cn("hidden h-9 w-9 shrink-0 items-center justify-center rounded-md border text-[#b9c7b9] transition-colors hover:border-primary hover:text-white sm:inline-flex", online ? "border-white/15" : "border-white/10 opacity-60")
-  const hint = online ? "lobbies públicos em ordem de abertura" : "só no modo online"
+  const hint = online ? t("lobbies públicos em ordem de abertura") : t("só no modo online")
   return (
     <>
-      <button type="button" aria-label="Lobby anterior" title={`Lobby anterior: ${hint}`} onClick={() => void go(-1)} className={arrow}><ChevronLeft className="h-4 w-4" /></button>
-      <button type="button" aria-label="Players e lobby" aria-pressed={open} title="Players e lobby" onClick={onToggle} className={cn("inline-flex h-9 shrink-0 items-center rounded-md border px-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors hover:border-primary hover:text-white", open ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
-        {online ? "Lobby" : "Local"} ({players})
+      <button type="button" aria-label={t("Lobby anterior")} title={t("Lobby anterior: {hint}", { hint })} onClick={() => void go(-1)} className={arrow}><ChevronLeft className="h-4 w-4" /></button>
+      <button type="button" aria-label={t("Players e lobby")} aria-pressed={open} title={t("Players e lobby")} onClick={onToggle} className={cn("inline-flex h-9 shrink-0 items-center rounded-md border px-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors hover:border-primary hover:text-white", open ? "border-primary text-white" : "border-white/15 text-[#b9c7b9]")}>
+        {online ? t("Lobby") : t("Local")} ({players})
       </button>
-      <button type="button" aria-label="Próximo lobby" title={`Próximo lobby: ${hint}`} onClick={() => void go(1)} className={arrow}><ChevronRight className="h-4 w-4" /></button>
+      <button type="button" aria-label={t("Próximo lobby")} title={t("Próximo lobby: {hint}", { hint })} onClick={() => void go(1)} className={arrow}><ChevronRight className="h-4 w-4" /></button>
     </>
   )
 }
@@ -152,6 +154,7 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
   onRename: (playerId: string, name: string) => void
   onAvatar: (playerId: string) => void
 }) {
+  const t = useT()
   const me = firstLocal(lobby)
   const iOwn = isOwner(lobby, me?.id)
   const held = lobby.players.flatMap(p => (p.kind === "local" ? p.inputs : []))
@@ -164,45 +167,45 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(link)
-      setNote(lobby.mode === "online" ? "Link de convite copiado." : "Link de convite copiado. Quem abrir entra quando o modo online voltar.")
+      setNote(lobby.mode === "online" ? t("Link de convite copiado.") : t("Link de convite copiado. Quem abrir entra quando o modo online voltar."))
     } catch {
-      setNote(`Não deu para copiar. O link é: ${link}`)
+      setNote(t("Não deu para copiar. O link é: {link}", { link }))
     }
   }
 
   return (
     <FloatingPanel
       id="patio-players"
-      aria-label="Players e lobby"
+      aria-label={t("Players e lobby")}
       initial={(vw, vh) => { const w = Math.min(720, vw - 24); return { x: Math.max(12, (vw - w) / 2), y: 64, w, h: Math.min(460, vh - 80) } }}
       minW={300}
       className="rounded-xl border border-primary/30 bg-[#101713] font-mono text-xs shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
     >
       <div data-drag-handle className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2.5">
-        <h2 className="text-sm text-white">Players</h2>
+        <h2 className="text-sm text-white">{t("Players")}</h2>
         <ModeSwitch mode={lobby.mode} onChange={onMode} />
         {seats && (
-          <label className={cn("flex items-center gap-1.5 text-[#b9c7b9]", !iOwn && "opacity-50")} title={iOwn ? "Público: aparece para todos. Privado: só por convite." : "Só o dono do lobby abre ou fecha"}>
+          <label className={cn("flex items-center gap-1.5 text-[#b9c7b9]", !iOwn && "opacity-50")} title={iOwn ? t("Público: aparece para todos. Privado: só por convite.") : t("Só o dono do lobby abre ou fecha")}>
             <input type="checkbox" checked={lobby.visibility !== "private"} disabled={!iOwn} onChange={e => onPublic(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
-            Público
+            {t("Público")}
           </label>
         )}
-        <span className="ml-auto text-[#93a79a]" title={seats ? "Navegadores no lobby" : "Players locais neste computador"}>{seats ? `${seats.used}/${seats.max}` : `${localPlayers(lobby).length}/${LOCAL_MAX}`}</span>
-        <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+        <span className="ml-auto text-[#93a79a]" title={seats ? t("Navegadores no lobby") : t("Players locais neste computador")}>{seats ? `${seats.used}/${seats.max}` : `${localPlayers(lobby).length}/${LOCAL_MAX}`}</span>
+        <button type="button" aria-label={t("Fechar")} onClick={onClose} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
-      {connecting && <p className="shrink-0 border-b border-amber-300/20 bg-amber-300/5 px-4 py-2 text-amber-200">Conectando ao modo online…</p>}
+      {connecting && <p className="shrink-0 border-b border-amber-300/20 bg-amber-300/5 px-4 py-2 text-amber-200">{t("Conectando ao modo online…")}</p>}
 
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full border-separate border-spacing-0 text-left">
           <thead className="sticky top-0 z-10 bg-[#101713] text-[10px] uppercase tracking-wider text-[#93a79a]">
             <tr>
               <th className="w-12 px-3 py-2" />
-              <th className="px-2 py-2">Player</th>
+              <th className="px-2 py-2">{t("Player")}</th>
               {columns.map(d => (
-                <th key={d} className={cn("px-2 py-2 text-center leading-tight", !present.has(d) && "opacity-50")} title={present.has(d) ? undefined : "Desconectado"}>{inputDeviceLabel(d)}</th>
+                <th key={d} className={cn("px-2 py-2 text-center leading-tight", !present.has(d) && "opacity-50")} title={present.has(d) ? undefined : t("Desconectado")}>{inputDeviceText(d)}</th>
               ))}
-              <th className="px-2 py-2 text-center leading-tight" title="Quem pode editar o Pátio quando o Modo Edição está ligado">Edit mode</th>
-              <th className="whitespace-nowrap px-3 py-2 text-center">Remove</th>
+              <th className="px-2 py-2 text-center leading-tight" title={t("Quem pode editar o Pátio quando o Modo Edição está ligado")}>{t("Edit mode")}</th>
+              <th className="whitespace-nowrap px-3 py-2 text-center">{t("Remove")}</th>
             </tr>
           </thead>
           <tbody>
@@ -211,16 +214,16 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
               return (
                 <tr key={p.id} className="border-t border-white/5 hover:bg-white/[0.03]">
                   <td className="px-3 py-1.5">
-                    <button type="button" onClick={() => onAvatar(p.id)} disabled={!local} title={local ? "Vestiário" : undefined} aria-label={`Vestiário de ${nameOf(p)}`} style={{ borderColor: p.color }} className="relative block h-10 w-10 overflow-hidden rounded-full border-[3px] border-white/20 bg-[#0b110e] disabled:cursor-default">
+                    <button type="button" onClick={() => onAvatar(p.id)} disabled={!local} title={local ? t("Vestiário") : undefined} aria-label={t("Vestiário de {name}", { name: nameOf(p) })} style={{ borderColor: p.color }} className="relative block h-10 w-10 overflow-hidden rounded-full border-[3px] border-white/20 bg-[#0b110e] disabled:cursor-default">
                       {p.id === me?.id ? <ChickenHeadIcon look={meLook} /> : p.look ? <ChickenHeadIcon look={p.look} /> : <Users className="m-auto h-5 w-5 text-[#93a79a]" />}
                     </button>
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex items-center gap-1.5">
-                      {owner && <span title="Dono do lobby"><Crown className="h-3.5 w-3.5 shrink-0 text-amber-300" /></span>}
+                      {owner && <span title={t("Dono do lobby")}><Crown className="h-3.5 w-3.5 shrink-0 text-amber-300" /></span>}
                       {local && p.id !== me?.id ? (
                         <input
-                          aria-label="Nome do player"
+                          aria-label={t("Nome do player")}
                           value={p.name}
                           maxLength={20}
                           onChange={e => onRename(p.id, e.target.value)}
@@ -229,7 +232,7 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
                       ) : (
                         <span className="truncate text-white">{nameOf(p)}</span>
                       )}
-                      {!local && <span className="text-[10px] text-[#93a79a]">{p.kind === "bot" ? "bot" : "online"}</span>}
+                      {!local && <span className="text-[10px] text-[#93a79a]">{p.kind === "bot" ? t("bot") : t("online")}</span>}
                     </div>
                   </td>
                   {columns.map(d => (
@@ -238,7 +241,7 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
                         <input
                           type="radio"
                           name={`device-${d}`}
-                          aria-label={`${inputDeviceLabel(d)} para ${nameOf(p)}`}
+                          aria-label={t("{device} para {name}", { device: inputDeviceText(d), name: nameOf(p) })}
                           checked={p.inputs.includes(d)}
                           onChange={() => onAssign(d, p.id)}
                           className="h-4 w-4 cursor-pointer accent-[var(--primary)]"
@@ -256,13 +259,13 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
                       checked={canEditPatio(lobby, p.id)}
                       disabled={!iOwn || owner || p.kind === "bot"}
                       onChange={e => onEditor(p.id, e.target.checked)}
-                      title={iOwn ? undefined : "Só o dono do lobby muda quem edita"}
+                      title={iOwn ? undefined : t("Só o dono do lobby muda quem edita")}
                       className="h-4 w-4 cursor-pointer accent-[var(--primary)] disabled:cursor-default"
                     />
                   </td>
                   <td className="px-3 py-1.5 text-center">
                     {iOwn && !owner && !isProtectedPlayer(lobby, p) && (
-                      <button type="button" aria-label={`Remover ${nameOf(p)}`} onClick={() => onRemove(p.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] hover:border-red-400 hover:text-red-300"><X className="h-3.5 w-3.5" /></button>
+                      <button type="button" aria-label={t("Remover {name}", { name: nameOf(p) })} onClick={() => onRemove(p.id)} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 text-[#b9c7b9] hover:border-red-400 hover:text-red-300"><X className="h-3.5 w-3.5" /></button>
                     )}
                   </td>
                 </tr>
@@ -270,17 +273,17 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
             })}
             <tr className="border-t border-white/5">
               <td className="px-3 py-1.5">
-                <button type="button" onClick={onAdd} disabled={full} aria-label="Add local player" className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-white/25 text-[#93a79a] hover:border-primary hover:text-white disabled:opacity-40">
+                <button type="button" onClick={onAdd} disabled={full} aria-label={t("Add local player")} className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-white/25 text-[#93a79a] hover:border-primary hover:text-white disabled:opacity-40">
                   <Plus className="h-5 w-5" />
                 </button>
               </td>
               <td colSpan={columns.length + 3} className="px-2 py-1.5">
                 <div className="flex flex-wrap items-center gap-x-1 text-[#b9c7b9]">
-                  <button type="button" onClick={onAdd} disabled={full} className="hover:text-white disabled:opacity-40">Add local player</button>
+                  <button type="button" onClick={onAdd} disabled={full} className="hover:text-white disabled:opacity-40">{t("Add local player")}</button>
                   <span className="text-white/25">/</span>
-                  <button type="button" onClick={onInviteFriend} className="inline-flex items-center gap-1 hover:text-white"><UserPlus className="h-3.5 w-3.5" />Invite friend</button>
+                  <button type="button" onClick={onInviteFriend} className="inline-flex items-center gap-1 hover:text-white"><UserPlus className="h-3.5 w-3.5" />{t("Invite friend")}</button>
                   <span className="text-white/25">/</span>
-                  <button type="button" onClick={() => void copyLink()} className="inline-flex items-center gap-1 hover:text-white"><Link2 className="h-3.5 w-3.5" />Copy link</button>
+                  <button type="button" onClick={() => void copyLink()} className="inline-flex items-center gap-1 hover:text-white"><Link2 className="h-3.5 w-3.5" />{t("Copy link")}</button>
                 </div>
               </td>
             </tr>
@@ -289,7 +292,7 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
       </div>
       {(note || full) && (
         <p className="shrink-0 border-t border-white/10 px-4 py-2 text-[10px] leading-relaxed text-[#93a79a]">
-          {note ?? `Até ${LOCAL_MAX} players locais neste computador.`}
+          {note ?? t("Até {max} players locais neste computador.", { max: LOCAL_MAX })}
         </p>
       )}
     </FloatingPanel>
@@ -297,10 +300,11 @@ export function PlayersPanel({ lobby, link, seats, connecting, onPublic, devices
 }
 
 function ModeSwitch({ mode, onChange }: { mode: LobbyMode; onChange: (mode: LobbyMode) => void }) {
+  const t = useT()
   return (
-    <div role="radiogroup" aria-label="Lobby" className="inline-flex rounded-md border border-white/15 p-0.5">
+    <div role="radiogroup" aria-label={t("Lobby")} className="inline-flex rounded-md border border-white/15 p-0.5">
       {(["local", "online"] as const).map(m => (
-        <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => onChange(m)} className={cn("h-7 rounded px-3 capitalize", mode === m ? "bg-primary font-bold text-[#05060c]" : "text-[#b9c7b9] hover:text-white")}>{m}</button>
+        <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => onChange(m)} className={cn("h-7 rounded px-3 capitalize", mode === m ? "bg-primary font-bold text-[#05060c]" : "text-[#b9c7b9] hover:text-white")}>{m === "local" ? t("Local") : t("Online")}</button>
       ))}
     </div>
   )

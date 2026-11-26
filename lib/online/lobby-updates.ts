@@ -1,4 +1,5 @@
 import type { OnlineFriend, OnlineRoom, PublicRoom, RunningGame } from './types'
+import { t } from '@/lib/i18n'
 
 /** Keep the occupied lobby accessible even if private, full or absent from the directory. */
 export function mapLobbyRooms(rooms: readonly PublicRoom[], room: OnlineRoom | null, userId: string | null) {
@@ -46,12 +47,12 @@ export function isAlreadyInRoom(cause: unknown): boolean {
 
 export function roomErrorMessage(cause: unknown): string | null {
   const raw = cause && typeof cause === 'object' && 'message' in cause ? String(cause.message) : ''
-  if (isAlreadyInRoom(cause)) return 'You already have a room. Return to it or join another room to switch automatically.'
-  if (raw.includes('ACTIVE_MATCH')) return 'You have a game in progress. Finish or resign before joining another room.'
-  if (raw.includes('ROOM_FULL')) return 'This room already has two players. Choose another room or wait for a spot to open.'
-  if (raw.includes('ROOM_CLOSED')) return 'This room has started a game or has been closed.'
-  if (raw.includes('ROOM_NOT_FOUND')) return 'Room not found. Check the code or invitation.'
-  if (raw.includes('INVALID_KIT')) return 'Selected kit is not available online. Please choose another kit.'
+  if (isAlreadyInRoom(cause)) return t('You already have a room. Return to it or join another room to switch automatically.')
+  if (raw.includes('ACTIVE_MATCH')) return t('You have a game in progress. Finish or resign before joining another room.')
+  if (raw.includes('ROOM_FULL')) return t('This room already has two players. Choose another room or wait for a spot to open.')
+  if (raw.includes('ROOM_CLOSED')) return t('This room has started a game or has been closed.')
+  if (raw.includes('ROOM_NOT_FOUND')) return t('Room not found. Check the code or invitation.')
+  if (raw.includes('INVALID_KIT')) return t('Selected kit is not available online. Please choose another kit.')
   return null
 }
 

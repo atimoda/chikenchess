@@ -6,16 +6,17 @@
 // again from the camera (spanEnds) and still meets both poles when the camera moves them apart.
 // Points are in % of the element's box (x from the left, y from the top). Pure: no DOM.
 
+import { msg } from '../i18n'
 export type PowerKind = 'pole' | 'tower'
 export type PowerModel = { id: string; label: string; kind: PowerKind; w: number; h: number; attach: [number, number][] }
 
 export const POWER_MODELS: Record<string, PowerModel> = {
-  madeira: { id: 'madeira', label: 'Madeira, uma cruzeta', kind: 'pole', w: 120, h: 440, attach: [[6, 8], [30, 8], [70, 8], [94, 8]] },
-  duplo: { id: 'duplo', label: 'Madeira, duas cruzetas', kind: 'pole', w: 130, h: 470, attach: [[6, 7], [50, 3], [94, 7], [12, 19], [88, 19]] },
-  rua: { id: 'rua', label: 'Concreto de rua', kind: 'pole', w: 110, h: 420, attach: [[18, 6], [82, 6]] },
-  trelica: { id: 'trelica', label: 'Treliça, dois braços', kind: 'tower', w: 380, h: 920, attach: [[50, 0.5], [4, 13], [96, 13], [16, 27], [84, 27]] },
-  gato: { id: 'gato', label: 'Cabeça de gato', kind: 'tower', w: 420, h: 860, attach: [[6, 12], [50, 12], [94, 12]] },
-  alta: { id: 'alta', label: 'Três níveis', kind: 'tower', w: 300, h: 1000, attach: [[24, 11], [76, 11], [6, 22], [94, 22], [18, 33], [82, 33]] },
+  madeira: { id: 'madeira', label: msg("Madeira, uma cruzeta"), kind: 'pole', w: 120, h: 440, attach: [[6, 8], [30, 8], [70, 8], [94, 8]] },
+  duplo: { id: 'duplo', label: msg("Madeira, duas cruzetas"), kind: 'pole', w: 130, h: 470, attach: [[6, 7], [50, 3], [94, 7], [12, 19], [88, 19]] },
+  rua: { id: 'rua', label: msg("Concreto de rua"), kind: 'pole', w: 110, h: 420, attach: [[18, 6], [82, 6]] },
+  trelica: { id: 'trelica', label: msg("Treliça, dois braços"), kind: 'tower', w: 380, h: 920, attach: [[50, 0.5], [4, 13], [96, 13], [16, 27], [84, 27]] },
+  gato: { id: 'gato', label: msg("Cabeça de gato"), kind: 'tower', w: 420, h: 860, attach: [[6, 12], [50, 12], [94, 12]] },
+  alta: { id: 'alta', label: msg("Três níveis"), kind: 'tower', w: 300, h: 1000, attach: [[24, 11], [76, 11], [6, 22], [94, 22], [18, 33], [82, 33]] },
 }
 export const POLE_MODELS = Object.values(POWER_MODELS).filter(m => m.kind === 'pole').map(m => m.id)
 export const TOWER_MODELS = Object.values(POWER_MODELS).filter(m => m.kind === 'tower').map(m => m.id)

@@ -5,6 +5,7 @@ import { useRef, useState } from 'react'
 import * as Primitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n'
 import styles from './dialog.module.css'
 
 export const Dialog = Primitive.Root
@@ -13,7 +14,8 @@ export const DialogDescription = Primitive.Description
 export function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return <div className={cn('flex flex-col gap-2 pr-6', className)} {...props} />
 }
-export function DialogContent({ children, className, closeLabel = 'Fechar parâmetros musicais', mobileViewportScroll = false, floating = false, closeOnInteractOutside = false, onInteractOutside, ...props }: React.ComponentProps<typeof Primitive.Content> & { closeLabel?: string; mobileViewportScroll?: boolean; floating?: boolean; closeOnInteractOutside?: boolean }) {
+export function DialogContent({ children, className, closeLabel, mobileViewportScroll = false, floating = false, closeOnInteractOutside = false, onInteractOutside, ...props }: React.ComponentProps<typeof Primitive.Content> & { closeLabel?: string; mobileViewportScroll?: boolean; floating?: boolean; closeOnInteractOutside?: boolean }) {
+  const t = useT()
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
   const drag = useRef<{ pointerId: number; startX: number; startY: number; offsetX: number; offsetY: number; left: number; right: number; top: number; bottom: number } | null>(null)
@@ -77,7 +79,7 @@ export function DialogContent({ children, className, closeLabel = 'Fechar parâm
         }
       } : onInteractOutside}>
       {children}
-      <Primitive.Close className="absolute right-3 top-3 rounded p-1 text-white/70 hover:text-white focus-visible:outline-2" aria-label={closeLabel}><X className="h-4 w-4" /></Primitive.Close>
+      <Primitive.Close className="absolute right-3 top-3 rounded p-1 text-white/70 hover:text-white focus-visible:outline-2" aria-label={closeLabel ?? t('Fechar parâmetros musicais')}><X className="h-4 w-4" /></Primitive.Close>
     </Primitive.Content>
 
   // Radix forwards DOM refs to each portal child; a Fragment ref is not an Element.

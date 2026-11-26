@@ -129,6 +129,7 @@ import { drumFrame, setDrumScreen } from "@/components/pigchicken/draw/drum-char
 import { drumBindLevels, drumKeyTokens } from "@/lib/pigchicken/drum-input"
 import { stageHeight, stageTop, stageWidth, stageY } from "@/lib/stage-size"
 import { createTrainingGhosts } from "@/components/pigchicken/training-ghosts"
+import { msg, t as tr, useT } from "@/lib/i18n"
 
 // Controles → "Incluir variações / escalas / tambores / tipos": whether a switch also goes through the held item's
 // variations. pick: the quick switch (Item anterior held, else Próximo item); group: the group switch pressed
@@ -244,7 +245,7 @@ function useSkyLook(sky: SkyParams | undefined): SkyLook {
 }
 
 // where no zone plays (the scenes' own zones off, or one that does not change the music): a plain major key for the instruments, and no percussion nor drone
-const NO_SCENE_ZONE: Zone = { id: "sem-zona", name: "Sem zona", root: 60, scale: "major", chordScale: "major", bpm: 100, feel: "straight", progression: [0], color: "#93a79a", ambience: SILENCE }
+const NO_SCENE_ZONE: Zone = { id: "sem-zona", name: msg("Sem zona"), root: 60, scale: "major", chordScale: "major", bpm: 100, feel: "straight", progression: [0], color: "#93a79a", ambience: SILENCE }
 
 // The Pátio's limits: a black frame LIMIT_BORDER thick inside the world's sides and its ceiling, closed at the
 // bottom of the ground the page shows, and all black beyond it (LIMIT_OUTSIDE on every side, more than the widest
@@ -284,6 +285,7 @@ export function ParquinhoForeground({ screens, elements = DEFAULT_ELEMENTS, edit
 // and the aim sticks come from that player's own gamepad. extras: the other local players' chickens, which move
 // with the same camera (no items yet).
 export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, lifted = false, spawnX, fgRef, devices = null, extras, chicks, netChicks, colors, names, looks, elements = DEFAULT_ELEMENTS, worldTop = WORLD_TOP, trainingSpawns, inventoryLimit = INVENTORY_MAX, sceneZones, sceneEdges, sceneMusic = true, scaleFan = 0, scaleFanSize = 0.3, scaleFanFade = 0.5, scaleFanLines = 1, scaleKeep = false, hitboxes = false, stageDebug = false, patioKey = null, zoomRange, itemGlow }: { engine: ChickenEngine | null; settings: ParquinhoSettings; worldRef: React.RefObject<HTMLDivElement | null>; groundHeight?: number; lifted?: boolean; spawnX?: number; fgRef?: React.RefObject<HTMLDivElement | null>; devices?: InputDeviceId[] | null; extras?: React.RefObject<Map<string, ChickenEngine>>; chicks?: React.RefObject<Map<string, ChickenEngine>>; netChicks?: React.RefObject<Map<string, NetChickMirror>>; colors?: Record<string, string>; names?: Record<string, string>; looks?: Record<string, Record<string, string> | null>; elements?: LayoutElement[]; worldTop?: number; trainingSpawns?: React.RefObject<TrainingSpawnRequest[]>; inventoryLimit?: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges; sceneMusic?: boolean; scaleFan?: number; scaleFanSize?: number; scaleFanFade?: number; scaleFanLines?: number; scaleKeep?: boolean; hitboxes?: boolean; stageDebug?: boolean; patioKey?: string | null; zoomRange?: PatioZoom; itemGlow?: ItemGlow }) {
+  const t = useT()
   // the Pátio's layout: the game's things (dummies, racks, buttons) and the boxes the shots meet follow it live
   const elementsRef = useRef(elements)
   elementsRef.current = elements
@@ -1431,8 +1433,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         else if (id === "zcount") horde.zombies = ZOMBIE_COUNTS[(ZOMBIE_COUNTS.indexOf(horde.zombies) + 1) % ZOMBIE_COUNTS.length]
         else if (id === "pattern") horde.pattern = (horde.pattern + 1) % ALIEN_PATTERNS.length
       })
-      buttonLabels.aliens = "ALIENS"; buttonLabels.pattern = `PADRÃO: ${alienPattern(horde.pattern).label.toUpperCase()}`
-      buttonLabels.zombies = "ZUMBIS"; buttonLabels.zcount = `ZUMBIS: ${horde.zombies}`
+      buttonLabels.aliens = tr("ALIENS"); buttonLabels.pattern = tr("PADRÃO: {name}", { name: tr(alienPattern(horde.pattern).label).toUpperCase() })
+      buttonLabels.zombies = tr("ZUMBIS"); buttonLabels.zcount = tr("ZUMBIS: {n}", { n: horde.zombies })
       // Register every local player before the shared projectile update, including its owner.
       // (id: the local player each one is, for what their souls flying free do to them; the chicks have none)
       const playerOf = new Map([[engine, "p1"] as const, ...Array.from(extras?.current?.entries() ?? [], ([id, e]) => [e, id] as const)])
@@ -1688,7 +1690,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const z = zoneAt(playZones, x, y, true)
         if (z) return { key: z.id, name: z.zone.name }
         const sc = Math.max(0, Math.min(sceneAt(x), worldScenes(S.screens) - 1))
-        return { key: `cena${sc}`, name: `Cena ${sc + 1}` }
+        return { key: `cena${sc}`, name: tr("Cena {n}", { n: sc + 1 }) }
       }
       // the local players' bodies (whose fan a song is) and engines (an alien that touches one nudges it)
       const bodies = new Map<string, { x: number; y: number; scale: number }>([["p1", body]])
@@ -1719,7 +1721,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const song = library.songs.find(x => x.id === songId)
         if (!song) return
         const vitrola = dev.label?.startsWith("vitrola:")
-        const again = by === "gongo" ? "Bata no gongo para tocar de novo." : vitrola ? "Bata na vitrola para tocar de novo." : "Bata na jukebox para tocar de novo."
+        const again = by === "gongo" ? tr("Bata no gongo para tocar de novo.") : vitrola ? tr("Bata na vitrola para tocar de novo.") : tr("Bata na jukebox para tocar de novo.")
         const req: StageRequest = { song, owner, zone: z.key, zoneName: z.name, by: vitrola && by === "jukebox" ? "vitrola" : by, device: dev.label, goal: goalOf(dev.label), record: true, again, gongX }
         if (stages.request(req, campaignOn && z.key === templeKey) === "busy") refuse(dev.label)
       }
@@ -1813,7 +1815,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (prize && dev) combat.popPrize(dev.x, dev.y - dev.h, rollLoot(prize))
         if (!r.ok || !r.request.record) continue
         const st = stages.all.find(x => x.request === r.request)
-        if (recordScore(r.request.song.id, r.score, r.accuracy) && st?.state.banner) st.state.banner.title += " · novo recorde!"
+        if (recordScore(r.request.song.id, r.score, r.accuracy) && st?.state.banner) st.state.banner.title += ` · ${tr("novo recorde!")}`
       }
       // the Gongo do Templo is dull while a song plays in its zone
       if (gongHit && templeKey && stages.busy(templeKey)) { gongHit = false; playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
@@ -2323,7 +2325,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   return (
     <>
       <style>{`body.pigchicken-play { cursor: none; } body.pigchicken-play.pigchicken-camera-mode { cursor: grab; } body.pigchicken-play.pigchicken-camera-dragging { cursor: grabbing; } body.pigchicken-play.pigchicken-bag-hover { cursor: pointer; } body.pigchicken-play :is(header, aside, [role="dialog"], button, input, select, textarea, a, label, summary, [data-chicken-ignore]) { cursor: auto; } body.pigchicken-play :is(button, a, select, summary, label) { cursor: pointer; } body.pigchicken-seated :is([data-touch-control="move"], [data-touch-control="run"], [data-touch-control="down"], [data-touch-control="jump"], [data-touch-control="aim"], [data-touch-control="melee"], [data-touch-control="throw"], [data-touch-control="itemWheel"]) { visibility: hidden; }`}</style>
-      {cameraMode && <div role="img" aria-label="Modo zoom e panorama" className="pointer-events-none fixed left-4 top-16 z-[209] text-white opacity-40"><Search className="h-8 w-8" aria-hidden="true" /></div>}
+      {cameraMode && <div role="img" aria-label={t("Modo zoom e panorama")} className="pointer-events-none fixed left-4 top-16 z-[209] text-white opacity-40"><Search className="h-8 w-8" aria-hidden="true" /></div>}
       <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[195] h-full w-full" />
       {/* the Quadros de lousa's ghosts, behind the players and the chicks */}
       <div ref={ghostHostRef} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[198] [&_*]:!pointer-events-none" />
@@ -2352,13 +2354,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             style={lifted ? { left: g.x, top: invRowY(0), width: g.w, height: g.size } : { left: g.x, bottom: BAR.bottom + BAR.tab, width: g.w, height: g.size }}
           >
             {!editing && !invEmpty && (
-              <div data-chicken-ignore role="toolbar" aria-label="Inventário: clique para equipar, arraste para mudar a ordem" className="relative h-full w-full">
+              <div data-chicken-ignore role="toolbar" aria-label={t("Inventário: clique para equipar, arraste para mudar a ordem")} className="relative h-full w-full">
                 {g.xs.map((x, i) => (
                   <button
                     key={i}
                     type="button"
                     tabIndex={-1}
-                    aria-label={`Item ${i + 1} do inventário`}
+                    aria-label={t("Item {n} do inventário", { n: i + 1 })}
                     className="pointer-events-auto absolute top-0 h-full rounded-md bg-transparent"
                     style={{ left: x, width: g.size, touchAction: "none" }}
                     // pointerdown keeps focus off the button so Space stays a game key; the click equips on release
@@ -2389,7 +2391,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       {engine && wheelOpen && (
         <div
           data-chicken-ignore
-          aria-label="Roda do inventário"
+          aria-label={t("Roda do inventário")}
           className="pointer-events-auto fixed inset-0 z-[189]"
           style={{ touchAction: "none" }}
           onPointerMove={e => { wheelPtr.current = { x: e.clientX, y: stageY(e.clientY) } }}
@@ -2409,9 +2411,10 @@ const STICK = 112, KNOB = 48, STICK_BOTTOM = 64 + 112 + 24, FIRE_AT = 0.85
 // what the on-screen Pegar button offers now: take the item at her feet, equip the one she already carries, sit at
 // the Harpa next to her, or get up from it
 type GrabOffer = "" | "take" | "equip" | "sit" | "stand"
-const GRAB_LABELS: Record<Exclude<GrabOffer, "">, string> = { take: "Pegar", equip: "Equipar", sit: "Tocar", stand: "Sair" }
+const GRAB_LABELS: Record<Exclude<GrabOffer, "">, string> = { take: msg("Pegar"), equip: msg("Equipar"), sit: msg("Tocar"), stand: msg("Sair") }
 
 function TouchAimStick({ engine, aimRef, throwAimRef, punchRef, tapRef, jogRef, bottom, grabOffer, showStick }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null>; throwAimRef: React.MutableRefObject<Stick | null>; punchRef: PunchDraw; tapRef: React.MutableRefObject<number>; jogRef: React.MutableRefObject<Stick | null>; bottom: number; grabOffer: GrabOffer; showStick: boolean }) {
+  const t = useT()
   const { editing } = useTouchLayout()
   useEffect(() => {
     if (editing) ["melee", "throw", "itemWheel", "grab", "fire"].forEach(a => engine.setVirtual(a as ChickenAction, false))
@@ -2485,7 +2488,7 @@ function TouchAimStick({ engine, aimRef, throwAimRef, punchRef, tapRef, jogRef, 
     <div data-chicken-ignore className="pointer-events-none fixed inset-0 z-[206] select-none" style={{ touchAction: "none" }}>
       <div className="absolute flex items-center gap-3" style={{ right: 20, bottom, height: STICK }}>
         {/* standing on an item: grab it (blue) or equip the one she already carries (grey) */}
-        {(grabOffer || editing) && <Movable id="grab" className="absolute" style={{ right: 184, top: (STICK - 48) / 2 }}>{button(GRAB_LABELS[grabOffer || "take"], "grab", grabOffer === "equip" ? "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white" : "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white")}</Movable>}
+        {(grabOffer || editing) && <Movable id="grab" className="absolute" style={{ right: 184, top: (STICK - 48) / 2 }}>{button(t(GRAB_LABELS[grabOffer || "take"]), "grab", grabOffer === "equip" ? "border-[#9aa0a8] bg-[#9aa0a8]/20 text-white" : "border-[#4cc9f0] bg-[#4cc9f0]/20 text-white")}</Movable>}
         <div className="relative flex flex-col gap-2">
           <Movable id="melee" className="relative"><TouchPunchButton engine={engine} drawRef={punchRef} /></Movable>
           <Movable id="throw" className="relative"><TouchThrowButton engine={engine} aimRef={throwAimRef} /></Movable>
@@ -2494,7 +2497,7 @@ function TouchAimStick({ engine, aimRef, throwAimRef, punchRef, tapRef, jogRef, 
         {showStick ? <Movable id="aim" className="relative">
         <div
           ref={ref}
-          aria-label="Analógico de mira"
+          aria-label={t("Analógico de mira")}
           className="pointer-events-auto relative rounded-full border-2 border-[#ffd166]/50 bg-white/10 backdrop-blur-[2px]"
           style={{ width: STICK, height: STICK, touchAction: "none" }}
           onPointerDown={e => { shotTurn.current++; lastDir.current = null; pid.current = e.pointerId; press.current = { t: performance.now(), x: e.clientX, y: e.clientY, far: false }; e.currentTarget.setPointerCapture(e.pointerId); move(e) }}
@@ -2519,6 +2522,7 @@ function TouchAimStick({ engine, aimRef, throwAimRef, punchRef, tapRef, jogRef, 
 // is still seen by the frame that picks the slice.
 const JOG_PX = 14
 function TouchWheelButton({ engine, jogRef }: { engine: ChickenEngine; jogRef: React.MutableRefObject<Stick | null> }) {
+  const t = useT()
   const { editing } = useTouchLayout()
   const press = useRef<{ pid: number; cx: number; cy: number } | null>(null)
   const turn = useRef(0)
@@ -2542,7 +2546,7 @@ function TouchWheelButton({ engine, jogRef }: { engine: ChickenEngine; jogRef: R
   return (
     <button
       type="button"
-      aria-label="Roda"
+      aria-label={t("Roda")}
       aria-pressed={down}
       className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase text-white/80 ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/10"}`}
       style={{ touchAction: "none" }}
@@ -2559,7 +2563,7 @@ function TouchWheelButton({ engine, jogRef }: { engine: ChickenEngine; jogRef: R
       onLostPointerCapture={lift}
       onContextMenu={e => e.preventDefault()}
     >
-      Roda
+      {t("Roda")}
     </button>
   )
 }
@@ -2571,6 +2575,7 @@ function TouchWheelButton({ engine, jogRef }: { engine: ChickenEngine; jogRef: R
 type PunchDrawing = { turn: number | null; up: boolean; dx: number; dy: number }
 type PunchDraw = React.MutableRefObject<PunchDrawing | null>
 function TouchPunchButton({ engine, drawRef }: { engine: ChickenEngine; drawRef: PunchDraw }) {
+  const t = useT()
   const { editing } = useTouchLayout()
   const press = useRef<{ pid: number; cx: number; cy: number; r: number; out: boolean; last: number | null; turn: number } | null>(null)
   const turn = useRef(0)
@@ -2603,7 +2608,7 @@ function TouchPunchButton({ engine, drawRef }: { engine: ChickenEngine; drawRef:
   return (
     <button
       type="button"
-      aria-label="Punch"
+      aria-label={t("Punch")}
       aria-pressed={down}
       className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase text-white/80 ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/10"}`}
       style={{ touchAction: "none" }}
@@ -2619,7 +2624,7 @@ function TouchPunchButton({ engine, drawRef }: { engine: ChickenEngine; drawRef:
       onLostPointerCapture={lift}
       onContextMenu={e => e.preventDefault()}
     >
-      Punch
+      {t("Punch")}
     </button>
   )
 }
@@ -2631,6 +2636,7 @@ function TouchPunchButton({ engine, drawRef }: { engine: ChickenEngine; drawRef:
 const afterFrames = (n: number, fn: () => void) => { if (n <= 0) fn(); else requestGameFrame(() => afterFrames(n - 1, fn)) }
 
 function TouchThrowButton({ engine, aimRef }: { engine: ChickenEngine; aimRef: React.MutableRefObject<Stick | null> }) {
+  const t = useT()
   const { editing } = useTouchLayout()
   const press = useRef<{ pid: number; cx: number; cy: number; r: number; out: boolean } | null>(null)
   const turn = useRef(0)
@@ -2668,7 +2674,7 @@ function TouchThrowButton({ engine, aimRef }: { engine: ChickenEngine; aimRef: R
   return (
     <button
       type="button"
-      aria-label="Throw"
+      aria-label={t("Throw")}
       aria-pressed={down}
       className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 font-mono text-[9px] uppercase text-white/80 ${down ? "border-white/70 bg-white/35" : "border-white/30 bg-white/10"}`}
       style={{ touchAction: "none" }}
@@ -2684,7 +2690,7 @@ function TouchThrowButton({ engine, aimRef }: { engine: ChickenEngine; aimRef: R
       onLostPointerCapture={lift}
       onContextMenu={e => e.preventDefault()}
     >
-      Throw
+      {t("Throw")}
     </button>
   )
 }

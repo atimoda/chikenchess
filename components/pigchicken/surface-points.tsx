@@ -9,12 +9,14 @@ import { useRef, useState } from "react"
 import { ELEMENT_DEFS, type LayoutElement } from "@/lib/pigchicken/layout"
 import { fitSurface, insertSurfacePoint, nearestSurfaceEdge, removeSurfacePoint, surfacePolygon, type SurfacePoint } from "@/lib/pigchicken/surfaces"
 import { screenToWorld } from "@/lib/pigchicken/live-camera"
+import { useT } from "@/lib/i18n"
 
 const PAD = 24
 
 type Drag = { pointer: number; index: number; start: SurfacePoint[]; base: LayoutElement; offset: SurfacePoint; sx: number; sy: number; moved: boolean; step: string }
 
 export function SurfacePoints({ el, onChange }: { el: LayoutElement; onChange: (el: LayoutElement, step?: string) => void }) {
+  const t = useT()
   const [selected, setSelected] = useState<number | null>(null)
   const drag = useRef<Drag | null>(null)
   const surface = el.params.surface
@@ -53,7 +55,7 @@ export function SurfacePoints({ el, onChange }: { el: LayoutElement; onChange: (
   const b = { x: el.x - PAD, y: el.y - PAD, w: el.w + PAD * 2, h: el.h + PAD * 2 }
   const points = poly.map(p => p.join(",")).join(" ")
   return (
-    <svg data-chicken-ignore aria-label="Pontos do contorno" className="absolute z-[1] overflow-visible" style={{ left: b.x, top: b.y, width: b.w, height: b.h, pointerEvents: "none" }}
+    <svg data-chicken-ignore aria-label={t("Pontos do contorno")} className="absolute z-[1] overflow-visible" style={{ left: b.x, top: b.y, width: b.w, height: b.h, pointerEvents: "none" }}
       viewBox={`${b.x} ${b.y} ${b.w} ${b.h}`} onContextMenu={e => e.preventDefault()}>
       <polygon points={points} fill="none" stroke="#1a1408" strokeWidth={4} strokeLinejoin="round" opacity={0.7} />
       <polygon points={points} fill="none" stroke="#ffd166" strokeWidth={2} strokeDasharray="8 5" strokeLinejoin="round" />
@@ -71,7 +73,7 @@ export function SurfacePoints({ el, onChange }: { el: LayoutElement; onChange: (
         }}
         onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
       {poly.map(([x, y], i) => (
-        <g key={i} role="button" tabIndex={0} aria-label={`Ponto ${i + 1} de ${poly.length} · ${Math.round(x)}, ${Math.round(y)}`}
+        <g key={i} role="button" tabIndex={0} aria-label={t("Ponto {v} de {length} · {v2}, {v3}", { v: i + 1, length: poly.length, v2: Math.round(x), v3: Math.round(y) })}
           style={{ pointerEvents: "all", cursor: "grab", touchAction: "none", outline: "none" }}
           onPointerDown={e => {
             if (e.button !== 0) return

@@ -16,6 +16,7 @@
 // snow kept to the lit slope; snowTint/snowTintAmount: the snow's colour (0: the sun's light).
 // The drawing itself: lib/pigchicken/mountain-draw.ts.
 
+import { msg } from '../i18n'
 export type MountainPeakType = 'wave' | 'sharp' | 'geo'
 export type MountainShadeStyle = 'slopes' | 'split' | 'creases'
 export type MountainSnowStyle = 'tongues' | 'waves' | 'soft' | 'streaks' | 'ridge'
@@ -26,10 +27,10 @@ export type MountainParams = {
   snowPeaks: boolean; snowStyle: MountainSnowStyle; snowSide: number; snowTint: string; snowTintAmount: number
 }
 
-export const MOUNTAIN_PEAKS: { id: MountainPeakType; label: string }[] = [{ id: 'wave', label: 'Ondulado' }, { id: 'sharp', label: 'Pontudo' }, { id: 'geo', label: 'Geométrico' }]
-export const MOUNTAIN_SHADES: { id: MountainShadeStyle; label: string }[] = [{ id: 'slopes', label: 'Encostas' }, { id: 'split', label: 'Meio a meio' }, { id: 'creases', label: 'Vincos' }]
+export const MOUNTAIN_PEAKS: { id: MountainPeakType; label: string }[] = [{ id: 'wave', label: msg("Ondulado") }, { id: 'sharp', label: msg("Pontudo") }, { id: 'geo', label: msg("Geométrico") }]
+export const MOUNTAIN_SHADES: { id: MountainShadeStyle; label: string }[] = [{ id: 'slopes', label: msg("Encostas") }, { id: 'split', label: msg("Meio a meio") }, { id: 'creases', label: msg("Vincos") }]
 export const MOUNTAIN_SNOWS: { id: MountainSnowStyle; label: string }[] = [
-  { id: 'tongues', label: 'Línguas' }, { id: 'waves', label: 'Ondas' }, { id: 'soft', label: 'Suave' }, { id: 'streaks', label: 'Estrias' }, { id: 'ridge', label: 'Aresta' },
+  { id: 'tongues', label: msg("Línguas") }, { id: 'waves', label: msg("Ondas") }, { id: 'soft', label: msg("Suave") }, { id: 'streaks', label: msg("Estrias") }, { id: 'ridge', label: msg("Aresta") },
 ]
 export const MOUNTAIN_OPACITY = { min: 20, max: 100, step: 1 } as const
 export const MOUNTAIN_OUTLINE_PX = 6

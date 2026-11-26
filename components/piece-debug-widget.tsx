@@ -11,6 +11,7 @@ import type { Instrument, MovementMapping, MusicPiece } from "@/lib/music/model"
 import { DEFAULT_MOVEMENT } from "@/lib/music/model"
 import { DEFAULT_ARRANGEMENT, pieceSection, type Arrangement } from "@/lib/music/arrangement"
 import { SAMPLE_BANKS, sampleAsset } from "@/lib/music/sample-banks"
+import { msg, useT } from "@/lib/i18n"
 
 interface PieceDebugWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   cityColor: string
@@ -34,7 +35,7 @@ function formatSummaryNumber(value: number) {
 }
 
 const pieceTypeNames: Record<MusicPiece['type'], string> = {
-  p: 'peão', n: 'cavalo', b: 'bispo', r: 'torre', q: 'dama', k: 'rei',
+  p: msg('peão'), n: msg('cavalo'), b: msg('bispo'), r: msg('torre'), q: msg('dama'), k: msg('rei'),
 }
 
 const PieceConfigurationSummary = memo(function PieceConfigurationSummary({
@@ -46,6 +47,7 @@ const PieceConfigurationSummary = memo(function PieceConfigurationSummary({
   arrangement?: Arrangement
   sectionOverride?: number
 }) {
+  const t = useT()
   const plan = arrangement ?? DEFAULT_ARRANGEMENT
   const mapping = movementMapping ?? DEFAULT_MOVEMENT
   const pieceArrangement = instrument.arrangement
@@ -55,36 +57,36 @@ const PieceConfigurationSummary = memo(function PieceConfigurationSummary({
   const sampleVariant = sample && sampleSource ? sample.variants[sampleSource.variant] : undefined
   const sampleMap = sampleVariant?.keymap ?? sample?.keymap
   const behavior = instrument.behavior === 'pulse'
-    ? 'Pulso: conserva os graus escritos mesmo ao mover.'
+    ? t('Pulso: conserva os graus escritos mesmo ao mover.')
     : instrument.behavior === 'phrase'
-      ? 'Frase: transpõe os graus conforme o deslocamento da peça.'
-      : 'Sustentado: transpõe os graus; progressões (fora de Estática e Kit Harmony) geram acordes por ataque.'
+      ? t('Frase: transpõe os graus conforme o deslocamento da peça.')
+      : t('Sustentado: transpõe os graus; progressões (fora de Estática e Kit Harmony) geram acordes por ataque.')
   const movementMeaning = instrument.behavior === 'pulse'
-    ? 'Este comportamento ignora o mapa para afinação.'
+    ? t('Este comportamento ignora o mapa para afinação.')
     : sampleSource && !sampleSource.pitched
-      ? 'O mapa não altera a altura de um sample não afinado.'
-      : `Afinação: arredondar(Δcoluna × ${formatSummaryNumber(mapping.fileDegrees)} + ⌊avanço × ${formatSummaryNumber(mapping.rankDegrees)}⌋), limitado a ±${movementMapping ? 12 : 4} graus.`
+      ? t('O mapa não altera a altura de um sample não afinado.')
+      : t('Afinação: arredondar(Δcoluna × {file} + ⌊avanço × {rank}⌋), limitado a ±{max} graus.', { file: formatSummaryNumber(mapping.fileDegrees), rank: formatSummaryNumber(mapping.rankDegrees), max: movementMapping ? 12 : 4 })
   const sections = plan.sections.map((section, index) => {
     const step = pieceSection(instrument, plan, index)
     const transpose = step.transpose === 0 ? '±0 st' : `${step.transpose > 0 ? '+' : ''}${step.transpose} st`
-    return `${section.label} (${formatSummaryNumber(section.beats)}t): ${step.variation === null ? 'pausa (sem variação)' : String.fromCharCode(65 + step.variation)}, ${transpose}`
+    return `${section.label} (${formatSummaryNumber(section.beats)}t): ${step.variation === null ? t('pausa (sem variação)') : String.fromCharCode(65 + step.variation)}, ${transpose}`
   }).join(' · ')
-  const typeName = pieceTypeNames[piece.type]
-  const activation = piece.activation === 'check' ? 'cheque' : piece.activation === 'move' ? 'lance' : 'base'
+  const typeName = t(pieceTypeNames[piece.type])
+  const activation = t(piece.activation === 'check' ? 'cheque' : piece.activation === 'move' ? 'lance' : 'base')
   const soundSource = sampleSource
-    ? `${sampleBank?.name ?? sampleSource.bank} / ${sample?.name ?? sampleSource.asset} / ${sampleVariant?.name ?? `variante ${sampleSource.variant + 1}`}`
-    : `síntese · onda ${instrument.sound}`
+    ? `${sampleBank?.name ?? sampleSource.bank} / ${sample?.name ?? sampleSource.asset} / ${sampleVariant?.name ?? t('variante {n}', { n: sampleSource.variant + 1 })}`
+    : t('síntese · onda {sound}', { sound: instrument.sound })
 
   return <div className="space-y-1 break-words">
-    <p><b className="text-white/90">Peça:</b> {typeName} · lado {piece.color === 'w' ? 'branco' : 'preto'} · origem {piece.origin} · {piece.active ? 'ativa' : 'inativa'} · ativação: {activation}{piece.checkEnsemble ? ' · banda completa no cheque' : ''} · slot {piece.slot} · ID {piece.id}</p>
-    <p><b className="text-white/90">Fonte:</b> {soundSource}{sampleSource ? ` · ${sampleSource.pitched ? 'afinada: segue a escala' : 'one-shot: preserva a altura gravada'}` : ''}{sampleSource && sample?.rootNote ? ` · raiz ${sample.rootNote}` : ''}{sampleSource && sampleMap ? ` · mapa de ${Object.keys(sampleMap).length} notas` : ''}</p>
-    <p><b className="text-white/90">Comportamento:</b> {behavior} {movementMeaning}</p>
-    <p><b className="text-white/90">Mapa de movimento:</b> coluna × {formatSummaryNumber(mapping.fileDegrees)} · avanço × {formatSummaryNumber(mapping.rankDegrees)} · pan até {formatSummaryNumber(mapping.panWidth * 100)}% entre colunas · filtro nas prévias: {mapping.previewFilter ? 'ligado' : 'desligado'}.</p>
-    {(instrument.octaveRange || (sampleSource?.pitched ?? !sampleSource)) && <p><b className="text-white/90">Oitava base:</b> {instrument.octave}{instrument.octaveRange ? ' · usada como referência ao sortear o Range' : ''}</p>}
-    <p><b className="text-white/90">Mix da distorção:</b> {Math.round((instrument.distortionMix ?? .25) * 100)}% do sinal distorcido.</p>
-    <p><b className="text-white/90">Forma por seção:</b> {sections}. Reinício {pieceArrangement?.restart ? 'local à entrada de cada seção' : 'segue a fase global'}{!pieceArrangement ? ' · sem arranjo próprio; usa atribuições padrão' : ''}.</p>
-    {instrument.selectedVariation !== undefined && <p><b className="text-white/90">Pin:</b> variação {String.fromCharCode(65 + instrument.selectedVariation)} fixa, mas presença, transposição e reinício seguem as seções.</p>}
-    {sectionOverride !== undefined && <p><b className="text-white/90">Regra ativa:</b> força a variação {String.fromCharCode(65 + sectionOverride)} e tem prioridade sobre o pin.</p>}
+    <p><b className="text-white/90">{t('Peça:')}</b> {t('{type} · lado {side} · origem {origin} · {state} · ativação: {activation}', { type: typeName, side: t(piece.color === 'w' ? 'branco' : 'preto'), origin: piece.origin, state: t(piece.active ? 'ativa' : 'inativa'), activation })}{piece.checkEnsemble ? ` · ${t('banda completa no cheque')}` : ''} · slot {piece.slot} · ID {piece.id}</p>
+    <p><b className="text-white/90">{t('Fonte:')}</b> {soundSource}{sampleSource ? ` · ${sampleSource.pitched ? t('afinada: segue a escala') : t('one-shot: preserva a altura gravada')}` : ''}{sampleSource && sample?.rootNote ? ` · ${t('raiz {note}', { note: sample.rootNote })}` : ''}{sampleSource && sampleMap ? ` · ${t('mapa de {n} notas', { n: Object.keys(sampleMap).length })}` : ''}</p>
+    <p><b className="text-white/90">{t('Comportamento:')}</b> {behavior} {movementMeaning}</p>
+    <p><b className="text-white/90">{t('Mapa de movimento:')}</b> {t('coluna × {file} · avanço × {rank} · pan até {pan}% entre colunas · filtro nas prévias: {state}.', { file: formatSummaryNumber(mapping.fileDegrees), rank: formatSummaryNumber(mapping.rankDegrees), pan: formatSummaryNumber(mapping.panWidth * 100), state: t(mapping.previewFilter ? 'ligado' : 'desligado') })}</p>
+    {(instrument.octaveRange || (sampleSource?.pitched ?? !sampleSource)) && <p><b className="text-white/90">{t('Oitava base:')}</b> {instrument.octave}{instrument.octaveRange ? ` · ${t('usada como referência ao sortear o Range')}` : ''}</p>}
+    <p><b className="text-white/90">{t('Mix da distorção:')}</b> {t('{n}% do sinal distorcido.', { n: Math.round((instrument.distortionMix ?? .25) * 100) })}</p>
+    <p><b className="text-white/90">{t('Forma por seção:')}</b> {t('{sections}. Reinício {restart}', { sections, restart: pieceArrangement?.restart ? t('local à entrada de cada seção') : t('segue a fase global') })}{!pieceArrangement ? ` · ${t('sem arranjo próprio; usa atribuições padrão')}` : ''}.</p>
+    {instrument.selectedVariation !== undefined && <p><b className="text-white/90">{t('Pin:')}</b> {t('variação {v} fixa, mas presença, transposição e reinício seguem as seções.', { v: String.fromCharCode(65 + instrument.selectedVariation) })}</p>}
+    {sectionOverride !== undefined && <p><b className="text-white/90">{t('Regra ativa:')}</b> {t('força a variação {v} e tem prioridade sobre o pin.', { v: String.fromCharCode(65 + sectionOverride) })}</p>}
   </div>
 }, (previous, next) => previous.instrument === next.instrument
   && previous.piece === next.piece
@@ -109,6 +111,7 @@ export const PieceDebugWidget = forwardRef<HTMLDivElement, PieceDebugWidgetProps
   onToggle,
   ...props
 }, ref) => {
+  const t = useT()
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
   const pieceDebugTop = Math.max(0, position?.y ?? 0)
@@ -141,20 +144,20 @@ export const PieceDebugWidget = forwardRef<HTMLDivElement, PieceDebugWidgetProps
       <button
         type="button"
         ref={toggleRef}
-        aria-label="Desligar Piece Debug"
+        aria-label={t("Desligar Piece Debug")}
         aria-hidden={togglePortalized || undefined}
         tabIndex={togglePortalized ? -1 : 0}
-        title="Desligar Piece Debug"
+        title={t("Desligar Piece Debug")}
         className={cn('absolute -left-2 -top-1 z-[70] flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-background text-[var(--city-neon)] shadow-md transition-colors hover:text-[#60a5fa]', togglePortalized && 'invisible pointer-events-none')}
         onClick={event => { event.stopPropagation(); onToggle() }}
       ><Power className="h-4 w-4" /></button>
       <div ref={effectiveHandleRef} data-drag-handle="true" className="absolute inset-x-0 top-0 z-[60] h-8" />
-      <section aria-label="Piece debug" className="relative z-50 flex h-full min-h-0 flex-col overflow-hidden px-2.5 pb-3 pt-2.5 font-mono text-[10px] leading-[1.4] text-white/75">
-        <h2 className="mb-3 h-4 shrink-0 text-center text-xs font-bold tracking-wider text-white/90">PIECE DEBUG</h2>
+      <section aria-label={t("Piece debug")} className="relative z-50 flex h-full min-h-0 flex-col overflow-hidden px-2.5 pb-3 pt-2.5 font-mono text-[10px] leading-[1.4] text-white/75">
+        <h2 className="mb-3 h-4 shrink-0 text-center text-xs font-bold tracking-wider text-white/90">{t("PIECE DEBUG")}</h2>
         <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,.5)_transparent] [scrollbar-width:thin]">
           {instrument && selectedPiece
             ? <PieceConfigurationSummary instrument={instrument} piece={selectedPiece} movementMapping={movementMapping} arrangement={arrangement} sectionOverride={sectionOverride} />
-            : <p className="text-white/55">Selecione uma peça com voz musical para ver as configurações adicionais.</p>}
+            : <p className="text-white/55">{t("Selecione uma peça com voz musical para ver as configurações adicionais.")}</p>}
         </div>
       </section>
     </Resizable>

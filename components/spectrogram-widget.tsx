@@ -10,6 +10,7 @@ import { Draggable } from "@/components/ui/draggable"
 import { getSfxEngine } from "@/lib/sfx-engine"
 
 import { Resizable } from "re-resizable"
+import { useT } from "@/lib/i18n"
 import { useWidgetResize } from "@/hooks/use-widget-resize"
 
 interface SpectrogramWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -173,6 +174,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
   getTeamFrequencyData,
   ...props
 }, ref) => {
+  const t = useT()
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
   const { onDrag: _onDrag, ...restProps } = props as any
 
@@ -234,7 +236,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
 
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
-        aria-label={isOn ? 'Desligar Spectrogram' : 'Ligar Spectrogram'}
+        aria-label={isOn ? t('Desligar Spectrogram') : t('Ligar Spectrogram')}
         aria-hidden={togglePortalized || undefined}
         tabIndex={togglePortalized ? -1 : 0}
         ref={toggleRef}
@@ -274,7 +276,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
                "text-xs font-mono font-bold uppercase tracking-wider transition-colors duration-300",
                "text-white"
              )}>
-                SPECTROGRAM
+                {t('SPECTROGRAM')}
              </span>
           </div>
           

@@ -1,5 +1,6 @@
 // PigChicKen enemies in the Parquinho: half-aliens coming down from the sky in formations, and zombies walking in
 // from the screen's sides. They live in the combat's target list (so every weapon hits them); this moves them.
+import { msg } from '../i18n'
 import type { Target } from './combat'
 
 // Original pixel aliens: a one-eyed jelly with two tentacle frames. '#' body, 'w' eye, 'o' pupil.
@@ -37,7 +38,7 @@ export const ALIEN_COLORS = ['#c77dff', '#4cc9f0', '#f72585', '#ffd166', '#7bd88
 export type AlienRowDef = { species?: string; hp: number; w: number; h: number; color: string }
 export type AlienPatternDef = { id: string; label: string; cols: number; gap: number; rows: AlienRowDef[] }
 export const HORDE_ROW: AlienPatternDef = {
-  id: 'row', label: 'Fileira', cols: 6, gap: 70,
+  id: 'row', label: msg("Fileira"), cols: 6, gap: 70,
   rows: [0, 1, 2].map(r => ({ hp: 30, w: ALIEN_FRAMES[0][0].length * ALIEN_PIXEL, h: ALIEN_FRAMES[0].length * ALIEN_PIXEL, color: ALIEN_COLORS[r % ALIEN_COLORS.length] })),
 }
 /** the temple species an alien is drawn as (the temple's own, the catalogue's, or a horde row of the temple's patterns) */
@@ -68,11 +69,11 @@ let nextId = 1_000_000
 
 // One sprite set supports several zombie races through distinct color mutations.
 export const ZOMBIE_RACES = [
-  { id: 'moss', label: 'Musgo', hue: 55 },
-  { id: 'violet', label: 'Violeta', hue: 245 },
-  { id: 'ice', label: 'Gelo', hue: 170 },
-  { id: 'rust', label: 'Ferrugem', hue: 330 },
-  { id: 'sickly', label: 'Amarelado', hue: 85 },
+  { id: 'moss', label: msg("Musgo"), hue: 55 },
+  { id: 'violet', label: msg("Violeta"), hue: 245 },
+  { id: 'ice', label: msg("Gelo"), hue: 170 },
+  { id: 'rust', label: msg("Ferrugem"), hue: 330 },
+  { id: 'sickly', label: msg("Amarelado"), hue: 85 },
 ] as const
 
 function zombieRace() { return ZOMBIE_RACES[Math.floor(Math.random() * ZOMBIE_RACES.length)] }

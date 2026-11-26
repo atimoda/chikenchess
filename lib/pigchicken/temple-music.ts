@@ -1,6 +1,7 @@
 // The temple's music (Templo do Gongo): one zone per stage, layers that pile up stage after stage, the melody
 // that every kill plays one note of, and the mini-game's own sounds (gong, fanfare, hits). PigChicKen's synth only.
 import type { Zone } from './music'
+import { msg } from '../i18n'
 import { scaleNotes } from './music'
 import { audio } from './sfx'
 import { playDrum, playGong, playNote } from './synth'
@@ -10,23 +11,23 @@ import type { NoteStageSound } from './note-stage'
 export type Layer = 'gong' | 'taiko' | 'wood' | 'hat' | 'bass' | 'snare' | 'pluck' | 'flute' | 'bells' | 'double' | 'crash'
 
 // the temple before (and between) the stages: slow, chimes in the wind and a low drone
-export const TEMPLE_IDLE: Zone = { id: 'templo', name: 'Templo', root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 76, feel: 'straight', progression: [0, 5, 3, 4], color: '#ffd166' }
+export const TEMPLE_IDLE: Zone = { id: 'templo', name: msg('Templo'), root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 76, feel: 'straight', progression: [0, 5, 3, 4], color: '#ffd166' }
 
 // groove picks the stage's bass line, guzheng arpeggio and riff (more busy as the stages go)
 export type StageMusic = { zone: Zone; layers: Layer[]; melody: number[]; groove: number }
 // melody: indexes in the zone's scale from its root (0 = root, 5 = root an octave up in a pentatonic)
 export const STAGE_MUSIC: StageMusic[] = [
-  { zone: { id: 'templo1', name: 'Despertar', root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 92, feel: 'straight', progression: [0, 5, 3, 4], color: '#c77dff' },
+  { zone: { id: 'templo1', name: msg('Despertar'), root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 92, feel: 'straight', progression: [0, 5, 3, 4], color: '#c77dff' },
     layers: ['gong', 'taiko', 'wood'], melody: [0, 1, 2, 4, 3, 2, 1, 2, 4, 5, 4, 2, 3, 2, 1, 0], groove: 0 },
-  { zone: { id: 'templo2', name: 'Lanternas', root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 3, 5, 4], color: '#e63946' },
+  { zone: { id: 'templo2', name: msg('Lanternas'), root: 62, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 3, 5, 4], color: '#e63946' },
     layers: ['gong', 'taiko', 'wood', 'hat', 'bass'], melody: [4, 5, 7, 5, 4, 2, 4, 3, 2, 1, 2, 4, 2, 1, 0, 1], groove: 1 },
-  { zone: { id: 'templo3', name: 'Couraça', root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 108, feel: 'straight', progression: [0, 5, 6, 4], color: '#6a994e' },
+  { zone: { id: 'templo3', name: msg('Couraça'), root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 108, feel: 'straight', progression: [0, 5, 6, 4], color: '#6a994e' },
     layers: ['gong', 'taiko', 'hat', 'bass', 'snare', 'pluck'], melody: [0, 2, 3, 4, 3, 2, 0, 1, 2, 4, 5, 4, 3, 2, 1, 0], groove: 2 },
-  { zone: { id: 'templo4', name: 'Gêmeos', root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 116, feel: 'swing', progression: [0, 3, 6, 4], color: '#4cc9f0' },
+  { zone: { id: 'templo4', name: msg('Gêmeos'), root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 116, feel: 'swing', progression: [0, 3, 6, 4], color: '#4cc9f0' },
     layers: ['gong', 'taiko', 'hat', 'bass', 'snare', 'pluck', 'flute'], melody: [5, 4, 5, 7, 6, 5, 4, 2, 3, 4, 2, 1, 2, 0, 1, 2], groove: 3 },
-  { zone: { id: 'templo5', name: 'Tambores', root: 60, scale: 'majorPenta', chordScale: 'dorian', bpm: 124, feel: 'straight', progression: [0, 3, 0, 4], color: '#ffb703' },
+  { zone: { id: 'templo5', name: msg('Tambores'), root: 60, scale: 'majorPenta', chordScale: 'dorian', bpm: 124, feel: 'straight', progression: [0, 3, 0, 4], color: '#ffb703' },
     layers: ['gong', 'taiko', 'wood', 'double', 'bass', 'snare', 'pluck', 'flute', 'bells'], melody: [0, 2, 4, 2, 5, 4, 2, 4, 6, 5, 4, 2, 3, 4, 2, 0], groove: 4 },
-  { zone: { id: 'templo6', name: 'Dragão', root: 55, scale: 'minorPenta', chordScale: 'harmonicMinor', bpm: 132, feel: 'straight', progression: [0, 5, 3, 4], color: '#ff6b35' },
+  { zone: { id: 'templo6', name: msg('Dragão'), root: 55, scale: 'minorPenta', chordScale: 'harmonicMinor', bpm: 132, feel: 'straight', progression: [0, 5, 3, 4], color: '#ff6b35' },
     layers: ['gong', 'taiko', 'wood', 'double', 'bass', 'snare', 'pluck', 'flute', 'bells', 'crash'], melody: [5, 7, 8, 7, 5, 4, 5, 2, 4, 5, 7, 9, 8, 7, 5, 4], groove: 5 },
 ]
 

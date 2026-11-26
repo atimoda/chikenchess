@@ -9,6 +9,7 @@
 import { useRef, type ComponentProps } from "react"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 
 /** The look of the "next item" button, wherever it is drawn. */
 export const STEP_BUTTON = "inline-flex w-7 shrink-0 touch-manipulation items-center justify-center rounded-r-md bg-primary text-primary-foreground hover:brightness-110 active:brightness-90 disabled:opacity-40"
@@ -31,6 +32,7 @@ function stepSelect(el: HTMLSelectElement, from: number) {
 // `wrap`: classes of the pair (select + button), for what places it in its row (a margin, a maximum width). A select
 // that fills its row (`w-full` or `flex-1` in `className`) makes the pair fill it.
 export function StepSelect({ wrap, className, children, ...rest }: ComponentProps<"select"> & { wrap?: string }) {
+  const t = useT()
   const ref = useRef<HTMLSelectElement | null>(null)
   const last = useRef<number | null>(null)
   const classes = (className ?? "").split(/\s+/)
@@ -39,7 +41,7 @@ export function StepSelect({ wrap, className, children, ...rest }: ComponentProp
     <span className={cn("flex min-w-0", classes.includes("flex-1") ? "flex-1" : classes.includes("w-full") && "w-full", wrap)}
       onChange={() => { last.current = ref.current?.selectedIndex ?? null }}>
       <select ref={ref} className={cn("min-w-0 grow", className, "rounded-r-none border-r-0")} {...rest}>{children}</select>
-      <button type="button" disabled={rest.disabled} aria-label={label ? `Próximo item de ${label}` : "Próximo item"} title="Próximo item" className={STEP_BUTTON}
+      <button type="button" disabled={rest.disabled} aria-label={label ? t("Próximo item de {label}", { label }) : t("Próximo item")} title={t("Próximo item")} className={STEP_BUTTON}
         onClick={() => {
           const el = ref.current
           if (!el) return

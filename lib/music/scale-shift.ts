@@ -1,18 +1,19 @@
+import { msg } from '@/lib/i18n'
 import { identifyPitchCollection, SCALE_INTERVALS, SCALE_NAMES, type ScaleName } from './scales'
 
 /** Relational scale changes: they work from whatever scale and key the music is in. */
 export const SCALE_SHIFTS = {
-  relative: 'Relative (same notes, other tonic)',
-  parallel: 'Parallel (same tonic, major ↔ minor)',
-  brighter: 'One mode brighter',
-  darker: 'One mode darker',
-  dominant: 'Neighbour key: dominant (V)',
-  subdominant: 'Neighbour key: subdominant (IV)',
-  mediantUp: 'Chromatic mediant up (+4 st)',
-  mediantDown: 'Chromatic mediant down (−4 st)',
-  lift: 'Key lift (+1 st)',
-  randomRelated: 'Random related change',
-  randomAny: 'Random scale, same tonic',
+  relative: msg('Relative (same notes, other tonic)'),
+  parallel: msg('Parallel (same tonic, major ↔ minor)'),
+  brighter: msg('One mode brighter'),
+  darker: msg('One mode darker'),
+  dominant: msg('Neighbour key: dominant (V)'),
+  subdominant: msg('Neighbour key: subdominant (IV)'),
+  mediantUp: msg('Chromatic mediant up (+4 st)'),
+  mediantDown: msg('Chromatic mediant down (−4 st)'),
+  lift: msg('Key lift (+1 st)'),
+  randomRelated: msg('Random related change'),
+  randomAny: msg('Random scale, same tonic'),
 } as const
 export type ScaleShift = keyof typeof SCALE_SHIFTS
 export const SCALE_SHIFT_IDS = Object.keys(SCALE_SHIFTS) as [ScaleShift, ...ScaleShift[]]

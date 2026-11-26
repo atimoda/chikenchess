@@ -2,9 +2,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './info-tip.module.css'
+import { useT } from '@/lib/i18n'
 
 /** Portalled so help never gets clipped by a scrolling Creative column. */
 export function InfoTip({label,children}:{label:string;children:ReactNode}){
+ const t=useT()
  const id=useId(),button=useRef<HTMLButtonElement>(null),panel=useRef<HTMLDivElement>(null)
  const [open,setOpen]=useState(false),[position,setPosition]=useState({left:8,top:8})
  const pinned=useRef(false),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined)
@@ -22,7 +24,7 @@ export function InfoTip({label,children}:{label:string;children:ReactNode}){
   return()=>{window.removeEventListener('resize',place);window.removeEventListener('scroll',place,true);document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',escape)}
  },[open])
  return <span data-info-tip className={styles.anchor}>
-  <button ref={button} type="button" className={styles.trigger} aria-label={`Help: ${label}`} aria-expanded={open} aria-controls={open?id:undefined} aria-describedby={open?id:undefined}
+  <button ref={button} type="button" className={styles.trigger} aria-label={t('Help: {label}', { label })} aria-expanded={open} aria-controls={open?id:undefined} aria-describedby={open?id:undefined}
    onPointerEnter={e=>{if(e.pointerType==='mouse')show()}} onPointerLeave={leave}
    onFocus={e=>{if(e.currentTarget.matches(':focus-visible'))show()}}
    onBlur={e=>{if(!panel.current?.contains(e.relatedTarget as Node))close()}}

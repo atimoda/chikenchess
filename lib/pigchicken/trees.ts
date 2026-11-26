@@ -1,8 +1,9 @@
 // Geometry in percent of the element box, shared by the SVG and the engine's simplified colliders.
-export const TREE_CROWNS = { layers: 'Em camadas', cloud: 'Arredondada', droop: 'Pendente', oval: 'Colunar', fronds: 'Frondes', umbrella: 'Guarda-sol', whorls: 'Verticilos', emergent: 'Copa alta' } as const
-export const TREE_BARKS = { smooth: 'Lisa', grooves: 'Ranhuras', paper: 'Papel', rings: 'Anéis' } as const
-export const TREE_EFFECTS = { none: 'Sem efeito', petals: 'Pétalas', leaves: 'Folhas caindo', pollen: 'Pólen' } as const
-export const TREE_BLOOMS = { none: 'Sem flores', yellow: 'Amarela', pink: 'Rosa', violet: 'Roxa', white: 'Branca', custom: 'Personalizada' } as const
+import { msg } from '../i18n'
+export const TREE_CROWNS = { layers: msg("Em camadas"), cloud: msg("Arredondada"), droop: msg("Pendente"), oval: msg("Colunar"), fronds: msg("Frondes"), umbrella: msg("Guarda-sol"), whorls: msg("Verticilos"), emergent: msg("Copa alta") } as const
+export const TREE_BARKS = { smooth: msg("Lisa"), grooves: msg("Ranhuras"), paper: msg("Papel"), rings: msg("Anéis") } as const
+export const TREE_EFFECTS = { none: msg("Sem efeito"), petals: msg("Pétalas"), leaves: msg("Folhas caindo"), pollen: msg("Pólen") } as const
+export const TREE_BLOOMS = { none: msg("Sem flores"), yellow: msg("Amarela"), pink: msg("Rosa"), violet: msg("Roxa"), white: msg("Branca"), custom: msg("Personalizada") } as const
 const BLOOM_COLORS = { yellow: '#f2bd35', pink: '#f29ab0', violet: '#ac68c3', white: '#f5eee0' } as const
 type Bloom = keyof typeof TREE_BLOOMS
 
@@ -16,41 +17,41 @@ type Style = {
 }
 
 export const TREE_STYLES = {
-  pine: { label: 'Pinheiro em camadas', crown: 'layers', bark: 'grooves', colors: ['#604936', '#446854', '#7e9870'],
+  pine: { label: msg("Pinheiro em camadas"), crown: 'layers', bark: 'grooves', colors: ['#604936', '#446854', '#7e9870'],
     trunkHeight: 85, trunkWidth: 11, spread: 77, branches: 6, angle: 20, density: 5, sharpness: 72, effect: 'none' },
-  plum: { label: 'Ameixeira florida', crown: 'cloud', bark: 'grooves', colors: ['#604852', '#b47b92', '#e7b3c0'],
+  plum: { label: msg("Ameixeira florida"), crown: 'cloud', bark: 'grooves', colors: ['#604852', '#b47b92', '#e7b3c0'],
     trunkHeight: 67, trunkWidth: 13, spread: 85, branches: 5, angle: 48, density: 6, effect: 'petals' },
-  oak: { label: 'Carvalho', crown: 'cloud', bark: 'grooves', colors: ['#665041', '#657551', '#9da574'],
+  oak: { label: msg("Carvalho"), crown: 'cloud', bark: 'grooves', colors: ['#665041', '#657551', '#9da574'],
     trunkHeight: 68, trunkWidth: 23, spread: 95, branches: 6, angle: 38, density: 7, effect: 'none' },
-  willow: { label: 'Salgueiro', crown: 'droop', bark: 'grooves', colors: ['#6c6247', '#69805c', '#a8a675'],
+  willow: { label: msg("Salgueiro"), crown: 'droop', bark: 'grooves', colors: ['#6c6247', '#69805c', '#a8a675'],
     trunkHeight: 76, trunkWidth: 14, spread: 92, branches: 7, angle: 34, density: 9, sharpness: 83, effect: 'leaves' },
-  birch: { label: 'Bétula', crown: 'oval', bark: 'paper', colors: ['#cdc1a7', '#929762', '#d3c98b'],
+  birch: { label: msg("Bétula"), crown: 'oval', bark: 'paper', colors: ['#cdc1a7', '#929762', '#d3c98b'],
     trunkHeight: 83, trunkWidth: 8, spread: 60, branches: 5, angle: 54, density: 5, effect: 'pollen' },
-  palm: { label: 'Palmeira', crown: 'fronds', bark: 'rings', colors: ['#9a7354', '#588477', '#98ad72'],
+  palm: { label: msg("Palmeira"), crown: 'fronds', bark: 'rings', colors: ['#9a7354', '#588477', '#98ad72'],
     trunkHeight: 80, trunkWidth: 10, spread: 100, branches: 7, angle: 40, density: 7, taper: 74, sharpness: 92, effect: 'none' },
-  baobab: { label: 'Baobá', crown: 'umbrella', bark: 'smooth', colors: ['#9b735f', '#788755', '#b8ad75'],
+  baobab: { label: msg("Baobá"), crown: 'umbrella', bark: 'smooth', colors: ['#9b735f', '#788755', '#b8ad75'],
     trunkHeight: 66, trunkWidth: 32, spread: 94, branches: 6, angle: 51, density: 6, sharpness: 32, effect: 'none' },
-  maple: { label: 'Bordo de outono', crown: 'cloud', bark: 'grooves', colors: ['#664840', '#ab6248', '#dfaa69'],
+  maple: { label: msg("Bordo de outono"), crown: 'cloud', bark: 'grooves', colors: ['#664840', '#ab6248', '#dfaa69'],
     trunkHeight: 72, trunkWidth: 17, spread: 89, branches: 6, angle: 48, density: 7, effect: 'leaves' },
-  cypress: { label: 'Cipreste', crown: 'oval', bark: 'smooth', colors: ['#564c42', '#536b61', '#8aa181'],
+  cypress: { label: msg("Cipreste"), crown: 'oval', bark: 'smooth', colors: ['#564c42', '#536b61', '#8aa181'],
     trunkHeight: 90, trunkWidth: 9, spread: 44, branches: 5, angle: 65, density: 8, sharpness: 54, effect: 'none' },
-  ipe: { label: 'Ipê', crown: 'cloud', bark: 'grooves', colors: ['#654c47', '#53694c', '#a4a16a'],
+  ipe: { label: msg("Ipê"), crown: 'cloud', bark: 'grooves', colors: ['#654c47', '#53694c', '#a4a16a'],
     trunkHeight: 73, trunkWidth: 13, spread: 88, branches: 6, angle: 56, density: 10, sharpness: 35, effect: 'petals' },
-  araucaria: { label: 'Araucária', crown: 'whorls', bark: 'grooves', colors: ['#675044', '#335647', '#81a279'],
+  araucaria: { label: msg("Araucária"), crown: 'whorls', bark: 'grooves', colors: ['#675044', '#335647', '#81a279'],
     trunkHeight: 87, trunkWidth: 12, spread: 91, branches: 8, angle: 28, density: 8, taper: 49, sharpness: 96, effect: 'none', size: [480, 740] },
-  brazilwood: { label: 'Pau-brasil', crown: 'cloud', bark: 'grooves', colors: ['#805342', '#536e44', '#a2ae62'],
+  brazilwood: { label: msg("Pau-brasil"), crown: 'cloud', bark: 'grooves', colors: ['#805342', '#536e44', '#a2ae62'],
     trunkHeight: 69, trunkWidth: 16, spread: 91, branches: 6, angle: 48, density: 9, sharpness: 22, effect: 'none', bloom: 'yellow' },
-  brazilnut: { label: 'Castanheira', crown: 'emergent', bark: 'grooves', colors: ['#69584e', '#4c6952', '#8c9f68'],
+  brazilnut: { label: msg("Castanheira"), crown: 'emergent', bark: 'grooves', colors: ['#69584e', '#4c6952', '#8c9f68'],
     trunkHeight: 84, trunkWidth: 17, spread: 95, branches: 7, angle: 47, density: 8, sharpness: 51, effect: 'none', size: [590, 950] },
-  jequitiba: { label: 'Jequitibá-rosa', crown: 'emergent', bark: 'grooves', colors: ['#7c5957', '#546e51', '#a99b71'],
+  jequitiba: { label: msg("Jequitibá-rosa"), crown: 'emergent', bark: 'grooves', colors: ['#7c5957', '#546e51', '#a99b71'],
     trunkHeight: 85, trunkWidth: 24, spread: 95, branches: 8, angle: 33, density: 10, sharpness: 36, effect: 'none', size: [680, 1180] },
-  redwood: { label: 'Sequoia-sempre-viva', crown: 'layers', bark: 'grooves', colors: ['#845342', '#355a4f', '#769272'],
+  redwood: { label: msg("Sequoia-sempre-viva"), crown: 'layers', bark: 'grooves', colors: ['#845342', '#355a4f', '#769272'],
     trunkHeight: 90, trunkWidth: 26, spread: 73, branches: 8, angle: 25, density: 9, taper: 31, sharpness: 88, effect: 'none', size: [710, 1860] },
-  centurion: { label: 'Eucalipto Centurião', crown: 'emergent', bark: 'paper', colors: ['#a9a194', '#587366', '#9db19a'],
+  centurion: { label: msg("Eucalipto Centurião"), crown: 'emergent', bark: 'paper', colors: ['#a9a194', '#587366', '#9db19a'],
     trunkHeight: 85, trunkWidth: 16, spread: 73, branches: 5, angle: 45, density: 6, taper: 49, sharpness: 89, effect: 'none', size: [560, 1720] },
-  tule: { label: 'Árvore de Tule', crown: 'cloud', bark: 'grooves', colors: ['#776354', '#547059', '#879879'],
+  tule: { label: msg("Árvore de Tule"), crown: 'cloud', bark: 'grooves', colors: ['#776354', '#547059', '#879879'],
     trunkHeight: 68, trunkWidth: 38, spread: 100, branches: 8, angle: 33, density: 10, taper: 52, sharpness: 47, effect: 'none', size: [1220, 1130] },
-  shrub: { label: 'Moita', crown: 'cloud', bark: 'smooth', colors: ['#625542', '#557051', '#9da86c'],
+  shrub: { label: msg("Moita"), crown: 'cloud', bark: 'smooth', colors: ['#625542', '#557051', '#9da86c'],
     trunkHeight: 44, trunkWidth: 5, spread: 95, branches: 6, angle: 50, density: 9, sharpness: 24, effect: 'none', size: [250, 155] },
 } satisfies Record<string, Style>
 

@@ -6,6 +6,8 @@
 // chess-table-store.ts, the frame in components/pigchicken/chess-table-play.ts, the drawing in
 // components/pigchicken/draw/chess-table.ts and the match over the Pátio in components/pigchicken/patio-chess.tsx.
 
+import { msg, t } from '../i18n'
+
 // ---------- params ----------
 
 // "Ano/cidade": a city of the chickenchess map by its id, or 'random' (a new one at each match)
@@ -69,7 +71,7 @@ export function nextChessOption(p: ChessTableParams, option: ChessOption, cities
   const i = order.indexOf(p.city)
   return { ...p, city: order[(i + 1) % order.length] }
 }
-export const chessRadiusLabel = (r: number) => (r <= 0 ? 'som desligado' : `raio ${r}`)
+export const chessRadiusLabel = (r: number) => (r <= 0 ? t('som desligado') : t('raio {r}', { r }))
 
 // ---------- the queue ----------
 
@@ -88,7 +90,7 @@ export const CHESS_QUEUE_REACH = 700
 // what Usar does for a player standing on a stool now (null: nothing, and no hint)
 export type ChessPrompt = 'join' | 'leave' | 'bot' | 'replace'
 export const CHESS_PROMPT_LABELS: Record<ChessPrompt, string> = {
-  join: 'Entrar na fila', leave: 'Sair da fila', bot: 'Iniciar contra um bot', replace: 'Entrar no lugar do bot',
+  join: msg('Entrar na fila'), leave: msg('Sair da fila'), bot: msg('Iniciar contra um bot'), replace: msg('Entrar no lugar do bot'),
 }
 export function chessPrompt(s: ChessTableState, side: ChessSide, who: string): ChessPrompt | null {
   const here = s.seats[side], there = s.seats[side === 0 ? 1 : 0]

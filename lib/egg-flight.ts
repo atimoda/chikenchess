@@ -1,3 +1,4 @@
+import { t as tr } from './i18n'
 import { requestGameFrame, cancelGameFrame } from './game-frame'
 import type { Square } from "chess.js"
 
@@ -200,7 +201,7 @@ export function showHistoricPointsLabel(counterEl: HTMLElement | null, amount: n
   })
   const label = document.createElement('span')
   label.dataset.historicPointsLabel = `${Math.round(rect.left)}:${Math.round(rect.top)}`
-  label.textContent = `+${amount} historic ${amount === 1 ? 'point' : 'points'}`
+  label.textContent = amount === 1 ? tr('+1 historic point') : tr('+{n} historic points', { n: amount })
   label.setAttribute('role', 'status')
   label.style.cssText = `position:fixed;left:${rect.left + rect.width / 2}px;top:${rect.bottom + 4}px;transform:translateX(-50%);white-space:nowrap;font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a1a1aa;text-shadow:1px 1px 1px #000;pointer-events:none;z-index:101;`
   document.body.appendChild(label)

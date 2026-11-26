@@ -101,6 +101,7 @@ import {
 import { useOnline } from "./online-provider";
 import { AddFriendButton } from "./online-hub";
 import { duckSourceOptions } from "@/lib/music/sound-design"
+import { msg, t as tr, useT } from "@/lib/i18n";
 
 export function OnlineGame({
   matchId,
@@ -111,6 +112,7 @@ export function OnlineGame({
   onBack: () => void;
   onMatch: (id: string) => void;
 }) {
+  const t = useT();
   const online = useOnlineMatch(matchId);
   const { user } = useOnline();
   useEffect(() => {
@@ -124,10 +126,10 @@ export function OnlineGame({
     return (
       <main className="grid min-h-dvh place-items-center bg-black text-white">
         <div className="space-y-4 text-center">
-          <p>{online.error ?? "Loading online match…"}</p>
-          <Button onClick={() => void online.refresh()}>Retry</Button>
+          <p>{online.error ? t(online.error) : t("Loading online match…")}</p>
+          <Button onClick={() => void online.refresh()}>{t("Retry")}</Button>
           <Button variant="ghost" onClick={onBack}>
-            Return to globe
+            {t("Return to globe")}
           </Button>
         </div>
       </main>
@@ -164,10 +166,10 @@ function rememberMatchIntro(matchId: string) {
 }
 
 function getBotDifficultyLabel(depth?: number): string {
-  if (depth === 10) return "Medium";
-  if (depth === 15) return "Hard";
-  if (depth && depth >= 20) return "Expert";
-  return "Easy";
+  if (depth === 10) return msg("Medium");
+  if (depth === 15) return msg("Hard");
+  if (depth && depth >= 20) return msg("Expert");
+  return msg("Easy");
 }
 
 function getOnlineMemberDisplayName(
@@ -182,7 +184,7 @@ function getOnlineMemberDisplayName(
     member.profile?.code === "BOT";
   if (isBot) {
     const diff = getBotDifficultyLabel(depth);
-    return `${diff} Bot`;
+    return tr("{level} Bot", { level: tr(diff) });
   }
   return name || fallback;
 }
@@ -198,6 +200,7 @@ export function OnlineMatchBoard({
   onBack: () => void;
   viewerId: string;
 }) {
+  const t = useT();
   const me = match.members.find((m) => m.user_id === viewerId)!;
   const opponent = match.members.find((m) => m.user_id !== viewerId)!;
   const color = me.color;
@@ -222,12 +225,12 @@ export function OnlineMatchBoard({
   const blackStyle = blackCity?.genre ?? city.genre;
   const player1Name = getOnlineMemberDisplayName(
     whiteMember,
-    "Player 1",
+    t("Player 1"),
     city.aiDepth,
   );
   const player2Name = getOnlineMemberDisplayName(
     blackMember,
-    "Player 2",
+    t("Player 2"),
     city.aiDepth,
   );
   const introMatchInfo = useMemo(
@@ -424,7 +427,7 @@ export function OnlineMatchBoard({
     } catch {
       if (alive.current)
         setPieceSaveError(
-          "Piece changes have not been saved. Retry to share them.",
+          msg("Piece changes have not been saved. Retry to share them."),
         );
     } finally {
       savingPieces.current = false;
@@ -488,7 +491,7 @@ export function OnlineMatchBoard({
         appliedRevisions.current.set(piece.piece_id, piece.revision);
       else
         setPieceSaveError(
-          "A shared instrument is incompatible. Reload to get the latest game version.",
+          msg("A shared instrument is incompatible. Reload to get the latest game version."),
         );
     }
   }, [online.pieces, syncParams, color, saveEpoch]);
@@ -548,16 +551,16 @@ export function OnlineMatchBoard({
     animateInsufficientEggs(ownEggCounterRef.current);
     void getSfxEngine().playBlockedCue();
     const shortfall = amount - balance;
-    toast.error(`You need ${shortfall} more golden egg${shortfall === 1 ? "" : "s"} to use this`);
+    toast.error(shortfall === 1 ? t("You need 1 more golden egg to use this") : t("You need {n} more golden eggs to use this", { n: shortfall }));
     return false;
-  }, [match.state.eggs, color]);
+  }, [match.state.eggs, color, t]);
   const perform = useCallback(
     (command: MatchCommand) => {
       if (command.kind === "undo") setMulliganPreviewActive(false);
       const cost = command.kind === "power" ? 3 : command.kind === "undo" ? 2 : command.kind === "suggest" ? 1 : 0;
       if (command.kind === "power" && powerUsedThisTurn(match.state, command.power, color)) {
         setArmedPower(null);
-        toast.info(`${command.power === "freeze" ? "Freeze" : "Shield"} can be used once per turn`);
+        toast.info(t("{power} can be used once per turn", { power: command.power === "freeze" ? "Freeze" : "Shield" }));
         return;
       }
       if (cost && !hasEggsForAction(cost)) return;
@@ -571,17 +574,17 @@ export function OnlineMatchBoard({
         const error = freezeApplicationError(replay.game, replay.powers, power);
         if (error) {
           setArmedPower(null);
-          toast.error(error);
+          toast.error(t(error));
           return;
         }
       }
       void online
         .send(command)
         .catch((e) =>
-          toast.error(e.message ?? "Could not confirm this action"),
+          toast.error(t(e.message ?? "Could not confirm this action")),
         );
     },
-    [online.send, replay.game, replay.powers, match.state, color, hasEggsForAction],
+    [online.send, replay.game, replay.powers, match.state, color, hasEggsForAction, t],
   );
   const gesture = usePowerTargetingGesture({
     armedPower,
@@ -956,7 +959,7 @@ export function OnlineMatchBoard({
       ? [
           {
             id: "spectrogram",
-            label: "Spectrogram",
+            label: msg("Spectrogram"),
             ref: spectrogramToggleRef,
             isOn: spectrogramOn,
             onToggle: () => toggleWidget("spectrogram", setSpectrogramOn),
@@ -967,7 +970,7 @@ export function OnlineMatchBoard({
       : []),
     {
       id: "knobs",
-      label: "Piece Params",
+      label: msg("Piece Params"),
       ref: knobsToggleRef,
       isOn: paramsOn,
       onToggle: () => toggleWidget("knobs", setParamsOn),
@@ -976,7 +979,7 @@ export function OnlineMatchBoard({
     },
     {
       id: "mixer",
-      label: "Mixer",
+      label: msg("Mixer"),
       ref: mixerToggleRef,
       isOn: mixerOn,
       onToggle: () => toggleWidget("mixer", setMixerOn),
@@ -987,7 +990,7 @@ export function OnlineMatchBoard({
       ? [
           {
             id: "pieceDebug",
-            label: "Piece Debug",
+            label: msg("Piece Debug"),
             ref: pieceDebugToggleRef,
             isOn: pieceDebugOn,
             onToggle: () => toggleWidget("pieceDebug", setPieceDebugOn),
@@ -1006,7 +1009,7 @@ export function OnlineMatchBoard({
       ? [
           {
             id: "liveCode",
-            label: "Debug",
+            label: msg("Debug"),
             ref: liveCodeToggleRef,
             isOn: liveCodeOn,
             onToggle: () => toggleWidget("liveCode", setLiveCodeOn),
@@ -1152,7 +1155,7 @@ export function OnlineMatchBoard({
           songMidi={{ on: songMidiOn, onToggle: () => setSongMidiOn((on) => !on) }}
           arrangement={music.kit?.arrangement}
           selectedSectionId={paramsSectionId}
-          readOnlyMessage={locked ? "Opponent’s Piece Params" : "Match ended"}
+          readOnlyMessage={locked ? t("Opponent’s Piece Params") : t("Match ended")}
           instrument={music.instrument}
           onInstrumentChange={
             locked || result ? undefined : music.updateInstrument
@@ -1296,8 +1299,8 @@ export function OnlineMatchBoard({
                   arrangement={music.snapshot.arrangement}
                 />
                 <p>
-                  {analysis.error ??
-                    (analysis.busy ? "Analyzing…" : "Analysis ready")}
+                  {(analysis.error ? t(analysis.error) : null) ??
+                    (analysis.busy ? t("Analyzing…") : t("Analysis ready"))}
                 </p>
               </>
             }
@@ -1310,22 +1313,22 @@ export function OnlineMatchBoard({
     "relative size-[38px] p-0 sm:size-[51px] overflow-visible rounded-md transition-all border border-transparent hover:bg-[var(--city-neon)] hover:text-white hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-[var(--city-neon)] active:text-black pointer-events-auto cursor-pointer";
   const status =
     online.busy || movePreview
-      ? "Confirming…"
+      ? t("Confirming…")
       : !online.connected
-        ? "Reconnecting…"
+        ? t("Reconnecting…")
         : result
           ? won
-            ? "You won!"
+            ? t("You won!")
             : result.winner
-              ? "You lost"
-              : "Draw"
+              ? t("You lost")
+              : t("Draw")
           : armedPower
-            ? "Choose a square"
+            ? t("Choose a square")
             : ownTurn
               ? replay.game.isCheck()
-                ? "Your move · Check!"
-                : "Your move"
-              : "Opponent thinking...";
+                ? t("Your move · Check!")
+                : t("Your move")
+              : t("Opponent thinking...");
   const statusPlacement = !online.busy && !movePreview && online.connected && !result && !armedPower && !ownTurn ? "top" : "bottom";
   const statusColor = replay.game.isCheck() ? "#ef4444" : city.color;
   const captured = replay.game
@@ -1383,7 +1386,7 @@ export function OnlineMatchBoard({
               beginIntroExit();
             }
           }}
-          aria-label="Enter online board"
+          aria-label={t("Enter online board")}
         >
           <GameCityTitleIntro
             city={city}
@@ -1414,8 +1417,8 @@ export function OnlineMatchBoard({
             MATCH_HEADER_BUTTON_CLASS,
             intro && "relative z-[111]",
           )}
-          aria-label="Voltar ao mapa"
-          title="Voltar ao mapa"
+          aria-label={t("Voltar ao mapa")}
+          title={t("Voltar ao mapa")}
           onClick={onBack}
         >
           <GlobeGridIcon maskId="online" />
@@ -1475,7 +1478,7 @@ export function OnlineMatchBoard({
                 "min-w-0 max-w-[calc(100vw-250px)] sm:max-w-60 bg-transparent",
                 MATCH_HEADER_BUTTON_CLASS,
               )}
-              title={`${opponent.profile.display_name} · ${online.opponentConnected ? "Online" : "Disconnected"}`}
+              title={`${opponent.profile.display_name} · ${online.opponentConnected ? t("Online") : t("Disconnected")}`}
             >
               <span
                 className={cn(
@@ -1485,7 +1488,7 @@ export function OnlineMatchBoard({
               />
               <span className="truncate">{opponent.profile.display_name}</span>
               <span className="hidden sm:inline text-xs">
-                {online.opponentConnected ? "Online" : "Disconnected"}
+                {online.opponentConnected ? t("Online") : t("Disconnected")}
               </span>
             </Button>
             <div className="flex gap-3">
@@ -1607,9 +1610,9 @@ export function OnlineMatchBoard({
                 // Only the double tap that turns a piece on opens the full Piece Params.
                 if (piece && music.togglePiece(square)) setParamsOpen(true);
               }}
-              onFrozenCaptureBlocked={() => toast("Não é possível capturar uma peça congelada.", { id: "frozen-capture-blocked", duration: 3000 })}
-              onShieldCaptureBlocked={(reason) => toast(shieldCaptureBlockMessage(reason), { id: "shield-capture-blocked", duration: 3000 })}
-              onKingExposed={() => toast("Você não pode deixar seu rei sob ataque.", { id: "king-exposed", duration: 3000 })}
+              onFrozenCaptureBlocked={() => toast(t("Não é possível capturar uma peça congelada."), { id: "frozen-capture-blocked", duration: 3000 })}
+              onShieldCaptureBlocked={(reason) => toast(t(shieldCaptureBlockMessage(reason)), { id: "shield-capture-blocked", duration: 3000 })}
+              onKingExposed={() => toast(t("Você não pode deixar seu rei sob ataque."), { id: "king-exposed", duration: 3000 })}
               musicEffectsEnabled={engineOn}
               musicPulseMonitor={music.pulseMonitor}
               synthSelectedSquare={selected?.square as Square | undefined}
@@ -1645,7 +1648,7 @@ export function OnlineMatchBoard({
               widthFor={[visibleOwnEggs, visibleOpponentEggs]}
               empty={currentEggs === 0}
               role="img"
-              aria-label={`${visibleOwnEggs} golden eggs for you`}
+              aria-label={t("{n} golden eggs for you", { n: visibleOwnEggs })}
               className="self-center"
             />
           </div>
@@ -1669,7 +1672,7 @@ export function OnlineMatchBoard({
               onMouseLeave: () => setMulliganPreviewActive(false),
               onPointerLeave: () => setMulliganPreviewActive(false),
               onBlur: () => setMulliganPreviewActive(false),
-              title: "Volta 1 jogada · 2 golden eggs"
+              title: t("Volta 1 jogada · 2 golden eggs")
             },
             freeze: {
               disabled: disabled || !ownTurn || powerUsedThisTurn(match.state, "freeze", color), 'aria-pressed': armedPower === "freeze",
@@ -1691,10 +1694,10 @@ export function OnlineMatchBoard({
                   type="button"
                   aria-label={
                     group === "best"
-                      ? "Veja as 3 melhores jogadas"
-                      : "Veja as 3 piores jogadas"
+                      ? t("Veja as 3 melhores jogadas")
+                      : t("Veja as 3 piores jogadas")
                   }
-                  title={`${group} · 1 golden egg`}
+                  title={t("{group} · 1 golden egg", { group })}
                   disabled={!canShowSuggestions(group)}
                   onClick={() => show(group)}
                   className={cn(
@@ -1719,7 +1722,7 @@ export function OnlineMatchBoard({
                 size="icon"
                 className={centerButtonClass}
                 style={{ backgroundColor: "var(--city-neon)20" }}
-                aria-label="Undo · costs 2 golden eggs"
+                aria-label={t("Undo · costs 2 golden eggs")}
                 {...costEvents("undo")}
                 onMouseEnter={() => {
                   setMulliganPreviewActive(true);
@@ -1737,7 +1740,7 @@ export function OnlineMatchBoard({
                   setMulliganPreviewActive(false);
                   hideCostHint();
                 }}
-                title="Undo · 2 golden eggs"
+                title={t("Undo · 2 golden eggs")}
                 disabled={disabled || replay.game.history().length === 0}
                 onClick={() => {
                   setMulliganPreviewActive(false);
@@ -1756,8 +1759,8 @@ export function OnlineMatchBoard({
                 size="icon"
                 className={centerButtonClass}
                 style={{ backgroundColor: "var(--city-neon)20" }}
-                aria-label="Redo"
-                title="Redo · free"
+                aria-label={t("Redo")}
+                title={t("Redo · free")}
                 disabled={disabled || match.state.redo?.actor !== color}
                 onClick={() => perform({ kind: "redo" })}
               >
@@ -1772,11 +1775,11 @@ export function OnlineMatchBoard({
                   {...costEvents(kind)}
                   type="button"
                   disabled={disabled || !ownTurn || powerUsedThisTurn(match.state, kind, color)}
-                  title={`${kind} · 3 golden eggs`}
+                  title={t("{kind} · 3 golden eggs", { kind })}
                   aria-label={
                     kind === "freeze"
-                      ? "Congele uma casa por uma rodada"
-                      : "Proteja uma casa por uma rodada"
+                      ? t("Congele uma casa por uma rodada")
+                      : t("Proteja uma casa por uma rodada")
                   }
                   aria-pressed={armedPower === kind}
                   onPointerDown={(event) => {
@@ -1815,7 +1818,7 @@ export function OnlineMatchBoard({
           <div className="w-[var(--game-board-width)] pointer-events-auto">
             {analysis.error ? (
               <p role="alert" className="mt-2 text-sm text-amber-300">
-                {analysis.error}
+                {t(analysis.error)}
               </p>
             ) : null}
             {online.error || (online.pending && !online.busy) ? (
@@ -1823,23 +1826,23 @@ export function OnlineMatchBoard({
                 role="alert"
                 className="mt-3 rounded border border-amber-300/30 p-3 text-sm text-amber-200"
               >
-                {online.error ?? "An action is waiting for confirmation."}{" "}
+                {online.error ? t(online.error) : t("An action is waiting for confirmation.")}{" "}
                 {online.pending ? (
                   <Button
                     variant="ghost"
                     disabled={online.busy}
                     onClick={() => void online.retry().catch(() => {})}
                   >
-                    Retry action
+                    {t("Retry action")}
                   </Button>
                 ) : null}
               </div>
             ) : null}
             {pieceSaveError ? (
               <div role="alert" className="mt-3 text-sm text-amber-200">
-                {pieceSaveError}
+                {t(pieceSaveError)}
                 <Button variant="ghost" onClick={() => void flushPieces()}>
-                  Retry
+                  {t("Retry")}
                 </Button>
               </div>
             ) : null}
@@ -1933,40 +1936,38 @@ export function OnlineMatchBoard({
             </DialogDescription>
           </DialogHeader>
           <p>
-            Golden eggs:{" "}
+            {t("Golden eggs:")}{" "}
             <b className="text-amber-300">
               {opponent.profile.profile.goldenEggs}
             </b>
           </p>
-          <p>Historical points: {opponent.profile.profile.points}</p>
+          <p>{t("Historical points:")} {opponent.profile.profile.points}</p>
           <p className="text-xs text-white/60">
             {online.opponentConnected
-              ? "Connected"
-              : "Disconnected · waiting for reconnection"}
+              ? t("Connected")
+              : t("Disconnected · waiting for reconnection")}
           </p>
           <AddFriendButton targetCode={opponent.profile.code} />
-          {!result && <Button variant="outline" onClick={() => { setOpponentOpen(false); setExitOpen(true); }}>Desistir ou oferecer empate</Button>}
+          {!result && <Button variant="outline" onClick={() => { setOpponentOpen(false); setExitOpen(true); }}>{t("Desistir ou oferecer empate")}</Button>}
           <label className="flex items-center gap-3">
             <input
               type="checkbox"
               checked={syncParams}
               onChange={(e) => changeSync(e.target.checked)}
             />
-            Sincronizar parâmetros musicais
+            {t("Sincronizar parâmetros musicais")}
           </label>
           <p className="text-xs text-white/60">
-            Ao religar, seus ajustes locais nas peças adversárias são
-            substituídos pelos parâmetros compartilhados.
+            {t("Ao religar, seus ajustes locais nas peças adversárias são substituídos pelos parâmetros compartilhados.")}
           </p>
         </DialogContent>
       </Dialog>
       <Dialog open={exitOpen} onOpenChange={setExitOpen}>
         <DialogContent className="z-[140] border-white/20 bg-[#101713] text-white">
           <DialogHeader>
-            <DialogTitle>Ações da partida</DialogTitle>
+            <DialogTitle>{t("Ações da partida")}</DialogTitle>
             <DialogDescription>
-              Desistir encerra a partida. A oferta de empate precisa ser aceita
-              pelo adversário.
+              {t("Desistir encerra a partida. A oferta de empate precisa ser aceita pelo adversário.")}
             </DialogDescription>
           </DialogHeader>
           <Button
@@ -1976,7 +1977,7 @@ export function OnlineMatchBoard({
               setExitOpen(false);
             }}
           >
-            Desistir
+            {t("Desistir")}
           </Button>
           <Button
             variant="outline"
@@ -1986,10 +1987,10 @@ export function OnlineMatchBoard({
               setExitOpen(false);
             }}
           >
-            Oferecer empate
+            {t("Oferecer empate")}
           </Button>
           <Button variant="ghost" onClick={() => setExitOpen(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
         </DialogContent>
       </Dialog>
@@ -2000,42 +2001,42 @@ export function OnlineMatchBoard({
       >
         <DialogContent className="z-[140] border-white/20 bg-[#101713] text-white">
           <DialogHeader>
-            <DialogTitle>Draw offered</DialogTitle>
+            <DialogTitle>{t("Draw offered")}</DialogTitle>
             <DialogDescription>
-              {opponent.profile.display_name} ofereceu empate.
+              {t("{name} ofereceu empate.", { name: opponent.profile.display_name })}
             </DialogDescription>
           </DialogHeader>
           <Button
             disabled={disabled}
             onClick={() => perform({ kind: "accept-draw" })}
           >
-            Aceitar empate
+            {t("Aceitar empate")}
           </Button>
           <Button
             variant="outline"
             disabled={disabled}
             onClick={() => perform({ kind: "decline-draw" })}
           >
-            Continuar jogando
+            {t("Continuar jogando")}
           </Button>
         </DialogContent>
       </Dialog>
       <Dialog open={!!result} onOpenChange={(open) => { if (!open) onBack(); }}>
         <DialogContent
           className="z-[140] border-white/20 bg-[#101713] text-white"
-          closeLabel="Return to globe"
+          closeLabel={t("Return to globe")}
           onInteractOutside={(event) => event.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle>
-              {won ? "You won!" : result?.winner ? "You lost" : "Draw"}
+              {won ? t("You won!") : result?.winner ? t("You lost") : t("Draw")}
             </DialogTitle>
             <DialogDescription>
               {won || (result && !result.winner)
-                ? `You took home ${payout} golden eggs. Historical points +${payout + match.state.collected[color]}.`
+                ? t("You took home {payout} golden eggs. Historical points +{points}.", { payout, points: payout + match.state.collected[color] })
                 : result?.reason === "resign"
-                  ? "Match ended by resignation."
-                  : "The match has ended."}
+                  ? t("Match ended by resignation.")
+                  : t("The match has ended.")}
             </DialogDescription>
           </DialogHeader>
           {result && (won || !result.winner) && <EggBasketTransfer
@@ -2054,7 +2055,7 @@ export function OnlineMatchBoard({
               disabled={online.busy || !!online.pending}
               onClick={() => perform({ kind: "accept-rematch" })}
             >
-              Aceitar nova partida
+              {t("Aceitar nova partida")}
             </Button>
           ) : (
             <Button
@@ -2067,16 +2068,16 @@ export function OnlineMatchBoard({
             >
               <Music2 className="h-4 w-4" />
               {match.state.rematchOffer === color
-                ? "Waiting for opponent…"
+                ? t("Waiting for opponent…")
                 : won
-                  ? "Convidar para uma nova partida"
+                  ? t("Convidar para uma nova partida")
                   : result?.winner
-                    ? "Pedir revanche"
-                    : "Nova partida"}
+                    ? t("Pedir revanche")
+                    : t("Nova partida")}
             </Button>
           )}
           <Button variant="outline" onClick={onBack}>
-            Return to globe
+            {t("Return to globe")}
           </Button>
         </DialogContent>
       </Dialog>

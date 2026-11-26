@@ -2,6 +2,7 @@
 // (what a zone with walls turns into when its life runs out). Pure data and functions; sound-zones.ts normalizes
 // the results, the tags (components/pigchicken/zone-tags.tsx) and the Parquinho call them.
 // To add a pattern: one entry in ZONE_CHANGES (id, label, group, hint, apply).
+import { msg } from '../i18n'
 import { DEGREE_COLORS, SCALES, ZONES, type Feel, type ScaleId } from './music'
 import { CHAIN_MAX, newTransform, type Transform, type TransformKind } from './transforms'
 import { BIRD_IDS, type BirdId } from './birds'
@@ -26,26 +27,26 @@ export function fitChords(scale: ScaleId, chordScale: ScaleId): ScaleId {
   return fit.includes(chordScale) ? chordScale : fit.includes(scale) ? scale : fit[0]
 }
 export const FEELS: Feel[] = ['straight', 'swing', 'half']
-export const FEEL_LABELS: Record<Feel, string> = { straight: 'Reto', swing: 'Swing', half: 'Meio tempo' }
+export const FEEL_LABELS: Record<Feel, string> = { straight: msg('Reto'), swing: msg('Swing'), half: msg('Meio tempo') }
 export const pcOf = (m: number) => ((m % 12) + 12) % 12
 // a key picked by name sits around the middle of the keyboard (Fá♯3 … Fá4), like the scenes' zones
 export const rootOf = (pc: number) => 54 + ((pcOf(pc) - 6 + 12) % 12)
 
 // popular progressions (scale degrees from 0, one chord per bar); the Progressão tag steps down this list
 export const PROGRESSIONS: { label: string; degrees: number[] }[] = [
-  { label: 'Pedal na tônica', degrees: [0] },
-  { label: 'I ii (flutuante)', degrees: [0, 1, 0, 1] },
-  { label: 'Vamp i iv', degrees: [0, 3, 0, 3] },
-  { label: 'I IV V IV', degrees: [0, 3, 4, 3] },
-  { label: 'I V vi IV (pop)', degrees: [0, 4, 5, 3] },
-  { label: 'vi IV I V', degrees: [5, 3, 0, 4] },
-  { label: 'I vi IV V (anos 50)', degrees: [0, 5, 3, 4] },
-  { label: 'I vi ii V (samba)', degrees: [0, 5, 1, 4] },
-  { label: 'ii V I', degrees: [1, 4, 0, 0] },
-  { label: 'Andaluza', degrees: [0, 6, 5, 4] },
-  { label: 'I bVII IV I', degrees: [0, 6, 3, 0] },
-  { label: 'Cânone', degrees: [0, 4, 5, 2, 3, 0, 3, 4] },
-  { label: 'Blues de 12', degrees: [0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4] },
+  { label: msg('Pedal na tônica'), degrees: [0] },
+  { label: msg('I ii (flutuante)'), degrees: [0, 1, 0, 1] },
+  { label: msg('Vamp i iv'), degrees: [0, 3, 0, 3] },
+  { label: msg('I IV V IV'), degrees: [0, 3, 4, 3] },
+  { label: msg('I V vi IV (pop)'), degrees: [0, 4, 5, 3] },
+  { label: msg('vi IV I V'), degrees: [5, 3, 0, 4] },
+  { label: msg('I vi IV V (anos 50)'), degrees: [0, 5, 3, 4] },
+  { label: msg('I vi ii V (samba)'), degrees: [0, 5, 1, 4] },
+  { label: msg('ii V I'), degrees: [1, 4, 0, 0] },
+  { label: msg('Andaluza'), degrees: [0, 6, 5, 4] },
+  { label: msg('I bVII IV I'), degrees: [0, 6, 3, 0] },
+  { label: msg('Cânone'), degrees: [0, 4, 5, 2, 3, 0, 3, 4] },
+  { label: msg('Blues de 12'), degrees: [0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4] },
 ]
 const sameList = (a: number[], b: number[]) => a.length === b.length && a.every((v, i) => v === b[i])
 export const progressionIndex = (p: number[]) => PROGRESSIONS.findIndex(x => sameList(x.degrees, p))
@@ -125,7 +126,7 @@ function flipMode(z: SoundZoneParams, relative: boolean): Partial<SoundZoneParam
 const withFeel = (z: SoundZoneParams, feel: Feel): Partial<SoundZoneParams> => { const beat = beatForFeel(z.ambience.beat, feel); return { feel, ambience: z.ambience.drums || beat === z.ambience.beat ? z.ambience : withBeat(z.ambience, beat) } }
 
 export const ZONE_CHANGES: ZoneChange[] = [
-  { id: 'random', label: 'Random', group: 'Geral', hint: 'Embaralha tom, escalas, andamento, balanço e progressão',
+  { id: 'random', label: msg('Random'), group: msg('Geral'), hint: msg('Embaralha tom, escalas, andamento, balanço e progressão'),
     apply: (z, rnd) => {
       const scale = pick(SCALE_IDS, rnd)
       return {
@@ -133,38 +134,38 @@ export const ZONE_CHANGES: ZoneChange[] = [
         bpm: 60 + 2 * Math.floor(rnd() * 46), ...withFeel(z, pick(FEELS, rnd)), progression: pick(PROGRESSIONS, rnd).degrees.slice(),
       }
     } },
-  { id: 'doubleTime', label: 'Tempo dobrado', group: 'Ritmo', hint: 'Dobra o andamento (ou corta pela metade quando passaria do limite)',
+  { id: 'doubleTime', label: msg('Tempo dobrado'), group: msg('Ritmo'), hint: msg('Dobra o andamento (ou corta pela metade quando passaria do limite)'),
     apply: z => ({ bpm: z.bpm * 2 <= ZONE_BPM.max ? z.bpm * 2 : Math.round(z.bpm / 2) }) },
-  { id: 'accelerando', label: 'Acelerando', group: 'Ritmo', hint: 'Mais 10 bpm a cada morte; passando de 200 volta a 70',
+  { id: 'accelerando', label: msg('Acelerando'), group: msg('Ritmo'), hint: msg('Mais 10 bpm a cada morte; passando de 200 volta a 70'),
     apply: z => ({ bpm: z.bpm + 10 > ZONE_BPM.max ? 70 : z.bpm + 10 }) },
-  { id: 'feel', label: 'Troca de levada', group: 'Ritmo', hint: 'Reto → swing → meio tempo',
+  { id: 'feel', label: msg('Troca de levada'), group: msg('Ritmo'), hint: msg('Reto → swing → meio tempo'),
     apply: z => withFeel(z, after(FEELS, z.feel)) },
-  { id: 'keyUp', label: 'Sobe meio tom', group: 'Harmonia', hint: 'Modulação de um semitom acima (a do final da música pop)',
+  { id: 'keyUp', label: msg('Sobe meio tom'), group: msg('Harmonia'), hint: msg('Modulação de um semitom acima (a do final da música pop)'),
     apply: z => ({ root: keyBy(z.root, 1) }) },
-  { id: 'fifths', label: 'Ciclo de quintas', group: 'Harmonia', hint: 'Muda o tom uma quinta acima',
+  { id: 'fifths', label: msg('Ciclo de quintas'), group: msg('Harmonia'), hint: msg('Muda o tom uma quinta acima'),
     apply: z => ({ root: keyBy(z.root, 7) }) },
-  { id: 'relative', label: 'Relativa maior/menor', group: 'Harmonia', hint: 'Dó maior ↔ Lá menor',
+  { id: 'relative', label: msg('Relativa maior/menor'), group: msg('Harmonia'), hint: msg('Dó maior ↔ Lá menor'),
     apply: z => flipMode(z, true) },
-  { id: 'parallel', label: 'Homônima maior/menor', group: 'Harmonia', hint: 'Dó maior ↔ Dó menor',
+  { id: 'parallel', label: msg('Homônima maior/menor'), group: msg('Harmonia'), hint: msg('Dó maior ↔ Dó menor'),
     apply: z => flipMode(z, false) },
-  { id: 'modal', label: 'Troca de modo', group: 'Harmonia', hint: 'Maior → lídio → mixolídio → dórico → menor (os acordes; a escala também se tiver 7 notas)',
+  { id: 'modal', label: msg('Troca de modo'), group: msg('Harmonia'), hint: msg('Maior → lídio → mixolídio → dórico → menor (os acordes; a escala também se tiver 7 notas)'),
     apply: z => {
       if (SCALES[z.scale].steps.length === 7) { const mode = after(MODES, MODES.includes(z.chordScale) ? z.chordScale : 'minor'); return { chordScale: mode, scale: mode } }
       // a pentatonic keeps its notes: only the modes that hold them
       const fit = MODES.filter(m => chordScalesFor(z.scale).includes(m))
       return { chordScale: fit.includes(z.chordScale) ? after(fit, z.chordScale) : fit[0] ?? fitChords(z.scale, z.chordScale) }
     } },
-  { id: 'progression', label: 'Próxima progressão', group: 'Harmonia', hint: 'Passa para a próxima progressão da lista',
+  { id: 'progression', label: msg('Próxima progressão'), group: msg('Harmonia'), hint: msg('Passa para a próxima progressão da lista'),
     apply: z => { const i = progressionIndex(z.progression); return { progression: PROGRESSIONS[(i + 1) % PROGRESSIONS.length].degrees.slice() } } },
-  { id: 'retrograde', label: 'Progressão retrógrada', group: 'Harmonia', hint: 'Toca a progressão de trás para a frente',
+  { id: 'retrograde', label: msg('Progressão retrógrada'), group: msg('Harmonia'), hint: msg('Toca a progressão de trás para a frente'),
     apply: z => ({ progression: z.progression.slice().reverse() }) },
-  { id: 'penta', label: 'Penta ↔ diatônica', group: 'Melodia', hint: 'Pentatônica vira a escala de 7 notas e vice-versa',
+  { id: 'penta', label: msg('Penta ↔ diatônica'), group: msg('Melodia'), hint: msg('Pentatônica vira a escala de 7 notas e vice-versa'),
     apply: z => { const scale: ScaleId = z.scale === 'majorPenta' ? 'major' : z.scale === 'minorPenta' ? 'minor' : z.scale === 'blues' ? 'minorPenta' : MINORISH.includes(z.scale) ? 'minorPenta' : 'majorPenta'; return { scale, chordScale: fitChords(scale, z.chordScale) } } },
-  { id: 'mirror', label: 'Espelho melódico', group: 'Melodia', hint: 'Liga ou desliga o espelho na cadeia do ambiente (melodia de cabeça para baixo)',
+  { id: 'mirror', label: msg('Espelho melódico'), group: msg('Melodia'), hint: msg('Liga ou desliga o espelho na cadeia do ambiente (melodia de cabeça para baixo)'),
     apply: z => ({ chain: toggleStep(z.chain, newTransform('mirror')) }) },
-  { id: 'counter', label: 'Contracanto', group: 'Melodia', hint: 'Liga ou desliga uma segunda voz em terças na cadeia do ambiente',
+  { id: 'counter', label: msg('Contracanto'), group: msg('Melodia'), hint: msg('Liga ou desliga uma segunda voz em terças na cadeia do ambiente'),
     apply: z => ({ chain: toggleStep(z.chain, newTransform('counter')) }) },
-  { id: 'octave', label: 'Oitava acima', group: 'Melodia', hint: 'Liga ou desliga uma oitava acima na cadeia do ambiente',
+  { id: 'octave', label: msg('Oitava acima'), group: msg('Melodia'), hint: msg('Liga ou desliga uma oitava acima na cadeia do ambiente'),
     apply: z => ({ chain: toggleStep(z.chain, newTransform('octave')) }) },
 ]
 export const ZONE_CHANGE_IDS = ZONE_CHANGES.map(c => c.id)

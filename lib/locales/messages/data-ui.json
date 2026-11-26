@@ -1,0 +1,20 @@
+{
+ "CHICKENS ARE GOOD AT JUMPING": {"pt": "GALINHAS SÃO BOAS DE PULO", "en": "CHICKENS ARE GOOD AT JUMPING", "es": "LAS GALLINAS SALTAN BIEN", "zh": "鸡很会跳", "hi": "मुर्गियाँ कूदने में माहिर हैं", "ja": "ニワトリはジャンプが得意", "ru": "КУРЫ ХОРОШО ПРЫГАЮТ", "fr": "LES POULES SAUTENT BIEN"},
+ "compose chess": {"pt": "componha xadrez", "en": "compose chess", "es": "compón ajedrez", "zh": "谱写国际象棋", "hi": "शतरंज रचो", "ja": "チェスを作曲しよう", "ru": "сочиняй шахматы", "fr": "composez les échecs"},
+ "it may be infinite chess": {"pt": "pode ser um xadrez infinito", "en": "it may be infinite chess", "es": "puede ser un ajedrez infinito", "zh": "这可能是无限的象棋", "hi": "शायद यह अनंत शतरंज है", "ja": "これは無限のチェスかもしれない", "ru": "возможно, это бесконечные шахматы", "fr": "ce sont peut-être des échecs infinis"},
+ "making bad moves isn’t so bad, after all": {"pt": "fazer lances ruins não é tão ruim, afinal", "en": "making bad moves isn’t so bad, after all", "es": "hacer malas jugadas no es tan malo, después de todo", "zh": "走臭棋其实也没那么糟", "hi": "बुरी चालें चलना आख़िर इतना बुरा भी नहीं", "ja": "悪手を指すのも、案外悪くない", "ru": "плохие ходы — в конце концов, не так уж плохо", "fr": "jouer de mauvais coups, ce n’est pas si mal, après tout"},
+ "improvisational chess": {"pt": "xadrez de improviso", "en": "improvisational chess", "es": "ajedrez improvisado", "zh": "即兴象棋", "hi": "तात्कालिक शतरंज", "ja": "即興チェス", "ru": "импровизационные шахматы", "fr": "échecs improvisés"},
+ "jazz chess": {"pt": "xadrez jazz", "en": "jazz chess", "es": "ajedrez jazz", "zh": "爵士象棋", "hi": "जैज़ शतरंज", "ja": "ジャズチェス", "ru": "джазовые шахматы", "fr": "échecs jazz"},
+ "Pitmaker": {"pt": "Pitmaker", "en": "Pitmaker", "es": "Pitmaker", "zh": "节拍学徒", "hi": "पिटमेकर", "ja": "ピットメーカー", "ru": "Питмейкер", "fr": "Pitmaker"},
+ "Apprrrentice": {"pt": "Aprrrendiz", "en": "Apprrrentice", "es": "Aprrrendiz", "zh": "学学学徒", "hi": "नौसिखिय्या", "ja": "見習いいい", "ru": "Учениииик", "fr": "Apprrrenti"},
+ "Groover": {"pt": "Groover", "en": "Groover", "es": "Groover", "zh": "律动高手", "hi": "ग्रूवर", "ja": "グルーヴァー", "ru": "Грувер", "fr": "Groover"},
+ "Virtuoso": {"pt": "Virtuose", "en": "Virtuoso", "es": "Virtuoso", "zh": "大师", "hi": "उस्ताद", "ja": "名手", "ru": "Виртуоз", "fr": "Virtuose"},
+ "Producer": {"pt": "Produtor", "en": "Producer", "es": "Productor", "zh": "制作人", "hi": "प्रोड्यूसर", "ja": "プロデューサー", "ru": "Продюсер", "fr": "Producteur"},
+ "Novice Beatmaker": {"pt": "Beatmaker iniciante", "en": "Novice Beatmaker", "es": "Beatmaker novato", "zh": "新手节拍师", "hi": "नौसिखिया बीटमेकर", "ja": "駆け出しビートメイカー", "ru": "Начинающий битмейкер", "fr": "Beatmaker débutant"},
+ "Estimativa final": {"pt": "Estimativa final", "en": "Final estimate", "es": "Estimación final", "zh": "最终评估", "hi": "अंतिम अनुमान", "ja": "最終評価", "ru": "Итоговая оценка", "fr": "Estimation finale"},
+ "Prévia em atualização": {"pt": "Prévia em atualização", "en": "Preview updating", "es": "Vista previa actualizándose", "zh": "预览更新中", "hi": "पूर्वावलोकन अपडेट हो रहा है", "ja": "プレビュー更新中", "ru": "Предпросмотр обновляется", "fr": "Aperçu en cours de mise à jour"},
+ "brancas a jogar": {"pt": "brancas a jogar", "en": "white to move", "es": "juegan blancas", "zh": "白方走棋", "hi": "सफ़ेद की चाल", "ja": "白番", "ru": "ход белых", "fr": "trait aux blancs"},
+ "pretas a jogar": {"pt": "pretas a jogar", "en": "black to move", "es": "juegan negras", "zh": "黑方走棋", "hi": "काले की चाल", "ja": "黒番", "ru": "ход чёрных", "fr": "trait aux noirs"},
+ "CONTINUE": {"pt": "CONTINUAR", "en": "CONTINUE", "es": "CONTINUAR", "zh": "继续", "hi": "जारी रखें", "ja": "続ける", "ru": "ПРОДОЛЖИТЬ", "fr": "CONTINUER"},
+ "1 ritmo": {"pt": "1 ritmo", "en": "1 rhythm", "es": "1 ritmo", "zh": "1 种节奏", "hi": "1 रिद्म", "ja": "1 リズム", "ru": "1 ритм", "fr": "1 rythme"}
+}

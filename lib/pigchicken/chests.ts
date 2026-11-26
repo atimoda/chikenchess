@@ -3,12 +3,13 @@
 // rarity). Pure: the layout keeps the params, combat.ts opens it and spawns the items, components/pigchicken/draw/
 // chests.ts draws it.
 import { CAGE_IDS, CONSUMABLE_IDS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, RACK_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from './items'
+import { msg } from '../i18n'
 
 // simples: a soft yellow glow; lendário: a stronger blue one
 export type ChestRarity = 'simple' | 'legendary'
 export const CHEST_RARITIES: { value: ChestRarity; label: string }[] = [
-  { value: 'simple', label: 'Simples' },
-  { value: 'legendary', label: 'Lendário' },
+  { value: 'simple', label: msg('Simples') },
+  { value: 'legendary', label: msg('Lendário') },
 ]
 // the glow of each rarity: its colour, how far it reaches (× the chest's width) and how bright it is
 export const CHEST_GLOW: Record<ChestRarity, { color: string; core: string; reach: number; alpha: number }> = {
@@ -20,22 +21,22 @@ export const CHEST_GLOW: Record<ChestRarity, { color: string; core: string; reac
 // Gaiolas of whoever opens it (they stay there)
 export type ChestLock = 'free' | 'key' | 'souls'
 export const CHEST_LOCKS: { value: ChestLock; label: string }[] = [
-  { value: 'free', label: 'Livre' },
-  { value: 'key', label: 'Chave' },
-  { value: 'souls', label: 'Merecimento (almas nas gaiolas)' },
+  { value: 'free', label: msg('Livre') },
+  { value: 'key', label: msg('Chave') },
+  { value: 'souls', label: msg('Merecimento (almas nas gaiolas)') },
 ]
 
 // a group of items: one of them is drawn when its entry comes out
 export type LootGroup = 'any' | 'sports' | 'weapons' | 'instruments' | 'consumables' | 'magic' | 'keys' | 'cages'
 export const LOOT_GROUPS: { value: LootGroup; label: string; items: ItemId[] }[] = [
-  { value: 'any', label: 'Qualquer item', items: RACK_ITEM_IDS },
-  { value: 'weapons', label: 'Uma arma', items: WEAPON_IDS },
-  { value: 'instruments', label: 'Um instrumento', items: INSTRUMENT_IDS },
-  { value: 'sports', label: 'Um esportivo', items: SPORTS_IDS },
-  { value: 'consumables', label: 'Uma habilidade especial', items: CONSUMABLE_IDS },
-  { value: 'magic', label: 'Um item de magia', items: MAGIC_IDS },
-  { value: 'keys', label: 'Uma chave', items: KEY_IDS },
-  { value: 'cages', label: 'Uma gaiola', items: CAGE_IDS },
+  { value: 'any', label: msg('Qualquer item'), items: RACK_ITEM_IDS },
+  { value: 'weapons', label: msg('Uma arma'), items: WEAPON_IDS },
+  { value: 'instruments', label: msg('Um instrumento'), items: INSTRUMENT_IDS },
+  { value: 'sports', label: msg('Um esportivo'), items: SPORTS_IDS },
+  { value: 'consumables', label: msg('Uma habilidade especial'), items: CONSUMABLE_IDS },
+  { value: 'magic', label: msg('Um item de magia'), items: MAGIC_IDS },
+  { value: 'keys', label: msg('Uma chave'), items: KEY_IDS },
+  { value: 'cages', label: msg('Uma gaiola'), items: CAGE_IDS },
 ]
 const GROUP_IDS = LOOT_GROUPS.map(g => g.value) as string[]
 export const isLootGroup = (pick: string): pick is LootGroup => GROUP_IDS.includes(pick)

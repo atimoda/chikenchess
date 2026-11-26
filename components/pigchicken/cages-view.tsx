@@ -2,6 +2,7 @@
 
 // "Gaiolas" in the Itens panel: the six models one under the other. Each one empty and as full as its limit (the
 // souls where the game puts them: the same image the Pátio draws, components/pigchicken/draw/cages.ts) over its limit.
+import { useT } from "@/lib/i18n"
 import { useEffect, useMemo, useRef } from "react"
 import { PatioRange } from "@/components/ui/patio-range"
 import { cageArt } from "@/lib/pigchicken/cage-art"
@@ -37,6 +38,7 @@ function CagePicture({ item, souls }: { item: ItemId; souls: number }) {
 }
 
 export function CagesView({ items, onChange }: { items: Record<ItemId, ItemDef>; onChange: (id: ItemId, souls: number) => void }) {
+  const t = useT()
   return (
     <div className="grid gap-5 px-4 py-4">
       {CAGE_IDS.map(id => {
@@ -48,8 +50,8 @@ export function CagesView({ items, onChange }: { items: Record<ItemId, ItemDef>;
               <CagePicture item={id} souls={0} />
               <CagePicture item={id} souls={n} />
             </div>
-            <PatioRange label={items[id].name} name={`${items[id].name}: ${LIMIT.label}`} min={LIMIT.min} max={LIMIT.max} step={LIMIT.step} value={n}
-              display={`${n} ${LIMIT.unit}`} changed={n !== base} hint={LIMIT.hint}
+            <PatioRange label={t(items[id].name)} name={`${t(items[id].name)}: ${t(LIMIT.label)}`} min={LIMIT.min} max={LIMIT.max} step={LIMIT.step} value={n}
+              display={`${n} ${t(LIMIT.unit ?? "")}`} changed={n !== base} hint={LIMIT.hint ? t(LIMIT.hint) : undefined}
               onChange={v => onChange(id, v)} onReset={() => onChange(id, base)} />
           </div>
         )

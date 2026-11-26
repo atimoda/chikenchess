@@ -1,25 +1,26 @@
 // Percentages are local to the house box. Art and one-way floors share the same geometry.
+import { msg } from '../i18n'
 export const HOUSE_ROOFS = {
-  gable: 'Duas águas', shed: 'Uma água ↗', reverse: 'Uma água ↘', flat: 'Terraço',
-  hip: 'Quatro águas', stepped: 'Escalonado', curved: 'Curvo', mansard: 'Mansarda', tower: 'Torre',
-  parapet: 'Terraço com muretas',
+  gable: msg("Duas águas"), shed: msg("Uma água ↗"), reverse: msg("Uma água ↘"), flat: msg("Terraço"),
+  hip: msg("Quatro águas"), stepped: msg("Escalonado"), curved: msg("Curvo"), mansard: msg("Mansarda"), tower: msg("Torre"),
+  parapet: msg("Terraço com muretas"),
 } as const
 export const WALL_TEXTURES = {
-  auto: 'Automática', smooth: 'Lisa', plaster: 'Reboco', canvas: 'Tela', paper: 'Papel', clapboard: 'Tábuas horizontais',
-  boards: 'Tábuas verticais', corrugated: 'Chapa ondulada', brick: 'Tijolo', stone: 'Pedra',
+  auto: msg("Automática"), smooth: msg("Lisa"), plaster: msg("Reboco"), canvas: msg("Tela"), paper: msg("Papel"), clapboard: msg("Tábuas horizontais"),
+  boards: msg("Tábuas verticais"), corrugated: msg("Chapa ondulada"), brick: msg("Tijolo"), stone: msg("Pedra"),
 } as const
 export const ROOF_TEXTURES = {
-  plain: 'Liso', tile: 'Telha de barro', slate: 'Ardósia', scales: 'Escamas', diamond: 'Losangos', stripes: 'Faixas', paper: 'Papel',
+  plain: msg("Liso"), tile: msg("Telha de barro"), slate: msg("Ardósia"), scales: msg("Escamas"), diamond: msg("Losangos"), stripes: msg("Faixas"), paper: msg("Papel"),
 } as const
-export const OPENING_SHAPES = { rect: 'Reta', arch: 'Arco', round: 'Redonda' } as const
-export const HOUSE_GLAZING = { dark: 'Escura', warm: 'Luz quente', blue: 'Vidro azul' } as const
+export const OPENING_SHAPES = { rect: msg("Reta"), arch: msg("Arco"), round: msg("Redonda") } as const
+export const HOUSE_GLAZING = { dark: msg("Escura"), warm: msg("Luz quente"), blue: msg("Vidro azul") } as const
 
 type Roof = keyof typeof HOUSE_ROOFS
 type WallTexture = keyof typeof WALL_TEXTURES
 type RoofTexture = keyof typeof ROOF_TEXTURES
 type OpeningShape = keyof typeof OPENING_SHAPES
 type Glazing = keyof typeof HOUSE_GLAZING
-export const HOUSE_DOOR_POSITIONS = { left: 'Esquerda', center: 'Centro', right: 'Direita' } as const
+export const HOUSE_DOOR_POSITIONS = { left: msg("Esquerda"), center: msg("Centro"), right: msg("Direita") } as const
 type Palette = [wall: string, roof: string, trim: string, door: string]
 type Style = {
   label: string; roofs: Roof[]; textures: Exclude<WallTexture, 'auto'>[]; tiles: RoofTexture
@@ -28,37 +29,37 @@ type Style = {
 }
 
 export const HOUSE_STYLES = {
-  cliff: { label: 'Encosta de ferrugem', roofs: ['gable', 'shed', 'reverse', 'hip'], textures: ['plaster', 'brick', 'boards'], tiles: 'tile',
+  cliff: { label: msg("Encosta de ferrugem"), roofs: ['gable', 'shed', 'reverse', 'hip'], textures: ['plaster', 'brick', 'boards'], tiles: 'tile',
     palettes: [['#a44236', '#692b2e', '#ede0cc', '#3a6881'], ['#426687', '#27364f', '#e4e7de', '#a5382e'], ['#b5887b', '#86342f', '#f2dac5', '#47718a'], ['#6c677e', '#34304a', '#d7d4d0', '#88382f'], ['#a56c51', '#693634', '#f4dfc1', '#324c61']],
     floors: 2, windows: 2, pitch: 23, wear: 68, window: 'rect', door: 'rect', glass: 'dark', panes: true, shutters: false },
-  stacked: { label: 'Casario empilhado', roofs: ['shed', 'reverse', 'gable'], textures: ['corrugated', 'plaster', 'boards'], tiles: 'tile',
+  stacked: { label: msg("Casario empilhado"), roofs: ['shed', 'reverse', 'gable'], textures: ['corrugated', 'plaster', 'boards'], tiles: 'tile',
     palettes: [['#c34430', '#59352d', '#f2b888', '#375f50'], ['#e0a523', '#61433b', '#f5db9b', '#2d6d9d'], ['#2c877b', '#5c403e', '#dbcda9', '#c54832'], ['#488196', '#533b3a', '#e0d9c6', '#d69431']],
     floors: 3, windows: 2, pitch: 16, wear: 60, window: 'rect', door: 'rect', glass: 'dark', panes: false, shutters: false },
-  painted: { label: 'Colinas pintadas', roofs: ['gable', 'flat', 'hip'], textures: ['canvas', 'smooth', 'plaster'], tiles: 'plain',
+  painted: { label: msg("Colinas pintadas"), roofs: ['gable', 'flat', 'hip'], textures: ['canvas', 'smooth', 'plaster'], tiles: 'plain',
     palettes: [['#e5942b', '#a74f2d', '#fbc579', '#67362e'], ['#be4f58', '#98384b', '#f59786', '#602f42'], ['#4594a7', '#236a86', '#91c9bf', '#223d56'], ['#e7d6a3', '#5c6b53', '#b4c17b', '#435c70']],
     floors: 1, windows: 2, pitch: 17, wear: 25, window: 'rect', door: 'rect', glass: 'dark', panes: false, shutters: false },
-  geometric: { label: 'Cidade geométrica', roofs: ['stepped', 'gable', 'hip', 'mansard'], textures: ['smooth', 'canvas'], tiles: 'stripes',
+  geometric: { label: msg("Cidade geométrica"), roofs: ['stepped', 'gable', 'hip', 'mansard'], textures: ['smooth', 'canvas'], tiles: 'stripes',
     palettes: [['#6b9e8e', '#354e58', '#dbe0ba', '#4d675c'], ['#c56571', '#743e3f', '#f0d7ac', '#693d53'], ['#d9a94c', '#335664', '#eee3c6', '#605345'], ['#6b94a5', '#383e54', '#e6d7a3', '#40546a']],
     floors: 3, windows: 3, pitch: 24, wear: 10, window: 'rect', door: 'rect', glass: 'blue', panes: true, shutters: false },
-  terraces: { label: 'Terraços da lua', roofs: ['flat', 'flat', 'shed'], textures: ['stone', 'plaster', 'canvas'], tiles: 'plain',
+  terraces: { label: msg("Terraços da lua"), roofs: ['flat', 'flat', 'shed'], textures: ['stone', 'plaster', 'canvas'], tiles: 'plain',
     palettes: [['#284d62', '#142c40', '#6392a0', '#275269'], ['#b66a36', '#854229', '#ecac63', '#713c33'], ['#438887', '#1a4f56', '#a2b997', '#35645b'], ['#a7433b', '#653439', '#ed9c68', '#672e37']],
     floors: 2, windows: 2, pitch: 10, wear: 48, window: 'arch', door: 'arch', glass: 'warm', panes: true, shutters: false },
-  nordic: { label: 'Madeira costeira', roofs: ['gable', 'gable', 'shed', 'hip'], textures: ['clapboard', 'boards'], tiles: 'slate',
+  nordic: { label: msg("Madeira costeira"), roofs: ['gable', 'gable', 'shed', 'hip'], textures: ['clapboard', 'boards'], tiles: 'slate',
     palettes: [['#387b8b', '#273a51', '#f0e7d8', '#224659'], ['#b14a42', '#4b3535', '#f4e5d4', '#703630'], ['#d99843', '#4b3934', '#fff0d1', '#7e5838'], ['#79967e', '#38474f', '#f5e8ce', '#416858'], ['#e0d7c4', '#526979', '#fbf2de', '#755444']],
     floors: 2, windows: 2, pitch: 31, wear: 22, window: 'rect', door: 'rect', glass: 'blue', panes: true, shutters: false },
-  storybook: { label: 'Vila de conto', roofs: ['curved', 'gable', 'mansard', 'hip'], textures: ['plaster', 'stone', 'canvas'], tiles: 'scales',
+  storybook: { label: msg("Vila de conto"), roofs: ['curved', 'gable', 'mansard', 'hip'], textures: ['plaster', 'stone', 'canvas'], tiles: 'scales',
     palettes: [['#668897', '#2b465f', '#f2e1b8', '#3e5364'], ['#c57f59', '#473b50', '#f6dfb7', '#723e40'], ['#e0c394', '#4a6574', '#fff0c7', '#5e5960'], ['#8f738c', '#443c58', '#e5cfb7', '#4e4669']],
     floors: 2, windows: 2, pitch: 29, wear: 24, window: 'arch', door: 'arch', glass: 'warm', panes: true, shutters: true },
-  ornamental: { label: 'Cidade ornamental', roofs: ['tower', 'hip', 'stepped', 'mansard'], textures: ['brick', 'plaster', 'stone'], tiles: 'slate',
+  ornamental: { label: msg("Cidade ornamental"), roofs: ['tower', 'hip', 'stepped', 'mansard'], textures: ['brick', 'plaster', 'stone'], tiles: 'slate',
     palettes: [['#b98597', '#714950', '#f2d3c0', '#535472'], ['#c99a5c', '#7a4738', '#f6deb6', '#5d6450'], ['#64938a', '#3e5a6d', '#e4d7aa', '#3a6d6a'], ['#7692b4', '#444960', '#e9dfd1', '#56617d']],
     floors: 3, windows: 3, pitch: 27, wear: 28, window: 'arch', door: 'arch', glass: 'blue', panes: true, shutters: false },
-  folk: { label: 'Telhas de festa', roofs: ['tower', 'reverse', 'gable', 'hip'], textures: ['canvas', 'plaster', 'brick'], tiles: 'diamond',
+  folk: { label: msg("Telhas de festa"), roofs: ['tower', 'reverse', 'gable', 'hip'], textures: ['canvas', 'plaster', 'brick'], tiles: 'diamond',
     palettes: [['#4471ad', '#313147', '#efbd52', '#af4742'], ['#db624b', '#76373c', '#ffd674', '#a64343'], ['#9ba456', '#823935', '#f6dd92', '#3e6c58'], ['#e2a74d', '#3b6995', '#f9d9a5', '#7b4a47']],
     floors: 2, windows: 2, pitch: 25, wear: 24, window: 'arch', door: 'rect', glass: 'warm', panes: true, shutters: true },
-  garden: { label: 'Vila-jardim', roofs: ['gable', 'shed', 'hip'], textures: ['plaster', 'stone', 'smooth'], tiles: 'tile',
+  garden: { label: msg("Vila-jardim"), roofs: ['gable', 'shed', 'hip'], textures: ['plaster', 'stone', 'smooth'], tiles: 'tile',
     palettes: [['#e9e0c9', '#356d8e', '#f7eed8', '#3d6b8e'], ['#ece2cb', '#b94f37', '#faf0d6', '#bd623a'], ['#dfba48', '#3b776a', '#f4e3aa', '#4e695a'], ['#e8e1c6', '#c09132', '#fbefce', '#596864']],
     floors: 1, windows: 2, pitch: 21, wear: 18, window: 'rect', door: 'rect', glass: 'blue', panes: false, shutters: false },
-  paper: { label: 'Papel recortado', roofs: ['gable', 'hip'], textures: ['paper'], tiles: 'paper',
+  paper: { label: msg("Papel recortado"), roofs: ['gable', 'hip'], textures: ['paper'], tiles: 'paper',
     palettes: [
       ['#dc772d', '#90343e', '#ffebc9', '#eba5ca'],
       ['#374268', '#da8277', '#ffebc9', '#c75542'],
@@ -70,7 +71,7 @@ export const HOUSE_STYLES = {
       ['#578573', '#46557b', '#ffebc9', '#954c35'],
     ],
     floors: 1, windows: 0, pitch: 29, wear: 24, window: 'rect', door: 'rect', glass: 'blue', panes: false, shutters: false },
-  cubist: { label: 'Cubista', roofs: ['parapet', 'parapet', 'flat'], textures: ['plaster', 'paper', 'stone'], tiles: 'paper',
+  cubist: { label: msg("Cubista"), roofs: ['parapet', 'parapet', 'flat'], textures: ['plaster', 'paper', 'stone'], tiles: 'paper',
     palettes: [
       ['#b56c41', '#ad7953', '#e8b881', '#744033'],
       ['#c3824f', '#b78054', '#eeca9d', '#824c44'],

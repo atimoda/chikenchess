@@ -8,6 +8,7 @@ import type { CityData } from "@/lib/cities-data"
 import { formatEvaluation } from "@/lib/chess-evaluation"
 import type { WidgetConnection } from "@/hooks/use-game-widget-layout"
 import type { ChancePosition } from "@/hooks/use-chance-position"
+import { useT } from "@/lib/i18n"
 import { MoveBoardPreview } from "./move-board-preview"
 
 export function GameWidgetEntranceStyles() {
@@ -166,9 +167,10 @@ export function GameCityTitleIntro({
 /** Bezier lines between widgets and the board. `overlay` draws above the widgets,
  * for the hover link from a Song & Instruments row to its piece. */
 export function GameWidgetConnections({ visible, pieceConnections, chainConnections = [], overlay = false }: { visible: boolean; pieceConnections: readonly WidgetConnection[]; chainConnections?: readonly WidgetConnection[]; overlay?: boolean }) {
+  const t = useT()
   if (!visible || (overlay && !pieceConnections.length)) return null
   return (
-      <svg aria-label={overlay ? undefined : "Conexões entre widgets e tabuleiro"} aria-hidden={overlay || undefined} data-connections={overlay ? 'hover' : undefined} className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: overlay ? 100 : 5 }}>
+      <svg aria-label={overlay ? undefined : t("Conexões entre widgets e tabuleiro")} aria-hidden={overlay || undefined} data-connections={overlay ? 'hover' : undefined} className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" style={{ zIndex: overlay ? 100 : 5 }}>
         {[...pieceConnections, ...chainConnections].map((conn, i) => {
           if (!conn) return null
           
@@ -285,6 +287,7 @@ export function GameBoardChanceBar({
   dimmed: boolean
   orientation?: "white" | "black"
 }) {
+  const t = useT()
   const whitePercent = score === null ? 50 : mate !== null
     ? (score < 0 ? 0 : 100)
     : 50 + 50 * score / (Math.abs(score) + 300)
@@ -294,7 +297,7 @@ export function GameBoardChanceBar({
   return (
     <div
       role="img"
-      aria-label={`Avaliação da posição: ${evaluationError ? 'indisponível' : score === null ? 'em análise' : formatEvaluation(score, mate)}`}
+      aria-label={t('Avaliação da posição: {value}', { value: evaluationError ? t('indisponível') : score === null ? t('em análise') : formatEvaluation(score, mate) })}
       className={cn(
         "absolute inset-y-0 w-[2px] pointer-events-none select-none transition-opacity duration-1000 bg-zinc-800",
         visible ? (dimmed ? "opacity-25" : "opacity-100") : "opacity-0"
@@ -354,6 +357,7 @@ export function GameFooter({
   chancePosition?: ChancePosition
   className?: string
 }) {
+  const t = useT()
   // Visual balance only, not a probability model. Keep large non-mate scores distinguishable.
   const whitePercent = score === null ? 50 : mate !== null
     ? (score < 0 ? 0 : 100)
@@ -386,7 +390,7 @@ export function GameFooter({
           style={{ width: previewSize, left: `clamp(8px, ${hovered.center - previewSize / 2}px, calc(100vw - ${previewSize + 8}px))` }}
         />
       )}
-      <div aria-label="Histórico de jogadas" className="flex h-6 w-full items-center overflow-hidden bg-transparent px-3 md:px-6 pointer-events-none">
+      <div aria-label={t("Histórico de jogadas")} className="flex h-6 w-full items-center overflow-hidden bg-transparent px-3 md:px-6 pointer-events-none">
         <div ref={tickerRef} className="flex w-full items-center justify-start gap-3 overflow-x-auto whitespace-nowrap font-mono text-xs scrollbar-hide" style={{ textShadow: "1px 1px 1px black" }}>
           {moves.map((move, i) => <span
             key={i}
@@ -401,7 +405,7 @@ export function GameFooter({
         </div>
       </div>
       {chancePosition === "footer" && (
-        <div className="relative h-2 w-full overflow-hidden border-t border-white/10 bg-black/40 select-none pointer-events-auto" role="img" aria-label={`Avaliação da posição: ${evaluationError ? 'indisponível' : score === null ? 'em análise' : formatEvaluation(score, mate)}`}>
+        <div className="relative h-2 w-full overflow-hidden border-t border-white/10 bg-black/40 select-none pointer-events-auto" role="img" aria-label={t('Avaliação da posição: {value}', { value: evaluationError ? t('indisponível') : score === null ? t('em análise') : formatEvaluation(score, mate) })}>
           <div className={cn("absolute inset-y-0 left-0 bg-white ease-in-out", score === null ? "transition-none" : "transition-[width] duration-1000", dimmed ? "opacity-25" : "opacity-100")} style={{ width: `${whitePercent}%` }} />
           {evaluating && <div className="absolute right-2 top-1/2 z-30 -translate-y-1/2"><Loader2 className="h-2 w-2 animate-spin text-white" /></div>}
         </div>

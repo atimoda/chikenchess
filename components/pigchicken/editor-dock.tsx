@@ -9,6 +9,7 @@ import { createPortal } from "react-dom"
 import { setStageDock } from "@/lib/stage-size"
 import { registerEscClose } from "@/components/ui/floating-panel"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 
 const KEY = "chickenchess:patio-editor-dock"
 export const DOCK_MIN_W = 220
@@ -65,6 +66,7 @@ const fitHeight = (h: number, side: DockSide) =>
   Math.round(Math.max(DOCK_MIN_H, Math.min(h, window.innerHeight - STAGE_MIN_H - (side === "top" ? PATIO_HEADER_H : 0))))
 
 export function EditorDock({ children, className, ...rest }: { children: React.ReactNode; className?: string } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "className">) {
+  const t = useT()
   const [side] = useEditorDockSide()
   const across = side !== "right"
   const [width, setWidth] = useState(() => fitWidth(readPref().w))
@@ -93,8 +95,8 @@ export function EditorDock({ children, className, ...rest }: { children: React.R
         side === "right" ? "inset-y-0 right-0 border-l" : side === "top" ? "inset-x-0 border-b" : "inset-x-0 bottom-0 border-t", className)}>
       {children}
       {/* the divider between the Pátio and the panel */}
-      <div role="separator" aria-orientation={across ? "horizontal" : "vertical"} aria-label={across ? "Altura do painel" : "Largura do painel"}
-        title={across ? "Arraste para mudar a altura" : "Arraste para mudar a largura"}
+      <div role="separator" aria-orientation={across ? "horizontal" : "vertical"} aria-label={across ? t("Altura do painel") : t("Largura do painel")}
+        title={across ? t("Arraste para mudar a altura") : t("Arraste para mudar a largura")}
         className={cn("group absolute z-10 touch-none",
           side === "right" ? "inset-y-0 -left-1.5 w-3 cursor-col-resize" : side === "top" ? "inset-x-0 -bottom-1.5 h-3 cursor-row-resize" : "inset-x-0 -top-1.5 h-3 cursor-row-resize")}
         onPointerDown={e => {

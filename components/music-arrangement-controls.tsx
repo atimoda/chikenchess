@@ -7,6 +7,7 @@ import type { HarmonyPlanId } from '@/lib/music/harmony'
 import { beatsPerBar } from '@/lib/music/meter'
 import type { MusicMonitor } from '@/lib/music/monitor'
 import { CompactNumberInput } from './compact-number-input'
+import { useT } from '@/lib/i18n'
 import controls from './music-arrangement-controls.module.css'
 
 type Section = Arrangement['sections'][number]
@@ -43,6 +44,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
   /** null when a single click lands on the section that was already selected. */
   onSelect?: (sectionId: string | null) => void
 }) {
+  const t = useT()
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const position = arrangementPosition(arrangement, frame.cycle, beatsPerBar(frame.transport?.meter))
   const total = arrangement.sections.reduce((sum, section) => sum + section.beats, 0)
@@ -91,7 +93,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
       if (drag.current) {
         event.preventDefault()
         cancelDrag()
-        setAnnouncement('Reordering canceled.')
+        setAnnouncement(t('Reordering canceled.'))
       }
     }
     document.addEventListener('keydown', escape)
@@ -120,8 +122,8 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
     setError('')
     if (arrangement.sections.length >= MAX_SECTIONS || MAX_BEATS - total < .25) {
       setNotice(arrangement.sections.length >= MAX_SECTIONS
-        ? 'The arrangement already has the maximum of 24 sections. Delete one to add another.'
-        : 'No room for another section within the 512-beat limit. Shorten or delete a section.')
+        ? t('The arrangement already has the maximum of 24 sections. Delete one to add another.')
+        : t('No room for another section within the 512-beat limit. Shorten or delete a section.'))
       setEditingId(null)
       return
     }
@@ -142,14 +144,14 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
     if (!editing || !Number.isFinite(value)) return
     const room = MAX_BEATS - (total - editing.beats)
     const beats = Math.max(.25, Math.min(64, room, value))
-    setError(beats < value ? 'The arrangement is limited to 512 beats in total.' : '')
+    setError(beats < value ? t('The arrangement is limited to 512 beats in total.') : '')
     if (beats !== editing.beats) patch({ beats })
   }
   const commitDegrees = () => {
     if (!editing || harmony !== 'kit') return
     const tokens = degrees.trim() ? degrees.trim().split(/[\s,]+/) : []
     if (tokens.length > 16 || tokens.some(token => !/^[+-]?\d+$/.test(token) || Math.abs(Number(token)) > 14)) {
-      setError('Harmony: up to sixteen whole degrees from −14 to 14, separated by spaces or commas.')
+      setError(t('Harmony: up to sixteen whole degrees from −14 to 14, separated by spaces or commas.'))
       return
     }
     setError('')
@@ -273,7 +275,7 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
     const target = gesture.order.indexOf(gesture.id)
     if (arrangement.sections[target]?.id === gesture.id) return
     onChange?.({ ...arrangement, sections: reordered(arrangement.sections, gesture.id, target) })
-    setAnnouncement('Section moved to position ' + (target + 1) + '.')
+    setAnnouncement(t('Section moved to position {n}.', { n: target + 1 }))
     gesture.element.focus({ preventScroll: true })
   }
 
@@ -281,8 +283,8 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
     ? preview.map(id => arrangement.sections.find(section => section.id === id)!) : arrangement.sections
 
   return <>
-    <div className={controls.dock} role="group" aria-label="Global arrangement" data-compact={compact || undefined}>
-    <div ref={timeline} className={controls.timeline} role="group" aria-label="Global arrangement sections" data-dragging={!!draggingId || undefined}
+    <div className={controls.dock} role="group" aria-label={t('Global arrangement')} data-compact={compact || undefined}>
+    <div ref={timeline} className={controls.timeline} role="group" aria-label={t('Global arrangement sections')} data-dragging={!!draggingId || undefined}
       onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={cancelDrag}
       onLostPointerCapture={event => { if (event.target === drag.current?.capture) cancelDrag() }}>
       {sections.map(item => {
@@ -290,9 +292,9 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
         const next = frame.transport?.nextSectionId === item.id
         return <button type="button" key={item.id} className={controls.sectionButton}
           data-section-id={item.id} data-playing={playing || undefined} data-next={next || undefined} data-dragging={draggingId === item.id || undefined} data-editing={editingId === item.id || undefined} data-selected={selectedId === item.id || undefined}
-          aria-label={item.label + ', ' + item.beats + ' beats' + (playing ? ', playing' : '') + (next ? ', next section' : '')}
+          aria-label={t('{label}, {beats} beats', { label: t(item.label), beats: item.beats }) + (playing ? ', ' + t('playing') : '') + (next ? ', ' + t('next section') : '')}
           aria-current={playing ? 'true' : undefined} aria-keyshortcuts={onChange ? 'Enter Space F2 Alt+ArrowLeft Alt+ArrowRight Alt+ArrowUp Alt+ArrowDown' : 'Enter Space'} aria-expanded={onChange ? editingId === item.id : undefined}
-          style={{ flexGrow: item.beats }} title={item.label + ' · ' + item.beats + ' beats · Click to queue it next' + (onChange ? '; double-click or F2 to edit' : '')}
+          style={{ flexGrow: item.beats }} title={onChange ? t('{label} · {beats} beats · Click to queue it next; double-click or F2 to edit', { label: t(item.label), beats: item.beats }) : t('{label} · {beats} beats · Click to queue it next', { label: t(item.label), beats: item.beats })}
           onClick={event => clickSection(item, event.detail)}
           // The second click (detail 2) already opened the editor.
           onDoubleClick={event => event.preventDefault()}
@@ -311,32 +313,32 @@ export function MusicArrangementControls({ arrangement, monitor, harmony, onChan
               const target = index + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1)
               if (target < 0 || target >= arrangement.sections.length) return
               onChange({ ...arrangement, sections: reordered(arrangement.sections, item.id, target) })
-              setAnnouncement(item.label + ': position ' + (target + 1) + '.')
+              setAnnouncement(t('{label}: position {n}.', { label: t(item.label), n: target + 1 }))
             }
           }}>
           {playing && <span className={controls.progress} aria-hidden="true" style={{ width: Math.max(0, Math.min(1, position.progress)) * 100 + '%' }} />}
-          <span className={controls.sectionLabel}>{item.label}</span><small>{item.beats} beats{next && <span className={controls.nextMarker}> · Next</span>}</small>
-          {compact && next && <span className={controls.compactNext} aria-hidden="true">Next</span>}
+          <span className={controls.sectionLabel}>{t(item.label)}</span><small>{t('{n} beats', { n: item.beats })}{next && <span className={controls.nextMarker}> · {t('Next')}</span>}</small>
+          {compact && next && <span className={controls.compactNext} aria-hidden="true">{t('Next')}</span>}
         </button>
       })}
-      {onChange && <button type="button" className={controls.addButton} aria-label="Add global section" title="Add global section" onClick={add}><Plus size={compact ? 14 : 18} aria-hidden="true" /></button>}
+      {onChange && <button type="button" className={controls.addButton} aria-label={t('Add global section')} title={t('Add global section')} onClick={add}><Plus size={compact ? 14 : 18} aria-hidden="true" /></button>}
     </div>
-    {editing && onChange && <div className={controls.editor} role="group" aria-label={'Edit global section ' + editing.label}
+    {editing && onChange && <div className={controls.editor} role="group" aria-label={t('Edit global section {label}', { label: t(editing.label) })}
       onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeEditor() } }}>
-      <label className={controls.field}><span>Label</span>
-        <select aria-label="Section type" value={editing.label} title="The section’s role in the song form, shared by every piece" onChange={event => { if (isSectionType(event.target.value)) patch({ label: event.target.value }) }}>
-          {SECTION_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+      <label className={controls.field}><span>{t('Label')}</span>
+        <select aria-label={t('Section type')} value={editing.label} title={t('The section’s role in the song form, shared by every piece')} onChange={event => { if (isSectionType(event.target.value)) patch({ label: event.target.value }) }}>
+          {SECTION_TYPES.map(type => <option key={type} value={type}>{t(type)}</option>)}
         </select>
       </label>
-      <label className={controls.field}><span>Beats</span>
-        <CompactNumberInput ariaLabel="Global section length" min={.25} max={64} step={.25} value={editing.beats} onChange={setBeats} />
+      <label className={controls.field}><span>{t('Beats')}</span>
+        <CompactNumberInput ariaLabel={t('Global section length')} min={.25} max={64} step={.25} value={editing.beats} onChange={setBeats} />
       </label>
-      <label className={controls.field + ' ' + controls.harmonyField} title={harmony === 'kit' ? 'Up to sixteen whole degrees from −14 to 14. 0 is the root; each local bar moves one degree.' : 'Select Kit Harmony to edit the degrees. The saved values are kept.'}><span>Harmony</span>
-        <input aria-label="Section harmonic degrees" disabled={harmony !== 'kit'} value={degrees} placeholder="e.g. 0 3 4 0"
+      <label className={controls.field + ' ' + controls.harmonyField} title={harmony === 'kit' ? t('Up to sixteen whole degrees from −14 to 14. 0 is the root; each local bar moves one degree.') : t('Select Kit Harmony to edit the degrees. The saved values are kept.')}><span>{t('Harmony')}</span>
+        <input aria-label={t('Section harmonic degrees')} disabled={harmony !== 'kit'} value={degrees} placeholder={t('e.g. 0 3 4 0')}
           onChange={event => { setDegrees(event.target.value); setError('') }} onBlur={commitDegrees}
           onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); commitDegrees() } }} />
       </label>
-      <button type="button" className={controls.deleteIcon} aria-label="Delete global section" title={arrangement.sections.length <= 1 ? 'The arrangement must keep at least one section' : 'Delete section'} disabled={arrangement.sections.length <= 1} onClick={remove}><Trash2 size={14} aria-hidden="true" /></button>
+      <button type="button" className={controls.deleteIcon} aria-label={t('Delete global section')} title={arrangement.sections.length <= 1 ? t('The arrangement must keep at least one section') : t('Delete section')} disabled={arrangement.sections.length <= 1} onClick={remove}><Trash2 size={14} aria-hidden="true" /></button>
     </div>}
     {(error || notice) && <p className={controls.inlineNotice} role="alert">{error || notice}</p>}
     <span className={controls.srOnly} role="status" aria-live="polite">{announcement}</span>

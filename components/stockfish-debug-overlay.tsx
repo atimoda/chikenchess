@@ -7,6 +7,7 @@ import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import type { ChessMoveAnalysis, StockfishTrace } from "@/lib/chess-evaluation"
 import { formatEvaluation } from "@/lib/chess-evaluation"
+import { useT } from "@/lib/i18n"
 
 interface Props {
   cityColor: string
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function StockfishDebugOverlay({ cityColor, trace, analysis, onClose, onRetry, boardRef, position, onPositionChange }: Props) {
+  const t = useT()
   const [mounted, setMounted] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const dragHandleRef = useRef<HTMLDivElement>(null)
@@ -68,7 +70,7 @@ export function StockfishDebugOverlay({ cityColor, trace, analysis, onClose, onR
     className="h-[min(62dvh,500px)] w-[min(66vw,330px)] min-w-[190px]"
     style={{ position: 'fixed', zIndex: 1000 }}
   ><section
-    aria-label="Debug stockfish"
+    aria-label={t("Debug stockfish")}
     className="relative flex h-full w-full flex-col font-mono text-[10px] text-white"
     style={{ "--city-neon": cityColor } as React.CSSProperties}
     onClick={event => event.stopPropagation()}
@@ -79,7 +81,7 @@ export function StockfishDebugOverlay({ cityColor, trace, analysis, onClose, onR
     />
     <button
       type="button"
-      aria-label="Desligar Debug stockfish"
+      aria-label={t("Desligar Debug stockfish")}
       className="absolute z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border bg-background text-[var(--city-neon)] shadow-md transition-all hover:text-[#60a5fa]"
       style={{ borderColor: "rgba(255,255,255,0.3)", top: -5, left: -8, boxShadow: `0 0 10px ${cityColor}40` }}
       onPointerDown={event => event.stopPropagation()}
@@ -87,33 +89,33 @@ export function StockfishDebugOverlay({ cityColor, trace, analysis, onClose, onR
     >
       <Power className="h-4 w-4 drop-shadow-[0_0_8px_currentColor]" />
     </button>
-    <div ref={dragHandleRef} className="relative z-10 flex h-9 shrink-0 touch-none select-none items-center justify-center px-8" title="Arraste para mover o Debug stockfish">
-      <span className="truncate text-center text-xs font-bold uppercase tracking-wider text-white">DEBUG STOCKFISH</span>
-      {trace?.phase === 'error' && <button type="button" data-no-drag="true" onPointerDown={event => event.stopPropagation()} onClick={onRetry} className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-300 hover:text-amber-100">Retry</button>}
+    <div ref={dragHandleRef} className="relative z-10 flex h-9 shrink-0 touch-none select-none items-center justify-center px-8" title={t("Arraste para mover o Debug stockfish")}>
+      <span className="truncate text-center text-xs font-bold uppercase tracking-wider text-white">{t("DEBUG STOCKFISH")}</span>
+      {trace?.phase === 'error' && <button type="button" data-no-drag="true" onPointerDown={event => event.stopPropagation()} onClick={onRetry} className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-300 hover:text-amber-100">{t("Retry")}</button>}
     </div>
     <div className="debug-scroll relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2.5 pb-2.5">
-      {!current ? <p className="py-2 text-white/55">Aguardando a posição…</p> : <>
+      {!current ? <p className="py-2 text-white/55">{t("Aguardando a posição…")}</p> : <>
         <div className="sticky top-0 z-10 bg-black/90 py-1 text-white/70">
-          <div>{current.phase.toUpperCase()} · {current.side === 'w' ? 'White' : 'Black'} to move · {current.legalMoves} legal</div>
-          <div>depth {current.depth} · complete {current.completeDepth || '—'} · {current.nodes.toLocaleString()} nodes · {current.engineMs} ms · {current.nps.toLocaleString()} nps</div>
+          <div>{t('{phase} · {side} to move · {n} legal', { phase: current.phase.toUpperCase(), side: t(current.side === 'w' ? 'White' : 'Black'), n: current.legalMoves })}</div>
+          <div>{t('depth {depth} · complete {complete} · {nodes} nodes · {ms} ms · {nps} nps', { depth: current.depth, complete: current.completeDepth || '—', nodes: current.nodes.toLocaleString(), ms: current.engineMs, nps: current.nps.toLocaleString() })}</div>
         </div>
         <div className="break-all border-y border-white/15 py-1 text-[9px] text-white/45">{current.fen}</div>
         {analysis?.fen === current.fen && analysis.complete && <div className="mt-2 border-b border-white/20 pb-2">
-          <p className="text-amber-300">Best/Worst arrows · complete depth {analysis.depth}{analysis.final ? ' · final' : ' · preview'}</p>
-          <p>Best: {analysis.best.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ')}</p>
-          <p>Worst: {analysis.worst.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ')}</p>
+          <p className="text-amber-300">{t('Best/Worst arrows · complete depth {depth}', { depth: analysis.depth })}{analysis.final ? ` · ${t('final')}` : ` · ${t('preview')}`}</p>
+          <p>{t('Best:')} {analysis.best.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ')}</p>
+          <p>{t('Worst:')} {analysis.worst.map(move => `${move.san} ${formatEvaluation(move.score, move.mate)}`).join(' · ')}</p>
         </div>}
-        <p className="mt-2 text-emerald-300">Latest UCI lines · score from side to move</p>
+        <p className="mt-2 text-emerald-300">{t("Latest UCI lines · score from side to move")}</p>
         <p className="text-[9px] text-white/45">{analysis?.fen === current.fen && analysis.complete
-          ? 'These lines may be from a newer, incomplete depth. Compare arrows with the complete-depth ranking above.'
-          : 'These lines may be from different depths or include bounds. Arrows wait for a complete ranking.'}</p>
+          ? t('These lines may be from a newer, incomplete depth. Compare arrows with the complete-depth ranking above.')
+          : t('These lines may be from different depths or include bounds. Arrows wait for a complete ranking.')}</p>
         <div className="space-y-1">
           {current.lines.length ? current.lines.map(line => <div key={line.multipv} className="border-b border-white/10 py-0.5">
             <div className="flex justify-between gap-1"><span>#{line.multipv} {line.san} ({line.uci})</span><strong className={line.mate !== null && line.mate < 0 ? 'text-red-300' : 'text-emerald-300'}>{formatEvaluation(line.score, line.mate)}{line.bound ? ` ${line.bound}` : ''}</strong></div>
             <div className="text-white/45">d{line.depth} · {line.pv.join(' ')}</div>
-          </div>) : <p className="text-white/40">Aguardando linhas…</p>}
+          </div>) : <p className="text-white/40">{t("Aguardando linhas…")}</p>}
         </div>
-        <p className="mt-2 border-t border-white/20 pt-1 text-white/50">UCI recebido · últimas {current.raw.length} linhas</p>
+        <p className="mt-2 border-t border-white/20 pt-1 text-white/50">{t("UCI recebido · últimas {n} linhas", { n: current.raw.length })}</p>
         <pre className="whitespace-pre-wrap break-all text-[9px] leading-3 text-white/45">{current.raw.join('\n')}</pre>
       </>}
     </div>

@@ -7,18 +7,20 @@ import {
   requestGameFrame, setFramePreference, subscribeFramePreferences,
 } from "@/lib/game-frame"
 import { audioHealth } from "@/lib/quality-monitor"
+import { t as tr, useT } from "@/lib/i18n"
 
 export const useFramePreferences = () => useSyncExternalStore(subscribeFramePreferences, getFramePreferences, getServerFramePreferences)
 
 export function FpsPreferences() {
   const prefs = useFramePreferences()
+  const t = useT()
   return <div className="grid gap-2 border-t border-border/40 px-2 py-2 text-sm">
     <label className="flex cursor-pointer items-center justify-between gap-5">
-      Contador de FPS
+      {t("Contador de FPS")}
       <input type="checkbox" className="size-4 accent-primary" checked={prefs.counter} onChange={e => setFramePreference("counter", e.target.checked)} />
     </label>
     <label className="flex cursor-pointer items-center justify-between gap-5">
-      Limitar a {GAME_FPS_LIMIT} FPS
+      {t("Limitar a {n} FPS", { n: GAME_FPS_LIMIT })}
       <input type="checkbox" className="size-4 accent-primary" checked={prefs.limit} onChange={e => setFramePreference("limit", e.target.checked)} />
     </label>
   </div>
@@ -43,7 +45,7 @@ export function FpsCounter() {
         if (elapsed >= 500) {
           // While some sound is running: late music scheduler ticks and output glitches since the page opened.
           const audio = audioHealth()
-          node.textContent = `${Math.round(frames * 1000 / elapsed)} FPS` + (audio.playing ? ` · atrasos ${audio.late} · falhas ${audio.measured ? audio.glitches : "n/d"}` : "")
+          node.textContent = `${Math.round(frames * 1000 / elapsed)} FPS` + (audio.playing ? " · " + tr("atrasos {late} · falhas {glitches}", { late: audio.late, glitches: audio.measured ? audio.glitches : tr("n/d") }) : "")
           start = now
           frames = 0
         }

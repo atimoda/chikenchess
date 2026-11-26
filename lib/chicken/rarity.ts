@@ -2,10 +2,11 @@
 // The color tints the item's "photo" background; where it comes from (liberado / conquista / loja) only colors
 // its small label. Player colors (lobby) are the borders, so the cards' borders stay a neutral gray.
 import type { ChickenSlot } from './look-art'
+import { msg } from '../i18n'
 
 export type Rarity = 'comum' | 'incomum' | 'rara' | 'epica' | 'lendaria'
 export const RARITIES: Rarity[] = ['comum', 'incomum', 'rara', 'epica', 'lendaria']
-export const RARITY_LABEL: Record<Rarity, string> = { comum: 'Comum', incomum: 'Incomum', rara: 'Rara', epica: 'Épica', lendaria: 'Lendária' }
+export const RARITY_LABEL: Record<Rarity, string> = { comum: msg('Comum'), incomum: msg('Incomum'), rara: msg('Rara'), epica: msg('Épica'), lendaria: msg('Lendária') }
 export const RARITY_COLOR: Record<Rarity, string> = { comum: '#9aa3ad', incomum: '#3fcf6b', rara: '#3d8bff', epica: '#b45cff', lendaria: '#ff9f1a' }
 
 // each breed's rarity; its parts are as rare as the breed unless listed in ITEM_RARITY

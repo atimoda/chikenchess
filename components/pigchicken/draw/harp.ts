@@ -4,6 +4,7 @@
 // blue, like a real harp's. Free and with a player next to it, the hint to sit shows under it.
 import { FIXED_INSTRUMENTS, type Seat } from "@/lib/pigchicken/fixed-instruments"
 import { type Ctx } from "./shared"
+import { t } from "@/lib/i18n"
 
 // the hint under the fixed instrument (the Harpa, the Bateria) a local player is next to (set every frame): key is their grab bind's name
 export const seatMarks = new Map<Seat, { key: string }>()
@@ -75,7 +76,7 @@ export function drawHarp(ctx: Ctx, seat: Seat, x: number) {
 export function drawSeatHint(ctx: Ctx, seat: Seat, x: number) {
   const mark = seatMarks.get(seat)
   if (!mark || seat.by !== null) return
-  const text = mark.key ? `${mark.key}: tocar` : "tocar"
+  const text = mark.key ? t("{key}: tocar", { key: mark.key }) : t("tocar")
   ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
   ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.7)"; ctx.strokeText(text, x, seat.y + 16)
   ctx.fillStyle = GOLD; ctx.fillText(text, x, seat.y + 16)

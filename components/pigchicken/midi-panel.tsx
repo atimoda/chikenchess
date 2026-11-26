@@ -3,6 +3,7 @@
 // "Gerar de MIDI" (the jukebox): pick a .mid file, the tracks that go in and each one's alien, the difficulty, the
 // key and the bars; the song is made as the choices change (its cover and its numbers show it), Ouvir plays it in
 // the temple and Gerar saves it under its name and opens it in the editor.
+import { useT } from "@/lib/i18n"
 import { StepSelect } from "@/components/ui/step-select"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { FileMusic, Play, Wand2, X } from "lucide-react"
@@ -21,6 +22,7 @@ const field = "h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 text-xs t
 const noteName = (m: number) => `${keyName(m)}${Math.floor(m / 12) - 1}`
 
 export function MidiPanel({ onClose }: { onClose: () => void }) {
+  const tr = useT()
   const [catalog, setCatalog] = useState<Catalog>(() => loadCatalog())
   useEffect(() => subscribeCatalog(setCatalog), [])
   const [file, setFile] = useState<MidiFile | null>(null)
@@ -38,11 +40,11 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
     try {
       const m = parseMidi(new Uint8Array(await f.arrayBuffer()))
       setFile(m)
-      setName(f.name.replace(/\.(mid|midi)$/i, "").replace(/[_-]+/g, " ").trim().slice(0, 60) || "Música do MIDI")
+      setName(f.name.replace(/\.(mid|midi)$/i, "").replace(/[_-]+/g, " ").trim().slice(0, 60) || tr("Música do MIDI"))
       setTracks(m.tracks.map(t => ({ index: t.index, on: true, variant: defaultVariant(t, m.tracks) })))
       setRoot(null); setScale(null); setFromBar(1); setBars(0)
     } catch (e) {
-      setFile(null); setError(e instanceof MidiError ? e.message : "Não foi possível ler este arquivo.")
+      setFile(null); setError(e instanceof MidiError ? e.message : tr("Não foi possível ler este arquivo."))
     }
   }
 
@@ -66,33 +68,33 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
   const setTrack = (i: number, patch: Partial<GenTrack>) => setTracks(ts => ts.map(t => (t.index === i ? { ...t, ...patch } : t)))
   const make = () => {
     if (!song || !song.aliens.length) return
-    const saved = saveSongAs(loadLibrary(), song, name.trim() || "Música do MIDI")
+    const saved = saveSongAs(loadLibrary(), song, name.trim() || tr("Música do MIDI"))
     openSongEditor(saved.id)
   }
 
   return (
-    <FloatingPanel id="pigchicken-midi" role="dialog" aria-label="Gerar de MIDI" onKeyDown={e => e.stopPropagation()}
+    <FloatingPanel id="pigchicken-midi" role="dialog" aria-label={tr("Gerar de MIDI")} onKeyDown={e => e.stopPropagation()}
       initial={(vw, vh) => ({ x: Math.max(12, vw - Math.min(560, vw - 24) - 12), y: 64, w: Math.min(560, vw - 24), h: Math.min(720, vh - 104) })} minW={320}
       className="rounded-[22px] border-2 bg-[#07130d] font-mono text-xs text-[#dfe8df] shadow-[0_0_24px_rgba(57,255,136,0.25),0_20px_60px_rgba(0,0,0,0.6)]" style={{ borderColor: NEON }}>
       <div data-drag-handle className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <FileMusic className="h-4 w-4" style={{ color: NEON }} />
-        <h2 className="min-w-0 flex-1 truncate text-sm text-white">Gerar de MIDI</h2>
-        <button type="button" aria-label="Fechar" onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
+        <h2 className="min-w-0 flex-1 truncate text-sm text-white">{tr("Gerar de MIDI")}</h2>
+        <button type="button" aria-label={tr("Fechar")} onClick={onClose} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 hover:border-primary"><X className="h-4 w-4" /></button>
       </div>
       <div className="grid min-h-0 flex-1 content-start gap-field overflow-y-auto p-4">
         <label className="grid gap-1.5">
-          <span className="text-[#93a79a]">Arquivo .mid</span>
+          <span className="text-[#93a79a]">{tr("Arquivo .mid")}</span>
           <input type="file" accept=".mid,.midi,audio/midi,audio/x-midi" onChange={e => { const f = e.target.files?.[0]; if (f) void load(f) }}
             className="text-xs text-white file:mr-3 file:h-8 file:rounded-md file:border file:border-white/20 file:bg-transparent file:px-3 file:text-white" />
         </label>
         {error && <p className="rounded-md border border-[#ff6b5b]/50 bg-[#ff6b5b]/10 px-2 py-1.5 text-[#ffb4a8]">{error}</p>}
-        {!file && !error && <p className="text-[11px] text-[#93a79a]">O gerador lê as faixas, o tempo e as notas, junta as notas em aliens de 5 a 15 tiros e abre a música no editor para você ajustar.</p>}
+        {!file && !error && <p className="text-[11px] text-[#93a79a]">{tr("O gerador lê as faixas, o tempo e as notas, junta as notas em aliens de 5 a 15 tiros e abre a música no editor para você ajustar.")}</p>}
         {file && (
           <>
-            <label className="grid gap-1">Nome<input value={name} maxLength={60} onChange={e => setName(e.target.value)} className={field} /></label>
+            <label className="grid gap-1">{tr("Nome")}<input value={name} maxLength={60} onChange={e => setName(e.target.value)} className={field} /></label>
             {/* the tracks */}
             <div className="grid gap-field">
-              <span className="text-[#93a79a]">Faixas</span>
+              <span className="text-[#93a79a]">{tr("Faixas")}</span>
               {file.tracks.map(t => {
                 const g = tracks.find(x => x.index === t.index)
                 if (!g) return null
@@ -103,12 +105,12 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
                       <input type="checkbox" checked={g.on} onChange={e => setTrack(t.index, { on: e.target.checked })} />
                       <span className="min-w-0">
                         <span className="block truncate text-white">{t.name}</span>
-                        <span className="block text-[10px] text-[#93a79a]">{t.notes.length} notas · {t.drums ? "bateria" : `${noteName(Math.min(...ms))} a ${noteName(Math.max(...ms))}`}</span>
+                        <span className="block text-[10px] text-[#93a79a]">{tr("{n} notas · {range}", { n: t.notes.length, range: t.drums ? tr("bateria") : tr("{from} a {to}", { from: noteName(Math.min(...ms)), to: noteName(Math.max(...ms)) }) })}</span>
                       </span>
                     </label>
-                    <StepSelect aria-label={`Alien da faixa ${t.name}`} value={g.variant} onChange={e => setTrack(t.index, { variant: e.target.value })} className={cn(field, "max-w-44")}>
-                      {t.drums && <option value={DRUMS_BY_PIECE}>Por peça (bumbo, caixa…)</option>}
-                      {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>)}
+                    <StepSelect aria-label={tr("Alien da faixa {name}", { name: t.name })} value={g.variant} onChange={e => setTrack(t.index, { variant: e.target.value })} className={cn(field, "max-w-44")}>
+                      {t.drums && <option value={DRUMS_BY_PIECE}>{tr("Por peça (bumbo, caixa…)")}</option>}
+                      {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={tr(SPECIES[sp].name)}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{tr(v.name)}</option>)}</optgroup>)}
                     </StepSelect>
                   </div>
                 )
@@ -116,41 +118,41 @@ export function MidiPanel({ onClose }: { onClose: () => void }) {
             </div>
             {/* the choices */}
             <div className="flex flex-wrap items-center gap-field">
-              <span className="w-20 text-[#93a79a]">Dificuldade</span>
-              {DIFFICULTIES.map(d => <button key={d.value} type="button" aria-pressed={difficulty === d.value} onClick={() => setDifficulty(d.value)} className={cn("h-7 rounded-full border px-3", difficulty === d.value ? "border-primary text-white" : "border-white/15")}>{d.label}</button>)}
+              <span className="w-20 text-[#93a79a]">{tr("Dificuldade")}</span>
+              {DIFFICULTIES.map(d => <button key={d.value} type="button" aria-pressed={difficulty === d.value} onClick={() => setDifficulty(d.value)} className={cn("h-7 rounded-full border px-3", difficulty === d.value ? "border-primary text-white" : "border-white/15")}>{tr(d.label)}</button>)}
             </div>
             <div className="flex flex-wrap items-center gap-field">
-              <label className="flex items-center gap-1.5">Tom
+              <label className="flex items-center gap-1.5">{tr("Tom")}
                 <StepSelect value={root ?? ""} onChange={e => setRoot(e.target.value === "" ? null : Number(e.target.value))} className={field}>
-                  <option value="">Do arquivo{key ? ` (${keyName(key.root)} ${key.minor ? "menor" : "maior"})` : ""}</option>
+                  <option value="">{tr("Do arquivo")}{key ? ` (${keyName(key.root)} ${key.minor ? tr("menor") : tr("maior")})` : ""}</option>
                   {ROOTS.map(r => <option key={r} value={r}>{keyName(r)}</option>)}
                 </StepSelect>
               </label>
-              <label className="flex items-center gap-1.5">Escala
+              <label className="flex items-center gap-1.5">{tr("Escala")}
                 <StepSelect value={scale ?? ""} onChange={e => setScale(e.target.value === "" ? null : (e.target.value as ScaleId))} className={field}>
-                  <option value="">Pentatônica do tom</option>
-                  {(Object.keys(SCALES) as ScaleId[]).map(k => <option key={k} value={k}>{SCALES[k].label}</option>)}
+                  <option value="">{tr("Pentatônica do tom")}</option>
+                  {(Object.keys(SCALES) as ScaleId[]).map(k => <option key={k} value={k}>{tr(SCALES[k].label)}</option>)}
                 </StepSelect>
               </label>
-              <label className="flex items-center gap-1.5">Do compasso<input type="number" min={1} max={999} value={fromBar} onChange={e => setFromBar(Math.max(1, Math.round(Number(e.target.value) || 1)))} className={cn(field, "w-16")} /></label>
-              <label className="flex items-center gap-1.5">Compassos<input type="number" min={0} max={999} value={bars} onChange={e => setBars(Math.max(0, Math.round(Number(e.target.value) || 0)))} className={cn(field, "w-16")} title="0: até o fim" /></label>
+              <label className="flex items-center gap-1.5">{tr("Do compasso")}<input type="number" min={1} max={999} value={fromBar} onChange={e => setFromBar(Math.max(1, Math.round(Number(e.target.value) || 1)))} className={cn(field, "w-16")} /></label>
+              <label className="flex items-center gap-1.5">{tr("Compassos")}<input type="number" min={0} max={999} value={bars} onChange={e => setBars(Math.max(0, Math.round(Number(e.target.value) || 0)))} className={cn(field, "w-16")} title={tr("0: até o fim")} /></label>
             </div>
             {/* what comes out */}
             {made?.error ? <p className="text-[#ffb4a8]">{made.error}</p> : song && (
               <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border border-white/10 bg-black/40 p-2">
                 <canvas ref={cover} aria-hidden="true" className="h-[112px] w-[112px] rounded-md" />
                 <dl className="grid content-start grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[11px]">
-                  <dt className="text-[#93a79a]">bpm</dt><dd className="text-white">{song.music.zone.bpm}{song.music.zone.bpm !== file.bpm ? ` (o arquivo tem ${file.bpm})` : ""}</dd>
-                  <dt className="text-[#93a79a]">Tom</dt><dd className="truncate text-white">{keyName(song.music.zone.root)} · {SCALES[song.music.zone.scale].label.toLowerCase()}</dd>
-                  <dt className="text-[#93a79a]">Duração</dt><dd className="text-white">{clock(songSeconds(song))}</dd>
-                  <dt className="text-[#93a79a]">Aliens</dt><dd className="text-white">{song.aliens.length}</dd>
-                  <dt className="text-[#93a79a]">Notas</dt><dd className="text-white">{made?.kept ?? 0}{made && made.dropped > 0 ? ` (${made.dropped} ficaram de fora)` : ""}</dd>
+                  <dt className="text-[#93a79a]">bpm</dt><dd className="text-white">{song.music.zone.bpm}{song.music.zone.bpm !== file.bpm ? ` ${tr("(o arquivo tem {bpm})", { bpm: file.bpm })}` : ""}</dd>
+                  <dt className="text-[#93a79a]">{tr("Tom")}</dt><dd className="truncate text-white">{keyName(song.music.zone.root)} · {tr(SCALES[song.music.zone.scale].label).toLowerCase()}</dd>
+                  <dt className="text-[#93a79a]">{tr("Duração")}</dt><dd className="text-white">{clock(songSeconds(song))}</dd>
+                  <dt className="text-[#93a79a]">{tr("Aliens")}</dt><dd className="text-white">{song.aliens.length}</dd>
+                  <dt className="text-[#93a79a]">{tr("Notas")}</dt><dd className="text-white">{made?.kept ?? 0}{made && made.dropped > 0 ? ` ${tr("({n} ficaram de fora)", { n: made.dropped })}` : ""}</dd>
                 </dl>
               </div>
             )}
             <div className="flex flex-wrap gap-1.5">
-              <button type="button" disabled={!song?.aliens.length} onClick={() => { if (song) { playDraft(song, 0); onClose() } }} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-40"><Play className="h-4 w-4" />Ouvir no templo</button>
-              <button type="button" disabled={!song?.aliens.length} onClick={make} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c] disabled:opacity-40" style={{ background: NEON }}><Wand2 className="h-4 w-4" />Gerar e abrir no editor</button>
+              <button type="button" disabled={!song?.aliens.length} onClick={() => { if (song) { playDraft(song, 0); onClose() } }} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-40"><Play className="h-4 w-4" />{tr("Ouvir no templo")}</button>
+              <button type="button" disabled={!song?.aliens.length} onClick={make} className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 font-bold text-[#05060c] disabled:opacity-40" style={{ background: NEON }}><Wand2 className="h-4 w-4" />{tr("Gerar e abrir no editor")}</button>
             </div>
           </>
         )}

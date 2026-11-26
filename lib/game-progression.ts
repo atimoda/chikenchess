@@ -5,11 +5,18 @@
 import { cities } from "./cities-data"
 import rankTitles from "../data/ui/rank-titles.json"
 import matchTips from "../data/ui/match-tips.json"
+import { msg } from "./i18n"
 
 const COOKIE_NAME = "chikenchess_player"
 const LEGACY_STORAGE_KEY = "chikenchess_campaign"
 
 export const MATCH_TIPS: string[] = matchTips
+// Keys of the tips above (data/ui/match-tips.json), shown through t().
+export const MATCH_TIP_KEYS = [
+  msg("Chickens like to do shit. Make a terrible move, and earn up to 3 golden eggs to play with."),
+  msg("Cards can be infinite power. But the opponent can respond, too."),
+  msg("You can ajust BPM and balance volumes at any time on the MIXER."),
+]
 export const PLAYER_PROFILE_VERSION = 1
 export const STARTING_GOLDEN_EGGS = 10
 export const STARTING_MATCH_GOLDEN_EGGS = 1

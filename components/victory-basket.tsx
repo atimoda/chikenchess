@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ConquestResult } from '@/lib/game-progression'
 import { basketVisualEggCount } from '@/lib/match-eggs'
 import styles from './victory-basket.module.css'
+import { useT } from '@/lib/i18n'
 
 export interface EggBasketSource {
   amount: number
@@ -105,9 +106,10 @@ export function EggBasketTransfer({ earnedEggs, accountEggs, sources, onLaunch, 
     document.addEventListener('visibilitychange', hide)
     return () => { finished = true; clearFlights(); document.removeEventListener('visibilitychange', hide) }
   }, [earnedEggs, sources])
+  const tr = useT()
   const balance = accountEggs - earnedEggs + landed
   const visibleCount = basketVisualEggCount(balance)
-  return <div className={styles.stage} aria-label={`${balance.toLocaleString()} golden eggs in your account`}>
+  return <div className={styles.stage} aria-label={tr('{n} golden eggs in your account', { n: balance.toLocaleString() })}>
     <svg ref={basketRef} viewBox="0 0 200 135" className={styles.basket} aria-hidden="true">
       <defs><linearGradient id={`${gradientId}-wicker`} x2="0" y2="1"><stop stopColor="#c38b49"/><stop offset="1" stopColor="#70421e"/></linearGradient><radialGradient id={`${gradientId}-gold`}><stop stopColor="#fff2aa"/><stop offset="1" stopColor="#d99818"/></radialGradient></defs>
       <path d="M42 71 C42 0 158 0 158 71" fill="none" stroke="#c38b49" strokeWidth="9"/>
@@ -131,13 +133,14 @@ export function VictoryBasket({ result, collected, sources, draw = false, onLaun
   onLaunch: (amount: number, source: number) => void; onLand: (amount: number) => void
   onComplete: () => void; onReturn: () => void
 }) {
-  return <section className={styles.card} aria-label={draw ? 'Draw rewards' : 'Victory rewards'}>
-    <div className={styles.heading}>{draw ? 'DRAW — EGGS SHARED' : 'CITY CONQUERED!'}</div>
+  const t = useT()
+  return <section className={styles.card} aria-label={draw ? t('Draw rewards') : t('Victory rewards')}>
+    <div className={styles.heading}>{draw ? t('DRAW — EGGS SHARED') : t('CITY CONQUERED!')}</div>
     <EggBasketTransfer earnedEggs={result.earnedEggs} accountEggs={result.profile.goldenEggs} sources={sources} onLaunch={onLaunch} onLand={onLand} onComplete={onComplete}/>
-    <p className={styles.takeHome}>You took home <strong>{result.earnedEggs} golden {result.earnedEggs === 1 ? 'egg' : 'eggs'}!</strong></p>
-    <p>You now have <strong>{result.profile.goldenEggs.toLocaleString()} golden eggs.</strong></p>
-    <p className={styles.history}>Plus {collected} historic {collected === 1 ? 'point' : 'points'} from eggs earned with a full egg counter.</p>
-    <div className={styles.rank}>{result.rankedUp ? 'Promoted to ' : 'Rank: '}{result.newRank}<span>{result.profile.points.toLocaleString()} all-time points</span></div>
-    <button className={styles.returnButton} onClick={onReturn}>Return to lobby <span aria-hidden="true">→</span></button>
+    <p className={styles.takeHome}>{t.x('You took home {eggs}!', { eggs: <strong>{result.earnedEggs === 1 ? t('1 golden egg') : t('{n} golden eggs', { n: result.earnedEggs })}</strong> })}</p>
+    <p>{t.x('You now have {eggs}.', { eggs: <strong>{result.profile.goldenEggs === 1 ? t('1 golden egg') : t('{n} golden eggs', { n: result.profile.goldenEggs.toLocaleString() })}</strong> })}</p>
+    <p className={styles.history}>{collected === 1 ? t('Plus 1 historic point from eggs earned with a full egg counter.') : t('Plus {n} historic points from eggs earned with a full egg counter.', { n: collected })}</p>
+    <div className={styles.rank}>{result.rankedUp ? t('Promoted to {rank}', { rank: t(result.newRank) }) : t('Rank: {rank}', { rank: t(result.newRank) })}<span>{t('{n} all-time points', { n: result.profile.points.toLocaleString() })}</span></div>
+    <button className={styles.returnButton} onClick={onReturn}>{t('Return to lobby')} <span aria-hidden="true">→</span></button>
   </section>
 }

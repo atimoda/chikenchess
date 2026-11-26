@@ -6,6 +6,7 @@
 // stretches the shape. Editing a point refits the box around the outline (`fitSurface`).
 import { SCENE_W, WORLD_GROUND_Y } from './world'
 import { VILLAGE_RIDGE, type RidgePoint } from './village'
+import { msg } from '../i18n'
 
 export type SurfacePoint = [x: number, y: number]
 export const GROUND_BIOMES = ['village', 'meadow', 'desert', 'snow', 'volcanic', 'moon', 'mars'] as const
@@ -16,8 +17,8 @@ export type SurfaceKind = 'ground' | 'wall'
 export type SurfaceParams = { style: GroundBiome | WallStyle; points: SurfacePoint[] }
 
 export const SURFACE_STYLE_LABELS: Record<GroundBiome | WallStyle, string> = {
-  village: 'Rocha da Vila', meadow: 'Campo', desert: 'Deserto', snow: 'Neve', volcanic: 'Vulcânico', moon: 'Lua', mars: 'Marte',
-  brick: 'Tijolos', stone: 'Pedra', wood: 'Madeira',
+  village: msg('Rocha da Vila'), meadow: msg('Campo'), desert: msg('Deserto'), snow: msg('Neve'), volcanic: msg('Vulcânico'), moon: msg('Lua'), mars: msg('Marte'),
+  brick: msg('Tijolos'), stone: msg('Pedra'), wood: msg('Madeira'),
 }
 
 export const SURFACE_MIN_POINTS = 3

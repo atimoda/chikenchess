@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Minus, Maximize, Minimize, Gamepad2, Music2 } from "lucide-react"
 import { useOnlineAvailability } from "@/hooks/use-online-availability"
 import { sampleUrl } from "@/lib/music/sample-format"
+import { useT } from "@/lib/i18n"
 
 interface WorldMapProps {
   onCitySelect: (city: CityData) => void
@@ -73,6 +74,7 @@ function RealisticGlobeIcon({ className }: { className?: string }) {
 }
 
 export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapProps) {
+  const t = useT()
   const online = useOnline()
   // Create lobby only appears in city popups while Supabase answers.
   const onlineAvailability = useOnlineAvailability()
@@ -1246,7 +1248,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
                 transition: 'opacity 0.5s ease-out'
               }}
             >
-              {openingPhrase ?? '\u00A0'}
+              {openingPhrase ? t(openingPhrase) : '\u00A0'}
             </div>
         </div>
 
@@ -1275,7 +1277,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
                 chicken<span className="text-primary">chess</span>
             </h1>
           </div>
-          <VersionChangelog label="Release notes" className="pointer-events-auto" onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />
+          <VersionChangelog label={t("Release notes")} className="pointer-events-auto" onOpen={() => { setAboutTab('releases'); setShowAbout(true) }} />
         </div>
 
         <div className={cn(styles.headerControls, "absolute top-14 right-3 md:top-6 md:right-6 flex max-w-[calc(100vw-1.5rem)] items-center gap-1.5 md:gap-3 pointer-events-auto text-xs font-mono")}>
@@ -1287,15 +1289,15 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             }}
             className={cn(styles.aboutButton, "cursor-pointer rounded-md border border-transparent bg-transparent px-3 py-2 text-muted-foreground transition-colors hover:border-white/10 hover:bg-black/80 hover:text-foreground")}
           >
-            About
+            {t("About")}
           </button>
           <div ref={setOnlineLauncherContainer} className="contents" />
           
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Controles"
-            title="Controles"
+            aria-label={t("Controles")}
+            title={t("Controles")}
             onClick={() => setShowChickenControls(v => !v)}
             className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
@@ -1307,8 +1309,8 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             size="icon"
             onClick={toggleRealisticGlobe}
             aria-pressed={realisticGlobe}
-            aria-label={realisticGlobe ? "Switch to the neon globe" : "Switch to the realistic globe"}
-            title={realisticGlobe ? "Neon globe" : "Realistic globe"}
+            aria-label={realisticGlobe ? t("Switch to the neon globe") : t("Switch to the realistic globe")}
+            title={realisticGlobe ? t("Neon globe") : t("Realistic globe")}
             className="group cursor-pointer border-white/10 bg-black/50 text-muted-foreground backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
             <span className="relative size-[18px]">
@@ -1329,7 +1331,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             type="button"
             variant="outline"
             size="default"
-            aria-label={`Abrir perfil do jogador. ${playerProfile?.goldenEggs ?? 0} ovos dourados`}
+            aria-label={t('Abrir perfil do jogador. {n} ovos dourados', { n: playerProfile?.goldenEggs ?? 0 })}
             onClick={() => setProfileTabRequested(true)}
             className="h-9 cursor-pointer gap-[7px] border-white/10 bg-black/50 px-3 font-mono text-xs text-amber-300 backdrop-blur-md transition-all hover:border-primary hover:bg-black/80 dark:hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]"
           >
@@ -1360,7 +1362,7 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
             zIndex: 10,
           }}
         >
-          Select your stage
+          {t('Select your stage')}
         </div>
       </header>
 
@@ -1381,11 +1383,11 @@ export function WorldMap({ onCitySelect, onOnlineMatch, inviteCode }: WorldMapPr
         <div 
           data-chicken-platforms
           className="fixed bottom-3 right-3 md:bottom-4 md:right-4 z-50 flex max-w-[calc(100vw-1.5rem)] md:max-w-[calc(100vw-2rem)] flex-wrap justify-end items-stretch gap-1.5 md:gap-2 pointer-events-auto">
-          {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">Fechar tudo</button>}
+          {Object.values(openPopups).filter(popup => !popup.isClosing).length > 1 && <button type="button" onClick={closeAllPopups} className="inline-flex h-9 items-center rounded-md border border-white/50 bg-background/80 px-3 text-xs font-mono text-white/50 backdrop-blur-sm transition-colors hover:border-white hover:text-white">{t("Fechar tudo")}</button>}
           {/* Touch controls remain at the bottom independently of the online hub. */}
           <ChickenTouchToggle active={globeTouch} onToggle={toggleGlobeTouch} />
           {onOnlineMatch && <OnlineHub showMapRooms launcherContainer={onlineLauncherContainer} playerProfile={playerProfile} open={profileTabRequested || undefined} onOpenChange={open => { if (!open) setProfileTabRequested(false) }} initialTab={profileTabRequested ? 'profile' : undefined} onMatch={onOnlineMatch} onCampaignCity={onCitySelect} inviteCode={inviteCode} createRequest={createRoomRequest} onCreateRequestHandled={id => setCreateRoomRequest(current => current?.id === id ? null : current)} />}
-          {!onOnlineMatch && <aside className={styles.creativeFallback}><Link href="/creative" className={styles.creativeFallbackButton}><Music2 aria-hidden="true" className="size-3.5" />Creative Mode</Link></aside>}
+          {!onOnlineMatch && <aside className={styles.creativeFallback}><Link href="/creative" className={styles.creativeFallbackButton}><Music2 aria-hidden="true" className="size-3.5" />{t("Creative Mode")}</Link></aside>}
           {isAdminUser(online.user) && <Link href="/admin" className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-background/80 px-3 text-xs font-mono text-primary backdrop-blur-sm transition-all hover:border-primary hover:bg-black/80 hover:text-white hover:shadow-[0_0_10px_var(--primary)]">Admin</Link>}
         </div>
       </div>

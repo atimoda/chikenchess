@@ -3,6 +3,10 @@ import type { Chess } from 'chess.js'
 import type { ChessMoveAnalysis } from './chess-evaluation'
 import type { MatchPower } from './chess-powers'
 import { poweredChessSnapshot } from './powered-chess'
+import { msg, t } from './i18n'
+
+// Error texts the worker (which cannot import the language module) posts as plain source text.
+export const POWERED_ANALYSIS_ERRORS = [msg('Não foi possível avaliar a posição com poderes.')] as const
 
 /** Each search owns its worker; cancelling terminates all pending calculation. */
 export function analyzePoweredMovesInWorker(
@@ -21,10 +25,10 @@ export function analyzePoweredMovesInWorker(
     }
     const cancelTimer = setInterval(() => { if (cancelled()) finish(null) }, 50)
     worker.onmessage = (event: MessageEvent<{ analysis?: ChessMoveAnalysis; error?: string }>) => {
-      if (event.data.error) finish(null, new Error(event.data.error))
+      if (event.data.error) finish(null, new Error(t(event.data.error)))
       else finish(event.data.analysis ?? null)
     }
-    worker.onerror = () => finish(null, new Error('Não foi possível iniciar a avaliação dos poderes.'))
+    worker.onerror = () => finish(null, new Error(t('Não foi possível iniciar a avaliação dos poderes.')))
     worker.postMessage({ snapshot: poweredChessSnapshot(game), powers })
   })
 }

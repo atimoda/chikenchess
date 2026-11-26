@@ -2,6 +2,7 @@
 // over each item and a lit outline around it. amount 0 is off; 100 is the full beam. Saved in the Pátio's settings.
 // Each group of items has its own color: instruments, weapons, utilities (sports tools, magic, keys, the Grade de
 // blocos' items, cages) and consumables (Bear Gummy, Cok).
+import { msg } from '../i18n'
 import { CONSUMABLE_IDS, FIXED_IDS, INSTRUMENT_IDS, WEAPON_IDS, type ItemId } from './items'
 
 export type ItemGlowGroup = 'instrument' | 'weapon' | 'utility' | 'consumable'
@@ -10,8 +11,8 @@ export type ItemGlow = { amount: number; colors: ItemGlowColors }
 
 export const ITEM_GLOW = { min: 0, max: 100, step: 1 } as const
 export const ITEM_GLOW_GROUPS: { id: ItemGlowGroup; label: string }[] = [
-  { id: 'instrument', label: 'Instrumentos' }, { id: 'weapon', label: 'Armas' },
-  { id: 'utility', label: 'Utilitários' }, { id: 'consumable', label: 'Consumíveis' },
+  { id: 'instrument', label: msg("Instrumentos") }, { id: 'weapon', label: msg("Armas") },
+  { id: 'utility', label: msg("Utilitários") }, { id: 'consumable', label: msg("Consumíveis") },
 ]
 export const ITEM_GLOW_COLORS: ItemGlowColors = { instrument: '#ffc93c', weapon: '#b05cff', utility: '#3d8bff', consumable: '#3ddc84' }
 export const ITEM_GLOW_OFF: ItemGlow = { amount: 0, colors: ITEM_GLOW_COLORS }

@@ -20,6 +20,7 @@ import { SKY_DEFAULT, hourStops, type SkyParams } from './sky'
 import { MOUNTAINS_DEFAULT, type MountainParams } from './mountains'
 import { CLOUDS_DEFAULT, type CloudParams } from './clouds'
 import type { ItemId } from './items'
+import { msg } from '../i18n'
 
 const G = WORLD_GROUND_Y
 export const VALLEY_SCREENS = 4
@@ -128,14 +129,14 @@ export function valleyLayout(): PatioLayout {
 
   // ---------- music: one Zona sonora per biome, one for the sky and one for Asgard ----------
   const column = (x0: number, x1: number, z: Partial<SoundZoneParams>) => zone(x0, -150, x1 - x0, G + 10 + 150, z)
-  column(0, 1920, { name: 'Campina', root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#7bd88f', birds: ['canario', 'bemtevi'], ambience: { beat: 'breeze', bass: 'pad' } })
-  column(1920, 3840, { name: 'Floresta gigante', root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 84, feel: 'half', progression: [0, 5, 2, 6], color: '#4f9d69', birds: ['sabia', 'coruja'], ambience: { beat: 'half', bass: 'droneDark' } })
-  column(3840, 5760, { name: 'Deserto', root: 62, scale: 'mixolydian', chordScale: 'mixolydian', bpm: 104, feel: 'straight', progression: [0, 6, 3, 0], color: '#e9b872', birds: ['pardal'], ambience: { beat: 'baiao', bass: 'baiao' } })
-  column(5760, 7680, { name: 'Vulcão', root: 55, scale: 'blues', chordScale: 'mixolydian', bpm: 92, feel: 'swing', progression: [0, 0, 3, 0, 4, 3, 0, 4], color: '#ff6b5b', ambience: { beat: 'boombap', bass: 'droneDark' } })
-  column(7680, 9600, { name: 'Montanha nevada', root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 76, feel: 'straight', progression: [0, 1, 0, 1], color: '#bfe9ff', birds: ['coruja'], ambience: { beat: 'breeze', bass: 'pad' } })
-  column(9600, WORLD_W, { name: 'Vila de conto', root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 112, feel: 'swing', progression: [0, 3, 0, 4], color: '#ffb347', birds: ['sabia', 'canario'], ambience: { beat: 'fair', bass: 'walking' } })
-  zone(0, -1950, WORLD_W, 1800, { name: 'Ilhas no céu', root: 67, scale: 'majorPenta', chordScale: 'lydian', bpm: 88, feel: 'straight', progression: [0, 1, 4, 0], color: '#7bdff2', birds: ['canario', 'pardal'], ambience: { beat: 'pulse', bass: 'arp' } })
-  zone(0, -3000, WORLD_W, 1050, { name: 'Asgard', root: 62, scale: 'harmonicMinor', chordScale: 'harmonicMinor', bpm: 72, feel: 'half', progression: [0, 5, 3, 4], color: '#c77dff', priority: 2, ambience: { beat: 'half', bass: 'pad' } })
+  column(0, 1920, { name: msg('Campina'), root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#7bd88f', birds: ['canario', 'bemtevi'], ambience: { beat: 'breeze', bass: 'pad' } })
+  column(1920, 3840, { name: msg('Floresta gigante'), root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 84, feel: 'half', progression: [0, 5, 2, 6], color: '#4f9d69', birds: ['sabia', 'coruja'], ambience: { beat: 'half', bass: 'droneDark' } })
+  column(3840, 5760, { name: msg('Deserto'), root: 62, scale: 'mixolydian', chordScale: 'mixolydian', bpm: 104, feel: 'straight', progression: [0, 6, 3, 0], color: '#e9b872', birds: ['pardal'], ambience: { beat: 'baiao', bass: 'baiao' } })
+  column(5760, 7680, { name: msg('Vulcão'), root: 55, scale: 'blues', chordScale: 'mixolydian', bpm: 92, feel: 'swing', progression: [0, 0, 3, 0, 4, 3, 0, 4], color: '#ff6b5b', ambience: { beat: 'boombap', bass: 'droneDark' } })
+  column(7680, 9600, { name: msg('Montanha nevada'), root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 76, feel: 'straight', progression: [0, 1, 0, 1], color: '#bfe9ff', birds: ['coruja'], ambience: { beat: 'breeze', bass: 'pad' } })
+  column(9600, WORLD_W, { name: msg('Vila de conto'), root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 112, feel: 'swing', progression: [0, 3, 0, 4], color: '#ffb347', birds: ['sabia', 'canario'], ambience: { beat: 'fair', bass: 'walking' } })
+  zone(0, -1950, WORLD_W, 1800, { name: msg('Ilhas no céu'), root: 67, scale: 'majorPenta', chordScale: 'lydian', bpm: 88, feel: 'straight', progression: [0, 1, 4, 0], color: '#7bdff2', birds: ['canario', 'pardal'], ambience: { beat: 'pulse', bass: 'arp' } })
+  zone(0, -3000, WORLD_W, 1050, { name: msg('Asgard'), root: 62, scale: 'harmonicMinor', chordScale: 'harmonicMinor', bpm: 72, feel: 'half', progression: [0, 5, 3, 4], color: '#c77dff', priority: 2, ambience: { beat: 'half', bass: 'pad' } })
 
   // ---------- far scenery: towers on the horizon and trees in the depth ----------
   const far = Array.from({ length: 9 }, (_, i) => power('trelica', -250 + i * 560, 0.3, undefined, 0.8, 30, 1))
@@ -156,7 +157,7 @@ export function valleyLayout(): PatioLayout {
   house('garden', 103, 1560, 220, 300)
   rack('passagua', 215)
   rack('flute', 480)
-  dummy(1432, 'Espantalho da Campina: afine a mira nele antes de subir para as ilhas.')
+  dummy(1432, msg("Espantalho da Campina: afine a mira nele antes de subir para as ilhas."))
   button('aliens', 855)
   trampoline(975, 5, -6, undefined, 150)
   const campina = [power('madeira', 420, 1), power('madeira', 870, 1), power('duplo', 1360, 1), power('madeira', 1790, 1)]
@@ -224,8 +225,8 @@ export function valleyLayout(): PatioLayout {
   rack('guitar', 4350)
   rack('tambourine', 4900)
   rack('pistol', 5250)
-  dummy(4040, 'Bandido de palha: acerte daqui de baixo ou lá de cima da mesa.')
-  dummy(5650, 'Bandido de palha')
+  dummy(4040, msg("Bandido de palha: acerte daqui de baixo ou lá de cima da mesa."))
+  dummy(5650, msg("Bandido de palha"))
   const desert = [power('rua', 4090, 1), power('rua', 4600, 1), power('rua', 5130, 1), power('rua', 5500, 1)]
   link(...desert)
   // Oásis suspenso
@@ -350,8 +351,8 @@ export function valleyLayout(): PatioLayout {
   up(lookout, lookout.r + 150, fair.y, -1)
   up(ember, ember.r + 150, lookout.y, -1)
   // shortcuts: the Campina and the Vila de conto, each with a portal to Asgard
-  portals(1740, undefined, 'Subir para Asgard', 5370, on(asgard), 'Descer para a Campina')
-  portals(11340, undefined, 'Subir para Asgard', 6650, on(asgard), 'Descer para a Vila de conto')
+  portals(1740, undefined, msg("Subir para Asgard"), 5370, on(asgard), msg("Descer para a Campina"))
+  portals(11340, undefined, msg("Subir para Asgard"), 6650, on(asgard), msg("Descer para a Vila de conto"))
 
   // ---------- transmission towers: the line along the valley, one per layer of islands, and the risers ----------
   const valley = [power('trelica', 1870, 0.8), power('trelica', 3740, 0.8), power('trelica', 5650, 0.8), power('trelica', 7700, 0.8), power('trelica', 9505, 0.8), power('trelica', 11400, 0.8)]

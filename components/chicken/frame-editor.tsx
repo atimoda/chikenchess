@@ -11,6 +11,7 @@ import {
   type BodyFrame, type BodyFrames, type FrameClass, type FramePose,
 } from "@/lib/chicken/body-frame"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 
 type Drag = { kind: "move" | "w" | "h" | "bar"; x0: number; y0: number; f: BodyFrame }
 // the state the engine animates for each pose, and the surface she is on (a wall on her right while clinging)
@@ -20,6 +21,7 @@ const angleOf = (pose: FramePose) => (pose === "cling" ? CLING_ANGLE : 0)
 
 /** The character in `pose` with `cls`'s frame over it; `look` (Chi, Pig, Ken) or `art` (a Kid). */
 export function PosePreview({ cls, pose, look, art, frames, onChange }: { cls: FrameClass; pose: FramePose; look: ChickenLook; art: ChickenArtSet | null; frames: BodyFrames; onChange: (f: BodyFrames) => void }) {
+  const t = useT()
   const box = useRef<HTMLDivElement>(null)
   const host = useRef<HTMLDivElement>(null)
   const svg = useRef<SVGSVGElement>(null)
@@ -108,7 +110,7 @@ export function PosePreview({ cls, pose, look, art, frames, onChange }: { cls: F
       <div className="absolute inset-0" style={{ transform: `scale(${zoom})`, transformOrigin: `${feet.x}px ${feet.y}px` }}>
         <div ref={host} className="pointer-events-none absolute left-0 top-0" />
         <svg ref={svg} viewBox={`0 0 ${size.w} ${size.h}`} className="absolute inset-0 h-full w-full touch-none overflow-visible" onPointerMove={move} onPointerUp={end} onPointerCancel={end}>
-          <title>Hit-area: arraste a caixa, a bolinha da borda, a do topo ou a barra de vida</title>
+          <title>{t("Hit-area: arraste a caixa, a bolinha da borda, a do topo ou a barra de vida")}</title>
           {/* the floor, or the wall she clings to */}
           {pose === "cling"
             ? <line x1={feet.x} x2={feet.x} y1={-size.h} y2={size.h * 2} stroke="rgba(31,211,154,0.55)" strokeWidth={2 / zoom} />
@@ -131,6 +133,7 @@ export function PosePreview({ cls, pose, look, art, frames, onChange }: { cls: F
 
 /** The class and pose pickers, the numbers and Salvar no game. */
 export function FrameControls({ cls, onClass, pose, onPose, frames, saved, onChange, onSave, saving, note }: { cls: FrameClass; onClass: (c: FrameClass) => void; pose: FramePose; onPose: (p: FramePose) => void; frames: BodyFrames; saved: BodyFrames; onChange: (f: BodyFrames) => void; onSave: () => void; saving: boolean; note: string | null }) {
+  const t = useT()
   const f = frameFor(frames, cls, pose), s = frameFor(saved, cls, pose)
   const own = pose === "stand" || !!frames[cls].poses?.[pose]
   const set = (key: keyof BodyFrame, v: number) => { if (Number.isFinite(v)) onChange(withFrame(frames, cls, pose, { ...f, [key]: v })) }
@@ -139,20 +142,20 @@ export function FrameControls({ cls, onClass, pose, onPose, frames, saved, onCha
   const seg = (on: boolean, changed: boolean) => cn("h-8 flex-1 whitespace-nowrap rounded-md px-2 font-semibold", on ? "bg-[#22302a] text-white shadow-[inset_0_0_0_1px_rgba(31,211,154,0.6)]" : "text-[#93a79a] hover:text-white", changed && "text-amber-300")
   return (
     <section className="grid gap-3 border-b border-white/10 px-4 py-3.5">
-      <div role="radiogroup" aria-label="Classe" className="flex gap-1">
-        {FRAME_CLASSES.map(c => <button key={c} type="button" role="radio" aria-checked={cls === c} onClick={() => onClass(c)} className={seg(cls === c, !same(frames[c], saved[c]))}>{FRAME_LABEL[c]}</button>)}
+      <div role="radiogroup" aria-label={t("Classe")} className="flex gap-1">
+        {FRAME_CLASSES.map(c => <button key={c} type="button" role="radio" aria-checked={cls === c} onClick={() => onClass(c)} className={seg(cls === c, !same(frames[c], saved[c]))}>{t(FRAME_LABEL[c])}</button>)}
       </div>
       {/* a pose without its own frame uses the standing one: its name is dimmed */}
-      <div role="radiogroup" aria-label="Pose" className="grid grid-cols-3 gap-1">
+      <div role="radiogroup" aria-label={t("Pose")} className="grid grid-cols-3 gap-1">
         {FRAME_POSES.map(p => (
           <button key={p} type="button" role="radio" aria-checked={pose === p} onClick={() => onPose(p)}
-            className={cn(seg(pose === p, !same(frameFor(frames, cls, p), frameFor(saved, cls, p))), p !== "stand" && !frames[cls].poses?.[p] && pose !== p && "opacity-60")}>{POSE_LABEL[p]}</button>
+            className={cn(seg(pose === p, !same(frameFor(frames, cls, p), frameFor(saved, cls, p))), p !== "stand" && !frames[cls].poses?.[p] && pose !== p && "opacity-60")}>{t(POSE_LABEL[p])}</button>
         ))}
       </div>
       <div className="grid gap-1.5">
         {FRAME_KEYS.map(k => (
           <label key={k.key} className="grid grid-cols-[minmax(0,1fr)_76px] items-center gap-2">
-            <span className={cn(f[k.key] !== s[k.key] && "text-amber-300")}>{k.label}</span>
+            <span className={cn(f[k.key] !== s[k.key] && "text-amber-300")}>{t(k.label)}</span>
             <input type="number" min={k.min} max={k.max} step={1} value={f[k.key]} onChange={e => set(k.key, Math.max(k.min, Math.min(k.max, Math.round(Number(e.target.value)))))}
               className={cn("h-7 rounded border border-white/15 bg-black/30 px-2 text-right tabular-nums", !own && "text-[#93a79a]")} />
           </label>
@@ -161,9 +164,9 @@ export function FrameControls({ cls, onClass, pose, onPose, frames, saved, onCha
       <div className="flex flex-wrap items-center justify-end gap-2">
         {note && <span role="status" className="min-w-0 flex-1 text-[11px] text-[#8a9a8a]">{note}</span>}
         {pose === "stand"
-          ? <button type="button" onClick={() => onChange(withFrame(frames, cls, "stand", null))} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary">Padrão</button>
-          : <button type="button" disabled={!own} onClick={() => onChange(withFrame(frames, cls, pose, null))} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-45">Igual a Em pé</button>}
-        <button type="button" disabled={!dirty || saving} onClick={onSave} className="h-8 rounded border border-primary/60 bg-primary/10 px-3 hover:bg-primary/25 disabled:opacity-50">{saving ? "Salvando…" : "Salvar no game"}</button>
+          ? <button type="button" onClick={() => onChange(withFrame(frames, cls, "stand", null))} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary">{t("Padrão")}</button>
+          : <button type="button" disabled={!own} onClick={() => onChange(withFrame(frames, cls, pose, null))} className="h-8 rounded-md border border-white/20 px-3 hover:border-primary disabled:opacity-45">{t("Igual a Em pé")}</button>}
+        <button type="button" disabled={!dirty || saving} onClick={onSave} className="h-8 rounded border border-primary/60 bg-primary/10 px-3 hover:bg-primary/25 disabled:opacity-50">{saving ? t("Salvando…") : t("Salvar no game")}</button>
       </div>
     </section>
   )

@@ -3,6 +3,7 @@
 // while "Ajustar automaticamente" is on. Only the levels chosen by hand are saved: the monitor's steps down last
 // for this visit, so one slow moment never leaves a capable device at Baixa (30 FPS) for good. What each level changes is listed in docs/mechanics/performance.md.
 import { isLiteDevice } from './performance'
+import { msg } from './i18n'
 
 export type QualityLevel = 'high' | 'medium' | 'low'
 // the graphics have one level more, Baixíssima: Baixa without the scenery that is only decoration (the Pátio's
@@ -14,7 +15,7 @@ export type QualityState = { graphics: GraphicsLevel; sound: QualityLevel; auto:
 
 export const QUALITY_LEVELS: QualityLevel[] = ['high', 'medium', 'low']
 export const GRAPHICS_LEVELS: GraphicsLevel[] = ['high', 'medium', 'low', 'lowest']
-export const QUALITY_LABELS: Record<GraphicsLevel, string> = { high: 'Alta', medium: 'Média', low: 'Baixa', lowest: 'Baixíssima' }
+export const QUALITY_LABELS: Record<GraphicsLevel, string> = { high: msg('Alta'), medium: msg('Média'), low: msg('Baixa'), lowest: msg('Baixíssima') }
 /** The levels each selector offers. */
 export const qualityLevels = (kind: QualityKind): GraphicsLevel[] => kind === 'graphics' ? GRAPHICS_LEVELS : QUALITY_LEVELS
 const KEY = 'chickenchess:quality:v2'

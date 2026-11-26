@@ -85,6 +85,7 @@
 | Copiar o histórico completo da partida para relatar bugs | [Match log](docs/mechanics/match-log.md) |
 | Páginas legais, links do login/globo e analytics | [Páginas públicas](docs/mechanics/public-pages.md) |
 | Freeze, Shield e casas especiais | [Poderes](docs/mechanics/powers.md) |
+| Idioma do jogo (oito idiomas, onde trocar, primeira visita, o que não é traduzido) | [Idioma](docs/mechanics/language.md) |
 | Processamento | [Gestos e custo](docs/mechanics/performance.md) |
 | Pátio: renderização (camadas que seguem a câmera, qualidade Baixíssima, recorte do cenário, canvas, mira, geometria) | [Renderização do Pátio](docs/mechanics/patio/rendering.md) |
 
@@ -165,6 +166,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: mundo, cenário, portais, árvores e trampolim](docs/mechanics/patio/world.md) | 25 KB |
 | [Pátio: câmera, zoom e portal](docs/mechanics/patio/camera.md) | 7 KB |
 | [Pátio: Vila dos Telhados, casas e interior](docs/mechanics/patio/houses.md) | 14 KB |
+| [Idioma do jogo](docs/mechanics/language.md) | 3 KB |
 | [Gestos e custo de processamento](docs/mechanics/performance.md) | 23 KB |
 | [Pátio: renderização e qualidade Baixíssima](docs/mechanics/patio/rendering.md) | 10 KB |
 | [Poderes da partida](docs/mechanics/powers.md) | 25 KB |

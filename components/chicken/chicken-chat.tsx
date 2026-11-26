@@ -1,6 +1,7 @@
 "use client"
 
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
+import { useT } from "@/lib/i18n"
 
 // Chat over the chickens: Enter (or the chat button) opens a text field at the bottom of the screen; Enter sends,
 // Esc cancels. The message shows as a speech bubble above the sender's chicken (lib/chicken/chat.ts). While
@@ -46,12 +47,13 @@ function isTextField(t: EventTarget | null) {
 
 // The header's chat button (mainly for touch screens, which have no Enter key)
 export function ChickenChatButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const tr = useT()
   return (
     <button
       type="button"
-      aria-label="Chat"
+      aria-label={tr("Chat")}
       aria-pressed={open}
-      title="Chat (Enter)"
+      title={tr("Chat (Enter)")}
       // keep the focus where it is: the field takes it as it opens
       onPointerDown={e => e.preventDefault()}
       onClick={onToggle}
@@ -65,6 +67,7 @@ export function ChickenChatButton({ open, onToggle }: { open: boolean; onToggle:
 // players: who has a chicken on this screen, by chat player id (the local one is LOCAL_CHAT_PLAYER);
 // myName: the nick shown in front of this screen's messages in the history
 export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { players: Record<string, ChickenEngine | null>; open: boolean; onOpenChange: (open: boolean) => void; bottom: number; myName?: string }) {
+  const tr = useT()
   const [text, setText] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const chats = useChickenChats()
@@ -104,7 +107,7 @@ export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { p
       {open && (
         <form
           data-chicken-ignore
-          aria-label="Chat"
+          aria-label={tr("Chat")}
           onSubmit={e => { e.preventDefault(); submit() }}
           className="pointer-events-auto fixed left-1/2 z-[240] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 items-center gap-2 rounded-xl border border-primary/50 bg-[#101713]/90 p-1.5 pl-3 font-mono text-sm text-white shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur"
           style={{ bottom }}
@@ -113,8 +116,8 @@ export function ChickenChat({ players, open, onOpenChange, bottom, myName }: { p
           <input
             ref={inputRef}
             type="text"
-            aria-label="Mensagem"
-            placeholder="Diga algo…"
+            aria-label={tr("Mensagem")}
+            placeholder={tr("Diga algo…")}
             enterKeyHint="send"
             autoComplete="off"
             maxLength={CHAT_MAX * 2}
@@ -152,6 +155,7 @@ function loadHistoryPos(): HistoryPos | null {
   try { const p = JSON.parse(window.localStorage.getItem(HISTORY_POS) || "null"); return p && Number.isFinite(p.left) && Number.isFinite(p.bottom) ? p : null } catch { return null }
 }
 function ChatHistory({ bottom, open }: { bottom: number; open: boolean }) {
+  const tr = useT()
   const lines = useSyncExternalStore(subscribeChickenChat, getChickenChatHistory, getChickenChatHistory)
   const ref = useRef<HTMLDivElement>(null)
   // when each line got here, on this computer's clock (another browser's `at` is on its own clock)
@@ -211,7 +215,7 @@ function ChatHistory({ bottom, open }: { bottom: number; open: boolean }) {
   return (
     <div
       ref={ref}
-      aria-label="Histórico do chat"
+      aria-label={tr("Histórico do chat")}
       role="log"
       className="pointer-events-none fixed z-[203] w-[min(340px,calc(100vw-1.5rem))] pl-4 pr-1 font-mono text-xs leading-relaxed text-white [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgba(0,0,0,0.95),0_0_4px_rgba(0,0,0,0.8)]"
       style={pos ? { left: pos.left, bottom: pos.bottom } : { left: 8, bottom }}
@@ -221,7 +225,7 @@ function ChatHistory({ bottom, open }: { bottom: number; open: boolean }) {
         return (
           <p key={l.id} className={cn("relative transition-opacity", shown ? "opacity-100 duration-150" : "opacity-0 duration-700")}>
             {l === last && (
-              <button type="button" data-chicken-ignore aria-label="Mover o chat" title="Arraste para mover o chat"
+              <button type="button" data-chicken-ignore aria-label={tr("Mover o chat")} title={tr("Arraste para mover o chat")}
                 onPointerDown={grab} onPointerMove={move} onPointerUp={drop} onPointerCancel={drop}
                 style={{ cursor: dragging ? "grabbing" : "grab" }}
                 className={cn("pointer-events-auto absolute -left-4 top-0.5 inline-flex h-4 w-3.5 touch-none items-center justify-center rounded-sm hover:text-white", shown ? "text-white/60" : "pointer-events-none")}>

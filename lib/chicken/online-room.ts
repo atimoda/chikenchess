@@ -4,6 +4,7 @@
 // position of every other chicken and of the chicks that follow them, and relays the chat. Nothing here touches
 // Supabase.
 import { Client, type Room } from '@colyseus/sdk'
+import { msg, t as tr } from '../i18n'
 import { receiveChickenChat, setChickenChatTransport } from './chat'
 import { byteAngle, decodeNetSnapshot, encodeNetState, NET_MAX_BROWSERS, type NetChicken } from './net-protocol'
 import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world'
@@ -17,7 +18,7 @@ import { importChicks, keepChicks, type NetChick, type RemoteChick } from './net
 // ws(s)://host[:port] of the game server; in development it defaults to the one `cd server && npm start` runs
 export const GAME_SERVER_URL = (process.env.NEXT_PUBLIC_GAME_SERVER_URL?.trim() || (process.env.NODE_ENV === 'development' ? 'ws://localhost:2567' : '')).replace(/\/$/, '')
 export const gameServerAvailable = () => !!GAME_SERVER_URL
-export const ONLINE_OFF = 'O servidor do modo online ainda não está no ar. Por enquanto, só players locais.'
+export const ONLINE_OFF = msg('O servidor do modo online ainda não está no ar. Por enquanto, só players locais.')
 
 export type NetPlayer = {
   pid: number; name: string; guest: boolean; userId: string | null; color: number; chickens: number
@@ -108,7 +109,7 @@ export type JoinOptions = {
 }
 
 export async function joinPatioOnline(opts: JoinOptions): Promise<{ ok: true } | { ok: false; reason: string }> {
-  if (!GAME_SERVER_URL) return { ok: false, reason: ONLINE_OFF }
+  if (!GAME_SERVER_URL) return { ok: false, reason: tr(ONLINE_OFF) }
   await leavePatioOnline()
   set({ status: 'connecting', notice: null })
   const options = {
@@ -123,7 +124,7 @@ export async function joinPatioOnline(opts: JoinOptions): Promise<{ ok: true } |
   } catch (e) {
     set({ status: 'off', info: null, myPid: null })
     const m = e instanceof Error ? e.message : String(e ?? '')
-    return { ok: false, reason: /full|locked/i.test(m) ? `Este lobby já tem ${NET_MAX_BROWSERS} navegadores.` : /not found/i.test(m) ? 'Esse lobby não existe mais.' : 'Não foi possível entrar no modo online agora.' }
+    return { ok: false, reason: /full|locked/i.test(m) ? tr('Este lobby já tem {max} navegadores.', { max: NET_MAX_BROWSERS }) : /not found/i.test(m) ? tr('Esse lobby não existe mais.') : tr('Não foi possível entrar no modo online agora.') }
   }
 }
 

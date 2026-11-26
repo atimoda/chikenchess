@@ -2,6 +2,7 @@
 // settings.mineGrid.zones, and the choice of rhythms that go into the draw. Pure; the zones themselves are made in
 // mine-zones.ts.
 import { BEATS, type BeatId } from './beats'
+import { t } from '../i18n'
 
 // on: every block is a sound zone; rhythm: the share of blocks, whole percents, that get a rhythm drawn (the rest:
 // Silêncio); all: "Todos", every rhythm the game has goes into the draw (the ones added later too); pool: otherwise,
@@ -45,8 +46,8 @@ export function toggleMineZoneBeat(z: MineZoneParams, id: BeatId | 'all', on: bo
 
 // how the list reads closed: "Todos", "Nenhum", the one chosen, or how many
 export function mineZonePoolLabel(z: Pick<MineZoneParams, 'all' | 'pool'>) {
-  if (z.all) return 'Todos'
-  if (!z.pool.length) return 'Nenhum'
-  if (z.pool.length === 1) return BEATS.find(b => b.id === z.pool[0])?.label ?? '1 ritmo'
-  return `${z.pool.length} ritmos`
+  if (z.all) return t('Todos')
+  if (!z.pool.length) return t('Nenhum')
+  if (z.pool.length === 1) return t(BEATS.find(b => b.id === z.pool[0])?.label ?? '1 ritmo')
+  return t('{n} ritmos', { n: z.pool.length })
 }

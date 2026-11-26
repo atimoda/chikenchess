@@ -4,6 +4,7 @@
 // The rule of each note says whose chain counts: the taco's, the ambience's (the stage's fan or the zone), both in
 // either order, or none (the note as sequenced).
 // Pure functions over plain data; the random number comes from the caller.
+import { msg } from '../i18n'
 import { SCALES, type ScaleId } from './music'
 import type { Drum, VoiceId } from './synth'
 
@@ -36,38 +37,38 @@ export type TransformMeta = {
   modes?: Opt[]; mode?: string
 }
 const DRUMS: Opt[] = [
-  { value: 'taiko', label: 'Taiko' }, { value: 'wood', label: 'Woodblock' }, { value: 'clap', label: 'Palmas' }, { value: 'snare', label: 'Caixa' },
-  { value: 'kick', label: 'Bumbo' }, { value: 'hat', label: 'Chimbal' }, { value: 'jingle', label: 'Platinela' }, { value: 'shaker', label: 'Chocalho' },
+  { value: 'taiko', label: msg('Taiko') }, { value: 'wood', label: msg('Woodblock') }, { value: 'clap', label: msg('Palmas') }, { value: 'snare', label: msg('Caixa') },
+  { value: 'kick', label: msg('Bumbo') }, { value: 'hat', label: msg('Chimbal') }, { value: 'jingle', label: msg('Platinela') }, { value: 'shaker', label: msg('Chocalho') },
 ]
 const VOICES: Opt[] = [
-  { value: 'flute', label: 'Flauta' }, { value: 'sax', label: 'Sax' }, { value: 'trumpet', label: 'Trompete' }, { value: 'guitar', label: 'Violão' },
-  { value: 'violin', label: 'Violino' }, { value: 'keys', label: 'Teclado' }, { value: 'harp', label: 'Harpa de Lira' }, { value: 'bells', label: 'Sinos' },
-  { value: 'guzheng', label: 'Guzheng' }, { value: 'bass', label: 'Baixo' }, { value: 'chip', label: 'Chip' },
+  { value: 'flute', label: msg('Flauta') }, { value: 'sax', label: msg('Sax') }, { value: 'trumpet', label: msg('Trompete') }, { value: 'guitar', label: msg('Violão') },
+  { value: 'violin', label: msg('Violino') }, { value: 'keys', label: msg('Teclado') }, { value: 'harp', label: msg('Harpa de Lira') }, { value: 'bells', label: msg('Sinos') },
+  { value: 'guzheng', label: msg('Guzheng') }, { value: 'bass', label: msg('Baixo') }, { value: 'chip', label: msg('Chip') },
 ]
 export const TRANSFORMS: Record<TransformKind, TransformMeta> = {
-  transpose: { label: 'Transpor', group: 'Altura', hint: 'Sobe ou desce graus da escala (2 = terça, 4 = quinta, 5 = sexta) ou semitons', n: { label: 'Quanto', min: -12, max: 12, step: 1, def: 2 }, modes: [{ value: 'degree', label: 'graus' }, { value: 'semitone', label: 'semitons' }], mode: 'degree' },
-  octave: { label: 'Oitava', group: 'Altura', hint: 'Sobe ou desce oitavas; aleatória sorteia até N para cima ou para baixo', n: { label: 'Oitavas', min: -2, max: 2, step: 1, def: 1 }, modes: [{ value: 'fixed', label: 'fixa' }, { value: 'random', label: 'aleatória' }], mode: 'fixed' },
-  fixed: { label: 'Nota fixa', group: 'Altura', hint: 'Troca por uma nota específica (MIDI, 60 = Dó central)', n: { label: 'Nota', min: 24, max: 108, step: 1, def: 60 } },
-  snapChord: { label: 'Encaixar no acorde', group: 'Altura', hint: 'Puxa para a nota do acorde atual mais perto' },
-  mirror: { label: 'Espelho', group: 'Altura', hint: 'Inverte o intervalo em volta da tônica (melodia de cabeça para baixo)' },
-  walk: { label: 'Passeio', group: 'Altura', hint: 'Anda até N graus ao acaso dentro da escala', n: { label: 'Até', min: 1, max: 3, step: 1, def: 1 } },
-  byAngle: { label: 'Pelo ângulo do golpe', group: 'Altura', hint: 'A nota sai da direção da mira, como os instrumentos', n: { label: 'Oitava', min: -1, max: 2, step: 1, def: 0 } },
-  scale: { label: 'Trocar escala', group: 'Escala', hint: 'Mantém o grau e troca a escala', modes: (Object.keys(SCALES) as ScaleId[]).map((s): Opt => ({ value: s, label: SCALES[s].label })).concat({ value: 'diminished', label: 'Diminuta' }), mode: 'minor' },
-  parallel: { label: 'Menor', group: 'Escala', hint: 'Escurece a frase: paralela (Dó maior → Dó menor), relativa (→ Lá menor) ou diminuta', modes: [{ value: 'parallel', label: 'paralela' }, { value: 'relative', label: 'relativa' }, { value: 'diminished', label: 'diminuta' }], mode: 'parallel' },
-  double: { label: 'Duplicar', group: 'Vozes', hint: 'Toca de novo N semicolcheias depois', n: { label: 'Semicolcheias', min: 1, max: 4, step: 1, def: 2 } },
-  voices: { label: 'Adicionar vozes', group: 'Vozes', hint: 'Monta um acorde em cima da nota', modes: [{ value: 'triad', label: 'tríade' }, { value: 'power', label: 'power chord (5ª)' }, { value: 'sus2', label: 'sus2' }, { value: 'sus4', label: 'sus4' }, { value: 'seventh', label: 'com sétima' }, { value: 'cluster', label: 'cluster' }], mode: 'triad' },
-  counter: { label: 'Contracanto', group: 'Vozes', hint: 'Uma segunda voz em terças ou sextas, acima (1) ou abaixo (-1)', n: { label: 'Lado', min: -1, max: 1, step: 2, def: 1 }, modes: [{ value: 'thirds', label: 'terças' }, { value: 'sixths', label: 'sextas' }], mode: 'thirds' },
-  arpeggio: { label: 'Arpejar', group: 'Ritmo', hint: 'Espalha as notas juntas ao longo de N batidas', n: { label: 'Batidas', min: 0.05, max: 2, step: 0.05, def: 0.5 }, modes: [{ value: 'up', label: 'sobe' }, { value: 'down', label: 'desce' }, { value: 'updown', label: 'vai e volta' }], mode: 'up' },
-  echo: { label: 'Eco', group: 'Ritmo', hint: 'Repetições que diminuem', n: { label: 'Repetições', min: 1, max: 6, step: 1, def: 3 }, modes: [{ value: 'dotted', label: 'colcheia pontuada' }, { value: 'eighth', label: 'colcheia' }, { value: 'triplet', label: 'tercina' }], mode: 'dotted' },
-  ratchet: { label: 'Ratchet / rufo', group: 'Ritmo', hint: 'Repetições bem rápidas (fusas)', n: { label: 'Vezes', min: 2, max: 6, step: 1, def: 3 } },
-  shift: { label: 'Deslocar', group: 'Ritmo', hint: 'Empurra para o contratempo, a semicolcheia seguinte ou com swing', modes: [{ value: 'offbeat', label: 'contratempo' }, { value: 'sixteenth', label: 'semicolcheia' }, { value: 'swing', label: 'swing' }], mode: 'offbeat' },
-  ornament: { label: 'Ornamento', group: 'Enfeite', hint: 'Apojatura, trinado, mordente ou notas de passagem', modes: [{ value: 'appoggiatura', label: 'apojatura' }, { value: 'trill', label: 'trinado' }, { value: 'mordent', label: 'mordente' }, { value: 'passing', label: 'passagem' }], mode: 'appoggiatura' },
-  gliss: { label: 'Glissando', group: 'Enfeite', hint: 'Desliza pela escala até a nota', n: { label: 'Notas', min: 2, max: 8, step: 1, def: 4 }, modes: [{ value: 'up', label: 'de baixo' }, { value: 'down', label: 'de cima' }], mode: 'up' },
-  blue: { label: 'Blue note', group: 'Enfeite', hint: 'Dobra a terça e/ou a sétima um quarto de tom para baixo', modes: [{ value: 'both', label: 'terça e sétima' }, { value: 'third', label: 'terça' }, { value: 'seventh', label: 'sétima' }], mode: 'both' },
-  timbre: { label: 'Trocar timbre', group: 'Som', hint: 'Muda a voz da nota', modes: VOICES, mode: 'bells' },
-  drum: { label: 'Percussão', group: 'Som', hint: 'Troca a nota por um tambor (0) ou soma o tambor a ela (1)', n: { label: 'Somar', min: 0, max: 1, step: 1, def: 0 }, modes: DRUMS, mode: 'taiko' },
-  dynamics: { label: 'Dinâmica e duração', group: 'Som', hint: 'Acento, mais fraca, staccato, legato ou sustentar', modes: [{ value: 'accent', label: 'acento' }, { value: 'soft', label: 'mais fraca' }, { value: 'staccato', label: 'staccato' }, { value: 'legato', label: 'legato' }, { value: 'sustain', label: 'sustentar' }], mode: 'accent' },
-  combo: { label: 'Pelo combo', group: 'Jogo', hint: 'A cada N de combo, uma oitava acima ou mais vozes', n: { label: 'A cada', min: 2, max: 32, step: 1, def: 8 }, modes: [{ value: 'octave', label: 'oitava' }, { value: 'voices', label: 'vozes' }], mode: 'octave' },
+  transpose: { label: msg('Transpor'), group: msg('Altura'), hint: msg('Sobe ou desce graus da escala (2 = terça, 4 = quinta, 5 = sexta) ou semitons'), n: { label: msg('Quanto'), min: -12, max: 12, step: 1, def: 2 }, modes: [{ value: 'degree', label: msg('graus') }, { value: 'semitone', label: msg('semitons') }], mode: 'degree' },
+  octave: { label: msg('Oitava'), group: msg('Altura'), hint: msg('Sobe ou desce oitavas; aleatória sorteia até N para cima ou para baixo'), n: { label: msg('Oitavas'), min: -2, max: 2, step: 1, def: 1 }, modes: [{ value: 'fixed', label: msg('fixa') }, { value: 'random', label: msg('aleatória') }], mode: 'fixed' },
+  fixed: { label: msg('Nota fixa'), group: msg('Altura'), hint: msg('Troca por uma nota específica (MIDI, 60 = Dó central)'), n: { label: msg('Nota'), min: 24, max: 108, step: 1, def: 60 } },
+  snapChord: { label: msg('Encaixar no acorde'), group: msg('Altura'), hint: msg('Puxa para a nota do acorde atual mais perto') },
+  mirror: { label: msg('Espelho'), group: msg('Altura'), hint: msg('Inverte o intervalo em volta da tônica (melodia de cabeça para baixo)') },
+  walk: { label: msg('Passeio'), group: msg('Altura'), hint: msg('Anda até N graus ao acaso dentro da escala'), n: { label: msg('Até'), min: 1, max: 3, step: 1, def: 1 } },
+  byAngle: { label: msg('Pelo ângulo do golpe'), group: msg('Altura'), hint: msg('A nota sai da direção da mira, como os instrumentos'), n: { label: msg('Oitava'), min: -1, max: 2, step: 1, def: 0 } },
+  scale: { label: msg('Trocar escala'), group: msg('Escala'), hint: msg('Mantém o grau e troca a escala'), modes: (Object.keys(SCALES) as ScaleId[]).map((s): Opt => ({ value: s, label: SCALES[s].label })).concat({ value: 'diminished', label: msg('Diminuta') }), mode: 'minor' },
+  parallel: { label: msg('Menor'), group: msg('Escala'), hint: msg('Escurece a frase: paralela (Dó maior → Dó menor), relativa (→ Lá menor) ou diminuta'), modes: [{ value: 'parallel', label: msg('paralela') }, { value: 'relative', label: msg('relativa') }, { value: 'diminished', label: msg('diminuta') }], mode: 'parallel' },
+  double: { label: msg('Duplicar'), group: msg('Vozes'), hint: msg('Toca de novo N semicolcheias depois'), n: { label: msg('Semicolcheias'), min: 1, max: 4, step: 1, def: 2 } },
+  voices: { label: msg('Adicionar vozes'), group: msg('Vozes'), hint: msg('Monta um acorde em cima da nota'), modes: [{ value: 'triad', label: msg('tríade') }, { value: 'power', label: msg('power chord (5ª)') }, { value: 'sus2', label: msg('sus2') }, { value: 'sus4', label: msg('sus4') }, { value: 'seventh', label: msg('com sétima') }, { value: 'cluster', label: msg('cluster') }], mode: 'triad' },
+  counter: { label: msg('Contracanto'), group: msg('Vozes'), hint: msg('Uma segunda voz em terças ou sextas, acima (1) ou abaixo (-1)'), n: { label: msg('Lado'), min: -1, max: 1, step: 2, def: 1 }, modes: [{ value: 'thirds', label: msg('terças') }, { value: 'sixths', label: msg('sextas') }], mode: 'thirds' },
+  arpeggio: { label: msg('Arpejar'), group: msg('Ritmo'), hint: msg('Espalha as notas juntas ao longo de N batidas'), n: { label: msg('Batidas'), min: 0.05, max: 2, step: 0.05, def: 0.5 }, modes: [{ value: 'up', label: msg('sobe') }, { value: 'down', label: msg('desce') }, { value: 'updown', label: msg('vai e volta') }], mode: 'up' },
+  echo: { label: msg('Eco'), group: msg('Ritmo'), hint: msg('Repetições que diminuem'), n: { label: msg('Repetições'), min: 1, max: 6, step: 1, def: 3 }, modes: [{ value: 'dotted', label: msg('colcheia pontuada') }, { value: 'eighth', label: msg('colcheia') }, { value: 'triplet', label: msg('tercina') }], mode: 'dotted' },
+  ratchet: { label: msg('Ratchet / rufo'), group: msg('Ritmo'), hint: msg('Repetições bem rápidas (fusas)'), n: { label: msg('Vezes'), min: 2, max: 6, step: 1, def: 3 } },
+  shift: { label: msg('Deslocar'), group: msg('Ritmo'), hint: msg('Empurra para o contratempo, a semicolcheia seguinte ou com swing'), modes: [{ value: 'offbeat', label: msg('contratempo') }, { value: 'sixteenth', label: msg('semicolcheia') }, { value: 'swing', label: msg('swing') }], mode: 'offbeat' },
+  ornament: { label: msg('Ornamento'), group: msg('Enfeite'), hint: msg('Apojatura, trinado, mordente ou notas de passagem'), modes: [{ value: 'appoggiatura', label: msg('apojatura') }, { value: 'trill', label: msg('trinado') }, { value: 'mordent', label: msg('mordente') }, { value: 'passing', label: msg('passagem') }], mode: 'appoggiatura' },
+  gliss: { label: msg('Glissando'), group: msg('Enfeite'), hint: msg('Desliza pela escala até a nota'), n: { label: msg('Notas'), min: 2, max: 8, step: 1, def: 4 }, modes: [{ value: 'up', label: msg('de baixo') }, { value: 'down', label: msg('de cima') }], mode: 'up' },
+  blue: { label: msg('Blue note'), group: msg('Enfeite'), hint: msg('Dobra a terça e/ou a sétima um quarto de tom para baixo'), modes: [{ value: 'both', label: msg('terça e sétima') }, { value: 'third', label: msg('terça') }, { value: 'seventh', label: msg('sétima') }], mode: 'both' },
+  timbre: { label: msg('Trocar timbre'), group: msg('Som'), hint: msg('Muda a voz da nota'), modes: VOICES, mode: 'bells' },
+  drum: { label: msg('Percussão'), group: msg('Som'), hint: msg('Troca a nota por um tambor (0) ou soma o tambor a ela (1)'), n: { label: msg('Somar'), min: 0, max: 1, step: 1, def: 0 }, modes: DRUMS, mode: 'taiko' },
+  dynamics: { label: msg('Dinâmica e duração'), group: msg('Som'), hint: msg('Acento, mais fraca, staccato, legato ou sustentar'), modes: [{ value: 'accent', label: msg('acento') }, { value: 'soft', label: msg('mais fraca') }, { value: 'staccato', label: msg('staccato') }, { value: 'legato', label: msg('legato') }, { value: 'sustain', label: msg('sustentar') }], mode: 'accent' },
+  combo: { label: msg('Pelo combo'), group: msg('Jogo'), hint: msg('A cada N de combo, uma oitava acima ou mais vozes'), n: { label: msg('A cada'), min: 2, max: 32, step: 1, def: 8 }, modes: [{ value: 'octave', label: msg('oitava') }, { value: 'voices', label: msg('vozes') }], mode: 'octave' },
 }
 export const TRANSFORM_KINDS = Object.keys(TRANSFORMS) as TransformKind[]
 export const isTransformKind = (v: unknown): v is TransformKind => typeof v === 'string' && v in TRANSFORMS
@@ -272,11 +273,11 @@ export function applyChain(notes: NoteOut[], chain: Transform[], c: TransformCtx
 // ---------- the note's rule: whose transformations count ----------
 export type RebateRule = 'taco' | 'ambiente' | 'taco-ambiente' | 'ambiente-taco' | 'travada'
 export const REBATE_RULES: { value: RebateRule; label: string; hint: string }[] = [
-  { value: 'taco', label: 'Só taco', hint: 'Só a cadeia do item que rebateu' },
-  { value: 'ambiente', label: 'Só ambiente', hint: 'Só o lugar onde o rebate aconteceu (o leque da fase ou a zona)' },
-  { value: 'taco-ambiente', label: 'Taco, depois ambiente', hint: 'O taco transforma e o lugar ajusta à escala dele' },
-  { value: 'ambiente-taco', label: 'Ambiente, depois taco', hint: 'O lugar fixa a nota base e o taco enfeita' },
-  { value: 'travada', label: 'Travada', hint: 'Toca exatamente a nota sequenciada' },
+  { value: 'taco', label: msg('Só taco'), hint: msg('Só a cadeia do item que rebateu') },
+  { value: 'ambiente', label: msg('Só ambiente'), hint: msg('Só o lugar onde o rebate aconteceu (o leque da fase ou a zona)') },
+  { value: 'taco-ambiente', label: msg('Taco, depois ambiente'), hint: msg('O taco transforma e o lugar ajusta à escala dele') },
+  { value: 'ambiente-taco', label: msg('Ambiente, depois taco'), hint: msg('O lugar fixa a nota base e o taco enfeita') },
+  { value: 'travada', label: msg('Travada'), hint: msg('Toca exatamente a nota sequenciada') },
 ]
 export const DEFAULT_RULE: RebateRule = 'taco-ambiente'
 export const isRebateRule = (v: unknown): v is RebateRule => REBATE_RULES.some(r => r.value === v)

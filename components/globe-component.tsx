@@ -14,6 +14,7 @@ import { useReducedGraphics } from '@/hooks/use-reduced-graphics'
 import { cancelGameFrame, requestGameFrame } from '@/lib/game-frame'
 import { RealisticEarth } from './globe-realistic'
 import { constrainPopupPosition, coastlineSegments, globeGridPoints, nearestGlobeSilhouettePoint, pinIsBehindGlobe } from '@/lib/globe-geography'
+import { t as tr } from '@/lib/i18n'
 
 
 function GlobeGeography({ realisticMixRef }: { realisticMixRef: RefObject<number> }) {
@@ -536,7 +537,7 @@ const PopupContainer = ({
     const { cpX, cpY, endX, endY, handlePath } = currentLine
 
     const lineElement = (
-        <svg ref={lineRef} aria-label="Conexão com o pin da cidade" style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none', width: 1, height: 1, transition: 'opacity .2s' }}>
+        <svg ref={lineRef} aria-label={tr("Conexão com o pin da cidade")} style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', pointerEvents: 'none', width: 1, height: 1, transition: 'opacity .2s' }}>
             <path ref={cablePathRef}
               d={`M ${currentLine.startX} ${currentLine.startY} Q ${cpX} ${cpY} ${endX} ${endY}`}
               stroke={city.color} 
