@@ -110,7 +110,7 @@ test('legacy groups split into independent offsets and individual positions take
   layout.resetTouchLayout(); layout.finishTouchLayoutEdit()
 })
 
-test('touch Run grabs by default, old preferences inherit it and disabling persists', () => {
+test('touch Run stores items by default, old preferences inherit it and disabling persists', () => {
   let raw = JSON.stringify({ touch: 'on' })
   globalThis.window = { localStorage: { getItem: () => raw, setItem: (_, v) => { raw = v } }, dispatchEvent() {} }
   assert.equal(controls.defaultChickenControls().touchRunGrab, true)
@@ -119,13 +119,7 @@ test('touch Run grabs by default, old preferences inherit it and disabling persi
   custom.touchRunGrab = false
   controls.saveChickenControls(custom)
   assert.equal(controls.loadChickenControls().touchRunGrab, false)
-  const held = controls.virtualActionHeld
-  assert.equal(held({ run: true }, 'grab', true), true)
-  assert.equal(held({ run: true }, 'grab', false), false)
-  assert.equal(held({ run: true }, 'run', false), true)
-  assert.equal(held({ run: false }, 'grab', true), false)
-  assert.equal(held({ grab: true, run: false }, 'grab', false), true)
-  assert.equal(held({}, 'grab', true), false, 'physical Run never creates a virtual grab')
+  assert.equal(controls.virtualActionHeld, undefined, 'the on-screen Correr no longer feeds Pegar: it stores items by its own press')
 })
 
 test('the layout is kept on Ok and edit mode shows until then', () => {

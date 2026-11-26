@@ -226,7 +226,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
           hint.use = { at, use }
           if (input.grab && !combat.hover) {
             if (!waiting.has(who)) ask(who, { k: "use", c: at.c, r: at.r, use, by: who })
-            input.grab = false; input.grabHeld = false; input.grabReleased = false
+            input.grab = false; input.grabHeld = false; input.grabReleased = false; input.runPressed = false
           }
         }
       }

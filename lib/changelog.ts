@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; Correr guarda o item do chão no inventário',
     groups: [
       { title: 'Partida: Invite a friend', items: [
         'Novo botão Invite a friend no cabeçalho da partida, à esquerda do Bot level (no celular, um ícone de pessoa com +). Ele abre um lobby 1v1 privado com o kit da cidade, ou usa o lobby em que você já está.',
@@ -26,6 +26,12 @@ const RECENT = [
         'As notas giratórias agora são da escala Hangdrum, não só do instrumento Hangdrum: qualquer instrumento com essa escala ligada faz a nota tocada numa bola girar dentro dela, do mesmo jeito.',
         'Giro na bola, Nota é disparada até a região da nota e Cada nota interrompe a anterior saíram do painel Itens e ficam no painel Escalas, na escala Hangdrum, no grupo Notas giratórias. Valem para todos os instrumentos nessa escala e entram no Salvar no Pátio, no Salvar no game e no Reverter para o padrão das Escalas.',
         'O padrão é o que o Hangdrum já usava: gira pela Duração da nota do instrumento, vai voando até a bola e cada nota corta a anterior da mesma bola.',
+      ] },
+      { title: 'Pátio: Correr guarda o item do chão', items: [
+        'Apertar Correr com o boneco em cima de um item no chão guarda o item no inventário, sem equipar: a mão continua com o que tinha (ou vazia).',
+        'Só guarda se houver espaço: com o inventário ou a categoria cheia, o item fica no chão e nada é trocado. Segurar Correr não pega os itens seguintes; vale o momento do aperto.',
+        'Correr não faz mais nada do Usar / pegar: não entra em portal, não abre Baú e não senta em instrumento. Uma tecla que é das duas (o X do gamepad, o Shift direito com o P) continua fazendo o Usar nessas coisas, mas sobre um item segue a regra do Correr.',
+        'No celular, o botão Correr faz o mesmo quando “Correr também pega itens do chão” está ligado.',
       ] },
     ],
   },

@@ -659,7 +659,7 @@ test('Próximo instrumento with Incluir escalas goes through the held instrument
   step(c, { groupPick: 0 }); assert.equal(c.held.item, 'flute'); assert.equal(c.scale.id, 'harmonic')
 })
 
-test('a Pegar press that comes only from Correr takes new items but never equips one she already carries', () => {
+test('a Pegar press that comes only from Correr does Correr\'s store: never equips, not even one she already carries', () => {
   const c = createCombat()
   c.give('flute'); c.give('pistol')
   assert.equal(c.held.item, 'pistol')
@@ -669,11 +669,46 @@ test('a Pegar press that comes only from Correr takes new items but never equips
   step(c, {})
   step(c, { grab: true, grabHeld: true })
   assert.equal(c.held.item, 'flute')
-  // Pegar keeps working with Correr's key
+  // a new item goes into the inventory, the hand keeps what it had
   c.pickups.length = 0
   c.pickups.push({ id: 952, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
   step(c, { grab: true, grabHeld: true, grabRun: true })
   assert.ok(names(c).includes('rifle'))
+  assert.equal(c.held.item, 'flute')
+})
+
+test('Correr pressed on an item stores it with room, never equips it nor swaps it; held, it takes nothing more', () => {
+  const c = createCombat()
+  c.give('pistol')
+  assert.equal(c.held.item, 'pistol')
+  c.pickups.push({ id: 961, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(c, { runPressed: true })
+  assert.ok(names(c).includes('rifle'))
+  assert.equal(c.held.item, 'pistol')
+  assert.equal(c.pickups.length, 0)
+  // empty hands stay empty
+  const e = createCombat()
+  e.pickups.push({ id: 962, owned: { item: 'flute', ammo: 12, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(e, { runPressed: true })
+  assert.ok(names(e).includes('flute'))
+  assert.equal(e.held, null)
+  // only the press: walking on with nothing pressed leaves the next one there
+  e.pickups.push({ id: 963, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(e, {})
+  assert.equal(e.pickups.length, 1)
+  // a full inventory: the item stays on the floor and nothing falls from her
+  const f = createCombat()
+  f.setInventoryLimit(1)
+  f.give('pistol')
+  f.pickups.push({ id: 964, owned: { item: 'rifle', ammo: 45, durability: 0 }, x: 0, y: 0, vy: 0, resting: true, noPick: 0 })
+  step(f, { runPressed: true })
+  assert.deepEqual(names(f).filter(Boolean), ['pistol'])
+  assert.equal(f.held.item, 'pistol')
+  assert.equal(f.pickups.length, 1)
+  assert.equal(f.pickups[0].owned.item, 'rifle')
+  // while Pegar's own key swaps it
+  step(f, {}); step(f, { grab: true, grabHeld: true })
+  assert.equal(f.held.item, 'rifle')
 })
 
 test('the group switches (Próximo instrumento / arma / utilitário) repeat while held, with the quick switch delay and interval', () => {

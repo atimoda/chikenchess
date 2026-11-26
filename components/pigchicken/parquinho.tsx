@@ -1356,7 +1356,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             reloadPending = false; reloadFired = false
           }
           return pressed
-        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(),
+        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(), runPressed: act.run && !prev.run && engine.runStores(),
         grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(seatBindsOf(combat.seated.kind), controls, devs, drumKit())),
         fireDepth: wh.open || fireBlock ? 0 : fireDepth(controls, devs, padButtonValues(devs)), moves: movesOf(act),
         groupPick: group, move, pickVariations: pickVar, groupVariations: groupVariations(controls, group),
@@ -1581,7 +1581,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           deselect: xa.deselectItem && !xp.deselectItem,
           cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
-          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(),
+          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(), runPressed: xa.run && !xp.run && eng.runStores(),
           grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(seatBindsOf(combat.seated.kind), controls, devs, drumKit())),
           fireDepth: fireDepth(controls, devs, padButtonValues(devs)), moves: movesOf(xa),
           groupPick: xgroup, pickVariations: pickVariations(controls, xa), groupVariations: groupVariations(controls, xgroup),
