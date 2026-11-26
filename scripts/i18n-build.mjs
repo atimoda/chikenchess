@@ -25,7 +25,10 @@ const args = process.argv.slice(2)
 const check = args.includes("--check")
 const missingMode = args.includes("--missing")
 const onlyArg = args.indexOf("--only")
-const only = onlyArg >= 0 ? (args[onlyArg + 1] ?? "").split(",").map(s => s.trim().replace(/\/$/, "")).filter(Boolean) : null
+// --only a,b or --only @list.txt (one path per line)
+const onlyValue = onlyArg >= 0 ? args[onlyArg + 1] ?? "" : null
+const only = onlyValue === null ? null
+  : (onlyValue.startsWith("@") ? fs.readFileSync(onlyValue.slice(1), "utf8").split(/\r?\n/) : onlyValue.split(",")).map(s => s.trim().replace(/\/$/, "")).filter(Boolean)
 
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -71,7 +74,7 @@ export function scanKeys() {
 
 const placeholders = s => [...s.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort().join(",")
 
-function loadMessages(errors) {
+function loadMessages(errors, conflicts) {
   const merged = new Map()
   const owner = new Map()
   if (!fs.existsSync(MESSAGES)) return merged
@@ -91,7 +94,7 @@ function loadMessages(errors) {
       for (const extra of Object.keys(entry)) if (!LOCALES.includes(extra)) errors.push(`${where}: unknown language "${extra}"`)
       if (merged.has(key)) {
         const prev = merged.get(key)
-        if (LOCALES.some(l => prev[l] !== entry[l])) errors.push(`${where}: also in ${owner.get(key)} with other translations (keep one)`)
+        if (LOCALES.some(l => prev[l] !== entry[l])) conflicts.push(`${where}: also in ${owner.get(key)} with other translations (keep one)`)
         continue
       }
       merged.set(key, entry)
@@ -118,8 +121,12 @@ const inScope = where => !only || where.some(w => only.some(prefix => w === pref
 
 function main() {
   const errors = []
+  const conflicts = []
   const keys = scanKeys()
-  const messages = loadMessages(errors)
+  const messages = loadMessages(errors, conflicts)
+  // the same text in two areas must be translated the same way (while working on one area, only a warning)
+  if (only) { if (conflicts.length) console.warn(`i18n: ${conflicts.length} text(s) also in another area with other translations (ignored with --only)`) }
+  else errors.push(...conflicts)
 
   const missing = [...keys].filter(([key, where]) => !messages.has(key) && inScope(where))
   if (missingMode) {
