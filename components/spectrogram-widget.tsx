@@ -10,6 +10,7 @@ import { Draggable } from "@/components/ui/draggable"
 import { getSfxEngine } from "@/lib/sfx-engine"
 
 import { Resizable } from "re-resizable"
+import { useWidgetResize } from "@/hooks/use-widget-resize"
 
 interface SpectrogramWidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   cityColor: string
@@ -186,7 +187,7 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
     ? "rgba(255,255,255,0.1)" 
     : "rgba(255,255,255,0.3)"
 
-  const initialPosRef = useRef<{x: number, y: number} | null>(null)
+  const resize = useWidgetResize({ isStatic: props.style?.position === 'static', left: true, position, onPositionChange })
 
   return (
     <Draggable
@@ -214,20 +215,8 @@ export const SpectrogramWidget = forwardRef<HTMLDivElement, SpectrogramWidgetPro
         size={props.style?.position === 'static' ? { width: '100%', height: 100 } : undefined}
         minWidth={156}
         minHeight={100}
-        enable={props.style?.position === 'static' ? false : { top:false, right:true, bottom:true, left:true, topRight:false, bottomRight:true, bottomLeft:true, topLeft:false }}
+        {...resize}
         className="relative"
-        onResizeStart={(event) => {
-            event.stopPropagation()
-            initialPosRef.current = position || { x: 0, y: 0 }
-        }}
-        onResize={(e, direction, ref, d) => {
-            if (direction.includes('left') && initialPosRef.current) {
-                onPositionChange?.({
-                    x: initialPosRef.current.x - d.width,
-                    y: initialPosRef.current.y
-                })
-            }
-        }}
     >
       {/* Widget Background/Box - z-50 */}
       <div 
