@@ -6,6 +6,7 @@ const { createCombat } = loadTs('lib/pigchicken/combat.ts')
 const { DEFAULT_ITEMS, hangOf, itemsOver } = loadTs('lib/pigchicken/items.ts')
 const { INSTRUMENT_SCALES } = loadTs('lib/pigchicken/instrument-scales.ts')
 const { cleanShot } = loadTs('lib/pigchicken/net-world.ts')
+const S = loadTs('lib/pigchicken/scale-params.ts')
 
 const body = { x: 0, y: 0, face: 1, scale: 1, grounded: true, state: 'idle', vx: 0 }
 const input = (fire, pressed = fire) => ({ fire, firePressed: pressed, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 })
@@ -13,11 +14,15 @@ const step = (c, fire, angle = 0, dt = 0.016) => c.step(dt, body, { x: 0, y: 0 }
 const FAN = { x: 0, y: 0, r: 100 }
 const TAU = Math.PI * 2
 
-// a combat with the Hangdrum in hand (patch: its numbers), its layer at FAN, and the sounds it plays
-function hang(patch = {}) {
+// a combat with an instrument on the Hangdrum scale in hand (patch: the scale's Notas giratórias; the booleans become
+// its 0/1 switches), its layer at FAN, and the sounds it plays
+function hang(patch = {}, item = 'hangdrum') {
   const c = createCombat(), played = []
-  c.setItems({ ...DEFAULT_ITEMS, hangdrum: { ...DEFAULT_ITEMS.hangdrum, quantize: false, spreadBase: 0, spreadMax: 0, spreadShot: 0, ...patch } })
-  c.give('hangdrum')
+  const hp = S.scaleParams().hang
+  Object.assign(hp, { hangSpin: S.DEFAULT_SCALES.hang.hangSpin, hangTravel: 1, hangChoke: 1 })
+  for (const [k, v] of Object.entries(patch)) hp[k] = typeof v === 'boolean' ? Number(v) : v
+  c.setItems({ ...DEFAULT_ITEMS, [item]: { ...DEFAULT_ITEMS[item], quantize: false, spreadBase: 0, spreadMax: 0, spreadShot: 0, scales: ['hang'] } })
+  c.give(item)
   c.setMusicOut({ note: (voice, midi) => { const h = { voice, midi, stopped: null, setPitch() {}, stop(f) { h.stopped = f } }; played.push(h); return h }, hold: () => null, drum: () => {} })
   c.setScaleFan(FAN)
   return { c, played }
@@ -49,17 +54,21 @@ test('Giro na bola: 0 is off, 1..60 s, then Duração da nota and ∞', () => {
   assert.equal(orb.cleanSpin(-3), 0)
 })
 
-test('defaults: the Hangdrum spins for its note\'s length and cuts the same ball; the others do not spin', () => {
-  assert.equal(DEFAULT_ITEMS.hangdrum.hangSpin, orb.SPIN_NOTE)
-  assert.equal(DEFAULT_ITEMS.hangdrum.hangTravel, true)
-  assert.equal(DEFAULT_ITEMS.hangdrum.hangChoke, true)
-  assert.equal(DEFAULT_ITEMS.flute.hangSpin, 0)
-  assert.equal(DEFAULT_ITEMS.flute.hangChoke, false)
-  // the checkboxes and the slider are kept with the item
-  const saved = itemsOver({ hangdrum: { hangSpin: 12, hangTravel: false, hangChoke: false } })
-  assert.equal(saved.hangdrum.hangSpin, 12)
-  assert.equal(saved.hangdrum.hangTravel, false)
-  assert.equal(saved.hangdrum.hangChoke, false)
+test('defaults: the Hangdrum scale spins for the note\'s length and cuts the same ball, on any instrument', () => {
+  const hp = S.DEFAULT_SCALES.hang
+  assert.equal(hp.hangSpin, orb.SPIN_NOTE)
+  assert.equal(hp.hangTravel, 1)
+  assert.equal(hp.hangChoke, 1)
+  // the scale's numbers, not the item's: no other scale has them, and the items lost them
+  assert.equal('hangSpin' in S.scalesDefaultsFile(S.DEFAULT_SCALES).primary, false)
+  assert.equal('hangSpin' in DEFAULT_ITEMS.hangdrum, false)
+  // kept with the scale (the switches as 0/1)
+  const file = S.scalesDefaultsFile(S.DEFAULT_SCALES)
+  assert.equal(S.scalesFileProblem({ ...file, hang: { ...file.hang, hangSpin: 12, hangTravel: 0, hangChoke: 0 } }), null)
+  assert.match(S.scalesFileProblem({ ...file, hang: { ...file.hang, hangTravel: 2 } }), /fora dos limites/)
+  assert.match(S.scalesFileProblem({ ...file, primary: { ...file.primary, hangSpin: 12 } }), /desconhecido/)
+  // an item that saved the old numbers loads without them
+  assert.equal('hangSpin' in itemsOver({ hangdrum: { hangSpin: 12 } }).hangdrum, false)
 })
 
 test('the orbit: a travelling note chases the ball, then goes round it once per beat', () => {
@@ -106,6 +115,19 @@ test('a note played on a ball goes there and spins round it, following her', () 
   c.setScaleFan({ x: 300, y: 0, r: 100 })
   step(c, false, 0)
   assert.ok(Math.abs(Math.hypot(b.x - mid.x - 300, b.y - mid.y) - r) < 1e-6, 'round the ball where it is now')
+})
+
+test('the spin is the scale\'s: another instrument on the Hangdrum scale spins too; the scale\'s Giro off, nobody does', () => {
+  for (const item of ['flute', 'harp', 'hangdrum']) {
+    const { c } = hang({ hangSpin: 30 }, item)
+    playOn(c, 2, 120)
+    assert.ok(c.bullets.some(b => b.orbit && b.orbit.arrived), `${item} spins`)
+  }
+  for (const item of ['flute', 'hangdrum']) {
+    const { c } = hang({ hangSpin: 0 }, item)
+    playOn(c, 2)
+    assert.ok(c.bullets.length > 0 && c.bullets.every(b => !b.orbit), `${item} goes straight`)
+  }
 })
 
 test('not travelling, it is born on the ball; Giro off, it flies straight as before; the gap is a slap that goes straight', () => {

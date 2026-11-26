@@ -1,12 +1,14 @@
 "use client"
 
-import React, { type RefObject, type TransitionEventHandler } from "react"
+import React, { useMemo, useState, type PointerEvent as ReactPointerEvent, type RefObject, type TransitionEventHandler } from "react"
+import type { Chess } from "chess.js"
 import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { CityData } from "@/lib/cities-data"
 import { formatEvaluation } from "@/lib/chess-evaluation"
 import type { WidgetConnection } from "@/hooks/use-game-widget-layout"
 import type { ChancePosition } from "@/hooks/use-chance-position"
+import { MoveBoardPreview } from "./move-board-preview"
 
 export function GameWidgetEntranceStyles() {
   return (
@@ -333,9 +335,16 @@ export function GameFooter({
   dimmed,
   chancePosition = "board",
   className,
+  game,
+  cityColor,
+  orientation = "white",
 }: {
   visible: boolean
   moves: readonly string[]
+  /** Game whose verbose history gives the position after each listed move. */
+  game?: Chess | null
+  cityColor?: string
+  orientation?: "white" | "black"
   tickerRef: RefObject<HTMLDivElement | null>
   score: number | null
   mate: number | null
@@ -350,11 +359,43 @@ export function GameFooter({
     ? (score < 0 ? 0 : 100)
     : 50 + 50 * score / (Math.abs(score) + 300)
 
+  const [hovered, setHovered] = useState<{ index: number; center: number } | null>(null)
+  // Replaying the history is only needed while a move is hovered.
+  const preview = useMemo(() => {
+    if (!hovered || !game || !cityColor) return null
+    const move = game.history({ verbose: true })[hovered.index]
+    return move ? { fen: move.after, from: move.from, to: move.to } : null
+  }, [hovered, game, cityColor, moves.length])
+  const showPreview = (index: number) => (event: ReactPointerEvent<HTMLSpanElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setHovered({ index, center: rect.left + rect.width / 2 })
+  }
+  const hidePreview = () => setHovered(null)
+  const previewSize = 176
+
   return (
     <div className={cn("fixed inset-x-0 bottom-0 z-[40] w-full pointer-events-none transition-opacity duration-1000", !visible ? "opacity-0" : "opacity-100", className)}>
+      {visible && preview && hovered && cityColor && (
+        <MoveBoardPreview
+          fen={preview.fen}
+          from={preview.from}
+          to={preview.to}
+          cityColor={cityColor}
+          orientation={orientation}
+          className="absolute bottom-full mb-2"
+          style={{ width: previewSize, left: `clamp(8px, ${hovered.center - previewSize / 2}px, calc(100vw - ${previewSize + 8}px))` }}
+        />
+      )}
       <div aria-label="Histórico de jogadas" className="flex h-6 w-full items-center overflow-hidden bg-transparent px-3 md:px-6 pointer-events-none">
         <div ref={tickerRef} className="flex w-full items-center justify-start gap-3 overflow-x-auto whitespace-nowrap font-mono text-xs scrollbar-hide" style={{ textShadow: "1px 1px 1px black" }}>
-          {moves.map((move, i) => <span key={i} className={i % 2 === 0 ? "text-white" : "text-muted-foreground"}>
+          {moves.map((move, i) => <span
+            key={i}
+            className={cn(i % 2 === 0 ? "text-white" : "text-muted-foreground", game && cityColor && "pointer-events-auto cursor-default")}
+            style={hovered?.index === i && preview ? { color: cityColor } : undefined}
+            onPointerEnter={game && cityColor ? showPreview(i) : undefined}
+            onPointerLeave={hidePreview}
+            onPointerCancel={hidePreview}
+          >
             {i % 2 === 0 ? `${Math.floor(i / 2) + 1}.` : ""} {move}
           </span>)}
         </div>

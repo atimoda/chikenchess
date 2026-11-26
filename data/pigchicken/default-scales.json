@@ -38,7 +38,10 @@
     "standbyAfter": 0.5,
     "fadeTime": 1.5,
     "standbyVis": 0,
-    "aimedVis": 33
+    "aimedVis": 33,
+    "hangSpin": 61,
+    "hangTravel": 1,
+    "hangChoke": 1
   },
   "strings": {
     "standbyAfter": 0.5,

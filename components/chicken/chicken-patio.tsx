@@ -33,7 +33,7 @@ import { CombinationLabel } from "./combination-label"
 import { ChickenChat, ChickenChatButton } from "./chicken-chat"
 import { LOCAL_CHAT_PLAYER } from "@/lib/chicken/chat"
 import { OnlineChickens, netColor, useNet, type NetChickMirror } from "./online-chickens"
-import { clearNetNotice, gameServerAvailable, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, netCan, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic, subscribeNet } from "@/lib/chicken/online-room"
+import { clearNetNotice, gameServerAvailable, getNetState, joinPatioOnline, kickNetPlayer, leavePatioOnline, netCan, onNetLayout, onNetSaved, sendNetLayout, sendNetProfile, sendNetSaved, setNetEditor, setNetPublic, subscribeNet, type NetRoomInfo } from "@/lib/chicken/online-room"
 import { elementsInWorld, normalizeLayout, spawnPortalsIn, type LayoutElement, type PatioLayout } from "@/lib/pigchicken/layout"
 import { pickSpawn, spawnChances } from "@/lib/pigchicken/spawn-portals"
 import { MineGridLayer, useMineGrid, useMineItems } from "@/components/pigchicken/mine-grid-layer"
@@ -90,7 +90,7 @@ import { patioGround, patioItemGlow, patioInventoryLimit, patioMineGrid, patioSc
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
 import { saveDefaultCamera, saveDefaultTuning } from "@/lib/admin/game-defaults-client"
 import { RevertToDefaultButton, SaveToGameButton, SaveToPatioButton, VersionsButton } from "@/components/admin/save-to-game-button"
-import { deviceId, forgetPatio, isPatioId, lobbyFromUrl, onPatioOpenRequest, openPatioLobby, type NewPatioKind } from "@/lib/pigchicken/patio-store"
+import { deviceId, forgetPatio, isPatioId, lobbyFromUrl, onPatioOpenRequest, openPatioLobby, roomFitsPatio, roomFromUrl, setRoomInUrl, type NewPatioKind } from "@/lib/pigchicken/patio-store"
 import { setPatioEditAccess, setPatioInfo, usePatioEditAccess } from "@/lib/pigchicken/edit-access"
 import { usePatioLobby } from "@/components/pigchicken/use-patio-lobby"
 import { setPatioLiveCounts } from "@/lib/pigchicken/patio-live"
@@ -346,6 +346,8 @@ export function ChickenPatio() {
   patioKeyRef.current = patioKey
   // a switch of Pátio that ended in the same one (it left the lobby on the way out): join it again
   const [rejoin, setRejoin] = useState(0)
+  // the Pátio the address's ?room= belongs to (undefined: not known yet, the link's own)
+  const roomFor = useRef<string | null | undefined>(undefined)
   useEffect(() => {
     if (mode !== "online" || !patioKey) { void leavePatioOnline(); return }
     let alive = true
@@ -353,13 +355,34 @@ export function ChickenPatio() {
       const session = (await getOnlineClient()?.auth.getSession())?.data.session ?? null
       const token = session && !session.user.is_anonymous ? session.access_token : null
       const j = netJoin.current
-      const roomId = new URLSearchParams(window.location.search).get("room")
+      // the room in the address is only for the Pátio it was opened for (the link's or the lobby switcher's); any
+      // other Pátio opened since (a portal, Playgrounds) leaves it behind and joins its own lobby
+      const urlRoom = roomFromUrl()
+      if (urlRoom && roomFor.current === undefined) roomFor.current = lobbyFromUrl() ?? "default"
+      const roomId = urlRoom && roomFitsPatio(roomFor.current, patioKey) ? urlRoom : null
+      if (urlRoom && !roomId) { setRoomInUrl(null); roomFor.current = null }
+      // the default Pátio goes as "default", never left out: a join without patioId is matched by the game server
+      // (filterBy patioId) to the oldest public room of any Pátio, and that room's live map came into this one
       const r = await joinPatioOnline({
-        patioId: j.patio?.id ?? null, roomId: roomId || null, token, name: j.name, chickens: j.chickens, looks: j.looks,
+        patioId: j.patio?.id ?? "default", roomId, token, name: j.name, chickens: j.chickens, looks: j.looks,
         claimed: { name: j.patio?.name ?? null, creatorId: j.patio?.creatorId ?? null, godparentId: j.patio?.godparentId ?? null },
       })
       if (!alive) return
       if (!r.ok) { setToast(r.reason); changeLobby(s => ({ ...s, mode: "local" })) }
+      if (!r.ok || !roomId) return
+      // a room link of another Pátio: once the room says which, that Pátio opens (and joins this room again)
+      const info = await new Promise<NetRoomInfo | null>(resolve => {
+        const check = () => {
+          const s = getNetState()
+          if (!alive || s.status === "off") { off(); resolve(null) }
+          else if (s.status === "online" && s.info) { off(); resolve(s.info) }
+        }
+        const off = subscribeNet(check)
+        check()
+      })
+      if (!alive || !info || roomFitsPatio(info.patioId, patioKey)) return
+      roomFor.current = info.patioId
+      openPatioLobby(info.patioId === "default" ? null : info.patioId)
     })()
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -491,8 +514,14 @@ export function ChickenPatio() {
   const liveRef = useRef({ apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby })
   liveRef.current = { apply: pl.applyLiveLayout, adopt: pl.adoptRevision, isDefault: isDefaultLobby }
   useEffect(() => {
-    const offLayout = onNetLayout(raw => { const layout = normalizeLayout(raw, liveRef.current.isDefault); if (layout) liveRef.current.apply(layout) })
-    const offSaved = onNetSaved(rev => liveRef.current.adopt(rev))
+    // only from a room of the open Pátio: another Pátio's map or revision would be saved over this one
+    const fits = () => roomFitsPatio(getNetState().info?.patioId, patioKeyRef.current)
+    const offLayout = onNetLayout(raw => {
+      if (!fits()) return
+      const layout = normalizeLayout(raw, liveRef.current.isDefault)
+      if (layout) liveRef.current.apply(layout)
+    })
+    const offSaved = onNetSaved(rev => { if (fits()) liveRef.current.adopt(rev) })
     return () => { offLayout(); offSaved() }
   }, [])
   // online, the lobby decides who edits (the owner and whoever it allowed); the default Pátio stays the admin's
@@ -925,9 +954,8 @@ export function ChickenPatio() {
         {/* the lobby switcher and the players, right after the Pátio's name */}
         <LobbySwitcher mode={lobby?.mode ?? "local"} roomId={net.info?.roomId ?? null} players={playersHere} open={playersOpen} onToggle={() => setPlayersOpen(v => !v)} onStatus={setToast} onSwitch={target => {
           // the other lobby's Pátio opens, and its room is the one joined
-          const url = new URL(window.location.href)
-          url.searchParams.set("room", target.roomId)
-          window.history.replaceState(null, "", url)
+          setRoomInUrl(target.roomId)
+          roomFor.current = target.patioId
           void leavePatioOnline()
           if ((patio?.id ?? "default") === target.patioId) void joinPatioOnline({ roomId: target.roomId, name: myName, chickens: localCount, looks: myLooks }).then(r => { if (!r.ok) setToast(r.reason) })
           else openPatioLobby(target.patioId === "default" ? null : target.patioId)
