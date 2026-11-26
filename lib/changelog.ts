@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do Golpe desenhado fiel ao desenho',
     groups: [
       { title: 'Partida: Invite a friend', items: [
         'Novo botão Invite a friend no cabeçalho da partida, à esquerda do Bot level (no celular, um ícone de pessoa com +). Ele abre um lobby 1v1 privado com o kit da cidade, ou usa o lobby em que você já está.',
@@ -26,6 +26,10 @@ const RECENT = [
         'As notas giratórias agora são da escala Hangdrum, não só do instrumento Hangdrum: qualquer instrumento com essa escala ligada faz a nota tocada numa bola girar dentro dela, do mesmo jeito.',
         'Giro na bola, Nota é disparada até a região da nota e Cada nota interrompe a anterior saíram do painel Itens e ficam no painel Escalas, na escala Hangdrum, no grupo Notas giratórias. Valem para todos os instrumentos nessa escala e entram no Salvar no Pátio, no Salvar no game e no Reverter para o padrão das Escalas.',
         'O padrão é o que o Hangdrum já usava: gira pela Duração da nota do instrumento, vai voando até a bola e cada nota corta a anterior da mesma bola.',
+      ] },
+      { title: 'Pátio: prévia do Golpe desenhado', items: [
+        'Enquanto você desenha o golpe no ar, a linha de prévia agora é uma miniatura do próprio desenho: começa no alcance do golpe, onde o desenho começou, e segue o mesmo caminho do mouse ou do dedo, em tamanho menor. O golpe em si continua igual.',
+        'Nova caixa Simplificar raio do golpe no grupo Golpe de cada item do painel Itens (desligada em todos): ligada, a prévia volta a ser a linha em volta do boneco, no alcance do golpe.',
       ] },
     ],
   },

@@ -118,6 +118,18 @@ export function drawnPath(samples: readonly { t: number; a: number }[]): SwingPa
   return { t, a: as }
 }
 export const pathEnd = (p: SwingPath) => p.t[p.t.length - 1]
+// the drawing's preview when the item does not simplify it (its "Simplificar raio do golpe" off): a miniature of the
+// pointer's own path, starting on the blow's reach where the drawing started and then copying its shape. pts: where
+// the pointer was, frame by frame, relative to her shoulder when it started (any unit); a0: the first angle drawn;
+// grow: scale the drawing so its start lands on the reach even when it is smaller (the touch Punch, whose drag around
+// the button stands for the move around her); otherwise it is only ever shrunk. Points relative to the shoulder
+export function drawnSketch(pts: readonly { x: number; y: number }[], a0: number, reach: number, grow = false) {
+  if (!pts.length) return []
+  const p0 = pts[0], d0 = Math.hypot(p0.x, p0.y)
+  const k = d0 < 1e-6 ? 1 : grow ? reach / d0 : Math.min(1, reach / d0)
+  const sx = Math.cos(a0) * reach, sy = Math.sin(a0) * reach
+  return pts.map(p => ({ x: sx + (p.x - p0.x) * k, y: sy + (p.y - p0.y) * k }))
+}
 // the drawn angle at t (s from the start), held at the ends
 export function pathAngle(p: SwingPath, t: number) {
   if (t <= 0) return p.a[0]

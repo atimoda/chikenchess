@@ -1,7 +1,7 @@
 // Flying notes, beams, zone banners, the melee swing trail and the puff that cancels a note.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
 import { type Combat, type Swing } from "@/lib/pigchicken/combat"
-import { drawnPath, ellipsePoint, pathAngles, pathEnd, pathTrail, swingPose, trailSpan, type SwingPath } from "@/lib/pigchicken/swing"
+import { drawnPath, drawnSketch, ellipsePoint, pathAngles, pathEnd, pathTrail, swingPose, trailSpan, type SwingPath } from "@/lib/pigchicken/swing"
 import { zoneLabel, type Zone } from "@/lib/pigchicken/music"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { type Ctx } from "./shared"
@@ -178,12 +178,16 @@ function drawPathAir(ctx: Ctx, sw: Swing, path: SwingPath) {
   ctx.globalAlpha = alpha * 0.9; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke()
 }
 
-// the Golpe desenhado while it is drawn: a thin line around her shoulder at the blow's reach, along the angles drawn
-// so far, brighter at the end the pointer is at. Nothing until the drawing is a move (a click shows nothing)
-export function drawDrawing(ctx: Ctx, origin: { x: number; y: number }, samples: readonly { t: number; a: number }[], reach: number) {
+// the Golpe desenhado while it is drawn: a thin line, brighter at the end the pointer is at. With the item's
+// "Simplificar raio do golpe" (simple) it runs around her shoulder at the blow's reach, along the angles drawn so far;
+// without it, it is a miniature of the drawing itself, starting on the reach where it started (drawnSketch; grow: the
+// touch Punch's). Nothing until the drawing is a move (a click shows nothing)
+export function drawDrawing(ctx: Ctx, origin: { x: number; y: number }, samples: readonly { t: number; a: number; x: number; y: number }[], reach: number, simple: boolean, grow: boolean) {
   const path = drawnPath(samples)
   if (!path) return
-  const pts = pathAngles(path, 0, pathEnd(path)).map(a => ({ x: origin.x + Math.cos(a) * reach, y: origin.y + Math.sin(a) * reach }))
+  const pts = simple
+    ? pathAngles(path, 0, pathEnd(path)).map(a => ({ x: origin.x + Math.cos(a) * reach, y: origin.y + Math.sin(a) * reach }))
+    : drawnSketch(samples, samples[0].a, reach, grow).map(p => ({ x: origin.x + p.x, y: origin.y + p.y }))
   ctx.save()
   ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#ffffff"
   for (let i = 1; i < pts.length; i++) {
