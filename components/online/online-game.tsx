@@ -383,6 +383,9 @@ export function OnlineMatchBoard({
   const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits });
   const boardPan = useBoardPan({ boardRef, enabled: !isMobile && introPhase >= 3 });
   const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isMobile && introPhase >= 3 && powerDisplay === "cards" });
+  // the buttons mode drags from its background like the cards
+  const actionRowRef = useRef<HTMLDivElement | null>(null);
+  const actionsPan = useBoardPan({ boardRef: actionRowRef, enabled: !isMobile && introPhase >= 3 && powerDisplay !== "cards" });
   const queuedPieces = useRef(
     new Map<string, { instrument: Instrument; effects?: SquareEffects }>(),
   );
@@ -1678,7 +1681,7 @@ export function OnlineMatchBoard({
               onPointerDown: event => gesture.onButtonPointerDown("shield", event), onLostPointerCapture: gesture.onLostPointerCapture,
               onClick: event => gesture.onButtonClick("shield", event),
             },
-          }} /> : <GameActionRow visible={!intro}>
+          }} /> : <GameActionRow visible={!intro} rowRef={actionRowRef} move={actionsPan.enabled ? { translate: actionsPan.translate, moving: actionsPan.panning, onPointerDown: actionsPan.startPan } : undefined}>
             <div className="flex min-w-0 items-center gap-1 sm:gap-2">
               {(["best", "worst"] as const).map((group) => (
                 <button
@@ -1884,6 +1887,9 @@ export function OnlineMatchBoard({
       <GameFooter
         visible={!intro}
         moves={replay.game.history()}
+        game={replay.game}
+        cityColor={city.color}
+        orientation={color === "w" ? "white" : "black"}
         tickerRef={tickerRef}
         score={analysis.score}
         mate={analysis.mate}

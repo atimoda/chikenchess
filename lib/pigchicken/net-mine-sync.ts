@@ -8,7 +8,7 @@ import {
   batchMineActs, cleanMineActs, cleanMineState, exportMineCells, exportMineStats, importMineCells, importMineStats, mapActIds, mapEventIds, mineIdIn, mineIdOut, mineSameShape,
   NET_MINE_ACTS, type NetMineActs, type NetMineState, type NetMineWord,
 } from './net-mine'
-import { cleanNetMineActivator, cleanNetMineActivatorHits } from './mine-activator'
+import { cleanNetMineActivator, cleanNetMineActivatorHits, cleanNetMineActivatorKey } from './mine-activator'
 import { mineActivatorIn, mineActivatorOut, mineActivatorRemote, setMineActivatorMirror } from './mine-activator-store'
 
 const STATE_MS = 100 // the owner's round: what changed, at most 10 times a second
@@ -35,6 +35,8 @@ export function createNetMineSync(o: { locals: () => string[]; send: (m: NetMine
   let mirrored: MineRound | null = null, mirroredNo = -1, lastActs = 0, lastChicks = 0, chicksKey = ''
   // the Ativadores: a follower's pours on their way (id → notes, damage) and its hide; what the owner said of them last
   const hitsOut = new Map<string, [number, number]>()
+  // a Chave de ouro used here on a locked activator: its id, for the owner
+  let keyOut: string | null = null
   let hideOut = false, sentG = '', gOthers = '', lastG = 0
   const fields = (raw: unknown) => (raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {})
 
@@ -52,10 +54,11 @@ export function createNetMineSync(o: { locals: () => string[]; send: (m: NetMine
       setMineMirror(next === 'follower' ? a => { if (actsOut.length < 512) actsOut.push(a) } : null)
       setMineActivatorMirror(next === 'follower' ? a => {
         if ('hide' in a) { hideOut = true; return }
+        if ('key' in a) { keyOut = a.key; return }
         const [id, n, d] = a.hit, was = hitsOut.get(id)
         if (was || hitsOut.size < 64) hitsOut.set(id, [(was?.[0] ?? 0) + n, (was?.[1] ?? 0) + d])
       } : null)
-      hitsOut.clear(); hideOut = false; sentG = ''; gOthers = ''; lastG = 0
+      hitsOut.clear(); hideOut = false; keyOut = null; sentG = ''; gOthers = ''; lastG = 0
       sent.clear(); sentNo = -1; sentStats = ''; sentChicks = ''; sentOver = false; othersKey = ''; lastFull = 0
       eventsOut.length = 0; actsOut.length = 0; chicksOf.clear()
       mirrored = null; chicksKey = ''
@@ -66,6 +69,8 @@ export function createNetMineSync(o: { locals: () => string[]; send: (m: NetMine
       if (role === 'owner') {
         for (const hit of cleanNetMineActivatorHits(fields(raw).g) ?? []) mineActivatorRemote({ hit })
         if (fields(raw).h === 1) mineActivatorRemote({ hide: true })
+        const key = cleanNetMineActivatorKey(fields(raw).u)
+        if (key) mineActivatorRemote({ key })
         const m = cleanMineActs(raw, pid)
         if (!m) return
         if (m.k) chicksOf.set(pid, m.k)
@@ -99,12 +104,12 @@ export function createNetMineSync(o: { locals: () => string[]; send: (m: NetMine
         if (now - lastActs < ACTS_MS) return
         const k = myChicks(), key = k.join(',')
         const tell = key !== chicksKey || now - lastChicks >= CHICKS_MS
-        if (!actsOut.length && !tell && !hitsOut.size && !hideOut) return
+        if (!actsOut.length && !tell && !hitsOut.size && !hideOut && !keyOut) return
         lastActs = now
         const a = batchMineActs(actsOut.splice(0, 256)).slice(0, NET_MINE_ACTS).map(x => mapActIds(x, out))
         const g = [...hitsOut].map(([id, [n, d]]): [string, number, number] => [id, n, d])
-        o.send({ ...(a.length ? { a } : {}), ...(tell ? { k } : {}), ...(g.length ? { g } : {}), ...(hideOut ? { h: 1 as const } : {}) })
-        hitsOut.clear(); hideOut = false
+        o.send({ ...(a.length ? { a } : {}), ...(tell ? { k } : {}), ...(g.length ? { g } : {}), ...(hideOut ? { h: 1 as const } : {}), ...(keyOut ? { u: keyOut } : {}) })
+        hitsOut.clear(); hideOut = false; keyOut = null
         if (tell) { chicksKey = key; lastChicks = now }
         return
       }

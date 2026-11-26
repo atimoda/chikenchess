@@ -12,7 +12,7 @@ import {
 } from "@/lib/pigchicken/mine-round"
 import { defaultChest, rollLoot } from "@/lib/pigchicken/chests"
 import { mineAct, mineStore, mineTouched, setMineChick, stepMine, watchMine } from "@/lib/pigchicken/mine-grid-store"
-import { mineActivatorBlastHit, mineActivatorBlowHit, mineActivatorNote, mineActivatorShot, mineActivatorStore, takeMineActivatorFlashes } from "@/lib/pigchicken/mine-activator-store"
+import { mineActivatorBlastHit, mineActivatorBlowHit, mineActivatorNote, mineActivatorShot, mineActivatorStore, openMineActivator, takeMineActivatorFlashes } from "@/lib/pigchicken/mine-activator-store"
 import { playWeaponSound } from "@/lib/pigchicken/sfx"
 import { getChickenConfig } from "@/lib/chicken/config"
 
@@ -31,6 +31,9 @@ export const BOMB_USE_LABELS: Record<MineBombUse, string> = { disarm: "desarmar"
 // bomb would be installed in
 export type MineHint = { use?: { at: MineSpot; use: MineBombUse }; install?: MineSpot }
 export const mineHints = new Map<string, MineHint>()
+// a locked Ativador de grid with a player of this screen by it: the bind of Usar and whether she has a Chave de ouro
+// (by the activator's id; a player with a key wins the hint)
+export const activatorHints = new Map<string, { key: string; has: boolean }>()
 
 // where a chicken is for the grid: just off her feet, up her body (the same point her side is read at)
 export const FEET_UP = 3
@@ -176,6 +179,7 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
   return {
     // once per frame of the world, before the players
     step(dt: number) {
+      activatorHints.clear()
       stepMine(dt); dress()
       // an activator whose bar just filled: a blue burst and a fanfare where it stands
       for (const id of takeMineActivatorFlashes()) {
@@ -202,6 +206,20 @@ export function bindMinePlay(combat: Combat, o: { engines: () => [string, Chicke
     },
     // a local player's turn, with the combat already on them (combat.use) and before its step: Usar at the bomb of
     // the block they are in, Atirar with a bomb in the wing, and a Filhote's hands
+    // a locked activator: by it (on the ground at it or on its top), Usar with a Chave de ouro opens it, spending the
+    // key; it is the activator's Usar, not Pegar's
+    activator(who: string, eng: ChickenEngine, input: FrameInput & { grabHeld?: boolean }, key: string) {
+      if (!mineActivatorStore.armed() || !eng.getMotionState().grounded) return
+      const s = mineSpotOf(eng)
+      const b = mineActivatorStore.boxes.find(o => o.params.lock && s.x >= o.x && s.x <= o.x + o.w && s.y >= o.y - 8 && s.y <= o.y + o.h + 4)
+      if (!b) return
+      const has = combat.count("chesskey") > 0
+      if (has || !activatorHints.has(b.id)) activatorHints.set(b.id, { key, has })
+      if (!has || !input.grab || combat.hover) return
+      if (openMineActivator(b.id)) combat.spend("chesskey")
+      input.grab = false; input.grabReleased = false
+      if (input.grabHeld !== undefined) input.grabHeld = false
+    },
     player(who: string, eng: ChickenEngine, input: FrameInput) {
       const round = mineStore.round, p = mineStore.params
       if (!round || !p) { mineHints.delete(who); return }

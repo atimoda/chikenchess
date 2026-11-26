@@ -35,6 +35,7 @@ import { HOOK_ARRIVE, HOOK_ARRIVE_TARGET, HOOK_KEEP, HOOK_REEL, HOOK_STEP, hookC
 import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
 import { HangScale, STAR_SCALE, STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
 import { ORBIT_MAX, ballAt, newOrbit, spinSeconds, spreadPhases, stepOrbit, type Orbit } from './note-orbit'
+import { FLOAT_DAMAGE, FLOAT_MAX, FLOAT_SIZE, launchVelocity, newFloat, reachSpeed, rungStep, stepFloat, type GlissFloat } from './gliss-float'
 import { scaleParams } from './scale-params'
 import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, seatKeepsJump, type FixedKind, type Seat } from './fixed-instruments'
 import { starPath, starPoint, starCellAt } from './star-grid'
@@ -182,6 +183,9 @@ export type Bullet = {
   by?: string // the local player who fired it (the Grade de blocos counts whose note or shot it was)
   room?: ShotRoom // fired inside a house: it stops at that room's walls and touches nothing outside
   orbit?: Spin // a note spinning on one of the Hangdrum's balls (lib/pigchicken/note-orbit.ts)
+  // a note of the glissando floating round her until Atirar is let go (lib/pigchicken/gliss-float.ts): whose, her
+  // shoulder's offset from her body when it was born and her size
+  float?: { f: GlissFloat; owner: string; ax: number; ay: number; scale: number }
 }
 // a spinning note: its orbit, whose it is (the local player) and its number (online, to tell the others it ended).
 // net: another browser's (pid), its ball's middle from that browser's chicken (dx, dy), its orbit's radius and where
@@ -484,7 +488,7 @@ export function createCombat() {
   // music: the beat and the harmony, the instruments' sound, the arpeggio's place, the violin's beam, the harp's glissando
   const music = createConductor()
   let out: MusicOut = SILENT
-  let arpStep = 0, arpIdle = 0, phraseBase = 0, glissNext = 0, glissSteps = 0, bonusTextT = 0
+  let arpStep = 0, arpIdle = 0, phraseBase = 0, glissLast = 0, glissSteps = 0, bonusTextT = 0
   let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null = null
   let beamHeld: Held | null = null, beamMidi = 0
   // the aim's tremolo (lib/pigchicken/tremolo.ts): semitones the held instrument's notes bend right now
@@ -523,9 +527,11 @@ export function createCombat() {
   function tones(d: ItemDef, angle = aimAngle) {
     const sc = scaleOf(held(), d), reach = sc.id === 'strings' ? stringReach() : aimReach
     const q = { angle, reach, set: d.pitchSet, octave: d.octave, span: d.span, descending: d.spiralDescending, hang: hangOf(d) }
+    // Arpejo ao arrastar a mira on the leque: the rung under the aim walks the lane's note up its arpeggio
+    const rung = d.gliss && d.instrument && sc.id === 'primary' ? rungStep(reach) : 0
     return {
       scale: sc,
-      note: () => sc.noteFor(music, q),
+      note: () => { const m = sc.noteFor(music, q); return rung ? sc.walk(music, m, rung, d.pitchSet, angle, reach, q) : m },
       // the aim between the Hangdrum's notes: a percussive slap instead of the clean note
       slap: () => sc.isSlap(music, q),
       // the Hangdrum's layout and the ball (or the gap) under the aim; null on another scale
@@ -550,6 +556,47 @@ export function createCombat() {
     for (const h of last.held) h.stop(0.04)
     for (const b of last.bullets) if (b.orbit) b.orbit.left = 0
     hangBalls.get(id)!.delete(ball)
+  }
+  // ---------- Notas do glissando (lib/pigchicken/gliss-float.ts) ----------
+  // each player's notes floating round her while the charge goes on
+  const glissFloats = new Map<string, Bullet[]>()
+  // a note of the glissando leaves the instrument and floats round her
+  function addFloat(d: ItemDef, item: ItemId, k: number, midi: number, voice: VoiceId, origin: { x: number; y: number }, muzzle: { x: number; y: number }) {
+    const body = lastBody
+    if (!body) return
+    const b: Bullet = {
+      x: muzzle.x, y: muzzle.y, vx: 0, vy: 0, dist: 0, damage: 0, pierce: d.pierce, hits: new Set(), size: d.size * FLOAT_SIZE, drop: 0, range: d.range,
+      item, t: 0, explode: 0, explodeDamage: 0, fuse: 0, bounce: d.bounce, ghost: true, by: active, room: shotRooms.get(active),
+      note: { midi: midi + detuneNow(), color: tones(d).color(midi), sym: NOTE_SYMBOLS[(midi + k) % NOTE_SYMBOLS.length], wave: d.wave, phase: rand(0, Math.PI * 2), voice },
+      float: { f: newFloat(k, muzzle.x - origin.x, muzzle.y - origin.y, Math.random()), owner: active, ax: origin.x - body.x, ay: origin.y - body.y, scale: body.scale || 1 },
+    }
+    bullets.push(b)
+    const list = glissFloats.get(active)
+    if (list) list.push(b); else glissFloats.set(active, [b])
+  }
+  // the charge called off: her floating notes vanish in a puff
+  function dropFloats(id: string) {
+    for (const b of glissFloats.get(id) ?? []) {
+      const i = bullets.indexOf(b)
+      if (i < 0) continue
+      bullets.splice(i, 1)
+      burst(b.x, b.y, 3, b.note?.color ?? '#ffffff', 60, 2)
+    }
+    glissFloats.delete(id)
+  }
+  // Atirar let go: her floating notes fly where the main note went, side by side with it
+  function launchFloats(id: string, shot: { angle: number; speed: number } | null, d: ItemDef, charge: number) {
+    const list = glissFloats.get(id) ?? []
+    glissFloats.delete(id)
+    for (const b of list) {
+      if (!b.float || !bullets.includes(b)) continue
+      if (!shot) { const i = bullets.indexOf(b); bullets.splice(i, 1); continue }
+      const v = launchVelocity(shot.angle, shot.speed, b.float.f.seed)
+      b.vx = v.vx; b.vy = v.vy; b.drop = d.drop; b.dist = 0
+      b.damage = d.damage * FLOAT_DAMAGE * (0.3 + 0.7 * charge)
+      delete b.float
+      if (netOn) netShots.push(shotOf(b))
+    }
   }
   // at most ORBIT_MAX notes spinning per player: the oldest one goes
   function spinCap(id: string) {
@@ -1198,7 +1245,7 @@ export function createCombat() {
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
     beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
-    glissNext: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number; cageArm: number | null; fireDeny: number
+    glissLast: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number; cageArm: number | null; fireDeny: number
     trem: TremoloState; tremBend: number; tremReach: number | null; aimReach: number; aimKind: AimKind; harp: HarpState; stringAims: (StringAim | null)[] | null; kit: KitState; seated: { seat: Seat; owned: Owned } | null; aimPoint: { x: number; y: number } | null
   }
   const loadouts = new Map<string, Loadout>()
@@ -1253,18 +1300,18 @@ export function createCombat() {
   let soulAir: SoulAir | null = null
   const save = (): Loadout => ({
     peck, peckPrep, peckCool, inv: inv.slice(), cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT,
-    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, fireDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint,
+    beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissLast, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, fireDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint,
   })
   const blank = (): Loadout => ({
     peck: null, peckPrep: 0, peckCool: 0, inv: [], cur: 0, cooldown: 0, burstLeft: 0, reloadT: 0, bloom: 0, meleeCool: 0, kick: 0, throwT: 0, throwAngle: 0, throwItem: null, throwVoid: false, chargeT: 0, prevFire: false, fireHeldItem: null, fireResume: null, aimAngle: 0, pumpT: 0, swing: null, swingCombo: 0, swingGap: Infinity, heavyItem: null, heavyT: 0,
-    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissNext: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, cageArm: null, fireDeny: 0, trem: newTremolo(), tremBend: 0, tremReach: null, aimReach: 1, aimKind: 'none', harp: newHarp(), stringAims: null, kit: newKit(), seated: null, aimPoint: null,
+    beam: null, beamHeld: null, beamMidi: 0, arpStep: 0, arpIdle: 0, phraseBase: 0, glissLast: 0, glissSteps: 0, hover: null, hoverOwned: null, lastBody: null, consumption: null, effects: [], cages: [], cageDeny: 0, cageArm: null, fireDeny: 0, trem: newTremolo(), tremBend: 0, tremReach: null, aimReach: 1, aimKind: 'none', harp: newHarp(), stringAims: null, kit: newKit(), seated: null, aimPoint: null,
   })
   function useLoadout(id: string) {
     if (id === active) return
     loadouts.set(active, save())
     const l = loadouts.get(id) ?? blank()
     inv.splice(0, inv.length, ...l.inv)
-    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissNext, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, fireDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint } = l)
+    ;({ peck, peckPrep, peckCool, cur, cooldown, burstLeft, reloadT, bloom, meleeCool, kick, throwT, throwAngle, throwItem, throwVoid, chargeT, prevFire, fireHeldItem, fireResume, aimAngle, pumpT, swing, swingCombo, swingGap, heavyItem, heavyT, beam, beamHeld, beamMidi, arpStep, arpIdle, phraseBase, glissLast, glissSteps, hover, hoverOwned, lastBody, consumption, effects, cages, cageDeny, cageArm, fireDeny, trem, tremBend, tremReach, aimReach, aimKind, harp, stringAims, kit, seated, aimPoint } = l)
     active = id
   }
 
@@ -1460,7 +1507,7 @@ export function createCombat() {
   function shotNotes(d: ItemDef, n: number) {
     const t = tones(d), base = t.note()
     if (n > 1) return Array.from({ length: n }, (_, i) => t.walk(base, Math.floor(n / 2) - i, 'chord'))
-    if (d.gliss) return [t.walk(base, glissSteps, d.pitchSet)]
+    if (d.gliss) return [base] // the glissando's notes already played while the aim was dragged
     let off = 0
     const k = arpStep++
     if (d.arp === 'up') off = k % 4
@@ -1722,7 +1769,9 @@ export function createCombat() {
     stepStarRun(st.run, { ...moves, brooding }, st.t, beat).forEach(n => { if (g.cells[n.index]) playStar(h, d, n.index, n.vel, n.at, muzzle, 1) })
   }
 
-  function shoot(muzzle: { x: number; y: number }, spreadDeg: number, power = 1, ctx?: StepCtx) {
+  // speedPower: the speed's own factor (Carga em glissando: the aim's reach), otherwise `power`. Returns the direction
+  // and speed of its first shot
+  function shoot(muzzle: { x: number; y: number }, spreadDeg: number, power = 1, ctx?: StepCtx, speedPower?: number): { angle: number; speed: number } {
     const h = held()!, d = items[h.item]
     const mx = muzzle.x, my = muzzle.y
     const n = Math.max(1, Math.round(d.pellets))
@@ -1753,12 +1802,14 @@ export function createCombat() {
     }
     const rang = ball >= 0 ? { held: rung, bullets: [] as Bullet[] } : null
     if (rang) ballsOf(active).set(ball, rang)
-    const speed = d.speed * power
+    const speed = d.speed * (speedPower ?? power)
     const aim = assistAim(d, muzzle, speed)
+    let first = aim.angle
     const damage = pz ? d.damage / pzRate : d.explodeRadius > 0 ? d.damage : d.damage * (d.fireMode === 'charge' ? 0.3 + 0.7 * power : 1)
     for (let i = 0; i < n; i++) {
       const u = n === 1 ? rand(-0.5, 0.5) : i / (n - 1) - 0.5 + rand(-0.3, 0.3) / n
       const a = aim.angle + u * spreadDeg * (1 - aim.p) * DEG
+      if (i === 0) first = a
       const b: Bullet = {
         x: mx, y: my, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, dist: 0, damage: damage * bonus, pierce: d.pierce, hits: new Set(), size: d.size, drop: d.drop, range: d.range,
         item: h.item, t: 0, explode: d.explodeRadius, explodeDamage: d.explodeDamage * bonus, explodePush: d.explodePush, fuse: d.fuse, bounce: d.bounce,
@@ -1805,6 +1856,7 @@ export function createCombat() {
     // (a charged shot pushes as much as it was charged)
     pushBack(d, aimAngle, power)
     if (h.ammo <= 0 && d.autoReload) startReload()
+    return { angle: first, speed }
   }
 
   // a bullet as it goes to the other browsers
@@ -2097,6 +2149,15 @@ export function createCombat() {
     const { boxes, groundY } = b.room ?? ctx
     const px = b.x, py = b.y
     b.t += dt
+    // a note of the glissando floating round her: it goes with her (nothing to hit yet); her gone, it is gone
+    const fl = b.float
+    if (fl) {
+      const body = bodyOf(fl.owner)
+      if (!body) return true
+      stepFloat(fl.f, dt, fl.scale)
+      b.x = body.x + fl.ax + fl.f.dx; b.y = body.y + fl.ay + fl.f.dy; b.vx = fl.f.vx + body.vx; b.vy = fl.f.vy
+      return false
+    }
     // a note spinning on a Hangdrum ball: it goes there and round it, with her (no range, pull, walls or floor);
     // its time over, or her gone, it is gone
     const spin = b.orbit
@@ -3174,7 +3235,7 @@ export function createCombat() {
       }
       loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id); shotRooms.delete(id)
       // (her spinning notes go with her)
-      hangBalls.delete(id); scaleFans.delete(id)
+      hangBalls.delete(id); scaleFans.delete(id); glissFloats.delete(id)
       for (const f of freed) if (f.owner === id && f.away === null) { letGo(f); f.away = 0 }
     },
     // the players in a portal this frame (by player; world px), for their souls flying free
@@ -3380,6 +3441,8 @@ export function createCombat() {
     get cadence() { return Math.max(0, Math.min(1, cooldown * Math.max(0.1, def().rate))) },
     // Atirar held on the last step
     get firing() { return prevFire },
+    // Carga em glissando: the notes of the arpeggio spent in this charge, of FLOAT_MAX (null: the item has none)
+    get gliss() { const d = def(); return d.gliss && d.instrument && d.fireMode === 'charge' ? { spent: chargeT > 0 ? glissSteps : 0, max: FLOAT_MAX } : null },
     get fireCharge() { const d = def(); return d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0 },
     predict,
     booms, tracers, sounds, songs, critters, music,
@@ -3927,23 +3990,28 @@ export function createCombat() {
         else if (d.fireMode === 'charge') {
           // hold to charge, let go to shoot; force and precision grow with the charge
           if (input.fire && cooldown <= 0) {
-            if (chargeT === 0) { sound('charge'); glissSteps = 0; glissNext = 0 }
+            if (chargeT === 0) { sound('charge'); glissSteps = 0; glissLast = d.gliss && d.instrument ? tones(d).note() : 0; dropFloats(active) }
             chargeT += dt
-            // the harp: the charge runs up the scale, faster as it fills
+            // Carga em glissando: dragging the aim over the scale plays each note it goes into (one of the arpeggio's
+            // FLOAT_MAX), which leaves the instrument and floats round her
             if (d.gliss && d.instrument) {
-              const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
-              glissNext -= dt
-              if (glissNext <= 0 && glissSteps < 7) {
-                const t = tones(d)
-                out.note(d.voice, t.walk(t.note(), glissSteps, d.pitchSet), 0, 0.25, (0.35 + 0.3 * p) * noteVol(d), undefined, vibOf(d))
-                glissSteps++; glissNext = Math.max(0.04, 0.16 - 0.12 * p)
+              const m = tones(d).note()
+              if (m !== glissLast) {
+                glissLast = m
+                if (glissSteps < FLOAT_MAX) {
+                  const voice = d.voice
+                  out.note(voice, m + tremBend + detuneNow(), 0, Math.min(0.5, d.noteLen), 0.55 * noteVol(d), undefined, vibOf(d))
+                  addFloat(d, h.item, glissSteps, m, voice, origin, muzzle)
+                  glissSteps++
+                }
               }
             }
           }
           if (!input.fire && prevFire && chargeT > 0) {
             const p = Math.min(1, chargeT / Math.max(0.05, d.chargeTime))
-            if (d.gliss) glissSteps = Math.max(0, glissSteps - 1)
-            shoot(muzzle, spreadDeg * (1 - 0.7 * p), d.chargeMin + (1 - d.chargeMin) * p, ctx)
+            // (Carga em glissando: how far the aim is from her in the scale fan sets the main note's speed)
+            const shot = shoot(muzzle, spreadDeg * (1 - 0.7 * p), d.chargeMin + (1 - d.chargeMin) * p, ctx, d.gliss && d.instrument ? reachSpeed(aimReach) : undefined)
+            if (glissFloats.has(active)) launchFloats(active, shot, d, p)
             chargeT = 0; glissSteps = 0
           }
         } else {
@@ -3959,6 +4027,8 @@ export function createCombat() {
       }
       prevFire = input.fire
       fireHeldItem = input.fire ? h : null
+      // (no charge going on: the glissando's floating notes that were left vanish)
+      if (chargeT <= 0 && glissFloats.has(active)) dropFloats(active)
 
       // throw: hold to charge, let go to throw what she holds; another item in the wing while charging
       // (switched, grabbed) calls the throw off completely, until the button is let go

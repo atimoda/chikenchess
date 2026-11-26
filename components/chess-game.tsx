@@ -79,12 +79,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+/** A match played over the Pátio, at a Mesa de chickenchess (components/pigchicken/patio-chess.tsx). */
+export interface ChessEmbed {
+  /** Black is played by a second person at this screen instead of the bot. */
+  hotseat: boolean
+  /** How loud the music is where the Pátio's player stands (the table's Raio do som), 0 to 1. */
+  volume: number
+  /** Whether the music engine runs at all (off outside the table's radius, to save the device). */
+  audible: boolean
+  /** The match ended on the board: checkmate for one side, or a draw. */
+  onResult: (result: 'w' | 'b' | 'draw') => void
+}
+
 interface ChessGameProps {
   city: CityData
   onBack: () => void
   panelsFollowPlayerTurn: boolean
   /** Other game modes can show the Best/Worst glyph behind the destination piece. */
   showRankedMoveMarks?: boolean
+  /** Over the Pátio: no intro text nor city background, the board comes in at once, no campaign progress. */
+  embed?: ChessEmbed
 }
 
 const { BEST_MOVE_MESSAGES, BEST_MOVES_WITH_WORST_SCORES_MESSAGES, OTHER_PIECE_BEST_MESSAGES, OTHER_PIECE_WORST_MESSAGES, WORST_MOVE_MESSAGES, BEST_STREAK_MESSAGES, WORST_STREAK_MESSAGES, BEST_STREAK_6_PLUS_MESSAGES, WORST_STREAK_6_PLUS_MESSAGES, SINGLE_LEGAL_MOVE_MESSAGES } = moveMessages
@@ -140,7 +154,10 @@ function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis
   </div>
 }
 
-export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMoveMarks = false }: ChessGameProps) {
+export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMoveMarks = false, embed }: ChessGameProps) {
+  const embedRef = useRef(embed)
+  embedRef.current = embed
+  const hotseat = !!embed?.hotseat
   // The board starts with White at the bottom; keep mixer rows tied to that orientation.
   const boardOrientation: "white" | "black" = "white"
   const [game, setGame] = useState(() => makePoweredChess(new Chess()))
@@ -340,7 +357,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   
   // Intro State
   // 0 = Intro Text, 1 = City Title, 2 = Board Descend, 3 = Game Active
-  const [introPhase, setIntroPhase] = useState(0)
+  const [introPhase, setIntroPhase] = useState(embed ? 1 : 0)
   const [currentIntroLine, setCurrentIntroLine] = useState(0)
   const [showIntroButton, setShowIntroButton] = useState(false)
   const [showIntroBoxes, setShowIntroBoxes] = useState(false)
@@ -459,6 +476,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       introStartTimerRef.current = null
       beginGameTransition()
   }
+  // over the Pátio the count was the intro: the title and the board come in at once
+  const embedStartRef = useRef(handleStartGame)
+  embedStartRef.current = handleStartGame
+  useEffect(() => { if (embedRef.current) embedStartRef.current() }, [])
 
   const { isMobile, isPortraitMobile } = useMatchViewport(boardScale)
   const powerCardsRef = useRef<HTMLDivElement | null>(null)
@@ -466,6 +487,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const cardsResize = useBoardResize({ boardRef: powerCardsRef, enabled: !isPortraitMobile && powerDisplay === "cards", customLimits: powerCardsResizeLimits })
   const boardPan = useBoardPan({ boardRef: boardAreaRef, enabled: !isMobile && introPhase >= 3 })
   const cardsPan = useBoardPan({ boardRef: powerCardsRef, enabled: !isMobile && introPhase >= 3 && powerDisplay === "cards" })
+  // the buttons mode drags from its background like the cards
+  const actionRowRef = useRef<HTMLDivElement | null>(null)
+  const actionsPan = useBoardPan({ boardRef: actionRowRef, enabled: !isMobile && introPhase >= 3 && powerDisplay !== "cards" })
 
   const [knobsOn, setKnobsOn] = useState(false)
   const knobsManuallyClosedRef = useRef(false)
@@ -538,7 +562,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, [lastEvalScore])
   const musicOptions = useMemo(() => ({ actionEvents: reactionLog, evaluations: evaluationLog }), [reactionLog, evaluationLog])
   const musicPositions = useMemo(() => powerTimelineRef.current.map(entry => entry.game), [game, matchPowers])
-  const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume, codeBackdropOn || liveCodeOn, musicEngineOn, musicPositions, musicOptions)
+  const music = useMusic(game, city, isPlaying && tabVisible, globalEffects.bpm, globalEffects.volume * (embed ? embed.volume : 1), codeBackdropOn || liveCodeOn, musicEngineOn && (!embed || embed.audible), musicPositions, musicOptions)
   if (paramsOpen && !music.selected) setParamsOpen(false)
   useEffect(() => { if (!tabVisible) music.endAudition() }, [tabVisible, music.endAudition])
 
@@ -651,6 +675,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, [])
 
   const requestEvaluation = useCallback((gameInstance: Chess, opponentSkill?: number, opponentDelayMs?: number) => {
+    // two people at the Pátio's table: nobody plays for Black
+    if (embedRef.current?.hotseat) opponentSkill = undefined
     const analysisSequence = ++poweredAnalysisSequenceRef.current
     // Applying a power can change legal moves without changing the FEN. Clear
     // the previous ranking so a quick move cannot earn an outdated reward.
@@ -1118,6 +1144,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }
   }, [introPhase, requestEvaluation, workerEpoch])
 
+  // over the Pátio, a person took the bot's place: its pending move is called off and Black waits for her
+  useEffect(() => {
+    if (!hotseat) return
+    aiMoveTimerRef.current?.cancel()
+    setIsThinking(false)
+    if (introPhase === 3 && !gameRef.current.isGameOver()) requestEvaluation(gameRef.current)
+  }, [hotseat])
+
 
   // Report the result and update the status line when the board changes.
   useEffect(() => {
@@ -1160,7 +1194,18 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     }
 
     // Update game status
-    if (game.isCheckmate()) {
+    if (game.isCheckmate() && embed) {
+      // over the Pátio: the table gives the prize, the match stays on the screen until its players leave
+      const winner = game.turn() === "w" ? "Black" : "White"
+      setGameStatus(`CHECKMATE - ${winner} wins!`)
+      setIsPlaying(false)
+      deactivatePlaybackWidgets()
+      if (rewardedCheckmateFenRef.current !== game.fen()) {
+        rewardedCheckmateFenRef.current = game.fen()
+        if (winner === "White" || embed.hotseat) playVictoryFanfare(); else playCheckmate()
+        embed.onResult(winner === "White" ? 'w' : 'b')
+      }
+    } else if (game.isCheckmate()) {
       const winner = game.turn() === "w" ? "Black" : "White"
       setGameStatus(`CHECKMATE - ${winner} wins!`)
       setIsPlaying(false)
@@ -1192,13 +1237,16 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       setIsPlaying(false)
       deactivatePlaybackWidgets()
       playDrawKalimba()
-      settleCityVictory(true)
-    } else if (game.isCheck() && game.turn() === "w") {
+      if (embed) embed.onResult('draw')
+      else settleCityVictory(true)
+    } else if (game.isCheck() && (game.turn() === "w" || hotseat)) {
       setGameStatus("CHECK!")
+    } else if (hotseat) {
+      setGameStatus(game.turn() === "w" ? "White's move" : "Black's move")
     } else {
       setGameStatus(game.turn() === "w" ? "Your move" : "Bot thinking...")
     }
-  }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase, onBack, logMatch])
+  }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase, onBack, logMatch, hotseat])
 
   useEffect(() => {
     if (introPhase !== 3 || panelsFollowPlayerTurn) return
@@ -2023,8 +2071,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   return (
     <div
       ref={rootRef}
-      className={cn("relative w-full h-[100dvh] max-h-[100dvh] max-w-[100vw] bg-background select-none flex flex-col", isMobile ? "overflow-x-hidden overflow-y-auto [scrollbar-width:none]" : "overflow-hidden")}
-      style={{
+      data-chicken-ignore={embed ? "" : undefined}
+      className={cn("relative w-full max-w-[100vw] select-none flex flex-col", embed ? "h-full max-h-full" : "h-[100dvh] max-h-[100dvh] bg-background", isMobile ? "overflow-x-hidden overflow-y-auto [scrollbar-width:none]" : "overflow-hidden")}
+      style={embed ? undefined : {
         backgroundImage: `
           radial-gradient(circle at 20% 20%, ${city.color}08 0%, transparent 40%),
           radial-gradient(circle at 80% 80%, ${city.color}05 0%, transparent 40%)
@@ -2054,7 +2103,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         }
       `}</style>
       <GameWidgetEntranceStyles />
-      <GameCityBackground city={city} isBackgroundDark={isBackgroundDark} introPhase={introPhase} />
+      {!embed && <GameCityBackground city={city} isBackgroundDark={isBackgroundDark} introPhase={introPhase} />}
 
       {codeBackdropOn && codeTextOn && introPhase === 3 && (
         <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-75" aria-hidden="true">
@@ -2150,8 +2199,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             variant="outline"
             size="icon"
             onClick={onBack}
-            aria-label="Voltar ao mapa"
-            title="Voltar ao mapa"
+            aria-label={embed ? "Sair da partida" : "Voltar ao mapa"}
+            title={embed ? "Sair da partida" : "Voltar ao mapa"}
             className={cn(
               "col-start-1 row-start-1 md:col-auto md:row-auto shrink-0 pointer-events-auto text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all",
               introPhase < 3 && "relative z-[111]"
@@ -2163,6 +2212,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           <div
             className={cn(
               "col-span-2 row-start-2 md:col-auto md:row-auto flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:text-sm pointer-events-auto transition-opacity duration-500",
+              // over the Pátio the city, the key and the harmony sit centred over the board
+              embed && "justify-center md:absolute md:left-1/2 md:top-3 md:-translate-x-1/2",
               introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100"
             )}
             style={{ color: city.color, fontFamily: '"Bitcount Prop Single", sans-serif', fontVariantNumeric: 'tabular-nums' }}
@@ -2176,7 +2227,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           <div className="col-start-2 row-start-1 justify-self-end md:col-auto md:row-auto md:ml-auto flex shrink-0 items-center gap-2 md:gap-3 pointer-events-auto">
 
             <div className={cn("flex items-center gap-2 md:gap-3 transition-opacity duration-500", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
-              <InviteFriendButton cityId={city.id} cityColor={city.color} />
+              {/* over the Pátio the friends come by its own lobby */}
+              {!embed && <InviteFriendButton cityId={city.id} cityColor={city.color} />}
 
               {/* Settings */}
               <DropdownMenu open={openDropdown === "difficulty"} onOpenChange={open => setOpenDropdown(current => open ? "difficulty" : current === "difficulty" ? null : current)}>
@@ -2309,6 +2361,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   undoAnimationKey={undoAnimationKey}
                   mulliganPreviewMoves={mulliganPreviewMoves}
                   orientation={boardOrientation}
+                  playerColor={hotseat ? game.turn() : "w"}
                   onMove={handlePlayerMove} 
                   armedPower={armedPower}
                   onPowerTarget={targetPower}
@@ -2436,7 +2489,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onClick: event => powerTargeting.onButtonClick('shield', event),
                   onMouseEnter: () => playDrum('oh', 0.696),
                 },
-              }} /> : <GameActionRow visible={introPhase === 3}>
+              }} /> : <GameActionRow visible={introPhase === 3} rowRef={actionRowRef} move={actionsPan.enabled ? { translate: actionsPan.translate, moving: actionsPan.panning, onPointerDown: actionsPan.startPan } : undefined}>
                 <div className="flex min-w-0 items-center gap-1 sm:gap-2">
                   <button
                     data-ranked-move-action="best"
@@ -2599,6 +2652,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       <GameFooter
         visible={introPhase >= 3}
         moves={moveHistory}
+        game={game}
+        cityColor={city.color}
+        orientation={boardOrientation}
         tickerRef={movesTickerRef}
         score={lastEvalScore}
         mate={lastEvalMate}

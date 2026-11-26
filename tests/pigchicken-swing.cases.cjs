@@ -240,6 +240,30 @@ test('point-and-click Golpe: on by default, the reach of the next blow, null whe
   assert.equal(c.pointClickReach(1), null)
 })
 
+test('Simplificar raio do golpe: off by default, kept by the defaults file and the saved items', () => {
+  assert.ok(Object.values(DEFAULT_ITEMS).every(d => d.drawnSimple === false))
+  const { itemsOver } = loadTs('lib/pigchicken/items.ts')
+  assert.equal(itemsOver({ bat: { drawnSimple: true } }).bat.drawnSimple, true)
+  assert.equal(itemsOver({ bat: { drawnSimple: 'yes' } }).bat.drawnSimple, false, 'only a boolean is taken')
+})
+
+test('drawn blow preview: a miniature of the drawing that starts on the reach', () => {
+  const near = (p, x, y) => assert.ok(Math.abs(p.x - x) < 1e-9 && Math.abs(p.y - y) < 1e-9, `${p.x},${p.y} ≠ ${x},${y}`)
+  // started 200 px to her right, reach 50: a quarter of the size, starting on the reach
+  const far = swing.drawnSketch([{ x: 200, y: 0 }, { x: 200, y: 100 }, { x: 100, y: 100 }], 0, 50)
+  near(far[0], 50, 0); near(far[1], 50, 25); near(far[2], 25, 25)
+  // a circle around her drawn far away is the reach itself, as the blow
+  const circle = swing.drawnSketch([{ x: 0, y: -300 }, { x: 300, y: 0 }, { x: 0, y: 300 }], -Math.PI / 2, 60)
+  near(circle[0], 0, -60); near(circle[1], 60, 0); near(circle[2], 0, 60)
+  // started inside the reach: the drawing keeps its own size (never grows), still starting on the reach
+  const close = swing.drawnSketch([{ x: 10, y: 0 }, { x: 10, y: 30 }], 0, 50)
+  near(close[0], 50, 0); near(close[1], 50, 30)
+  // the touch Punch's: it grows so its start lands on the reach
+  const punch = swing.drawnSketch([{ x: 0, y: 25 }, { x: 25, y: 0 }], Math.PI / 2, 100, true)
+  near(punch[0], 0, 100); near(punch[1], 100, 0)
+  assert.deepEqual(swing.drawnSketch([], 0, 50), [])
+})
+
 const ammo = (c) => c.inventory[0].ammo
 const hold = (c, s, extra = {}) => { for (let t = 0; t < s; t += 0.016) step(c, { fire: true, ...extra }) }
 
