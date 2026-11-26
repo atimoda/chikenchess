@@ -304,7 +304,10 @@ export type FrameInput = {
   grab?: boolean // standing on an item: takes it (free slot) or swaps it with the held one (full inventory)
   grabHeld?: boolean // Pegar held down: every item she passes over is taken as if grab were pressed on it
   grabReleased?: boolean // Pegar let go in this frame (a Gaiola with no room for it is swapped in only by a whole press on it)
-  grabRun?: boolean // that press came only from Correr's keys/buttons: it takes (Pegar) but never equips (Equipar)
+  grabRun?: boolean // that press came only from Correr's keys/buttons: on an item it does Correr's store, not Pegar
+  // Correr pressed in this frame (from a source that stores: lib/chicken/engine.ts runStores): the item offered goes
+  // into a free place of the inventory, never equipped, never swapped with another (nothing else: no Baú, no seat)
+  runPressed?: boolean
   grabKeep?: boolean // seated: that press came only from the instrument's own binds (lib/pigchicken/instrument-binds.ts): it does not get her up
   // how deep the gamepad's Atirar (an analog trigger, RT) is pressed, 0..1 (0: not at all or no gamepad; a button that
   // only says on and off gives 1). The Estrela plays with its least push and is as loud as it is deep
@@ -1368,9 +1371,10 @@ export function createCombat() {
   }
 
   // Usar/Pegar equips a new item; Golpe can store it without changing the item she already holds.
-  function pickUp(p: Pickup, equip = true) {
+  // replace: a Filhote with its category full drops the one it had for it (Correr's store never replaces)
+  function pickUp(p: Pickup, equip = true, replace = true) {
     if (!canTake(p)) return false
-    if (p.owned.cage) return takeCage(p, equip)
+    if (p.owned.cage) return takeCage(p, equip && replace)
     const stack = inv.find(o => o.item === p.owned.item)
     if (stack) {
       const amount = Math.min(p.owned.ammo, (CONSUMABLE_LIMITS[stack.item] ?? 0) - stack.ammo)
@@ -1381,7 +1385,7 @@ export function createCombat() {
       return true
     }
     // a Filhote with its category full: the new one takes the place of the first of it, which falls
-    const same = babySwaps(p.owned.item) ? inv.findIndex(o => ownGroup(o.item) === ownGroup(p.owned.item)) : -1
+    const same = replace && babySwaps(p.owned.item) ? inv.findIndex(o => ownGroup(o.item) === ownGroup(p.owned.item)) : -1
     if (same >= 0) {
       const old = inv[same]
       if (same === cur) stopBeam()
@@ -3670,8 +3674,8 @@ export function createCombat() {
       // at it at the same time and comes first)
       let stoodUp = false
       if (seated) {
-        if (!seats.includes(seated.seat) || seated.seat.yield || (input.grab && !input.grabKeep) || (seatKeepsJump(seated.seat.kind) && input.melee) || body.state === 'held' || body.state.startsWith('portal')) { standUp(); stoodUp = true; input = { ...input, grab: false, grabHeld: false, grabReleased: false } }
-        else input = { ...input, ...NO_SWITCH, move: null, deselect: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false }
+        if (!seats.includes(seated.seat) || seated.seat.yield || (input.grab && !input.grabKeep) || (seatKeepsJump(seated.seat.kind) && input.melee) || body.state === 'held' || body.state.startsWith('portal')) { standUp(); stoodUp = true; input = { ...input, grab: false, grabHeld: false, grabReleased: false, runPressed: false } }
+        else input = { ...input, ...NO_SWITCH, move: null, deselect: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false, runPressed: false }
       }
       // rearranging the bar never changes what she holds (nor what is being done with it)
       if (input.move) moveSlot(input.move.from, input.move.to, input.move.after)
@@ -3679,7 +3683,7 @@ export function createCombat() {
         stopBeam(); peck = null; peckPrep = 0; swing = null; consumption = null; heavyItem = null; heavyT = 0
         cur = inv.length; reloadT = 0; burstLeft = 0; chargeT = 0; pumpT = 0
         throwT = 0; throwItem = null; throwVoid = input.throwHeld
-        input = { ...input, ...NO_SWITCH, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false }
+        input = { ...input, ...NO_SWITCH, cancelFire: true, fire: false, firePressed: false, melee: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false, runPressed: false }
       }
       // pecked by a soul (lib/pigchicken/soul-acts.ts): her item does not answer for a moment
       if (locks.has(active)) input = { ...input, fire: false, firePressed: false, melee: false }
@@ -3693,7 +3697,7 @@ export function createCombat() {
       if (consumption) {
         consumption.left -= dt
         if (consumption.left <= 0) consumption = null
-        input = { ...input, ...NO_SWITCH, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false }
+        input = { ...input, ...NO_SWITCH, fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, grab: false, grabHeld: false, grabReleased: false, runPressed: false }
       }
       // aim turns at the item's speed
       if (d.turnRate > 0) {
@@ -4185,20 +4189,26 @@ export function createCombat() {
       // a Gaiola with no room for it (she has CAGES_MAX): it is only offered ("trocar"). Passing over it with Pegar
       // held (running) or a Golpe leaves it there; it is swapped with the one in front only by a whole press of
       // Pegar on it: pressed and let go while it is the item offered
+      // Correr (its own press, or a Pegar that came only from keys/buttons Correr shares, like the gamepad's X) does
+      // Correr's store on items: the one offered goes into a free place, never equipped nor swapped; held, it takes
+      // nothing more. Pegar's own keys keep Pegar's rules
+      const usarGrab = !!input.grab && !input.grabRun, usarHeld = !!input.grabHeld && !input.grabRun
       const fullCage = !!hover?.owned.cage && cages.length >= CAGES_MAX
-      if (input.grab && fullCage) cageArm = hover!.id
+      if (usarGrab && fullCage) cageArm = hover!.id
       else if (cageArm !== null && (input.grab || hover?.id !== cageArm)) cageArm = null
       const cageSwap = !!input.grabReleased && fullCage && cageArm === hover!.id
       if (input.grabReleased) cageArm = null
       const meleePickup = (!!input.melee || peckStarted) && !input.grab && !input.grabHeld && !!hover && !fullCage
-      const grabNow = fullCage ? cageSwap : !!input.grab || meleePickup || (!!input.grabHeld && !!hover && !heldTaken.has(hover.id))
+      const runStore = !usarGrab && (!!input.runPressed || (!!input.grab && !!input.grabRun)) && !!hover
+      const grabNow = fullCage ? cageSwap : usarGrab || meleePickup || runStore || (usarHeld && !!hover && !heldTaken.has(hover.id))
+      const keeps = meleePickup || runStore // stored without changing the item in her hand
       // an item offered at her body (to take or to equip) goes before a Baú
       const itemOffered = !!hover || !!hoverOwned
       if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || roomFor(hover.owned.item) || swapFits(hover.owned.item) || babySwaps(hover.owned.item) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
         pickups.splice(at, 1)
-        const picked = pickUp(g, !meleePickup)
-        if (!picked && meleePickup) pickups.splice(at, 0, g)
+        const picked = pickUp(g, !keeps, !runStore)
+        if (!picked && keeps) pickups.splice(at, 0, g)
         else {
           if (!picked) swapIn(g)
           hover = null
@@ -4206,8 +4216,8 @@ export function createCombat() {
         }
       }
       // no room in its category and nothing of it in her wing to trade: a word over it says why it stays
-      else if (input.grab && hover && !hover.owned.cage && !hoverOwned && room()) addText(hover.x, hover.y - 30, CATEGORY_FULL[ownGroup(hover.owned.item)], '#c9ced6')
-      else if (input.grab && hoverOwned && !input.grabRun) {
+      else if (usarGrab && hover && !hover.owned.cage && !hoverOwned && room()) addText(hover.x, hover.y - 30, CATEGORY_FULL[ownGroup(hover.owned.item)], '#c9ced6')
+      else if (usarGrab && hoverOwned) {
         // the same item is in her inventory: grab equips it (the one on the floor stays);
         // not when the press is Correr's own key, so running over her items never swaps the one in her hand
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)

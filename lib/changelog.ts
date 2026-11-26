@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal; prévia do Golpe desenhado fiel ao desenho',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal; prévia do Golpe desenhado fiel ao desenho; Correr guarda o item do chão no inventário',
     groups: [
       { title: 'Pátio: Mesa de chickenchess', items: [
         'Nova Mesa de chickenchess no Modo editor (grupo Jogos): uma mesinha com tabuleiro e dois banquinhos. Já está no meio da Arena das Almas, no Arquipélago das Almas.',
@@ -67,6 +67,12 @@ const RECENT = [
       { title: 'Pátio: prévia do Golpe desenhado', items: [
         'Enquanto você desenha o golpe no ar, a linha de prévia agora é uma miniatura do próprio desenho: começa no alcance do golpe, onde o desenho começou, e segue o mesmo caminho do mouse ou do dedo, em tamanho menor. O golpe em si continua igual.',
         'Nova caixa Simplificar raio do golpe no grupo Golpe de cada item do painel Itens (desligada em todos): ligada, a prévia volta a ser a linha em volta do boneco, no alcance do golpe.',
+      ] },
+      { title: 'Pátio: Correr guarda o item do chão', items: [
+        'Apertar Correr com o boneco em cima de um item no chão guarda o item no inventário, sem equipar: a mão continua com o que tinha (ou vazia).',
+        'Só guarda se houver espaço: com o inventário ou a categoria cheia, o item fica no chão e nada é trocado. Segurar Correr não pega os itens seguintes; vale o momento do aperto.',
+        'Correr não faz mais nada do Usar / pegar: não entra em portal, não abre Baú e não senta em instrumento. Uma tecla que é das duas (o X do gamepad, o Shift direito com o P) continua fazendo o Usar nessas coisas, mas sobre um item segue a regra do Correr.',
+        'No celular, o botão Correr faz o mesmo quando “Correr também pega itens do chão” está ligado.',
       ] },
     ],
   },
