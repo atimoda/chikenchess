@@ -7,8 +7,11 @@ const RECENT = [
   {
     version: '2.18.1',
     date: '26/11/2026',
-    title: 'Widgets da partida redimensionam também pela borda de cima e pelo canto superior direito',
+    title: 'Partida: ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito',
     groups: [
+      { title: 'Partida: cabeçalho', items: [
+        'O ano e a cidade e os seletores de tom, escala e harmonia ficam do mesmo tamanho do botão do globo e, ao passar o mouse, ficam como ele: fundo escuro, letra branca e brilho na cor da cidade em volta. Um seletor aberto continua aceso enquanto o menu está aberto. Vale na campanha e no online.',
+      ] },
       { title: 'Partida: widgets', items: [
         'Os widgets da partida (Mixer, Piece Params, Piece Debug, Spectrogram, Debug e Bot Control) agora também mudam de tamanho puxando a borda de cima ou o canto superior direito, na diagonal. A base do widget fica parada enquanto ele cresce para cima.',
         'Ao redimensionar, o widget não passa mais da borda da janela, e o canto inferior esquerdo agora mantém o lado direito parado.',
