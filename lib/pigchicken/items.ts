@@ -9,7 +9,6 @@ import DEFAULTS_FILE from '../../data/pigchicken/default-items.json'
 import { liveDefault, onGameDefault } from '../game-defaults'
 import { deepDiff, effectiveTuning, keepLocalTuning, setLocalTuning, subscribeTuning, tuningLocked } from './patio-tuning'
 import { CHAIN_MAX, cleanTransform, newTransform, type Transform, type TransformKind } from './transforms'
-import { SPIN_FOREVER, SPIN_NOTE } from './note-orbit'
 
 export type FireMode = 'semi' | 'auto' | 'burst' | 'charge' | 'release'
 // when the projectile's path is drawn: never, while the fire button is held, held or with the aim locked, always
@@ -190,13 +189,7 @@ export type ItemDef = {
   hangRows: number
   hangNotes: number
   hangNotes2: number
-  // Notas giratórias (lib/pigchicken/note-orbit.ts): how long a note played on one of the hang's balls spins in it
-  // ("Giro na bola": 0 = off, 1..60 s, SPIN_NOTE = its Duração da nota, SPIN_FOREVER = ∞); hangTravel: it flies from
-  // her to the ball first (off: it is born on the ball); hangChoke: a note on a ball cuts the one still ringing on
-  // that same ball (and takes away the one spinning there)
-  hangSpin: number
-  hangTravel: boolean
-  hangChoke: boolean
+  // (its Notas giratórias belong to the scale, for every instrument on it: lib/pigchicken/scale-params.ts)
   // consumables (Fire uses one dose; `mag` is the doses per pickup; stacks have a per-item limit). One effect at a time:
   // a new one replaces the one running
   consumable: boolean
@@ -347,7 +340,7 @@ export const TRAIL_CREAM = '#fff4dc'
 const NO_MUSIC = {
   peckPull: 38, instrument: false, voice: 'flute' as VoiceId, pitchSet: 'chord' as PitchSet, octave: 0, span: 2, arp: 'off' as Arp, arpRate: 10, noteLen: 0.25, wave: 6,
   aimAssist: 0, quantize: true, quantWindow: 60, beatBonus: 1.5, beam: false, stun: 0, strum: 0.018, ringNotes: 0, gliss: false, tremolo: 0, tremoloRange: 0.5, tremoloAxis: 'turn' as TremoloAxis, handDelay: 0.125, vibratoDepth: 0, vibratoRate: 5.5, vibratoDelay: 0.15, volMin: 1, volMax: 1, meleeNotes: 3, fretless: false, scales: ['primary'] as InstrumentScaleId[], spiralDescending: false,
-  hangRows: 1, hangNotes: 8, hangNotes2: 7, hangSpin: 0, hangTravel: true, hangChoke: false,
+  hangRows: 1, hangNotes: 8, hangNotes2: 7,
   consumable: false, cageSouls: 0, consumeKind: 'food' as const, effectTime: 0, effectSpeed: 1, effectAccel: 1, effectCurve: 'linear' as AccelCurve, effectRamp: 0.5, effectLook: 'none' as EffectLook,
   pivotAt: 'shoulder' as PivotPart, pivotX: 0, pivotY: 0, handOn: false, handX: 0, handY: 0, backOn: false, backX: 0, backY: 0, swapHands: false, grip2On: false, grip2X: 0, grip2Y: 0, classPoints: {}, wingFlip: false, archery: false, drawLen: 30,
   gripX: 0, gripY: 0, staffX: 38, staffY: 34, staffAngle: -135, windX: -34, windY: -44, windAngle: -205,
@@ -656,7 +649,7 @@ const HANGDRUM: ItemDef = {
   rate: 8, mag: 40, reloadTime: 0.9, speed: 800, damage: 14, size: 11, range: 950, spreadBase: 1, spreadShot: 0.5,
   recoilKick: 1, recoilPush: 30, muzzleX: 58, muzzleY: -6, length: 60,
   instrument: true, voice: 'hang', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 0.8, volMax: 0.8,
-  scales: ['hang'], hangRows: 1, hangNotes: 8, hangNotes2: 7, hangSpin: SPIN_NOTE, hangChoke: true,
+  scales: ['hang'], hangRows: 1, hangNotes: 8, hangNotes2: 7,
   rebateChain: chain(['echo', 'dotted', 2]),
 }
 // Harpa (Harpas, instrumento fixo: lib/pigchicken/fixed-instruments.ts): a pedal harp standing in the Pátio. Nobody
@@ -932,7 +925,6 @@ export const ITEM_PARAM_META: Meta[] = [
   { key: 'hangRows', label: 'Fileiras', min: 1, max: 2, step: 1, group: 'Hangdrum', hint: 'Fileiras de notas em volta da nota central (ding)' },
   { key: 'hangNotes', label: 'Notas da 1ª fileira', min: 5, max: 9, step: 1, group: 'Hangdrum' },
   { key: 'hangNotes2', label: 'Notas da 2ª fileira', min: 5, max: 9, step: 1, group: 'Hangdrum' },
-  { key: 'hangSpin', label: 'Giro na bola', min: 0, max: SPIN_FOREVER, step: 1, group: 'Hangdrum', hint: 'A nota tocada numa bola fica girando dentro dela; fora das bolas vai reta. Depois de 60 s: Duração da nota e ∞' },
   { key: 'effectTime', label: 'Duração do efeito', min: 1, max: 120, step: 1, unit: 's', group: 'Efeito', hint: 'Doses acumulam: cada uma tem o seu tempo e os multiplicadores se multiplicam' },
   { key: 'effectSpeed', label: 'Velocidade final', min: 0.3, max: 2.5, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%; 0,78 = −22%' },
   { key: 'effectAccel', label: 'Aceleração', min: 0.3, max: 3, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%' },
@@ -999,7 +991,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending', 'scope', 'hangTravel', 'hangChoke'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending', 'scope'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   // saved before "Arco e Flecha" (v11): a bow whose points were never touched takes the new ones (both wings on it)
   if (id === 'bow' && !(v >= 11) && !s.handOn && !s.backOn && !s.pivotX && !s.pivotY) (['pivotX', 'handOn', 'handX', 'handY', 'backOn', 'backX', 'backY'] as const).forEach(k => { (out.bow as Record<string, unknown>)[k] = DEFAULT_ITEMS.bow[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
@@ -1059,7 +1051,7 @@ const ITEMS_VERSION = 12
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints', 'scope', 'hangTravel', 'hangChoke',
+  'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints', 'scope',
 ])]
 /** The items a defaults file gives (the code's, with the file over them). */
 export function itemsOver(file: unknown): Record<ItemId, ItemDef> {

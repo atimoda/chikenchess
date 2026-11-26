@@ -35,6 +35,7 @@ import { HOOK_ARRIVE, HOOK_ARRIVE_TARGET, HOOK_KEEP, HOOK_REEL, HOOK_STEP, hookC
 import { CHAIN_DELAY, DECK_SIZE, burstReaches, burstsAlone, cardSpot, cardTouches, nextCard, type CardPhase } from './cards'
 import { HangScale, STAR_SCALE, STRINGS_SCALE, scaleAt, stringShift, type InstrumentScale } from './instrument-scales'
 import { ORBIT_MAX, ballAt, newOrbit, spinSeconds, spreadPhases, stepOrbit, type Orbit } from './note-orbit'
+import { scaleParams } from './scale-params'
 import { FIXED_INSTRUMENTS, markNetSeats, nearestSeat, seatKeepsJump, type FixedKind, type Seat } from './fixed-instruments'
 import { starPath, starPoint, starCellAt } from './star-grid'
 import { DYNAMIC_VEL, NO_MOVES, bindDynamic, bodyDynamic, newStarHand, newStarRun, recordRun, stepStarHand, stepStarRun, type Dynamic, type MoveBinds, type StarHand, type StarRun } from './star-play'
@@ -1728,13 +1729,14 @@ export function createCombat() {
     const pz = pizzicato(d), pzRate = Math.max(1, d.arpRate)
     // the Hangdrum's aim between its notes: the hit is a percussive slap (its voice), ringing the nearest note
     const voice: VoiceId = pz ? 'pizz' : d.instrument && tones(d).slap() ? 'hangSlap' : d.voice
-    // the Hangdrum's ball under the aim (none: another scale, or the gap between them): its note may spin there
-    // (Giro na bola) and cut the one still ringing on it (Cada nota interrompe a anterior)
+    // the Hangdrum scale's ball under the aim (none: another scale, or the gap between them), on any instrument: its
+    // note may spin there (Giro na bola) and cut the one still ringing on it (Cada nota interrompe a anterior), as the
+    // scale's numbers say (Escalas → Hangdrum)
     const onHang = d.instrument && !pz ? tones(d).hang() : null, ball = onHang && !onHang.slap ? onHang.index : -1
-    const fan = scaleFans.get(active)
-    const spin = ball >= 0 && fan && !d.hitscan ? spinSeconds(d.hangSpin, d.noteLen) : 0
+    const fan = scaleFans.get(active), hp = scaleParams().hang
+    const spin = ball >= 0 && fan && !d.hitscan ? spinSeconds(hp.hangSpin, d.noteLen) : 0
     const rung: Held[] = []
-    if (ball >= 0 && d.hangChoke) cutBall(active, ball)
+    if (ball >= 0 && hp.hangChoke) cutBall(active, ball)
     if (d.instrument) {
       notes = shotNotes(d, n)
       const g = music.toGrid()
@@ -1765,7 +1767,7 @@ export function createCombat() {
         b.ring = d.ringNotes; b.ghost = true
         // Giro na bola: to the ball (or born on it), then round inside it
         if (spin > 0 && onHang && fan) {
-          const f = onHang.lay.fields[ball], o = newOrbit(f, ball, { seconds: spin, bpm: music.zone.bpm, travel: d.hangTravel, speed, aim: a })
+          const f = onHang.lay.fields[ball], o = newOrbit(f, ball, { seconds: spin, bpm: music.zone.bpm, travel: !!hp.hangTravel, speed, aim: a })
           if (!o.arrived) { /* it leaves from the muzzle */ } else { const c = ballAt(fan, o); b.x = c.x + Math.cos(a) * c.r; b.y = c.y + Math.sin(a) * c.r }
           b.orbit = { ...o, owner: active, id: nextId++ }
           spinCap(active)
