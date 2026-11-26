@@ -5,6 +5,7 @@ import { useMonitorSelector } from "@/hooks/use-monitor-selector"
 import { Power, Play, Pause } from "lucide-react"
 import { Draggable } from "./ui/draggable"
 import { Resizable } from "re-resizable"
+import { useWidgetResize } from "@/hooks/use-widget-resize"
 import { Knob } from "./knob"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
@@ -194,7 +195,6 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
 }, ref) => {
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
-  const initialPositionRef = useRef<{ x: number; y: number } | null>(null)
   const [compactLayout, setCompactLayout] = useState(true)
   const [crossfader, setCrossfader] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -288,6 +288,18 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
     updateCrossfader(target)
   }, [sessionId, evalScore, evalMate, turn, topColor, updateCrossfader, crossfaderSync])
 
+  const resize = useWidgetResize({
+    isStatic: props.style?.position === 'static',
+    left: true,
+    position,
+    onPositionChange,
+    handleStyles: { right: { zIndex: 80 }, bottom: { zIndex: 80 }, left: { zIndex: 80 }, bottomRight: { zIndex: 80 }, bottomLeft: { zIndex: 80 } },
+    onResize: (_event, _direction, element) => setCompactLayout(current => {
+      const next = element.offsetWidth < 292
+      return current === next ? current : next
+    }),
+  })
+
   return <Draggable
     data-widget="mixer"
     ref={ref}
@@ -304,31 +316,8 @@ export const MixerWidget = forwardRef<HTMLDivElement, MixerWidgetProps>(({
       size={props.style?.position === 'static' ? { width: '100%', height: 450 } : undefined}
       minWidth={156}
       minHeight={420}
-      enable={props.style?.position === 'static' ? false : { top: false, right: true, bottom: true, left: true, topRight: false, bottomRight: true, bottomLeft: true, topLeft: false }}
-      handleStyles={{
-        right: { zIndex: 80 },
-        bottom: { zIndex: 80 },
-        left: { zIndex: 80 },
-        bottomRight: { zIndex: 80 },
-        bottomLeft: { zIndex: 80 },
-      }}
+      {...resize}
       className="relative"
-      onResizeStart={event => {
-        event.stopPropagation()
-        initialPositionRef.current = position || { x: 0, y: 0 }
-      }}
-      onResize={(_event, direction, element, delta) => {
-        setCompactLayout(current => {
-          const next = element.offsetWidth < 292
-          return current === next ? current : next
-        })
-        if (direction.includes("left") && initialPositionRef.current) {
-          onPositionChange?.({
-            x: initialPositionRef.current.x - delta.width,
-            y: initialPositionRef.current.y,
-          })
-        }
-      }}
     >
     <div className={cn("absolute inset-0 z-50 rounded-md border backdrop-blur-md transition-all duration-300", isOn ? "bg-black/80" : "bg-black/60 opacity-60")}
       style={{ borderColor, boxShadow: isOn ? `0 0 20px ${cityColor}40` : "none" }} />
