@@ -13,6 +13,8 @@ import type { NetChests } from '../pigchicken/net-chests'
 import type { NetCages } from '../pigchicken/cages'
 import type { NetMineActs, NetMineState, NetMineWord } from '../pigchicken/net-mine'
 import { importChicks, keepChicks, type NetChick, type RemoteChick } from './net-chicks'
+import { refreshGameDefaults, setGameDefaultsAnnouncer } from '../game-defaults'
+import { refreshChickenConfig } from './config'
 
 /* global process */
 // ws(s)://host[:port] of the game server; in development it defaults to the one `cd server && npm start` runs
@@ -66,7 +68,7 @@ let seq = 0
 // what the server says it relays beyond its first messages (an older one says nothing: a message it does not know
 // would close the connection, so those are only sent to a server that asked for them)
 let caps: Record<string, unknown> = {}
-export const netCan = (cap: 'souls' | 'chicks' | 'chests' | 'cages' | 'mine' | 'houses') => !!caps[cap]
+export const netCan = (cap: 'souls' | 'chicks' | 'chests' | 'cages' | 'mine' | 'houses' | 'defaults') => !!caps[cap]
 const listeners = new Set<() => void>()
 const remotes = new Map<string, RemoteChicken>()
 // the other browsers' chicks (lib/chicken/net-chicks.ts), by pid and number
@@ -154,6 +156,7 @@ function attach(r: Room) {
   })
   r.onMessage('layout', (m: { layout: unknown }) => layoutListeners.forEach(fn => fn(m.layout)))
   r.onMessage('saved', (m: { revision: number }) => savedListeners.forEach(fn => fn(m.revision)))
+  r.onMessage('defaults', (m: { parts?: unknown }) => readSavedDefaults(Array.isArray(m?.parts) ? m.parts : []))
   r.onMessage('foes', (m: NetFoes) => toWorld({ type: 'foes', foes: m }))
   r.onMessage('hits', (m: { pid: number; list: unknown[] }) => { if (Array.isArray(m?.list)) toWorld({ type: 'hits', pid: m.pid, list: m.list }) })
   r.onMessage('spawn', (m: { pid: number; spawn: unknown }) => toWorld({ type: 'spawn', pid: m?.pid, spawn: m?.spawn }))
@@ -199,6 +202,14 @@ export const clearNetNotice = () => set({ notice: null })
 // Edit mode: the layout after an edit (owner or editor) and the revision the owner just saved
 export const sendNetLayout = (layout: unknown) => room?.send('layout', { layout })
 export const sendNetSaved = (revision: number) => room?.send('saved', { revision })
+// "Salvar no game" by an admin in this room: the others read the saved parts again now (known revisions go along, so
+// only what changed comes back), instead of on their next visit or the 5-minute check (hooks/use-game-defaults.ts)
+export const sendNetDefaults = (part: string) => (netCan('defaults') ? room : null)?.send('defaults', { part })
+setGameDefaultsAnnouncer(sendNetDefaults)
+function readSavedDefaults(parts: unknown[]) {
+  if (parts.some(p => p !== 'chicken')) void refreshGameDefaults(true)
+  if (parts.includes('chicken')) void refreshChickenConfig(true)
+}
 // the shared world: the owner's enemies; hits and spawns for the owner; the shots fired here
 const live = () => (room && state.status === 'online' ? room : null)
 export const sendNetFoes = (foes: NetFoes) => live()?.send('foes', foes)

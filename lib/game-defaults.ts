@@ -85,6 +85,12 @@ function adopt(parts: Partial<Record<GameDefaultPart, HeldDefault>>) {
   listeners.forEach(fn => fn(changed))
 }
 
+// Who tells the others a part was just saved: the online Pátio room (lib/chicken/online-room.ts) while connected
+let announcer: ((part: GameDefaultPart | 'chicken') => void) | null = null
+export const setGameDefaultsAnnouncer = (fn: typeof announcer) => { announcer = fn }
+/** After "Salvar no game": the others in this browser's online Pátio read that part again right away. */
+export const announceGameDefault = (part: GameDefaultPart | 'chicken') => { try { announcer?.(part) } catch { /* offline */ } }
+
 /** Takes a version just saved (by this browser's admin) as the part's current one. */
 export const adoptGameDefault = (part: GameDefaultPart, saved: HeldDefault) => adopt({ [part]: saved })
 

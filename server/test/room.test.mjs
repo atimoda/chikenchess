@@ -27,7 +27,7 @@ after(() => server?.kill())
 
 async function browser(options = {}) {
   const room = await new Client(`ws://localhost:${PORT}`).joinOrCreate('patio', { name: 'b', chickens: 1, ...options })
-  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [], mine: [], houses: [], chests: [], cages: [] }
+  const seen = { hello: null, room: null, snaps: [], chat: [], denied: [], kicked: null, layout: [], saved: [], foes: [], hits: [], spawn: [], shots: [], souls: [], take: [], give: [], chicks: [], mine: [], houses: [], chests: [], cages: [], defaults: [] }
   room.onMessage('hello', m => { seen.hello = m; seen.room = m.room })
   room.onMessage('room', m => { seen.room = m })
   room.onMessage('w', b => seen.snaps.push(decodeSnapshot(new Uint8Array(b))))
@@ -36,7 +36,7 @@ async function browser(options = {}) {
   room.onMessage('kicked', m => { seen.kicked = m })
   room.onMessage('layout', m => seen.layout.push(m))
   room.onMessage('saved', m => seen.saved.push(m))
-  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks', 'chests', 'cages', 'mine', 'houses']) room.onMessage(type, m => seen[type].push(m))
+  for (const type of ['foes', 'hits', 'spawn', 'shots', 'souls', 'take', 'give', 'chicks', 'chests', 'cages', 'mine', 'houses', 'defaults']) room.onMessage(type, m => seen[type].push(m))
   await until(() => seen.hello)
   return { room, seen }
 }
@@ -293,5 +293,25 @@ test("houses: the house each of a browser's chickens is inside of goes to everyo
   b.room.send('houses', { l: 'x' })
   await wait(150)
   assert.equal(a.seen.houses.length, 1); assert.equal(b.seen.houses.length, 0)
+  for (const x of [a, b]) await x.room.leave()
+})
+
+test('defaults: an admin saved a game default; everyone in the room hears which parts, at most every 2 s', async () => {
+  const patioId = '0f000000-0000-4000-8000-00000000000b'
+  const a = await browser({ patioId, name: 'Ana' })
+  const b = await browser({ patioId, name: 'Bia' })
+  a.room.send('defaults', { part: 'items' })
+  a.room.send('defaults', { part: 'chicken' })
+  a.room.send('defaults', { part: 'nope' })
+  a.room.send('defaults', { part: 7 })
+  const got = await until(() => b.seen.defaults[0])
+  assert.deepEqual([...got.parts].sort(), ['chicken', 'items'])
+  await until(() => a.seen.defaults[0])
+  // another save soon after waits for the gap and arrives once
+  a.room.send('defaults', { part: 'camera' })
+  a.room.send('defaults', { part: 'camera' })
+  assert.deepEqual(await until(() => b.seen.defaults[1], 4000), { parts: ['camera'] })
+  await wait(150)
+  assert.equal(b.seen.defaults.length, 2)
   for (const x of [a, b]) await x.room.leave()
 })

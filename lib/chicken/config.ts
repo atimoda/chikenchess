@@ -9,6 +9,7 @@ import { CHICKEN_CLUCKS, CHICKEN_PARAMS, SCALE_BASE, type ChickenParams } from '
 import { defaultClasses, normalizeClasses, type ClassesTuning } from './species'
 import { defaultFrames, normalizeFrames, type BodyFrames } from './body-frame'
 import { onlineConfigured, requireOnlineClient } from '@/lib/online/client'
+import { announceGameDefault } from '../game-defaults'
 
 /* global process, fetch */
 // classes: Pig's and Ken's factors over these params (species.ts), edited in the same panel; frames: each class's
@@ -188,7 +189,9 @@ export async function saveChickenConfig(next: ChickenConfig): Promise<SavedChick
   const config = normalizeChickenConfig(next)
   const { data, error } = await requireOnlineClient().rpc('chicken_config_save', { p_config: config, p_revision: savedNow().revision })
   if (error) throw new ChickenConfigError(saveErrorMessage(error))
-  return adopt(parseRow(data))
+  const saved = adopt(parseRow(data))
+  announceGameDefault('chicken')
+  return saved
 }
 
 /** The saved versions of the central configuration (newest first, the last 50), admin only. */

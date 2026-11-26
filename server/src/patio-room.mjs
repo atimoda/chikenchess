@@ -20,7 +20,7 @@ const CHESTS_MAX = 64, CHESTS_BYTES = 4000
 const CAGES_MAX = 4, CAGES_BYTES = 400
 // the round of the Grade de blocos (the browser's lib/pigchicken/net-mine.ts)
 const MINE_BYTES = 120_000
-const CAPS = { souls: 1, chicks: 1, chests: 1, cages: 1, mine: 1, houses: 1 }
+const CAPS = { souls: 1, chicks: 1, chests: 1, cages: 1, mine: 1, houses: 1, defaults: 1 }
 // the house each of a browser's chickens is inside of (the browser's lib/pigchicken/house-rooms.ts)
 const HOUSES_MAX = 4, HOUSES_BYTES = 400
 const jsonSize = v => { try { return JSON.stringify(v).length } catch { return Infinity } }
@@ -73,6 +73,10 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "cages"    { pid, l }     the Gaiolas another browser's chickens carry
 //   "mine"     { pid, m }     the owner's round of the Grade de blocos, or (to the owner) what another browser's players did to it
 //   "houses"   { pid, l }     the house each of another browser's chickens is inside of
+// the parts of the game's defaults (lib/game-defaults.ts) and Personagem's ('chicken'), and how often a room hears of them
+const DEFAULT_PARTS = new Set(['settings', 'layers', 'camera', 'volume', 'mineGrid', 'items', 'scales', 'controls', 'souls', 'chicken'])
+const DEFAULTS_GAP = 2000
+
 export class PatioRoom extends Room {
   maxClients = MAX_BROWSERS
   players = new Map() // sessionId -> player
@@ -101,6 +105,7 @@ export class PatioRoom extends Room {
     this.onMessage('editor', (client, msg) => this.onEditor(client, msg))
     this.onMessage('layout', (client, msg) => this.onLayout(client, msg))
     this.onMessage('saved', (client, msg) => this.onSaved(client, msg))
+    this.onMessage('defaults', (client, msg) => this.onDefaults(client, msg))
     this.onMessage('foes', (client, msg) => this.onFoes(client, msg))
     this.onMessage('hits', (client, msg) => this.onHits(client, msg))
     this.onMessage('spawn', (client, msg) => this.onSpawn(client, msg))
@@ -147,6 +152,8 @@ export class PatioRoom extends Room {
     if (this.layout) client.send('layout', { seq: this.layoutSeq, by: 0, layout: this.layout })
     this.broadcastInfo(client)
   }
+
+  onDispose() { clearTimeout(this.defaultsTimer) }
 
   onLeave(client) {
     if (!this.players.delete(client.sessionId)) return
@@ -265,6 +272,25 @@ export class PatioRoom extends Room {
     const revision = Number(msg?.revision)
     if (!p || p.pid !== this.ownerPid || !Number.isInteger(revision) || revision < 1) return
     this.broadcast('saved', { revision }, { except: client })
+  }
+
+  // An admin saved a game default ("Salvar no game", lib/game-defaults.ts): everyone here reads the defaults again,
+  // and only what changed comes back from the database. Anyone may say it (a reader learns nothing it could not read
+  // anyway), so it goes out at most once every DEFAULTS_GAP ms per room, with every part named meanwhile.
+  onDefaults(client, msg) {
+    const part = typeof msg?.part === 'string' ? msg.part : ''
+    if (!this.players.get(client.sessionId) || !DEFAULT_PARTS.has(part)) return
+    this.defaultsParts ??= new Set()
+    this.defaultsParts.add(part)
+    if (this.defaultsTimer) return
+    const wait = Math.max(0, (this.defaultsAt ?? 0) + DEFAULTS_GAP - Date.now())
+    this.defaultsTimer = setTimeout(() => {
+      this.defaultsTimer = null
+      this.defaultsAt = Date.now()
+      const parts = [...this.defaultsParts]
+      this.defaultsParts.clear()
+      this.broadcast('defaults', { parts })
+    }, wait)
   }
 
   // ---------- the shared world: the owner simulates the enemies; the server only checks the shape and relays ----------

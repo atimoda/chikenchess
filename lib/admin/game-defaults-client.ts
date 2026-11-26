@@ -1,6 +1,6 @@
 import { isAdminUser } from './access'
 import { getOnlineClient, requireOnlineClient } from '../online/client'
-import { adoptGameDefault, freshGameDefault, type GameDefaultPart } from '../game-defaults'
+import { adoptGameDefault, announceGameDefault, freshGameDefault, type GameDefaultPart } from '../game-defaults'
 import PATIO_FILE from '../../data/pigchicken/default-patio.json'
 import ITEMS_FILE from '../../data/pigchicken/default-items.json'
 import SCALES_FILE from '../../data/pigchicken/default-scales.json'
@@ -86,6 +86,7 @@ async function savePart(part: GameDefaultPart, value: unknown) {
   const { data: saved, error } = await client.rpc('game_defaults_save', { p_part: part, p_value: next, p_revision: held?.revision ?? 0 })
   if (error) throw new GameDefaultsError(saveErrorMessage(error))
   adoptGameDefault(part, { value: saved.value, revision: Number(saved.revision) || 0, updatedAt: typeof saved.updated_at === 'string' ? saved.updated_at : null })
+  announceGameDefault(part)
 }
 
 export type GameDefaultVersion = { id: number; revision: number; updatedAt: string; by: string | null }
