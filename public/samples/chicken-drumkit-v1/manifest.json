@@ -1,0 +1,1419 @@
+{
+  "repository": "sfzinstruments/virtuosity_drums",
+  "revision": "9f04cf9a734527edfbb0a4eee1f674e45bbf71bc",
+  "license": "CC0-1.0",
+  "recordings": [
+    {
+      "file": "kick-0-0.wav",
+      "sources": [
+        {
+          "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr1.flac",
+          "sha256": "fde168d5cb5e9b1149dbe5b8a47e89b81ce160f1b178db8cff088b72304f45ff",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/kick/oh_kick_snoff_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/kick/oh_kick_snoff_vl2_rr1.flac",
+          "sha256": "e75079f63c12633facdcd1a56a361fcc5b35c86c4cce715c30f364b6e283a413",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/kick/room_kick_snoff_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/kick/room_kick_snoff_vl2_rr1.flac",
+          "sha256": "73976057d1c0411dfa83ab09155752788cbb453f67b5b202776e52d335370301",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 0.7
+    },
+    {
+      "file": "kick-0-1.wav",
+      "sources": [
+        {
+          "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr2.flac",
+          "sha256": "94d8a8ed4fa15b15c7d627b859751b9d3d0865c860b4c8a0d3bb5f0f868dcd9e",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/kick/oh_kick_snoff_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/kick/oh_kick_snoff_vl2_rr2.flac",
+          "sha256": "baa99bdb6da7f6582cd8f65547b648d13ffa2036a9a117a41405b0fb5bd91607",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/kick/room_kick_snoff_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/kick/room_kick_snoff_vl2_rr2.flac",
+          "sha256": "937b18efaa2e117ada77d6ce65ffb4b52a14ed2e5b7da018ec211ae6cece8064",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 0.7
+    },
+    {
+      "file": "kick-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr1.flac",
+          "sha256": "4f5ce76c313c39f3f3af340deee3c5d2058632b6d1c6c1aab561d3f2433f30d4",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/kick/oh_kick_snoff_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/kick/oh_kick_snoff_vl3_rr1.flac",
+          "sha256": "d1b6c9af7a6e0e7ded503cc889c0ffdc19ab015b2d2588ed80304dd13b84b90a",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/kick/room_kick_snoff_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/kick/room_kick_snoff_vl3_rr1.flac",
+          "sha256": "ab2d798ee9a26ac48ccfbaa29f9b854acc9d9228076c49fa6f74ae838c73b2ad",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 0.7
+    },
+    {
+      "file": "kick-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl3_rr2.flac",
+          "sha256": "a8150dac10dff5f34a581e2359dd98dc245571aaaeed23c3228e8b02516574e5",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/kick/oh_kick_snoff_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/kick/oh_kick_snoff_vl3_rr2.flac",
+          "sha256": "69e4d4c8ccaccddd47aebe2fc2add4a1b60ca2b7161adf2c943aa0166c8b49be",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/kick/room_kick_snoff_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/kick/room_kick_snoff_vl3_rr2.flac",
+          "sha256": "47d2fe6e05e2e23777d2fb2c1a38cf221846f7130a06e97e54bb479dc14939d9",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 0.7
+    },
+    {
+      "file": "kick-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr1.flac",
+          "sha256": "27b2a5a46b0c361f5712c76f577076270edbb019c9c9df5b4de2d25e853ed52d",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/kick/oh_kick_snoff_vl4_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/kick/oh_kick_snoff_vl4_rr1.flac",
+          "sha256": "f4cfd1cf04ed8ff09853dfe4550f30ca1b63b3b4fb84ccd0d91fced07b69581d",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/kick/room_kick_snoff_vl4_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/kick/room_kick_snoff_vl4_rr1.flac",
+          "sha256": "31826439f3bcfddd88c12ddf3519dec1f8b629de5820b5a06b2fcb525b00926c",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 0.7
+    },
+    {
+      "file": "kick-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr2.flac",
+          "sha256": "69b113f5c7ceb4e7479490dab30f3af14b4210a04de92e139a96fab8710d3033",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/kick/oh_kick_snoff_vl4_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/kick/oh_kick_snoff_vl4_rr2.flac",
+          "sha256": "b29f8f684c676c27c139fb8eceacb6d85683c5dcef7a2a002a1f78665afa926d",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/kick/room_kick_snoff_vl4_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/kick/room_kick_snoff_vl4_rr2.flac",
+          "sha256": "e1e77655d5c9f19b013f1a067e277a130510e0af67877e5a2c1717ddbca2ff75",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 0.7
+    },
+    {
+      "file": "snare-0-0.wav",
+      "sources": [
+        {
+          "source": "Samples/snaremic/snare/snaremic_snare_center_vl13.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/snare/snaremic_snare_center_vl13.flac",
+          "sha256": "c114876e77aebb86e38898b7dc55b8a670d4f60943c15e44ac41d979ba21124b",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/snare/oh_snare_center_vl13.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/snare/oh_snare_center_vl13.flac",
+          "sha256": "2840bc3a0b9bbdb35145ba3bf41ded5913e8690385b40800b59012845de0df1e",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/snare/room_snare_center_vl13.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/snare/room_snare_center_vl13.flac",
+          "sha256": "87b95595b6467b459eb7024f0199ff71af7d1fbdc98f1b6ec4dbaa9760e569d3",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 0.7
+    },
+    {
+      "file": "snare-0-1.wav",
+      "sources": [
+        {
+          "source": "Samples/snaremic/snare/snaremic_snare_center_vl14.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/snare/snaremic_snare_center_vl14.flac",
+          "sha256": "a9918e1387646ce3669af61d64ad47b8d62c033ed2ed7718c14838fd0ac8ca79",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/snare/oh_snare_center_vl14.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/snare/oh_snare_center_vl14.flac",
+          "sha256": "821f11c5c61e1f08fa1e8ac6e814dd1b63fff561a1d5c819fc4724b2a74b713f",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/snare/room_snare_center_vl14.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/snare/room_snare_center_vl14.flac",
+          "sha256": "135b0371252feee7b44623a5a91dc9ebf2bc2a6d821410df3c817128f51a61cb",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 0.7
+    },
+    {
+      "file": "snare-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/snaremic/snare/snaremic_snare_center_vl24.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/snare/snaremic_snare_center_vl24.flac",
+          "sha256": "dba6bb99b96907a681bdc85e86d2d3651c4294d8a22700cfdaa4832937428c2f",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/snare/oh_snare_center_vl24.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/snare/oh_snare_center_vl24.flac",
+          "sha256": "5bc9e2c4feee91c8b22966f1db3d517567d24e35894dedf9a1ebeef6ff449c94",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/snare/room_snare_center_vl24.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/snare/room_snare_center_vl24.flac",
+          "sha256": "47fa89b5145c29c34c3c0770725ce340d0e9094fdfe142b20f43b11967e1416f",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 0.7
+    },
+    {
+      "file": "snare-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/snaremic/snare/snaremic_snare_center_vl25.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/snare/snaremic_snare_center_vl25.flac",
+          "sha256": "bbd59354099ec4a6b39b09ca2f2798333d1f21780ab72b0a0865c188e86e41b8",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/snare/oh_snare_center_vl25.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/snare/oh_snare_center_vl25.flac",
+          "sha256": "b426f5bae5bae34787efee86c0fe5d0f14099cf97ed69efcba38f1dffa175138",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/snare/room_snare_center_vl25.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/snare/room_snare_center_vl25.flac",
+          "sha256": "effd9d15e185eea8e411a6e07f4c7a484d7c2e371e7f090a4f975bf52fe1a3a6",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 0.7
+    },
+    {
+      "file": "snare-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/snaremic/snare/snaremic_snare_center_vl34.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/snare/snaremic_snare_center_vl34.flac",
+          "sha256": "4961361d422d72355281762bb8bc5504dec346de7809e19f12945f49832b5e48",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/snare/oh_snare_center_vl34.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/snare/oh_snare_center_vl34.flac",
+          "sha256": "0a3773a798213f91045429db16f5b435e080df3c92a14364abfbf956684a6b08",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/snare/room_snare_center_vl34.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/snare/room_snare_center_vl34.flac",
+          "sha256": "c65c8983a32b09d79bb672d4c8ecb98b4254e9521a1fdb60ae3e5c1b46f2ff00",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 0.7
+    },
+    {
+      "file": "snare-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/snaremic/snare/snaremic_snare_center_vl35.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/snare/snaremic_snare_center_vl35.flac",
+          "sha256": "154de8388fbf0e07aec6080911bcb516325b2386134998e5a622b740cea88fcc",
+          "gain": 1
+        },
+        {
+          "source": "Samples/oh/snare/oh_snare_center_vl35.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/snare/oh_snare_center_vl35.flac",
+          "sha256": "5f829a70f49ea5787167c9fc64a6ceede3ac2520b5c6933bae788f13fd2abd77",
+          "gain": 0.55
+        },
+        {
+          "source": "Samples/room/snare/room_snare_center_vl35.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/snare/room_snare_center_vl35.flac",
+          "sha256": "d7887ed02ba6afe02624c2df9f9e77964a97f74b756711e2d77e93dfa5d37f88",
+          "gain": 0.3
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 0.7
+    },
+    {
+      "file": "tom1-0-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl5.flac",
+          "sha256": "ff393a0b06dbe217e71ba73e9b64837604f75b5a85d2af66254d86da7ddf6160",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl5.flac",
+          "sha256": "eee1325989cfbc51837ccafea34e1d31bb3eb23dd4a421b8f98b7a5eb45ea2f0",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl5.flac",
+          "sha256": "4edbfb11bc8bc6368ff6beb7b388c059326fe6a5718944a40ef5f6796819610f",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 1.1
+    },
+    {
+      "file": "tom1-0-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl6.flac",
+          "sha256": "ec1a00ee7a17dec3bbc33dc2676ec8459987936667c649987bacac2b1ab9ced2",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl6.flac",
+          "sha256": "0d1a53f95723212f7ac67d2d35ee41d5e0c5eb7512250d00daac13b8573b4840",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl6.flac",
+          "sha256": "82a8cecec7c712c2468230d9a9acb29cbaae6f371351f2293c0214c30dd8d1fe",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 1.1
+    },
+    {
+      "file": "tom1-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl10.flac",
+          "sha256": "f9c27dd5539353283dddc7305d2cf270923732279fc96a83468193bc00a63ab7",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl10.flac",
+          "sha256": "2c9be5002caa183582fe13bad7dc61fdf08e70e22d4d1cef8d1a050dc5498ead",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl10.flac",
+          "sha256": "64838110daa6138c6c3b5e015a61930d67db7a8fdf1fe59d491fefd727b616b7",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 1.1
+    },
+    {
+      "file": "tom1-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl11.flac",
+          "sha256": "d72a2a691755983dd7036b3669219b0d8a4b804418a7409f911210c118cd84f5",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl11.flac",
+          "sha256": "a17949b59fb886ac260d7a89ed50e53884d4e760a243390148b556ff9eda9d99",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl11.flac",
+          "sha256": "0893a714b492aa2f64cc185e3ec87ee86a8bf9b17ff3b2ffbd8289e97f54fbe7",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 1.1
+    },
+    {
+      "file": "tom1-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl15.flac",
+          "sha256": "1d10ef0d8d32a82a67df3b6d9a174cb32c47a094c29935bc0db5edda7a828d22",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl15.flac",
+          "sha256": "1b3a76d5ec7d64bc50576ca64ee71a2008ef404a2b1a4d34e6ee7320958e7698",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl15.flac",
+          "sha256": "d66c66facbc512ec6d3507e4faed29bce4c6c9d4aee45ad916a109997b7724a2",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.1
+    },
+    {
+      "file": "tom1-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl16.flac",
+          "sha256": "04367c509397f84691d389a4166720b1940c9b7d9ff7a87abd35364b3e9ba6bf",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl16.flac",
+          "sha256": "230a9e6c6b427c969834c6cb50e730b44487ae5a27f86bf87680359daa6caad9",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl16.flac",
+          "sha256": "0dabb6c235b93248f1927ed275a6e68396fc6504a08c78558a9c43da91f317a1",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.1
+    },
+    {
+      "file": "tom2-0-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl5.flac",
+          "sha256": "ff393a0b06dbe217e71ba73e9b64837604f75b5a85d2af66254d86da7ddf6160",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl5.flac",
+          "sha256": "eee1325989cfbc51837ccafea34e1d31bb3eb23dd4a421b8f98b7a5eb45ea2f0",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl5.flac",
+          "sha256": "4edbfb11bc8bc6368ff6beb7b388c059326fe6a5718944a40ef5f6796819610f",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -4,
+      "layer": 0,
+      "seconds": 1.2
+    },
+    {
+      "file": "tom2-0-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl6.flac",
+          "sha256": "ec1a00ee7a17dec3bbc33dc2676ec8459987936667c649987bacac2b1ab9ced2",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl6.flac",
+          "sha256": "0d1a53f95723212f7ac67d2d35ee41d5e0c5eb7512250d00daac13b8573b4840",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl6.flac",
+          "sha256": "82a8cecec7c712c2468230d9a9acb29cbaae6f371351f2293c0214c30dd8d1fe",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -4,
+      "layer": 0,
+      "seconds": 1.2
+    },
+    {
+      "file": "tom2-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl10.flac",
+          "sha256": "f9c27dd5539353283dddc7305d2cf270923732279fc96a83468193bc00a63ab7",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl10.flac",
+          "sha256": "2c9be5002caa183582fe13bad7dc61fdf08e70e22d4d1cef8d1a050dc5498ead",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl10.flac",
+          "sha256": "64838110daa6138c6c3b5e015a61930d67db7a8fdf1fe59d491fefd727b616b7",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -4,
+      "layer": 1,
+      "seconds": 1.2
+    },
+    {
+      "file": "tom2-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl11.flac",
+          "sha256": "d72a2a691755983dd7036b3669219b0d8a4b804418a7409f911210c118cd84f5",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl11.flac",
+          "sha256": "a17949b59fb886ac260d7a89ed50e53884d4e760a243390148b556ff9eda9d99",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl11.flac",
+          "sha256": "0893a714b492aa2f64cc185e3ec87ee86a8bf9b17ff3b2ffbd8289e97f54fbe7",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -4,
+      "layer": 1,
+      "seconds": 1.2
+    },
+    {
+      "file": "tom2-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl15.flac",
+          "sha256": "1d10ef0d8d32a82a67df3b6d9a174cb32c47a094c29935bc0db5edda7a828d22",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl15.flac",
+          "sha256": "1b3a76d5ec7d64bc50576ca64ee71a2008ef404a2b1a4d34e6ee7320958e7698",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl15.flac",
+          "sha256": "d66c66facbc512ec6d3507e4faed29bce4c6c9d4aee45ad916a109997b7724a2",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -4,
+      "layer": 2,
+      "seconds": 1.2
+    },
+    {
+      "file": "tom2-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/htom/oh_htom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/htom/oh_htom_center_vl16.flac",
+          "sha256": "04367c509397f84691d389a4166720b1940c9b7d9ff7a87abd35364b3e9ba6bf",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/htom/mid_htom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/htom/mid_htom_center_vl16.flac",
+          "sha256": "230a9e6c6b427c969834c6cb50e730b44487ae5a27f86bf87680359daa6caad9",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/htom/room_htom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/htom/room_htom_center_vl16.flac",
+          "sha256": "0dabb6c235b93248f1927ed275a6e68396fc6504a08c78558a9c43da91f317a1",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -4,
+      "layer": 2,
+      "seconds": 1.2
+    },
+    {
+      "file": "floor-0-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ltom/oh_ltom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl5.flac",
+          "sha256": "988e4b8ae8985cb652b4d5334db3cf60286d8d55a91cef188ea0393a7b35dcff",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/ltom/mid_ltom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/ltom/mid_ltom_center_vl5.flac",
+          "sha256": "60f04f2b36043099feb9845be153d745646bb08516b110f252495d8c5031823c",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/ltom/room_ltom_center_vl5.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ltom/room_ltom_center_vl5.flac",
+          "sha256": "5e758265e86703bc3ca34abf2d0e53dbb27222b0ba9f35749b9437c903514305",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 1.4
+    },
+    {
+      "file": "floor-0-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ltom/oh_ltom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl6.flac",
+          "sha256": "9458a1ccae4cbe1a480f2d42515b5fc61c93ba4d5d9324e469402f0f69edfa59",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/ltom/mid_ltom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/ltom/mid_ltom_center_vl6.flac",
+          "sha256": "c793f3cb25d1f2b5f5161bf215445777e71d3a51dcdca5a9acab09eee534ea01",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/ltom/room_ltom_center_vl6.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ltom/room_ltom_center_vl6.flac",
+          "sha256": "9b255ae52c242133bea4c2ccd65f6b3a29b2c0c25b4a9fcfff2757bcd384fad3",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 1.4
+    },
+    {
+      "file": "floor-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ltom/oh_ltom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl10.flac",
+          "sha256": "6edddb5c17cdff3668c720ec54b561c0b27ba01708901afec161472169e69cc3",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/ltom/mid_ltom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/ltom/mid_ltom_center_vl10.flac",
+          "sha256": "1ff32c7954cae8c4842fca6b1f229924d3aec1b8261d5f007a15a87588a59472",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/ltom/room_ltom_center_vl10.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ltom/room_ltom_center_vl10.flac",
+          "sha256": "5283658b46a05d41e3d6e89127ee24c0d68b73a397876ac09bf45f106fab7475",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 1.4
+    },
+    {
+      "file": "floor-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ltom/oh_ltom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl11.flac",
+          "sha256": "ff265c9989ea3326c2b34c0b9c323b9d45aa6c0a7a5316d97b5498881ce3551d",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/ltom/mid_ltom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/ltom/mid_ltom_center_vl11.flac",
+          "sha256": "afc6dcf018a19fd9c71050a1da87151fd69f15febfa7604b56652abb27115b24",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/ltom/room_ltom_center_vl11.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ltom/room_ltom_center_vl11.flac",
+          "sha256": "175f49a78ccb26ade6b8823a93027958b1f88261dc0e76da3938f5374a80a425",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 1.4
+    },
+    {
+      "file": "floor-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ltom/oh_ltom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl15.flac",
+          "sha256": "f2bf707e734773f819f8b403c1ab1d73d99989ccfe4d3dfe726aea34d8f46c56",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/ltom/mid_ltom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/ltom/mid_ltom_center_vl15.flac",
+          "sha256": "21aec9fc152a3a44022852a15d95a4cf6f94bf5a6c64bd412a0c882d63c166c3",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/ltom/room_ltom_center_vl15.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ltom/room_ltom_center_vl15.flac",
+          "sha256": "58c60878a8817f0eecaeab2e6af5b11584bf0cc9debfeb520a76bc7bf435454f",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.4
+    },
+    {
+      "file": "floor-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ltom/oh_ltom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ltom/oh_ltom_center_vl16.flac",
+          "sha256": "28cab9363a520570377df54026b2036f03e59da5f96c60993e1ddf5d7795026c",
+          "gain": 1
+        },
+        {
+          "source": "Samples/mid/ltom/mid_ltom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/mid/ltom/mid_ltom_center_vl16.flac",
+          "sha256": "924cf94d67c95ad6ee214a0b16febb89a53d21d49f5c14e3ec8622ff9da976f5",
+          "gain": 0.5
+        },
+        {
+          "source": "Samples/room/ltom/room_ltom_center_vl16.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ltom/room_ltom_center_vl16.flac",
+          "sha256": "ac3da998658ccaa07816ac210763c2218423f017b485e493bcddd99a9bbce062",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.4
+    },
+    {
+      "file": "hat-0-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_closed_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_closed_vl2_rr1.flac",
+          "sha256": "466a0dac394ae52abea418ca62c27614986159cd6c7127cb25b4991a9cb614df",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_closed_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_closed_vl2_rr1.flac",
+          "sha256": "7b672fd6af13448c4fb9abd19b703265521ee1e14238d89dde43c96634fab3d3",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_closed_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_closed_vl2_rr1.flac",
+          "sha256": "32dd22c972dfaccdcb31bd37fa203fa9dbb2d517463b4f67c1b16de611610697",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 0.35
+    },
+    {
+      "file": "hat-0-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_closed_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_closed_vl2_rr2.flac",
+          "sha256": "57dff040657690e62a8847919118db5d98ba1ef5bed5230f9510cbf944a40b72",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_closed_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_closed_vl2_rr2.flac",
+          "sha256": "0a2d4e75c79e57a54c49944fa1820e80d5553fee2fff0b4cbbfedc16197dc568",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_closed_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_closed_vl2_rr2.flac",
+          "sha256": "764c7d5660c95ae8213faf949a67513c7cddc345aca4af076e788fb1ab470884",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 0,
+      "seconds": 0.35
+    },
+    {
+      "file": "hat-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_closed_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_closed_vl3_rr1.flac",
+          "sha256": "328a4d33daf15c72362db234312eba56eda60c1668f5c39a5527d61279793fef",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_closed_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_closed_vl3_rr1.flac",
+          "sha256": "21a357f32c5dfda57d45668fc755d0a24898b313543c08d970d0bf9b0aecad4a",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_closed_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_closed_vl3_rr1.flac",
+          "sha256": "448fd1318cfbb2590908b99a694c1fa74620b5387fcb310de81bca49dfab1bf5",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 0.35
+    },
+    {
+      "file": "hat-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_closed_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_closed_vl3_rr2.flac",
+          "sha256": "53727d06a33fc153df450657aeeba08dd66fa9059825f92227b1c963fd2136b3",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_closed_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_closed_vl3_rr2.flac",
+          "sha256": "7db2d4d4a184f02c85f727010d66a356631a6a510145fb6a091162211ad67877",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_closed_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_closed_vl3_rr2.flac",
+          "sha256": "4b3e91c5e108a3a5b29e230cdedd586fece0b9287fe2779072a8a3c3b10fa1dc",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 0.35
+    },
+    {
+      "file": "hat-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_closed_vl4_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_closed_vl4_rr1.flac",
+          "sha256": "163b306f52ebe55017e46a7b664b8438458bd7becc01553309a2f441c0bd452b",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_closed_vl4_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_closed_vl4_rr1.flac",
+          "sha256": "beb5960e900f7dbdd70ead3cd1389c98a5090d46cf7667e96ea46c3674b2d0a4",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_closed_vl4_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_closed_vl4_rr1.flac",
+          "sha256": "d9ef9631e5c7d590937ab2b11a2782e5b27818f53a729757d75d0a30da07f444",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 0.35
+    },
+    {
+      "file": "hat-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_closed_vl4_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_closed_vl4_rr2.flac",
+          "sha256": "32aa1fdbf7be06eb31a1665d5b6390fe3c6209d0abe4230351f07c1af9d4d0c2",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_closed_vl4_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_closed_vl4_rr2.flac",
+          "sha256": "a4c29385a5d451ed9f1fb4807bf8c3283595706c4e8ce2b19869a8dd744d4f75",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_closed_vl4_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_closed_vl4_rr2.flac",
+          "sha256": "6a54fdb386a8d3ca8e2d3791f5b648395ba578ad2cfce9dcfe7fb9f52ec4cfb1",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 0.35
+    },
+    {
+      "file": "hat-half-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_half_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_half_vl3_rr1.flac",
+          "sha256": "34de5087e14ef8f9d2acaa907dfa5581c1976c0a7311f89df71b7f7bcc874a7f",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_half_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_half_vl3_rr1.flac",
+          "sha256": "98a30aa40233d0b5746f4f632559718e8caab55caeb32dba5486a5543f77eacf",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_half_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_half_vl3_rr1.flac",
+          "sha256": "03623d16f88b2f2d81b95e27a491d9696d8dac6f9f0462c418144abc02ccbf1b",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.2
+    },
+    {
+      "file": "hat-half-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_half_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_half_vl3_rr2.flac",
+          "sha256": "687b44df66a4799a0035a4a220d0521bed061d8b9509a398af4527ea83a313f9",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_half_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_half_vl3_rr2.flac",
+          "sha256": "132c6a25b71c9f86366d0adb1f2a80e845716f26dc981cd6ce8dc16962951776",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_half_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_half_vl3_rr2.flac",
+          "sha256": "b25eda3fcb9ccb5c8411bc1eb88bd7624f84b8320dad41b6f98a2e290591e9af",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.2
+    },
+    {
+      "file": "hat-34-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_34_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_34_vl3_rr1.flac",
+          "sha256": "981bacfbe2c83eb7f37f9dd7d384a498f01c981d0ca7a50ca1eab6accd6bbe1d",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_34_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_34_vl3_rr1.flac",
+          "sha256": "edd584048914ec69da36d51d053aded47f7c0cffd686dd1d43afdb88c807cac5",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_34_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_34_vl3_rr1.flac",
+          "sha256": "25b3bf22be328acfc242f8922599a68529845f996b33b5fddc46beaa6f659de2",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.6
+    },
+    {
+      "file": "hat-34-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_34_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_34_vl3_rr2.flac",
+          "sha256": "f52b1caf9b158827a812c17c5c263b6d29ff4a8cbca9648fd2cd3694166580ec",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_34_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_34_vl3_rr2.flac",
+          "sha256": "ab1a51fb13082c6987984d162fb382f1f6234c31528ccc7afea06960704fb43b",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_34_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_34_vl3_rr2.flac",
+          "sha256": "fc3b75855235773df4c0e7051b60aea5944e0ff90a8819f5a5c026798a693da7",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 1.6
+    },
+    {
+      "file": "hat-open-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_open_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_open_vl3_rr1.flac",
+          "sha256": "046d72bfece4891ba114e090961cde55c7a42e9805a5a2a1b8f5f57e76a190fc",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_open_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_open_vl3_rr1.flac",
+          "sha256": "dcebb54eda4ef19c078184fd44b3d3aac87410ffa7e9b54ba5235be708d72767",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_open_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_open_vl3_rr1.flac",
+          "sha256": "6a00b6edf6508b0962ea3ca18739477451eeea8e090f3bdda87d61b1fe05aa85",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 2.2
+    },
+    {
+      "file": "hat-open-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/hh/oh_hh_open_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/hh/oh_hh_open_vl3_rr2.flac",
+          "sha256": "35135cc9079b7810c95cd490208a6fdbfb540784e28dc270e7a90d16b3271f75",
+          "gain": 1
+        },
+        {
+          "source": "Samples/snaremic/hh/snaremic_hh_open_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/snaremic/hh/snaremic_hh_open_vl3_rr2.flac",
+          "sha256": "24b4babc499bfb62de7b2d145f483ee68c01ef15f78d580a95692504b7d899e6",
+          "gain": 0.25
+        },
+        {
+          "source": "Samples/room/hh/room_hh_open_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/hh/room_hh_open_vl3_rr2.flac",
+          "sha256": "2a5b2891425325332716bdd2fe6bb2b67728e674a5991ae4f1569681cc178f04",
+          "gain": 0.25
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 2.2
+    },
+    {
+      "file": "ride-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_ride_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_ride_vl2_rr1.flac",
+          "sha256": "56481c1109ac7baba9ab4b049cacfbc5050cf29d59951c654e7316595385eeaa",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_ride_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_ride_vl2_rr1.flac",
+          "sha256": "4e97594a4df3e65dbc9749ef0f28cc0b3d12dddf9a4e2472b58e61f4c411dc5e",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 2.6
+    },
+    {
+      "file": "ride-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_ride_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_ride_vl2_rr2.flac",
+          "sha256": "5cec02ecdc875cfc5fde8d2cd7f5be23cc8e0b1ad35e4bcdef222328f6fbb6ab",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_ride_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_ride_vl2_rr2.flac",
+          "sha256": "3fe2878d15900864656eb2288a51f87dc50cc67a8365f104544660450793dea8",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 2.6
+    },
+    {
+      "file": "ride-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_ride_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_ride_vl3_rr1.flac",
+          "sha256": "855f22d2408439f7944c056dab306003b8fc172310c92b37b63a6aef21aa4f5c",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_ride_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_ride_vl3_rr1.flac",
+          "sha256": "a57744b91cbbda610fffc0b3dee89567dace9c995ebcf1f40a03cf51a0e14fae",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 2.6
+    },
+    {
+      "file": "ride-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_ride_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_ride_vl3_rr2.flac",
+          "sha256": "dc2abfafd76352382f94fe3e011315381ec324837ea2e08117f947bd2bdde694",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_ride_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_ride_vl3_rr2.flac",
+          "sha256": "7192c863ce898bbf83cf1e97b58631a6b4c1ad21f56ccbb59d7cfb20bec3d46b",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 2.6
+    },
+    {
+      "file": "bell-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_bell_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_bell_vl2_rr1.flac",
+          "sha256": "36930c1702ff868d84e1bf58fad899c9559b0312b6393bb1b7a4c5d5e91e28aa",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_bell_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_bell_vl2_rr1.flac",
+          "sha256": "9f278b938d69752e775c4ce74b672b934b42b17628d94c0e98ad0aa256f5da03",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 2.4
+    },
+    {
+      "file": "bell-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_bell_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_bell_vl2_rr2.flac",
+          "sha256": "fcd4127cef7484c9f6a647013989844cb622b689795de16ad4777bf76f152cd0",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_bell_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_bell_vl2_rr2.flac",
+          "sha256": "49138cc2a5d62166a9621ba18683dbcdc3173bf9c53126c488f0c36ad0e83fbd",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 2.4
+    },
+    {
+      "file": "bell-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_bell_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_bell_vl3_rr1.flac",
+          "sha256": "e9d367cb70b15377fcec2299a15b6590a93e2b8b0d789511616bcb7b8345281d",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_bell_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_bell_vl3_rr1.flac",
+          "sha256": "0062ad85fd56339cc29e75288ba7fc174b2dde7b8f40c2b83c31b8eccc1dc6cb",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 2.4
+    },
+    {
+      "file": "bell-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/ride/oh_ride_bell_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/ride/oh_ride_bell_vl3_rr2.flac",
+          "sha256": "89f73fcf2c149f89c4cee3d904ad37d4e2d47aad6a5693f8386977009584e4dd",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/ride/room_ride_bell_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/ride/room_ride_bell_vl3_rr2.flac",
+          "sha256": "8a8d23591a747aaa4b1c7380c3d37c92b89a911e901ec0e9b80cb89842229274",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 2.4
+    },
+    {
+      "file": "crash-1-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_crash_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_crash_vl2_rr1.flac",
+          "sha256": "2eb8c5bddc510bb56a48f325d9cdcc54ea52d926645df9180b206a820638fce1",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_crash_vl2_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_crash_vl2_rr1.flac",
+          "sha256": "81d3627408aca7e8ef8fbfd5eb46566d70755d7b57fb543d9ee0549162a0ca9e",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 3.2
+    },
+    {
+      "file": "crash-1-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_crash_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_crash_vl2_rr2.flac",
+          "sha256": "501b67c566727274f6a9567816dbe94dd66624ee924e82c5fc84df2aa5743980",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_crash_vl2_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_crash_vl2_rr2.flac",
+          "sha256": "e67d9482f943d1d99ccbd7250d350b3df4d68eb19c42cd27abce4c14c58ca55d",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 1,
+      "seconds": 3.2
+    },
+    {
+      "file": "crash-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_crash_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_crash_vl3_rr1.flac",
+          "sha256": "28ac4dc5c130175555ef54009f9186e418a664c544c1f996058b5acd3b85ccb9",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_crash_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_crash_vl3_rr1.flac",
+          "sha256": "dac4d63573007d3df56b0073f4efe1e59862cad50c42d3fed6afc419144d5a48",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 3.2
+    },
+    {
+      "file": "crash-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_crash_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_crash_vl3_rr2.flac",
+          "sha256": "a9a13b01c169505ade812614fbd5b929006884ac2fa9fc13be2c72028ba1779f",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_crash_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_crash_vl3_rr2.flac",
+          "sha256": "6ad3fda040d35c3f94e1d57e15271ce738d20858030c9fcf3a1701304e786b35",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 0,
+      "layer": 2,
+      "seconds": 3.2
+    },
+    {
+      "file": "splash-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_crash_vl2_rr3.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_crash_vl2_rr3.flac",
+          "sha256": "7b13e87ff0f7d5eb925e4d452c90198386963ca4fb52b5b62a3cfa9bc43d22f7",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_crash_vl2_rr3.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_crash_vl2_rr3.flac",
+          "sha256": "2efdc5f75f3c040830ce2925c28239786e20eb4086e2ad7f4a1adeb37ec5c4c6",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 8,
+      "layer": 2,
+      "seconds": 1.1
+    },
+    {
+      "file": "splash-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_crash_vl3_rr3.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_crash_vl3_rr3.flac",
+          "sha256": "1edb996a8c4bd94407a1f1424945b39167223b11d497411c4026b33e69aa191c",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_crash_vl3_rr3.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_crash_vl3_rr3.flac",
+          "sha256": "81daf88d7b789e7c0a7fa4a9f2db7982bccd3aacb34a2088b79da68608a18b12",
+          "gain": 0.35
+        }
+      ],
+      "semitones": 8,
+      "layer": 2,
+      "seconds": 1.1
+    },
+    {
+      "file": "china-2-0.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_sizzle_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_sizzle_vl3_rr1.flac",
+          "sha256": "d49368ec3eae95879274f9dac6a1e93f64279f3bcc1c26deb04b3d0bb682bdf1",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_sizzle_vl3_rr1.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_sizzle_vl3_rr1.flac",
+          "sha256": "7d54f19ea14e00629b62c840a12a16452826ae6be4388a2f7066582840a996c6",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -2,
+      "layer": 2,
+      "seconds": 2.6
+    },
+    {
+      "file": "china-2-1.wav",
+      "sources": [
+        {
+          "source": "Samples/oh/crash/oh_crash_sizzle_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/oh/crash/oh_crash_sizzle_vl3_rr2.flac",
+          "sha256": "24f23ae8fc0920046135297c73754e3a722dc0b4b90ac28543fce9bb8a0df2c7",
+          "gain": 1
+        },
+        {
+          "source": "Samples/room/crash/room_crash_sizzle_vl3_rr2.flac",
+          "url": "https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/9f04cf9a734527edfbb0a4eee1f674e45bbf71bc/Samples/room/crash/room_crash_sizzle_vl3_rr2.flac",
+          "sha256": "c17784158b3c5e677b89c2da4367d1715bba6fa21f2e4483ddd5a5686f306324",
+          "gain": 0.35
+        }
+      ],
+      "semitones": -2,
+      "layer": 2,
+      "seconds": 2.6
+    }
+  ]
+}
