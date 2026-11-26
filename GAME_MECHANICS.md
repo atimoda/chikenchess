@@ -57,6 +57,7 @@
 | Pátio: luneta da Sniper (mirar com Atirar segurado: câmera avança e afasta, retícula mais longe, lupa na ponta da mira; números por arma) | [Luneta](docs/mechanics/patio/scope.md) |
 | Pátio: escalas dos instrumentos (primária, ciclo de quintas, tensão e resolução, Cordas soltas da harpa), troca de escala no inventário, editor de escalas e standby | [Escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) |
 | Pátio: notas giratórias do Hangdrum (nota que vai até a bola e gira nela, Giro na bola, viagem até a região, cada nota interrompe a anterior da mesma bola, online) | [Notas giratórias](docs/mechanics/patio/hang-spin.md) |
+| Pátio: arpejo ao arrastar a mira da Harpa de Lira (notas que flutuam em volta e saem com a nota principal, degraus nas folhas do leque, velocidade pela distância da mira, bolinhas na mira) | [Arpejo ao arrastar](docs/mechanics/patio/harp-arpeggio.md) |
 | Pátio: escala Estrela (12 notas numa estrela de hexágonos, eixo do trítono, realce da escala da zona, toque e arraste, RT analógico, dinâmica pelo movimento, acumulador no Correr: rajada, cascata, tercinas) | [Escala Estrela](docs/mechanics/patio/star-scale.md) |
 | Pátio: Próxima variação (escala, tambor), os checkboxes “Incluir variações” das trocas de item, tambores e pentes das armas (na mira e em volta), a mira espacial dos instrumentos e itens e a Granada de pente infinito | [Variações dos itens](docs/mechanics/patio/item-variations.md) |
 | Pátio: bicada, mira, arremesso e bonecos de treino | [Combate](docs/mechanics/patio/combat.md) |
@@ -148,6 +149,7 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: Guia de pássaros](docs/mechanics/patio/bird-guide.md) | 6 KB |
 | [Pátio: escalas dos instrumentos](docs/mechanics/patio/instrument-scales.md) | 28 KB |
 | [Pátio: notas giratórias do Hangdrum](docs/mechanics/patio/hang-spin.md) | 4 KB |
+| [Pátio: arpejo ao arrastar da Harpa de Lira](docs/mechanics/patio/harp-arpeggio.md) | 4 KB |
 | [Pátio: escala Estrela](docs/mechanics/patio/star-scale.md) | 7 KB |
 | [Pátio: Próxima variação, variações nas trocas e tambores](docs/mechanics/patio/item-variations.md) | 7 KB |
 | [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |

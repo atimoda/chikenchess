@@ -164,7 +164,7 @@ export type ItemDef = {
   stun: number // s an enemy stays still after a note (the beam keeps it still while it plays)
   strum: number // s between the notes of a chord (pellets)
   ringNotes: number // notes it lets out in a circle when it bursts (with a fuse or on impact)
-  gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
+  gliss: boolean // Carga em glissando (harp): dragging the aim while charging plays each note it goes into, floating round her until the main note flies with them; the aim's reach sets the main note's speed
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
   tremoloRange: number // semitones the tremolo can bend a note each way
   // what the tremolo follows ("Tremolo: reage a"): the aim turning inside a lane, or the aim moving along the
@@ -640,11 +640,12 @@ const TAMBOURINE: ItemDef = {
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
-// Harpa de Lira (Harpas) → bow: the charge is a glissando, the note rises with the charge and flies far and precise
+// Harpa de Lira (Harpas) → bow: dragging the aim while charging plays an arpeggio (lib/pigchicken/gliss-float.ts); the
+// note flies far and precise, as fast as the aim is far from her
 const HARP: ItemDef = {
   ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa de Lira', family: 'Harpas', reticle: 'bow', archery: false, pivotX: 0,
   damage: 40, size: 12, speed: 1500, drop: 700, recoilPush: 60, muzzleX: 21, muzzleY: -10, length: 30,
-  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
+  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.3,
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
 }

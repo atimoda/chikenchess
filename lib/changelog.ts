@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal',
     groups: [
       { title: 'Partida: Invite a friend', items: [
         'Novo botão Invite a friend no cabeçalho da partida, à esquerda do Bot level (no celular, um ícone de pessoa com +). Ele abre um lobby 1v1 privado com o kit da cidade, ou usa o lobby em que você já está.',
@@ -21,6 +21,14 @@ const RECENT = [
       { title: 'Partida: widgets', items: [
         'Os widgets da partida (Mixer, Piece Params, Piece Debug, Spectrogram, Debug e Bot Control) agora também mudam de tamanho puxando a borda de cima ou o canto superior direito, na diagonal. A base do widget fica parada enquanto ele cresce para cima.',
         'Ao redimensionar, o widget não passa mais da borda da janela, e o canto inferior esquerdo agora mantém o lado direito parado.',
+      ] },
+      { title: 'Pátio: Harpa de Lira', items: [
+        'Segurando Atirar, a harpa não sobe mais a escala sozinha: cada nota da escala por onde você arrasta a mira toca uma nota do arpejo (até 7 por carga). Segurar parado não toca nada.',
+        'Cada folha do leque agora tem 4 degraus, do centro para fora: arrastar para dentro ou para fora na mesma folha toca o arpejo daquela nota (1ª, 3ª, 5ª e 7ª da escala), sem mudar o ângulo da mira.',
+        'As notas do arpejo saem menores, ficam flutuando em volta da galinha e caem devagar; ao soltar Atirar, a nota principal sai e elas vão junto, quase paralelas a ela. Se a carga é interrompida (troca de item, golpe), elas somem.',
+        'Quanto mais longe a mira estiver da galinha dentro do leque, mais rápida sai a nota principal (e mais alta, pelo Volume pela distância, que agora vai de 30% a 100% na harpa).',
+        'Na mira, uma fileira de 7 bolinhas acima do horizonte mostra as notas do arpejo; cada nota tocada apaga a sua bolinha, que sobe e some. A carga volta a enchê-las.',
+        'Em Itens, o checkbox Carga em glissando passa a se chamar Arpejo ao arrastar a mira e vale para qualquer instrumento de carga em que for ligado. No online, os outros veem as notas do arpejo a partir do disparo.',
       ] },
     ],
   },
