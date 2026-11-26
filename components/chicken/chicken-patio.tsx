@@ -80,8 +80,11 @@ import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
 import { withSceneZone } from "@/lib/pigchicken/sound-zones"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
 import { MineGridPanel } from "@/components/pigchicken/mine-grid-panel"
-import { activatedMineGrid } from "@/lib/pigchicken/mine-activator"
-import { mineActivatorStore, resetMineActivators, setMineActivatorSaved } from "@/lib/pigchicken/mine-activator-store"
+import { activatedMineGrid, defaultMineActivator, nextMineActivatorOption } from "@/lib/pigchicken/mine-activator"
+import { mineActivatorStore, onMineActivatorSlam, resetMineActivators, setMineActivatorSaved } from "@/lib/pigchicken/mine-activator-store"
+import { MineActivatorOverlay } from "@/components/pigchicken/mine-activator-overlay"
+import { resetChessTables } from "@/lib/pigchicken/chess-table-store"
+import { PatioChess } from "@/components/pigchicken/patio-chess"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { patioGround, patioItemGlow, patioInventoryLimit, patioMineGrid, patioSceneMusic, patioScreens, patioTemple, patioWorldTop, patioZoom } from "@/lib/pigchicken/patio-settings"
 import { SCENE_W, WORLD_GROUND_Y, worldScenes } from "@/lib/pigchicken/world"
@@ -257,6 +260,12 @@ export function ChickenPatio() {
     others.forEach(p => { if (p.color) out[p.id] = p.color })
     return out
   }, [me, others])
+  // each local player's name: over a Mesa de chickenchess's stool while in its queue
+  const playerNames = useMemo(() => {
+    const out: Record<string, string> = { p1: meName ?? me?.name ?? "Player 1" }
+    others.forEach(p => { out[p.id] = p.name })
+    return out
+  }, [meName, me, others])
   // each local player's look: the avatar the Parquinho draws at the screen's edge when one of them leaves it
   const playerLooks = useMemo(() => {
     const out: Record<string, Record<string, string> | null> = { p1: draft.look }
@@ -826,11 +835,27 @@ export function ChickenPatio() {
   // An Ativador de grid de campo minado also turns it on, for everyone in the Pátio (mine-activator-store.ts): by
   // music with the blocks as Zonas sonoras, by damage without them.
   const savedGrid = patio?.layout.settings?.mineGrid
-  const activatorVia = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.via, () => null)
-  const activations = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.activations, () => 0)
-  const mineParams = useMemo(() => (activatorVia ? activatedMineGrid(savedGrid, activatorVia) : patioMineGrid({ mineGrid: savedGrid })), [savedGrid, activatorVia])
+  // (the grid an activator turned on shows after its count of 3 s, with that activator's block, gap and corners)
+  const activatorVia = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shownVia, () => null)
+  const activations = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shown, () => 0)
+  const activatorParams = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shownParams, () => null)
+  const mineParams = useMemo(() => (activatorVia ? activatedMineGrid(savedGrid, activatorVia, activatorParams) : patioMineGrid({ mineGrid: savedGrid })), [savedGrid, activatorVia, activatorParams])
   useEffect(() => { setMineActivatorSaved(!!savedGrid?.on) }, [savedGrid?.on])
+  // a slam on an activator's top steps its grid option there; whoever may edit the Pátio saves it in the layout (so
+  // the online Pátio's browsers turn on the same grid), for the others it is only a landing
+  const canEditRef = useRef(false)
+  canEditRef.current = !!patio && access.canEdit
+  useEffect(() => onMineActivatorSlam((id, option) => {
+    const layout = patioLayoutRef.current
+    if (!canEditRef.current || !layout) return
+    const el = layout.elements.find(e => e.id === id && e.kind === "mineactivator")
+    if (!el) return
+    const next = nextMineActivatorOption(el.params.mineActivator ?? defaultMineActivator(), option)
+    changeLayoutRef.current({ ...layout, elements: layout.elements.map(e => (e === el ? { ...e, params: { ...e.params, mineActivator: next } } : e)) })
+  }), [])
   useEffect(() => { resetMineActivators() }, [patioKey])
+  // the Mesas de chickenchess: no queue nor match of the last Pátio stays
+  useEffect(() => { resetChessTables() }, [patioKey])
   const mine = useMineGrid({ patioKey, params: mineParams, width: screens * SCENE_W, top: worldTop, ground: WORLD_GROUND_Y, portals: spawnPortals })
   // the layout plus the platforms and items the blocks were born with ("Spawn de itens"), for the game alone
   const gameElements = useMineItems(patio?.layout.elements ?? NO_ELEMENTS, mineParams, mine.grid?.geo)
@@ -1037,7 +1062,7 @@ export function ChickenPatio() {
       <HouseDoors engine={engine} extras={extraEngines} elements={patio?.layout.elements ?? NO_ELEMENTS} screens={screens} editing={editing} />
       <LocalChickens players={others} lead={engine} groundHeight={groundHeight} engines={extraEngines} />
       {mode === "online" && <OnlineChickens own={() => (engine ? [engine, ...others.map(p => extraEngines.current.get(p.id)).filter((e): e is ChickenEngine => !!e)] : [])} groundHeight={groundHeight} onSpeakers={setSpeakers} chicks={chickEngines} netChicks={netChicks} />}
-      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} looks={playerLooks} elements={gameElements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} stageDebug={patioLayers.layers.stageDebug} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
+      <ParquinhoPlay engine={engine} settings={pqWorld} worldTop={worldTop} worldRef={worldRef} groundHeight={groundHeight} lifted={lifted} spawnX={spawn.x + spawn.w / 2 + (spawn.kind === "entry" ? SPAWN_OFFSET : 0)} fgRef={fgRef} devices={myDevices} extras={extraEngines} chicks={chickEngines} netChicks={netChicks} colors={colors} names={playerNames} looks={playerLooks} elements={gameElements} trainingSpawns={trainingSpawns} inventoryLimit={patioInventoryLimit(patio?.layout.settings)} sceneZones={patio?.layout.settings?.sceneZones} sceneEdges={patio?.layout.settings?.sceneEdges} sceneMusic={patioSceneMusic(patio?.layout.settings)} scaleFan={patioLayers.layers.scale / 100} scaleFanSize={patioLayers.layers.scaleSize} scaleFanFade={patioLayers.layers.scaleFade / 100} scaleFanLines={patioLayers.layers.scaleLines / 100} scaleKeep={patioLayers.layers.scaleKeep} hitboxes={patioLayers.layers.hitboxes} stageDebug={patioLayers.layers.stageDebug} patioKey={patio ? patio.id ?? "default" : null} zoomRange={patioZoom(patio?.layout.settings)} itemGlow={patioItemGlow(patio?.layout.settings)} />
       {/* the trees in front of her (half see-through) */}
       <ParquinhoForeground screens={screens} fgRef={fgRef} elements={patio?.layout.elements ?? NO_ELEMENTS} editing={editing} sky={patio?.layout.settings?.sky} />
       {(editorOn || editActive) && patio && access.canEdit && <PatioEditor palette={editorOn} layout={patio.layout} screens={screens} onChange={changeLayout} onClose={() => setEditorOn(false)} active={editActive} onActive={setEditActive} onSpawnEnemy={(kind, x, y) => trainingSpawns.current.push({ kind, x, y })}
@@ -1050,8 +1075,16 @@ export function ChickenPatio() {
             const settings = { ...patio.layout.settings, sceneZones: withSceneZone(patio.layout.settings?.sceneZones, scene, zone) }
             if (!settings.sceneZones) delete settings.sceneZones
             changeLayout({ ...patio.layout, settings })
+          } : undefined}
+          onFall={patio && access.canEdit ? changes => {
+            const next = new Map(changes.map(c => [c.el.id, c.zone]))
+            changeLayout({ ...patio.layout, elements: patio.layout.elements.map(e => (next.has(e.id) ? { ...e, params: { ...e.params, zone: next.get(e.id)! } } : e)) })
           } : undefined} />
       )}
+      {/* a match of a Mesa de chickenchess, over the Pátio */}
+      <PatioChess />
+      {/* an Ativador de grid: the count before its grid and the flash of its options */}
+      <MineActivatorOverlay saved={savedGrid} world={{ width: screens * SCENE_W, top: worldTop, ground: WORLD_GROUND_Y }} />
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
         <PatioSavePanel

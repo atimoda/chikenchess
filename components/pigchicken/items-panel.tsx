@@ -10,7 +10,7 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, TROPHY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
 import { AngleKnob, ComboWindowBar } from "./combo-controls"
@@ -62,7 +62,7 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   tailBlow: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
   // a key only opens Baús: it has no effect, just its slap and its throw
-  ...Object.fromEntries(KEY_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
+  ...Object.fromEntries([...KEY_IDS, ...TROPHY_IDS].map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
   ...Object.fromEntries(MINE_ITEM_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
 }
 // Pontos of a staff (how she carries it, lib/pigchicken/staff-pose.ts); the other items have the pivot and the wings' points
@@ -157,7 +157,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Instrumentos fixos">{FIXED_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Chaves">{KEY_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <optgroup label="Chaves">{[...KEY_IDS, ...TROPHY_IDS].map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Grade de blocos">{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value={CAGE_IDS[0]}>Gaiolas</option>
         </StepSelect>

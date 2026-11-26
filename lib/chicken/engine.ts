@@ -123,6 +123,12 @@ export type ChickenEngine = {
   setGame: (game: ChickenGame) => void
   takeSeatLeft: () => boolean
   takeSlam: () => boolean
+  // she landed on something other than the main ground (a hard floor: a slam on a Mesa de chickenchess's top) holding
+  // Brood since the last call: where (screen px, her feet), said once
+  takeLandSlam: () => { x: number; y: number } | null
+  // she is falling holding Brood (Chocar) now: what she passes through on her way down may react (a floating Zona
+  // sonora's tags step to their next value)
+  diving: () => boolean
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
   // The wing turns with it: its tip follows the aim.
@@ -684,6 +690,10 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   let prevJump = false
   // she landed on the main ground holding Brood since takeSlam() last asked
   let slammed = false
+  // the same on anything else she lands on (only hard floors hold her while Brood is held): where, for takeLandSlam
+  let landSlam: { x: number; y: number } | null = null
+  // Brood as this step reads it (for land())
+  let stepD = false
   let shockingAirElapsed = 0
   let shockingAirLimitApplied = false
   let shockingAirReleaseTime = 0
@@ -711,6 +721,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     if (!Dk) S.broodOff = false
     S.prevD = Dk
     const D = (Dk && !S.broodOff) || S.broodLatch
+    stepD = D
     // Shocking jump: hold Jump with Brood to prepare, then release Jump to
     // launch. Releasing Brood first cancels; normal jumps still fire on press.
     let airChargeMultiplier = 1
@@ -1287,6 +1298,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       return
     }
     S.justLanded = !S.grounded
+    if (!S.grounded && sg && stepD && !S.held) landSlam = { x: S.x, y }
     S.y = y; S.vy = 0; S.grounded = true; S.jumpIndex = -1; S.squash = 1; S.airBoost = 0
     S.plat = sg ? sg.id : null; S.platAx = sg ? sg.anchorX : 0
     plantFeet(); sfx('land')
@@ -2675,6 +2687,8 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     takeSeatLeft() { const left = seatLeft; seatLeft = false; return left },
     // she fell onto the main ground holding Brood (a slam) since the last call: said once
     takeSlam() { const s = slammed; slammed = false; return s },
+    takeLandSlam() { const s = landSlam; landSlam = null; return s },
+    diving() { return !S.grounded && S.vy > 0 && stepD && !S.held },
     walkTo(point) {
       if (remote || portalEntry || S.held || S.cl) return
       const p = local(point.x, point.y), m = 40 * R.scale

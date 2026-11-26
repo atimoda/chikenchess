@@ -60,3 +60,25 @@ type SlamListener = (x: number) => void
 const listeners = new Set<SlamListener>()
 export function onZoneSlam(fn: SlamListener) { listeners.add(fn); return () => { listeners.delete(fn) } }
 export function zoneSlam(x: number) { listeners.forEach(fn => fn(x)) }
+
+// ---------- falling through a floating zone's tags ----------
+
+// A floating Zona sonora's tag in the world (the map's zones, not the scenes' strip): its zone (the element's id), its
+// key and its box. A player falling holding Chocar (engine.diving) through it steps it to its next value, like a slam
+// on the strip.
+export type FallTag = TagSpan & { zone: string; bottom: number }
+// the tags a fall from (x0, y0) to (x1, y1) (feet, world units) went through: the ones whose middle line it crossed
+// going down, within their ends (or SLAM_REACH from them)
+export function tagsCrossed(tags: FallTag[], x0: number, y0: number, x1: number, y1: number): FallTag[] {
+  if (y1 <= y0) return []
+  return tags.filter(t => {
+    const mid = (t.top + t.bottom) / 2
+    if (!(y0 < mid && y1 >= mid)) return false
+    const x = x0 + (x1 - x0) * ((mid - y0) / (y1 - y0))
+    return x >= t.l - SLAM_REACH && x <= t.r + SLAM_REACH
+  })
+}
+type FallListener = (x0: number, y0: number, x1: number, y1: number) => void
+const fallListeners = new Set<FallListener>()
+export function onZoneFall(fn: FallListener) { fallListeners.add(fn); return () => { fallListeners.delete(fn) } }
+export function zoneFall(x0: number, y0: number, x1: number, y1: number) { fallListeners.forEach(fn => fn(x0, y0, x1, y1)) }
