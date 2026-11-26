@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { LEGAL_PATHS } from '@/lib/site-info'
 import { useT } from '@/lib/i18n'
