@@ -5,6 +5,16 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.19.0',
+    date: '26/11/2026',
+    title: 'Prévia do tabuleiro ao passar o mouse no histórico de jogadas',
+    groups: [
+      { title: 'Partida: histórico de jogadas', items: [
+        'Passar o mouse sobre uma jogada do histórico, no rodapé, mostra logo acima um tabuleiro pequeno com a posição logo depois daquela jogada, com as casas de origem e destino destacadas e a jogada na cor da cidade. Vale na campanha, contra bot e no online. No celular, basta segurar o dedo na jogada.',
+      ] },
+    ],
+  },
+  {
     version: '2.18.0',
     date: '25/11/2026',
     title: 'Ajustes do jogo salvos no servidor e por Pátio, com Lock; agarrar a parede ao apertar Cima; música da Zona com botão de ligar, fundo mais sutil e dinâmico e estilos lo-fi; notas giratórias no Hangdrum; Catálogo único de aliens, almas e pássaros',
@@ -171,102 +181,6 @@ const RECENT = [
         'Num par de portais do mesmo Pátio, a câmera corre do portal de entrada até o de saída enquanto a galinha sai dele, em vez de pular de uma vez, mostrando onde fica um portal em relação ao outro.',
         'Ao trocar de Pátio e nos pares de portais, o boneco agora entra e sai no lugar certo do anel com qualquer zoom e com o Modo editor fixo em cima.',
         'Configurações do Pátio → Zoom: o ponto da direita agora vai até 800% (antes 400%), e a ponta esquerda, que afasta até o Pátio inteiro caber na tela, passou a se chamar Full Size.',
-      ] },
-    ],
-  },
-  {
-    version: '2.16.0',
-    date: '23/11/2026',
-    title: 'Pátio: Praça dos Portais como novo Pátio padrão, Sala de armas e instrumentos, Grid com loot e Arquipélago das Almas; prêmio para quem vence a música da Jukebox ou da Vitrola; Novo Pátio vazio por padrão; andar até o ponto clicado, golpe do clique direito e Golpe que só pega o item',
-    groups: [
-      { title: 'Pátio: Praça dos Portais e novos Pátios de exemplo', items: [
-        'Praça dos Portais: o novo Pátio padrão, um menu do jogo. Na praça ficam os portais para o Training room, a Sala de armas e instrumentos, o Grid com loot e o Arquipélago das Almas, e, em plataformas no alto, os portais para Campo minado, Vales e ilhas no céu e Pôr do sol com torres. O Pátio padrão de antes continua em Destaques.',
-        'Sala de armas e instrumentos: uma sala branca sem fim com todos os itens do jogo em prateleiras (armas, instrumentos, esportivos e magia, especiais e chaves, gaiolas), cada um voltando ao suporte 1 s depois de pego, os instrumentos fixos (Harpa, Bateria, Piano de cauda) e um estande de bonecos de treino no fim.',
-        'Grid com loot: a Grade de blocos ligada no mundo todo, sem bombas. Os blocos abrem com música e dano, um terço deles nasce com até 3 itens numa prateleira e um quinto toca um ritmo. Três blocos livres no chão para nascer, cada um com um portal de volta à praça.',
-        'Os três ficam em Destaques, com a conta admin como criador, e podem ser editados no Modo editor.',
-      ] },
-      { title: 'Pátio: Arquipélago das Almas', items: [
-        'Arquipélago das Almas: um Pátio de exemplo grande, inspirado em Deadlock, para até 13 players. Duas bases nas pontas (Galinheiro e Chiqueiro), cada uma com três portais de nascimento (no chão, na ilha do meio e na ilha alta), Gaiolas e uma loja de Baús que abrem com almas.',
-        'Três faixas de base a base: a de baixo no chão, sob os fios de uma linha de postes, e duas de ilhas flutuantes ligadas pelos fios das torres de energia (dá para andar por cima e se pendurar por baixo). Entre elas, ilhotas com trampolins, Baús que podem ter chave e botões de hordas.',
-        'Cada região tem seu bioma, sua música e seus itens: deserto com armas de fogo, vulcão com explosivos, floresta com arco e bumerangue, neve com sniper, jardins e feira no céu com instrumentos.',
-        'No centro, quatro lugares empilhados (arena, Coração, Santuário e o Altar da Lua, com a gravidade da Lua), cada um com uma Jukebox ou Vitrola que dá chave e itens especiais a quem vence a música, e Baús lendários que só abrem com chave.',
-      ] },
-      { title: 'Pátio: prêmio da Jukebox e da Vitrola', items: [
-        'Jukebox e Vitrola ganharam no Editar a lista “Prêmio ao vencer”, igual à dos itens do Baú (itens ou sorteios, cada um com a sua chance). Vencendo a música pedida por elas, os itens do prêmio pulam de cima delas. Vazia por padrão.',
-      ] },
-      { title: 'Pátio: Novo Pátio', items: [
-        'Playgrounds tem um botão só, “Novo Pátio”, que abre o gerador já em Empty (sem bioma). Basic biome continua como opção. O botão “Novo Pátio padrão” saiu. O Destino “Pátio novo” dos portais também começa em Empty.',
-      ] },
-      { title: 'Pátio: andar até o ponto clicado', items: [
-        'Agachar, Correr e Chocar não cancelam mais a caminhada até o ponto clicado (ou tocado, ou até o botão de um portal): ela continua indo para lá, agachada, correndo ou chocando. Esquerda, direita, olhar pra cima e Pular continuam parando a caminhada.',
-        'Ela para em cima do ponto clicado em vez de passar dele, inclusive correndo.',
-        'Soltar Chocar no meio da caminhada não a deixa parada chocando: ela segue andando. Com velocidades de chocar ou de agachar em 0 ela espera parada enquanto o botão está apertado e volta a andar ao soltar.',
-      ] },
-      { title: 'Pátio: golpe', items: [
-        'Clicar com o botão direito longe da galinha fazia ela andar até o ponto antes de golpear. Agora, se nesse instante um boneco (inimigo, boneco de treino ou outro player) ou um projétil já estiver encostando nela, o golpe sai na hora, sem andar.',
-        'Golpe em cima de um item (encostado na galinha) só pega o item, sem o movimento do golpe, quando não há inimigo ao alcance do golpe. Com um inimigo ao alcance, ou com o item só ao alcance do golpe, o golpe sai e pega o item como antes.',
-        'Pendurada de cabeça para baixo ou agarrada numa parede, a área em que ela pega itens gira junto com ela: pendurada sob uma caixa, não pega mais os itens nem abre os Baús que estão em cima dela.',
-        'A área de acerto dos itens no chão ficou 33% maior.',
-      ] },
-      { title: 'Pátio: cantos dos passarinhos', items: [
-        'Os passarinhos (o alien convertido e o morto-vivo que volta como pássaro) assobiam com gravações reais da ave deles (pardal, bem-te-vi, sabiá, canário-da-terra, coruja-buraqueira) no lugar do piu do sintetizador. A nota que eles lançam e que dá para rebater continua igual.',
-        'O piu do sintetizador saiu das notas das almas: cada ave toca as notas numa voz da família dela (flauta, harpa, sinos, pizzicato ou zumbido). Só o quero-quero e a saíra-sete-cores, que aparecem pouco, ainda piam.',
-        'As almas soltas cantam o canto real da ave delas com mais frequência (40% a cada volta do relógio, antes 15%, e podem repetir depois de 6 s, antes 12 s).',
-      ] },
-      { title: 'Pátio: desenho', items: [
-        'A Harpa da ilha do Pátio padrão e tudo o que fica no alto da tela (itens, almas, efeitos) não são mais cortados numa linha reta na base do cabeçalho: aparecem inteiros através da faixa do cabeçalho, como o cenário.',
-      ] },
-    ],
-  },
-  {
-    version: '2.15.0',
-    date: '20/11/2026',
-    title: 'Simulador de voz de galinha em chickenchess.com/chicken-voice-simulator; créditos completos no About; Piano de cauda e a escala Estrela: as 12 notas numa estrela de hexágonos, tocadas por clique e arraste, com dinâmica pelo movimento e o acumulador de notas no Correr; Pátio sem piscadas no celular ao andar e qualidade gráfica Baixíssima; Tela como mira no celular: tocar atira, anda até lá e pega o item; analógico de mira atira ao soltar e fica escondido por padrão; arrastar o botão Roda escolhe o item; nova posição dos botões de toque; Shift esquerdo sai do Pegar',
-    groups: [
-      { title: 'Simulador de voz de galinha', items: [
-        'Página nova em /chicken-voice-simulator: um sintetizador que simula o corpo da galinha (sacos aéreos, siringe, traqueia, laringe, garganta e bico) em vez de usar gravações. Ela cacareja, choca, canta de galo, pia como pintinho, dá alarme e chama para comer.',
-        'Botão Sing: a galinha canta a letra digitada numa melodia escolhida, transformando cada sílaba no que o bico, a laringe e a garganta dela conseguem fazer. Um controle passa de pintinho a galinha e a galo.',
-        'O endereço chickenchess.com/chicken-voice-simulator abre a página direto, sem ficar preso em redirecionamentos nem cair em página não encontrada.',
-      ] },
-      { title: 'About: créditos', items: [
-        'A aba Credits do About agora mostra quem fez o jogo (ideia original do xadrez musical: Thiago Atimoda e Rodrigo Zecchinelli; desenvolvimento: Thiago Atimoda, com link para o Instagram de cada um), quem criou o Pigchicken (gameplay, lore e história originais: Lila Zara e Uirá Fedatto Horta; arte visual inspirada nos desenhos da filha de Thiago), o Strudel como motor musical, o simulador de voz de galinha feito sobre o Chimera e as IAs usadas para programar, além das gravações de pássaros e do globo que já estavam lá.',
-      ] },
-      { title: 'Pátio: escala Estrela', items: [
-        'Escala nova, Estrela: as 12 notas espalhadas numa estrela de seis pontas feita de hexágonos. Cada direção que sai do meio é um intervalo (semitons, tons inteiros, terças menores, terças maiores, quartas); a metade direita sobe a partir do Ré e a esquerda é o espelho dela, descendo. O eixo do meio (o trítono) não toca. Com as pontas de 8 casas, a estrela cobre umas sete oitavas, a extensão de um piano.',
-        'As teclas pretas têm fundo escuro e as brancas fundo claro, sem outras cores. A estrela é suave (um pouco transparente) e as notas fora da escala da zona ficam bem mais transparentes; as da escala ganham uma borda dourada, sem sair do lugar: todas as notas continuam tocáveis. No painel Escalas, “Opacidade da estrela” e “Notas fora da escala” ajustam as duas transparências.',
-        'Clicar numa nota toca a nota; arrastar com o clique apertado toca cada nota em que encostar. No celular, sentada no Piano de cauda, cada dedo (até dois) toca e arrasta do mesmo jeito.',
-        'No gamepad, o analógico direito anda pelas notas pela profundidade da mira (a casa mirada fica contornada). Com o RT apertado, em qualquer profundidade, as notas tocam durante o arraste, como o mouse, e o volume segue o quanto o RT está apertado (em gamepads com gatilho analógico; nos outros, é só apertado ou solto).',
-        'Dinâmica pelo movimento: chocando parada ppp, chocando andando pp, agachada p, em pé mp, correndo mf, pulando f e voando (segurando Pular no ar) ff. A dinâmica aparece pequena embaixo da estrela.',
-        'Acumulador no Correr: as notas tocadas com Correr segurado ficam marcadas com um anel azul. Ao soltar Correr, elas saem todas juntas (rajada). Saindo da corrida para um slide (Agachar segurado ao soltar Correr), saem em cascata, na ordem em que foram tocadas, a uma fusa de distância. Saindo para o Chocar (Chocar segurado), saem em tercinas, e sair do Chocar interrompe as que faltam.',
-        'Qualquer instrumento pode ligar a Estrela em Itens → Música → Escalas. No painel Escalas, “Níveis de notas” (3 a 10, padrão 8) muda quantas notas a estrela tem sem mudar o tamanho dela: menos níveis, menos notas e casas maiores. Com 3 ainda estão todas as 12 notas, em umas três oitavas.',
-      ] },
-      { title: 'Pátio: Piano de cauda', items: [
-        'Instrumento fixo novo no Modo editor, grupo Música: o Piano de cauda, com banqueta. Pegar perto da banqueta senta; a escala dele é a Estrela, com som de piano novo (cordas marteladas, mais brilhante quanto mais forte).',
-        'Sentada no piano ela não se move, mas as binds valem como se ela se movesse: Chocar, Agachar, Correr e Pular mudam a dinâmica (Pular segurado vira ff) e o Correr acumula as notas. Por isso Pular e Correr não levantam do piano: levanta com Pegar (E no teclado), com Golpe (Y no gamepad) ou com o botão Sair do celular.',
-        'Sentada, a estrela fica sempre à vista e cabe inteira na tela.',
-      ] },
-      { title: 'Pátio: fundo e números da grade sem piscar ao andar', items: [
-        'No celular, o fundo (céu, montanhas, mata) e os números da Grade de blocos piscavam toda vez que a galinha andava. A cada passo o navegador redesenhava do zero o mundo, cada camada do fundo e as camadas da frente; agora elas só deslizam, já desenhadas. Vale em todos os Pátios, local e online, e no Modo editor.',
-        'Com zoom diferente de 100%, o Pátio continua redesenhando as camadas para ficarem nítidas naquele zoom, como antes.',
-      ] },
-      { title: 'Qualidade gráfica Baixíssima', items: [
-        'Novo nível em “Qualidade e efeitos gráficos” (Preferências e painel Camadas do Pátio): Baixíssima, para celulares lentos e antigos. É a Baixa sem o cenário que só enfeita: o fundo do Pátio fica só com o céu (sem sol, estrelas, lua, aurora, nuvens, montanhas, prédios, mata e neve) e saem as Árvores em que não se sobe, os Pinheiros, as Ameixeiras e o cenário em profundidade própria.',
-        'Fica tudo o que conta no jogo: chãos, plataformas, casas, Postes e Torres (os fios são pisáveis), árvores em que se sobe ou anda, o que bloqueia tiros ou notas, itens, bonecos, portais e a Grade de blocos. No Modo editor tudo aparece, para editar.',
-        'Só se escolhe à mão: “Ajustar automaticamente” continua parando na Baixa.',
-      ] },
-      { title: 'Controles de toque: a tela como mira', items: [
-        'Tocar no cenário mira e atira ali na hora, como o clique do mouse (com as mãos vazias, bica). Segurando o dedo, a mira segue o dedo e a arma continua atirando.',
-        'Um toque rápido também faz a galinha andar até lá, com ou sem item na asa. O analógico de movimento e as teclas têm prioridade: mexer neles para a caminhada.',
-        'Tocar no item do chão em que ela está encostada, ou no instrumento fixo ou no Baú ao lado dela, faz Pegar em vez de atirar ou andar. Vale também para o clique do mouse.',
-        'No painel Controles, em Touch Controls: “Tela serve como mira” (ligado por padrão) e “Exibir analógico touch de mira” (desligado por padrão).',
-      ] },
-      { title: 'Controles de toque: analógico de mira e posição dos botões', items: [
-        'Soltar o analógico de mira antes da borda (onde ele ainda não atira sozinho) dá um tiro na direção em que ele estava.',
-        'Botão Roda: segurando, abre a roda do inventário como antes; arrastando o dedo para um lado, escolhe o item daquele lado da roda, e soltar equipa. Dá para trocar de item com um dedo só, num gesto rápido.',
-        'Nova posição padrão dos botões: analógico de movimento um pouco mais para dentro e para cima, Pular, Chocar e Correr num arco baixo, Punch, Throw e Roda num arco acima deles, Pegar sobre a Roda e o analógico de mira acima do Punch. Botões que você já tinha movido ficam onde estão; “Padrão” em Editar posição dos botões volta todos para a nova posição.',
-      ] },
-      { title: 'Teclado', items: [
-        'Shift esquerdo deixa de ser tecla padrão de Usar / pegar item (continua em Correr). Quem ainda estava no padrão antigo (E + Shift esq.) perde o Shift esq. no Pegar; quem configurou outra combinação não muda.',
       ] },
     ],
   },
