@@ -7,13 +7,20 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito',
     groups: [
       { title: 'Partida: Invite a friend', items: [
         'Novo botão Invite a friend no cabeçalho da partida, à esquerda do Bot level (no celular, um ícone de pessoa com +). Ele abre um lobby 1v1 privado com o kit da cidade, ou usa o lobby em que você já está.',
         'No painel aparecem seus amigos do ChickenChess com Invite, que chama o amigo para esse lobby; o link do lobby com o botão de copiar; e embaixo os ícones de WhatsApp, Discord, Instagram, TikTok, Facebook e X para compartilhar direto.',
         'WhatsApp, Facebook e X abrem já com o link. Discord, Instagram e TikTok não têm página de compartilhar: no celular abre a lista de compartilhar do aparelho; no computador o link é copiado e o app abre para você colar.',
         'Quando o amigo entra no lobby, um aviso com som aparece durante a partida, com o botão Ir ao lobby.',
+      ] },
+      { title: 'Partida: cabeçalho', items: [
+        'O ano e a cidade e os seletores de tom, escala e harmonia ficam do mesmo tamanho do botão do globo e, ao passar o mouse, ficam como ele: fundo escuro, letra branca e brilho na cor da cidade em volta. Um seletor aberto continua aceso enquanto o menu está aberto. Vale na campanha e no online.',
+      ] },
+      { title: 'Partida: widgets', items: [
+        'Os widgets da partida (Mixer, Piece Params, Piece Debug, Spectrogram, Debug e Bot Control) agora também mudam de tamanho puxando a borda de cima ou o canto superior direito, na diagonal. A base do widget fica parada enquanto ele cresce para cima.',
+        'Ao redimensionar, o widget não passa mais da borda da janela, e o canto inferior esquerdo agora mantém o lado direito parado.',
       ] },
     ],
   },
@@ -184,50 +191,6 @@ const RECENT = [
         'Num par de portais do mesmo Pátio, a câmera corre do portal de entrada até o de saída enquanto a galinha sai dele, em vez de pular de uma vez, mostrando onde fica um portal em relação ao outro.',
         'Ao trocar de Pátio e nos pares de portais, o boneco agora entra e sai no lugar certo do anel com qualquer zoom e com o Modo editor fixo em cima.',
         'Configurações do Pátio → Zoom: o ponto da direita agora vai até 800% (antes 400%), e a ponta esquerda, que afasta até o Pátio inteiro caber na tela, passou a se chamar Full Size.',
-      ] },
-    ],
-  },
-  {
-    version: '2.16.0',
-    date: '23/11/2026',
-    title: 'Pátio: Praça dos Portais como novo Pátio padrão, Sala de armas e instrumentos, Grid com loot e Arquipélago das Almas; prêmio para quem vence a música da Jukebox ou da Vitrola; Novo Pátio vazio por padrão; andar até o ponto clicado, golpe do clique direito e Golpe que só pega o item',
-    groups: [
-      { title: 'Pátio: Praça dos Portais e novos Pátios de exemplo', items: [
-        'Praça dos Portais: o novo Pátio padrão, um menu do jogo. Na praça ficam os portais para o Training room, a Sala de armas e instrumentos, o Grid com loot e o Arquipélago das Almas, e, em plataformas no alto, os portais para Campo minado, Vales e ilhas no céu e Pôr do sol com torres. O Pátio padrão de antes continua em Destaques.',
-        'Sala de armas e instrumentos: uma sala branca sem fim com todos os itens do jogo em prateleiras (armas, instrumentos, esportivos e magia, especiais e chaves, gaiolas), cada um voltando ao suporte 1 s depois de pego, os instrumentos fixos (Harpa, Bateria, Piano de cauda) e um estande de bonecos de treino no fim.',
-        'Grid com loot: a Grade de blocos ligada no mundo todo, sem bombas. Os blocos abrem com música e dano, um terço deles nasce com até 3 itens numa prateleira e um quinto toca um ritmo. Três blocos livres no chão para nascer, cada um com um portal de volta à praça.',
-        'Os três ficam em Destaques, com a conta admin como criador, e podem ser editados no Modo editor.',
-      ] },
-      { title: 'Pátio: Arquipélago das Almas', items: [
-        'Arquipélago das Almas: um Pátio de exemplo grande, inspirado em Deadlock, para até 13 players. Duas bases nas pontas (Galinheiro e Chiqueiro), cada uma com três portais de nascimento (no chão, na ilha do meio e na ilha alta), Gaiolas e uma loja de Baús que abrem com almas.',
-        'Três faixas de base a base: a de baixo no chão, sob os fios de uma linha de postes, e duas de ilhas flutuantes ligadas pelos fios das torres de energia (dá para andar por cima e se pendurar por baixo). Entre elas, ilhotas com trampolins, Baús que podem ter chave e botões de hordas.',
-        'Cada região tem seu bioma, sua música e seus itens: deserto com armas de fogo, vulcão com explosivos, floresta com arco e bumerangue, neve com sniper, jardins e feira no céu com instrumentos.',
-        'No centro, quatro lugares empilhados (arena, Coração, Santuário e o Altar da Lua, com a gravidade da Lua), cada um com uma Jukebox ou Vitrola que dá chave e itens especiais a quem vence a música, e Baús lendários que só abrem com chave.',
-      ] },
-      { title: 'Pátio: prêmio da Jukebox e da Vitrola', items: [
-        'Jukebox e Vitrola ganharam no Editar a lista “Prêmio ao vencer”, igual à dos itens do Baú (itens ou sorteios, cada um com a sua chance). Vencendo a música pedida por elas, os itens do prêmio pulam de cima delas. Vazia por padrão.',
-      ] },
-      { title: 'Pátio: Novo Pátio', items: [
-        'Playgrounds tem um botão só, “Novo Pátio”, que abre o gerador já em Empty (sem bioma). Basic biome continua como opção. O botão “Novo Pátio padrão” saiu. O Destino “Pátio novo” dos portais também começa em Empty.',
-      ] },
-      { title: 'Pátio: andar até o ponto clicado', items: [
-        'Agachar, Correr e Chocar não cancelam mais a caminhada até o ponto clicado (ou tocado, ou até o botão de um portal): ela continua indo para lá, agachada, correndo ou chocando. Esquerda, direita, olhar pra cima e Pular continuam parando a caminhada.',
-        'Ela para em cima do ponto clicado em vez de passar dele, inclusive correndo.',
-        'Soltar Chocar no meio da caminhada não a deixa parada chocando: ela segue andando. Com velocidades de chocar ou de agachar em 0 ela espera parada enquanto o botão está apertado e volta a andar ao soltar.',
-      ] },
-      { title: 'Pátio: golpe', items: [
-        'Clicar com o botão direito longe da galinha fazia ela andar até o ponto antes de golpear. Agora, se nesse instante um boneco (inimigo, boneco de treino ou outro player) ou um projétil já estiver encostando nela, o golpe sai na hora, sem andar.',
-        'Golpe em cima de um item (encostado na galinha) só pega o item, sem o movimento do golpe, quando não há inimigo ao alcance do golpe. Com um inimigo ao alcance, ou com o item só ao alcance do golpe, o golpe sai e pega o item como antes.',
-        'Pendurada de cabeça para baixo ou agarrada numa parede, a área em que ela pega itens gira junto com ela: pendurada sob uma caixa, não pega mais os itens nem abre os Baús que estão em cima dela.',
-        'A área de acerto dos itens no chão ficou 33% maior.',
-      ] },
-      { title: 'Pátio: cantos dos passarinhos', items: [
-        'Os passarinhos (o alien convertido e o morto-vivo que volta como pássaro) assobiam com gravações reais da ave deles (pardal, bem-te-vi, sabiá, canário-da-terra, coruja-buraqueira) no lugar do piu do sintetizador. A nota que eles lançam e que dá para rebater continua igual.',
-        'O piu do sintetizador saiu das notas das almas: cada ave toca as notas numa voz da família dela (flauta, harpa, sinos, pizzicato ou zumbido). Só o quero-quero e a saíra-sete-cores, que aparecem pouco, ainda piam.',
-        'As almas soltas cantam o canto real da ave delas com mais frequência (40% a cada volta do relógio, antes 15%, e podem repetir depois de 6 s, antes 12 s).',
-      ] },
-      { title: 'Pátio: desenho', items: [
-        'A Harpa da ilha do Pátio padrão e tudo o que fica no alto da tela (itens, almas, efeitos) não são mais cortados numa linha reta na base do cabeçalho: aparecem inteiros através da faixa do cabeçalho, como o cenário.',
       ] },
     ],
   },

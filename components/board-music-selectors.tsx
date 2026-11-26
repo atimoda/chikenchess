@@ -20,12 +20,20 @@ interface BoardMusicSelectorsProps {
   setOpenDropdown: React.Dispatch<React.SetStateAction<BoardDropdownId>>
 }
 
+/**
+ * Header chips of the match (year/city title and the tone, scale and harmony
+ * selectors) share the globe button's size and hover look: the same dark fill
+ * and border, white letters and a glow in the city color. An open dropdown keeps that look while its menu is shown.
+ * Expects `--city-neon` on the element or an ancestor.
+ */
+export const BOARD_HEADER_CHIP_CLASS = "pointer-events-auto inline-flex h-9 max-w-full items-center gap-1 rounded-md border border-transparent bg-transparent px-2.5 leading-none text-[var(--city-neon)] transition-all hover:border-input hover:bg-input/50 hover:text-white hover:shadow-[0_0_10px_var(--city-neon)] data-[state=open]:border-input data-[state=open]:bg-input/50 data-[state=open]:text-white data-[state=open]:shadow-[0_0_10px_var(--city-neon)] focus-visible:border-[var(--city-neon)] focus-visible:outline-none disabled:pointer-events-none"
+
 export type BoardDropdownId = "difficulty" | "root" | "scale" | "harmony" | null
 
 export function BoardMusicSelectors({ disabled = false, cityColor, tonality, baseTonality, currentScaleLabel, onTonalityChange, harmony, onHarmonyChange, openDropdown, setOpenDropdown }: BoardMusicSelectorsProps) {
-  const triggerClass = "pointer-events-auto inline-flex h-7 w-auto max-w-full items-center gap-1 rounded border border-transparent bg-transparent px-0 leading-none transition-colors hover:border-white/20 focus-visible:border-white/30 focus-visible:outline-none"
+  const triggerClass = BOARD_HEADER_CHIP_CLASS
   const triggerStyle = {
-    color: cityColor,
+    "--city-neon": cityColor,
     fontFamily: "inherit",
     fontSize: "inherit",
     fontWeight: "inherit",

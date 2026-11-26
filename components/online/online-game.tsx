@@ -81,6 +81,7 @@ import {
   GlobeGridIcon,
 } from "../game-presentation";
 import {
+  BOARD_HEADER_CHIP_CLASS,
   BoardMusicSelectors,
   type BoardDropdownId,
 } from "../board-music-selectors";
@@ -1418,7 +1419,7 @@ export function OnlineMatchBoard({
         </Button>
         <div
           className={cn(
-            "col-span-2 row-start-2 md:col-auto md:row-auto flex min-w-0 flex-wrap items-center gap-x-2 md:gap-x-3 gap-y-1 text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:text-sm pointer-events-auto transition-opacity duration-500",
+            "col-span-2 row-start-2 md:col-auto md:row-auto flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[11px] font-semibold leading-none tracking-[0.025em] sm:text-xs md:text-sm pointer-events-auto transition-opacity duration-500",
             intro ? "opacity-0 pointer-events-none" : "opacity-100",
           )}
           style={{
@@ -1429,9 +1430,11 @@ export function OnlineMatchBoard({
         >
           <h1
             aria-label={`${city.year} ${city.name.toUpperCase()}`}
-            className="max-w-full"
+            className={cn(BOARD_HEADER_CHIP_CLASS, "min-w-0")}
           >
-            {city.year} {city.name.toUpperCase()}
+            <span className="truncate">
+              {city.year} {city.name.toUpperCase()}
+            </span>
           </h1>
           {music.tonality && music.baseTonality && music.harmony && (
             <BoardMusicSelectors

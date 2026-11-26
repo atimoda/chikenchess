@@ -8,6 +8,7 @@ import { cn, stableHtml } from "@/lib/utils"
 import { Eye, EyeOff, LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
+import { useWidgetResize } from "@/hooks/use-widget-resize"
 import { MusicPlaybackViewport } from "./music-playback"
 import { KnobPanelTitle, NoteParamsHostContext, type NoteParamsSelection } from "./music-note-params"
 import type { DuckSource } from "./music-sound-design"
@@ -96,6 +97,13 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   ...props
 }, ref) => {
   const isStatic = props.style?.position === 'static'
+  const resize = useWidgetResize({
+    isStatic,
+    left: false,
+    position,
+    onPositionChange,
+    handleStyles: { bottom: { zIndex: 90, height: 10, bottom: 0, cursor: 'ns-resize' }, right: { zIndex: 90, width: 10, right: -5, cursor: 'ew-resize' }, bottomRight: { zIndex: 90, width: 16, height: 16, right: -6, bottom: -6, cursor: 'nwse-resize' } },
+  })
   const contentViewportRef = useRef<HTMLDivElement>(null)
   const knobGridRef = useRef<HTMLDivElement>(null)
   const [midiVisualUpdatesEnabled, setMidiVisualUpdatesEnabled] = useState(true)
@@ -172,12 +180,10 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
         // Free resize: wider shows more knobs per row; the content scrolls inside when the panel is short.
         minHeight={isStatic ? 'auto' : MIN_PANEL_HEIGHT}
         maxHeight={isStatic ? undefined : '90vh'}
-        enable={isStatic ? false : { top: false, right: true, bottom: true, left: false, topRight: false, bottomRight: true, bottomLeft: false, topLeft: false }}
-        handleStyles={{ bottom: { zIndex: 90, height: 10, bottom: 0, cursor: 'ns-resize' }, right: { zIndex: 90, width: 10, right: -5, cursor: 'ew-resize' }, bottomRight: { zIndex: 90, width: 16, height: 16, right: -6, bottom: -6, cursor: 'nwse-resize' } }}
+        {...resize}
         handleWrapperStyle={{ zIndex: 90 }}
-        handleComponent={{ bottom: <div className="pointer-events-none absolute bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-white/35" />, right: <div data-no-drag="true" className="h-full w-full" />, bottomRight: <div data-no-drag="true" className="h-full w-full" /> }}
+        handleComponent={{ bottom: <div className="pointer-events-none absolute bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-white/35" />, right: <div data-no-drag="true" className="h-full w-full" />, bottomRight: <div data-no-drag="true" className="h-full w-full" />, top: <div data-no-drag="true" className="h-full w-full" />, topRight: <div data-no-drag="true" className="h-full w-full" /> }}
         className={cn('relative', isStatic && 'w-full')}
-        onResizeStart={event => event.stopPropagation()}
       >
       {/* Widget Background/Box - z-50 */}
       <div 
