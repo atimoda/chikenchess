@@ -5,6 +5,7 @@ import { memo, useRef, forwardRef } from "react"
 import { Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
+import { useWidgetResize } from "@/hooks/use-widget-resize"
 import { cn } from "@/lib/utils"
 import type { Instrument, MovementMapping, MusicPiece } from "@/lib/music/model"
 import { DEFAULT_MOVEMENT } from "@/lib/music/model"
@@ -111,6 +112,7 @@ export const PieceDebugWidget = forwardRef<HTMLDivElement, PieceDebugWidgetProps
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
   const pieceDebugTop = Math.max(0, position?.y ?? 0)
+  const resize = useWidgetResize({ isStatic, left: false, position, onPositionChange, handleStyles: { bottom: { zIndex: 90, height: 10, bottom: 0, cursor: 'ns-resize' } } })
 
   return <Draggable
     data-widget="piece-debug"
@@ -130,12 +132,10 @@ export const PieceDebugWidget = forwardRef<HTMLDivElement, PieceDebugWidgetProps
       maxWidth={isStatic ? '100%' : undefined}
       minHeight={isStatic ? 'auto' : 160}
       maxHeight={isStatic ? undefined : `max(160px, min(90vh, calc(100vh - ${pieceDebugTop + 12}px)))`}
-      enable={isStatic ? false : { top: false, right: true, bottom: true, left: false, topRight: false, bottomRight: true, bottomLeft: false, topLeft: false }}
-      handleStyles={{ bottom: { zIndex: 90, height: 10, bottom: 0, cursor: 'ns-resize' } }}
+      {...resize}
       handleWrapperStyle={{ zIndex: 90 }}
       handleComponent={{ bottom: <div className="pointer-events-none absolute bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-white/35" /> }}
       className={cn('relative', isStatic && 'w-full')}
-      onResizeStart={event => event.stopPropagation()}
     >
       <div className="absolute inset-0 z-50 rounded-md border border-white/30 bg-black/80 opacity-100 backdrop-blur-md" style={{ boxShadow: selectedSquare ? `0 0 20px ${cityColor}40` : 'none' }} />
       <button
