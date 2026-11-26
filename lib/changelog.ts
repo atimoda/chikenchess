@@ -65,6 +65,10 @@ const RECENT = [
         'O painel Players agora abre pelo botão Local/Lobby do cabeçalho, que mostra entre parênteses quantos players há no lobby, como “Lobby (3)”. As setas de lobby anterior e próximo viraram dois botões separados, um de cada lado. Saiu o botão com o ícone de pessoas.',
         'Histórico do chat: sem fundo cinza, só com as últimas 10 mensagens. Cada mensagem some 5 segundos depois de chegar e todas voltam ao passar o mouse por cima (ou com o campo de escrever aberto). O histórico não atrapalha mais a mira: o mouse passa direto para o jogo, menos numa pequena alça à esquerda da última mensagem, que arrasta o chat para outro lugar da tela (a posição fica guardada).',
       ] },
+      { title: 'Qualidade automática sem prender em 30 FPS', items: [
+        'Quando o “Ajustar automaticamente” baixa a qualidade gráfica ou sonora, a redução vale só até recarregar ou fechar a página; ao abrir de novo, o jogo volta ao nível escolhido à mão ou ao do aparelho. Antes, um engasgo passageiro deixava o computador preso em Baixa, a 30 FPS, para sempre.',
+        'Quem já tinha ficado preso em Baixa pelo ajuste automático volta ao nível normal na próxima abertura. Níveis escolhidos à mão com a caixa desligada, e a Baixíssima, continuam como estavam.',
+      ] },
     ],
   },
   {

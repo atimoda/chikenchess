@@ -1,6 +1,7 @@
 // "Qualidade e efeitos gráficos" and "Qualidade e efeitos sonoros": two levels kept per browser, first taken
 // from the device, changed by hand in Preferências (the Pátio: Camadas), and lowered by quality-monitor.ts
-// while "Ajustar automaticamente" is on. What each level changes is listed in docs/mechanics/performance.md.
+// while "Ajustar automaticamente" is on. Only the levels chosen by hand are saved: the monitor's steps down last
+// for this visit, so one slow moment never leaves a capable device at Baixa (30 FPS) for good. What each level changes is listed in docs/mechanics/performance.md.
 import { isLiteDevice } from './performance'
 
 export type QualityLevel = 'high' | 'medium' | 'low'
@@ -16,7 +17,9 @@ export const GRAPHICS_LEVELS: GraphicsLevel[] = ['high', 'medium', 'low', 'lowes
 export const QUALITY_LABELS: Record<GraphicsLevel, string> = { high: 'Alta', medium: 'Média', low: 'Baixa', lowest: 'Baixíssima' }
 /** The levels each selector offers. */
 export const qualityLevels = (kind: QualityKind): GraphicsLevel[] => kind === 'graphics' ? GRAPHICS_LEVELS : QUALITY_LEVELS
-const KEY = 'chickenchess:quality:v1'
+const KEY = 'chickenchess:quality:v2'
+// v1 also saved the monitor's steps down, mixed with the levels chosen by hand.
+const LEGACY_KEY = 'chickenchess:quality:v1'
 const SERVER: QualityState = { graphics: 'high', sound: 'high', auto: true }
 const isLevel = (value: unknown): value is QualityLevel => value === 'high' || value === 'medium' || value === 'low'
 const isGraphicsLevel = (value: unknown): value is GraphicsLevel => isLevel(value) || value === 'lowest'
@@ -40,17 +43,47 @@ export function resolveQuality(saved: unknown, detected = detectQuality()): Qual
   }
 }
 
+/** What v1 saved that is surely a choice by hand: every level while auto was off, otherwise only Baixíssima
+ * (the monitor never steps into it). Other levels saved with auto on may have been the monitor's, so they go. */
+export function fromLegacy(legacy: unknown): Partial<QualityState> {
+  const record = legacy && typeof legacy === 'object' ? legacy as Record<string, unknown> : {}
+  if (record.auto === false) {
+    const kept: Partial<QualityState> = { auto: false }
+    if (isGraphicsLevel(record.graphics)) kept.graphics = record.graphics
+    if (isLevel(record.sound)) kept.sound = record.sound
+    return kept
+  }
+  return record.graphics === 'lowest' ? { graphics: 'lowest' } : {}
+}
+
 /** One level down, or the same level when it is already the lowest the monitor reaches (Baixa; Baixíssima stays). */
 export const lowerLevel = (level: GraphicsLevel): GraphicsLevel => level === 'high' ? 'medium' : level === 'lowest' ? 'lowest' : 'low'
 
 let state: QualityState | undefined
 let saved: Partial<QualityState> = {}
+// The monitor's steps down in this visit, over the saved levels; never written to the storage.
+let lowered: { graphics?: GraphicsLevel; sound?: QualityLevel } = {}
 const listeners = new Set<() => void>()
 
+function resolve(): QualityState {
+  const next = resolveQuality(saved)
+  if (lowered.graphics) next.graphics = lowered.graphics
+  if (lowered.sound) next.sound = lowered.sound
+  return next
+}
+
 function read(): QualityState {
-  try { saved = JSON.parse(window.localStorage.getItem(KEY) ?? 'null') ?? {} } catch { saved = {} }
+  try {
+    const raw = window.localStorage.getItem(KEY)
+    if (raw !== null) saved = JSON.parse(raw) ?? {}
+    else {
+      saved = fromLegacy(JSON.parse(window.localStorage.getItem(LEGACY_KEY) ?? 'null'))
+      window.localStorage.setItem(KEY, JSON.stringify(saved))
+      window.localStorage.removeItem(LEGACY_KEY)
+    }
+  } catch { saved = {} }
   if (!saved || typeof saved !== 'object') saved = {}
-  return resolveQuality(saved)
+  return resolve()
 }
 
 function reflect(next: QualityState) {
@@ -69,7 +102,7 @@ function publish(next: QualityState) {
 function store(patch: Partial<QualityState>) {
   saved = { ...saved, ...patch }
   try { window.localStorage.setItem(KEY, JSON.stringify(saved)) } catch { /* The choice still holds for this visit. */ }
-  publish(resolveQuality(saved))
+  publish(resolve())
 }
 
 export const getServerQuality = () => SERVER
@@ -89,28 +122,33 @@ export function subscribeQuality(listener: () => void) {
 /** The player's own choice. It stays until changed again; the monitor may still lower it while auto is on. */
 export function setQualityLevel(kind: QualityKind, level: GraphicsLevel) {
   getQuality()
+  delete lowered[kind]
   store({ [kind]: kind === 'sound' && level === 'lowest' ? 'low' : level })
 }
 
-/** Turning "Ajustar automaticamente" on starts again from the device's own levels. */
+/** Turning "Ajustar automaticamente" on starts again from the device's own levels; turning it off keeps the
+ * levels in use, the monitor's steps of this visit included, as if chosen by hand. */
 export function setQualityAuto(auto: boolean) {
   getQuality()
-  if (!auto) { store({ auto: false }); return }
+  if (!auto) { const kept = lowered; lowered = {}; store({ ...kept, auto: false }); return }
   saved = { auto: true }
+  lowered = {}
   try { window.localStorage.setItem(KEY, JSON.stringify(saved)) } catch { /* Session only. */ }
-  publish(resolveQuality(saved))
+  publish(resolve())
 }
 
-/** The monitor's step down. False when that level is already the lowest. */
+/** The monitor's step down, for this visit only. False when that level is already the lowest. */
 export function lowerQuality(kind: QualityKind) {
   const current = getQuality()[kind], next = lowerLevel(current)
   if (next === current) return false
-  store({ [kind]: next })
+  lowered = { ...lowered, [kind]: next }
+  publish(resolve())
   return true
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener?.('storage', event => {
-    if (event.key === KEY || event.key === null) publish(read())
+    // another tab changed the levels by hand: they win over this visit's steps down
+    if (event.key === KEY || event.key === null) { lowered = {}; publish(read()) }
   })
 }

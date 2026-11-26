@@ -40,7 +40,7 @@ test('Baixíssima is kept, the monitor never steps into it and it lowers the sou
   await withBrowser(memory => {
     quality.setQualityLevel('graphics', 'lowest')
     assert.equal(quality.graphicsQuality(), 'lowest')
-    assert.deepEqual(JSON.parse(memory.get('chickenchess:quality:v1')), { auto: true, graphics: 'lowest' })
+    assert.deepEqual(JSON.parse(memory.get('chickenchess:quality:v2')), { auto: true, graphics: 'lowest' })
     assert.equal(quality.lowerQuality('graphics'), false)
     assert.equal(monitor.lowerFor('graphics'), 'sound')
     assert.equal(quality.soundQuality(), 'medium')
@@ -60,7 +60,7 @@ test('manual levels persist, automatic steps stop at the lowest and turning auto
     quality.setQualityLevel('graphics', 'low')
     assert.equal(quality.getQuality().graphics, 'low')
     assert.equal(quality.getQuality().auto, true, 'a manual level leaves the automatic adjustment on')
-    assert.deepEqual(JSON.parse(memory.get('chickenchess:quality:v1')), { auto: true, graphics: 'low' })
+    assert.deepEqual(JSON.parse(memory.get('chickenchess:quality:v2')), { auto: true, graphics: 'low' })
     assert.equal(quality.lowerQuality('graphics'), false)
     assert.equal(quality.lowerQuality('sound'), true)
     assert.equal(quality.soundQuality(), 'medium')
@@ -71,6 +71,24 @@ test('manual levels persist, automatic steps stop at the lowest and turning auto
     assert.equal(changes, 4)
     stop()
   })
+})
+
+test('the monitor steps down only for this visit and v1 keeps only what was surely chosen by hand', async () => {
+  await withBrowser(memory => {
+    assert.equal(quality.lowerQuality('graphics'), true)
+    assert.equal(quality.lowerQuality('graphics'), true)
+    assert.equal(quality.graphicsQuality(), 'low')
+    assert.deepEqual(JSON.parse(memory.get('chickenchess:quality:v2')), { auto: true }, 'nothing of the steps down is saved')
+    quality.setQualityLevel('graphics', 'high')
+    assert.equal(quality.graphicsQuality(), 'high', 'a level by hand replaces the step down')
+    assert.equal(quality.lowerQuality('sound'), true)
+    quality.setQualityAuto(false)
+    assert.deepEqual(JSON.parse(memory.get('chickenchess:quality:v2')), { auto: false, graphics: 'high', sound: 'medium' }, 'turning auto off keeps the levels in use')
+  })
+  assert.deepEqual(quality.fromLegacy({ auto: true, graphics: 'low', sound: 'medium' }), {})
+  assert.deepEqual(quality.fromLegacy({ graphics: 'lowest', sound: 'low' }), { graphics: 'lowest' })
+  assert.deepEqual(quality.fromLegacy({ auto: false, graphics: 'low', sound: 'medium' }), { auto: false, graphics: 'low', sound: 'medium' })
+  assert.deepEqual(quality.fromLegacy(null), {})
 })
 
 test('the monitor lowers graphics after sustained slow frames and sound after repeated late audio', () => {
