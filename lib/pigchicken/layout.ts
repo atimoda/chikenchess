@@ -22,6 +22,7 @@ import { VILLAGE_GROUND_ID, defaultSurface, fitSurface, normalizeSurface, polygo
 import { defaultPower, normalizeDepth, normalizePower, type PowerParams } from './power-lines'
 import { BACKDROP_DEPTH, isBackdropLayer, type BackdropLayerId } from './backdrop-layers'
 import { MINE_ACTIVATOR_BOX, defaultMineActivator, normalizeMineActivator, type MineActivatorParams } from './mine-activator'
+import { CHESS_TABLE_BOX, chessTop, defaultChessTable, normalizeChessTable, type ChessTableParams } from './chess-table'
 import { GONG_BOX, JUKEBOX_BOX, RESET_STONE_BOX, TEMPLE_SPOTS, VITROLA_BOX, defaultGong, defaultPlayer, normalizeGong, normalizePlayer, type GongParams, type PlayerParams } from './gong'
 import { BALUSTRADE_FLOOR, BALUSTRADE_SIZE, BUILDING_SIZE, buildingSurfaces, defaultBalustrade, defaultBuilding, normalizeBalustrade, normalizeBuilding, type BalustradeParams, type BuildingParams } from './buildings'
 import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from './chalkboard'
@@ -65,7 +66,7 @@ export const LAYER_HINTS: Record<LayoutLayer, string> = {
   frontGhost: 'À frente da galinha, meio transparente',
 }
 
-export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'grandpiano', 'building', 'balustrade', 'resetstone', 'mineactivator'] as const
+export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'grandpiano', 'building', 'balustrade', 'resetstone', 'mineactivator', 'chesstable'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
@@ -105,6 +106,7 @@ export type ElementParams = {
   chalkboard?: ChalkboardParams // Quadro de lousa: its text and the ghost's move
   chest?: ChestParams // Baú: what opens it, what is inside, its rarity
   mineActivator?: MineActivatorParams // Ativador de grid de campo minado: the music and the damage that fill it
+  chessTable?: ChessTableParams // Mesa de chickenchess: the year and city of its matches, how far its music is heard
 }
 
 export type LayoutElement = {
@@ -195,9 +197,11 @@ export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
   grandpiano: { label: 'Piano de cauda', group: 'Música', ...GRANDPIANO_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GRANDPIANO_BOX.w, minH: GRANDPIANO_BOX.h },
   // a big blue button that turns the Grade de blocos on once music or damage fills it (lib/pigchicken/mine-activator.ts)
   mineactivator: { label: 'Ativador de grid de campo minado', group: 'Grade de blocos', ...MINE_ACTIVATOR_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: MINE_ACTIVATOR_BOX.w, minH: MINE_ACTIVATOR_BOX.h },
+  // a little table with a chickenchess board and a stool at each side: a match over the Pátio (lib/pigchicken/chess-table.ts)
+  chesstable: { label: 'Mesa de chickenchess', group: 'Jogos', ...CHESS_TABLE_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: CHESS_TABLE_BOX.w, minH: CHESS_TABLE_BOX.h },
 }
 // the Gongo, the Jukebox and the Baú keep their art's size
-const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'vitrola' || kind === 'resetstone' || kind === 'chest' || kind === 'mineactivator' || isFixedKind(kind)
+const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'vitrola' || kind === 'resetstone' || kind === 'chest' || kind === 'mineactivator' || kind === 'chesstable' || isFixedKind(kind)
 // Postes and Torres: their wires join the next one of the same model and line (lib/pigchicken/power-lines.ts)
 export const isPowerElement = (kind: ElementKind): kind is 'pole' | 'tower' => kind === 'pole' || kind === 'tower'
 // what may stand in a parallax depth of its own: the scenery (not the game's things, the music or the entry)
@@ -262,6 +266,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'chalkboard') return { chalkboard: defaultChalkboard() }
   if (kind === 'chest') return { chest: defaultChest() }
   if (kind === 'mineactivator') return { mineActivator: defaultMineActivator() }
+  if (kind === 'chesstable') return { chessTable: defaultChessTable() }
   if (isFixedKind(kind)) return { flip: false }
   return {}
 }
@@ -601,6 +606,8 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.chest = normalizeChest(p.chest)
   } else if (kind === 'mineactivator') {
     params.mineActivator = normalizeMineActivator(p.mineActivator)
+  } else if (kind === 'chesstable') {
+    params.chessTable = normalizeChessTable(p.chessTable)
   } else if (isFixedKind(kind)) {
     params.flip = !!p.flip
   }
@@ -877,6 +884,12 @@ export function layoutBoxes(elements: LayoutElement[]): Box[] {
   const out: Box[] = []
   const occlusion = createCollisionOcclusion(layoutCollisionMasks(elements))
   elements.forEach((e, index) => {
+    // a Mesa de chickenchess: what falls lands on its top (only the top: shots and notes pass)
+    if (e.kind === 'chesstable') {
+      const t = chessTop(e)
+      out.push({ l: t.l, t: t.top, r: t.r, b: Math.min(t.bottom, G), solid: true, shots: false, notes: false })
+      return
+    }
     // a Suporte de item's table: what falls lands on its board (only the board, so it is no wall)
     if (e.kind === 'rack') {
       if (e.depth) return

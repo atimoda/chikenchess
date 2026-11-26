@@ -364,6 +364,17 @@ test('a slam moves the tag under it to the next value, the same as a click', () 
   assert.notEqual(slam.nextZoneTag(z, 'gravity').gravity, z.gravity)
 })
 
+// a floating Zona sonora's tags: falling through one holding Chocar steps it (lib/pigchicken/zone-slam.ts)
+test('a fall holding Chocar crosses the tags whose middle line it passes going down', () => {
+  const slam = loadTs('lib/pigchicken/zone-slam.ts')
+  const tags = [{ zone: 'z', key: 'root', l: 100, r: 140, top: 500, bottom: 520 }, { zone: 'z', key: 'bpm', l: 200, r: 260, top: 500, bottom: 520 }]
+  assert.deepEqual(slam.tagsCrossed(tags, 120, 490, 121, 515).map(t => t.key), ['root'])
+  assert.deepEqual(slam.tagsCrossed(tags, 120, 515, 121, 530), [], 'already past its middle')
+  assert.deepEqual(slam.tagsCrossed(tags, 120, 515, 121, 490), [], 'going up')
+  assert.deepEqual(slam.tagsCrossed(tags, 170, 490, 170, 515), [], 'between them')
+  assert.deepEqual(slam.tagsCrossed(tags, 150, 480, 230, 540).map(t => t.key), ['bpm'], 'where its path meets the line')
+})
+
 test('the slam finds its scene and the tag under it: the top row, the nearest within reach, nothing past the tags', () => {
   const slam = loadTs('lib/pigchicken/zone-slam.ts')
   assert.equal(slam.sceneAtX([0, 1920, 3840], 100), 0)

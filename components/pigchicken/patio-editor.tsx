@@ -50,7 +50,9 @@ import { SurfacePoints } from "./surface-points"
 import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
 import { CHALK_TEXT_MAX, DEMO_IDS, GHOST_OFFSET, GHOST_REACH, TRAINING_DEMOS, chalkboardForDemo, type ChalkboardParams, type DemoId } from "@/lib/pigchicken/chalkboard"
-import { MINE_ACTIVATOR_DAMAGE, MINE_ACTIVATOR_NOTES, defaultMineActivator, type MineActivatorParams } from "@/lib/pigchicken/mine-activator"
+import { MINE_ACTIVATOR_DAMAGE, MINE_ACTIVATOR_NOTES, MINE_ACTIVATOR_OPTIONS, MINE_ACTIVATOR_STEPS, defaultMineActivator, type MineActivatorParams } from "@/lib/pigchicken/mine-activator"
+import { CHESS_RADII, CHESS_RANDOM, chessRadiusLabel, defaultChessTable, type ChessTableParams } from "@/lib/pigchicken/chess-table"
+import { chessCityLabel, chessCityOrder } from "./draw/chess-table"
 import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, PLAYER_ACCURACY, PLAYER_HEARTS, defaultGong, defaultPlayer, type GongParams, type PlayerParams } from "@/lib/pigchicken/gong"
 import { BUILDING_COLUMNS, BUILDING_LANTERNS, BUILDING_ROOFS, defaultBuilding, type BuildingParams } from "@/lib/pigchicken/buildings"
 import { BalustradeArt, BuildingArt } from "./building-art"
@@ -852,6 +854,7 @@ function EditPanel({ el, onChange, onClose, onDelete, onSpawnEnemy, linking, onL
           <input type="checkbox" checked={!!el.params.flip} onChange={e => set({ flip: e.target.checked })} className="h-5 w-5 accent-[var(--primary)]" />
         </label>
       )}
+      {el.kind === "chesstable" && <ChessTableFields table={el.params.chessTable ?? defaultChessTable()} onChange={chessTable => set({ chessTable })} />}
       {el.kind === "mineactivator" && <MineActivatorFields activator={el.params.mineActivator ?? defaultMineActivator()} onChange={(mineActivator, step) => set({ mineActivator }, step && `${step}:${el.id}`)} />}
       {el.kind === "gong" && el.params.gong && <GongFields gong={el.params.gong} onChange={(gong, step) => set({ gong }, step && `${step}:${el.id}`)} />}
       {(el.kind === "jukebox" || el.kind === "vitrola") && <PlayerFields player={el.params.player ?? defaultPlayer()} onChange={(player, step) => set({ player }, step && `${step}:${el.id}`)} />}
@@ -940,11 +943,42 @@ function GongFields({ gong, onChange }: { gong: GongParams; onChange: (gong: Gon
   </>
 }
 
-// an Ativador de grid de campo minado: the music and the damage that fill its two bars
+// an Ativador de grid de campo minado: the music and the damage that fill its two bars, whether only a Chave de ouro
+// turns it on, and the block, gap and corners of the grid it turns on (the same values a slam on it steps through)
 function MineActivatorFields({ activator: a, onChange }: { activator: MineActivatorParams; onChange: (activator: MineActivatorParams, step?: string) => void }) {
   return <div className="grid gap-field">
-    <PatioRange label="Notas até ativar" min={MINE_ACTIVATOR_NOTES.min} max={MINE_ACTIVATOR_NOTES.max} step={MINE_ACTIVATOR_NOTES.step} value={a.notes} onChange={notes => onChange({ ...a, notes }, "activator-notes")} />
-    <PatioRange label="Dano até ativar" min={MINE_ACTIVATOR_DAMAGE.min} max={MINE_ACTIVATOR_DAMAGE.max} step={MINE_ACTIVATOR_DAMAGE.step} value={a.damage} onChange={damage => onChange({ ...a, damage }, "activator-damage")} />
+    <Toggle label="Trancado (só Chave de ouro)" hint="Trancado, as barras não enchem: só uma Chave de ouro, ganha na Mesa de chickenchess, liga a grade." checked={a.lock} onChange={lock => onChange({ ...a, lock })} />
+    {!a.lock && <>
+      <PatioRange label="Notas até ativar" min={MINE_ACTIVATOR_NOTES.min} max={MINE_ACTIVATOR_NOTES.max} step={MINE_ACTIVATOR_NOTES.step} value={a.notes} onChange={notes => onChange({ ...a, notes }, "activator-notes")} />
+      <PatioRange label="Dano até ativar" min={MINE_ACTIVATOR_DAMAGE.min} max={MINE_ACTIVATOR_DAMAGE.max} step={MINE_ACTIVATOR_DAMAGE.step} value={a.damage} onChange={damage => onChange({ ...a, damage }, "activator-damage")} />
+    </>}
+    {MINE_ACTIVATOR_OPTIONS.map(option => (
+      <label key={option} className="grid gap-1">
+        <span>{option === "cell" ? "Tamanho do bloco" : option === "gap" ? "Vão entre blocos" : "Cantos em octógono"}</span>
+        <StepSelect aria-label={option === "cell" ? "Tamanho do bloco" : option === "gap" ? "Vão entre blocos" : "Cantos em octógono"} value={a[option] === null ? "" : String(a[option])}
+          onChange={e => onChange({ ...a, [option]: e.target.value === "" ? null : Number(e.target.value) })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+          {[...new Set([...MINE_ACTIVATOR_STEPS[option], a[option]])].map(v => <option key={v ?? "patio"} value={v === null ? "" : String(v)}>{v === null ? "O do Pátio" : option === "corner" ? `${v}%` : v}</option>)}
+        </StepSelect>
+      </label>
+    ))}
+  </div>
+}
+
+// a Mesa de chickenchess: the options its matches start with (a slam on its top changes them while the Pátio is open)
+function ChessTableFields({ table: t, onChange }: { table: ChessTableParams; onChange: (table: ChessTableParams) => void }) {
+  return <div className="grid gap-field">
+    <label className="grid gap-1">
+      <span>Ano/cidade</span>
+      <StepSelect aria-label="Ano/cidade" value={t.city} onChange={e => onChange({ ...t, city: e.target.value })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        {[CHESS_RANDOM, ...chessCityOrder()].map(id => <option key={id} value={id}>{chessCityLabel(id)}</option>)}
+      </StepSelect>
+    </label>
+    <label className="grid gap-1">
+      <span>Raio do som</span>
+      <StepSelect aria-label="Raio do som" value={String(t.radius)} onChange={e => onChange({ ...t, radius: Number(e.target.value) })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+        {CHESS_RADII.map(r => <option key={r} value={r}>{chessRadiusLabel(r)}</option>)}
+      </StepSelect>
+    </label>
   </div>
 }
 
@@ -1013,6 +1047,7 @@ const ENTRIES: { group: string; items: Entry[] }[] = [
   }) },
   { group: "Alvos", items: [{ key: "dummy", kind: "dummy", label: ELEMENT_DEFS.dummy.label }] },
   { group: "Treino", items: [{ key: "chalkboard", kind: "chalkboard", label: ELEMENT_DEFS.chalkboard.label }] },
+  { group: "Jogos", items: [{ key: "chesstable", kind: "chesstable", label: ELEMENT_DEFS.chesstable.label }] },
   { group: "Música", items: (["zone", "lanes", "gong", "jukebox", "vitrola", "resetstone", "pedalharp", "drumkit", "grandpiano"] as const).map(k => ({ key: k, kind: k, label: ELEMENT_DEFS[k].label })) },
   // the Templo do Gongo's pieces: its halls and its gong
   { group: "Templo", items: [
@@ -1044,7 +1079,7 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "gong") return <span aria-hidden="true" className="relative block h-8 w-9"><span className="absolute inset-x-0 top-0 h-1 rounded-sm bg-[#b3261e]" /><span className="absolute bottom-0 left-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute bottom-0 right-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute left-1/2 top-2 h-5 w-5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f2c46d,#c58b2e_55%,#7a4f12)]" /></span>
   if (entry.kind === "building") { const s = entry.size ?? ELEMENT_DEFS.building; return <span className="relative block h-9" style={{ aspectRatio: `${s.w} / ${s.h}` }}><BuildingArt building={entry.params?.building ?? defaultBuilding()} w={s.w} h={s.h} /></span> }
   if (entry.kind === "resetstone") return <span aria-hidden="true" className="relative block h-9 w-7"><span className="absolute inset-x-1 bottom-1 top-0 rounded-t-full bg-[#7c8892]" /><span className="absolute left-1/2 top-2.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#7bdff2]" /><span className="absolute inset-x-0 bottom-0 h-1.5 rounded-sm bg-[#6f695f]" /></span>
-  if (entry.kind === "mineactivator") return <span aria-hidden="true" className="relative block h-8 w-11"><span className="absolute inset-x-1.5 bottom-1 top-0.5 rounded-t-full bg-[radial-gradient(circle_at_35%_30%,#bfe0ff,#3d8bff_45%,#1b4fb8)]" /><span className="absolute inset-x-0 bottom-0 h-1.5 rounded-sm bg-[#2b3440]" /></span>
+  if (entry.kind === "mineactivator") return <span aria-hidden="true" className="relative mx-auto block h-8 w-8 border-2 border-b-black/40 border-l-white/60 border-r-black/40 border-t-white/60 bg-[radial-gradient(circle,#ff8a6a,#e0141c_60%,#8e0a12)] shadow-[0_0_8px_#ff2a1a]"><span className="absolute inset-[7px] rounded-full bg-[radial-gradient(circle_at_32%_30%,#f4f4f4,#34373c_45%,#16181b)]" /></span>
   if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
   if (entry.kind === "vitrola") return <VitrolaThumb />
   if (entry.kind === "pedalharp") return <HarpThumb />
@@ -1053,6 +1088,12 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "chest") return <ChestThumb rarity={entry.params?.chest?.rarity ?? "simple"} />
   if (entry.kind === "spawn") return <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#7cc4ff] bg-blue-950/60 shadow-[0_0_6px_#408cff]"><span className="h-2 w-2 rounded-full bg-[#ffd166]" /></span>
   if (entry.kind === "chalkboard") return <span aria-hidden="true" className="block h-7 w-11 rounded-[3px] border-[3px] border-[#7a4f27] bg-[#2f5b3f]" />
+  if (entry.kind === "chesstable") return <span aria-hidden="true" className="relative block h-8 w-12">
+    <span className="absolute left-[10px] right-[10px] top-[9px] h-1 bg-[repeating-linear-gradient(90deg,#e9dcc4_0_3px,#3b2b22_3px_6px)]" />
+    <span className="absolute left-[8px] right-[8px] top-[13px] h-1.5 rounded-sm bg-[#8d5a36]" />
+    <span className="absolute bottom-0 left-[11px] top-[18px] w-1 bg-[#43271a]" /><span className="absolute bottom-0 right-[11px] top-[18px] w-1 bg-[#43271a]" />
+    <span className="absolute bottom-0 left-0 h-3 w-[7px] rounded-t-sm border-t-[3px] border-[#b8323a] bg-[#6b4226]" /><span className="absolute bottom-0 right-0 h-3 w-[7px] rounded-t-sm border-t-[3px] border-[#b8323a] bg-[#6b4226]" />
+  </span>
   // the Mureta com cerca draws in its own units (posts, floor, wall): drawn at its size, scaled down into the card
   if (entry.kind === "balustrade") { const k = Math.min(48 / d.w, 34 / d.h); return <span className="relative block" style={{ width: d.w * k, height: d.h * k }}><BalustradeArt balustrade={{ courtyard: false }} w={d.w} h={d.h} /></span> }
   if (entry.kind === "button") return <HordeButtonThumb action={entry.params?.action ?? "aliens"} />
@@ -1240,7 +1281,7 @@ function Palette({ active, onActive, onAdd, bindHouse, bindTree, canAddScenery, 
       const el = createElement(drag.entry.kind, p.x, p.y, drag.entry.params)
       if (drag.entry.size) { el.w = drag.entry.size.w; el.h = drag.entry.size.h; el.x = p.x - el.w / 2; el.y = p.y - el.h / 2 }
       // dummies and racks stand on the floor right under where they were dropped
-      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "vitrola" || el.kind === "resetstone" || el.kind === "chest" || el.kind === "mineactivator" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
+      if (el.kind === "dummy" || el.kind === "rack" || el.kind === "gong" || el.kind === "jukebox" || el.kind === "vitrola" || el.kind === "resetstone" || el.kind === "chest" || el.kind === "mineactivator" || el.kind === "chesstable" || isFixedKind(el.kind)) el.y = floorBelow(p.x, p.y - el.h / 2) - el.h
       if (el.kind === "trampoline") el.y = Math.min(el.y, WORLD_GROUND_Y - el.h)
       // postes and torres in their model's proportions, planted on the floor under where they were dropped
       if (el.params.power) {
