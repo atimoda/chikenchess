@@ -103,7 +103,7 @@ function useMineView(grid: MineGrid | null, engine: ChickenEngine | null, extras
 }
 
 // the classic colours of the numbers, light enough for the Pátio's dusk
-const NUMBER_COLORS = ["", "#7cc4ff", "#7be08a", "#ff7a7a", "#c9a2ff", "#ffb35c", "#5fe0d8", "#f4f1e8", "#b9c7b9"]
+export const NUMBER_COLORS = ["", "#7cc4ff", "#7be08a", "#ff7a7a", "#c9a2ff", "#ffb35c", "#5fe0d8", "#f4f1e8", "#b9c7b9"]
 // how many blocks around a chicken keep their walls for the engine
 const WALL_REACH = 2
 // the cracks of a damaged block, in a square of 100: the more red, the more of them show
@@ -162,7 +162,7 @@ function blockShapes(g: MineGeo, r: number, t: number) {
 }
 
 // the number of an open block, with a dark outline so that its light colour reads over any sky
-const DIGIT_OUTLINE = (size: number) => { const w = Math.max(2, Math.round(size * 0.012)); return { WebkitTextStroke: `${w * 2}px #14181dcc`, paintOrder: "stroke fill" } as const }
+export const DIGIT_OUTLINE = (size: number) => { const w = Math.max(2, Math.round(size * 0.012)); return { WebkitTextStroke: `${w * 2}px #14181dcc`, paintOrder: "stroke fill" } as const }
 function Digit({ x, y, size, count }: { x: number; y: number; size: number; count: number }) {
   return <div className="absolute flex items-center justify-center font-mono font-bold" style={{ left: x, top: y, width: size, height: size, fontSize: size * 0.5, color: NUMBER_COLORS[count], ...DIGIT_OUTLINE(size) }}>{count}</div>
 }

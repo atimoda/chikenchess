@@ -20,7 +20,7 @@ export type ItemId = 'wing' | 'peck' | 'piu' | 'chainBlow' | 'tailBlow' | 'bat' 
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit' | 'grandpiano'
   | 'maryjane' | 'cok' | 'passagua' | 'mjolnir' | 'odinstaff' | 'key' | 'boomerang' | 'cardsRed' | 'cardsBlue'
   | 'cage' | 'cageWire' | 'cageConcorde' | 'cageWood' | 'cageArch' | 'cageFlight'
-  | 'goldkey' | 'minebomb' | 'hook'
+  | 'goldkey' | 'minebomb' | 'hook' | 'chesskey'
 // how an instrument walks through the notes shot after shot (off: the aim alone picks the note)
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // what an instrument's tremolo follows: the aim turning, or the aim moving along the string (nearer / farther)
@@ -164,7 +164,7 @@ export type ItemDef = {
   stun: number // s an enemy stays still after a note (the beam keeps it still while it plays)
   strum: number // s between the notes of a chord (pellets)
   ringNotes: number // notes it lets out in a circle when it bursts (with a fuse or on impact)
-  gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
+  gliss: boolean // Carga em glissando (harp): dragging the aim while charging plays each note it goes into, floating round her until the main note flies with them; the aim's reach sets the main note's speed
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
   tremoloRange: number // semitones the tremolo can bend a note each way
   // what the tremolo follows ("Tremolo: reage a"): the aim turning inside a lane, or the aim moving along the
@@ -634,11 +634,12 @@ const TAMBOURINE: ItemDef = {
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
-// Harpa de Lira (Harpas) → bow: the charge is a glissando, the note rises with the charge and flies far and precise
+// Harpa de Lira (Harpas) → bow: dragging the aim while charging plays an arpeggio (lib/pigchicken/gliss-float.ts); the
+// note flies far and precise, as fast as the aim is far from her
 const HARP: ItemDef = {
   ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa de Lira', family: 'Harpas', reticle: 'bow', archery: false, pivotX: 0,
   damage: 40, size: 12, speed: 1500, drop: 700, recoilPush: 60, muzzleX: 21, muzzleY: -10, length: 30,
-  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
+  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.3,
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
 }
@@ -709,6 +710,9 @@ const KEY: ItemDef = {
 // Bomba: a disarmed bomb taken out of its block, which whoever is on the closed side installs in an open one.
 const GOLD_KEY: ItemDef = { ...CONSUMABLE, id: 'goldkey', name: 'Chave dourada', family: 'Grade de blocos' }
 const MINE_BOMB: ItemDef = { ...CONSUMABLE, id: 'minebomb', name: 'Bomba', family: 'Grade de blocos' }
+// Chave de ouro: the prize of a match won at a Mesa de chickenchess (lib/pigchicken/chess-table.ts); kept in a stack,
+// Atirar does nothing with it and it opens no Baú
+const CHESS_KEY: ItemDef = { ...CONSUMABLE, id: 'chesskey', name: 'Chave de ouro', family: 'Chaves' }
 
 // ---------- Gaiolas (lib/pigchicken/cages.ts): where the souls a Passaguá catches are kept. Not carried in the
 // inventory: a player hangs up to three of them. Each model has its own art (lib/pigchicken/cage-art.ts) and limit ----------
@@ -725,7 +729,7 @@ const CODE_ITEMS: Record<ItemId, ItemDef> = {
   flute: FLUTE, sax: SAX, trumpet: TRUMPET, guitar: GUITAR, violin: VIOLIN, keys: KEYS, tambourine: TAMBOURINE, harp: HARP, hangdrum: HANGDRUM, pedalharp: PEDALHARP, drumkit: DRUMKIT, grandpiano: GRANDPIANO,
   maryjane: MARYJANE, cok: COK, mjolnir: MJOLNIR, odinstaff: ODINSTAFF, key: KEY, boomerang: BOOMERANG, cardsRed: CARDS_RED, cardsBlue: CARDS_BLUE,
   cage: CAGE, cageWire: CAGE_WIRE, cageConcorde: CAGE_CONCORDE, cageWood: CAGE_WOOD, cageArch: CAGE_ARCH, cageFlight: CAGE_FLIGHT,
-  goldkey: GOLD_KEY, minebomb: MINE_BOMB, hook: HOOK,
+  goldkey: GOLD_KEY, minebomb: MINE_BOMB, hook: HOOK, chesskey: CHESS_KEY,
 }
 export const WEAPON_IDS: ItemId[] = ['pistol', 'smg', 'rifle', 'pump', 'sniper', 'launcher', 'grenade', 'bow']
 export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'violin', 'keys', 'tambourine', 'harp', 'hangdrum']
@@ -733,7 +737,7 @@ export const INSTRUMENT_IDS: ItemId[] = ['flute', 'sax', 'trumpet', 'guitar', 'v
 export const INSTRUMENT_WEAPON: Partial<Record<ItemId, ItemId>> = {
   flute: 'pistol', sax: 'smg', trumpet: 'rifle', guitar: 'pump', violin: 'sniper', keys: 'launcher', tambourine: 'grenade', harp: 'bow', hangdrum: 'pistol',
 }
-export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3, key: 9, goldkey: 9, minebomb: 10 }
+export const CONSUMABLE_LIMITS: Partial<Record<ItemId, number>> = { maryjane: 13, cok: 3, key: 9, goldkey: 9, minebomb: 10, chesskey: 9 }
 export const CONSUMABLE_IDS: ItemId[] = ['maryjane', 'cok']
 // sports tools are held in the wing and used with Golpe / Atirar; both are melee-only for input routing.
 export const SPORTS_IDS: ItemId[] = ['bat', 'passagua', 'boomerang', 'hook']
@@ -745,6 +749,9 @@ export const DECK_IDS: ItemId[] = ['cardsRed', 'cardsBlue']
 // the keys: each one opens one Baú that asks for a key (lib/pigchicken/chests.ts)
 export const KEY_IDS: ItemId[] = ['key']
 export const isKey = (id: ItemId) => KEY_IDS.includes(id)
+// the prizes won at the Mesas de chickenchess: the Chave de ouro (not a key for the Baús). Only won: no suporte,
+// Baú or Item solto gives one
+export const TROPHY_IDS: ItemId[] = ['chesskey']
 // the Grade de blocos' items: the Chave dourada and the Bomba
 export const MINE_ITEM_IDS: ItemId[] = ['goldkey', 'minebomb']
 export const isMineItem = (id: ItemId) => MINE_ITEM_IDS.includes(id)
@@ -757,7 +764,7 @@ export const MELEE_IDS: ItemId[] = [...SPORTS_IDS, ...MAGIC_IDS]
 export const FIXED_IDS: ItemId[] = ['pedalharp', 'drumkit', 'grandpiano']
 // the items a rack can hold
 export const RACK_ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS, ...CAGE_IDS]
-export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck', 'piu', 'chainBlow', 'tailBlow']
+export const ITEM_IDS: ItemId[] = [...SPORTS_IDS, ...WEAPON_IDS, ...INSTRUMENT_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...TROPHY_IDS, ...CAGE_IDS, ...FIXED_IDS, 'wing', 'peck', 'piu', 'chainBlow', 'tailBlow']
 // the multiplier of the effect's speed-up curve (1 = linear)
 export const curvePower = (c: AccelCurve) => ACCEL_CURVES.find(o => o.value === c)?.power ?? 1
 // the voices an instrument can use (checked when loading)

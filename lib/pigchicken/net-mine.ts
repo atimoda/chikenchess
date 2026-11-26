@@ -25,7 +25,7 @@ export type NetMineState = { n: number; c: number; r: number; f?: 1; l: NetMineC
 export type NetMineWord = { g: NetMineActivator }
 // what a browser's players did, for the owner, and which of its chickens (by number) are a Filhote
 // g: what they poured into the Ativadores; h: its admin hid the grid an Ativador turned on
-export type NetMineActs = { a?: MineAct[]; k?: number[]; g?: NetMineActivatorHits; h?: 1 }
+export type NetMineActs = { a?: MineAct[]; k?: number[]; g?: NetMineActivatorHits; h?: 1; u?: string }
 
 export const NET_MINE_CELLS = 4096
 export const NET_MINE_ACTS = 64

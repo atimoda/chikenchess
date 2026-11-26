@@ -10,7 +10,7 @@ import { VOLUME_SNAP } from "@/lib/pigchicken/aim-volume"
 import { FloatingPanel } from "@/components/ui/floating-panel"
 import { useEffect, useState } from "react"
 import { X } from "lucide-react"
-import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
+import { ACCEL_CURVES, ARPS, CAGE_IDS, CONSUMABLE_IDS, EFFECT_LOOKS, PATH_SHOWS, DEFAULT_ITEMS, FIXED_IDS, HAND_DELAYS, INSTRUMENT_IDS, ITEM_PARAM_GROUPS, ITEM_PARAM_META, KEY_IDS, TROPHY_IDS, MINE_ITEM_IDS, MAGIC_IDS, SPECIAL_KINDS, SPORTS_IDS, TREMOLO_AXES, WEAPON_IDS, currentHeldItem, currentPlayerClass, isStaff, itemsDefaultsFile, itemsTuning, loadItems, classItem, pointsOf, POINT_KEYS, saveItems, subscribeHeldItem, subscribeItems, subscribePlayerClass, type PointClass, type AccelCurve, type Arp, type EffectLook, type FireMode, type PathShow, type ItemDef, type ItemId, type SpecialKind, type TremoloAxis } from "@/lib/pigchicken/items"
 import { HANG_VOICES, VOICE_LABELS, type VoiceId } from "@/lib/pigchicken/synth"
 import { COMBO_COOLDOWNS, COMBO_MAX, COMBO_REACHES, COMBO_TIMES, SWING_KINDS, comboBlow, type BlowKind, type ComboStep } from "@/lib/pigchicken/swing"
 import { AngleKnob, ComboWindowBar } from "./combo-controls"
@@ -62,7 +62,7 @@ const HIDDEN: Partial<Record<ItemId, string[]>> = {
   tailBlow: ["Disparo", "Munição", "Projétil", "Espalhamento", "Manuseio", "Arremesso", "Desenho", "Pontos", "Explosão", "Efeito", "Música"],
   ...Object.fromEntries(CONSUMABLE_IDS.map(id => [id, CONSUMABLE_HIDES])),
   // a key only opens Baús: it has no effect, just its slap and its throw
-  ...Object.fromEntries(KEY_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
+  ...Object.fromEntries([...KEY_IDS, ...TROPHY_IDS].map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
   ...Object.fromEntries(MINE_ITEM_IDS.map(id => [id, [...CONSUMABLE_HIDES, "Efeito"]])),
 }
 // Pontos of a staff (how she carries it, lib/pigchicken/staff-pose.ts); the other items have the pivot and the wings' points
@@ -157,7 +157,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
           <optgroup label="Instrumentos fixos">{FIXED_IDS.map(id => <option key={id} value={id}>{items[id].name} ({items[id].family})</option>)}</optgroup>
           <optgroup label="Habilidades especiais">{CONSUMABLE_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Magia">{MAGIC_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
-          <optgroup label="Chaves">{KEY_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
+          <optgroup label="Chaves">{[...KEY_IDS, ...TROPHY_IDS].map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <optgroup label="Grade de blocos">{MINE_ITEM_IDS.map(id => <option key={id} value={id}>{items[id].name}</option>)}</optgroup>
           <option value={CAGE_IDS[0]}>Gaiolas</option>
         </StepSelect>
@@ -244,7 +244,7 @@ export function ItemsPanel({ onClose }: { onClose: () => void }) {
                   </label>
                   <label className="flex items-center justify-between gap-3"><Named label="No ritmo (quantizar)" changed={it.quantize !== base.quantize} onReset={() => update(d => { d.quantize = base.quantize })} /><input type="checkbox" checked={it.quantize} onChange={e => { const v = e.target.checked; update(d => { d.quantize = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3"><Named label="Nota sustentada em feixe" changed={it.beam !== base.beam} onReset={() => update(d => { d.beam = base.beam })} /><input type="checkbox" checked={it.beam} onChange={e => { const v = e.target.checked; update(d => { d.beam = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
-                  <label className="flex items-center justify-between gap-3"><Named label="Carga em glissando" changed={it.gliss !== base.gliss} onReset={() => update(d => { d.gliss = base.gliss })} /><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
+                  <label className="flex items-center justify-between gap-3" title="Segurando Atirar, cada nota da escala por onde a mira passa toca e fica flutuando em volta dela; ao soltar, sai a nota principal (mais rápida quanto mais longe a mira) e as do arpejo vão junto"><Named label="Arpejo ao arrastar a mira" changed={it.gliss !== base.gliss} onReset={() => update(d => { d.gliss = base.gliss })} /><input type="checkbox" checked={it.gliss} onChange={e => { const v = e.target.checked; update(d => { d.gliss = v }) }} className="h-5 w-5 accent-[var(--primary)]" /></label>
                   <label className="flex items-center justify-between gap-3" title="Giro da mira: tremer a mira dentro da faixa entorta a nota. Ao longo da corda: afastar a mira dela sobe a nota, aproximar desce (nas Cordas soltas, é o glissando da corda)">
                     <Named label="Tremolo: reage a" changed={it.tremoloAxis !== base.tremoloAxis} onReset={() => update(d => { d.tremoloAxis = base.tremoloAxis })} />
                     <StepSelect value={it.tremoloAxis} onChange={e => { const v = e.target.value as TremoloAxis; update(d => { d.tremoloAxis = v }) }} className="h-8 w-40 rounded-md border border-white/15 bg-[#0b110e] px-2">

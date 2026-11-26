@@ -8,6 +8,7 @@ import type { Combat } from "@/lib/pigchicken/combat"
 import { DEGREE_COLORS, NOTE_NAMES, SCALES, type Conductor, type PitchSet } from "@/lib/pigchicken/music"
 import { HangScale, HarmonicFieldScale, INSTRUMENT_SCALES, SpiralScale, StringsScale, fieldHouses, fieldTurn, houseAt, sectorEdges, spiralAngle, spiralGap, spiralRadius, type InstrumentScale, type HangLayout, type HangShape, type HarpString, type ScaleShape, type StringTouch, type ScaleRegion, type SpiralLayout } from "@/lib/pigchicken/instrument-scales"
 import { hangOf } from "@/lib/pigchicken/items"
+import { GLISS_RUNGS, rungAt, rungEdge } from "@/lib/pigchicken/gliss-float"
 import { DrumsScale } from "@/lib/pigchicken/instrument-scales"
 import { drumKit } from "@/lib/pigchicken/drum-kit"
 import { drumBindName } from "@/lib/pigchicken/drum-input"
@@ -58,7 +59,7 @@ export function drawScaleFan(ctx: CanvasRenderingContext2D, combat: Combat, cx: 
     return
   }
   drawScaleShape(ctx, chart, combat.music, {
-    ...src, descending: d.spiralDescending, hang: hangOf(d), aim, reach: combat.aimReach, fade, unit: scale,
+    ...src, descending: d.spiralDescending, hang: hangOf(d), aim, reach: combat.aimReach, fade, unit: scale, rungs: d.instrument && d.gliss,
     hands: chart instanceof StringsScale ? combat.stringHands.flatMap(h => h ? [chart.touch(h.angle, h.r)] : []) : undefined,
     stringAge: i => combat.stringAge(i),
   }, cx, cy, SCALE_FAN_R * size * scale, alpha, lines, alphaOn)
@@ -76,6 +77,7 @@ export type ScaleDraw = {
   aim: number | null; reach: number
   hands?: StringTouch[]; stringAge?: (i: number) => number
   fade?: number; unit?: number; still?: boolean
+  rungs?: boolean // Arpejo ao arrastar a mira: the leque's lanes cut in rungs (lib/pigchicken/gliss-float.ts)
 }
 
 /**
@@ -151,6 +153,21 @@ export function drawScaleShape(ctx: CanvasRenderingContext2D, chart: InstrumentS
       ctx.closePath()
       ctx.fillStyle = fill(color, i === now ? alphaOn * 0.4 : alpha * 0.14)
       ctx.fill()
+      if (q.rungs) {
+        // the rungs: thin arcs across the lane; on the lane aimed at, the rung under the aim lights up
+        const lo2 = Math.min(a0, a1), hi2 = Math.max(a0, a1)
+        if (i === now && side === right) {
+          const k = rungAt(q.reach), r0 = Math.max(rIn, k === 0 ? rIn : rungEdge(k) * rOut), r1 = k === GLISS_RUNGS - 1 ? rOut : rungEdge(k + 1) * rOut
+          ctx.beginPath(); ctx.arc(cx, cy, r1, lo2, hi2); ctx.arc(cx, cy, r0, hi2, lo2, true); ctx.closePath()
+          ctx.fillStyle = hexA(color, alphaOn * 0.35); ctx.fill()
+        }
+        ctx.strokeStyle = hexA(color, alpha * 0.5 * Math.max(0.4, lines))
+        for (let k = 1; k < GLISS_RUNGS; k++) {
+          const r = rungEdge(k) * rOut
+          if (r <= rIn) continue
+          ctx.beginPath(); ctx.arc(cx, cy, r, lo2, hi2); ctx.stroke()
+        }
+      }
       if (lines > 0) {
         ctx.strokeStyle = fill(color, alpha * 0.6 * lines)
         ctx.beginPath()

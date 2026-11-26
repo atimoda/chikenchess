@@ -7,8 +7,28 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do Golpe desenhado fiel ao desenho',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal; prévia do Golpe desenhado fiel ao desenho',
     groups: [
+      { title: 'Pátio: Mesa de chickenchess', items: [
+        'Nova Mesa de chickenchess no Modo editor (grupo Jogos): uma mesinha com tabuleiro e dois banquinhos. Já está no meio da Arena das Almas, no Arquipélago das Almas.',
+        'Em pé num banquinho aparece “E - Entrar na fila” e o seu nome sobe acima dele. Com alguém no outro banquinho, a partida começa. Pronto num banquinho, vá para o outro e aparece “Iniciar contra um bot”; durante a partida contra o bot, quem pisa no banquinho dele vê “Entrar no lugar do bot”.',
+        'A partida começa com 3, 2, 1 enormes no meio da tela e o tabuleiro se monta como na campanha, com os mesmos widgets, cartas e poderes, transparente sobre o Pátio. Tom, escala e harmonia ficam centralizados acima do tabuleiro. Entre dois players, cada um move na sua vez.',
+        'Embaixo do tampo ficam as opções em etiquetas: suba na mesa e caia com Chocar na metade esquerda para trocar o ano/cidade (com Random não há foto; com uma cidade, a foto aparece acima da mesa) e na direita para trocar o raio do som. Vale também durante a partida.',
+        'A música da partida só toca dentro do raio da mesa e some suavemente até a borda dele; fora, o motor musical da partida desliga. Raio 0 deixa a partida sem música.',
+        'Quem vence a partida ganha uma Chave de ouro. “Sair da partida” libera a mesa.',
+      ] },
+      { title: 'Pátio: Ativador de grid de campo minado', items: [
+        'O Ativador agora tem a cara do ícone do Campo minado: uma mina sobre um bloco vermelho que brilha, mais forte quanto mais cheias as barras de música (à esquerda) e de dano (à direita). Dá para pisar em cima dele.',
+        'Nova opção Trancado: notas e dano não enchem nada e só uma Chave de ouro liga o Ativador. Perto dele aparece “E - Usar a Chave de ouro”. No Arquipélago das Almas há um Ativador trancado a oeste da Arena das Almas.',
+        'Ao ligar a grade, todos no Pátio veem um 3, 2, 1 enorme no meio da tela, do tamanho e com as cores dos números da grade. A cada número a grade pisca onde vai aparecer, para dar tempo de sair dali.',
+        'Embaixo do topo do Ativador ficam as opções da grade que ele liga: tamanho do bloco, vão e cantos em octógono. Quem edita o Pátio troca cada uma caindo com Chocar sobre ela, e a grade pisca rapidinho com as novas opções. Elas também estão no Editar do Ativador.',
+      ] },
+      { title: 'Pátio: Zonas sonoras', items: [
+        'As tags de uma Zona sonora no ar agora também mudam com Chocar: quem edita o Pátio cai por cima de uma tag segurando Chocar e ela passa para o próximo valor, como as da faixa do chão.',
+      ] },
+      { title: 'Partida: Modo botões', items: [
+        'A linha de botões do Modo botões agora também pode ser arrastada pelo fundo, como a mão de cartas, na campanha e no online.',
+      ] },
       { title: 'Partida: Invite a friend', items: [
         'Novo botão Invite a friend no cabeçalho da partida, à esquerda do Bot level (no celular, um ícone de pessoa com +). Ele abre um lobby 1v1 privado com o kit da cidade, ou usa o lobby em que você já está.',
         'No painel aparecem seus amigos do ChickenChess com Invite, que chama o amigo para esse lobby; o link do lobby com o botão de copiar; e embaixo os ícones de WhatsApp, Discord, Instagram, TikTok, Facebook e X para compartilhar direto.',
@@ -26,6 +46,23 @@ const RECENT = [
         'As notas giratórias agora são da escala Hangdrum, não só do instrumento Hangdrum: qualquer instrumento com essa escala ligada faz a nota tocada numa bola girar dentro dela, do mesmo jeito.',
         'Giro na bola, Nota é disparada até a região da nota e Cada nota interrompe a anterior saíram do painel Itens e ficam no painel Escalas, na escala Hangdrum, no grupo Notas giratórias. Valem para todos os instrumentos nessa escala e entram no Salvar no Pátio, no Salvar no game e no Reverter para o padrão das Escalas.',
         'O padrão é o que o Hangdrum já usava: gira pela Duração da nota do instrumento, vai voando até a bola e cada nota corta a anterior da mesma bola.',
+      ] },
+      { title: 'Pátio online', items: [
+        'Correção: quem abria o Pátio padrão no online podia cair na sala de outro Pátio (a mais antiga aberta), e o mapa editado ao vivo lá era gravado por cima do Pátio padrão. Agora o Pátio padrão tem o próprio lobby, e um mapa vindo de sala de outro Pátio é ignorado.',
+        'Depois de passar por um portal ou trocar de Pátio, o navegador não volta mais para a sala online do Pátio anterior: entra no lobby do Pátio novo.',
+        'Um link de sala online de outro Pátio abre o Pátio daquela sala, já dentro dela.',
+        'A Praça dos Portais foi restaurada com a última cópia encontrada, de 25/11 à noite.',
+      ] },
+      { title: 'Partida: histórico de jogadas', items: [
+        'Passar o mouse sobre uma jogada do histórico, no rodapé, mostra logo acima um tabuleiro pequeno com a posição logo depois daquela jogada, com as casas de origem e destino destacadas e a jogada na cor da cidade. Vale na campanha, contra bot e no online. No celular, basta segurar o dedo na jogada.',
+      ] },
+      { title: 'Pátio: Harpa de Lira', items: [
+        'Segurando Atirar, a harpa não sobe mais a escala sozinha: cada nota da escala por onde você arrasta a mira toca uma nota do arpejo (até 7 por carga). Segurar parado não toca nada.',
+        'Cada folha do leque agora tem 4 degraus, do centro para fora: arrastar para dentro ou para fora na mesma folha toca o arpejo daquela nota (1ª, 3ª, 5ª e 7ª da escala), sem mudar o ângulo da mira.',
+        'As notas do arpejo saem menores, ficam flutuando em volta da galinha e caem devagar; ao soltar Atirar, a nota principal sai e elas vão junto, quase paralelas a ela. Se a carga é interrompida (troca de item, golpe), elas somem.',
+        'Quanto mais longe a mira estiver da galinha dentro do leque, mais rápida sai a nota principal (e mais alta, pelo Volume pela distância, que agora vai de 30% a 100% na harpa).',
+        'Na mira, uma fileira de 7 bolinhas acima do horizonte mostra as notas do arpejo; cada nota tocada apaga a sua bolinha, que sobe e some. A carga volta a enchê-las.',
+        'Em Itens, o checkbox Carga em glissando passa a se chamar Arpejo ao arrastar a mira e vale para qualquer instrumento de carga em que for ligado. No online, os outros veem as notas do arpejo a partir do disparo.',
       ] },
       { title: 'Pátio: prévia do Golpe desenhado', items: [
         'Enquanto você desenha o golpe no ar, a linha de prévia agora é uma miniatura do próprio desenho: começa no alcance do golpe, onde o desenho começou, e segue o mesmo caminho do mouse ou do dedo, em tamanho menor. O golpe em si continua igual.',

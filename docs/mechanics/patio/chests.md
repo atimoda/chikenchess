@@ -41,4 +41,5 @@ Código: `lib/pigchicken/chests.ts` (parâmetros, limpeza, regra de abertura e s
 
 - Item `key` (“Chave”), grupo Chaves: suportes da paleta (grupo Chaves), Item solto, baús e painel Itens. Tempo de reposição padrão do suporte: 0,1 s, como os consumíveis.
 - Fica em pilha, até 9, no grupo Utilitário do inventário; pegar outra soma à pilha.
+- A **Chave de ouro** (`chesskey`, prêmio da [Mesa de chickenchess](chess-table.md), 26/11) é outro item do grupo Chaves e não abre Baús.
 - Atirar com a chave na mão não faz nada; Golpe e arremesso funcionam como em qualquer consumível. No painel Itens ela mostra os mesmos grupos de um consumível, menos Efeito.
