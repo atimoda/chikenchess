@@ -79,6 +79,8 @@ function nearOpener(r: Rect): Rect | null {
 // calls preventDefault and the panel stays. Not from a text field, nor while a dialog is open.
 const opened: HTMLElement[] = []
 const CLOSE = 'button[aria-label^="Fechar"], button[aria-label="Sair do modo editor"]'
+// Translated labels do not start with "Fechar": the close button is also found by its X icon (inside the title bar).
+const CLOSE_ICON = 'button:has(> svg.lucide-x)'
 // It runs once every other listener had its turn on this key, whatever order they were added in.
 function onEscape(e: KeyboardEvent) {
   if (e.code === "Escape" && !e.repeat) window.setTimeout(() => closeLast(e))
@@ -91,7 +93,7 @@ function closeLast(e: KeyboardEvent) {
   for (let i = opened.length - 1; i >= 0; i--) {
     const el = opened[i]
     if (!el.isConnected || !el.getClientRects().length) continue
-    const button = (el.querySelector(`[data-drag-handle] :is(${CLOSE})`) ?? el.querySelector(CLOSE)) as HTMLButtonElement | null
+    const button = (el.querySelector(`[data-drag-handle] :is(${CLOSE})`) ?? el.querySelector(`[data-drag-handle] ${CLOSE_ICON}`) ?? el.querySelector(CLOSE)) as HTMLButtonElement | null
     if (!button || button.disabled) continue
     button.click()
     return

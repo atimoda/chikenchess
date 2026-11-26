@@ -28,6 +28,7 @@ import { defaultChalkboard, normalizeChalkboard, type ChalkboardParams } from '.
 import { CHEST_BOX, defaultChest, normalizeChest, type ChestParams } from './chests'
 import { DRUMKIT_BOX, GRANDPIANO_BOX, HARP_BOX, isFixedKind } from './fixed-instruments'
 import { defaultLanes, defaultSoundZone, normalizeLanes, normalizeSoundZone, normalizeSurfaceRebate, type LanesBox, type LanesParams, type SoundZoneParams, type SurfaceRebate, type ZoneBox } from './sound-zones'
+import { msg, t } from '../i18n'
 
 // v2 adds consumable racks, v3 adds houses and scene-local positions, v4 stores shortcut portals and v5 turns the
 // Vila's fixed ground (`terrain`) into a ground element. v6 seats the default portals on their starting platforms.
@@ -55,21 +56,21 @@ export const LAYOUT_MAX_ELEMENTS = LEGACY_MAX_ELEMENTS + 6 + TEMPLE_ELEMENTS
 export const LAYERS = ['back', 'scene', 'behind', 'front', 'frontGhost'] as const
 export type LayoutLayer = (typeof LAYERS)[number]
 export const LAYER_LABELS: Record<LayoutLayer, string> = {
-  back: 'Fundo', scene: 'Cenário', behind: 'Atrás dos bonecos', front: 'Frente', frontGhost: 'Frente translúcida',
+  back: msg('Fundo'), scene: msg('Cenário'), behind: msg('Atrás dos bonecos'), front: msg('Frente'), frontGhost: msg('Frente translúcida'),
 }
 export const LAYER_HINTS: Record<LayoutLayer, string> = {
-  back: 'Atrás das plataformas, logo à frente das montanhas',
-  scene: 'Onde ficam as plataformas',
-  behind: 'À frente dos alvos, armas e tiros, atrás da galinha',
-  front: 'À frente da galinha, opaco',
-  frontGhost: 'À frente da galinha, meio transparente',
+  back: msg('Atrás das plataformas, logo à frente das montanhas'),
+  scene: msg('Onde ficam as plataformas'),
+  behind: msg('À frente dos alvos, armas e tiros, atrás da galinha'),
+  front: msg('À frente da galinha, opaco'),
+  frontGhost: msg('À frente da galinha, meio transparente'),
 }
 
 export const ELEMENT_KINDS = ['platform', 'terrace', 'pillar', 'pine', 'blossom', 'dummy', 'rack', 'loose', 'button', 'portal', 'entry', 'spawn', 'house', 'tree', 'trampoline', 'zone', 'lanes', 'ground', 'wall', 'pole', 'tower', 'gong', 'jukebox', 'vitrola', 'chalkboard', 'chest', 'pedalharp', 'drumkit', 'grandpiano', 'building', 'balustrade', 'resetstone', 'mineactivator'] as const
 export type ElementKind = (typeof ELEMENT_KINDS)[number]
 export const HORDE_BUTTONS = ['aliens', 'pattern', 'zombies', 'zcount'] as const
 export type HordeButton = (typeof HORDE_BUTTONS)[number]
-export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: 'Aliens', pattern: 'Padrão dos aliens', zombies: 'Zumbis', zcount: 'Quantidade de zumbis' }
+export const HORDE_BUTTON_LABELS: Record<HordeButton, string> = { aliens: msg('Aliens'), pattern: msg('Padrão dos aliens'), zombies: msg('Zumbis'), zcount: msg('Quantidade de zumbis') }
 
 export type ElementParams = {
   message?: string; maxHp?: number // dummy
@@ -148,53 +149,53 @@ export type ElementDef = {
   minW: number; minH: number
 }
 export const ELEMENT_DEFS: Record<ElementKind, ElementDef> = {
-  platform: { label: 'Plataforma', group: 'Plataformas', w: 230, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
-  terrace: { label: 'Terraço do templo', group: 'Plataformas', w: 269, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
+  platform: { label: msg('Plataforma'), group: 'Plataformas', w: 230, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
+  terrace: { label: msg('Terraço do templo'), group: 'Plataformas', w: 269, h: 48, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
   // the temple's white balustrade over a red wall: a floating floor along the top of the wall (lib/pigchicken/buildings.ts)
-  balustrade: { label: 'Mureta com cerca', group: 'Plataformas', ...BALUSTRADE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: BALUSTRADE_FLOOR + 8 },
-  trampoline: { label: 'Trampolim', group: 'Plataformas', w: 230, h: 56, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 72, minH: 20 },
-  pillar: { label: 'Pilar / parede', group: 'Plataformas', w: 96, h: 288, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
-  pine: { label: 'Pinheiro', group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
-  blossom: { label: 'Ameixeira florida', group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
-  dummy: { label: 'Alvo de treino', group: 'Alvos', w: 46, h: 112, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 40 },
-  rack: { label: 'Suporte de item', group: 'Itens', w: 76, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 76, minH: 62 },
+  balustrade: { label: msg('Mureta com cerca'), group: 'Plataformas', ...BALUSTRADE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: BALUSTRADE_FLOOR + 8 },
+  trampoline: { label: msg('Trampolim'), group: 'Plataformas', w: 230, h: 56, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 72, minH: 20 },
+  pillar: { label: msg('Pilar / parede'), group: 'Plataformas', w: 96, h: 288, layer: 'scene', solid: true, shots: true, entity: false, rotatable: true, resizable: true, editable: false, minW: 12, minH: 12 },
+  pine: { label: msg('Pinheiro'), group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
+  blossom: { label: msg('Ameixeira florida'), group: 'Árvores', w: 340, h: 389, layer: 'frontGhost', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 40, minH: 40 },
+  dummy: { label: msg('Alvo de treino'), group: 'Alvos', w: 46, h: 112, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 40 },
+  rack: { label: msg('Suporte de item'), group: 'Itens', w: 76, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 76, minH: 62 },
   // an item on its own (left where its rack was deleted): it is there once each time the Pátio opens, never comes back
-  loose: { label: 'Item solto', group: 'Itens', w: 64, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 64, minH: 62 },
-  button: { label: 'Botão da horda', group: 'Botões', w: 40, h: 40, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 20 },
-  tree: { label: 'Árvore', group: 'Árvores', ...TREE_SIZE, layer: 'scene', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 100, minH: 100 },
-  house: { label: 'Casa', group: 'Casas', ...HOUSE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 100 },
+  loose: { label: msg('Item solto'), group: 'Itens', w: 64, h: 62, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 64, minH: 62 },
+  button: { label: msg('Botão da horda'), group: 'Botões', w: 40, h: 40, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: true, editable: true, minW: 20, minH: 20 },
+  tree: { label: msg('Árvore'), group: 'Árvores', ...TREE_SIZE, layer: 'scene', solid: false, shots: false, entity: false, rotatable: true, resizable: true, editable: true, minW: 100, minH: 100 },
+  house: { label: msg('Casa'), group: 'Casas', ...HOUSE_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 100 },
   // a hall in the Templo do Gongo's style: its roofs are floors (lib/pigchicken/buildings.ts)
-  building: { label: 'Prédio', group: 'Casas', ...BUILDING_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 120 },
-  portal: { label: 'Par de portais', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
+  building: { label: msg('Prédio'), group: 'Casas', ...BUILDING_SIZE, layer: 'scene', solid: true, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 120 },
+  portal: { label: msg('Par de portais'), group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
   // the lobby's entry (and way back to the globe): exactly one per Pátio, moved but never deleted or duplicated
-  entry: { label: 'Portal de entrada', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: 150, minH: 150 },
+  entry: { label: msg('Portal de entrada'), group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: 150, minH: 150 },
   // a Portal de nascimento: one more place to be born at, by its chance (spawn-portals.ts); it leads nowhere
-  spawn: { label: 'Portal de nascimento', group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
-  zone: { label: 'Zona', group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
-  lanes: { label: 'Faixas fixas', group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
-  ground: { label: 'Chão', group: 'Chãos e paredes', w: 640, h: 200, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 24 },
-  wall: { label: 'Parede', group: 'Chãos e paredes', w: 72, h: 320, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 12, minH: 24 },
-  pole: { label: 'Poste de energia', group: 'Energia', w: 120, h: 440, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 16, minH: 60 },
-  tower: { label: 'Torre de transmissão', group: 'Energia', w: 380, h: 920, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 100 },
+  spawn: { label: msg('Portal de nascimento'), group: 'Portais', w: 150, h: 150, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: 150, minH: 150 },
+  zone: { label: msg('Zona'), group: 'Música', w: 720, h: 520, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 80, minH: 80 },
+  lanes: { label: msg('Faixas fixas'), group: 'Música', w: 520, h: 280, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 60, minH: 60 },
+  ground: { label: msg('Chão'), group: 'Chãos e paredes', w: 640, h: 200, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 24 },
+  wall: { label: msg('Parede'), group: 'Chãos e paredes', w: 72, h: 320, layer: 'scene', solid: true, shots: true, entity: false, rotatable: false, resizable: true, editable: true, minW: 12, minH: 24 },
+  pole: { label: msg('Poste de energia'), group: 'Energia', w: 120, h: 440, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 16, minH: 60 },
+  tower: { label: msg('Torre de transmissão'), group: 'Energia', w: 380, h: 920, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 40, minH: 100 },
   // the guitar hero mode anywhere: the Jukebox and the Vitrola let her pick a song and play it; the Gongo presses
   // Tocar on the one of its zone after its strikes
-  gong: { label: 'Gongo', group: 'Música', ...GONG_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GONG_BOX.w, minH: GONG_BOX.h },
+  gong: { label: msg('Gongo'), group: 'Música', ...GONG_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GONG_BOX.w, minH: GONG_BOX.h },
   // a green chalkboard with a text in chalk; its ghost chicken shows a move while a player is near (chalkboard.ts)
-  chalkboard: { label: 'Quadro de lousa', group: 'Treino', w: 420, h: 260, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 80 },
-  jukebox: { label: 'Jukebox', group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
-  vitrola: { label: 'Vitrola toca-discos', group: 'Música', ...VITROLA_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: VITROLA_BOX.w, minH: VITROLA_BOX.h },
+  chalkboard: { label: msg('Quadro de lousa'), group: 'Treino', w: 420, h: 260, layer: 'back', solid: false, shots: false, entity: false, rotatable: false, resizable: true, editable: true, minW: 120, minH: 80 },
+  jukebox: { label: msg('Jukebox'), group: 'Música', ...JUKEBOX_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: JUKEBOX_BOX.w, minH: JUKEBOX_BOX.h },
+  vitrola: { label: msg('Vitrola toca-discos'), group: 'Música', ...VITROLA_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: VITROLA_BOX.w, minH: VITROLA_BOX.h },
   // the Recomeçar stone: strikes end the Templo's campaign (or the song playing) and clear its points
-  resetstone: { label: 'Pedra Recomeçar', group: 'Música', ...RESET_STONE_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: RESET_STONE_BOX.w, minH: RESET_STONE_BOX.h },
+  resetstone: { label: msg('Pedra Recomeçar'), group: 'Música', ...RESET_STONE_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: false, minW: RESET_STONE_BOX.w, minH: RESET_STONE_BOX.h },
   // a chest the players open with Pegar (lib/pigchicken/chests.ts): free, with a key or by merit (the souls in their Gaiolas)
-  chest: { label: 'Baú', group: 'Baús', ...CHEST_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: CHEST_BOX.w, minH: CHEST_BOX.h },
+  chest: { label: msg('Baú'), group: 'Baús', ...CHEST_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: CHEST_BOX.w, minH: CHEST_BOX.h },
   // a fixed instrument (lib/pigchicken/fixed-instruments.ts): the pedal harp and its stool; a player sits at it with Pegar
-  pedalharp: { label: 'Harpa', group: 'Música', ...HARP_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: HARP_BOX.w, minH: HARP_BOX.h },
+  pedalharp: { label: msg('Harpa'), group: 'Música', ...HARP_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: HARP_BOX.w, minH: HARP_BOX.h },
   // the acoustic drum kit and its throne
-  drumkit: { label: 'Bateria', group: 'Música', ...DRUMKIT_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: DRUMKIT_BOX.w, minH: DRUMKIT_BOX.h },
+  drumkit: { label: msg('Bateria'), group: 'Música', ...DRUMKIT_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: DRUMKIT_BOX.w, minH: DRUMKIT_BOX.h },
   // the grand piano and its bench (played on the Estrela)
-  grandpiano: { label: 'Piano de cauda', group: 'Música', ...GRANDPIANO_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GRANDPIANO_BOX.w, minH: GRANDPIANO_BOX.h },
+  grandpiano: { label: msg('Piano de cauda'), group: 'Música', ...GRANDPIANO_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: GRANDPIANO_BOX.w, minH: GRANDPIANO_BOX.h },
   // a big blue button that turns the Grade de blocos on once music or damage fills it (lib/pigchicken/mine-activator.ts)
-  mineactivator: { label: 'Ativador de grid de campo minado', group: 'Grade de blocos', ...MINE_ACTIVATOR_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: MINE_ACTIVATOR_BOX.w, minH: MINE_ACTIVATOR_BOX.h },
+  mineactivator: { label: msg('Ativador de grid de campo minado'), group: 'Grade de blocos', ...MINE_ACTIVATOR_BOX, layer: 'scene', solid: false, shots: false, entity: true, rotatable: false, resizable: false, editable: true, minW: MINE_ACTIVATOR_BOX.w, minH: MINE_ACTIVATOR_BOX.h },
 }
 // the Gongo, the Jukebox and the Baú keep their art's size
 const fixedSize = (kind: ElementKind) => kind === 'loose' || kind === 'portal' || kind === 'entry' || kind === 'spawn' || kind === 'gong' || kind === 'jukebox' || kind === 'vitrola' || kind === 'resetstone' || kind === 'chest' || kind === 'mineactivator' || isFixedKind(kind)
@@ -251,7 +252,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
   if (kind === 'dummy') return { message: DUMMY_DEFAULTS.message, maxHp: DUMMY_DEFAULTS.maxHp }
   if (kind === 'rack' || kind === 'loose') return { item: WEAPON_IDS[0] }
   if (kind === 'button') return { action: 'aliens' }
-  if (kind === 'portal') return { portalLabel: 'Entrar no portal?', portalInstruction: 'hover' }
+  if (kind === 'portal') return { portalLabel: msg('Entrar no portal?'), portalInstruction: 'hover' }
   if (kind === 'pine' || kind === 'blossom') return { seed: Math.floor(Math.random() * 2 ** 31), flip: Math.random() < 0.5 }
   if (kind === 'zone') return { zone: defaultSoundZone() }
   if (kind === 'lanes') return { lanes: defaultLanes() }
@@ -268,7 +269,7 @@ export function defaultParams(kind: ElementKind): ElementParams {
 
 // the name shown for an element (a portal on its own is not a pair)
 export const elementLabel = (el: Pick<LayoutElement, 'kind' | 'params'>) =>
-  el.kind === 'portal' && !el.params.portalPairId && el.params.portalTarget !== undefined ? 'Portal para outro Pátio' : ELEMENT_DEFS[el.kind].label
+  el.kind === 'portal' && !el.params.portalPairId && el.params.portalTarget !== undefined ? t('Portal para outro Pátio') : t(ELEMENT_DEFS[el.kind].label)
 
 // a portal to another Pátio: the lobby id (a uuid) or the default Pátio; anything else is "not chosen yet"
 export const DEFAULT_PATIO_TARGET = 'default'
@@ -302,10 +303,10 @@ function shortcutPortals(existing: LayoutElement[] = []): LayoutElement[] {
   const temple = reserveId('shortcut-temple')
   const village = reserveId('shortcut-village')
   return [
-    portal(temple, temple, TEMPLE_START_PLATFORM.x + TEMPLE_START_PLATFORM.w / 2, 'Templo do Gongo', undefined, TEMPLE_START_PLATFORM),
-    portal(reserveId('shortcut-temple-return'), temple, 125, 'Voltar ao início do Pátio', 'temple'),
-    portal(village, village, VILLAGE_START_PLATFORM.x + VILLAGE_START_PLATFORM.w / 2, 'Vila dos Telhados', undefined, VILLAGE_START_PLATFORM),
-    portal(reserveId('shortcut-village-return'), village, 150, 'Voltar ao início do Pátio', 'village'),
+    portal(temple, temple, TEMPLE_START_PLATFORM.x + TEMPLE_START_PLATFORM.w / 2, msg('Templo do Gongo'), undefined, TEMPLE_START_PLATFORM),
+    portal(reserveId('shortcut-temple-return'), temple, 125, msg('Voltar ao início do Pátio'), 'temple'),
+    portal(village, village, VILLAGE_START_PLATFORM.x + VILLAGE_START_PLATFORM.w / 2, msg('Vila dos Telhados'), undefined, VILLAGE_START_PLATFORM),
+    portal(reserveId('shortcut-village-return'), village, 150, msg('Voltar ao início do Pátio'), 'village'),
   ]
 }
 
@@ -570,7 +571,7 @@ export function normalizeElement(raw: unknown): LayoutElement | null {
     params.trampoline = normalizeTrampoline(p.trampoline)
   } else if (kind === 'portal') {
     params.portalPairId = typeof p.portalPairId === 'string' ? p.portalPairId.slice(0, 64) : ''
-    params.portalLabel = String(p.portalLabel ?? 'Entrar no portal?').slice(0, 100)
+    params.portalLabel = String(p.portalLabel ?? msg('Entrar no portal?')).slice(0, 100)
     params.portalInstruction = p.portalInstruction === 'always' ? 'always' : 'hover'
     const target = normalizePortalTarget(p.portalTarget)
     if (target !== undefined) {

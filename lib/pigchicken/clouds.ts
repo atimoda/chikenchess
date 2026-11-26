@@ -9,13 +9,14 @@
 // how many heaps each cloud has and detail (0 to 100) the small puffs that fray its outline.
 // shadeTint/shadeTintAmount: the shade's own colour (0: the sky's). The drawing: lib/pigchicken/cloud-draw.ts.
 
+import { msg } from '../i18n'
 export type CloudParams = {
   amount: number; size: number; height: number; spread: number; opacity: number; soft: number; volume: number
   wind: number; tint: string; tintAmount: number; shape: number
   kind: CloudKind; puffs: number; detail: number; shadeTint: string; shadeTintAmount: number
 }
 export type CloudKind = 'soft' | 'cumulus'
-export const CLOUD_KINDS: { id: CloudKind; label: string }[] = [{ id: 'soft', label: 'Suaves' }, { id: 'cumulus', label: 'Cumulus' }]
+export const CLOUD_KINDS: { id: CloudKind; label: string }[] = [{ id: 'soft', label: msg("Suaves") }, { id: 'cumulus', label: msg("Cumulus") }]
 
 export const CLOUD_PCT = { min: 0, max: 100, step: 1 } as const
 export const CLOUD_SCALE = { min: 30, max: 600, step: 5 } as const

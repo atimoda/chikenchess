@@ -3,6 +3,7 @@
 // (public.chicken_config, written only by the admin from the Pátio da Galinha) and is cached in this
 // browser so the chicken starts with it right away; without it the defaults in params.ts apply.
 // The Pátio sets a preview (its unsaved draft) that the chickens on screen follow until it closes.
+import { t as tr } from '../i18n'
 import { LOOK_ART, type ChickenLook, type ChickenSlot } from './look-art'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, SCALE_BASE, type ChickenParams } from './params'
 import { defaultClasses, normalizeClasses, type ClassesTuning } from './species'
@@ -176,10 +177,10 @@ export class ChickenConfigError extends Error {}
 function saveErrorMessage(error: unknown) {
   const e = (error && typeof error === 'object' ? error : {}) as { message?: string; code?: string }
   const msg = e.message ?? ''
-  if (msg.includes('CONFIG_CONFLICT')) return 'Outra versão foi salva enquanto você editava. Recarregue os valores salvos e refaça o ajuste.'
-  if (msg.includes('ADMIN_REQUIRED') || msg.includes('UNAUTHORIZED')) return 'Só a conta admin pode salvar a configuração central.'
-  if (e.code === 'PGRST202' || msg.includes('chicken_config_save')) return 'O servidor ainda não tem a configuração central (falta aplicar a migração 202611010001_chicken_config.sql).'
-  return msg || 'Não foi possível salvar. Tente de novo.'
+  if (msg.includes('CONFIG_CONFLICT')) return tr('Outra versão foi salva enquanto você editava. Recarregue os valores salvos e refaça o ajuste.')
+  if (msg.includes('ADMIN_REQUIRED') || msg.includes('UNAUTHORIZED')) return tr('Só a conta admin pode salvar a configuração central.')
+  if (e.code === 'PGRST202' || msg.includes('chicken_config_save')) return tr('O servidor ainda não tem a configuração central (falta aplicar a migração 202611010001_chicken_config.sql).')
+  return msg || tr('Não foi possível salvar. Tente de novo.')
 }
 
 /** Saves the central configuration (admin only) over the revision the editor started from. */
@@ -193,13 +194,13 @@ export async function saveChickenConfig(next: ChickenConfig): Promise<SavedChick
 /** The saved versions of the central configuration (newest first, the last 50), admin only. */
 export async function chickenConfigVersions(): Promise<{ id: number; revision: number; updatedAt: string; by: string | null }[]> {
   const { data, error } = await requireOnlineClient().rpc('chicken_config_versions')
-  if (error) throw new ChickenConfigError(error.message.includes('chicken_config_versions') ? 'O servidor ainda não tem as versões (falta aplicar a migração 202611250002_game_defaults.sql).' : saveErrorMessage(error))
+  if (error) throw new ChickenConfigError(error.message.includes('chicken_config_versions') ? tr('O servidor ainda não tem as versões (falta aplicar a migração 202611250002_game_defaults.sql).') : saveErrorMessage(error))
   return ((data ?? []) as { id: number; revision: number; updated_at: string; by: string | null }[]).map(v => ({ id: Number(v.id), revision: v.revision, updatedAt: v.updated_at, by: v.by }))
 }
 /** One saved version's configuration, admin only. */
 export async function chickenConfigVersion(id: number): Promise<ChickenConfig> {
   const { data, error } = await requireOnlineClient().rpc('chicken_config_version', { p_id: id })
   if (error) throw new ChickenConfigError(saveErrorMessage(error))
-  if (!data?.config) throw new ChickenConfigError('Versão não encontrada.')
+  if (!data?.config) throw new ChickenConfigError(tr('Versão não encontrada.'))
   return normalizeChickenConfig(data.config)
 }

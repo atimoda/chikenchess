@@ -3,6 +3,7 @@
 // cymbals thin discs with their bell in the middle; the ones behind (Ataque, China) are drawn first, under the
 // others. A piece just hit lights up and throws a ring; the Chimbal shows how far its pedal is open as an arc
 // around it; each drumstick is a small ring where it is; a knock between the pieces leaves a small ring that fades.
+import { t } from "@/lib/i18n"
 import { DRUM_IDS, drumChartFrame, drumPiece, type DrumKit, type DrumPiece } from "@/lib/pigchicken/drum-kit"
 
 function hexA(hex: string, a: number) {
@@ -77,7 +78,7 @@ export function drawDrumChart(ctx: CanvasRenderingContext2D, kit: DrumKit, cx: n
     // and one with a smaller piece on it, the Condução under its Sino, shows it below that one)
     const inner = p.back ? null : kit.pads.find(q => q !== p && !q.back && Math.hypot(q.x - p.x, q.y - p.y) + q.r <= p.r)
     const ty = p.back ? y - r * 0.45 : inner ? cy + (inner.y + inner.r) * rOut + (y + r - (cy + (inner.y + inner.r) * rOut)) * 0.45 : hint ? y - font * 0.35 : y
-    ctx.fillText(info.label, x, ty)
+    ctx.fillText(t(info.label), x, ty)
     if (hint) {
       ctx.globalAlpha = Math.min(1, alpha * dim * 0.6)
       ctx.font = `${Math.round(Math.max(7, font * 0.72))}px monospace`

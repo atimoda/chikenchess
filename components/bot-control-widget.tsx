@@ -8,6 +8,7 @@ import { Resizable } from "re-resizable"
 import { cn } from "@/lib/utils"
 import type { BotConfigParams, BotProfile } from "@/lib/chess-bots"
 import { StepperButton, stepValue } from "@/components/compact-number-input"
+import { useT } from "@/lib/i18n"
 
 interface BotControlWidgetProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onDrag" | "onDragStart" | "onDragEnd"> {
   cityColor: string
@@ -39,6 +40,7 @@ interface NumberFieldProps {
 }
 
 function ParamField({ label, code, value, min, max, step = 1, suffix, disabled, onChange }: NumberFieldProps) {
+  const t = useT()
   // Held +/- buttons repeat faster than the parent re-renders, so step from the latest value.
   const valueRef = useRef(value)
   valueRef.current = value
@@ -77,8 +79,8 @@ function ParamField({ label, code, value, min, max, step = 1, suffix, disabled, 
             }}
             className={cn("w-full rounded border border-white/20 bg-black/70 py-0.5 pr-9 font-mono text-[10px] text-white [appearance:textfield] focus:border-white/60 focus:outline-none disabled:cursor-not-allowed [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none", inField ? "pl-5 text-left" : "pl-1.5 text-right")}
           />
-          <StepperButton aria-label={`Diminuir ${code} ${label}`} disabled={disabled || value <= min} onStep={() => adjust(-1)} className={cn(stepperClass, "right-[19px]")}>−</StepperButton>
-          <StepperButton aria-label={`Aumentar ${code} ${label}`} disabled={disabled || value >= max} onStep={() => adjust(1)} className={cn(stepperClass, "right-[2px]")}>+</StepperButton>
+          <StepperButton aria-label={t("Diminuir {code} {label}", { code, label })} disabled={disabled || value <= min} onStep={() => adjust(-1)} className={cn(stepperClass, "right-[19px]")}>−</StepperButton>
+          <StepperButton aria-label={t("Aumentar {code} {label}", { code, label })} disabled={disabled || value >= max} onStep={() => adjust(1)} className={cn(stepperClass, "right-[2px]")}>+</StepperButton>
         </span>
         {suffix && !inField && <span className="w-3 font-mono text-[10px] text-white/55">{suffix}</span>}
       </span>
@@ -103,6 +105,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
   onToggle,
   ...props
 }, ref) => {
+  const t = useT()
   const localHandleRef = useRef<HTMLDivElement>(null)
   const effectiveHandleRef = handleRef || localHandleRef
   const initialPosRef = useRef<{ x: number; y: number } | null>(null)
@@ -170,7 +173,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
         />
         <button
           type="button"
-          aria-label="Desligar Bot Control"
+          aria-label={t("Desligar Bot Control")}
           aria-hidden={togglePortalized || undefined}
           tabIndex={togglePortalized ? -1 : 0}
           ref={toggleRef}
@@ -195,24 +198,24 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
 
         <div ref={effectiveHandleRef} className="relative z-10 flex h-9 shrink-0 items-center justify-center px-8">
           <span className="truncate text-center font-mono text-xs font-bold uppercase tracking-wider text-white">
-            BOT CONTROL
+            {t("BOT CONTROL")}
           </span>
         </div>
 
         <div className="debug-scroll relative z-10 min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2.5 py-1.5 font-mono text-[10px] leading-tight text-white/80">
           <div className="mb-1 flex items-center justify-between gap-2 rounded bg-white/[0.04] px-2 py-1">
-            <span className="truncate font-bold text-white">{bot.name}</span>
+            <span className="truncate font-bold text-white">{t(bot.name)}</span>
             <span className={cn(
               "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase",
               isChicken ? "bg-amber-400/20 text-amber-200 border border-amber-400/40" : "bg-zinc-500/20 text-zinc-300 border border-zinc-400/30"
             )}>
-              {isChicken ? "Chicken Bot" : "PureChess Bot"}
+              {isChicken ? t("Chicken Bot") : t("PureChess Bot")}
             </span>
           </div>
 
           <ParamField
             code="U"
-            label="Delay inicial"
+            label={t("Delay inicial")}
             value={params.delaySeconds}
             min={0.5}
             max={30}
@@ -222,11 +225,11 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
 
           <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300/85">
-            Poderes {!isChicken && "(inativo em PureChess)"}
+            {t("Poderes")} {!isChicken && t("(inativo em PureChess)")}
           </div>
           <ParamField
             code="N"
-            label="Procura poder em"
+            label={t("Procura poder em")}
             value={params.powerUsePercent}
             min={0}
             max={100}
@@ -237,7 +240,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
           <ParamField
             code="P"
-            label="Ganho mínimo (2 lances)"
+            label={t("Ganho mínimo (2 lances)")}
             value={params.powerMinGainPawns}
             min={0}
             max={20}
@@ -247,7 +250,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
           <ParamField
             code="Q"
-            label="Ovos de reserva"
+            label={t("Ovos de reserva")}
             value={params.powerReserveEggs}
             min={0}
             max={100}
@@ -257,11 +260,11 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
 
           <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-300/85">
-            Freeze {!isChicken && "(inativo em PureChess)"}
+            Freeze {!isChicken && t("(inativo em PureChess)")}
           </div>
           <ParamField
             code="Y"
-            label="Ameaça mínima"
+            label={t("Ameaça mínima")}
             value={params.freezeMinThreatPawns}
             min={0}
             max={50}
@@ -271,7 +274,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
           <ParamField
             code="Z"
-            label="Intervalo mínimo"
+            label={t("Intervalo mínimo")}
             value={params.freezeCooldownMoves}
             min={0}
             max={100}
@@ -281,11 +284,11 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
 
           <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300/85">
-            Shield {!isChicken && "(inativo em PureChess)"}
+            Shield {!isChicken && t("(inativo em PureChess)")}
           </div>
           <ParamField
             code="T"
-            label="Peça mínima salva"
+            label={t("Peça mínima salva")}
             value={params.shieldMinPiecePawns}
             min={0}
             max={50}
@@ -295,7 +298,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
           <ParamField
             code="R"
-            label="Intervalo mínimo"
+            label={t("Intervalo mínimo")}
             value={params.shieldCooldownMoves}
             min={0}
             max={100}
@@ -305,11 +308,11 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
 
           <div className="pt-1.5 pb-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300/85">
-            Buscar 3 Ovos (Worst) {!isChicken && "(inativo em PureChess)"}
+            {t("Buscar 3 Ovos (Worst)")} {!isChicken && t("(inativo em PureChess)")}
           </div>
           <ParamField
             code="W"
-            label="Score mínimo depois"
+            label={t("Score mínimo depois")}
             value={params.worstFloorPawns}
             min={-50}
             max={50}
@@ -319,7 +322,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
           <ParamField
             code="V"
-            label="Perda máxima"
+            label={t("Perda máxima")}
             value={params.worstMaxLossPawns}
             min={0}
             max={50}
@@ -329,7 +332,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
           <ParamField
             code="O"
-            label="Só com ovos abaixo de"
+            label={t("Só com ovos abaixo de")}
             value={params.eggTarget}
             min={0}
             max={100}
@@ -339,7 +342,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
           />
           <ParamField
             code="K"
-            label="Intervalo mínimo"
+            label={t("Intervalo mínimo")}
             value={params.worstCooldownMoves}
             min={0}
             max={100}
@@ -360,7 +363,7 @@ export const BotControlWidget = forwardRef<HTMLDivElement, BotControlWidgetProps
                 className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded border border-emerald-400/60 bg-emerald-500/20 px-2.5 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wide text-emerald-200 transition-colors hover:bg-emerald-500/35 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Save className="h-3.5 w-3.5" />
-                {savingBot ? "Salvando…" : "Salvar bot"}
+                {savingBot ? t("Salvando…") : t("Salvar bot")}
               </button>
             </div>
           )}

@@ -3,6 +3,7 @@
 import { isAdminUser } from '@/lib/admin/access'
 import { getOnlineClient, onlineRpc } from './client'
 import type { CreativeSession } from '@/lib/music/creative'
+import { t } from '@/lib/i18n'
 
 export interface CreativeAccount { userId: string; admin: boolean }
 export interface RemoteKitEntry { name: string; updatedAt: string }
@@ -35,7 +36,7 @@ export async function listRemoteKits(): Promise<RemoteKitEntry[]> {
 
 export async function loadRemoteKit(name: string): Promise<unknown> {
   const kit = await onlineRpc<unknown>('creative_kit', { p_name: name })
-  if (!kit) throw new Error(`Kit “${name}” is no longer saved in your account.`)
+  if (!kit) throw new Error(t('Kit “{name}” is no longer saved in your account.', { name }))
   return kit
 }
 
@@ -46,7 +47,7 @@ export async function saveRemoteKit(kit: CreativeSession): Promise<RemoteKitEntr
 
 export function remoteKitError(error: unknown) {
   const message = error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String(error.message) : ''
-  if (message.includes('KIT_LIMIT')) return 'Your account already has 30 kits. Save over an existing name.'
-  if (message.includes('KIT_TOO_LARGE')) return 'This kit is too large to save in your account. Use Export.'
-  return message || 'Could not reach your account.'
+  if (message.includes('KIT_LIMIT')) return t('Your account already has 30 kits. Save over an existing name.')
+  if (message.includes('KIT_TOO_LARGE')) return t('This kit is too large to save in your account. Use Export.')
+  return message ? t(message) : t('Could not reach your account.')
 }

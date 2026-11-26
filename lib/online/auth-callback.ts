@@ -1,4 +1,5 @@
 /* global URLSearchParams */
+import { msg, t } from '@/lib/i18n'
 
 export interface AuthCallback {
   requested: boolean
@@ -45,7 +46,7 @@ export function authCallbackMessage(
   hasPermanentSession: boolean,
 ): AuthCallbackMessage {
   // An existing stored session must never turn a failed OAuth attempt into success.
-  const error = callback.error || sessionError?.message || (!hasPermanentSession ? 'O login ainda não foi confirmado. Tente novamente.' : null)
+  const error = callback.error || sessionError?.message || (!hasPermanentSession ? msg('O login ainda não foi confirmado. Tente novamente.') : null)
   return {
     type: 'chickenchess:auth-complete',
     ok: !error && hasPermanentSession,
@@ -76,10 +77,10 @@ export function googleLoginFailure(errorCode: string | null | undefined, error: 
   if (errorCode === 'identity_already_exists') {
     return {
       existingAccount: true,
-      message: 'Este Google já está ligado a uma conta ChickenChess. Clique novamente em Continue with Google para entrar nessa conta; seu progresso visitante será integrado a ela.',
+      message: t('Este Google já está ligado a uma conta ChickenChess. Clique novamente em Continue with Google para entrar nessa conta; seu progresso visitante será integrado a ela.'),
     }
   }
-  return { existingAccount: false, message: error || 'O login Google não foi concluído. Tente novamente ou use email.' }
+  return { existingAccount: false, message: error ? t(error) : t('O login Google não foi concluído. Tente novamente ou use email.') }
 }
 
 const EXISTING_EMAIL_CODES = new Set(['email_exists', 'user_already_exists', 'identity_already_exists'])

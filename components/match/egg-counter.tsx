@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode, Ref } from "react"
 import { cn } from "@/lib/utils"
+import { msg, useT } from "@/lib/i18n"
 
 interface EggCounterProps {
   ref?: Ref<HTMLDivElement>
@@ -60,8 +61,9 @@ interface MatchStatusProps {
  * board never shifts; the bottom slot keeps its height to avoid moving the cards each turn.
  */
 export function MatchStatus({ text, color, placement, pulse, className, style }: MatchStatusProps) {
+  const t = useT()
   // "Your move" blinks once each time it shows up, so the player notices their turn.
-  const yourMove = text.startsWith("Your move")
+  const yourMove = text.startsWith(msg("Your move"))
   return <div
     role="status"
     className={cn(
@@ -71,5 +73,5 @@ export function MatchStatus({ text, color, placement, pulse, className, style }:
       className,
     )}
     style={{ ...style, color }}
-  ><span key={yourMove ? "your-move" : "status"} className={cn(yourMove && "match-status-your-move")}>{text}</span></div>
+  ><span key={yourMove ? "your-move" : "status"} className={cn(yourMove && "match-status-your-move")}>{t(text)}</span></div>
 }

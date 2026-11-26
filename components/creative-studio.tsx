@@ -46,8 +46,9 @@ import { GamePreferences } from './game-preferences'
 import styles from './creative-studio.module.css'
 import { duckSourceOptions } from '@/lib/music/sound-design'
 import LEGACY_KITS from '@/data/music/legacy-kits.json'
+import { msg, t as tr, tx, useLocale } from '@/lib/i18n'
 
-const pieceNames = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' }
+const pieceNames = { p: msg('Pawn'), n: msg('Knight'), b: msg('Bishop'), r: msg('Rook'), q: msg('Queen'), k: msg('King') }
 const MOUTH_BREATHER_KIT = 'builtin:mouth-breather'
 const DUSSELDORF_ORIGINAL_KIT = 'builtin:dusseldorf-original'
 const DEFAULT_KIT_PREFIX = 'default:'
@@ -62,7 +63,7 @@ function messageOf(error: unknown) {
   if (error && typeof error === 'object' && 'issues' in error && Array.isArray(error.issues)) {
     return error.issues.slice(0, 2).map((issue: { message: string; path: string[] }) => `${issue.path.join('.')}: ${issue.message}`).join(' ')
   }
-  return error instanceof Error ? error.message : 'Could not load the configuration.'
+  return error instanceof Error ? tr(error.message) : tr('Could not load the configuration.')
 }
 
 
@@ -80,13 +81,13 @@ type CreativeWidgetId = 'kit' | 'transport' | 'reactions' | 'code' | 'instrument
 // Left column works on the kit and the session; right column on the selected piece.
 // `piece` widgets draw their line to the selected piece, the others to the board.
 const CREATIVE_WIDGETS: { id: CreativeWidgetId; title: string; side: 'left' | 'right'; width: number; on: boolean; link: 'board' | 'piece'; autoHeight?: number }[] = [
-  { id: 'kit', title: 'Creative kit', side: 'left', width: 380, on: true, link: 'board', autoHeight: 280 },
-  { id: 'transport', title: 'Transport', side: 'left', width: 420, on: true, link: 'board' },
-  { id: 'reactions', title: 'States & Events', side: 'left', width: 420, on: false, link: 'board' },
-  { id: 'code', title: 'Strudel code', side: 'left', width: 420, on: false, link: 'board' },
-  { id: 'instrument', title: 'Instrument', side: 'right', width: 380, on: true, link: 'piece' },
-  { id: 'source', title: 'Sample source', side: 'right', width: 380, on: false, link: 'piece' },
-  { id: 'band', title: '32 voices', side: 'right', width: 380, on: false, link: 'board' },
+  { id: 'kit', title: msg('Creative kit'), side: 'left', width: 380, on: true, link: 'board', autoHeight: 280 },
+  { id: 'transport', title: msg('Transport'), side: 'left', width: 420, on: true, link: 'board' },
+  { id: 'reactions', title: msg('States & Events'), side: 'left', width: 420, on: false, link: 'board' },
+  { id: 'code', title: msg('Strudel code'), side: 'left', width: 420, on: false, link: 'board' },
+  { id: 'instrument', title: msg('Instrument'), side: 'right', width: 380, on: true, link: 'piece' },
+  { id: 'source', title: msg('Sample source'), side: 'right', width: 380, on: false, link: 'piece' },
+  { id: 'band', title: msg('{n} voices'), side: 'right', width: 380, on: false, link: 'board' },
 ]
 const WIDGET_TOP = 76
 const WIDGET_GAP = 10
@@ -117,6 +118,7 @@ const PALETTE_ORDER = ['p', 'r', 'n', 'b', 'q', 'k']
 const RULED = { borderColor: '#c9a85a', color: '#f0d48e', boxShadow: 'inset 0 0 0 1px #c9a85a55' } as const
 const RULED_TEXT = { color: '#f0d48e' } as const
 export function CreativeStudio() {
+  useLocale()
   const rootRef = useRef<HTMLElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)
   const powerCardsRef = useRef<HTMLDivElement | null>(null)
@@ -211,7 +213,7 @@ export function CreativeStudio() {
         let saved = requestedKit ? JSON.stringify(prepareCityKitForCreative(requestedKit, requestedCity!)) : localStorage.getItem(CREATIVE_STORAGE)
         if (requestedPreset && ['manchester-1999', 'dusseldorf-original', 'mouth-breather'].includes(requestedPreset)) {
           const response = await window.fetch(`/presets/${requestedPreset}.json`)
-          if (!response.ok) throw new Error('Official preset unavailable.')
+          if (!response.ok) throw new Error(msg('Official preset unavailable.'))
           saved = await response.text()
         }
         if (saved) {
@@ -223,7 +225,7 @@ export function CreativeStudio() {
           }
         }
       } catch (error) {
-        if (!cancelled) setNotice(`Could not restore the draft: ${messageOf(error)}`, true)
+        if (!cancelled) setNotice(tr('Could not restore the draft: {error}', { error: messageOf(error) }), true)
       }
       try {
         const activeCustom = new Map<string, CreativeSession>()
@@ -252,7 +254,7 @@ export function CreativeStudio() {
           }
         }
       } catch (error) {
-        if (!cancelled) setNotice(`Could not load the kit library: ${messageOf(error)}`)
+        if (!cancelled) setNotice(tr('Could not load the kit library: {error}', { error: messageOf(error) }))
       } finally {
         if (!cancelled) {
           savedFingerprint.current = baseline ?? restored ? kitFingerprint((baseline ?? restored)!) : null
@@ -268,7 +270,7 @@ export function CreativeStudio() {
     if (!ready) return
     const timer = setTimeout(() => {
       try { localStorage.setItem(CREATIVE_STORAGE, JSON.stringify(session)) }
-      catch { setNotice('Local storage unavailable. Export the kit to keep your changes.', true) }
+      catch { setNotice(tr('Local storage unavailable. Export the kit to keep your changes.'), true) }
     }, 300)
     return () => clearTimeout(timer)
   }, [session, ready])
@@ -278,10 +280,10 @@ export function CreativeStudio() {
   useEffect(() => {
     if (!account) { setRemoteKits([]); return }
     let current = true
-    listRemoteKits().then(list => { if (current) setRemoteKits(list) }, error => { if (current) setNotice(`Could not list your account’s kits: ${remoteKitError(error)}`) })
+    listRemoteKits().then(list => { if (current) setRemoteKits(list) }, error => { if (current) setNotice(tr('Could not list your account’s kits: {error}', { error: remoteKitError(error) })) })
     return () => { current = false }
   }, [account])
-  useEffect(() => { if (music.error) setNotice(`Audio: ${music.error}`) }, [music.error])
+  useEffect(() => { if (music.error) setNotice(tr('Audio: {error}', { error: music.error })) }, [music.error])
   useEffect(() => () => { toast.dismiss('creative-notice') }, [])
 
   const updateInstrument = useCallback((update: Partial<Instrument>) => {
@@ -345,7 +347,7 @@ export function CreativeStudio() {
     const base = createCreativeSession()
     const fingerprint = kitFingerprint(session)
     const unsaved = savedFingerprint.current === null ? fingerprint !== kitFingerprint({ ...base, name: session.name }) : fingerprint !== savedFingerprint.current
-    return !unsaved || window.confirm('The current kit has unsaved changes. Change it anyway?')
+    return !unsaved || window.confirm(tr('The current kit has unsaved changes. Change it anyway?'))
   }
 
   async function loadSession(next: CreativeSession, autoplay = false) {
@@ -356,8 +358,8 @@ export function CreativeStudio() {
       setKitIdentity(identity => identity + 1)
       positionHistoryRef.current = []; setHistoryLength(0)
       savedFingerprint.current = kitFingerprint(next)
-      setNotice(`Kit “${next.name}” loaded${autoplay ? ' and playing' : ' and paused'}.`)
-    } catch (error) { setNotice(`Kit not loaded: ${messageOf(error)}`) }
+      setNotice(tr(autoplay ? 'Kit “{name}” loaded and playing.' : 'Kit “{name}” loaded and paused.', { name: next.name }))
+    } catch (error) { setNotice(tr('Kit not loaded: {error}', { error: messageOf(error) })) }
     finally { setBusy(false) }
   }
   async function loadSelectedKit() {
@@ -366,7 +368,7 @@ export function CreativeStudio() {
       const name = selectedKit.slice(USER_KIT_PREFIX.length)
       if (account && remoteKits.some(kit => kit.name === name)) {
         try { await loadSession(parseCreativeSession(JSON.stringify(await loadRemoteKit(name))), true) }
-        catch (error) { setNotice(`Kit not loaded: ${remoteKitError(error)}`) }
+        catch (error) { setNotice(tr('Kit not loaded: {error}', { error: remoteKitError(error) })) }
         return
       }
       const kit = kits.find(item => item.name === name)
@@ -381,7 +383,7 @@ export function CreativeStudio() {
     if (selectedKit.startsWith(LEGACY_KIT_PREFIX)) {
       try {
         const response = await window.fetch(`/presets/legacy/${selectedKit.slice(LEGACY_KIT_PREFIX.length)}.json`)
-        if (!response.ok) throw new Error('Legacy kit unavailable')
+        if (!response.ok) throw new Error(msg('Legacy kit unavailable'))
         await loadSession(parseCreativeSession(await response.text()), true)
       } catch (error) { setNotice(messageOf(error)) }
       return
@@ -393,13 +395,13 @@ export function CreativeStudio() {
     if (selectedKit === MOUTH_BREATHER_KIT) {
       try {
         const response = await window.fetch('/presets/mouth-breather.json')
-        if (!response.ok) throw new Error('Preset unavailable')
+        if (!response.ok) throw new Error(msg('Preset unavailable'))
         await loadSession(parseCreativeSession(await response.text()), true)
       } catch (error) { setNotice(messageOf(error)) }
     }
   }
   async function saveKit() {
-    if (!session.name.trim()) { setNotice('Name the kit before saving.'); return }
+    if (!session.name.trim()) { setNotice(tr('Name the kit before saving.')); return }
     const revision = session.cityId ? defaultCityKit(session.cityId)?.catalogRevision ?? STYLE_REVISION : STYLE_REVISION
     const clean = parseCreativeSession(JSON.stringify({...session, catalogRevision: revision}))
     // Only admins link kits to a stage; everyone else's kits stay in their library.
@@ -411,7 +413,7 @@ export function CreativeStudio() {
       const standardConflict = !kits.some(kit => kit.cityId === linked.cityId) && standard?.name !== linked.name ? standard : undefined
       const conflict = customConflict ?? standardConflict
       const city = cityName(linked.cityId)
-      if (conflict && !window.confirm(`${city ?? 'This city'} already has the kit “${conflict.name}” linked. Link “${linked.name}” to the city instead? The previous link will be removed.`)) return
+      if (conflict && !window.confirm(tr('{city} already has the kit “{conflict}” linked. Link “{linked}” to the city instead? The previous link will be removed.', { city: city ?? tr('This city'), conflict: conflict.name, linked: linked.name }))) return
       replacedLink = Boolean(conflict)
     }
     let remoteError = ''
@@ -433,27 +435,26 @@ export function CreativeStudio() {
       }
       localStorage.setItem(KIT_LIBRARY_STORAGE, JSON.stringify(updated.kits))
       if (linked.cityId) localStorage.setItem(cityKitStorageKey(linked.cityId), JSON.stringify(linked))
-    } catch { if (!account || remoteError) { setNotice('Could not save locally. Use Export.', true); return } }
+    } catch { if (!account || remoteError) { setNotice(tr('Could not save locally. Use Export.'), true); return } }
     setKits(updated.kits); setSession(clean); setSelectedKit(`${USER_KIT_PREFIX}${clean.name}`)
     savedFingerprint.current = kitFingerprint(clean)
     const city = EDITABLE_CITY_KITS.find(item => item.id === linked.cityId)
-    if (remoteError) { setNotice(`Kit “${clean.name}” saved only in this browser: ${remoteError}`, true); return }
-    const where = account ? 'saved to your account' : 'saved in this browser'
+    if (remoteError) { setNotice(tr('Kit “{name}” saved only in this browser: {error}', { name: clean.name, error: remoteError }), true); return }
     setNotice(city
-      ? `Kit “${clean.name}” ${where} and linked to the ${city.name} stage.${replacedLink ? ' The city’s previous link was removed.' : ''}`
-      : `Kit “${clean.name}” ${where}. Saving with the same name updates it.`)
+      ? tr(account ? 'Kit “{name}” saved to your account and linked to the {city} stage.' : 'Kit “{name}” saved in this browser and linked to the {city} stage.', { name: clean.name, city: city.name }) + (replacedLink ? ` ${tr('The city’s previous link was removed.')}` : '')
+      : tr(account ? 'Kit “{name}” saved to your account. Saving with the same name updates it.' : 'Kit “{name}” saved in this browser. Saving with the same name updates it.', { name: clean.name }))
   }
   async function saveToGame() {
     const cityId = session.cityId
-    if (!cityId) { setNotice('Pick a Linked stage before using Save DB.'); return }
-    if (!session.name.trim()) { setNotice('Name the kit before saving.'); return }
+    if (!cityId) { setNotice(tr('Pick a Linked stage before using Save DB.')); return }
+    if (!session.name.trim()) { setNotice(tr('Name the kit before saving.')); return }
     setBusy(true)
     try {
       const saved = await saveOfficialCityKit(cityId, session)
       // The admin's own matches use the new official kit right away, before the deploy.
       localStorage.setItem(cityKitStorageKey(cityId), JSON.stringify(prepareOfficialCityKit(session, cityId, saved.revision)))
-      setNotice(`Kit “${session.name}” saved as the official ${cityName(cityId) ?? cityId} kit in ${saved.path}. Deploy to publish it.`)
-    } catch (error) { setNotice(`Save DB failed: ${messageOf(error)}`) }
+      setNotice(tr('Kit “{name}” saved as the official {city} kit in {path}. Deploy to publish it.', { name: session.name, city: cityName(cityId) ?? cityId, path: saved.path }))
+    } catch (error) { setNotice(tr('Save DB failed: {error}', { error: messageOf(error) })) }
     finally { setBusy(false) }
   }
   function newRandomKit() {
@@ -464,13 +465,13 @@ export function CreativeStudio() {
     void loadSession(createRandomCityKit(city, Math.random().toString(36).slice(2, 8)), true)
   }
   function exportKit() {
-    if (!session.name.trim()) { setNotice('Name the kit before exporting.'); return }
+    if (!session.name.trim()) { setNotice(tr('Name the kit before exporting.')); return }
     const url = window.URL.createObjectURL(new window.Blob([JSON.stringify(session, null, 2)], { type: 'application/json' }))
     const link = document.createElement('a')
     link.href = url; link.download = `${session.name.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60) || 'kit'}.chickenchess.json`
     link.click()
     setTimeout(() => window.URL.revokeObjectURL(url), 1000)
-    setNotice('Kit exported with instruments, patterns, positions and settings.')
+    setNotice(tr('Kit exported with instruments, patterns, positions and settings.'))
   }
 
   function rememberPositions() {
@@ -511,10 +512,10 @@ export function CreativeStudio() {
   useEffect(() => clearArrows, [analysisGame, clearArrows])
   function showRankedMoves(kind: 'best' | 'worst') {
     analysis.analyze(analysisGame, (result, error) => {
-      if (!result) { setNotice(`${kind === 'best' ? 'Best' : 'Worst'} moves unavailable: ${error ?? 'this position could not be analyzed.'}`); return }
+      if (!result) { setNotice(tr(kind === 'best' ? 'Best moves unavailable: {error}' : 'Worst moves unavailable: {error}', { error: error ? tr(error) : tr('this position could not be analyzed.') })); return }
       if (result.fen !== analysisFenRef.current) return
       const arrows = arrowsForAnalysis(result, kind)
-      if (!arrows.length) { setNotice(`No ${kind} moves for ${selected.color === 'w' ? 'White' : 'Black'} in this position.`); return }
+      if (!arrows.length) { setNotice(tr(kind === 'best' ? (selected.color === 'w' ? 'No best moves for White in this position.' : 'No best moves for Black in this position.') : (selected.color === 'w' ? 'No worst moves for White in this position.' : 'No worst moves for Black in this position.'))); return }
       if (arrowTimerRef.current !== null) window.clearTimeout(arrowTimerRef.current)
       setAnalysisArrows(arrows)
       arrowTimerRef.current = window.setTimeout(() => { arrowTimerRef.current = null; setAnalysisArrows([]) }, 3000)
@@ -597,52 +598,52 @@ export function CreativeStudio() {
     return () => window.cancelAnimationFrame(frame)
   }, [portraitPhone, widgetOn, widgetLayout, widgetRefs, boardPan.offset, boardResize.width, cardsResize.width, selectedSquareForLines, layoutTick, songHover])
 
-  const kitWidget = <fieldset disabled={!ready || busy} className={styles.kitHeader} aria-label="Current kit and library">
+  const kitWidget = <fieldset disabled={!ready || busy} className={styles.kitHeader} aria-label={tr('Current kit and library')}>
     <div className={styles.kitPick}>
-      <label><span className={styles.helpCaption}>Kit<InfoTip label="Load and try kits">My kits lists the kits saved {account ? 'in your account and in this browser' : 'in this browser'} and the standalone studies. The cities’ default kits are below, grouped by campaign and named by year, city and style, followed by Legacy kits: earlier versions of the Electronic World and Brazilian kits, kept for history and not linked to any city. Load asks first when the current kit has unsaved changes.</InfoTip></span><select aria-label="Current Creative kit" value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
-        <option value="">Current draft</option>
-        <optgroup label="My kits">
+      <label><span className={styles.helpCaption}>{tr('Kit')}<InfoTip label={tr('Load and try kits')}>{tr('My kits lists the kits saved {where} and the standalone studies.', { where: tr(account ? 'in your account and in this browser' : 'in this browser') })} {tr('The cities’ default kits are below, grouped by campaign and named by year, city and style, followed by Legacy kits: earlier versions of the Electronic World and Brazilian kits, kept for history and not linked to any city. Load asks first when the current kit has unsaved changes.')}</InfoTip></span><select aria-label={tr('Current Creative kit')} value={selectedKit} onChange={e => setSelectedKit(e.target.value)}>
+        <option value="">{tr('Current draft')}</option>
+        <optgroup label={tr('My kits')}>
           {libraryNames.map(name => { const kit = kits.find(item => item.name === name); return <option key={name} value={`${USER_KIT_PREFIX}${name}`}>{kit ? kitLabel(kit) : name}</option> })}
           <option value={MOUTH_BREATHER_KIT}>Mouth Breather · eefano study</option>
           <option value={DUSSELDORF_ORIGINAL_KIT}>Düsseldorf · Electro 01</option>
         </optgroup>
-        {DEFAULT_KIT_GROUPS.map(group=><optgroup key={group.id} label={`Default kits · ${group.name}`}>{group.kits.map(kit=><option key={kit.id} value={`${DEFAULT_KIT_PREFIX}${kit.id}`}>{kit.label}</option>)}</optgroup>)}
-        <optgroup label="Legacy kits">{LEGACY_KITS.map(kit=><option key={kit.id} value={`${LEGACY_KIT_PREFIX}${kit.id}`}>{kit.name} ({kit.city})</option>)}</optgroup>
+        {DEFAULT_KIT_GROUPS.map(group=><optgroup key={group.id} label={tr('Default kits · {group}', { group: group.name })}>{group.kits.map(kit=><option key={kit.id} value={`${DEFAULT_KIT_PREFIX}${kit.id}`}>{kit.label}</option>)}</optgroup>)}
+        <optgroup label={tr('Legacy kits')}>{LEGACY_KITS.map(kit=><option key={kit.id} value={`${LEGACY_KIT_PREFIX}${kit.id}`}>{kit.name} ({kit.city})</option>)}</optgroup>
       </select></label>
-      <button className={styles.primary} disabled={!selectedKit} onClick={() => void loadSelectedKit()}>Load</button>
+      <button className={styles.primary} disabled={!selectedKit} onClick={() => void loadSelectedKit()}>{tr('Load')}</button>
     </div>
     <div className={styles.kitFields} data-single={!admin || undefined}>
-      <label>Kit name<input maxLength={80} value={session.name} onChange={e => setSession(s => ({ ...s, name: e.target.value }))} /></label>
-      {admin && <label><span className={styles.helpCaption}>Linked stage<InfoTip label="Link kit to stage">A city uses only one saved kit at a time. Replacing an existing link keeps the previous kit in the library without a city. Save DB writes the kit as the stage’s official kit for every player after the deploy.</InfoTip></span><select value={session.cityId ?? ''} onChange={e => setSession(s => ({ ...s, cityId: e.target.value || undefined }))}><option value="">No city</option>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>}
+      <label>{tr('Kit name')}<input maxLength={80} value={session.name} onChange={e => setSession(s => ({ ...s, name: e.target.value }))} /></label>
+      {admin && <label><span className={styles.helpCaption}>{tr('Linked stage')}<InfoTip label={tr('Link kit to stage')}>{tr('A city uses only one saved kit at a time. Replacing an existing link keeps the previous kit in the library without a city. Save DB writes the kit as the stage’s official kit for every player after the deploy.')}</InfoTip></span><select value={session.cityId ?? ''} onChange={e => setSession(s => ({ ...s, cityId: e.target.value || undefined }))}><option value="">{tr('No city')}</option>{EDITABLE_CITY_KITS.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}</select></label>}
     </div>
     <div className={styles.actions}>
-      <button className={styles.primary} onClick={() => void saveKit()} title={account ? 'Save to your account' : 'Save in this browser'}><Save size={15} />Save kit</button>
-      {admin && <button onClick={() => void saveToGame()} disabled={!session.cityId} title="Write this kit as the linked stage’s official kit (local Admin only)"><Database size={15} />Save DB</button>}
-      <button onClick={exportKit}><Download size={15} />Export</button>
-      <label className={styles.upload}><Upload size={15} />Import<input type="file" accept=".json,application/json" aria-label="Import kit JSON" onChange={async e => {
+      <button className={styles.primary} onClick={() => void saveKit()} title={tr(account ? 'Save to your account' : 'Save in this browser')}><Save size={15} />{tr('Save kit')}</button>
+      {admin && <button onClick={() => void saveToGame()} disabled={!session.cityId} title={tr('Write this kit as the linked stage’s official kit (local Admin only)')}><Database size={15} />{tr('Save DB')}</button>}
+      <button onClick={exportKit}><Download size={15} />{tr('Export')}</button>
+      <label className={styles.upload}><Upload size={15} />{tr('Import')}<input type="file" accept=".json,application/json" aria-label={tr('Import kit JSON')} onChange={async e => {
         const file = e.target.files?.[0]; e.target.value = ''
         if (!file) return
-        if (file.size > 150000) { setNotice('Kit file too large. Limit: 150 KB.'); return }
-        try { const kit = parseCreativeSession(await file.text()); if (!confirmDiscard()) return; setSelectedKit(''); await loadSession(kit) } catch (error) { setNotice(`Kit not imported: ${messageOf(error)}`) }
+        if (file.size > 150000) { setNotice(tr('Kit file too large. Limit: 150 KB.')); return }
+        try { const kit = parseCreativeSession(await file.text()); if (!confirmDiscard()) return; setSelectedKit(''); await loadSession(kit) } catch (error) { setNotice(tr('Kit not imported: {error}', { error: messageOf(error) })) }
       }} /></label>
-      <button onClick={newRandomKit}><Dice5 size={15} />New random kit</button>
+      <button onClick={newRandomKit}><Dice5 size={15} />{tr('New random kit')}</button>
     </div>
   </fieldset>
 
   const transportWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
-    <section className={styles.transport} aria-label="Session controls">
+    <section className={styles.transport} aria-label={tr('Session controls')}>
       <button className={styles.primary} onClick={() => { if (playing) stop(); else setPlaying(true) }} aria-pressed={playing}>
-        {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? 'Pause' : 'Play'}
+        {playing ? <Pause size={17} /> : <Play size={17} />}{playing ? tr('Pause') : tr('Play')}
       </button>
-      <div className={styles.transportKnob}><span>Volume</span><Knob label="Volume" hideLabel value={session.volume} min={0} max={1} step={0.01} onChange={volume => setSession(s => ({ ...s, volume }))} /></div>
-      <div className={styles.transportKnob} title={ruled.bpm ? `A rule is changing the tempo to ${music.snapshot.bpm.toFixed(1)} BPM; the knob sets the kit's base tempo.` : undefined}><span style={ruled.bpm ? RULED_TEXT : undefined}>{ruled.bpm ? `BPM · ${Math.round(music.snapshot.bpm)}` : 'BPM'}</span><Knob label="BPM" hideLabel value={session.bpm} min={30} max={240} step={1} formatValue={value => String(value)} onChange={bpm => setSession(s => ({ ...s, bpm }))} /></div>
-      <label><HelpLabel label="Time signature">{meterLabel(session.meter)}. In compound meters each beat splits into three; in odd eighth-note meters the clock counts equal eighths and the accents form groups. Changing the time signature restarts the session clock.</HelpLabel><select aria-label="Time signature" value={session.meter} onChange={e => setSession(s => ({ ...s, meter: e.target.value as CreativeSession['meter'] }))}>{METER_IDS.map(meter=><option key={meter} value={meter}>{meter}</option>)}</select></label>
-      <label><HelpLabel label="Root">Reference note shared by the pitched pieces. Melody degrees follow this note.</HelpLabel><select aria-label="Root" value={live.root} style={ruled.root ? RULED : undefined} title={ruled.root ? `Changed by a rule; the kit uses ${session.root}` : undefined} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
-      <label><HelpLabel label={`Scale (${music.snapshot.scale.join(' ')})`}>Set of notes allowed for pitched voices. Unpitched samples keep their original pitch.</HelpLabel><select aria-label="Scale" value={live.scale} style={ruled.scale ? RULED : undefined} title={ruled.scale ? `Changed by a rule; the kit uses ${session.scale}` : undefined} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{(Object.keys(SCALES) as (keyof typeof SCALES)[]).map(scale => <option key={scale} value={scale}>{SCALE_LABELS[scale]}</option>)}</select></label>
-      <div className={styles.harmonyControl}><label><span className={styles.helpCaption}><span>Harmony <MusicHarmonyReadout monitor={music.monitor} compact /></span><InfoTip label="Harmony">Kit Harmony uses the harmonic degrees saved in each section of the global Arrangement. The other plans use their own progression and disable editing those degrees. The kit’s degrees are kept for when you return to Kit Harmony. Pitched basses, chords and melodies share this harmony.</InfoTip></span><select aria-label="Harmony" value={live.harmony} style={ruled.harmony ? RULED : undefined} title={ruled.harmony ? `Changed by a rule; the kit uses ${HARMONY_PLANS[session.harmony].label}` : undefined} onChange={e => {
+      <div className={styles.transportKnob}><span>{tr('Volume')}</span><Knob label={tr('Volume')} hideLabel value={session.volume} min={0} max={1} step={0.01} onChange={volume => setSession(s => ({ ...s, volume }))} /></div>
+      <div className={styles.transportKnob} title={ruled.bpm ? tr("A rule is changing the tempo to {bpm} BPM; the knob sets the kit's base tempo.", { bpm: music.snapshot.bpm.toFixed(1) }) : undefined}><span style={ruled.bpm ? RULED_TEXT : undefined}>{ruled.bpm ? tr('BPM · {n}', { n: Math.round(music.snapshot.bpm) }) : 'BPM'}</span><Knob label="BPM" hideLabel value={session.bpm} min={30} max={240} step={1} formatValue={value => String(value)} onChange={bpm => setSession(s => ({ ...s, bpm }))} /></div>
+      <label><HelpLabel label={tr('Time signature')}>{tr('{meter}. In compound meters each beat splits into three; in odd eighth-note meters the clock counts equal eighths and the accents form groups. Changing the time signature restarts the session clock.', { meter: meterLabel(session.meter) })}</HelpLabel><select aria-label={tr('Time signature')} value={session.meter} onChange={e => setSession(s => ({ ...s, meter: e.target.value as CreativeSession['meter'] }))}>{METER_IDS.map(meter=><option key={meter} value={meter}>{meter}</option>)}</select></label>
+      <label><HelpLabel label={tr('Root')}>{tr('Reference note shared by the pitched pieces. Melody degrees follow this note.')}</HelpLabel><select aria-label={tr('Root')} value={live.root} style={ruled.root ? RULED : undefined} title={ruled.root ? tr('Changed by a rule; the kit uses {value}', { value: session.root }) : undefined} onChange={e => setSession(s => ({ ...s, root: e.target.value as CreativeSession['root'] }))}>{ROOTS.map(root => <option key={root}>{root}</option>)}</select></label>
+      <label><HelpLabel label={tr('Scale ({notes})', { notes: music.snapshot.scale.join(' ') })}>{tr('Set of notes allowed for pitched voices. Unpitched samples keep their original pitch.')}</HelpLabel><select aria-label={tr('Scale')} value={live.scale} style={ruled.scale ? RULED : undefined} title={ruled.scale ? tr('Changed by a rule; the kit uses {value}', { value: tr(SCALE_LABELS[session.scale]) }) : undefined} onChange={e => setSession(s => ({ ...s, scale: e.target.value as CreativeSession['scale'] }))}>{(Object.keys(SCALES) as (keyof typeof SCALES)[]).map(scale => <option key={scale} value={scale}>{tr(SCALE_LABELS[scale])}</option>)}</select></label>
+      <div className={styles.harmonyControl}><label><span className={styles.helpCaption}><span>{tr('Harmony')} <MusicHarmonyReadout monitor={music.monitor} compact /></span><InfoTip label={tr('Harmony')}>{tr('Kit Harmony uses the harmonic degrees saved in each section of the global Arrangement. The other plans use their own progression and disable editing those degrees. The kit’s degrees are kept for when you return to Kit Harmony. Pitched basses, chords and melodies share this harmony.')}</InfoTip></span><select aria-label={tr('Harmony')} value={live.harmony} style={ruled.harmony ? RULED : undefined} title={ruled.harmony ? tr('Changed by a rule; the kit uses {value}', { value: tr(HARMONY_PLANS[session.harmony].label) }) : undefined} onChange={e => {
         const harmony = e.target.value as HarmonyPlanId
         setSession(s => ({ ...s, harmony }))
-      }}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{plan.label}</option>)}</select></label></div>
+      }}>{Object.entries(HARMONY_PLANS).map(([id,plan]) => <option key={id} value={id}>{tr(plan.label)}</option>)}</select></label></div>
       <div className={styles.rampSlot}><MusicBpmRamp monitor={music.monitor}/><MusicTransportReadout arrangement={session.arrangement} monitor={music.monitor} showStatus={false} showBeatUnit /><MusicPendingTransitions monitor={music.monitor}/></div>
     </section>
   </fieldset>
@@ -650,7 +651,7 @@ export function CreativeStudio() {
   const clearSolo = () => { setSoloIds(new Set()); soloMemoryRef.current = null; soloCycleIdsRef.current = new Set() }
   const activateSide = (color: 'w' | 'b') => { clearSolo(); setBoardActive(p => p.color === color); setPlaying(true) }
   const muteAll = () => { stop(); setBoardActive(() => false); clearSolo() }
-  const bandLinks = <span className={styles.bandLinks}>Activate <button type="button" onClick={() => activateSide('w')} disabled={!ready || busy}>White</button> / <button type="button" onClick={() => activateSide('b')} disabled={!ready || busy}>Black</button> / <button type="button" onClick={muteAll} disabled={!ready || busy}>Mute</button> all</span>
+  const bandLinks = <span className={styles.bandLinks}>{tx('Activate {white} / {black} / {mute} all', { white: <button type="button" key="w" onClick={() => activateSide('w')} disabled={!ready || busy}>{tr('White')}</button>, black: <button type="button" key="b" onClick={() => activateSide('b')} disabled={!ready || busy}>{tr('Black')}</button>, mute: <button type="button" key="m" onClick={muteAll} disabled={!ready || busy}>{tr('Mute')}</button> })}</span>
 
   // The match's Song & Instruments list, with White and Black side by side.
   const bandWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
@@ -681,26 +682,26 @@ export function CreativeStudio() {
       onHover={setSongHover}
     /></div>
     <div className={styles.actions}>
-      <button onClick={() => { music.endAudition(); rememberPositions(); setSession(resetCreativePositions) }}>Reset positions</button>
+      <button onClick={() => { music.endAudition(); rememberPositions(); setSession(resetCreativePositions) }}>{tr('Reset positions')}</button>
     </div>
   </fieldset>
 
   const instrumentWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
-    <aside className={styles.inspector} aria-label="Instrument editor">
+    <aside className={styles.inspector} aria-label={tr('Instrument editor')}>
       <section className={styles.panel}>
         <div className={styles.instrumentIdentity}>
           <span className={styles.instrumentAvatar} aria-hidden="true" dangerouslySetInnerHTML={stableHtml(PiecesSVG[`${selected.color}${selected.type.toUpperCase()}` as keyof typeof PiecesSVG])} />
           <div className={styles.instrumentHeading}>
             <div className={styles.instrumentTitle}>
-              {editingInstrumentName ? <input autoFocus aria-label="Instrument name" maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrument' })} onBlur={() => setEditingInstrumentName(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur() }} /> : <h2>{instrument.name}</h2>}
-              <button type="button" className={styles.editName} aria-label="Edit instrument name" title="Edit name" onClick={() => setEditingInstrumentName(true)}><Pencil size={14} /></button>
+              {editingInstrumentName ? <input autoFocus aria-label={tr('Instrument name')} maxLength={60} value={instrument.name} onChange={e => updateInstrument({ name: e.target.value || 'Instrument' })} onBlur={() => setEditingInstrumentName(false)} onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur() }} /> : <h2>{instrument.name}</h2>}
+              <button type="button" className={styles.editName} aria-label={tr('Edit instrument name')} title={tr('Edit name')} onClick={() => setEditingInstrumentName(true)}><Pencil size={14} /></button>
             </div>
-            <span className={styles.instrumentMeta}>{pieceNames[selected.type]} - {selected.origin} - {selectedOnBoard ? `on ${selected.square}` : 'off the board'} - <MusicVoiceBadge monitor={music.monitor} id={selectedId} /></span>
+            <span className={styles.instrumentMeta}>{tr(pieceNames[selected.type])} - {selected.origin} - {selectedOnBoard ? tr('on {square}', { square: selected.square }) : tr('off the board')} - <MusicVoiceBadge monitor={music.monitor} id={selectedId} /></span>
           </div>
         </div>
         <div className={styles.actions}>
-          <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={selected.active ? 'Turn loop off' : 'Turn loop on'} title={selected.active ? 'Loop on' : music.preview?.id === selectedId ? 'Temporary preview' : 'Loop off'} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
-          <button aria-pressed={soloIds.has(selectedId)} onClick={() => toggleSolo(selectedId)}>Solo</button>
+          <button className={!selected.active && music.preview?.id === selectedId ? styles.partialPower : undefined} aria-label={tr(selected.active ? 'Turn loop off' : 'Turn loop on')} title={tr(selected.active ? 'Loop on' : music.preview?.id === selectedId ? 'Temporary preview' : 'Loop off')} aria-pressed={selected.active} onClick={() => toggleActive(selectedId)}><Power size={16} /></button>
+          <button aria-pressed={soloIds.has(selectedId)} onClick={() => toggleSolo(selectedId)}>{tr('Solo')}</button>
         </div>
         <NoteParamsHostContext.Provider value={setNoteSelection}>
           <MusicVoiceReadout instrument={instrument} onInstrumentChange={updateInstrument} variationTabs manageVariations expanded showStatus={false} monitor={music.monitor} id={selectedId} snapshot={music.snapshot} manual={music.preview?.id === selectedId && music.preview.mode === 'manual'} />
@@ -717,15 +718,15 @@ export function CreativeStudio() {
 
   // Where the selected instrument's sound comes from: sample bank or synth, plus how it plays.
   const sourceWidget = <fieldset disabled={!ready || busy} className={styles.widgetFieldset}>
-    <section className={styles.panel} aria-label="Sample source">
+    <section className={styles.panel} aria-label={tr('Sample source')}>
         <SampleSourceControls instrument={instrument} onChange={updateInstrument} />
-      <div className={styles.pair}><label><span className={styles.helpCaption}>Behavior<InfoTip label="Instrument behavior">
-        <p><b>Pulse / percussion:</b> plays the written rhythm and notes without following the harmonic progression or the rank/file transposition. Without explicit settings, it uses short notes (0.12 fraction) and zero sustain.</p>
-        <p><b>Phrase / sequencer:</b> plays the written melody; pitched voices follow the harmony and the position’s degree map. Without an explicit length, it uses a 0.7 fraction.</p>
-        <p><b>Sustained / chords:</b> on pitched voices, a non-static harmony turns each attack into a chord with voice leading. With static harmony, it keeps the written notes/chords. Without an explicit length, it uses a 0.95 fraction; it never holds sound indefinitely.</p>
-        <p>All of them allow MIDI variations, per-piece arrangement, ADSR and effects. Pitch slides need a pitched voice; unpitched samples don’t follow degrees/chords. Changing the behavior doesn’t change the source/timbre or reset the saved parameters. The manual gesture plays one note per square, without running the sequence. The piece type doesn’t restrict the choice.</p>
-      </InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">Pulse / percussion</option><option value="phrase">Phrase / sequencer</option><option value="sustain">Sustained / chords</option></select></label>
-        <label><HelpLabel label="Synth timbre">Waveform used by the Synthesis source. If the current source is a sample, picking a timbre switches the source to Synthesis. To go back to samples, choose Sample bank under Sound source.</HelpLabel><select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'], source: { kind: 'synth' } })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
+      <div className={styles.pair}><label><span className={styles.helpCaption}>{tr('Behavior')}<InfoTip label={tr('Instrument behavior')}>
+        <p><b>{tr('Pulse / percussion:')}</b> {tr('plays the written rhythm and notes without following the harmonic progression or the rank/file transposition. Without explicit settings, it uses short notes (0.12 fraction) and zero sustain.')}</p>
+        <p><b>{tr('Phrase / sequencer:')}</b> {tr('plays the written melody; pitched voices follow the harmony and the position’s degree map. Without an explicit length, it uses a 0.7 fraction.')}</p>
+        <p><b>{tr('Sustained / chords:')}</b> {tr('on pitched voices, a non-static harmony turns each attack into a chord with voice leading. With static harmony, it keeps the written notes/chords. Without an explicit length, it uses a 0.95 fraction; it never holds sound indefinitely.')}</p>
+        <p>{tr('All of them allow MIDI variations, per-piece arrangement, ADSR and effects. Pitch slides need a pitched voice; unpitched samples don’t follow degrees/chords. Changing the behavior doesn’t change the source/timbre or reset the saved parameters. The manual gesture plays one note per square, without running the sequence. The piece type doesn’t restrict the choice.')}</p>
+      </InfoTip></span><select value={instrument.behavior} onChange={e => updateInstrument({ behavior: e.target.value as Instrument['behavior'] })}><option value="pulse">{tr('Pulse / percussion')}</option><option value="phrase">{tr('Phrase / sequencer')}</option><option value="sustain">{tr('Sustained / chords')}</option></select></label>
+        <label><HelpLabel label={tr('Synth timbre')}>{tr('Waveform used by the Synthesis source. If the current source is a sample, picking a timbre switches the source to Synthesis. To go back to samples, choose Sample bank under Sound source.')}</HelpLabel><select value={instrument.sound} onChange={e => updateInstrument({ sound: e.target.value as Instrument['sound'], source: { kind: 'synth' } })}>{SOUNDS.map(sound => <option key={sound}>{sound}</option>)}</select></label></div>
     </section>
   </fieldset>
 
@@ -734,22 +735,22 @@ export function CreativeStudio() {
   </fieldset>
 
   const codeWidget = <div className={styles.code}>
-    {music.codeStats && <p>Export: {(music.codeStats.bytes / 1024).toFixed(1)} KB · {music.codeStats.stacks} stacks · {music.codeStats.timeCats} timeCat · {music.codeStats.orbits} orbits · {music.codeStats.filters} declared filters<InfoTip label="Export metrics">Counts of the generated code, not of active audio nodes. The effects and voices actually running vary during the music.</InfoTip></p>}
+    {music.codeStats && <p>{tr('Export: {kb} KB · {stacks} stacks · {timeCats} timeCat · {orbits} orbits · {filters} declared filters', { kb: (music.codeStats.bytes / 1024).toFixed(1), stacks: music.codeStats.stacks, timeCats: music.codeStats.timeCats, orbits: music.codeStats.orbits, filters: music.codeStats.filters })}<InfoTip label={tr('Export metrics')}>{tr('Counts of the generated code, not of active audio nodes. The effects and voices actually running vary during the music.')}</InfoTip></p>}
     <pre>{music.code}</pre>
   </div>
 
   const widgetContent: Record<CreativeWidgetId, React.ReactNode> = { kit: kitWidget, transport: transportWidget, reactions: reactionsWidget, code: codeWidget, instrument: instrumentWidget, source: sourceWidget, band: bandWidget }
   const widgetInfo: Partial<Record<CreativeWidgetId, React.ReactNode>> = {
     reactions: <ReactionScopeSwitch scope={reactionScope} onChange={setReactionScope} />,
-    code: <InfoTip label="Running code">Generated from the active voices and the preview. To edit it, use the instrument controls.</InfoTip>,
-    instrument: <InfoTip label="Selected instrument">The instrument of the selected piece, with its knobs in tabs like the match’s Piece params. Selecting a note in the MIDI editor opens the Note tab. Its line goes to that piece on the board.</InfoTip>,
+    code: <InfoTip label={tr('Running code')}>{tr('Generated from the active voices and the preview. To edit it, use the instrument controls.')}</InfoTip>,
+    instrument: <InfoTip label={tr('Selected instrument')}>{tr('The instrument of the selected piece, with its knobs in tabs like the match’s Piece params. Selecting a note in the MIDI editor opens the Note tab. Its line goes to that piece on the board.')}</InfoTip>,
     band: bandLinks,
   }
   // Palette: one piece per kit instrument, pawns first, as listed under a match board.
   const paletteFor = (color: 'w' | 'b'): PalettePiece[] => session.pieces
     .filter(piece => piece.color === color)
     .sort((a, b) => PALETTE_ORDER.indexOf(a.type) - PALETTE_ORDER.indexOf(b.type) || a.origin.localeCompare(b.origin))
-    .map(piece => ({ id: piece.id, type: piece.type, name: session.instruments[piece.id]?.name ?? pieceNames[piece.type] }))
+    .map(piece => ({ id: piece.id, type: piece.type, name: session.instruments[piece.id]?.name ?? tr(pieceNames[piece.type]) }))
   const squareAt = (clientX: number, clientY: number) => {
     const rect = boardRef.current?.getBoundingClientRect()
     if (!rect) return null
@@ -795,18 +796,18 @@ export function CreativeStudio() {
   }
 
   const cardActions: Record<PowerCardKind, PowerCardAction> = {
-    best: { disabled: analysis.busy, onClick: () => showRankedMoves('best'), title: `Best moves for ${selected.color === 'w' ? 'White' : 'Black'} (the selected piece’s side)` },
-    worst: { disabled: analysis.busy, onClick: () => showRankedMoves('worst'), title: `Worst moves for ${selected.color === 'w' ? 'White' : 'Black'} (the selected piece’s side)` },
-    undo: { disabled: historyLength === 0, onClick: undoPositions, title: 'Undo the last piece move' },
-    freeze: { disabled: true, title: 'Freeze only works in matches' },
-    shield: { disabled: true, title: 'Shield only works in matches' },
+    best: { disabled: analysis.busy, onClick: () => showRankedMoves('best'), title: tr(selected.color === 'w' ? 'Best moves for White (the selected piece’s side)' : 'Best moves for Black (the selected piece’s side)') },
+    worst: { disabled: analysis.busy, onClick: () => showRankedMoves('worst'), title: tr(selected.color === 'w' ? 'Worst moves for White (the selected piece’s side)' : 'Worst moves for Black (the selected piece’s side)') },
+    undo: { disabled: historyLength === 0, onClick: undoPositions, title: tr('Undo the last piece move') },
+    freeze: { disabled: true, title: tr('Freeze only works in matches') },
+    shield: { disabled: true, title: tr('Shield only works in matches') },
   }
 
   const widgets = CREATIVE_WIDGETS.map(widget => <CreativeWidget
     key={widget.id}
     id={widget.id}
-    title={widget.id === 'band' ? `${boardPieces.length} voices` : widget.title}
-    titleNote={widget.id === 'band' ? `(${activeCount} active)` : undefined}
+    title={widget.id === 'band' ? tr('{n} voices', { n: boardPieces.length }) : tr(widget.title)}
+    titleNote={widget.id === 'band' ? tr('({n} active)', { n: activeCount }) : undefined}
     on={widgetOn[widget.id]}
     onToggle={() => toggleWidget(widget.id)}
     position={widgetLayout.positions[widget.id]}
@@ -823,7 +824,7 @@ export function CreativeStudio() {
 
   return <main className={styles.lab} data-disable-text-selection data-stacked={portraitPhone || undefined} ref={rootRef} style={{ '--game-board-width': boardResize.width === null ? CREATIVE_BOARD_WIDTH : `${boardResize.width}px`, '--power-cards-width': cardsResize.width === null ? CREATIVE_BOARD_WIDTH : `${cardsResize.width}px` } as React.CSSProperties}>
     <header className={`${styles.studio} ${styles.labHeader}`}>
-      <Link href="/" aria-label="Back to the world" className={styles.back}><ArrowLeft size={18} /></Link>
+      <Link href="/" aria-label={tr('Back to the world')} className={styles.back}><ArrowLeft size={18} /></Link>
       <h1 className={styles.labTitle}>Chickenchess Lab<VersionChangelog /></h1>
       <GamePreferences />
     </header>
@@ -834,7 +835,7 @@ export function CreativeStudio() {
     <div className={styles.stage}>
       <div className={styles.boardGroup} style={{ translate: boardPan.translate }}>
         <div className={styles.boardRow}>{palette('b', 'end')}</div>
-        <div ref={boardRef} className={styles.board} role="group" aria-label="Creative board" aria-busy={!music.auditionReady}>
+        <div ref={boardRef} className={styles.board} role="group" aria-label={tr('Creative board')} aria-busy={!music.auditionReady}>
           <BoardResizeHandles enabled={boardResize.enabled} onStart={boardResize.startResize} onResizeBy={boardResize.resizeBy} onCancel={boardResize.cancelResize} />
           <fieldset className={styles.boardReadyGate} disabled={!music.auditionReady} onMouseDownCapture={music.unlock}>
           <ChessgroundBoard
@@ -882,12 +883,12 @@ export function CreativeStudio() {
               },
               squareLabel: square => {
                 const piece = boardPieces.find(item => item.square === square)
-                return `${square}${piece ? ` · ${pieceNames[piece.type]} ${piece.color === 'w' ? 'white' : 'black'} · ${session.instruments[piece.instrumentId].name} · ${piece.active ? 'active' : 'inactive'}` : ' · empty'}`
+                return `${square}${piece ? ` · ${tr(pieceNames[piece.type])} ${tr(piece.color === 'w' ? 'white' : 'black')} · ${session.instruments[piece.instrumentId].name} · ${tr(piece.active ? 'active' : 'inactive')}` : ` · ${tr('empty')}`}`
               },
             }}
           />
           </fieldset>
-          {!music.auditionReady && <div className={styles.boardLoading} role="status">Preparing kit sounds…</div>}
+          {!music.auditionReady && <div className={styles.boardLoading} role="status">{tr('Preparing kit sounds…')}</div>}
         </div>
         <div className={styles.boardRow}>
           {palette('w', 'start')}

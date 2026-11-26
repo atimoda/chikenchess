@@ -1,6 +1,7 @@
 // Drawing of the note stage (the guitar hero mode's first stage, in the temple): the fan of lanes around her with
 // the ring where the notes arrive, the note shots, the disc that starts the song and the stage's HUD.
 // Canvas, world units shifted by camX (like the rest of the world), and screen pixels for the HUD.
+import { msg, t as tr } from "@/lib/i18n"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import type { Combat } from "@/lib/pigchicken/combat"
 import { SCALES } from "@/lib/pigchicken/music"
@@ -172,7 +173,7 @@ export function drawJukebox(ctx: Ctx, g: Target, x: number, o: { cover: HTMLCanv
   ctx.restore()
   // its label
   ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
-  const label = o.playing ? "TOCANDO" : "JUKEBOX", w = ctx.measureText(label).width + 12
+  const label = o.playing ? tr("TOCANDO") : tr("JUKEBOX"), w = ctx.measureText(label).width + 12
   ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, top - 22, w, 16)
   ctx.fillStyle = neon; ctx.fillText(label, x, top - 10)
 }
@@ -265,8 +266,8 @@ export function drawVitrola(ctx: Ctx, g: Target, x: number, o: { playing: boolea
 }
 
 const JUDGE = {
-  perfect: { text: "PERFEITO!", color: "#ffd166" }, good: { text: "BOM", color: "#7bdff2" }, fora: { text: "FORA", color: "#c9ced6" },
-  miss: { text: "PERDEU", color: "#ff6b5b" }, parry: { text: "ANULOU", color: "#e9e4d0" }, contact: { text: "ENCOSTOU", color: "#ff8c69" },
+  perfect: { text: msg("PERFEITO!"), color: "#ffd166" }, good: { text: msg("BOM"), color: "#7bdff2" }, fora: { text: msg("FORA"), color: "#c9ced6" },
+  miss: { text: msg("PERDEU"), color: "#ff6b5b" }, parry: { text: msg("ANULOU"), color: "#e9e4d0" }, contact: { text: msg("ENCOSTOU"), color: "#ff8c69" },
 } as const
 
 // the HUD: the song, the score, the combo, the afinação bar and the judgement of the last note; the banners
@@ -288,17 +289,17 @@ export function drawNoteStageHud(ctx: Ctx, stage: NoteStage, top: number) {
     }
     ctx.font = "bold 12px ui-monospace, monospace"
     ctx.textAlign = "left"; ctx.fillStyle = stage.song.music.zone.color
-    ctx.fillText(stage.song.name.toUpperCase(), x0 + 16 + hearts * 17, y0 + 15)
+    ctx.fillText(tr(stage.song.name).toUpperCase(), x0 + 16 + hearts * 17, y0 + 15)
     ctx.textAlign = "right"; ctx.fillStyle = "#ffffff"
-    ctx.fillText(`${s.score.toLocaleString("pt-BR")} pts`, x0 + pw - 12, y0 + 15)
+    ctx.fillText(tr("{n} pts", { n: s.score.toLocaleString("pt-BR") }), x0 + pw - 12, y0 + 15)
     if (s.combo > 0) {
       ctx.textAlign = "center"; ctx.fillStyle = multOf(s.combo) > 1 ? "#ffd166" : "#c9ced6"
-      ctx.fillText(`combo ${s.combo}${multOf(s.combo) > 1 ? ` · ×${multOf(s.combo)}` : ""}`, x0 + pw / 2, y0 + 15)
+      ctx.fillText(`${tr("combo {n}", { n: s.combo })}${multOf(s.combo) > 1 ? ` · ×${multOf(s.combo)}` : ""}`, x0 + pw / 2, y0 + 15)
     }
     // the afinação bar
     const bx = x0 + 92, bw = pw - 104, by = y0 + 38
     ctx.textAlign = "left"; ctx.fillStyle = "rgba(244,241,232,0.8)"; ctx.font = "bold 10px ui-monospace, monospace"
-    ctx.fillText("AFINAÇÃO", x0 + 12, by)
+    ctx.fillText(tr("AFINAÇÃO"), x0 + 12, by)
     ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.beginPath(); ctx.roundRect(bx, by - 5, bw, 10, 5); ctx.fill()
     const a = Math.max(0, Math.min(1, s.afina))
     ctx.fillStyle = a > 0.5 ? "#7bd88f" : a > 0.25 ? "#ffd166" : "#ff6b5b"
@@ -309,8 +310,8 @@ export function drawNoteStageHud(ctx: Ctx, stage: NoteStage, top: number) {
       const k = j.t / 0.7, J = JUDGE[j.grade]
       ctx.globalAlpha = 1 - k; ctx.textAlign = "center"
       ctx.font = `bold ${j.grade === "perfect" ? 20 : 15}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillStyle = "#000"; ctx.fillText(J.text, W / 2 + 1, y0 + 80 - k * 8 + 1)
-      ctx.fillStyle = J.color; ctx.fillText(J.text, W / 2, y0 + 80 - k * 8)
+      ctx.fillStyle = "#000"; ctx.fillText(tr(J.text), W / 2 + 1, y0 + 80 - k * 8 + 1)
+      ctx.fillStyle = J.color; ctx.fillText(tr(J.text), W / 2, y0 + 80 - k * 8)
       ctx.globalAlpha = 1
     }
     ctx.restore()
@@ -320,7 +321,7 @@ export function drawNoteStageHud(ctx: Ctx, stage: NoteStage, top: number) {
   // stays up there so it never covers her, the notes coming in or the inventory bar
   const strips: StageTalk[] = []
   for (const t of s.talk) {
-    if (t.place === "banner") drawBanner(ctx, { title: t.name, sub: t.text.slice(0, t.shown) || " ", color: t.color, t: t.t, life: t.secs }, top)
+    if (t.place === "banner") drawBanner(ctx, { title: tr(t.name), sub: t.text.slice(0, t.shown) || " ", color: t.color, t: t.t, life: t.secs }, top)
     else if (t.place === "faixa" || !t.over) strips.push(t)
   }
   if (strips.length) {
@@ -336,7 +337,7 @@ export function drawNoteStageHud(ctx: Ctx, stage: NoteStage, top: number) {
       ctx.fillStyle = "rgba(6,8,10,0.78)"; ctx.beginPath(); ctx.roundRect(x0, y, sw, h, 10); ctx.fill()
       ctx.fillStyle = t.color; ctx.fillRect(x0, y + 8, 3, h - 16)
       ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "left"; ctx.fillStyle = t.color
-      ctx.fillText(t.name.toUpperCase(), x0 + 14, y + 14)
+      ctx.fillText(tr(t.name).toUpperCase(), x0 + 14, y + 14)
       ctx.font = "14px ui-sans-serif, system-ui, sans-serif"; ctx.fillStyle = "#f4f1e8"
       shown.forEach((l, k) => ctx.fillText(l, x0 + 14, y + 33 + k * 18))
       y += h + 6
@@ -348,8 +349,10 @@ export function drawNoteStageHud(ctx: Ctx, stage: NoteStage, top: number) {
 function wrapText(ctx: Ctx, text: string, maxW: number) {
   const out: string[] = []
   let line = ""
-  text.split(" ").forEach(w => {
-    const next = line ? `${line} ${w}` : w
+  // Chinese and Japanese have no spaces: they break between characters
+  const cjk = /[\u3040-\u30ff\u3400-\u9fff]/.test(text)
+  ;(cjk ? Array.from(text) : text.split(" ")).forEach(w => {
+    const next = line ? (cjk ? `${line}${w}` : `${line} ${w}`) : w
     if (ctx.measureText(next).width > maxW && line) { out.push(line); line = w } else line = next
   })
   if (line) out.push(line)
@@ -376,7 +379,7 @@ export function drawStageTalk(ctx: Ctx, stage: NoteStage, camX: number) {
     ctx.fillStyle = "rgba(250,247,238,0.96)"; ctx.fillRect(tx - 7, y + h - 2, 14, 3)
     ctx.textBaseline = "middle"; ctx.textAlign = "left"
     ctx.font = "bold 10px ui-monospace, monospace"; ctx.fillStyle = "#5b5f66"
-    ctx.fillText(t.name.toUpperCase(), x + 12, y + 12)
+    ctx.fillText(tr(t.name).toUpperCase(), x + 12, y + 12)
     ctx.font = "14px ui-sans-serif, system-ui, sans-serif"; ctx.fillStyle = "#16181c"
     lines.forEach((l, k) => ctx.fillText(l, x + 12, y + 30 + k * 18))
     ctx.restore()

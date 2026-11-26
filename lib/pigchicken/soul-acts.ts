@@ -13,6 +13,7 @@
 // - Its real song: now and then, between what it does, it sings a recording of the real bird its sheet takes after
 //   (`song`: the chance each time its clock comes round, low by default). The notes it plays stay the synth's.
 // Every number is a parameter (SoulActParams): its class's and its state's first, its own entry's over them.
+import { msg } from '../i18n'
 import type { SoulClassId } from './soul-follow'
 import type { Soul, SoulRarity, SoulSpecies, SoulState, SoulWeapon } from './souls'
 
@@ -39,8 +40,8 @@ export const SOUL_ACT_RANGES: Record<Numeric, { min: number; max: number; step: 
   chance: { min: 0, max: 1, step: 0.05 }, force: { min: 0, max: 1, step: 0.05 },
   poopEvery: { min: 0, max: 60, step: 1 }, poopDamage: { min: 0, max: 20, step: 0.5 }, song: { min: 0, max: 1, step: 0.05 },
 }
-export const SOUL_HELPS: Record<SoulHelp, string> = { none: 'Nenhuma', sing: 'Cantar nas harmonias', beat: 'Cantar no tempo', fetch: 'Buscar item', warn: 'Avisar perigo', step: 'Degrau no ar' }
-export const SOUL_HINDERS: Record<SoulHinder, string> = { own: 'O da própria alma', none: 'Nenhum', push: 'Empurrar', bounce: 'Quicar', aim: 'Desviar a mira', peck: 'Bicar', detune: 'Desafinar' }
+export const SOUL_HELPS: Record<SoulHelp, string> = { none: msg("Nenhuma"), sing: msg("Cantar nas harmonias"), beat: msg("Cantar no tempo"), fetch: msg("Buscar item"), warn: msg("Avisar perigo"), step: msg("Degrau no ar") }
+export const SOUL_HINDERS: Record<SoulHinder, string> = { own: msg("O da própria alma"), none: msg("Nenhum"), push: msg("Empurrar"), bounce: msg("Quicar"), aim: msg("Desviar a mira"), peck: msg("Bicar"), detune: msg("Desafinar") }
 
 // what each class does (the chick only keeps her company)
 export const SOUL_CLASS_ACTS: Record<SoulClassId, Partial<SoulActParams>> = {

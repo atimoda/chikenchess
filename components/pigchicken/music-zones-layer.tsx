@@ -8,6 +8,7 @@
 // their walls made and their life). In the editor the limits are dragged: the sides of each Zona sonora and the
 // line between two scenes' zones.
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
+import { useT } from "@/lib/i18n"
 import { onZoneSlam, sceneAtX, tagUnder, type TagSpan, type ZoneTagKey, nextZoneTag } from "@/lib/pigchicken/zone-slam"
 import { elementBounds, type LayoutElement } from "@/lib/pigchicken/layout"
 import { followCamera, liveCamera } from "@/lib/pigchicken/live-camera"
@@ -65,6 +66,7 @@ function LimitHandle({ axis, origin, title, className, style, onStart, onMove }:
 // The four limits of a Zona sonora of the map. A zone that shares the dragged limit (its opposite side on the same
 // line, side by side with this one) moves with it, so the limit between two zones stays one.
 function ZoneLimits({ el, zones, origin, onResize }: { el: LayoutElement; zones: LayoutElement[]; origin: React.RefObject<HTMLDivElement | null>; onResize: (changes: ZoneResize[], step: string) => void }) {
+  const t = useT()
   const start = useRef<{ side: Side; own: Rect; linked: ZoneResize[] } | null>(null)
   const rectOf = (e: LayoutElement): Rect => ({ x: e.x, y: e.y, w: e.w, h: e.h })
   const edgeOf = (r: Rect, side: Side) => (side === "l" ? r.x : side === "r" ? r.x + r.w : side === "t" ? r.y : r.y + r.h)
@@ -86,7 +88,7 @@ function ZoneLimits({ el, zones, origin, onResize }: { el: LayoutElement; zones:
     const to = (r: Rect, side: Side): Rect => side === "l" ? { ...r, x: e, w: r.x + r.w - e } : side === "r" ? { ...r, w: e - r.x } : side === "t" ? { ...r, y: e, h: r.y + r.h - e } : { ...r, h: e - r.y }
     onResize([{ el, rect: to(s.own, s.side) }, ...s.linked.map(k => ({ el: k.el, rect: to(k.rect, OPPOSITE[s.side]) }))], gesture)
   }
-  const side = (id: Side, style: React.CSSProperties) => <LimitHandle key={id} axis={id === "l" || id === "r" ? "x" : "y"} origin={origin} title="Arrastar o limite da zona" style={style} onStart={begin(id)} onMove={move} />
+  const side = (id: Side, style: React.CSSProperties) => <LimitHandle key={id} axis={id === "l" || id === "r" ? "x" : "y"} origin={origin} title={t("Arrastar o limite da zona")} style={style} onStart={begin(id)} onMove={move} />
   return <>
     {side("l", { left: -6, top: 0, bottom: 0, width: 10 })}
     {side("r", { right: -6, top: 0, bottom: 0, width: 10 })}
@@ -100,11 +102,12 @@ function ZoneLimits({ el, zones, origin, onResize }: { el: LayoutElement; zones:
 const gridGeo = () => mineStore.round?.grid.geo ?? null
 const gridZones = () => mineStore.params?.zones ?? null
 function BlockZones({ screens, sceneZones, sceneEdges }: { screens: number; sceneZones?: SceneZones; sceneEdges?: SceneEdges }) {
+  const t = useT()
   const geo = useSyncExternalStore(mineStore.subscribe, gridGeo, gridGeo), zones = useSyncExternalStore(mineStore.subscribe, gridZones, gridZones)
   const boxes = useMemo(() => (geo && zones ? mineZoneBoxes(geo, zones, { zones: sceneZones, edges: sceneEdges, screens }).filter(b => b.beat !== "none") : []), [geo, zones, sceneZones, sceneEdges, screens])
   return <>{boxes.map(b => (
     <div key={`${b.c},${b.r}`} className="absolute" style={{ left: b.x + 4, top: b.y + 4, width: b.w - 8, height: b.h - 8, border: `2px dashed ${b.zone.color}`, background: `${b.zone.color}18` }}>
-      <span className="absolute left-2 top-1 whitespace-nowrap font-mono text-[13px] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]" style={{ color: b.zone.color }}>{b.zone.name}</span>
+      <span className="absolute left-2 top-1 whitespace-nowrap font-mono text-[13px] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]" style={{ color: b.zone.color }}>{t(b.zone.name)}</span>
     </div>
   ))}</>
 }
@@ -122,6 +125,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
   // how strongly the layer shows (the layers menu's Zonas slider)
   opacity?: number
 }) {
+  const t = useT()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => (ref.current ? followCamera(ref.current) : undefined), [])
   // the zones' life and changes, live
@@ -147,7 +151,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
     if (next) save(s, next, `slam:${s}:${tag.key}:${Math.round(performance.now())}`)
   }), [])
   return (
-    <div aria-label="Zonas" className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
+    <div aria-label={t("Zonas")} className="pointer-events-none fixed inset-0 z-[204] overflow-hidden" style={{ opacity }}>
       <div ref={ref} className="absolute left-0 top-0">
         {/* each scene's own zone, stuck to the ground: it plays in the whole column over its floor, up to the ceiling */}
         {Array.from({ length: scenes }, (_, s) => {
@@ -155,7 +159,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
             const z = TEMPLE_IDLE
             return (
               <div key={s} className="absolute" style={{ left: s * SCENE_W, top: WORLD_GROUND_Y, width: SCENE_W, height: 30, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
-                <span className="absolute left-3 top-1 whitespace-nowrap font-mono text-[13px] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]" style={{ color: z.color }}>Cena {s + 1} · {zoneLabel(z)}</span>
+                <span className="absolute left-3 top-1 whitespace-nowrap font-mono text-[13px] [text-shadow:0_1px_3px_rgba(0,0,0,0.95)]" style={{ color: z.color }}>{t("Cena {n}", { n: s + 1 })} · {zoneLabel(z)}</span>
               </div>
             )
           }
@@ -164,7 +168,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
           return (
             <div key={s} className="absolute" style={{ left: xs[s], top: WORLD_GROUND_Y, width: xs[s + 1] - xs[s], height: 32, background: `${z.color}26`, borderTop: `2px solid ${z.color}` }}>
               <div data-scene-strip={s} className="absolute left-2 top-0.5 flex max-w-[calc(100%-16px)] flex-wrap gap-1">
-                <ZoneTags zone={z} scene sceneLabel={`Cena ${s + 1}`} editable={editable} onChange={(zone, step) => onScene(s, zone, step && `${step}:cena${s}`)} onOpen={() => onOpenScene(s)} />
+                <ZoneTags zone={z} scene sceneLabel={t("Cena {n}", { n: s + 1 })} editable={editable} onChange={(zone, step) => onScene(s, zone, step && `${step}:cena${s}`)} onOpen={() => onOpenScene(s)} />
               </div>
             </div>
           )
@@ -173,7 +177,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
         {/* the limit between two scenes' zones, from the ground to over the tallest ceiling */}
         {editable && sceneMusic && Array.from({ length: Math.max(0, screens - 1) }, (_, i) => i + 1).map(s => (
           <div key={`limite${s}`} className="absolute border-l border-dashed border-white/40" style={{ left: xs[s], top: WORLD_GROUND_Y - LIMIT_H, height: LIMIT_H + 32, width: 0 }}>
-            <LimitHandle axis="x" origin={ref} title={`Arrastar o limite entre as zonas das cenas ${s} e ${s + 1}`} style={{ left: -6, top: 0, bottom: 0, width: 12 }} onMove={(x, step) => onSceneEdge(s, x, step)} />
+            <LimitHandle axis="x" origin={ref} title={t("Arrastar o limite entre as zonas das cenas {a} e {b}", { a: s, b: s + 1 })} style={{ left: -6, top: 0, bottom: 0, width: 12 }} onMove={(x, step) => onSceneEdge(s, x, step)} />
           </div>
         ))}
         {elements.map(el => {
@@ -199,7 +203,7 @@ export function MusicZonesLayer({ elements, screens, sceneZones, sceneEdges, sce
           const b = elementBounds(el)
           return (
             <div key={el.id} className="absolute rounded-sm" style={{ left: b.x - 3, top: b.y - 3, width: b.w + 6, height: b.h + 6, outline: "3px solid #ffd166", boxShadow: "0 0 12px #ffd166" }}>
-              <span className="absolute -top-6 left-0 whitespace-nowrap rounded bg-black/75 px-1.5 font-mono text-[11px] text-[#ffd166]">♪ rebate · {el.rebate.mode === "chain" ? "cadeia própria" : el.rebate.mode === "delegate" ? "delega ao taco" : "não muda"}</span>
+              <span className="absolute -top-6 left-0 whitespace-nowrap rounded bg-black/75 px-1.5 font-mono text-[11px] text-[#ffd166]">♪ {t("rebate")} · {el.rebate.mode === "chain" ? t("cadeia própria") : el.rebate.mode === "delegate" ? t("delega ao taco") : t("não muda")}</span>
             </div>
           )
         })}

@@ -8,6 +8,7 @@ import { cn, stableHtml } from "@/lib/utils"
 import { Eye, EyeOff, LockKeyhole, Music, Power } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { Resizable } from "re-resizable"
+import { msg, useT } from "@/lib/i18n"
 import { MusicPlaybackViewport } from "./music-playback"
 import { KnobPanelTitle, NoteParamsHostContext, type NoteParamsSelection } from "./music-note-params"
 import type { DuckSource } from "./music-sound-design"
@@ -85,7 +86,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   monitorId,
   selectedPiece,
   readOnly = false,
-  readOnlyMessage = "Piece Params locked",
+  readOnlyMessage = msg("Piece Params locked"),
   song,
   sections,
   showSong = false,
@@ -95,6 +96,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
   selectedSectionId,
   ...props
 }, ref) => {
+  const t = useT()
   const isStatic = props.style?.position === 'static'
   const contentViewportRef = useRef<HTMLDivElement>(null)
   const knobGridRef = useRef<HTMLDivElement>(null)
@@ -195,7 +197,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
 
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
-        aria-label={isOn ? 'Desligar Piece Params' : 'Ligar Piece Params'}
+        aria-label={isOn ? t('Desligar Piece Params') : t('Ligar Piece Params')}
         aria-hidden={togglePortalized || undefined}
         tabIndex={togglePortalized ? -1 : 0}
         ref={toggleRef}
@@ -230,19 +232,19 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       {isOn && songMode && songMidi && <button
         type="button"
         aria-pressed={songMidi.on}
-        aria-label={songMidi.on ? 'Hide the MIDI of the active pieces' : 'Show the MIDI of the active pieces'}
-        title={songMidi.on ? 'Hide MIDI' : 'Show MIDI'}
+        aria-label={songMidi.on ? t('Hide the MIDI of the active pieces') : t('Show the MIDI of the active pieces')}
+        title={songMidi.on ? t('Hide MIDI') : t('Show MIDI')}
         className={cn("absolute right-2 top-2 z-[70] flex h-[25px] cursor-pointer items-center gap-1 rounded border bg-[#111a15] px-1.5 font-mono text-[10px] transition-colors hover:border-white/60 hover:text-white", songMidi.on ? "border-white/40 text-white" : "border-white/20 text-white/50")}
         onClick={event => {
           event.stopPropagation()
           songMidi.onToggle()
         }}
-      >{songMidi.on ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}midi</button>}
+      >{songMidi.on ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}{t('midi')}</button>}
 
       {isOn && selectedSquare && !songMode && onDeselect && <button
         type="button"
-        aria-label="Back to Song & Instruments"
-        title="Back to the instrument list"
+        aria-label={t('Back to Song & Instruments')}
+        title={t('Back to the instrument list')}
         className="absolute right-2 top-2 z-[70] flex h-[25px] w-[27px] cursor-pointer items-center justify-center rounded border border-white/25 bg-[#111a15] text-white/70 transition-colors hover:border-white/60 hover:text-white"
         onClick={event => {
           event.stopPropagation()
@@ -268,7 +270,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               <h2 className={cn(
                 "truncate text-sm font-mono font-bold transition-colors duration-300",
                 "text-white"
-              )}>{songMode ? 'Song & Instruments' : selectedSquare ? selectedPieceInfo ?? 'Instrumento' : 'No piece selected'}</h2>
+              )}>{songMode ? t('Song & Instruments') : selectedSquare ? selectedPieceInfo ?? t('Instrumento') : t('No piece selected')}</h2>
               {selectedSquare && !songMode && <span className="flex items-center gap-1 text-[10px] font-mono text-white/50"><span>{selectedSquare}</span>{isOn&&selectedStatus&&<><span>·</span>{selectedStatus}</>}</span>}
             </div>
           </div>
@@ -288,7 +290,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
               duckSources={duckSources} tab={params.tab} onTab={params.setTab} scope={params.scope} onScope={params.setScope}
               section={paramsSectionInfo} noteSelection={noteMode ? noteSelection : null}
               monitorValues={{ gain: monitorValues.gain, pan: monitorValues.pan, delay: monitorValues.delay, lpf: monitorValues.lpf, room: monitorValues.room }} />
-          </div> : <section aria-label="Piece params" className="flex flex-none flex-col">
+          </div> : <section aria-label={t('Piece params')} className="flex flex-none flex-col">
             <KnobPanelTitle noteMode={false} />
             {/* Without an instrument (no piece selected) only the square's effects are shown. */}
             <div ref={knobGridRef} className={cn("grid grid-cols-5 gap-x-2 gap-y-[13px] py-2", (!selectedSquare && isOn) && "opacity-50 pointer-events-none grayscale", !isOn && "pointer-events-none")}>
@@ -307,7 +309,7 @@ export const SynthControlPanel = forwardRef<HTMLDivElement, SynthControlPanelPro
       </div>
       {isOn && readOnly && <div className={cn("absolute inset-0 z-[65] flex items-center justify-center rounded-md bg-black/35", isStatic ? "touch-pan-y" : "touch-none")}>
         <div className="pointer-events-none flex items-center gap-2 rounded-lg border border-white/20 bg-black/90 p-4 text-sm text-white">
-          <LockKeyhole className="h-5 w-5" />{readOnlyMessage}
+          <LockKeyhole className="h-5 w-5" />{t(readOnlyMessage)}
         </div>
       </div>}
       {!isOn && <div className={cn("absolute inset-0 z-[65]", props.style?.position === 'static' ? "touch-pan-y" : "touch-none")} aria-hidden="true" />}

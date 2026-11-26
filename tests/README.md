@@ -33,6 +33,10 @@ Para um relatório completo explícito: `node --test --test-reporter=tap tests/m
 
 A separação preserva os casos e as asserções. Testes de padrões não substituem escuta nem medição de desempenho em aparelho físico. Execute também `npm run typecheck` ao alterar música.
 
+## Idiomas
+
+`npm run test:i18n` (`tests/i18n.cases.cjs`) roda `scripts/i18n-build.mjs --check`: todo texto marcado com `t`/`tx`/`t.x`/`msg` no código tem entrada com os 8 idiomas em `lib/locales/messages/`, os `{valores}` batem em todas as traduções, não há entrada sem uso nem o mesmo texto traduzido de dois jeitos, e `lib/locales/generated/` está atualizado. Também cobre a troca de valores, o texto-fonte quando falta tradução e o idioma inicial pelo navegador. Não substitui conferir no navegador se o texto cabe nos botões.
+
 ## Online
 
 Para apresentação da partida, compare campanha/online com a mesma cidade em desktop e 320/390 px: foto/título e tempos da abertura, tabuleiro, cabeçalho, widgets arrastáveis/coluna mobile, conexão à casa nas duas orientações, histórico/avaliação e versão. Confirme Tom/Escala/Harmonia alterados por ambas as contas, persistência após recarga, Mixer local, cadeado adversário e prévia translúcida do lance pendente.

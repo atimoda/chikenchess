@@ -7,6 +7,7 @@ import type { ReactNode } from "react"
 import { useTuningVersion } from "@/hooks/use-game-defaults"
 import { tuningLocked } from "@/lib/pigchicken/patio-tuning"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 
 export function useTuningLocked() {
   useTuningVersion()
@@ -14,9 +15,10 @@ export function useTuningLocked() {
 }
 
 export function LockedFieldset({ children, className }: { children: ReactNode; className?: string }) {
+  const t = useT()
   const locked = useTuningLocked()
   return (
-    <fieldset disabled={locked} title={locked ? "Travado por quem cuida deste Pátio" : undefined}
+    <fieldset disabled={locked} title={locked ? t("Travado por quem cuida deste Pátio") : undefined}
       className={cn("m-0 min-w-0 border-0 p-0 disabled:opacity-60 [&:disabled_input]:cursor-default", className)}>{children}</fieldset>
   )
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import { msg, useT } from "@/lib/i18n"
 import { useCallback, useMemo } from 'react'
 import { ChickenPortal, playPortalSound } from '@/components/chicken/chicken-portal'
 import type { ChickenEngine } from '@/lib/chicken/engine'
@@ -21,6 +22,7 @@ export function PatioPortals({ engine, extras, worldRef, elements, screens, edit
   editing: boolean
   onTravel?: PatioPortalTravel
 }) {
+  const t = useT()
   const portals = useMemo(() => elementsInWorld({ v: LAYOUT_VERSION, elements: elements ?? [] }, screens).filter(e => e.kind === 'portal'), [elements, screens])
   const actors = useCallback(() => [...(engine ? [engine] : []), ...extras.current.values()], [engine, extras])
   return <>{portals.map(el => {
@@ -29,7 +31,7 @@ export function PatioPortals({ engine, extras, worldRef, elements, screens, edit
     return <ChickenPortal key={el.id} id={el.id} engine={engine} actors={actors}
       world={{ host: worldRef, x: el.x + el.w / 2, groundY: el.y + el.h - 6, d: el.w }}
       enabled={!editing && (target === undefined ? !!destination : !!target && !!onTravel)}
-      label={el.params.portalLabel ?? 'Entrar no portal?'} instructionMode={el.params.portalInstruction}
+      label={t(el.params.portalLabel ?? msg('Entrar no portal?'))} instructionMode={el.params.portalInstruction}
       onEnter={actor => {
         const box = worldRef.current?.getBoundingClientRect()
         if (!box || editing) return false

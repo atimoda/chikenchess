@@ -1,5 +1,6 @@
 // Birds, undead (and their riders), people, horde buttons, aliens, zombies and training dummies.
 // Split out of parquinho.tsx; the component there owns the loop and calls these each frame.
+import { t as tr } from '@/lib/i18n'
 import { TIP_TIME, type Combat } from "@/lib/pigchicken/combat"
 import { canPress, pressCountdown } from "@/lib/pigchicken/button-limit"
 import { lookDir, lookRows, nearestPoint } from "@/lib/pigchicken/eyes"
@@ -379,7 +380,7 @@ export function drawDummyTip(ctx: Ctx, g: Combat["targets"][number], x: number, 
   }
   ctx.save()
   ctx.font = "13px ui-sans-serif, system-ui, sans-serif"
-  const maxW = 220, lines = wrapLines(ctx, d.params.message, maxW)
+  const maxW = 220, lines = wrapLines(ctx, tr(d.params.message), maxW)
   const w = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width))) + 22, lh = 17, h = lines.length * lh + 34
   const age = TIP_TIME - d.tipT, pop = Math.min(1, age / 0.18)
   ctx.globalAlpha = Math.min(1, d.tipT * 2)
@@ -391,7 +392,7 @@ export function drawDummyTip(ctx: Ctx, g: Combat["targets"][number], x: number, 
   ctx.fillStyle = "#fffdf5"; ctx.beginPath(); ctx.roundRect(bx, by, w, h, 12); ctx.fill()
   ctx.beginPath(); ctx.moveTo(-7, by + h - 1); ctx.lineTo(0, 0); ctx.lineTo(8, by + h - 1); ctx.fill()
   ctx.shadowColor = "transparent"
-  ctx.fillStyle = "#b5651d"; ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillText("DICA", bx + 11, by + 17)
+  ctx.fillStyle = "#b5651d"; ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillText(tr("DICA"), bx + 11, by + 17)
   ctx.fillStyle = "#2b2016"; ctx.font = "13px ui-sans-serif, system-ui, sans-serif"
   lines.forEach((l, i) => ctx.fillText(l, bx + 11, by + 34 + i * lh))
   ctx.restore()

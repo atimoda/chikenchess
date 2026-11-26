@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import type React from 'react'
+import { useT } from '@/lib/i18n'
 import styles from './creative-studio.module.css'
 
 const REPEAT_DELAY_MS = 400
@@ -69,13 +70,14 @@ interface Props {
 }
 
 export function CompactNumberInput({ariaLabel,value,min,max,step=1,onChange}:Props) {
+  const t=useT()
   // Repeated steps read the latest value even before the parent re-renders.
   const valueRef=useRef(value)
   valueRef.current=value
   const adjust=(direction:-1|1)=>{const next=stepValue(valueRef.current,direction,min,max,step);if(next===valueRef.current)return;valueRef.current=next;onChange(next)}
   return <div className={styles.numberStepper}>
     <input aria-label={ariaLabel} inputMode="decimal" value={value} onChange={event=>{const next=Number(event.target.value);if(Number.isFinite(next)&&next>=min&&next<=max)onChange(next)}} />
-    <StepperButton aria-label={`Decrease ${ariaLabel}`} disabled={value<=min} onStep={()=>adjust(-1)}>−</StepperButton>
-    <StepperButton aria-label={`Increase ${ariaLabel}`} disabled={value>=max} onStep={()=>adjust(1)}>+</StepperButton>
+    <StepperButton aria-label={t('Decrease {label}',{label:ariaLabel})} disabled={value<=min} onStep={()=>adjust(-1)}>−</StepperButton>
+    <StepperButton aria-label={t('Increase {label}',{label:ariaLabel})} disabled={value>=max} onStep={()=>adjust(1)}>+</StepperButton>
   </div>
 }

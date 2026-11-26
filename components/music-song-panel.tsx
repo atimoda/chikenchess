@@ -7,6 +7,7 @@ import type { HarmonyPlanId } from '@/lib/music/harmony'
 import type { MusicPiece } from '@/lib/music/model'
 import type { MusicMonitor } from '@/lib/music/monitor'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n'
 import { MusicArrangementControls } from './music-arrangement-controls'
 import { MusicPlaybackViewport, MusicVoiceBadge } from './music-playback'
 import { MusicMiniRoll } from './music-piano-editor'
@@ -63,7 +64,8 @@ export function MusicSongSections({ arrangement, harmony, monitor, onChange, onS
   selectedSectionId?: string | null
   onSelectSection?: (sectionId: string | null) => void
 }) {
-  return <section aria-label="Global Sections" className="min-w-0">
+  const t = useT()
+  return <section aria-label={t('Global Sections')} className="min-w-0">
     <MusicArrangementControls compact arrangement={arrangement} harmony={harmony ?? 'kit'} monitor={monitor} onChange={onChange} onSeek={onSeek} selectedId={selectedSectionId} onSelect={onSelectSection} />
   </section>
 }
@@ -107,6 +109,7 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   canToggle?: (piece: MusicPiece) => boolean
   onHover?: (hover: SongPanelHover | null) => void
 }) {
+  const t = useT()
   const dots = useRef(new Map<string, HTMLButtonElement>())
   const hover = (piece: MusicPiece | null) => {
     const anchor = piece && dots.current.get(piece.id)
@@ -125,9 +128,9 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
   const teams = ownColor === 'w' ? ['w', 'b'] as const : ['b', 'w'] as const
   return <div className="flex min-w-0 flex-col gap-2">
     {arrangement && <MusicSongSections arrangement={arrangement} harmony={harmony} monitor={monitor} onChange={onArrangementChange} onSeek={onSeek} selectedSectionId={selectedSectionId} onSelectSection={onSelectSection} />}
-    <section aria-label="Instruments" className={columns ? 'grid min-w-0 grid-cols-2 items-start gap-3' : 'flex min-w-0 flex-col gap-2.5'} onPointerLeave={() => hover(null)}>
+    <section aria-label={t('Instruments')} className={columns ? 'grid min-w-0 grid-cols-2 items-start gap-3' : 'flex min-w-0 flex-col gap-2.5'} onPointerLeave={() => hover(null)}>
       {teams.map(color => <div key={color} className="min-w-0">
-        <h3 className="m-0 px-1 pb-1.5 font-mono text-[9px] uppercase leading-none tracking-[1px] text-[#96a79a]">{color === 'w' ? 'White' : 'Black'}</h3>
+        <h3 className="m-0 px-1 pb-1.5 font-mono text-[9px] uppercase leading-none tracking-[1px] text-[#96a79a]">{color === 'w' ? t('White') : t('Black')}</h3>
         {pieces.filter(piece => piece.color === color).sort((a, b) => a.origin.localeCompare(b.origin)).map(piece => {
           const active = activeIds.has(piece.id)
           const solo = soloIds.has(piece.id)
@@ -142,25 +145,25 @@ export function MusicSongPanel({ pieces, names, activeIds, soloIds, monitor, arr
             onPointerEnter={event => { hover(piece); if (event.pointerType === 'mouse' && onAudition) { onAudition(piece.square); setBlink(b => ({ id: piece.id, sequence: (b?.sequence ?? 0) + 1 })) } }} onFocus={() => hover(piece)} onBlur={() => hover(null)}>
             <button type="button" ref={element => { if (element) dots.current.set(piece.id, element); else dots.current.delete(piece.id) }}
               className={cn('relative w-6 shrink-0 cursor-pointer bg-transparent p-0 text-[12px] leading-none disabled:cursor-not-allowed disabled:opacity-40', active ? 'text-[#c0e494]' : 'text-white/45 hover:text-white/80')}
-              aria-label={`${active ? 'Deactivate' : 'Activate'} ${name} (${piece.square})`} aria-pressed={active} disabled={!toggleAllowed}
-              title={toggleAllowed ? (active ? 'Turn off' : 'Turn on') : 'This piece cannot be changed now'}
+              aria-label={active ? t('Deactivate {name} ({square})', { name, square: piece.square }) : t('Activate {name} ({square})', { name, square: piece.square })} aria-pressed={active} disabled={!toggleAllowed}
+              title={toggleAllowed ? (active ? t('Turn off') : t('Turn on')) : t('This piece cannot be changed now')}
               onClick={() => onToggle(piece.square)}><span aria-hidden="true">{active ? '●' : '○'}</span>
               {blink?.id === piece.id && <span key={blink.sequence} aria-hidden="true" className={styles.auditionBlink} onAnimationEnd={() => setBlink(b => b?.sequence === blink.sequence ? null : b)} />}</button>
             <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-1 bg-transparent py-[3px] pr-1 text-left font-mono text-[10px] text-[#e0e9df]"
-              aria-expanded={expanded} title={`${expanded ? 'Collapse' : 'Expand'} ${name} (${piece.square}) · double-click opens Piece Params`}
+              aria-expanded={expanded} title={expanded ? t('Collapse {name} ({square}) · double-click opens Piece Params', { name, square: piece.square }) : t('Expand {name} ({square}) · double-click opens Piece Params', { name, square: piece.square })}
               // The second click of a double click is left to onDoubleClick.
               onClick={event => { if (event.detail >= 2) return; if (expanded) { setExpandedId(null); onSelect(null) } else { expand(piece); if (!active && toggleAllowed) onToggle(piece.square) } }}
               onDoubleClick={() => onOpenParams?.(piece.square)}>
               <span className="truncate">{name}</span><span className="shrink-0 scale-90"><MusicVoiceBadge monitor={monitor} id={piece.id} /></span>
             </button>
             {onOpenParams && <button type="button" className="shrink-0 cursor-pointer bg-transparent px-1 font-mono text-[10px] font-semibold leading-none text-[#849389] hover:text-white/80"
-              aria-label={`Open Piece Params for ${name}`} title="Open Piece Params" onClick={() => onOpenParams(piece.square)}>Params</button>}
+              aria-label={t('Open Piece Params for {name}', { name })} title={t('Open Piece Params')} onClick={() => onOpenParams(piece.square)}>{t('Params')}</button>}
             {onSolo && <button type="button" className={cn('w-5 shrink-0 cursor-pointer bg-transparent p-0 font-mono text-[10px] font-semibold leading-none', solo ? 'text-white' : 'text-[#849389] hover:text-white/80')}
-              aria-label={`${solo ? 'Disable' : 'Enable'} solo ${name}`} title="Solo" aria-pressed={solo} onClick={() => onSolo(piece.id)}>S</button>}
+              aria-label={solo ? t('Disable solo {name}', { name }) : t('Enable solo {name}', { name })} title={t('Solo')} aria-pressed={solo} onClick={() => onSolo(piece.id)}>S</button>}
           </div>
           <Reveal open={expanded || compact} mode={expanded ? 'full' : 'compact'}>
             {expanded ? <div className="pb-1 pl-6 pr-1 pt-0.5"><NoteParamsHostContext.Provider value={ignoreNoteParams}><MusicPlaybackViewport visualUpdatesEnabled pieceParamsLayout>{selectedView}</MusicPlaybackViewport></NoteParamsHostContext.Provider></div>
-              : snapshot && instrument && <button type="button" className="block w-full cursor-pointer bg-transparent pb-[3px] pl-6 pr-1 pt-0 text-left" aria-label={`Expand the MIDI of ${name}`} title="Expand the sequencer" onClick={() => expand(piece)}>
+              : snapshot && instrument && <button type="button" className="block w-full cursor-pointer bg-transparent pb-[3px] pl-6 pr-1 pt-0 text-left" aria-label={t('Expand the MIDI of {name}', { name })} title={t('Expand the sequencer')} onClick={() => expand(piece)}>
                 <MusicMiniRoll snapshot={snapshot} id={piece.id} monitor={monitor} instrument={instrument}/></button>}
           </Reveal>
           </div>

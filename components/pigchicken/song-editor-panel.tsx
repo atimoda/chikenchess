@@ -26,11 +26,12 @@ import {
   removeNote, retune, setPauseBars, snapBeat, timelineSpan, updateAlien, updateLine, updatePause, type Clip, type Selection,
 } from "@/lib/pigchicken/song-edit"
 import { SPECIES } from "@/lib/pigchicken/temple"
+import { msg, useT } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 const NEON = "#39ff88"
 const TALK_H = 44, RULER_H = 22, LABEL_W = 52
-const GRIDS = [{ v: 1, label: "1 tempo" }, { v: 0.5, label: "½ tempo" }, { v: 0.25, label: "¼ tempo" }]
+const GRIDS = [{ v: 1, label: msg("1 tempo") }, { v: 0.5, label: msg("½ tempo") }, { v: 0.25, label: msg("¼ tempo") }]
 const ROOTS = Array.from({ length: 12 }, (_, i) => 57 + i) // Lá … Sol♯, around the voice
 const field = "h-8 rounded-md border border-white/15 bg-[#0b110e] px-2 text-xs text-white"
 const btn = "inline-flex h-8 items-center gap-1.5 rounded-md border border-white/15 px-2.5 hover:border-primary disabled:opacity-40 disabled:hover:border-white/15"
@@ -58,6 +59,7 @@ function applyDrag(s: LibrarySong, d: Drag | null): LibrarySong {
 }
 
 export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: () => void }) {
+  const t = useT()
   const [catalog, setCatalog] = useState<Catalog>(() => loadCatalog())
   useEffect(() => subscribeCatalog(setCatalog), [])
   const [draft, setDraft] = useState<LibrarySong | null>(() => {
@@ -147,10 +149,10 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
 
   if (!draft || !view) {
     return (
-      <FloatingPanel id="pigchicken-song-editor" role="dialog" aria-label="Editor de música" initial={(vw) => ({ x: 12, y: 64, w: Math.min(420, vw - 24), h: 160 })}
+      <FloatingPanel id="pigchicken-song-editor" role="dialog" aria-label={t("Editor de música")} initial={(vw) => ({ x: 12, y: 64, w: Math.min(420, vw - 24), h: 160 })}
         className="rounded-[22px] border-2 bg-[#07130d] p-4 font-mono text-xs text-[#dfe8df]" style={{ borderColor: NEON }}>
-        <p>Essa música não está mais na jukebox.</p>
-        <button type="button" onClick={onClose} className={cn(btn, "mt-3 w-fit")}>Fechar</button>
+        <p>{t("Essa música não está mais na jukebox.")}</p>
+        <button type="button" onClick={onClose} className={cn(btn, "mt-3 w-fit")}>{t("Fechar")}</button>
       </FloatingPanel>
     )
   }
@@ -271,13 +273,13 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
   // ---------- the keys ----------
   const onKey = (e: React.KeyboardEvent) => {
     e.stopPropagation()
-    const t = e.target as HTMLElement
-    if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT") return
+    const el = e.target as HTMLElement
+    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") return
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase()
     if (mod && k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo() }
     else if (mod && k === "y") { e.preventDefault(); redo() }
     else if (mod && k === "s") { e.preventDefault(); save() }
-    else if (mod && k === "c") { const c = copyItems(draft, sel); if (c) { clip.current = c; setNote(`Copiado: ${c.aliens.length} aliens, ${c.lines.length} falas`) } }
+    else if (mod && k === "c") { const c = copyItems(draft, sel); if (c) { clip.current = c; setNote(t("Copiado: {aliens} aliens, {lines} falas", { aliens: c.aliens.length, lines: c.lines.length })) } }
     else if (mod && k === "x") { const c = copyItems(draft, sel); if (c) { clip.current = c; commit(removeItems(draft, sel), NOTHING) } }
     else if (mod && k === "v") { if (clip.current) { const r = pasteClip(draft, clip.current, cursor); commit(r.song, r.sel) } }
     else if (mod && k === "a") { e.preventDefault(); setSel({ aliens: draft.aliens.map((_, i) => i), lines: (draft.lines ?? []).map((_, i) => i), pauses: [] }) }
@@ -296,22 +298,22 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
 
   // ---------- the song ----------
   const save = () => {
-    if (draft.builtin) { setNaming(n => n ?? `${draft.name} 2`); return }
+    if (draft.builtin) { setNaming(n => n ?? `${t(draft.name)} 2`); return }
     const clean = normalizeSong(draft)
-    if (!clean) { setNote("Uma música precisa de pelo menos um alien com notas."); return }
+    if (!clean) { setNote(t("Uma música precisa de pelo menos um alien com notas.")); return }
     updateSong(loadLibrary(), clean)
-    setDirty(false); setNote("Salva.")
+    setDirty(false); setNote(t("Salva."))
   }
   const saveAs = () => {
     const name = naming?.trim()
     if (!name) return
     const clean = normalizeSong({ ...draft, id: draft.id || "x" })
-    if (!clean) { setNote("Uma música precisa de pelo menos um alien com notas."); return }
+    if (!clean) { setNote(t("Uma música precisa de pelo menos um alien com notas.")); return }
     const copy = saveSongAs(loadLibrary(), clean, name)
-    setDraft(structuredClone(copy)); setHist({ past: [], future: [] }); setDirty(false); setNaming(null); setNote(`Salva como “${copy.name}”.`)
+    setDraft(structuredClone(copy)); setHist({ past: [], future: [] }); setDirty(false); setNaming(null); setNote(t("Salva como “{name}”.", { name: copy.name }))
   }
   const close = () => {
-    if (dirty && !window.confirm("Sair sem salvar as mudanças?")) return
+    if (dirty && !window.confirm(t("Sair sem salvar as mudanças?"))) return
     onClose()
   }
   const play = () => {
@@ -329,7 +331,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
   const pause = sel.pauses.length === 1 ? (draft.pauses ?? [])[sel.pauses[0]] : null
 
   return (
-    <FloatingPanel id="pigchicken-song-editor" role="dialog" aria-label="Editor de música" onKeyDown={onKey}
+    <FloatingPanel id="pigchicken-song-editor" role="dialog" aria-label={t("Editor de música")} onKeyDown={onKey}
       initial={(vw, vh) => ({ x: 12, y: 64, w: Math.min(1180, vw - 24), h: Math.min(640, vh - 90) })} minW={360} minH={small ? 60 : 300}
       className={cn("rounded-[22px] border-2 font-mono text-xs text-[#dfe8df]", small ? "pointer-events-none border-transparent bg-transparent" : "bg-[#07130d] shadow-[0_0_24px_rgba(57,255,136,0.25),0_20px_60px_rgba(0,0,0,0.6)]")}
       style={small ? undefined : { borderColor: NEON }}>
@@ -337,65 +339,65 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
       {/* collapsed: only a small bar in the corner, clear of the song's score */}
       <div data-drag-handle className={cn("pointer-events-auto flex items-center gap-1.5 px-3 py-2", small ? "w-fit max-w-full self-start rounded-[18px] border-2 bg-[#07130d]" : "flex-wrap border-b border-white/10")} style={small ? { borderColor: NEON } : undefined}>
         {small
-          ? <h2 className="min-w-0 max-w-40 truncate text-sm text-white"><span style={{ color: z.color }}>{draft.name}</span>{dirty && <span className="text-[#93a79a]"> · não salva</span>}</h2>
+          ? <h2 className="min-w-0 max-w-40 truncate text-sm text-white"><span style={{ color: z.color }}>{t(draft.name)}</span>{dirty && <span className="text-[#93a79a]"> {t("· não salva")}</span>}</h2>
           : <div className="flex min-w-0 flex-1 items-center gap-1.5">
-              <input aria-label="Nome da música" value={draft.name} maxLength={60} onChange={e => setSong({ name: e.target.value }, "name")}
+              <input aria-label={t("Nome da música")} value={draft.name} maxLength={60} onChange={e => setSong({ name: e.target.value }, "name")}
                 className="h-8 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-sm font-bold outline-none hover:border-white/15 focus:border-primary" style={{ color: z.color }} />
-              {dirty && <span className="shrink-0 text-[#93a79a]">não salva</span>}
+              {dirty && <span className="shrink-0 text-[#93a79a]">{t("não salva")}</span>}
             </div>}
-        <button type="button" onClick={play} className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 font-bold text-[#05060c]" style={{ background: NEON }} title="Toca no templo a partir do compasso do cursor"><Play className="h-4 w-4" />Tocar daqui</button>
-        <button type="button" onClick={() => stopDraft()} disabled={!playing} className={btn} aria-label="Parar"><Square className="h-3.5 w-3.5" /></button>
+        <button type="button" onClick={play} className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 font-bold text-[#05060c]" style={{ background: NEON }} title={t("Toca no templo a partir do compasso do cursor")}><Play className="h-4 w-4" />{t("Tocar daqui")}</button>
+        <button type="button" onClick={() => stopDraft()} disabled={!playing} className={btn} aria-label={t("Parar")}><Square className="h-3.5 w-3.5" /></button>
         {!small && <>
-        <button type="button" onClick={undo} disabled={!hist.past.length} className={btn} aria-label="Desfazer (Ctrl+Z)" title="Desfazer (Ctrl+Z)"><Undo2 className="h-4 w-4" /></button>
-        <button type="button" onClick={redo} disabled={!hist.future.length} className={btn} aria-label="Refazer (Ctrl+Shift+Z)" title="Refazer (Ctrl+Shift+Z)"><Redo2 className="h-4 w-4" /></button>
-        {!draft.builtin && <button type="button" onClick={save} disabled={!dirty} className={btn}><Save className="h-4 w-4" />Salvar</button>}
-        <button type="button" onClick={() => setNaming(n => (n === null ? `${draft.name} 2` : null))} aria-expanded={naming !== null} className={btn}>Salvar como</button>
+        <button type="button" onClick={undo} disabled={!hist.past.length} className={btn} aria-label={t("Desfazer (Ctrl+Z)")} title={t("Desfazer (Ctrl+Z)")}><Undo2 className="h-4 w-4" /></button>
+        <button type="button" onClick={redo} disabled={!hist.future.length} className={btn} aria-label={t("Refazer (Ctrl+Shift+Z)")} title={t("Refazer (Ctrl+Shift+Z)")}><Redo2 className="h-4 w-4" /></button>
+        {!draft.builtin && <button type="button" onClick={save} disabled={!dirty} className={btn}><Save className="h-4 w-4" />{t("Salvar")}</button>}
+        <button type="button" onClick={() => setNaming(n => (n === null ? `${t(draft.name)} 2` : null))} aria-expanded={naming !== null} className={btn}>{t("Salvar como")}</button>
         </>}
-        <button type="button" onClick={() => setSmall(v => !v)} className={btn} aria-label={small ? "Expandir editor" : "Recolher editor"}>{small ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}</button>
-        <button type="button" aria-label="Fechar editor" onClick={close} className={btn}><X className="h-4 w-4" /></button>
+        <button type="button" onClick={() => setSmall(v => !v)} className={btn} aria-label={small ? t("Expandir editor") : t("Recolher editor")}>{small ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}</button>
+        <button type="button" aria-label={t("Fechar editor")} onClick={close} className={btn}><X className="h-4 w-4" /></button>
       </div>
       {!small && <>
         {naming !== null && (
           <form onSubmit={e => { e.preventDefault(); saveAs() }} className="flex gap-1.5 border-b border-white/10 px-3 py-2">
-            <input autoFocus aria-label="Nome da nova música" value={naming} onChange={e => setNaming(e.target.value)} maxLength={60} className={cn(field, "min-w-0 flex-1")} />
-            <button type="submit" disabled={!naming.trim()} className="h-8 rounded-md border px-3 font-bold disabled:opacity-40" style={{ borderColor: NEON, color: NEON }}>Salvar</button>
+            <input autoFocus aria-label={t("Nome da nova música")} value={naming} onChange={e => setNaming(e.target.value)} maxLength={60} className={cn(field, "min-w-0 flex-1")} />
+            <button type="submit" disabled={!naming.trim()} className="h-8 rounded-md border px-3 font-bold disabled:opacity-40" style={{ borderColor: NEON, color: NEON }}>{t("Salvar")}</button>
           </form>
         )}
         {/* the song's settings and the tools */}
         <div className="flex flex-wrap items-center gap-field border-b border-white/10 px-3 py-2">
           <label className="flex items-center gap-1.5">bpm<input type="number" min={40} max={200} value={z.bpm} onChange={e => setZone({ bpm: Math.max(40, Math.min(200, Number(e.target.value) || z.bpm)) }, "bpm")} className={cn(field, "w-16")} /></label>
-          <StepSelect aria-label="Tom" title="Tom" value={((z.root % 12) + 12) % 12} onChange={e => { const pc = Number(e.target.value); const root = ROOTS.find(r => r % 12 === pc) ?? 60; commit(retune(draft, root, z.scale)) }} className={field}>
+          <StepSelect aria-label={t("Tom")} title={t("Tom")} value={((z.root % 12) + 12) % 12} onChange={e => { const pc = Number(e.target.value); const root = ROOTS.find(r => r % 12 === pc) ?? 60; commit(retune(draft, root, z.scale)) }} className={field}>
               {ROOTS.map(r => <option key={r} value={r % 12}>{keyName(r)}</option>)}
           </StepSelect>
-          <StepSelect aria-label="Escala" title="Escala" value={z.scale} onChange={e => commit(retune(draft, z.root, e.target.value as ScaleId))} className={field}>
+          <StepSelect aria-label={t("Escala")} title={t("Escala")} value={z.scale} onChange={e => commit(retune(draft, z.root, e.target.value as ScaleId))} className={field}>
               {(Object.keys(SCALES) as ScaleId[]).map(k => <option key={k} value={k}>{SCALES[k].label}</option>)}
           </StepSelect>
-          <label className="flex items-center gap-1.5">Intro<input type="number" min={1} max={8} value={draft.introBars} onChange={e => setSong({ introBars: Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 1))) }, "intro")} className={cn(field, "w-12")} />comp.</label>
-          <input type="color" aria-label="Cor" title="Cor" value={z.color} onChange={e => setZone({ color: e.target.value }, "color")} className="h-8 w-9 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
+          <label className="flex items-center gap-1.5">{t("Intro")}<input type="number" min={1} max={8} value={draft.introBars} onChange={e => setSong({ introBars: Math.max(1, Math.min(8, Math.round(Number(e.target.value) || 1))) }, "intro")} className={cn(field, "w-12")} />{t("comp.")}</label>
+          <input type="color" aria-label={t("Cor")} title={t("Cor")} value={z.color} onChange={e => setZone({ color: e.target.value }, "color")} className="h-8 w-9 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />
           <span className="mx-1 h-5 w-px bg-white/10" />
           <div className="flex items-center">
-            <button type="button" onClick={() => insertAlien(brush)} className={cn(btn, "rounded-r-none")} title="Põe um alien desta variação no cursor (ou dê duplo clique numa faixa)"><Plus className="h-4 w-4" />Alien</button>
-            <select aria-label="Variação do alien" title="Escolher uma variação já põe um alien dela no cursor" value={brush} onChange={e => { setBrush(e.target.value); insertAlien(e.target.value) }} className={cn(field, "max-w-36 rounded-l-none border-l-0")}>
-              {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>)}
+            <button type="button" onClick={() => insertAlien(brush)} className={cn(btn, "rounded-r-none")} title={t("Põe um alien desta variação no cursor (ou dê duplo clique numa faixa)")}><Plus className="h-4 w-4" />{t("Alien")}</button>
+            <select aria-label={t("Variação do alien")} title={t("Escolher uma variação já põe um alien dela no cursor")} value={brush} onChange={e => { setBrush(e.target.value); insertAlien(e.target.value) }} className={cn(field, "max-w-36 rounded-l-none border-l-0")}>
+              {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={t(SPECIES[sp].name)}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{t(v.name)}</option>)}</optgroup>)}
             </select>
           </div>
-          <button type="button" onClick={() => { const r = insertPause(draft, snapBeat(cursor, 4), 2); commit(r.song, { ...NOTHING, pauses: [r.index] }) }} className={btn} title="Abre 2 compassos no cursor e empurra o resto para depois"><Pause className="h-4 w-4" />Pausa</button>
-          <button type="button" onClick={() => { const r = addLine(draft, { beat: cursor, who: "narrador", text: "", secs: 3, place: "banner", blip: true }); commit(r.song, { ...NOTHING, lines: [r.index] }) }} className={btn}><MessageSquare className="h-4 w-4" />Fala</button>
+          <button type="button" onClick={() => { const r = insertPause(draft, snapBeat(cursor, 4), 2); commit(r.song, { ...NOTHING, pauses: [r.index] }) }} className={btn} title={t("Abre 2 compassos no cursor e empurra o resto para depois")}><Pause className="h-4 w-4" />{t("Pausa")}</button>
+          <button type="button" onClick={() => { const r = addLine(draft, { beat: cursor, who: "narrador", text: "", secs: 3, place: "banner", blip: true }); commit(r.song, { ...NOTHING, lines: [r.index] }) }} className={btn}><MessageSquare className="h-4 w-4" />{t("Fala")}</button>
           <span className="mx-1 h-5 w-px bg-white/10" />
-          <StepSelect aria-label="Grade" value={grid} onChange={e => setGrid(Number(e.target.value))} className={field}>{GRIDS.map(g => <option key={g.v} value={g.v}>{g.label}</option>)}</StepSelect>
-          <button type="button" onClick={() => setPpb(p => Math.max(8, Math.round(p / 1.4)))} className={btn} aria-label="Menos zoom"><ZoomOut className="h-4 w-4" /></button>
-          <button type="button" onClick={() => setPpb(p => Math.min(120, Math.round(p * 1.4)))} className={btn} aria-label="Mais zoom"><ZoomIn className="h-4 w-4" /></button>
+          <StepSelect aria-label={t("Grade")} value={grid} onChange={e => setGrid(Number(e.target.value))} className={field}>{GRIDS.map(g => <option key={g.v} value={g.v}>{t(g.label)}</option>)}</StepSelect>
+          <button type="button" onClick={() => setPpb(p => Math.max(8, Math.round(p / 1.4)))} className={btn} aria-label={t("Menos zoom")}><ZoomOut className="h-4 w-4" /></button>
+          <button type="button" onClick={() => setPpb(p => Math.min(120, Math.round(p * 1.4)))} className={btn} aria-label={t("Mais zoom")}><ZoomIn className="h-4 w-4" /></button>
         </div>
         <div className="flex min-h-0 flex-1">
           {/* the timeline */}
-          <div ref={scrollerRef} tabIndex={0} aria-label="Linha do tempo" className="relative min-w-0 flex-1 select-none overflow-auto outline-none focus-visible:ring-1 focus-visible:ring-primary">
+          <div ref={scrollerRef} tabIndex={0} aria-label={t("Linha do tempo")} className="relative min-w-0 flex-1 select-none overflow-auto outline-none focus-visible:ring-1 focus-visible:ring-primary">
             <div className="relative" style={{ width: LABEL_W + gridW, height: RULER_H + lanesH + TALK_H }}>
               {/* the ruler: bars and beats; a click puts the cursor */}
               <div className="sticky top-0 z-20 flex" style={{ height: RULER_H }}>
                 <div className="sticky left-0 z-10 shrink-0 border-b border-r border-white/10 bg-[#07130d]" style={{ width: LABEL_W }} />
                 <div className="relative cursor-ew-resize touch-none border-b border-white/10 bg-[#0a1a12]" style={{ width: gridW }} onPointerDown={onRulerDown} onPointerMove={onRulerMove} onPointerUp={onRulerUp} onPointerCancel={() => setScrub(false)}>
                   {Array.from({ length: Math.ceil((span.to - B0) / 4) }, (_, i) => B0 + i * 4).map(b => (
-                    <span key={b} className="absolute top-0.5 text-[10px] text-[#93a79a]" style={{ left: xOf(b) + 3 }}>{b >= 0 ? b / 4 + 1 : b >= -draft.introBars * 4 ? `intro ${b / 4 + draft.introBars + 1}` : ""}</span>
+                    <span key={b} className="absolute top-0.5 text-[10px] text-[#93a79a]" style={{ left: xOf(b) + 3 }}>{b >= 0 ? b / 4 + 1 : b >= -draft.introBars * 4 ? t("intro {n}", { n: b / 4 + draft.introBars + 1 }) : ""}</span>
                   ))}
                   <div className="pointer-events-none absolute bottom-0 h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[7px] border-x-transparent" style={{ left: xOf(cursor), borderTopColor: NEON }} />
                 </div>
@@ -404,7 +406,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
                 {/* the lanes' notes */}
                 <div className="sticky left-0 z-10 shrink-0 border-r border-white/10 bg-[#07130d]" style={{ width: LABEL_W }}>
                   {[...lanes].reverse().map(m => <div key={m} className="flex items-center gap-1 px-1.5 text-[10px]" style={{ height: laneH }}><span className="h-2 w-2 rounded-full" style={{ background: laneColor(m) }} />{noteLabel(m)}</div>)}
-                  <div className="flex items-center px-1.5 text-[10px] text-[#93a79a]" style={{ height: TALK_H }}>Diálogos</div>
+                  <div className="flex items-center px-1.5 text-[10px] text-[#93a79a]" style={{ height: TALK_H }}>{t("Diálogos")}</div>
                 </div>
                 {/* the grid */}
                 <div ref={gridRef} className="relative" style={{ width: gridW, height: lanesH + TALK_H }} onPointerDown={onGridDown} onDoubleClick={onGridDouble} onContextMenu={e => e.preventDefault()}>
@@ -413,7 +415,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
                   <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: `repeating-linear-gradient(to right, rgba(255,255,255,0.13) 0 1px, transparent 1px ${4 * ppb}px), repeating-linear-gradient(to right, rgba(255,255,255,0.045) 0 1px, transparent 1px ${ppb}px)` }} />
                   {/* the intro (count in) */}
                   <div className="pointer-events-none absolute top-0 bg-white/[0.04]" style={{ left: xOf(-draft.introBars * 4), width: draft.introBars * 4 * ppb, height: lanesH }}>
-                    <span className="absolute left-1 top-0.5 text-[10px] text-white/30">intro</span>
+                    <span className="absolute left-1 top-0.5 text-[10px] text-white/30">{t("intro")}</span>
                   </div>
                   {/* the pauses: room across every lane, a block on the Diálogos lane */}
                   {(view.pauses ?? []).map((p, i) => {
@@ -423,7 +425,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
                         <div className="pointer-events-none absolute top-0" style={{ left: xOf(p.beat), width: p.bars * 4 * ppb, height: lanesH, background: "repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 6px, transparent 6px 12px)" }} />
                         <div onPointerDown={pickPause(i)} className={cn("absolute flex cursor-grab items-start rounded-md border px-1.5 py-0.5 text-[10px]", on ? "border-white bg-white/15 text-white" : "border-white/25 bg-white/5 text-[#c9ced6]")}
                           style={{ left: xOf(p.beat), width: p.bars * 4 * ppb, top: lanesH + 2, height: TALK_H - 4 }}>
-                          {p.silent ? "Pausa · silêncio" : "Pausa"} · {p.bars} comp.
+                          {p.silent ? t("Pausa · silêncio") : t("Pausa")} · {t("{n} comp.", { n: p.bars })}
                         </div>
                       </div>
                     )
@@ -435,7 +437,7 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
                       <div key={`l${i}`} onPointerDown={pickLine(i)} title={l.text}
                         className={cn("absolute z-[2] cursor-grab truncate rounded border-l-[3px] px-1 text-[10px] leading-[16px]", on ? "bg-white/25 text-white ring-1 ring-white" : "bg-black/60 text-[#dfe8df]")}
                         style={{ left: xOf(l.beat), top: lanesH + 14 + (i % 2) * 4, width: Math.max(40, l.secs / spb * ppb), borderColor: who.color }}>
-                        {who.name}: {l.text || "…"}
+                        {t(who.name)}: {l.text || "…"}
                       </div>
                     )
                   })}
@@ -451,46 +453,46 @@ export function SongEditorPanel({ songId, onClose }: { songId: string; onClose: 
           {/* the preview and the inspector */}
           <div className="grid w-[264px] shrink-0 content-start gap-2 overflow-y-auto border-l border-white/10 p-3">
             <Preview song={view} catalog={catalog} beat={shown} />
-            <div className="text-[10px] text-[#93a79a]">{playing && !scrub ? "tocando" : "cursor"}: compasso {Math.floor(shown / 4) + 1}, tempo {Math.floor((((shown % 4) + 4) % 4) * 4) / 4 + 1}</div>
+            <div className="text-[10px] text-[#93a79a]">{t("{state}: compasso {bar}, tempo {beat}", { state: playing && !scrub ? t("tocando") : t("cursor"), bar: Math.floor(shown / 4) + 1, beat: Math.floor((((shown % 4) + 4) % 4) * 4) / 4 + 1 })}</div>
             {note && <div className="rounded-md border border-white/15 bg-white/5 px-2 py-1.5 text-[11px] text-white">{note}</div>}
             {one && <AlienInspector a={one} catalog={catalog} onChange={(fn, key) => commit(updateAlien(draft, sel.aliens, fn), sel, key)} onDelete={() => commit(removeItems(draft, sel), NOTHING)} />}
             {sel.aliens.length > 1 && (
               <div className="grid gap-field">
-                <h3 className="text-sm text-white">{sel.aliens.length} aliens</h3>
-                <VariantSelect value="" catalog={catalog} onChange={id => { const k = kindOf(id); commit(updateAlien(draft, sel.aliens, a => ({ ...a, species: k.species, variant: k.variant })), sel) }} placeholder="Trocar a variação de todos" />
-                <button type="button" onClick={() => commit(removeItems(draft, sel), NOTHING)} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />Excluir</button>
+                <h3 className="text-sm text-white">{t("{n} aliens", { n: sel.aliens.length })}</h3>
+                <VariantSelect value="" catalog={catalog} onChange={id => { const k = kindOf(id); commit(updateAlien(draft, sel.aliens, a => ({ ...a, species: k.species, variant: k.variant })), sel) }} placeholder={t("Trocar a variação de todos")} />
+                <button type="button" onClick={() => commit(removeItems(draft, sel), NOTHING)} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />{t("Excluir")}</button>
               </div>
             )}
             {line && <LineInspector l={line} catalog={catalog} grid={grid} onChange={(patch, key) => commit(updateLine(draft, sel.lines[0], patch), sel, key)} onDelete={() => commit(removeItems(draft, sel), NOTHING)} />}
             {pause && (
               <div className="grid gap-field">
-                <h3 className="text-sm text-white">Pausa</h3>
-                <p className="text-[11px] text-[#93a79a]">Nenhum alien nela: o jogo segura a próxima onda até ela acabar. Mudar o tamanho empurra ou puxa o que vem depois.</p>
-                <label className="flex items-center justify-between gap-2">Compassos<input type="number" min={1} max={16} value={pause.bars} onChange={e => commit(setPauseBars(draft, sel.pauses[0], Number(e.target.value) || 1), sel, "pause-bars")} className={cn(field, "w-16")} /></label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={pause.silent} onChange={e => commit(updatePause(draft, sel.pauses[0], { silent: e.target.checked }), sel)} />Silêncio total (sem o fundo)</label>
+                <h3 className="text-sm text-white">{t("Pausa")}</h3>
+                <p className="text-[11px] text-[#93a79a]">{t("Nenhum alien nela: o jogo segura a próxima onda até ela acabar. Mudar o tamanho empurra ou puxa o que vem depois.")}</p>
+                <label className="flex items-center justify-between gap-2">{t("Compassos")}<input type="number" min={1} max={16} value={pause.bars} onChange={e => commit(setPauseBars(draft, sel.pauses[0], Number(e.target.value) || 1), sel, "pause-bars")} className={cn(field, "w-16")} /></label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={pause.silent} onChange={e => commit(updatePause(draft, sel.pauses[0], { silent: e.target.checked }), sel)} />{t("Silêncio total (sem o fundo)")}</label>
                 <button type="button" onClick={() => {
                   const inside = (draft.lines ?? []).filter(l => l.beat >= pause.beat && l.beat < pauseEnd(pause)).length
                   const r = addLine(draft, { beat: Math.min(pauseEnd(pause) - 1, pause.beat + inside * 4), who: "narrador", text: "", secs: 3, place: "banner", blip: true })
                   commit(r.song, { ...NOTHING, lines: [r.index] })
-                }} className={cn(btn, "w-fit")}><MessageSquare className="h-4 w-4" />Fala nesta pausa</button>
-                <button type="button" onClick={() => commit(removeItems(draft, sel), NOTHING)} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />Excluir pausa</button>
+                }} className={cn(btn, "w-fit")}><MessageSquare className="h-4 w-4" />{t("Fala nesta pausa")}</button>
+                <button type="button" onClick={() => commit(removeItems(draft, sel), NOTHING)} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />{t("Excluir pausa")}</button>
               </div>
             )}
             {isEmpty(sel) && (
               <div className="grid gap-field">
-                <label className="grid gap-1">Abertura (o banner do começo)
+                <label className="grid gap-1">{t("Abertura (o banner do começo)")}
                   <textarea value={draft.intro} maxLength={400} rows={3} onChange={e => setSong({ intro: e.target.value }, "intro-text")} className="rounded-md border border-white/15 bg-[#0b110e] p-2 text-xs text-white" />
                 </label>
                 <ul className="grid gap-0.5 text-[11px] text-[#93a79a]">
-                  <li>+ Alien ou escolher a variação: um alien no cursor</li>
-                  <li>Duplo clique: um alien (ou uma fala, nos Diálogos)</li>
-                  <li>Arrastar na régua: o cursor e a prévia</li>
-                  <li>Arrastar uma pausa: muda de lugar</li>
-                  <li>Arrastar: no tempo e entre as faixas</li>
-                  <li>Ctrl+clique: uma nota no alien escolhido</li>
-                  <li>Botão direito numa nota: tira</li>
-                  <li>Setas: move · Shift: um compasso</li>
-                  <li>Delete · Ctrl+C / X / V (no cursor) · Ctrl+Z</li>
+                  <li>{t("+ Alien ou escolher a variação: um alien no cursor")}</li>
+                  <li>{t("Duplo clique: um alien (ou uma fala, nos Diálogos)")}</li>
+                  <li>{t("Arrastar na régua: o cursor e a prévia")}</li>
+                  <li>{t("Arrastar uma pausa: muda de lugar")}</li>
+                  <li>{t("Arrastar: no tempo e entre as faixas")}</li>
+                  <li>{t("Ctrl+clique: uma nota no alien escolhido")}</li>
+                  <li>{t("Botão direito numa nota: tira")}</li>
+                  <li>{t("Setas: move · Shift: um compasso")}</li>
+                  <li>{t("Delete · Ctrl+C / X / V (no cursor) · Ctrl+Z")}</li>
                 </ul>
               </div>
             )}
@@ -507,6 +509,7 @@ function AlienBlock({ laneH: LANE_H, a, i, on, only, catalog, lanes, rowOf, xOf,
   z: LibrarySong["music"]["zone"]; laneColor: (m: number) => string
   onDown: (e: React.PointerEvent) => void; onNoteDown: (ai: number, ni: number) => (e: React.PointerEvent) => void; onNoteMenu: (ai: number, ni: number) => (e: React.MouseEvent) => void
 }) {
+  const t = useT()
   const v = variantFor(catalog, a.variant, a.species)
   const color = a.color ?? v.color
   const all = alienNotes(a, v, { root: z.root, steps: SCALES[z.scale].steps })
@@ -517,7 +520,7 @@ function AlienBlock({ laneH: LANE_H, a, i, on, only, catalog, lanes, rowOf, xOf,
   const extra = all.filter(n => !a.notes.some(m => m.beat === n.beat && m.midi === n.midi))
   return (
     <>
-      <div onPointerDown={onDown} title={v.name} className={cn("absolute z-[1] cursor-grab rounded-md", on ? "ring-2 ring-white" : "")}
+      <div onPointerDown={onDown} title={t(v.name)} className={cn("absolute z-[1] cursor-grab rounded-md", on ? "ring-2 ring-white" : "")}
         style={{ left: xOf(from), width: Math.max(8, xOf(to) - xOf(from)), top: top + 1, height: h - 2, background: `${color}26`, border: `1px solid ${color}88` }}>
         <span className="pointer-events-none absolute left-1 top-0 max-w-full truncate text-[9px] leading-[12px]" style={{ color }}>{v.name}</span>
       </div>
@@ -532,75 +535,79 @@ function AlienBlock({ laneH: LANE_H, a, i, on, only, catalog, lanes, rowOf, xOf,
 }
 
 function VariantSelect({ value, catalog, onChange, placeholder }: { value: string; catalog: Catalog; onChange: (id: string) => void; placeholder?: string }) {
+  const t = useT()
   return (
     <StepSelect value={value} onChange={e => e.target.value && onChange(e.target.value)} className={field}>
       {placeholder && <option value="" data-skip>{placeholder}</option>}
-      {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</optgroup>)}
+      {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={t(SPECIES[sp].name)}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={v.id}>{t(v.name)}</option>)}</optgroup>)}
     </StepSelect>
   )
 }
 
 function AlienInspector({ a, catalog, onChange, onDelete }: { a: SongAlien; catalog: Catalog; onChange: (fn: (a: SongAlien) => SongAlien, key?: string) => void; onDelete: () => void }) {
+  const t = useT()
   const v = variantFor(catalog, a.variant, a.species)
   const first = Math.min(...a.notes.map(n => n.beat)), last = Math.max(...a.notes.map(n => n.beat))
   const lead = a.at === undefined ? LEAD_BEATS : first - a.at
   const moveLabel = MOVE_MODES.find(m => m.value === v.move)?.label ?? v.move
   return (
     <div className="grid gap-field">
-      <h3 className="text-sm" style={{ color: a.color ?? v.color }}>{v.name}</h3>
-      <p className="text-[11px] text-[#93a79a]">{a.notes.length} notas, do compasso {Math.floor(first / 4) + 1} ao {Math.floor(last / 4) + 1}. Ctrl+clique põe nota, botão direito tira, arrastar uma nota a move.</p>
-      <label className="grid gap-1">Variação<VariantSelect value={v.id} catalog={catalog} onChange={id => { const nv = variantFor(catalog, id, "jelly"); onChange(x => ({ ...x, species: nv.species, variant: nv.id })) }} /></label>
-      <label className="grid gap-1">Movimento
+      <h3 className="text-sm" style={{ color: a.color ?? v.color }}>{t(v.name)}</h3>
+      <p className="text-[11px] text-[#93a79a]">{t("{n} notas, do compasso {from} ao {to}. Ctrl+clique põe nota, botão direito tira, arrastar uma nota a move.", { n: a.notes.length, from: Math.floor(first / 4) + 1, to: Math.floor(last / 4) + 1 })}</p>
+      <label className="grid gap-1">{t("Variação")}<VariantSelect value={v.id} catalog={catalog} onChange={id => { const nv = variantFor(catalog, id, "jelly"); onChange(x => ({ ...x, species: nv.species, variant: nv.id })) }} /></label>
+      <label className="grid gap-1">{t("Movimento")}
         <StepSelect value={a.move ?? ""} onChange={e => { const m = e.target.value as MoveMode | ""; onChange(x => { const y = { ...x }; if (m) y.move = m; else delete y.move; return y }) }} className={field}>
-          <option value="">Da variação ({moveLabel})</option>
-          {MOVE_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          <option value="">{t("Da variação ({move})", { move: t(moveLabel) })}</option>
+          {MOVE_MODES.map(m => <option key={m.value} value={m.value}>{t(m.label)}</option>)}
         </StepSelect>
       </label>
       <div className="grid grid-cols-2 gap-field">
-        <label className="grid gap-1">Ângulo
-          <input type="number" min={0} max={359} placeholder="pela nota" value={a.angle ?? ""} onChange={e => { const t = e.target.value; onChange(x => { const y = { ...x }; if (t === "") delete y.angle; else y.angle = ((Math.round(Number(t)) % 360) + 360) % 360; return y }, "angle") }} className={cn(field, "w-full min-w-0")} />
+        <label className="grid gap-1">{t("Ângulo")}
+          <input type="number" min={0} max={359} placeholder={t("pela nota")} value={a.angle ?? ""} onChange={e => { const t = e.target.value; onChange(x => { const y = { ...x }; if (t === "") delete y.angle; else y.angle = ((Math.round(Number(t)) % 360) + 360) % 360; return y }, "angle") }} className={cn(field, "w-full min-w-0")} />
         </label>
-        <label className="grid gap-1">Distância
+        <label className="grid gap-1">{t("Distância")}
           <input type="number" min={80} max={1200} step={10} placeholder={String(SPAWN_DIST)} value={a.dist ?? ""} onChange={e => { const t = e.target.value; onChange(x => { const y = { ...x }; if (t === "") delete y.dist; else y.dist = Math.max(80, Math.min(1200, Number(t))); return y }, "dist") }} className={cn(field, "w-full min-w-0")} />
         </label>
       </div>
-      <label className="flex items-center justify-between gap-2">Aparece (tempos antes da 1ª nota)
+      <label className="flex items-center justify-between gap-2">{t("Aparece (tempos antes da 1ª nota)")}
         <input type="number" min={1} max={32} step={0.5} value={lead} onChange={e => { const l = Math.max(1, Math.min(32, Number(e.target.value) || LEAD_BEATS)); onChange(x => { const y = { ...x }; if (l === LEAD_BEATS) delete y.at; else y.at = first - l; return y }, "lead") }} className={cn(field, "w-16")} />
       </label>
-      <label className="flex items-center gap-2"><input type="color" value={a.color ?? v.color} onChange={e => { const c = e.target.value; onChange(x => ({ ...x, color: c }), "color") }} className="h-7 w-9 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />Cor {a.color && <button type="button" className="text-[#93a79a] underline" onClick={() => onChange(x => { const y = { ...x }; delete y.color; return y })}>da variação</button>}</label>
-      <button type="button" onClick={onDelete} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />Excluir</button>
+      <label className="flex items-center gap-2"><input type="color" value={a.color ?? v.color} onChange={e => { const c = e.target.value; onChange(x => ({ ...x, color: c }), "color") }} className="h-7 w-9 cursor-pointer rounded-md border border-white/15 bg-[#0b110e] p-0.5" />{t("Cor")} {a.color && <button type="button" className="text-[#93a79a] underline" onClick={() => onChange(x => { const y = { ...x }; delete y.color; return y })}>{t("da variação")}</button>}</label>
+      <button type="button" onClick={onDelete} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />{t("Excluir")}</button>
     </div>
   )
 }
 
 function LineInspector({ l, catalog, grid, onChange, onDelete }: { l: SongLine; catalog: Catalog; grid: number; onChange: (patch: Partial<SongLine>, key?: string) => void; onDelete: () => void }) {
+  const t = useT()
   return (
     <div className="grid gap-field">
-      <h3 className="text-sm text-white">Fala</h3>
-      <label className="grid gap-1">Quem fala
+      <h3 className="text-sm text-white">{t("Fala")}</h3>
+      <label className="grid gap-1">{t("Quem fala")}
         <StepSelect value={l.who} onChange={e => onChange({ who: e.target.value })} className={field}>
-          {SPEAKERS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={SPECIES[sp].name}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={`alien:${v.id}`}>{v.name}</option>)}</optgroup>)}
+          {SPEAKERS.map(s => <option key={s.value} value={s.value}>{t(s.label)}</option>)}
+          {CATALOG_SPECIES.map(sp => <optgroup key={sp} label={t(SPECIES[sp].name)}>{catalog.filter(v => v.species === sp).map(v => <option key={v.id} value={`alien:${v.id}`}>{t(v.name)}</option>)}</optgroup>)}
         </StepSelect>
       </label>
-      <label className="grid gap-1">Texto
+      <label className="grid gap-1">{t("Texto")}
         <textarea autoFocus={!l.text} value={l.text} maxLength={200} rows={3} onChange={e => onChange({ text: e.target.value }, "line-text")} className="rounded-md border border-white/15 bg-[#0b110e] p-2 text-xs text-white" />
       </label>
       <div className="grid grid-cols-2 gap-field">
-        <label className="grid gap-1">Tempo<input type="number" step={grid} value={l.beat} onChange={e => onChange({ beat: Number(e.target.value) || 0 }, "line-beat")} className={cn(field, "w-full min-w-0")} /></label>
-        <label className="grid gap-1">Na tela (s)<input type="number" min={0.5} max={20} step={0.5} value={l.secs} onChange={e => onChange({ secs: Math.max(0.5, Math.min(20, Number(e.target.value) || 3)) }, "line-secs")} className={cn(field, "w-full min-w-0")} /></label>
+        <label className="grid gap-1">{t("Tempo")}<input type="number" step={grid} value={l.beat} onChange={e => onChange({ beat: Number(e.target.value) || 0 }, "line-beat")} className={cn(field, "w-full min-w-0")} /></label>
+        <label className="grid gap-1">{t("Na tela (s)")}<input type="number" min={0.5} max={20} step={0.5} value={l.secs} onChange={e => onChange({ secs: Math.max(0.5, Math.min(20, Number(e.target.value) || 3)) }, "line-secs")} className={cn(field, "w-full min-w-0")} /></label>
       </div>
       <div className="flex flex-wrap items-center gap-field">
-        {LINE_PLACES.map(p => <button key={p.value} type="button" aria-pressed={l.place === p.value} onClick={() => onChange({ place: p.value })} className={cn("h-7 rounded-full border px-3", l.place === p.value ? "border-primary text-white" : "border-white/15")}>{p.label}</button>)}
+        {LINE_PLACES.map(p => <button key={p.value} type="button" aria-pressed={l.place === p.value} onClick={() => onChange({ place: p.value })} className={cn("h-7 rounded-full border px-3", l.place === p.value ? "border-primary text-white" : "border-white/15")}>{t(p.label)}</button>)}
       </div>
-      <label className="flex items-center gap-2"><input type="checkbox" checked={l.blip} onChange={e => onChange({ blip: e.target.checked })} />Blip de voz a cada letra</label>
-      <button type="button" onClick={onDelete} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />Excluir</button>
+      <label className="flex items-center gap-2"><input type="checkbox" checked={l.blip} onChange={e => onChange({ blip: e.target.checked })} />{t("Blip de voz a cada letra")}</label>
+      <button type="button" onClick={onDelete} className={cn(btn, "w-fit")}><Trash2 className="h-4 w-4" />{t("Excluir")}</button>
     </div>
   )
 }
 
 // ---------- the preview: the half circle around her at a beat ----------
 function Preview({ song, catalog, beat }: { song: LibrarySong; catalog: Catalog; beat: number }) {
+  const t = useT()
   const ref = useRef<HTMLCanvasElement | null>(null)
   useEffect(() => {
     const c = ref.current
@@ -653,12 +660,12 @@ function Preview({ song, catalog, beat }: { song: LibrarySong; catalog: Catalog;
     // a pause, a line
     const pz = (song.pauses ?? []).find(p => beat >= p.beat && beat < pauseEnd(p))
     ctx.font = "10px ui-monospace, monospace"; ctx.textBaseline = "top"; ctx.textAlign = "left"
-    if (pz) { ctx.fillStyle = "#c9ced6"; ctx.fillText(pz.silent ? "pausa · silêncio" : "pausa", 6, 6) }
+    if (pz) { ctx.fillStyle = "#c9ced6"; ctx.fillText(pz.silent ? t("pausa · silêncio") : t("pausa"), 6, 6) }
     const said = (song.lines ?? []).filter(l => beat >= l.beat && beat < l.beat + l.secs / spb).pop()
     if (said) {
       const who = speakerOf(said.who, catalog)
-      ctx.fillStyle = who.color; ctx.fillText(`${who.name}: ${said.text}`.slice(0, 38), 6, pz ? 20 : 6)
+      ctx.fillStyle = who.color; ctx.fillText(`${t(who.name)}: ${said.text}`.slice(0, 38), 6, pz ? 20 : 6)
     }
-  }, [song, catalog, beat])
-  return <canvas ref={ref} aria-label="Prévia em volta da galinha" className="h-[150px] w-[240px] rounded-md border border-white/10" />
+  }, [song, catalog, beat, t])
+  return <canvas ref={ref} aria-label={t("Prévia em volta da galinha")} className="h-[150px] w-[240px] rounded-md border border-white/10" />
 }

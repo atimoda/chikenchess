@@ -4,6 +4,7 @@
 // rewrites from the panel ("Salvar no game"); the binds in CHICKEN_ACTIONS are the fallback for anything it lacks.
 import DEFAULTS_FILE from '../../data/chicken/default-controls.json'
 import { gameDefault } from '../game-defaults'
+import { msg, t as tr } from '../i18n'
 
 export type ChickenAction = 'left' | 'right' | 'up' | 'down' | 'crouch' | 'jump' | 'run'
   // items (PigChicKen weapons and instruments); only the Parquinho acts on them for now
@@ -21,44 +22,44 @@ type Slots = (string | null)[]
 // Insert/Home/Page Up block), pad = gamepad. A key belongs to one keyboard type and one action only.
 export type ChickenInputType = 'keys' | 'keys2' | 'pad'
 export const CHICKEN_INPUT_TYPES: { id: ChickenInputType; label: string; device: 'keyboard' | 'gamepad'; slots: number }[] = [
-  { id: 'keys', label: 'Primary keyboard', device: 'keyboard', slots: 3 },
-  { id: 'keys2', label: 'Secondary keyboard', device: 'keyboard', slots: 2 },
-  { id: 'pad', label: 'Gamepad', device: 'gamepad', slots: 3 },
+  { id: 'keys', label: msg('Primary keyboard'), device: 'keyboard', slots: 3 },
+  { id: 'keys2', label: msg('Secondary keyboard'), device: 'keyboard', slots: 2 },
+  { id: 'pad', label: msg('Gamepad'), device: 'gamepad', slots: 3 },
 ]
 export const KEYBOARD_INPUT_TYPES: ChickenInputType[] = CHICKEN_INPUT_TYPES.filter(t => t.device === 'keyboard').map(t => t.id)
 
 export const CHICKEN_ACTIONS: { key: ChickenAction; label: string; keys: Slots; keys2: Slots; pad: Slots; group?: 'items' | 'patio' }[] = [
-  { key: 'left', label: 'Esquerda', keys: ['Key:KeyA', null, null], keys2: ['Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
-  { key: 'right', label: 'Direita', keys: ['Key:KeyD', null, null], keys2: ['Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
-  { key: 'up', label: 'Olhar pra cima / subir', keys: ['Key:KeyW', null, null], keys2: ['Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
-  { key: 'down', label: 'Chocar / cair / travar mira', keys: ['Key:ControlLeft', 'Key:KeyX', null], keys2: ['Key:Slash', 'Key:ControlRight'], pad: ['Pad:b6', null, null] },
-  { key: 'crouch', label: 'Agachar / slide / super pulo', keys: ['Key:KeyS', null, null], keys2: ['Key:PageDown', 'Key:ArrowDown'], pad: ['Pad:a1+', 'Pad:b13', null] },
-  { key: 'jump', label: 'Pular / voar', keys: ['Key:Space', 'Key:KeyZ', null], keys2: ['Key:PageUp', 'Key:Semicolon'], pad: ['Pad:b0', null, null] },
-  { key: 'run', label: 'Correr', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
+  { key: 'left', label: msg('Esquerda'), keys: ['Key:KeyA', null, null], keys2: ['Key:ArrowLeft', null], pad: ['Pad:a0-', 'Pad:b14', null] },
+  { key: 'right', label: msg('Direita'), keys: ['Key:KeyD', null, null], keys2: ['Key:ArrowRight', null], pad: ['Pad:a0+', 'Pad:b15', null] },
+  { key: 'up', label: msg('Olhar pra cima / subir'), keys: ['Key:KeyW', null, null], keys2: ['Key:ArrowUp', null], pad: ['Pad:a1-', 'Pad:b12', null] },
+  { key: 'down', label: msg('Chocar / cair / travar mira'), keys: ['Key:ControlLeft', 'Key:KeyX', null], keys2: ['Key:Slash', 'Key:ControlRight'], pad: ['Pad:b6', null, null] },
+  { key: 'crouch', label: msg('Agachar / slide / super pulo'), keys: ['Key:KeyS', null, null], keys2: ['Key:PageDown', 'Key:ArrowDown'], pad: ['Pad:a1+', 'Pad:b13', null] },
+  { key: 'jump', label: msg('Pular / voar'), keys: ['Key:Space', 'Key:KeyZ', null], keys2: ['Key:PageUp', 'Key:Semicolon'], pad: ['Pad:b0', null, null] },
+  { key: 'run', label: msg('Correr'), keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b2', null, null] },
   // the mouse is fixed: left click fires, right click hits, the mouse wheel cycles items; 1 to 9 pick an item
-  { key: 'fire', label: 'Atirar', keys: ['Key:KeyV', null, null], keys2: ['Key:Insert', 'Key:BracketRight'], pad: ['Pad:b7', null, null], group: 'items' },
-  { key: 'melee', label: 'Golpe de perto', keys: ['Key:KeyC', null, null], keys2: ['Key:BracketLeft', null], pad: ['Pad:b3', null, null], group: 'items' },
-  { key: 'throw', label: 'Arremessar item', keys: ['Key:KeyG', null, null], keys2: ['Key:Backslash', null], pad: ['Pad:b11', null, null], group: 'items' },
+  { key: 'fire', label: msg('Atirar'), keys: ['Key:KeyV', null, null], keys2: ['Key:Insert', 'Key:BracketRight'], pad: ['Pad:b7', null, null], group: 'items' },
+  { key: 'melee', label: msg('Golpe de perto'), keys: ['Key:KeyC', null, null], keys2: ['Key:BracketLeft', null], pad: ['Pad:b3', null, null], group: 'items' },
+  { key: 'throw', label: msg('Arremessar item'), keys: ['Key:KeyG', null, null], keys2: ['Key:Backslash', null], pad: ['Pad:b11', null, null], group: 'items' },
   // every item in the bar's order (the mouse wheel does the same); the three below go through one group each
-  { key: 'nextItem', label: 'Próximo item', keys: [null, null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
-  { key: 'prevItem', label: 'Item anterior', keys: [null, null, null], keys2: ['Key:Quote', null], pad: [null, null, null], group: 'items' },
-  { key: 'nextInstrument', label: 'Próximo instrumento', keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b4', null, null], group: 'items' },
-  { key: 'nextWeapon', label: 'Próxima arma', keys: [null, null, null], keys2: [null, null], pad: ['Pad:b5', null, null], group: 'items' },
-  { key: 'nextUtility', label: 'Próximo utilitário', keys: ['Key:KeyF', null, null], keys2: [null, null], pad: ['Pad:b1', null, null], group: 'items' },
+  { key: 'nextItem', label: msg('Próximo item'), keys: [null, null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
+  { key: 'prevItem', label: msg('Item anterior'), keys: [null, null, null], keys2: ['Key:Quote', null], pad: [null, null, null], group: 'items' },
+  { key: 'nextInstrument', label: msg('Próximo instrumento'), keys: ['Key:Tab', null, null], keys2: [null, null], pad: ['Pad:b4', null, null], group: 'items' },
+  { key: 'nextWeapon', label: msg('Próxima arma'), keys: [null, null, null], keys2: [null, null], pad: ['Pad:b5', null, null], group: 'items' },
+  { key: 'nextUtility', label: msg('Próximo utilitário'), keys: ['Key:KeyF', null, null], keys2: [null, null], pad: ['Pad:b1', null, null], group: 'items' },
   // the held item's next variation: an instrument's next scale, a weapon's tambor (lib/pigchicken/inventory.ts)
-  { key: 'nextVariation', label: 'Próxima variação', keys: ['Key:KeyQ', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
-  { key: 'deselectItem', label: 'Deselecionar item', keys: ['Key:KeyB', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
+  { key: 'nextVariation', label: msg('Próxima variação'), keys: ['Key:KeyQ', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
+  { key: 'deselectItem', label: msg('Deselecionar item'), keys: ['Key:KeyB', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   // the inventory wheel stays open while held: aim at an item (mouse / right stick) and let go (or fire / jump / run)
   // (no gamepad button since 15/11: L3 went to the Gaiolas)
-  { key: 'itemWheel', label: 'Roda do inventário', keys: ['Key:KeyT', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
+  { key: 'itemWheel', label: msg('Roda do inventário'), keys: ['Key:KeyT', null, null], keys2: [null, null], pad: [null, null, null], group: 'items' },
   // the Gaiolas: a press lets the last soul of the one in front out (with it empty, calls the souls back); the same
   // bind held for CAGE_HOLD turns the cages instead, so one button (L3) does both on the gamepad
-  { key: 'cageRelease', label: 'Soltar alma (segurar: trocar)', keys: ['Key:KeyH', null, null], keys2: ['Key:End', null], pad: ['Pad:b10', null, null], group: 'items' },
-  { key: 'cageSwap', label: 'Trocar de gaiola', keys: ['Key:KeyY', null, null], keys2: ['Key:Home', null], pad: [null, null, null], group: 'items' },
+  { key: 'cageRelease', label: msg('Soltar alma (segurar: trocar)'), keys: ['Key:KeyH', null, null], keys2: ['Key:End', null], pad: ['Pad:b10', null, null], group: 'items' },
+  { key: 'cageSwap', label: msg('Trocar de gaiola'), keys: ['Key:KeyY', null, null], keys2: ['Key:Home', null], pad: [null, null, null], group: 'items' },
   // X runs and also grabs while standing on an item; the Shifts do the same on the keyboards. R3 throws, Y hits, LT broods.
-  { key: 'grab', label: 'Usar / pegar item', keys: ['Key:KeyE', null, null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
-  { key: 'reload', label: 'Recarregar', keys: ['Key:KeyR', null, null], keys2: [null, null], pad: ['Pad:b9', null, null], group: 'items' },
-  { key: 'editMode', label: 'Edição (Modo editor)', keys: ['Key:AltLeft', 'Key:MetaLeft', null], keys2: [null, null], pad: [null, null, null], group: 'patio' },
+  { key: 'grab', label: msg('Usar / pegar item'), keys: ['Key:KeyE', null, null], keys2: ['Key:KeyP', 'Key:ShiftRight'], pad: ['Pad:b2', null, null], group: 'items' },
+  { key: 'reload', label: msg('Recarregar'), keys: ['Key:KeyR', null, null], keys2: [null, null], pad: ['Pad:b9', null, null], group: 'items' },
+  { key: 'editMode', label: msg('Edição (Modo editor)'), keys: ['Key:AltLeft', 'Key:MetaLeft', null], keys2: [null, null], pad: [null, null, null], group: 'patio' },
 ]
 
 // Independent eight-direction magnets for movement and aim; zero disables each.
@@ -90,8 +91,8 @@ export type ChickenControls = {
 export type VariationAction = 'nextItem' | 'prevItem' | 'nextInstrument' | 'nextWeapon' | 'nextUtility'
 export type ChickenVariations = Record<VariationAction, boolean>
 export const VARIATION_ACTIONS: { key: VariationAction; label: string }[] = [
-  { key: 'nextItem', label: 'Incluir variações' }, { key: 'prevItem', label: 'Incluir variações' },
-  { key: 'nextInstrument', label: 'Incluir escalas' }, { key: 'nextWeapon', label: 'Incluir tambores' }, { key: 'nextUtility', label: 'Incluir tipos' },
+  { key: 'nextItem', label: msg('Incluir variações') }, { key: 'prevItem', label: msg('Incluir variações') },
+  { key: 'nextInstrument', label: msg('Incluir escalas') }, { key: 'nextWeapon', label: msg('Incluir tambores') }, { key: 'nextUtility', label: msg('Incluir tipos') },
 ]
 export const DEFAULT_VARIATIONS: ChickenVariations = { nextItem: false, prevItem: false, nextInstrument: false, nextWeapon: false, nextUtility: false }
 const variationsOf = (raw: unknown, fallback: ChickenVariations): ChickenVariations => {
@@ -104,7 +105,7 @@ const variationsOf = (raw: unknown, fallback: ChickenVariations): ChickenVariati
 // all on the left or all on the right (components/pigchicken/draw/hud.ts → invGeom)
 export type InventoryAlign = 'split' | 'center' | 'left' | 'right'
 export const INVENTORY_ALIGNS: { value: InventoryAlign; label: string }[] = [
-  { value: 'center', label: 'Centralizado' }, { value: 'split', label: 'Separado' }, { value: 'left', label: 'Esquerda' }, { value: 'right', label: 'Direita' },
+  { value: 'center', label: msg('Centralizado') }, { value: 'split', label: msg('Separado') }, { value: 'left', label: msg('Esquerda') }, { value: 'right', label: msg('Direita') },
 ]
 export type ChickenInventoryControls = { repeatDelay: number; repeatInterval: number; align: InventoryAlign }
 export const DEFAULT_INVENTORY: ChickenInventoryControls = { repeatDelay: 1.5, repeatInterval: 0.3, align: 'split' }
@@ -122,7 +123,7 @@ const inventoryOf = (raw: unknown, fallback: ChickenInventoryControls): ChickenI
 // leaves the action that also has it. Read by components/pigchicken/parquinho.tsx (lib/pigchicken/instrument-binds.ts)
 export type HarpAction = 'sharp'
 export const HARP_ACTIONS: { key: HarpAction; label: string; keys: Slots; keys2: Slots; pad: Slots }[] = [
-  { key: 'sharp', label: 'Sustenido (segurar)', keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b10', null, null] },
+  { key: 'sharp', label: msg('Sustenido (segurar)'), keys: ['Key:ShiftLeft', null, null], keys2: ['Key:ShiftRight', null], pad: ['Pad:b10', null, null] },
 ]
 const harpOf = (raw: unknown, fallback: ChickenControls['harp']): ChickenControls['harp'] => {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, Record<string, unknown> | undefined>
@@ -501,14 +502,14 @@ let listening = false
 export const isChickenControlsListening = () => listening
 export const setChickenControlsListening = (value: boolean) => { listening = value }
 
-const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: 'Alt/Option esq.', AltRight: 'Alt/Option dir.', Space: 'Espaço', ShiftLeft: 'Shift esq.', ShiftRight: 'Shift dir.', ControlLeft: 'Ctrl esq.', ControlRight: 'Ctrl dir.', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab', Insert: 'Ins', Delete: 'Del', PageUp: 'PgUp', PageDown: 'PgDn', Backspace: 'Bksp', Backslash: '\\', Slash: '/', BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", MetaLeft: 'Cmd esq.', MetaRight: 'Cmd dir.' }
+const KEY_NAMES: Record<string, string> = { CapsLock: 'Caps Lock', AltLeft: msg('Alt/Option esq.'), AltRight: msg('Alt/Option dir.'), Space: msg('Espaço'), ShiftLeft: msg('Shift esq.'), ShiftRight: msg('Shift dir.'), ControlLeft: msg('Ctrl esq.'), ControlRight: msg('Ctrl dir.'), ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Enter: 'Enter', Tab: 'Tab', Insert: 'Ins', Delete: 'Del', PageUp: 'PgUp', PageDown: 'PgDn', Backspace: 'Bksp', Backslash: '\\', Slash: '/', BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'", MetaLeft: msg('Cmd esq.'), MetaRight: msg('Cmd dir.') }
 // The binds are stored by the standard gamepad layout (Pad:b0 = bottom face button ...), named after the Xbox pad by
 // default; a PlayStation pad (Sony vendor 054c, or a DualShock / DualSense / PlayStation name in the browser's id)
 // shows the same buttons with its own names. LS / RS are the left / right sticks for both.
 export type PadStyle = 'xbox' | 'playstation'
 const PAD_BUTTONS: Record<PadStyle, string[]> = {
-  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'Home'],
-  playstation: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', 'Dir. ↑', 'Dir. ↓', 'Dir. ←', 'Dir. →', 'PS', 'Touchpad'],
+  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Select', 'Start', 'L3', 'R3', msg('Dir. ↑'), msg('Dir. ↓'), msg('Dir. ←'), msg('Dir. →'), 'Home'],
+  playstation: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Create', 'Options', 'L3', 'R3', msg('Dir. ↑'), msg('Dir. ↓'), msg('Dir. ←'), msg('Dir. →'), 'PS', 'Touchpad'],
 }
 export const PAD_STYLE_LABELS: Record<PadStyle, string> = { xbox: 'Xbox', playstation: 'PlayStation' }
 // the browser's id: "DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)" (Chrome, Safari),
@@ -536,14 +537,14 @@ export function chickenBindName(token: string | null, padStyle?: PadStyle) {
   if (!token) return '—'
   const value = token.slice(token.indexOf(':') + 1)
   if (token.startsWith('Pad:')) {
-    if (value[0] === 'b') { const i = Number(value.slice(1)); return PAD_BUTTONS[padStyle ?? padStyleAt()][i] ?? `Botão ${i}` }
+    if (value[0] === 'b') { const i = Number(value.slice(1)); return (PAD_BUTTONS[padStyle ?? padStyleAt()][i] ? tr(PAD_BUTTONS[padStyle ?? padStyleAt()][i]) : tr('Botão {n}', { n: i })) }
     const i = Number(value.slice(1, -1)), plus = value.endsWith('+')
-    return PAD_AXES[i * 2 + (plus ? 1 : 0)] ?? `Eixo ${i}${plus ? '+' : '−'}`
+    return PAD_AXES[i * 2 + (plus ? 1 : 0)] ?? tr('Eixo {n}', { n: `${i}${plus ? '+' : '−'}` })
   }
   // punctuation keys: event.code names the US position, so show what this keyboard's layout prints there
   // (on ABNT2 the US "\\" key is "]"); Chrome and Edge tell us, the others keep the US name
   if (layoutNames?.get(value) && !value.startsWith('Key') && !value.startsWith('Digit')) return layoutNames.get(value)!.toUpperCase()
-  if (KEY_NAMES[value]) return KEY_NAMES[value]
+  if (KEY_NAMES[value]) return tr(KEY_NAMES[value])
   if (value.startsWith('Key')) return value.slice(3)
   if (value.startsWith('Digit')) return value.slice(5)
   return value

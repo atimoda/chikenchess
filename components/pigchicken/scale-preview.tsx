@@ -7,6 +7,7 @@
 // whole, solid and with its lines, whatever the layer's own look (Camadas: strength, Degradê, Linhas) is.
 // The Bateria has its own chart, in its kit's editor (drum-kit-editor.tsx).
 import { useEffect, useRef, useState } from "react"
+import { useT } from "@/lib/i18n"
 import { drawScaleShape } from "@/components/pigchicken/draw/scale-fan"
 import { INSTRUMENT_SCALES, type InstrumentScaleId } from "@/lib/pigchicken/instrument-scales"
 import { DEFAULT_ITEMS, currentHeldItem, hangOf, loadItems, subscribeItems, type ItemDef, type ItemId } from "@/lib/pigchicken/items"
@@ -17,6 +18,7 @@ import type { ScaleParams } from "@/lib/pigchicken/scale-params"
 const pad = (scale: InstrumentScaleId) => (scale === "strings" ? 18 : 6)
 
 export function ScalePreview({ scale, params, className }: { scale: InstrumentScaleId; params: ScaleParams; className?: string }) {
+  const t = useT()
   const canvas = useRef<HTMLCanvasElement>(null)
   const [items, setItems] = useState<Record<ItemId, ItemDef>>(DEFAULT_ITEMS)
   // the pointer over the preview, from its middle: the aim's direction and reach (null: away)
@@ -60,5 +62,5 @@ export function ScalePreview({ scale, params, className }: { scale: InstrumentSc
     aim.current = { angle: Math.atan2(y, x), reach: Math.hypot(x, y) / r }
   }
   const onAway = () => { aim.current = null }
-  return <canvas ref={canvas} data-no-drag aria-label={`Prévia da escala ${INSTRUMENT_SCALES[scale].label}`} onPointerDown={onMove} onPointerMove={onMove} onPointerLeave={onAway} onPointerCancel={onAway} className={className} />
+  return <canvas ref={canvas} data-no-drag aria-label={t("Prévia da escala {name}", { name: t(INSTRUMENT_SCALES[scale].label) })} onPointerDown={onMove} onPointerMove={onMove} onPointerLeave={onAway} onPointerCancel={onAway} className={className} />
 }

@@ -3,6 +3,7 @@
 // feet at 0, x forward), multiplied by the engine's scale in the game. Saved with the central chicken configuration
 // (config.ts, `frames`) and edited by the admin in the Vestiário. Pure.
 import type { BirdSpecies } from './species'
+import { msg } from '../i18n'
 
 export type FrameClass = 'chi' | 'pig' | 'ken' | 'baby'
 export const FRAME_CLASSES: FrameClass[] = ['chi', 'pig', 'ken', 'baby']
@@ -13,7 +14,7 @@ export type BodyFrame = { w: number; h: number; x: number; y: number; bar: numbe
 // (without one, it is the standing frame)
 export type FramePose = 'stand' | 'crouch' | 'brood' | 'air' | 'seat' | 'cling'
 export const FRAME_POSES: FramePose[] = ['stand', 'crouch', 'brood', 'air', 'seat', 'cling']
-export const POSE_LABEL: Record<FramePose, string> = { stand: 'Em pé', crouch: 'Agachado', brood: 'Chocando', air: 'No ar', seat: 'Sentado', cling: 'Agarrado' }
+export const POSE_LABEL: Record<FramePose, string> = { stand: msg('Em pé'), crouch: msg('Agachado'), brood: msg('Chocando'), air: msg('No ar'), seat: msg('Sentado'), cling: msg('Agarrado') }
 export type ClassFrame = BodyFrame & { poses?: Partial<Record<Exclude<FramePose, 'stand'>, BodyFrame>> }
 export type BodyFrames = Record<FrameClass, ClassFrame>
 
@@ -22,11 +23,11 @@ const BASE: BodyFrame = { w: 90, h: 200, x: 0, y: 0, bar: 240 }
 export const defaultFrames = (): BodyFrames => ({ chi: { ...BASE }, pig: { ...BASE }, ken: { ...BASE }, baby: { ...BASE, w: 80 } })
 
 export const FRAME_KEYS: { key: keyof BodyFrame; label: string; min: number; max: number }[] = [
-  { key: 'w', label: 'Largura', min: 10, max: 400 },
-  { key: 'h', label: 'Altura', min: 10, max: 500 },
-  { key: 'x', label: 'Deslocamento para a frente', min: -200, max: 200 },
-  { key: 'y', label: 'Deslocamento para cima', min: -200, max: 200 },
-  { key: 'bar', label: 'Altura da barra de vida', min: 0, max: 600 },
+  { key: 'w', label: msg('Largura'), min: 10, max: 400 },
+  { key: 'h', label: msg('Altura'), min: 10, max: 500 },
+  { key: 'x', label: msg('Deslocamento para a frente'), min: -200, max: 200 },
+  { key: 'y', label: msg('Deslocamento para cima'), min: -200, max: 200 },
+  { key: 'bar', label: msg('Altura da barra de vida'), min: 0, max: 600 },
 ]
 
 const obj = (v: unknown) => (v && typeof v === 'object' ? v as Record<string, unknown> : {})

@@ -1,5 +1,6 @@
 // Drawing of the Templo do Gongo (canvas, screen pixels): its aliens, the gong totem, bombs and fire, and the HUD
 // (hearts, score, the rhythm "pista" with the beats coming, the judgement of each press and the stage banners).
+import { msg, t as tr } from "@/lib/i18n"
 import { intersectsView, type ViewRect } from "@/lib/pigchicken/viewport"
 import { ALIEN_FRAMES } from "@/lib/pigchicken/enemies"
 import { lookDir, lookRows, type Point } from "@/lib/pigchicken/eyes"
@@ -406,7 +407,7 @@ export function drawResetStone(ctx: Ctx, g: Target, x: number, temple: Temple) {
     ctx.beginPath(); ctx.arc(x + (i - 1) * 18, ground - 138, 5, 0, Math.PI * 2); ctx.fill()
   }
   ctx.font = "bold 11px ui-monospace, monospace"; ctx.textAlign = "center"
-  const label = "RECOMEÇAR", w = ctx.measureText(label).width + 12
+  const label = tr("RECOMEÇAR"), w = ctx.measureText(label).width + 12
   ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x - w / 2, ground - 166, w, 16)
   ctx.fillStyle = "#7bdff2"; ctx.fillText(label, x, ground - 154)
 }
@@ -435,7 +436,7 @@ export function drawTempleShots(ctx: Ctx, temple: Temple, camX: number, view: Vi
 }
 
 // ---------- HUD (screen) ----------
-const GRADE = { perfect: { text: "PERFEITO!", color: "#ffd166" }, good: { text: "BOM", color: "#7bdff2" }, miss: { text: "fora do tempo", color: "#9aa0a8" } } as const
+const GRADE = { perfect: { text: msg("PERFEITO!"), color: "#ffd166" }, good: { text: msg("BOM"), color: "#7bdff2" }, miss: { text: msg("fora do tempo"), color: "#9aa0a8" } } as const
 
 export function drawTempleHud(ctx: Ctx, temple: Temple, music: Conductor, inside: boolean, top: number) {
   const s = temple.state
@@ -459,10 +460,10 @@ export function drawTempleHud(ctx: Ctx, temple: Temple, music: Conductor, inside
       ctx.fillText("♥", x0 + i * 20, y0 + 10)
     }
     ctx.font = "bold 12px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.fillStyle = "#ffd166"
-    const stageName = s.phase === "idle" ? "TEMPLO DO GONGO" : `FASE ${s.stage + 1}/${STAGES.length} · ${STAGES[s.stage].name.toUpperCase()}`
+    const stageName = s.phase === "idle" ? tr("TEMPLO DO GONGO") : tr("FASE {n}/{total}", { n: s.stage + 1, total: STAGES.length }) + ` · ${tr(STAGES[s.stage].name).toUpperCase()}`
     ctx.fillText(stageName, W / 2, y0 + 10)
     ctx.textAlign = "right"; ctx.fillStyle = "#ffffff"
-    ctx.fillText(`${s.score.toLocaleString("pt-BR")} pts`, x0 + pw, y0 + 10)
+    ctx.fillText(tr("{n} pts", { n: s.score.toLocaleString("pt-BR") }), x0 + pw, y0 + 10)
     // the pista: beats slide in from the right to the ring; red ones drop bombs; pressing fire on the ring scores
     const ly = y0 + 40, ringX = x0 + 26, perBeat = (pw - 46) / 4
     ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.roundRect(x0, ly - 18, pw, 36, 18); ctx.fill()
@@ -484,19 +485,19 @@ export function drawTempleHud(ctx: Ctx, temple: Temple, music: Conductor, inside
     ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ringX, ly, 12 + pulse * 4, 0, Math.PI * 2); ctx.stroke()
     // combo and multiplier
     ctx.font = "bold 12px ui-monospace, monospace"; ctx.textAlign = "right"
-    if (active && s.combo > 0) { ctx.fillStyle = multOf(s.combo) > 1 ? "#ffd166" : "#c9ced6"; ctx.fillText(`combo ${s.combo}${multOf(s.combo) > 1 ? ` · ×${multOf(s.combo)}` : ""}`, x0 + pw, ly + 30) }
+    if (active && s.combo > 0) { ctx.fillStyle = multOf(s.combo) > 1 ? "#ffd166" : "#c9ced6"; ctx.fillText(`${tr("combo {n}", { n: s.combo })}${multOf(s.combo) > 1 ? ` · ×${multOf(s.combo)}` : ""}`, x0 + pw, ly + 30) }
     // what the pista is for, until the first stage is under way
     if (s.phase === "idle" || s.phase === "intro" || (s.phase === "playing" && s.stage === 0 && s.t < 10)) {
       ctx.font = "11px ui-sans-serif, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = "rgba(244,241,232,0.85)"
-      ctx.fillText(W < 700 ? "Atire quando a bolinha chegar no anel · vermelhas = bombas" : "Ritmo: atire quando a bolinha chegar no anel (PERFEITO soma combo e multiplica os pontos). Vermelhas = bombas.", W / 2, ly + 48)
+      ctx.fillText(W < 700 ? tr("Atire quando a bolinha chegar no anel · vermelhas = bombas") : tr("Ritmo: atire quando a bolinha chegar no anel (PERFEITO soma combo e multiplica os pontos). Vermelhas = bombas."), W / 2, ly + 48)
     }
     // the judgement of the last press, popping over the ring
     if (j) {
       const k = j.t / 0.6
       ctx.globalAlpha = 1 - k; ctx.textAlign = "left"
       ctx.font = `bold ${j.grade === "perfect" ? 16 : 13}px ui-sans-serif, system-ui, sans-serif`
-      ctx.fillStyle = "#000"; ctx.fillText(GRADE[j.grade].text, ringX - 10 + 1, ly + 30 - k * 8 + 1)
-      ctx.fillStyle = GRADE[j.grade].color; ctx.fillText(GRADE[j.grade].text, ringX - 10, ly + 30 - k * 8)
+      ctx.fillStyle = "#000"; ctx.fillText(tr(GRADE[j.grade].text), ringX - 10 + 1, ly + 30 - k * 8 + 1)
+      ctx.fillStyle = GRADE[j.grade].color; ctx.fillText(tr(GRADE[j.grade].text), ringX - 10, ly + 30 - k * 8)
       ctx.globalAlpha = 1
     }
     ctx.restore()
@@ -532,8 +533,10 @@ export function drawBanner(ctx: Ctx, b: { title: string; sub: string; color: str
 function wrap(ctx: Ctx, text: string, maxW: number) {
   const out: string[] = []
   let line = ""
-  text.split(" ").forEach(w => {
-    const next = line ? `${line} ${w}` : w
+  // Chinese and Japanese have no spaces: they break between characters
+  const cjk = /[\u3040-\u30ff\u3400-\u9fff]/.test(text)
+  ;(cjk ? Array.from(text) : text.split(" ")).forEach(w => {
+    const next = line ? (cjk ? `${line}${w}` : `${line} ${w}`) : w
     if (ctx.measureText(next).width > maxW && line) { out.push(line); line = w } else line = next
   })
   if (line) out.push(line)

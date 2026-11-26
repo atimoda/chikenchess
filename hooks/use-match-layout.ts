@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
+import { t as tr } from "@/lib/i18n"
 
 /** Mobile layout switch shared by campaign and online matches. */
 export function useMatchViewport(boardScale = 1) {
@@ -31,7 +32,7 @@ export function useFullscreen() {
   }, [])
   const toggleFullscreen = useCallback(() => {
     void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen())
-      .catch(() => toast.error("Fullscreen unavailable"))
+      .catch(() => toast.error(tr("Fullscreen unavailable")))
   }, [])
   return { isFullscreen, toggleFullscreen }
 }

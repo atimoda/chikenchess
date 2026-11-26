@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PiecesSVG } from '../chessground-board'
 import { cn, stableHtml } from '@/lib/utils'
+import { useT } from '@/lib/i18n'
 import styles from '../creative-studio.module.css'
 
 export interface PalettePiece { id: string; type: string; name: string }
@@ -30,6 +31,7 @@ const DRAG_THRESHOLD = 4
  * the board places that instrument there; the palette itself never changes.
  */
 export function PiecePalette({ color, pieces, justify, disabled, onPress, onDragOver, onDrop, onCancel }: PiecePaletteProps) {
+  const t = useT()
   const [ghost, setGhost] = useState<{ id: string; type: string; x: number; y: number } | null>(null)
   const gesture = useRef<{ id: string; type: string; pointerId: number; x: number; y: number; moved: boolean } | null>(null)
   const handlers = useRef({ onDragOver, onDrop, onCancel })
@@ -72,15 +74,15 @@ export function PiecePalette({ color, pieces, justify, disabled, onPress, onDrag
   }, [])
 
   const svg = (type: string) => stableHtml(PiecesSVG[`${color}${type.toUpperCase()}` as keyof typeof PiecesSVG])
-  return <div className={cn(styles.palette, justify === 'end' && styles.paletteEnd)} role="group" aria-label={`${color === 'w' ? 'White' : 'Black'} pieces to place`}>
+  return <div className={cn(styles.palette, justify === 'end' && styles.paletteEnd)} role="group" aria-label={color === 'w' ? t('White pieces to place') : t('Black pieces to place')}>
     {pieces.map(piece => <button
       key={piece.id}
       type="button"
       className={cn(styles.palettePiece, color === 'b' && styles.paletteBlack)}
       data-palette-piece={piece.id}
       disabled={disabled}
-      title={`${piece.name}: drag onto the board to place it`}
-      aria-label={`Place ${piece.name}`}
+      title={t('{name}: drag onto the board to place it', { name: t(piece.name) })}
+      aria-label={t('Place {name}', { name: t(piece.name) })}
       onPointerDown={event => {
         if (!event.isPrimary || event.button !== 0 || disabled) return
         event.preventDefault()

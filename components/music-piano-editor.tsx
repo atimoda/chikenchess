@@ -4,6 +4,7 @@ import {arrangementPosition} from '@/lib/music/arrangement'
 import { beatsPerBar, subdivisionsPerBeat, beatUnit } from '@/lib/music/meter'
 import type { Meter } from '@/lib/music/meter'
 import { InfoTip } from './info-tip'
+import { msg, t as tr, useT } from '@/lib/i18n'
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMonitorSelector } from '@/hooks/use-monitor-selector'
 import { MusicNoteParams, useNoteParamsHost } from './music-note-params'
@@ -17,26 +18,27 @@ import type { MusicSnapshot } from '@/lib/music/runtime'
 import { MAX_ROLL_BARS, MAX_ROLL_NOTES, resizeRoll, visibleDegreeRange, type PianoRoll, type PianoNote } from '@/lib/music/piano-roll'
 
 export const MUSIC_GRID_DIVISIONS = [
- {value:1,label:'1 part · beat'}, {value:2,label:'2 parts · eighths'},
- {value:3,label:'3 parts · triplets'}, {value:4,label:'4 parts · sixteenths'},
- {value:5,label:'5 parts · quintuplets'}, {value:6,label:'6 parts · sextuplets'},
- {value:7,label:'7 parts · septuplets'}, {value:8,label:'8 parts · thirty-seconds'},
+ {value:1,label:msg('1 part · beat')}, {value:2,label:msg('2 parts · eighths')},
+ {value:3,label:msg('3 parts · triplets')}, {value:4,label:msg('4 parts · sixteenths')},
+ {value:5,label:msg('5 parts · quintuplets')}, {value:6,label:msg('6 parts · sextuplets')},
+ {value:7,label:msg('7 parts · septuplets')}, {value:8,label:msg('8 parts · thirty-seconds')},
 ] as const
 
 export function gridDivisionLabel(value:number,meter:Meter='4/4') {
  if(subdivisionsPerBeat(meter)===3){
-  if(value===3)return '3 parts · eighths'
-  if(value===6)return '6 parts · sixteenths'
-  if(value===2)return '2 parts · duple division'
-  return value===1?'1 part · beat':`${value} parts · beat division`
+  if(value===3)return tr('3 parts · eighths')
+  if(value===6)return tr('6 parts · sixteenths')
+  if(value===2)return tr('2 parts · duple division')
+  return value===1?tr('1 part · beat'):tr('{n} parts · beat division',{n:value})
  }
- if(beatUnit(meter)==='half' && value===2)return '2 parts · quarters'
- if(beatUnit(meter)==='half' && value===4)return '4 parts · eighths'
- if(beatUnit(meter)==='half' && value===8)return '8 parts · sixteenths'
- if(beatUnit(meter)==='eighth' && value===8)return '8 parts · sixty-fourths'
- if(beatUnit(meter)==='eighth' && value===2)return '2 parts · sixteenths'
- if(beatUnit(meter)==='eighth' && value===4)return '4 parts · thirty-seconds'
- return MUSIC_GRID_DIVISIONS.find(option=>option.value===value)?.label??String(value)
+ if(beatUnit(meter)==='half' && value===2)return tr('2 parts · quarters')
+ if(beatUnit(meter)==='half' && value===4)return tr('4 parts · eighths')
+ if(beatUnit(meter)==='half' && value===8)return tr('8 parts · sixteenths')
+ if(beatUnit(meter)==='eighth' && value===8)return tr('8 parts · sixty-fourths')
+ if(beatUnit(meter)==='eighth' && value===2)return tr('2 parts · sixteenths')
+ if(beatUnit(meter)==='eighth' && value===4)return tr('4 parts · thirty-seconds')
+ const found=MUSIC_GRID_DIVISIONS.find(option=>option.value===value)?.label
+ return found?tr(found):String(value)
 }
 
 export function defaultGridDivision(meter:Meter='4/4') {
@@ -57,6 +59,7 @@ export function PianoRollPlayhead({monitor,snapshot,instrument,id,roll,high,rowH
 
 /** Read-only strip of the variation playing now, for the Song & Instruments list. */
 export const MusicMiniRoll = memo(function MusicMiniRoll({snapshot,id,monitor,instrument}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument}){
+ const t=useT()
  const pulses=beatsPerBar(snapshot.meter)
  const playback=useMonitorSelector(monitor,frame=>{
   const globalPosition=snapshot.arrangement?arrangementPosition(snapshot.arrangement,frame.cycle,pulses):undefined
@@ -68,7 +71,7 @@ export const MusicMiniRoll = memo(function MusicMiniRoll({snapshot,id,monitor,in
  // Fit the rows to the notes so they stay readable at strip height.
  const degrees=roll.notes.map(n=>n.degree),top=degrees.length?Math.max(...degrees):3,bottom=degrees.length?Math.min(...degrees):-3
  const high=Math.max(top+1,bottom+5),low=bottom-1,rowHeight=264/(high-low+1),bars=roll.bars
- return <svg data-mini-roll={id} preserveAspectRatio="none" viewBox="0 0 480 264" role="img" aria-label={`MIDI of variation ${String.fromCharCode(65+playback.variation)}`} style={{display:'block',width:'100%',height:34,background:'#101a14',borderRadius:3,opacity:playback.present===false?.45:1}}>
+ return <svg data-mini-roll={id} preserveAspectRatio="none" viewBox="0 0 480 264" role="img" aria-label={t('MIDI of variation {letter}',{letter:String.fromCharCode(65+playback.variation)})} style={{display:'block',width:'100%',height:34,background:'#101a14',borderRadius:3,opacity:playback.present===false?.45:1}}>
   {Array.from({length:Math.ceil(bars*pulses)+1},(_,i)=><line key={i} x1={i/(bars*pulses)*480} x2={i/(bars*pulses)*480} y1={0} y2={264} stroke={i%pulses===0?'#3a503e':'#1b2a21'} vectorEffect="non-scaling-stroke"/>)}
   {roll.notes.map((n,j)=><rect key={j} x={n.start/bars*480} y={(high-n.degree)*rowHeight} width={Math.max(2,n.duration/bars*480-1)} height={Math.max(6,rowHeight)} rx={2} fill={n.slide?'#dfa67a':'#8fb987'} opacity={Math.max(.35,n.velocity)}/>)}
   {playback.running&&playback.present!==false&&<PianoRollPlayhead monitor={monitor} snapshot={snapshot} instrument={instrument} id={id} roll={roll} high={high} rowHeight={rowHeight} enabled/>}
@@ -76,6 +79,7 @@ export const MusicMiniRoll = memo(function MusicMiniRoll({snapshot,id,monitor,in
 })
 
 export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,monitor,instrument,onChange,onlyVariation,compact=false,actions,division:controlledDivision,onDivisionChange,knobUpdateMode='immediate',visualUpdatesEnabled=true}:{snapshot:MusicSnapshot;id:string;monitor:MusicMonitor;instrument:Instrument;onChange:(patch:InstrumentPerformanceEdit)=>void;onlyVariation?:number;compact?:boolean;actions?:ReactNode|((leading:ReactNode)=>ReactNode);division?:number;onDivisionChange?:(division:number)=>void;knobUpdateMode?:KnobUpdateMode;visualUpdatesEnabled?:boolean}){
+ const t=useT()
  const [error,setError]=useState('')
  const [selectedNote,setSelectedNote]=useState<{index:number;note:number}|null>(null)
  const [draft,setDraft]=useState<{index:number;roll:PianoRoll}|null>(null),[localDivision,setLocalDivision]=useState(defaultGridDivision(snapshot.meter))
@@ -121,12 +125,12 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
  // Editor notices sit small and white right under the "X bars / Y beats" label.
  const noticeStyle={margin:'3px 0 0',fontSize:9,lineHeight:1.3,color:'#fff'} as const
  const notices=<>
-  {snapshot.sectionOverrides?.[id]!==undefined&&<p style={noticeStyle}>A game rule forces only variation {String.fromCharCode(65+playback.variation)} and overrides the pinned tab. Timing, presence and transposition keep following the global section.</p>}
+  {snapshot.sectionOverrides?.[id]!==undefined&&<p style={noticeStyle}>{t('A game rule forces only variation {letter} and overrides the pinned tab. Timing, presence and transposition keep following the global section.',{letter:String.fromCharCode(65+playback.variation)})}</p>}
   {error&&<p role="alert" style={noticeStyle}>{error}</p>}
  </>
  const noticeIndex=visibleVariations.some(({index})=>index===playback.variation)?playback.variation:visibleVariations[0]?.index
- return <section aria-label="Variation editor" data-midi-visual-panel data-compact={compact||undefined}>
-  {!compact&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}><label><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>Beat subdivision<InfoTip label="How to edit notes">The subdivision sets the rhythmic points inside each beat: 3 parts show the eighths in 6/8, 9/8 and 12/8. Click an empty area and drag to draw. Drag a note to move it; hold Alt while dragging to duplicate it with its parameters. Drag its right edge to lengthen or shorten it. Double-click a note to delete it. You can also select it and use Delete note, Delete or Backspace.</InfoTip></span><select value={division} onChange={e=>setDivision(Number(e.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,snapshot.meter)}</option>)}</select></label></div>}
+ return <section aria-label={t('Variation editor')} data-midi-visual-panel data-compact={compact||undefined}>
+  {!compact&&<div style={{display:'flex',gap:4,flexWrap:'wrap'}}><label><span style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:5}}>{t('Beat subdivision')}<InfoTip label={t('How to edit notes')}>{t("The subdivision sets the rhythmic points inside each beat: 3 parts show the eighths in 6/8, 9/8 and 12/8. Click an empty area and drag to draw. Drag a note to move it; hold Alt while dragging to duplicate it with its parameters. Drag its right edge to lengthen or shorten it. Double-click a note to delete it. You can also select it and use Delete note, Delete or Backspace.")}</InfoTip></span><select value={division} onChange={e=>setDivision(Number(e.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,snapshot.meter)}</option>)}</select></label></div>}
   
   {visibleVariations.map(({roll:savedRoll,index})=>{
    const roll=draft?.index===index?draft.roll:savedRoll, active=playback.variation===index, sounding=active&&playback.running
@@ -136,11 +140,11 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
    const fixed=instrument.selectedVariation===index
    return <div key={index} style={{border:compact?'none':`1px solid ${active?'#bedb90':'#3a4b40'}`,padding:compact?0:6,marginTop:8,borderRadius:5}}>
     {compact?null:<div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'flex-start'}}>
-     <div style={{display:'grid',gap:4}}><button style={{minWidth:98,whiteSpace:'nowrap',color:fixed?'#fff':undefined}} aria-pressed={fixed} onClick={()=>onChange({selectedVariation:fixed?undefined:index})}>Variation {String.fromCharCode(65+index)}</button>{sounding&&<span style={{fontSize:9}}>{present?'Playing':'Section rest'}</span>}</div>
-     <div style={{width:156,marginLeft:'auto'}}><div style={{position:'relative'}}><input aria-label={`Bars of variation ${index+1}`} inputMode="decimal" value={bars} readOnly style={{paddingRight:64}}/><button type="button" aria-label={`Shorten variation ${index+1}`} disabled={bars<=1/pulses} onClick={()=>save(index,resizeRoll(roll,Math.max(1/pulses,bars-1/pulses)))} style={{position:'absolute',right:32,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>−</button><button type="button" aria-label={`Lengthen variation ${index+1}`} disabled={bars>=MAX_ROLL_BARS} onClick={()=>save(index,resizeRoll(roll,Math.min(MAX_ROLL_BARS,bars+1/pulses)))} style={{position:'absolute',right:3,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>+</button></div><span style={{display:'block',marginTop:3,fontSize:9,color:'#9eafa2'}}>{bars} bars / {bars*pulses} beats</span></div>
+     <div style={{display:'grid',gap:4}}><button style={{minWidth:98,whiteSpace:'nowrap',color:fixed?'#fff':undefined}} aria-pressed={fixed} onClick={()=>onChange({selectedVariation:fixed?undefined:index})}>{t('Variation {letter}',{letter:String.fromCharCode(65+index)})}</button>{sounding&&<span style={{fontSize:9}}>{present?t('Playing'):t('Section rest')}</span>}</div>
+     <div style={{width:156,marginLeft:'auto'}}><div style={{position:'relative'}}><input aria-label={t('Bars of variation {n}',{n:index+1})} inputMode="decimal" value={bars} readOnly style={{paddingRight:64}}/><button type="button" aria-label={t('Shorten variation {n}',{n:index+1})} disabled={bars<=1/pulses} onClick={()=>save(index,resizeRoll(roll,Math.max(1/pulses,bars-1/pulses)))} style={{position:'absolute',right:32,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>−</button><button type="button" aria-label={t('Lengthen variation {n}',{n:index+1})} disabled={bars>=MAX_ROLL_BARS} onClick={()=>save(index,resizeRoll(roll,Math.min(MAX_ROLL_BARS,bars+1/pulses)))} style={{position:'absolute',right:3,top:'50%',transform:'translateY(-50%)',borderRadius:'50%',padding:0,width:26,height:26,fontSize:16}}>+</button></div><span style={{display:'block',marginTop:3,fontSize:9,color:'#9eafa2'}}>{t('{bars} bars / {beats} beats',{bars,beats:bars*pulses})}</span></div>
     </div>}
     {!compact&&index===noticeIndex&&<div style={{textAlign:'right'}}>{notices}</div>}
-     <svg preserveAspectRatio="none" viewBox="0 0 480 264" style={{display:'block',width:'100%',height:compact?142:264,background:'#101a14',userSelect:'none',touchAction:'pan-y',cursor:'crosshair'}} tabIndex={0} role="application" aria-label={`Piano roll of variation ${index+1}`}
+     <svg preserveAspectRatio="none" viewBox="0 0 480 264" style={{display:'block',width:'100%',height:compact?142:264,background:'#101a14',userSelect:'none',touchAction:'pan-y',cursor:'crosshair'}} tabIndex={0} role="application" aria-label={t('Piano roll of variation {n}',{n:index+1})}
       onKeyDown={e=>{if(e.key==='Escape')cancel();if((e.key==='Delete'||e.key==='Backspace')&&selectedNote?.index===index){e.preventDefault();removeNote(index,roll,selectedNote.note)}}}
       onPointerDown={e=>{
        if(e.pointerType==='touch'||e.button!==0)return
@@ -153,7 +157,7 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
        e.preventDefault();e.currentTarget.focus({preventScroll:true});e.currentTarget.setPointerCapture(e.pointerId)
        const p=point(e,bars,low,high),notes=roll.notes.map(n=>({...n}))
        const copy=hit>=0&&e.altKey
-       if((hit<0||copy)&&notes.length>=MAX_ROLL_NOTES){setError(`Limit of ${MAX_ROLL_NOTES} notes per variation.`);return}
+       if((hit<0||copy)&&notes.length>=MAX_ROLL_NOTES){setError(t('Limit of {n} notes per variation.',{n:MAX_ROLL_NOTES}));return}
        const note=hit<0?notes.push({start:p.start,duration:quantum,degree:p.degree,velocity:.8,pan:.5})-1:copy?notes.push({...notes[hit]})-1:hit
        setSelectedNote({index,note});const mode=hit<0?'draw':copy?'move':target.dataset.mode==='resize'?'resize':'move'
        drag.current={index,note,sourceNote:hit,origin:{...notes[note]},start:p.start,degree:p.degree,mode,roll:{bars,notes},copy,moved:false};setDraft({index,roll:{bars,notes}})
@@ -163,25 +167,25 @@ export const MusicPianoEditor = memo(function MusicPianoEditor({snapshot,id,moni
       >
       {Array.from({length:high-low+2},(_,i)=><line key={`h${i}`} x1={0} x2={480} y1={i*rowHeight} y2={i*rowHeight} stroke={i%7===0?'#485740':'#213329'}/>)}
       {Array.from({length:Math.ceil(bars/quantum)+1},(_,i)=><line key={`v${i}`} x1={i*quantum/bars*480} x2={i*quantum/bars*480} y1={0} y2={264} stroke={i%(division*pulses)===0?'#617652':i%division===0?'#3a503e':'#213329'}/>)}
-      {Array.from({length:high-low+1},(_,i)=>high-i).filter(degree=>degree%7===0).map(degree=><text key={`degree${degree}`} x={2} y={(high-degree)*rowHeight+rowHeight-2} fill="#a6b7a7" fontSize={8} pointerEvents="none">{degree===0?'0 · root':degree}</text>)}
+      {Array.from({length:high-low+1},(_,i)=>high-i).filter(degree=>degree%7===0).map(degree=><text key={`degree${degree}`} x={2} y={(high-degree)*rowHeight+rowHeight-2} fill="#a6b7a7" fontSize={8} pointerEvents="none">{degree===0?t('0 · root'):degree}</text>)}
       {roll.notes.map((n,j)=>{const x=n.start/bars*480,width=Math.max(2,n.duration/bars*480-1),handle=Math.min(10,width);return <g key={j}>
-       <rect data-note={j} x={x} y={(high-n.degree)*rowHeight+1} width={width} height={Math.max(2,rowHeight-2)} rx={2} fill={n.slide?'#dfa67a':'#8fb987'} stroke={selectedNote?.index===index&&selectedNote.note===j?'#fff':'none'} strokeWidth={selectedNote?.index===index&&selectedNote.note===j?2:0} style={{cursor:'grab'}}><title>{`Degree ${n.degree} · beat ${(n.start*pulses+1).toFixed(2)} · length ${(n.duration*pulses).toFixed(2)} beats · double-click deletes · Alt+drag duplicates`}</title></rect>
+       <rect data-note={j} x={x} y={(high-n.degree)*rowHeight+1} width={width} height={Math.max(2,rowHeight-2)} rx={2} fill={n.slide?'#dfa67a':'#8fb987'} stroke={selectedNote?.index===index&&selectedNote.note===j?'#fff':'none'} strokeWidth={selectedNote?.index===index&&selectedNote.note===j?2:0} style={{cursor:'grab'}}><title>{t('Degree {degree} · beat {beat} · length {length} beats · double-click deletes · Alt+drag duplicates',{degree:n.degree,beat:(n.start*pulses+1).toFixed(2),length:(n.duration*pulses).toFixed(2)})}</title></rect>
        <rect data-note={j} data-mode="resize" x={x+width-handle} y={(high-n.degree)*rowHeight+1} width={handle} height={Math.max(2,rowHeight-2)} fill="transparent" style={{cursor:'ew-resize'}} />
       </g>})}
       {sounding&&present&&<PianoRollPlayhead monitor={monitor} snapshot={snapshot} instrument={instrument} id={id} roll={roll} high={high} rowHeight={rowHeight} enabled={visualUpdatesEnabled}/>}
      </svg>
      {(()=>{
       const selected=selectedNote?.index===index&&roll.notes[selectedNote.note]?selectedNote.note:-1
-      const deleteNote=selected>=0?<button type="button" aria-label="Delete note" title="Delete note" onClick={()=>removeNote(index,roll,selected)}><Trash2 size={14}/></button>:null
+      const deleteNote=selected>=0?<button type="button" aria-label={t('Delete note')} title={t('Delete note')} onClick={()=>removeNote(index,roll,selected)}><Trash2 size={14}/></button>:null
       const row=typeof actions==='function'?actions(deleteNote):<>{deleteNote}{actions}</>
       return <>
-       {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,minHeight:41}}><span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{bars} bars / {bars*pulses} beats</span>{row}</div>:row}
+       {compact?<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,minHeight:41}}><span style={{flex:'0 0 auto',fontSize:9,color:'#9eafa2',whiteSpace:'nowrap'}}>{t('{bars} bars / {beats} beats',{bars,beats:bars*pulses})}</span>{row}</div>:row}
        {compact&&index===noticeIndex&&notices}
        {!noteParamsHost&&selected>=0&&<MusicNoteParams note={roll.notes[selected]} updateMode={knobUpdateMode} onChange={patch=>save(index,{...roll,notes:roll.notes.map((note,i)=>i===selected?{...note,...patch}:note)})}/>}
       </>
      })()}
    </div>
   })}
-  {onlyVariation===undefined&&<div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:8}}><button type="button" disabled={bankCount>=8} onClick={()=>onChange(addVariation(instrument))}>Add variation</button><button type="button" disabled={bankCount<=1} onClick={()=>onChange(removeLastVariation(instrument))}>Remove last variation</button></div>}
+  {onlyVariation===undefined&&<div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:8}}><button type="button" disabled={bankCount>=8} onClick={()=>onChange(addVariation(instrument))}>{t('Add variation')}</button><button type="button" disabled={bankCount<=1} onClick={()=>onChange(removeLastVariation(instrument))}>{t('Remove last variation')}</button></div>}
  </section>
 })

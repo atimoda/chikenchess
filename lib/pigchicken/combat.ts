@@ -1,5 +1,6 @@
 // PigChicKen combat in the Parquinho: the items she carries, firing, hitting, throwing, projectiles,
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
+import { msg, t as tr } from '../i18n'
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
 import { DRAWN_RECOVER, SWING_PHASES, announceComboBlow, blowKind, nextCombo, pathAngle, pathAngles, pathEnd, pathSpan, swingCombo as comboOf, swingHitAt, swingLife, type Swing, type SwingPath } from './swing'
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
@@ -345,7 +346,7 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a)
 export type BabyRules = { noStaffs: boolean; oneCage: boolean; noMelee: boolean; piu: boolean }
 export const BABY_RULES: BabyRules = { noStaffs: true, oneCage: true, noMelee: false, piu: true }
 // a Pegar refused by the category's limit (Personagem → Inventário)
-const CATEGORY_FULL: Record<ItemGroup, string> = { 0: 'Limite de instrumentos', 1: 'Limite de armas', 2: 'Limite de utilitários' }
+const CATEGORY_FULL: Record<ItemGroup, string> = { 0: msg('Limite de instrumentos'), 1: msg('Limite de armas'), 2: msg('Limite de utilitários') }
 const DEG = Math.PI / 180
 // the Golpe desenhado: how much wider than the stretch the wing crossed in a frame its hit area is (so nothing slips
 // between two frames), and every how many radians it looks for the note of the instrument's fan it is on
@@ -983,7 +984,7 @@ export function createCombat() {
       conv.harmonized++
       const top = t.y - t.h / 2
       music.chord(true).forEach((m, i) => { out.note('bells', m + 12, i * 0.07, 0.3, 0.5); texts.push({ x: t.x + (i - 1.5) * 16, y: top - 30 - i * 6, text: NOTE_SYMBOLS[i % 4], life: 1.1, color: DEGREE_COLORS[music.degreeOf(m)], size: 20 }) })
-      addText(t.x, t.y - t.h - 24, 'novinho!', '#7bd88f')
+      addText(t.x, t.y - t.h - 24, tr('novinho!'), '#7bd88f')
     }
   }
 
@@ -998,14 +999,14 @@ export function createCombat() {
       burst(t.x, top, next === 0 ? 26 : 12, '#c9a46a', next === 0 ? 320 : 220, next === 0 ? 5 : 4)
       if (next === 0) {
         burst(t.x, top, 12, '#d6453d', 240, 3)
-        addText(t.x, t.y - t.h - 16, 'destruído!', '#ff8c69')
+        addText(t.x, t.y - t.h - 16, tr('destruído!'), '#ff8c69')
         if (d.params.message) d.tipT = TIP_TIME
         sound('block', null)
       }
     } else {
       burst(t.x, top, 8, '#7bd88f', 140, 3)
       if (d.stage === 0) d.tipT = Math.min(d.tipT, 0.4)
-      if (next < DUMMY_STAGE_MAX) addText(t.x, t.y - t.h - 16, 'melhorou!', '#7bd88f')
+      if (next < DUMMY_STAGE_MAX) addText(t.x, t.y - t.h - 16, tr('melhorou!'), '#7bd88f')
     }
     d.stage = next
   }
@@ -1109,7 +1110,7 @@ export function createCombat() {
       chord.concat(chord[0] + 12).forEach((m, i) => out.note('keys', m, i * 0.08, 0.25, 0.6))
       texts.push({ x: t.x, y: top - 40, text: '♥', life: 1.2, color: '#ff6b9a', size: 26 })
     }
-    addText(t.x, top - 60, t.kind === 'alien' ? 'virou passarinho!' : 'curado!', '#7bdff2')
+    addText(t.x, top - 60, t.kind === 'alien' ? tr('virou passarinho!') : tr('curado!'), '#7bdff2')
   }
   let lastBody: Body | null = null
   // damage to this browser's own player (setHurt): a zombie's bite takes ZOMBIE_BITE of its health
@@ -1162,7 +1163,7 @@ export function createCombat() {
     const h = harmonyNow()
     playNotes(birdPhrase(type, h.chord[0] + 12, h, u.params.mode), type.voice)
     burst(t.x, t.y - t.h / 2, 16, color, 200, 4)
-    addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6')
+    addText(t.x, t.y - t.h - 50, tr('pássaro morto-vivo!'), '#c9ced6')
   }
   // a bird whistles: a recording of its real bird (its phrase in the synth when that bird has none), and the phrase's
   // last note flies to the nearest player, arriving on a beat (she can rebate it)
@@ -1309,10 +1310,10 @@ export function createCombat() {
       old.cage!.enterT = Infinity
       pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -30 : 30), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
       cages[0] = p.owned
-      addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
+      addText(p.x, p.y - 30, `↔ ${tr(items[p.owned.item].name)}`, '#4cc9f0')
     } else {
       cages.push(p.owned)
-      addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
+      addText(p.x, p.y - 30, `+ ${tr(items[p.owned.item].name)}`, '#7bdff2')
     }
     cage.enterT = 0
     sound('equip', p.owned.item)
@@ -1329,7 +1330,7 @@ export function createCombat() {
       stack.ammo += amount; p.owned.ammo -= amount
       if (p.owned.ammo > 0) pickups.push(p)
       sound('equip', stack.item)
-      addText(p.x, p.y - 30, `+${amount} ${items[stack.item].name}`, '#7bdff2')
+      addText(p.x, p.y - 30, `+${amount} ${tr(items[stack.item].name)}`, '#7bdff2')
       return true
     }
     // a Filhote with its category full: the new one takes the place of the first of it, which falls
@@ -1353,7 +1354,7 @@ export function createCombat() {
     if (equip) { cur = added; reloadT = 0; chargeT = 0; burstLeft = 0; pumpT = 0 }
     else cur = wasHeld ? inv.indexOf(wasHeld) : inv.length
     sound('equip', p.owned.item)
-    addText(p.x, p.y - 30, `+ ${items[p.owned.item].name}`, '#7bdff2')
+    addText(p.x, p.y - 30, `+ ${tr(items[p.owned.item].name)}`, '#7bdff2')
     return true
   }
 
@@ -1364,7 +1365,7 @@ export function createCombat() {
     if (old) { pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 }); inv.splice(cur, 1) }
     cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0
     sound('equip', p.owned.item)
-    addText(p.x, p.y - 30, `↔ ${items[p.owned.item].name}`, '#4cc9f0')
+    addText(p.x, p.y - 30, `↔ ${tr(items[p.owned.item].name)}`, '#4cc9f0')
   }
   // a Baú opens: the lid goes up (the world's step eases it), its sound and sparks in its rarity's colour
   function openChestFx(c: Chest) {
@@ -1381,14 +1382,14 @@ export function createCombat() {
     if (block) {
       c.shake = 0.35
       sound('locked', null)
-      addText(c.x, top - 16, block === 'key' ? 'Precisa de uma chave' : `Almas nas gaiolas: ${cageSouls(cages)}/${c.params.souls}`, '#ffb4a8')
+      addText(c.x, top - 16, block === 'key' ? tr('Precisa de uma chave') : tr('Almas nas gaiolas: {n}/{max}', { n: cageSouls(cages), max: c.params.souls }), '#ffb4a8')
       return
     }
     if (c.params.lock === 'key') useKey()
     openChestFx(c)
     if (netOn && chestOpens.length < 16) chestOpens.push(c.id)
     const loot = rollLoot(c.params.loot)
-    if (!loot.length) { addText(c.x, top - 16, 'Vazio', '#c9ced6'); return }
+    if (!loot.length) { addText(c.x, top - 16, tr('Vazio'), '#c9ced6'); return }
     // they jump out of the lid side by side and fall to the floor around it
     popItems(c.x, top, loot)
   }
@@ -1428,7 +1429,7 @@ export function createCombat() {
     sound(d.consumeKind === 'liquid' ? 'drink' : 'eat', h.item)
     const color = d.effectLook === 'buddha' ? '#ffd166' : d.effectLook === 'fizz' ? '#f3e1c7' : '#7bdff2'
     burst(at.x, at.y, 16, color, 170, 3)
-    addText(at.x, at.y - 40, d.effectLook === 'buddha' ? `${d.name}: estado búdico` : d.name, color)
+    addText(at.x, at.y - 40, d.effectLook === 'buddha' ? tr('{name}: estado búdico', { name: tr(d.name) }) : tr(d.name), color)
     h.ammo--; if (h.ammo <= 0) removeHeld()
   }
 
@@ -1439,7 +1440,7 @@ export function createCombat() {
     stopBeam()
     const weapon = INSTRUMENT_WEAPON[h.item] ?? null
     sounds.push({ kind: 'scale', item: weapon })
-    if (lastBody) addText(lastBody.x, lastBody.y - 120 * lastBody.scale, scaleOf(h, items[h.item]).label, '#ffd166')
+    if (lastBody) addText(lastBody.x, lastBody.y - 120 * lastBody.scale, tr(scaleOf(h, items[h.item]).label), '#ffd166')
   }
 
   function startReload() {
@@ -1534,7 +1535,7 @@ export function createCombat() {
       let bonus = 1
       if (music.offBeat() < 0.07) {
         bonus = d.beatBonus
-        if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+        if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: tr('no tempo!'), life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
       r.hits.forEach(hit => drumHit(h, d, hit, muzzle, bonus))
     }
@@ -1623,7 +1624,7 @@ export function createCombat() {
         let bonus = 1
         if (music.offBeat() < 0.07) {
           bonus = d.beatBonus
-          if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+          if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: tr('no tempo!'), life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
         }
         // only the press waits for the grid (a sweep keeps the hand's own time)
         const g = music.toGrid(), grid = pressed && d.quantize && quantizeAll && g * 1000 <= d.quantWindow ? g : 0
@@ -1705,7 +1706,7 @@ export function createCombat() {
     })
     if (played.length && music.offBeat() < 0.07) {
       bonus = d.beatBonus
-      if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+      if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: muzzle.x, y: muzzle.y - 40, text: tr('no tempo!'), life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
     }
     const axis = sc.axisOf(d.octave)
     played.forEach(n => {
@@ -1741,7 +1742,7 @@ export function createCombat() {
       at = d.quantize && quantizeAll && g * 1000 <= d.quantWindow ? g : 0
       if (music.offBeat() < 0.07) {
         bonus = d.beatBonus
-        if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: 'no tempo!', life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
+        if (bonusTextT <= 0 && bonus > 1) { texts.push({ x: mx, y: my - 40, text: tr('no tempo!'), life: 0.7, color: '#ffd166', size: 12 }); bonusTextT = 0.6 }
       }
       notes.forEach((m, i) => { const h = out.note(voice, m + tremBend + detuneNow(), at + i * d.strum, pz ? Math.min(d.noteLen, 0.15) : d.noteLen, 0.75 * noteVol(d), undefined, vibOf(d)); if (h) rung.push(h) })
     }
@@ -2574,7 +2575,7 @@ export function createCombat() {
         const i = inv.indexOf(h)
         if (i === cur) removeHeld(); else { inv.splice(i, 1); if (i < cur) cur-- }
         burst(origin.x + Math.cos(sw.angle) * 30, origin.y + Math.sin(sw.angle) * 30, 18, '#c9c9c9', 200, 4)
-        addText(origin.x, origin.y - 50, `${sw.name} quebrou!`, '#ff8c69')
+        addText(origin.x, origin.y - 50, tr('{name} quebrou!', { name: tr(sw.name) }), '#ff8c69')
       }
     }
   }
@@ -3066,7 +3067,7 @@ export function createCombat() {
       const px = at?.x ?? playerX, py = at?.y ?? playerY
       // the bitten one is this browser's chicken: it counts here
       if (px === playerX && py === playerY) { kills.bites++; hurtSelf?.(ZOMBIE_BITE, t.x) }
-      addText(px, py - 150, 'mordida!', '#ff6b5b'); burst(px + (t.face > 0 ? -20 : 20), py - 80, 10, '#ff6b5b', 200, 3); sound('bite', null)
+      addText(px, py - 150, tr('mordida!'), '#ff6b5b'); burst(px + (t.face > 0 ? -20 : 20), py - 80, 10, '#ff6b5b', 200, 3); sound('bite', null)
     },
   })
 
@@ -3485,7 +3486,7 @@ export function createCombat() {
       } else if (change === 'convert') convert(t)
       else if (change === 'zombieDie') sound('zombieDie', null)
       else if (change === 'undeadDie') { burst(t.x, t.y - t.h / 2, 20, '#8d9096', 240, 4); sound('alienDie', null) }
-      else { burst(t.x, t.y - t.h / 2, 16, (t.data as UndeadState | undefined)?.eye ?? '#ffffff', 200, 4); addText(t.x, t.y - t.h - 50, 'pássaro morto-vivo!', '#c9ced6') }
+      else { burst(t.x, t.y - t.h / 2, 16, (t.data as UndeadState | undefined)?.eye ?? '#ffffff', 200, 4); addText(t.x, t.y - t.h - 50, tr('pássaro morto-vivo!'), '#c9ced6') }
     },
     // ---------- online: the souls flying free (lib/pigchicken/net-souls.ts) ----------
     // the souls the other browsers fly, drawn here
@@ -3569,7 +3570,7 @@ export function createCombat() {
       if (!loot.length) return
       sound('chest', null)
       burst(x, top + 20, 18, '#ffd76a', 220, 3)
-      addText(x, top - 16, 'Prêmio!', '#ffd76a')
+      addText(x, top - 16, tr('Prêmio!'), '#ffd76a')
       popItems(x, top, loot)
     },
     addChest(id: string, x: number, y: number, params: ChestParams): Chest { const c: Chest = { id, x, y, params, open: false, lid: 0, t: 0, shake: 0 }; chests.push(c); return c },
@@ -3913,7 +3914,7 @@ export function createCombat() {
           else if (input.fire && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx)
         }
         else if (reloadT > 0) { if (input.firePressed) reloadingDry() }
-        else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, 'vazio', '#aaaaaa') } }
+        else if (h.ammo <= 0) { if (input.firePressed) { sound('dry'); if (d.autoReload) startReload(); else addText(origin.x, origin.y - 40, tr('vazio'), '#aaaaaa') } }
         else if (d.fireMode === 'semi') { if (input.firePressed && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx) }
         // on release: aim with the button held, the shot leaves when it is let go
         else if (d.fireMode === 'release') { if (!input.fire && prevFire && cooldown <= 0) shoot(muzzle, spreadDeg, 1, ctx) }
@@ -4134,12 +4135,12 @@ export function createCombat() {
         }
       }
       // no room in its category and nothing of it in her wing to trade: a word over it says why it stays
-      else if (input.grab && hover && !hover.owned.cage && !hoverOwned && room()) addText(hover.x, hover.y - 30, CATEGORY_FULL[ownGroup(hover.owned.item)], '#c9ced6')
+      else if (input.grab && hover && !hover.owned.cage && !hoverOwned && room()) addText(hover.x, hover.y - 30, tr(CATEGORY_FULL[ownGroup(hover.owned.item)]), '#c9ced6')
       else if (input.grab && hoverOwned && !input.grabRun) {
         // the same item is in her inventory: grab equips it (the one on the floor stays);
         // not when the press is Correr's own key, so running over her items never swaps the one in her hand
         const slot = inv.findIndex(o => o.item === hoverOwned!.owned.item)
-        if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${items[hoverOwned.owned.item].name}`, '#c9ced6') }
+        if (slot >= 0 && slot !== cur) { equip(slot); addText(hoverOwned.x, hoverOwned.y - 30, `= ${tr(items[hoverOwned.owned.item].name)}`, '#c9ced6') }
       }
       // the nearest closed Baú in her reach: Pegar opens it when no item is offered, also from a key/button shared
       // with Correr (the gamepad's X has no other Pegar)

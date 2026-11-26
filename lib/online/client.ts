@@ -3,6 +3,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getPlayerProfile, normalizePlayerProfile, type PlayerProfile } from '@/lib/game-progression'
 import type { OnlineProfile } from './types'
+import { msg, t } from '@/lib/i18n'
 
 /* global process */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
@@ -10,7 +11,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
   || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
 
 export const onlineConfigured = Boolean(supabaseUrl && /^https?:\/\//.test(supabaseUrl) && supabaseKey)
-export const ONLINE_CONFIGURATION_MESSAGE = 'Online mode has not been configured yet. Campaign and Creative mode are still available.'
+export const ONLINE_CONFIGURATION_MESSAGE = msg('Online mode has not been configured yet. Campaign and Creative mode are still available.')
 let client: SupabaseClient | null = null
 
 /** A browser-only singleton: no server credentials or extra SSR auth runtime. */
@@ -47,11 +48,11 @@ export async function onlineRpc<T>(name: string, args?: Record<string, unknown>)
 
 export function onlineErrorMessage(error: unknown): string {
   const code = typeof error === 'object' && error ? (error as { code?: string }).code : ''
-  if (code === 'otp_expired') return 'Código inválido ou expirado. Confira o código ou peça um novo.'
-  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') return 'Aguarde um pouco antes de pedir outro código.'
-  if (error instanceof Error) return error.message
-  if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') return error.message
-  return 'Não foi possível completar a ação. Tente novamente.'
+  if (code === 'otp_expired') return t('Código inválido ou expirado. Confira o código ou peça um novo.')
+  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') return t('Aguarde um pouco antes de pedir outro código.')
+  if (error instanceof Error) return t(error.message)
+  if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') return t(error.message)
+  return t('Não foi possível completar a ação. Tente novamente.')
 }
 
 const BACKUP_KEY = 'chickenchess:online:profile-backups:v1'

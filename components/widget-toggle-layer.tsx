@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { createPortal } from "react-dom"
 import { Power } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useT } from "@/lib/i18n"
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
 
@@ -28,6 +29,7 @@ type TogglePosition = { left: number; top: number }
 type TogglePositions = Record<string, TogglePosition>
 
 export function WidgetToggleLayer({ items, onReady }: WidgetToggleLayerProps) {
+  const t = useT()
   const [mounted, setMounted] = useState(false)
   const [positions, setPositions] = useState<TogglePositions>({})
   const dragRef = useRef<{ id: string; pointerId: number; x: number; y: number; origin: { x: number; y: number }; moved: boolean } | null>(null)
@@ -75,7 +77,7 @@ export function WidgetToggleLayer({ items, onReady }: WidgetToggleLayerProps) {
   if (!mounted || typeof document === "undefined") return null
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-[120]" aria-label="Controles de energia dos widgets">
+    <div className="pointer-events-none fixed inset-0 z-[120]" aria-label={t("Controles de energia dos widgets")}>
       {items.map(item => {
         const position = positions[item.id]
         if (!position) return null
@@ -83,9 +85,9 @@ export function WidgetToggleLayer({ items, onReady }: WidgetToggleLayerProps) {
         return <button
           key={item.id}
           type="button"
-          aria-label={`${item.isOn ? "Desligar" : "Ligar"} ${item.label}`}
+          aria-label={t(item.isOn ? "Desligar {name}" : "Ligar {name}", { name: t(item.label) })}
           aria-pressed={item.isOn}
-          title={`${item.isOn ? "Desligar" : "Ligar"} ${item.label}`}
+          title={t(item.isOn ? "Desligar {name}" : "Ligar {name}", { name: t(item.label) })}
           data-widget-power={item.id}
           className={cn(
             "pointer-events-auto fixed z-[120] flex h-8 w-8 touch-none items-center justify-center rounded-full border bg-background shadow-md transition-colors group cursor-grab active:cursor-grabbing hover:text-[#60a5fa]",

@@ -4,13 +4,14 @@
 // chances, then from that group by the items' chances: both are weights, counted in proportion to each other (33%
 // in each group is a third each; 0 leaves it out). Pure; the draw and the platforms are in mine-items.ts.
 import { CONSUMABLE_IDS, INSTRUMENT_IDS, KEY_IDS, MAGIC_IDS, MINE_ITEM_IDS, SPORTS_IDS, WEAPON_IDS, type ItemId } from './items'
+import { msg } from '../i18n'
 
 export type MineItemGroupId = 'weapons' | 'instruments' | 'utilities'
 export const MINE_ITEM_GROUPS: { id: MineItemGroupId; label: string; items: ItemId[] }[] = [
-  { id: 'weapons', label: 'Armas', items: WEAPON_IDS },
-  { id: 'instruments', label: 'Instrumentos', items: INSTRUMENT_IDS },
+  { id: 'weapons', label: msg('Armas'), items: WEAPON_IDS },
+  { id: 'instruments', label: msg('Instrumentos'), items: INSTRUMENT_IDS },
   // the inventory's third group (lib/pigchicken/inventory.ts), without the Gaiolas
-  { id: 'utilities', label: 'Utilitários', items: [...SPORTS_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS] },
+  { id: 'utilities', label: msg('Utilitários'), items: [...SPORTS_IDS, ...CONSUMABLE_IDS, ...MAGIC_IDS, ...KEY_IDS, ...MINE_ITEM_IDS] },
 ]
 const ALL_ITEMS = new Set(MINE_ITEM_GROUPS.flatMap(g => g.items))
 

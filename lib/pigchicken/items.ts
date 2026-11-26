@@ -1,3 +1,4 @@
+import { msg } from '../i18n'
 // PigChicKen items: weapons and instruments share one sheet of numbers. An instrument is its weapon family's
 // sheet with a music block: the projectile is a note, and notes convert (fill the harmony bar) instead of
 // destroying. The Parquinho's item popup edits these sheets; they are saved in this browser for now.
@@ -15,7 +16,7 @@ export type FireMode = 'semi' | 'auto' | 'burst' | 'charge' | 'release'
 // when the projectile's path is drawn: never, while the fire button is held, held or with the aim locked, always
 export type PathShow = 'off' | 'hold' | 'holdAim' | 'always'
 export const PATH_SHOWS: { value: PathShow; label: string }[] = [
-  { value: 'off', label: 'Escondido' }, { value: 'hold', label: 'Com o tiro segurado' }, { value: 'holdAim', label: 'Tiro segurado ou mira travada' }, { value: 'always', label: 'Sempre' },
+  { value: 'off', label: msg("Escondido") }, { value: 'hold', label: msg("Com o tiro segurado") }, { value: 'holdAim', label: msg("Tiro segurado ou mira travada") }, { value: 'always', label: msg("Sempre") },
 ]
 export type ItemId = 'wing' | 'peck' | 'piu' | 'chainBlow' | 'tailBlow' | 'bat' | 'pistol' | 'smg' | 'rifle' | 'pump' | 'sniper' | 'launcher' | 'grenade' | 'bow'
   | 'flute' | 'sax' | 'trumpet' | 'guitar' | 'violin' | 'keys' | 'tambourine' | 'harp' | 'hangdrum' | 'pedalharp' | 'drumkit' | 'grandpiano'
@@ -26,24 +27,24 @@ export type ItemId = 'wing' | 'peck' | 'piu' | 'chainBlow' | 'tailBlow' | 'bat' 
 export type Arp = 'off' | 'up' | 'down' | 'updown' | 'random' | 'phrase'
 // what an instrument's tremolo follows: the aim turning, or the aim moving along the string (nearer / farther)
 export type TremoloAxis = 'turn' | 'along'
-export const TREMOLO_AXES: { value: TremoloAxis; label: string }[] = [{ value: 'turn', label: 'Giro da mira' }, { value: 'along', label: 'Movimento ao longo da corda' }]
+export const TREMOLO_AXES: { value: TremoloAxis; label: string }[] = [{ value: 'turn', label: msg("Giro da mira") }, { value: 'along', label: msg("Movimento ao longo da corda") }]
 // two hands on the Cordas soltas pressed together: how long after the back hand's string the front hand's sounds,
 // in beats of the song (0: together)
-export const HAND_DELAYS: { value: number; label: string }[] = [{ value: 0, label: 'Juntas' }, { value: 0.125, label: 'Fusa' }, { value: 0.25, label: 'Semicolcheia' }, { value: 0.5, label: 'Colcheia' }, { value: 1, label: 'Semínima' }]
+export const HAND_DELAYS: { value: number; label: string }[] = [{ value: 0, label: msg("Juntas") }, { value: 0.125, label: msg("Fusa") }, { value: 0.25, label: msg("Semicolcheia") }, { value: 0.5, label: msg("Colcheia") }, { value: 1, label: msg("Semínima") }]
 // each family's reticle shows what matters for it
 export type Reticle = 'dot' | 'circle' | 'cross' | 'cone' | 'laser' | 'impact' | 'grenade' | 'bow'
 // consumables: how her walk / run picks up speed while the effect lasts. linear: at a steady rate (her own
 // acceleration); superIn ("ease-super-in"): it starts slow and ends fast, reaching full speed in `effectRamp` seconds
 export type AccelCurve = 'linear' | 'easeIn' | 'superIn'
 export const ACCEL_CURVES: { value: AccelCurve; label: string; power: number }[] = [
-  { value: 'linear', label: 'Linear (a aceleração dela)', power: 1 },
-  { value: 'easeIn', label: 'Ease in (começa devagar)', power: 2 },
-  { value: 'superIn', label: 'Ease super in (lento, depois rápido)', power: 3 },
+  { value: 'linear', label: msg("Linear (a aceleração dela)"), power: 1 },
+  { value: 'easeIn', label: msg("Ease in (começa devagar)"), power: 2 },
+  { value: 'superIn', label: msg("Ease super in (lento, depois rápido)"), power: 3 },
 ]
 // the state an effect puts her in (drawn on her): buddha: a golden halo, a calm glow and half-closed eyes; fizz: bubbles
 export type EffectLook = 'none' | 'buddha' | 'fizz'
 export const EFFECT_LOOKS: { value: EffectLook; label: string }[] = [
-  { value: 'none', label: 'Nenhum' }, { value: 'buddha', label: 'Estado búdico (auréola dourada)' }, { value: 'fizz', label: 'Gás (bolhinhas)' },
+  { value: 'none', label: msg("Nenhum") }, { value: 'buddha', label: msg("Estado búdico (auréola dourada)") }, { value: 'fizz', label: msg("Gás (bolhinhas)") },
 ]
 
 export type ItemDef = {
@@ -326,7 +327,7 @@ export type ItemDef = {
 }
 // what a special sounds and looks like: thunder (a bolt from the sky and its rumble) or lightning (long crackling arcs)
 export type SpecialKind = 'thunder' | 'lightning'
-export const SPECIAL_KINDS: { value: SpecialKind; label: string }[] = [{ value: 'thunder', label: 'Trovão (raio do céu)' }, { value: 'lightning', label: 'Raio (arcos longos)' }]
+export const SPECIAL_KINDS: { value: SpecialKind; label: string }[] = [{ value: 'thunder', label: msg("Trovão (raio do céu)") }, { value: 'lightning', label: msg("Raio (arcos longos)") }]
 /** A staff: an item only for hitting, carried in its own pose and with a strong blow on Atirar. */
 export const isStaff = (d: ItemDef) => d.meleeOnly
 // the body parts a held item can turn around
@@ -338,7 +339,7 @@ export function itemRig(d: ItemDef, draw = 0): { at: PivotPart; x: number; y: nu
   if (d.pivotAt === 'shoulder' && !d.pivotX && !d.pivotY && !d.handOn && !d.backOn) return null
   return { at: d.pivotAt, x: d.pivotX, y: d.pivotY, hand: d.handOn ? { x: d.handX - draw, y: d.handY } : null, back: d.backOn ? { x: d.backX, y: d.backY } : null, flip: d.wingFlip }
 }
-export const PIVOT_PARTS: { value: PivotPart; label: string }[] = [{ value: 'shoulder', label: 'Ombro (padrão)' }, { value: 'mouth', label: 'Boca (bico)' }]
+export const PIVOT_PARTS: { value: PivotPart; label: string }[] = [{ value: 'shoulder', label: msg("Ombro (padrão)") }, { value: 'mouth', label: msg("Boca (bico)") }]
 
 // the air a blow leaves behind: cream, like the reference
 export const TRAIL_CREAM = '#fff4dc'
@@ -366,7 +367,7 @@ function chain(...steps: [TransformKind, string?, number?][]): Transform[] {
 }
 
 const PISTOL: ItemDef = {
-  id: 'pistol', name: 'Pistola', family: 'Pistola', reticle: 'dot', pathShow: 'off', landShow: 'always',
+  id: 'pistol', name: msg("Pistola"), family: msg("Pistola"), reticle: 'dot', pathShow: 'off', landShow: 'always',
   fireMode: 'semi', rate: 6, burst: 3, burstHold: true, mag: 12, reloadTime: 1.1, autoReload: true, slideFire: true, shellReload: false, infiniteAmmo: false, refillTime: 0, refillAmount: 1, meleeOnly: false, chargeTime: 0.1, chargeMin: 0.3,
   speed: 1500, drop: 0, damage: 12, pierce: 0, range: 1100, size: 3, pellets: 1, hitscan: false, explodeRadius: 0, explodeDamage: 0, explodePush: 0, fuse: 0, bounce: 0,
   spreadBase: 1.5, spreadShot: 2.2, spreadMax: 9, spreadRecover: 14, spreadMove: 1.5, spreadAir: 3, crouchMult: 0.7, broodMult: 0.5,
@@ -382,7 +383,7 @@ const PISTOL: ItemDef = {
 }
 
 const SMG: ItemDef = {
-  ...PISTOL, id: 'smg', name: 'Submetralhadora', family: 'SMG', reticle: 'circle',
+  ...PISTOL, id: 'smg', name: msg("Submetralhadora"), family: msg("SMG"), reticle: 'circle',
   fireMode: 'auto', rate: 14, mag: 35, reloadTime: 1.4,
   speed: 1600, damage: 6, range: 900, size: 2,
   spreadBase: 3, spreadShot: 0.8, spreadMax: 12, spreadRecover: 18, spreadMove: 2, spreadAir: 3,
@@ -392,7 +393,7 @@ const SMG: ItemDef = {
 }
 
 const RIFLE: ItemDef = {
-  ...PISTOL, id: 'rifle', name: 'Rifle', family: 'Rifle', reticle: 'cross',
+  ...PISTOL, id: 'rifle', name: msg("Rifle"), family: msg("Rifle"), reticle: 'cross',
   fireMode: 'auto', rate: 9, mag: 30, reloadTime: 1.8,
   speed: 2200, damage: 14, pierce: 1, range: 1600,
   spreadBase: 1, spreadShot: 1.2, spreadMax: 10, spreadRecover: 14, spreadMove: 3, spreadAir: 5,
@@ -402,7 +403,7 @@ const RIFLE: ItemDef = {
 }
 
 const PUMP: ItemDef = {
-  ...PISTOL, id: 'pump', name: 'Escopeta (pump)', family: 'Pump', reticle: 'cone',
+  ...PISTOL, id: 'pump', name: msg("Escopeta (pump)"), family: msg("Pump"), reticle: 'cone',
   fireMode: 'semi', rate: 1.25, mag: 6, reloadTime: 0.45, shellReload: true,
   speed: 1400, damage: 9, range: 520, pellets: 8,
   spreadBase: 14, spreadShot: 0, spreadMax: 18, spreadRecover: 30, spreadMove: 2, spreadAir: 3,
@@ -412,7 +413,7 @@ const PUMP: ItemDef = {
 }
 
 const SNIPER: ItemDef = {
-  ...PISTOL, id: 'sniper', name: 'Sniper', family: 'Sniper', reticle: 'laser',
+  ...PISTOL, id: 'sniper', name: msg("Sniper"), family: msg("Sniper"), reticle: 'laser',
   fireMode: 'release', pathShow: 'holdAim', rate: 0.83, mag: 5, reloadTime: 2.2,
   speed: 4000, damage: 90, pierce: 10, range: 3000, size: 2, hitscan: true,
   spreadBase: 0.3, spreadShot: 6, spreadMax: 8, spreadRecover: 4, spreadMove: 6, spreadAir: 10, crouchMult: 0.5, broodMult: 0.2,
@@ -423,7 +424,7 @@ const SNIPER: ItemDef = {
 }
 
 const LAUNCHER: ItemDef = {
-  ...PISTOL, id: 'launcher', name: 'Lança-foguetes', family: 'Lançadores', reticle: 'impact',
+  ...PISTOL, id: 'launcher', name: msg("Lança-foguetes"), family: msg("Lançadores"), reticle: 'impact',
   fireMode: 'semi', rate: 1, mag: 1, reloadTime: 1.6,
   speed: 900, damage: 0, range: 1600, size: 6, explodeRadius: 130, explodeDamage: 80, explodePush: 1100,
   spreadBase: 1, spreadShot: 0, spreadMax: 2, spreadMove: 1, spreadAir: 2,
@@ -433,7 +434,7 @@ const LAUNCHER: ItemDef = {
 }
 
 const GRENADE: ItemDef = {
-  ...PISTOL, id: 'grenade', name: 'Granada', family: 'Granadas', reticle: 'grenade', pathShow: 'hold', landShow: 'hold',
+  ...PISTOL, id: 'grenade', name: msg("Granada"), family: msg("Granadas"), reticle: 'grenade', pathShow: 'hold', landShow: 'hold',
   fireMode: 'charge', rate: 1.5, mag: 3, reloadTime: 2.5, chargeTime: 0.8, chargeMin: 0.3, infiniteAmmo: true,
   speed: 1100, drop: 1500, damage: 0, range: 3000, size: 8, explodeRadius: 140, explodeDamage: 90, explodePush: 1250, fuse: 2.5, bounce: 0.45,
   spreadBase: 0, spreadShot: 0, spreadMax: 1, spreadMove: 0.5, spreadAir: 1,
@@ -443,7 +444,7 @@ const GRENADE: ItemDef = {
 }
 
 const BOW: ItemDef = {
-  ...PISTOL, id: 'bow', name: 'Arco', family: 'Arco', reticle: 'bow', pathShow: 'hold',
+  ...PISTOL, id: 'bow', name: msg("Arco"), family: msg("Arco"), reticle: 'bow', pathShow: 'hold',
   fireMode: 'charge', rate: 2, mag: 12, reloadTime: 1.5, chargeTime: 0.9, chargeMin: 0.25,
   speed: 1700, drop: 900, damage: 40, range: 2500,
   spreadBase: 0.5, spreadShot: 0, spreadMax: 3, spreadMove: 1, spreadAir: 2,
@@ -456,7 +457,7 @@ const BOW: ItemDef = {
 
 // Empty hands: Golpe keeps the wing slap; Fire prepares a separate beak strike.
 const WING: ItemDef = {
-  ...PISTOL, id: 'wing', name: 'Asa (sem item)', family: 'Sem item',
+  ...PISTOL, id: 'wing', name: msg("Asa (sem item)"), family: msg("Sem item"),
   mag: 0, rate: 2.5, damage: 0, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
   meleeDamage: 8, meleeRange: 80, meleeArc: 120, combo: swingCombo(120), meleeCooldown: 0, durability: 0, meleePush: 180, throwDamage: 0,
   trailWidth: 18, trailWisps: 3,
@@ -467,13 +468,13 @@ const WING: ItemDef = {
 // nothing in the wing. Golpe is the quick blow in the combo; Atirar arms the strong blow, charged while held and let go
 // to hit. The chain reaches further and pushes harder; the tail sweeps wider arcs, behind her too.
 const CHAIN_BLOW: ItemDef = {
-  ...WING, id: 'chainBlow', name: 'Correntada', mag: 0, length: 0,
+  ...WING, id: 'chainBlow', name: msg("Correntada"), mag: 0, length: 0,
   meleeDamage: 12, meleeRange: 110, meleeArc: 150, combo: swingCombo(150, 150, 190), meleeTime: 0.2, meleePush: 380,
   trailWidth: 22, trailColor: '#9d9ca8', trailWisps: 4,
   heavyDamage: 34, heavyRange: 130, heavyArc: 200, heavyTime: 0.45, heavyPush: 760, heavyTrailWidth: 34,
 }
 const TAIL_BLOW: ItemDef = {
-  ...WING, id: 'tailBlow', name: 'Rabada', mag: 0, length: 0,
+  ...WING, id: 'tailBlow', name: msg("Rabada"), mag: 0, length: 0,
   meleeDamage: 10, meleeRange: 92, meleeArc: 220, combo: swingCombo(220, 220, 260), meleeTime: 0.15, meleePush: 240,
   trailWidth: 26, trailColor: '#fae4c8', trailWisps: 5,
   heavyDamage: 28, heavyRange: 104, heavyArc: 300, heavyTime: 0.36, heavyPush: 520, heavyTrailWidth: 38,
@@ -483,7 +484,7 @@ const TAIL_BLOW: ItemDef = {
 // faster with a wooden "tok", and its chain keeps the note and only accents it (the neutral taco). It has 8 blows
 // in a row (its "bullets"), which come back one every half second, or all at once when it is emptied
 const BAT: ItemDef = {
-  ...WING, id: 'bat', name: 'Taco', family: 'Taco', reticle: 'dot', meleeOnly: true, mag: 8, reloadTime: 1.2, autoReload: true, refillTime: 0.5, refillAmount: 1,
+  ...WING, id: 'bat', name: msg("Taco"), family: msg("Taco"), reticle: 'dot', meleeOnly: true, mag: 8, reloadTime: 1.2, autoReload: true, refillTime: 0.5, refillAmount: 1,
   muzzleX: 0, muzzleY: 0, length: 74, meleeDamage: 22, meleeRange: 70, meleeArc: 150, combo: swingCombo(150, 150, 200),
   meleeTime: 0.16, meleePush: 420, durability: 0, throwDamage: 22, trailWidth: 30, trailWisps: 5,
   gripX: 5, heavyDamage: 40, heavyRange: 75, heavyArc: 170, heavyTime: 0.42, heavyPush: 700, heavyTrailWidth: 40,
@@ -493,7 +494,7 @@ const BAT: ItemDef = {
 // Passaguá: a light bird net. It sweeps like any staff and catches living and undead birds and souls; with damage
 // set, the same blow hurts and pushes whatever it did not catch.
 const PASSAGUA: ItemDef = {
-  ...WING, id: 'passagua', name: 'Passaguá', family: 'Esportivos', reticle: 'dot', meleeOnly: true, mag: 0,
+  ...WING, id: 'passagua', name: msg("Passaguá"), family: msg("Esportivos"), reticle: 'dot', meleeOnly: true, mag: 0,
   muzzleX: 0, muzzleY: 0, length: 72, meleeDamage: 0, meleeRange: 66, meleeArc: 150, combo: swingCombo(150, 150, 190),
   meleeTime: 0.22, meleePush: 0, durability: 0, throwDamage: 0, throwMin: 0, throwSpeed: 0,
   trailWidth: 16, trailColor: '#cceef0', trailTime: 0.3, trailWisps: 2, trailOpacity: 0.26,
@@ -504,7 +505,7 @@ const PASSAGUA: ItemDef = {
 // Martelo de Thor: a short, heavy war hammer. Golpe hits and shocks whoever it hits and the ones around; Atirar
 // throws it straight and it comes back to her wing. No blows to count: it never runs out
 const MJOLNIR: ItemDef = {
-  ...BAT, id: 'mjolnir', name: 'Martelo de Thor', family: 'Magia', mag: 0, refillTime: 0, weight: 0.9,
+  ...BAT, id: 'mjolnir', name: msg("Martelo de Thor"), family: msg("Magia"), mag: 0, refillTime: 0, weight: 0.9,
   length: 48, meleeDamage: 30, meleeRange: 66, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.2, meleePush: 520, throwDamage: 30,
   trailWidth: 34, trailColor: '#bfe6ff', gripX: 6, staffX: 36, staffY: 30, staffAngle: -120,
   shockRange: 170, shockJumps: 3, shockTime: 0.35, shockDamage: 8, shockDrain: 10,
@@ -514,7 +515,7 @@ const MJOLNIR: ItemDef = {
 // Cajado de Odin: a long golden staff. Both its blows shock, further than the hammer's: the quick one (Golpe) a short
 // shock, the strong one (Atirar, charged) a longer one that reaches more of them
 const ODINSTAFF: ItemDef = {
-  ...BAT, id: 'odinstaff', name: 'Cajado de Odin', family: 'Magia', mag: 0, refillTime: 0,
+  ...BAT, id: 'odinstaff', name: msg("Cajado de Odin"), family: msg("Magia"), mag: 0, refillTime: 0,
   length: 90, meleeDamage: 16, meleeRange: 70, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.2, meleePush: 300, throwDamage: 16,
   trailWidth: 26, trailColor: '#ffe9a8', gripX: 34, staffX: 34, staffY: 30, staffAngle: -100,
   heavyDamage: 30, heavyRange: 75, heavyArc: 170, heavyTime: 0.45, heavyPush: 500, heavyTrailWidth: 34,
@@ -525,7 +526,7 @@ const ODINSTAFF: ItemDef = {
 // Boomerang: a light curved blade of wood. Golpe hits with it; Atirar throws it like the hammer, further and in a
 // wider curve, with no shock. There are two, one in each wing: the second can leave while the first is still away
 const BOOMERANG: ItemDef = {
-  ...BAT, id: 'boomerang', name: 'Boomerang', family: 'Esportivos', mag: 0, refillTime: 0, weight: 1,
+  ...BAT, id: 'boomerang', name: msg("Boomerang"), family: msg("Esportivos"), mag: 0, refillTime: 0, weight: 1,
   length: 40, meleeDamage: 14, meleeRange: 62, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.16, meleePush: 300, throwDamage: 18,
   trailWidth: 22, trailColor: '#f3dcae', gripX: 4, staffX: 34, staffY: 30, staffAngle: -70,
   rebateTok: true, rebateSpeed: 1.3,
@@ -534,7 +535,7 @@ const BOOMERANG: ItemDef = {
 // Baralho vermelho: a deck of 14 cards (lib/pigchicken/cards.ts). Golpe slaps with the deck; Atirar throws the next
 // card to where she aims, where it floats until someone touches it and it bursts, hurting and pushing
 const CARDS_RED: ItemDef = {
-  ...BAT, id: 'cardsRed', name: 'Baralho vermelho', family: 'Magia', mag: 0, refillTime: 0, weight: 1,
+  ...BAT, id: 'cardsRed', name: msg("Baralho vermelho"), family: msg("Magia"), mag: 0, refillTime: 0, weight: 1,
   length: 22, meleeDamage: 10, meleeRange: 60, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.15, meleePush: 220, throwDamage: 10,
   trailWidth: 18, trailColor: '#ffd9d9', gripX: 0, staffX: 36, staffY: 22, staffAngle: -60,
   rebateTok: false, rebateSpeed: 1.1,
@@ -545,7 +546,7 @@ const CARDS_RED: ItemDef = {
 // Baralho azul: the same deck in music. Each card keeps the note of the scale she aimed at when she threw it, and
 // plays it when it bursts: whoever is around takes harmony instead of damage (and the push)
 const CARDS_BLUE: ItemDef = {
-  ...CARDS_RED, id: 'cardsBlue', name: 'Baralho azul', trailColor: '#d6e6ff',
+  ...CARDS_RED, id: 'cardsBlue', name: msg("Baralho azul"), trailColor: '#d6e6ff',
   explodeRadius: 110, explodeDamage: 40, explodePush: 500,
   instrument: true, voice: 'bells', pitchSet: 'scale', octave: 1, span: 2, noteLen: 0.6, stun: 0.3, turnRate: 0, scales: ['primary'],
 }
@@ -554,14 +555,14 @@ const CARDS_BLUE: ItemDef = {
 // latches on a wall, a floor or an object and pulls her to it, or on a character, an enemy or a dummy and pulls it to
 // her. Made with the Pig in mind; every class can use it
 const HOOK: ItemDef = {
-  ...BAT, id: 'hook', name: 'Corrente-gancho', family: 'Esportivos', mag: 0, refillTime: 0, weight: 0.95,
+  ...BAT, id: 'hook', name: msg("Corrente-gancho"), family: msg("Esportivos"), mag: 0, refillTime: 0, weight: 0.95,
   length: 70, meleeDamage: 16, meleeRange: 72, meleeArc: 150, combo: swingCombo(150, 150, 200), meleeTime: 0.2, meleePush: 320, throwDamage: 16,
   trailWidth: 22, trailColor: '#d9d7e0', gripX: 0, staffX: 30, staffY: 18, staffAngle: 82, windX: 4, windY: -64, windAngle: -90,
   rebateTok: true, rebateSpeed: 1.2,
   grapple: true, hookRange: 900, hookSpeed: 2400, hookCharge: 0.6, hookPull: 1500, hookPullMin: 0.6, hookDamage: 8, hookTime: 1.5,
 }
 const PECK: ItemDef = {
-  ...WING, id: 'peck', name: 'Bicada', family: 'Sem item',
+  ...WING, id: 'peck', name: msg("Bicada"), family: msg("Sem item"),
   meleeDamage: 12, meleeRange: 85, meleeArc: 160, meleeCooldown: 0.1, meleeTime: 0.16, meleePush: 220,
   chargeTime: 0.12, peckPull: 38,
   rebateChain: [],
@@ -569,7 +570,7 @@ const PECK: ItemDef = {
 // the Filhote's empty hand (Atirar or Golpe): a peep that lets out a small note, which flies a little way and gives
 // a little harmony (Projétil: Bônus musical por nota, speed, reach, size; Disparo: Cadência)
 const PIU: ItemDef = {
-  ...PECK, id: 'piu', name: 'Piu piu', family: 'Sem item',
+  ...PECK, id: 'piu', name: msg("Piu piu"), family: msg("Sem item"),
   rate: 4, damage: 5, speed: 520, range: 240, size: 4, drop: 0, pierce: 0, noteLen: 0.16, voice: 'bird', octave: 1, span: 1,
   meleeDamage: 0, meleePush: 0, meleeCooldown: 0,
 }
@@ -581,7 +582,7 @@ const MUSIC_MELEE = { meleeDamage: 10, durability: 0, refillTime: 0.5, throwDama
 
 // Flautas → pistol: one short note per press
 const FLUTE: ItemDef = {
-  ...PISTOL, ...MUSIC_MELEE, id: 'flute', name: 'Flauta', family: 'Flautas', reticle: 'dot',
+  ...PISTOL, ...MUSIC_MELEE, id: 'flute', name: msg("Flauta"), family: msg("Flautas"), reticle: 'dot',
   rate: 13, mag: 60, reloadTime: 0.9, speed: 900, damage: 14, size: 10, range: 1000, spreadBase: 1, spreadShot: 1,
   recoilKick: 2, recoilPush: 200, muzzleX: 60, muzzleY: 0, length: 60,
   instrument: true, voice: 'flute', vibratoDepth: 10, vibratoDelay: 0.12, pitchSet: 'chord', octave: 1, span: 2, noteLen: 0.22, wave: 7, tremolo: 0.35, volMin: 0.45,
@@ -590,7 +591,7 @@ const FLUTE: ItemDef = {
 }
 // Palhetas → SMG: holding plays a fast arpeggio of the chord
 const SAX: ItemDef = {
-  ...SMG, ...MUSIC_MELEE, id: 'sax', name: 'Sax', family: 'Palhetas', reticle: 'circle',
+  ...SMG, ...MUSIC_MELEE, id: 'sax', name: msg("Sax"), family: msg("Palhetas"), reticle: 'circle',
   rate: 8, burst: 6, mag: 32, speed: 850, damage: 5, size: 9, range: 800,
   recoilKick: 2, recoilPush: 160, weight: 0.75, turnRate: 0, muzzleX: 32, muzzleY: 18, length: 50,
   instrument: true, voice: 'sax', vibratoDepth: 14, vibratoDelay: 0.1, pitchSet: 'chord', octave: 0, span: 1.5, arp: 'updown', noteLen: 0.12, wave: 9, tremolo: 0.5, volMin: 0.5,
@@ -599,7 +600,7 @@ const SAX: ItemDef = {
 }
 // Metais → rifle: a phrase of 3 notes per press, going through one enemy
 const TRUMPET: ItemDef = {
-  ...RIFLE, ...MUSIC_MELEE, id: 'trumpet', name: 'Trompete', family: 'Metais', reticle: 'cross',
+  ...RIFLE, ...MUSIC_MELEE, id: 'trumpet', name: msg("Trompete"), family: msg("Metais"), reticle: 'cross',
   fireMode: 'burst', burst: 3, rate: 9, mag: 24, reloadTime: 0.2, refillTime: 0.25, speed: 1300, damage: 10, size: 10, pierce: 1,
   recoilKick: 3, recoilPush: 260, turnRate: 0, muzzleX: 66, muzzleY: -5, length: 66,
   instrument: true, voice: 'trumpet', vibratoDepth: 9, vibratoDelay: 0.2, pitchSet: 'scale', octave: 0, span: 2, arp: 'phrase', noteLen: 0.12, wave: 4, tremolo: 0.4, volMin: 0.55,
@@ -608,7 +609,7 @@ const TRUMPET: ItemDef = {
 }
 // Cordas → pump: a strummed chord in a fan, each pellet one note of the chord
 const GUITAR: ItemDef = {
-  ...PUMP, ...MUSIC_MELEE, id: 'guitar', name: 'Violão', family: 'Cordas', reticle: 'cone',
+  ...PUMP, ...MUSIC_MELEE, id: 'guitar', name: msg("Violão"), family: msg("Cordas"), reticle: 'cone',
   rate: 17, burst: 5, mag: 60, reloadTime: 0.2, refillTime: 0.55, refillAmount: 4, pellets: 2, speed: 900, damage: 9, size: 10, range: 850,
   spreadBase: 20, spreadMax: 30, recoilKick: 5, recoilPush: 100, turnRate: 0, muzzleX: 87, muzzleY: 0, length: 87,
   instrument: true, voice: 'guitar', pitchSet: 'chord', octave: -1, span: 2, noteLen: 0.5, wave: 3, strum: 0.022, tremolo: 0.45, volMin: 0.5,
@@ -617,7 +618,7 @@ const GUITAR: ItemDef = {
 }
 // Cordas friccionadas → sniper: a held note in a beam; it keeps the enemy still while it plays
 const VIOLIN: ItemDef = {
-  ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: 'Violino', family: 'Cordas friccionadas', reticle: 'laser', pathShow: 'off',
+  ...SNIPER, ...MUSIC_MELEE, id: 'violin', name: msg("Violino"), family: msg("Cordas friccionadas"), reticle: 'laser', pathShow: 'off',
   fireMode: 'auto', rate: 1, mag: 4, reloadTime: 1.2, damage: 32, hitscan: false, pierce: 0, range: 1400, scope: false,
   spreadBase: 0, spreadShot: 0, spreadMove: 0, spreadAir: 0, recoilKick: 0, recoilPush: 90, speed: 4000, weight: 0.6, turnRate: 0, muzzleX: 78, muzzleY: 0, length: 78,
   instrument: true, voice: 'violin', vibratoDepth: 12, vibratoDelay: 0.25, pitchSet: 'chord', octave: 0, span: 2, noteLen: 0.5, wave: 0, beam: true, stun: 0.4, tremolo: 1, tremoloRange: 2, volMin: 0.3, fretless: true,
@@ -626,7 +627,7 @@ const VIOLIN: ItemDef = {
 }
 // Teclas → launcher: a slow low note that bursts into a chord where it lands, pushing and converting around
 const KEYS: ItemDef = {
-  ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: 'Teclado', family: 'Teclas', reticle: 'impact',
+  ...LAUNCHER, ...MUSIC_MELEE, id: 'keys', name: msg("Teclado"), family: msg("Teclas"), reticle: 'impact',
   rate: 1, burst: 4, chargeTime: 0.25, mag: 33, reloadTime: 1.4, speed: 650, size: 12, explodeRadius: 150, explodeDamage: 45, explodePush: 900, damage: 0, hitscan: true,
   recoilKick: 6, recoilPush: 120, turnRate: 0, muzzleX: 82, muzzleY: -9, length: 82,
   instrument: true, voice: 'keys', pitchSet: 'chord', octave: -1, span: 1.5, noteLen: 0.6, wave: 5, ringNotes: 6, volMin: 0.6,
@@ -635,14 +636,14 @@ const KEYS: ItemDef = {
 }
 // Percussion fires a musical note with a fuse, then lets out notes in a circle.
 const TAMBOURINE: ItemDef = {
-  ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: 'Pandeiro', family: 'Percussão', reticle: 'grenade', landShow: 'hold',
+  ...GRENADE, ...MUSIC_MELEE, id: 'tambourine', name: msg("Pandeiro"), family: msg("Percussão"), reticle: 'grenade', landShow: 'hold',
   mag: 3, infiniteAmmo: false, fuse: 1.6, range: 3000, explodeRadius: 120, explodeDamage: 20, explodePush: 1000, size: 12, recoilPush: 40, muzzleX: 14, muzzleY: 0, length: 20,
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
 // Harpa de Lira (Harpas) → bow: the charge is a glissando, the note rises with the charge and flies far and precise
 const HARP: ItemDef = {
-  ...BOW, ...MUSIC_MELEE, id: 'harp', name: 'Harpa de Lira', family: 'Harpas', reticle: 'bow', archery: false, pivotX: 0,
+  ...BOW, ...MUSIC_MELEE, id: 'harp', name: msg("Harpa de Lira"), family: msg("Harpas"), reticle: 'bow', archery: false, pivotX: 0,
   damage: 40, size: 12, speed: 1500, drop: 700, recoilPush: 60, muzzleX: 21, muzzleY: -10, length: 30,
   instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
@@ -652,7 +653,7 @@ const HARP: ItemDef = {
 // between its notes slaps it (a percussive hit). Its kind of sound is its voice (Hang clássico, Handpan nitretado,
 // Handpan inox)
 const HANGDRUM: ItemDef = {
-  ...PISTOL, ...MUSIC_MELEE, id: 'hangdrum', name: 'Hangdrum', family: 'Idiofones', reticle: 'dot',
+  ...PISTOL, ...MUSIC_MELEE, id: 'hangdrum', name: msg("Hangdrum"), family: msg("Idiofones"), reticle: 'dot',
   rate: 8, mag: 40, reloadTime: 0.9, speed: 800, damage: 14, size: 11, range: 950, spreadBase: 1, spreadShot: 0.5,
   recoilKick: 1, recoilPush: 30, muzzleX: 58, muzzleY: -6, length: 60,
   instrument: true, voice: 'hang', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 0.8, volMax: 0.8,
@@ -663,7 +664,7 @@ const HANGDRUM: ItemDef = {
 // carries it: a player sits at it and plays its strings (the Cordas soltas, its only scale). The pistol's sheet only
 // for the notes that fly off the strings; no magazine, no reload, no blow
 const PEDALHARP: ItemDef = {
-  ...PISTOL, ...MUSIC_MELEE, id: 'pedalharp', name: 'Harpa', family: 'Harpas', reticle: 'dot',
+  ...PISTOL, ...MUSIC_MELEE, id: 'pedalharp', name: msg("Harpa"), family: msg("Harpas"), reticle: 'dot',
   mag: 0, speed: 700, damage: 14, size: 11, range: 950, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
   instrument: true, voice: 'pedalHarp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 0.5, volMax: 1, quantize: false,
   scales: ['strings'], handOn: false, backOn: false,
@@ -671,7 +672,7 @@ const PEDALHARP: ItemDef = {
 // Bateria (Baterias, instrumento fixo): an acoustic drum kit standing in the Pátio, played sitting on its throne on
 // the scale Bateria (lib/pigchicken/drum-kit.ts). Each hit sends a batida flying; no magazine, no reload, no blow
 const DRUMKIT: ItemDef = {
-  ...PISTOL, ...MUSIC_MELEE, id: 'drumkit', name: 'Bateria', family: 'Baterias', reticle: 'dot',
+  ...PISTOL, ...MUSIC_MELEE, id: 'drumkit', name: msg("Bateria"), family: msg("Baterias"), reticle: 'dot',
   mag: 0, speed: 700, damage: 10, size: 11, range: 800, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
   instrument: true, voice: 'kit', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.3, wave: 2, volMin: 1, volMax: 1, quantize: false,
   scales: ['drums'], handOn: false, backOn: false,
@@ -681,7 +682,7 @@ const DRUMKIT: ItemDef = {
 // (lib/pigchicken/star-play.ts), not the aim's distance. The notes fly off like the Harpa's; no magazine, no reload,
 // no blow
 const GRANDPIANO: ItemDef = {
-  ...PISTOL, ...MUSIC_MELEE, id: 'grandpiano', name: 'Piano de cauda', family: 'Teclas', reticle: 'dot',
+  ...PISTOL, ...MUSIC_MELEE, id: 'grandpiano', name: msg("Piano de cauda"), family: msg("Teclas"), reticle: 'dot',
   mag: 0, speed: 700, damage: 12, size: 11, range: 900, recoilKick: 0, recoilPush: 0, muzzleX: 0, muzzleY: 0, length: 0,
   instrument: true, voice: 'grandPiano', pitchSet: 'scale', octave: 0, span: 2, noteLen: 1.5, wave: 3, volMin: 1, volMax: 1, quantize: false,
   scales: ['star'], handOn: false, backOn: false,
@@ -696,34 +697,34 @@ const CONSUMABLE = {
 }
 // Bear Gummy (id maryjane): a red gummy bear. The buddha state: a third faster, and every start is slow at first and fast at the end
 const MARYJANE: ItemDef = {
-  ...CONSUMABLE, id: 'maryjane', name: 'Bear Gummy', family: 'Habilidades especiais',
+  ...CONSUMABLE, id: 'maryjane', name: msg("Bear Gummy"), family: msg("Habilidades especiais"),
   effectTime: 15, effectSpeed: 1.33, effectAccel: 1, effectCurve: 'superIn', effectRamp: 0.6, effectLook: 'buddha',
 }
 // Cok: a little glass bottle of soda. The opposite: slower in the end, but quicker off the mark
 const COK: ItemDef = {
-  ...CONSUMABLE, id: 'cok', name: 'Cok', family: 'Habilidades especiais',
+  ...CONSUMABLE, id: 'cok', name: msg("Cok"), family: msg("Habilidades especiais"),
   consumeKind: 'liquid',
   effectTime: 15, effectSpeed: 0.78, effectAccel: 1.33, effectCurve: 'linear', effectRamp: 0.5, effectLook: 'fizz',
 }
 // Chave: opens a Baú that asks for one (lib/pigchicken/chests.ts); kept in a stack like the consumables, but Atirar
 // does nothing with it
 const KEY: ItemDef = {
-  ...CONSUMABLE, id: 'key', name: 'Chave', family: 'Chaves',
+  ...CONSUMABLE, id: 'key', name: msg("Chave"), family: msg("Chaves"),
 }
 // The Grade de blocos' own items (lib/pigchicken/mine-round.ts), kept in stacks like the keys; Atirar does nothing
 // with the key, and with the bomb it installs it. Chave dourada: disarms the bomb of a closed block, from inside it.
 // Bomba: a disarmed bomb taken out of its block, which whoever is on the closed side installs in an open one.
-const GOLD_KEY: ItemDef = { ...CONSUMABLE, id: 'goldkey', name: 'Chave dourada', family: 'Grade de blocos' }
-const MINE_BOMB: ItemDef = { ...CONSUMABLE, id: 'minebomb', name: 'Bomba', family: 'Grade de blocos' }
+const GOLD_KEY: ItemDef = { ...CONSUMABLE, id: 'goldkey', name: msg("Chave dourada"), family: msg("Grade de blocos") }
+const MINE_BOMB: ItemDef = { ...CONSUMABLE, id: 'minebomb', name: msg("Bomba"), family: msg("Grade de blocos") }
 
 // ---------- Gaiolas (lib/pigchicken/cages.ts): where the souls a Passaguá catches are kept. Not carried in the
 // inventory: a player hangs up to three of them. Each model has its own art (lib/pigchicken/cage-art.ts) and limit ----------
-const CAGE: ItemDef = { ...CONSUMABLE, consumable: false, id: 'cage', name: 'Gaiola básica', family: 'Gaiolas', mag: 0, cageSouls: 8 }
-const CAGE_WIRE: ItemDef = { ...CAGE, id: 'cageWire', name: 'Gaiola de arame', cageSouls: 12 }
-const CAGE_CONCORDE: ItemDef = { ...CAGE, id: 'cageConcorde', name: 'Gaiola Concorde', cageSouls: 16 }
-const CAGE_WOOD: ItemDef = { ...CAGE, id: 'cageWood', name: 'Gaiola de madeira', cageSouls: 20 }
-const CAGE_ARCH: ItemDef = { ...CAGE, id: 'cageArch', name: 'Gaiolão arqueado', cageSouls: 30 }
-const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: 'Voadeira', cageSouls: 50 }
+const CAGE: ItemDef = { ...CONSUMABLE, consumable: false, id: 'cage', name: msg("Gaiola básica"), family: msg("Gaiolas"), mag: 0, cageSouls: 8 }
+const CAGE_WIRE: ItemDef = { ...CAGE, id: 'cageWire', name: msg("Gaiola de arame"), cageSouls: 12 }
+const CAGE_CONCORDE: ItemDef = { ...CAGE, id: 'cageConcorde', name: msg("Gaiola Concorde"), cageSouls: 16 }
+const CAGE_WOOD: ItemDef = { ...CAGE, id: 'cageWood', name: msg("Gaiola de madeira"), cageSouls: 20 }
+const CAGE_ARCH: ItemDef = { ...CAGE, id: 'cageArch', name: msg("Gaiolão arqueado"), cageSouls: 30 }
+const CAGE_FLIGHT: ItemDef = { ...CAGE, id: 'cageFlight', name: msg("Voadeira"), cageSouls: 50 }
 
 // the items as written in the code; the game's defaults are these with data/pigchicken/default-items.json over them
 const CODE_ITEMS: Record<ItemId, ItemDef> = {
@@ -783,161 +784,161 @@ export const ARP_GLYPHS: Record<Arp, (number | null)[]> = {
 // the next option of the arpeggiator (the glyph's click), round to the first after the last
 export const nextArp = (a: Arp): Arp => ARPS[(ARPS.findIndex(o => o.value === a) + 1) % ARPS.length].value
 export const ARPS: { value: Arp; label: string }[] = [
-  { value: 'off', label: 'Desligado (a mira escolhe)' }, { value: 'up', label: 'Subindo' }, { value: 'down', label: 'Descendo' },
-  { value: 'updown', label: 'Sobe e desce' }, { value: 'random', label: 'Aleatório' }, { value: 'phrase', label: 'Frase (passos da escala)' },
+  { value: 'off', label: msg("Desligado (a mira escolhe)") }, { value: 'up', label: msg("Subindo") }, { value: 'down', label: msg("Descendo") },
+  { value: 'updown', label: msg("Sobe e desce") }, { value: 'random', label: msg("Aleatório") }, { value: 'phrase', label: msg("Frase (passos da escala)") },
 ]
 
 type Meta = { key: keyof ItemDef; label: string; min: number; max: number; step: number; unit?: string; group: string; hint?: string }
 export const ITEM_PARAM_META: Meta[] = [
-  { key: 'peckPull', label: 'Recuo do pescoço', min: 0, max: 50, step: 1, unit: 'u', group: 'Bicada' },
-  { key: 'rate', label: 'Cadência', min: 0.5, max: 20, step: 0.5, unit: 'tiros/s', group: 'Disparo' },
-  { key: 'burst', label: 'Tiros por rajada', min: 2, max: 6, step: 1, group: 'Disparo' },
-  { key: 'chargeTime', label: 'Tempo de carga do tiro', min: 0.1, max: 3, step: 0.05, unit: 's', group: 'Disparo', hint: 'Modo carga: segure e solte' },
-  { key: 'chargeMin', label: 'Força sem carga', min: 0, max: 1, step: 0.05, unit: '×', group: 'Disparo', hint: 'Modo carga' },
-  { key: 'mag', label: 'Pente', min: 0, max: 60, step: 1, unit: 'tiros', group: 'Munição', hint: '0 = sem munição' },
-  { key: 'reloadTime', label: 'Recarga', min: 0.2, max: 4, step: 0.1, unit: 's', group: 'Munição' },
-  { key: 'refillTime', label: 'Recarga automática gradual', min: 0, max: 5, step: 0.05, unit: 's', group: 'Munição', hint: 'A cada intervalo sem usar o item, balas voltam sozinhas; 0 = desligada' },
-  { key: 'refillAmount', label: 'Balas por recarga gradual', min: 1, max: 20, step: 1, unit: 'balas', group: 'Munição', hint: 'Quantas voltam a cada intervalo da recarga gradual' },
-  { key: 'speed', label: 'Velocidade do projétil', min: 200, max: 4000, step: 50, unit: 'px/s', group: 'Projétil' },
-  { key: 'drop', label: 'Queda do projétil', min: 0, max: 3000, step: 50, unit: 'px/s²', group: 'Projétil', hint: '0 = linha reta' },
-  { key: 'damage', label: 'Dano', min: 0, max: 100, step: 1, group: 'Projétil' },
-  { key: 'pierce', label: 'Atravessa', min: 0, max: 10, step: 1, unit: 'alvos', group: 'Projétil' },
-  { key: 'range', label: 'Alcance', min: 100, max: 3000, step: 50, unit: 'px', group: 'Projétil' },
-  { key: 'size', label: 'Tamanho', min: 1, max: 12, step: 1, unit: 'px', group: 'Projétil' },
-  { key: 'pellets', label: 'Projéteis por tiro', min: 1, max: 16, step: 1, group: 'Projétil', hint: 'Chumbos em leque' },
-  { key: 'explodeRadius', label: 'Raio da explosão', min: 0, max: 400, step: 10, unit: 'px', group: 'Explosão', hint: '0 = não explode' },
-  { key: 'explodePush', label: 'Empurrão da explosão', min: 0, max: 3000, step: 50, unit: 'px/s', group: 'Explosão', hint: 'Impulso para longe do centro; diminui até a borda. Inclui quem disparou. 0 = sem empurrão.' },
-  { key: 'explodeDamage', label: 'Dano da explosão', min: 0, max: 200, step: 1, group: 'Explosão', hint: 'No centro; cai até a borda' },
-  { key: 'fuse', label: 'Pavio', min: 0, max: 6, step: 0.1, unit: 's', group: 'Explosão', hint: '0 = explode ao bater' },
-  { key: 'bounce', label: 'Quique', min: 0, max: 0.9, step: 0.05, unit: '×', group: 'Explosão', hint: 'Com pavio' },
-  { key: 'spreadBase', label: 'Espalhamento base', min: 0, max: 20, step: 0.5, unit: '°', group: 'Espalhamento' },
-  { key: 'spreadShot', label: 'Por tiro', min: 0, max: 10, step: 0.1, unit: '°', group: 'Espalhamento' },
-  { key: 'spreadMax', label: 'Máximo', min: 0, max: 40, step: 0.5, unit: '°', group: 'Espalhamento' },
-  { key: 'spreadRecover', label: 'Recupera', min: 1, max: 60, step: 1, unit: '°/s', group: 'Espalhamento' },
-  { key: 'spreadMove', label: 'Andando', min: 0, max: 15, step: 0.5, unit: '°', group: 'Espalhamento' },
-  { key: 'spreadAir', label: 'No ar', min: 0, max: 15, step: 0.5, unit: '°', group: 'Espalhamento' },
-  { key: 'crouchMult', label: 'Agachada', min: 0.1, max: 1.5, step: 0.05, unit: '×', group: 'Espalhamento' },
-  { key: 'broodMult', label: 'Chocando', min: 0.1, max: 1.5, step: 0.05, unit: '×', group: 'Espalhamento' },
-  { key: 'recoilKick', label: 'Coice visual', min: 0, max: 30, step: 1, unit: 'px', group: 'Manuseio' },
-  { key: 'recoilPush', label: 'Recuo no ar', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Manuseio', hint: 'Empurra para trás no ar a cada nota ou tiro; no arco do violino, por segundo' },
-  { key: 'weight', label: 'Peso (velocidade)', min: 0.3, max: 1.2, step: 0.05, unit: '×', group: 'Manuseio' },
-  { key: 'turnRate', label: 'Giro da mira', min: 0, max: 1440, step: 30, unit: '°/s', group: 'Manuseio', hint: '0 = instantâneo' },
-  { key: 'scopeTime', label: 'Tempo para mirar', min: 0, max: 1.5, step: 0.05, unit: 's', group: 'Luneta', hint: 'Quanto a mira leva para entrar toda depois de segurar Atirar (e para sair ao soltar); 0 = na hora' },
-  { key: 'scopePan', label: 'Câmera: avança para a mira', min: 0, max: 1200, step: 10, unit: 'px', group: 'Luneta', hint: 'Quanto a câmera anda na direção da mira, sem tirar o boneco da tela; 0 = não anda' },
-  { key: 'scopeView', label: 'Câmera: afasta', min: 1, max: 2.5, step: 0.05, unit: '×', group: 'Luneta', hint: 'Quanto a mais de cenário a tela mostra mirando (1,3 = 30% a mais); 1 = sem afastar' },
-  { key: 'scopeReach', label: 'Distância da retícula', min: 1, max: 4, step: 0.1, unit: '×', group: 'Luneta', hint: 'No analógico e nas setas, quantas vezes mais longe a retícula fica mirando; com o mouse ela fica no cursor' },
-  { key: 'lensSize', label: 'Lupa: tamanho', min: 0, max: 200, step: 2, unit: 'px', group: 'Luneta', hint: 'Raio da lupa na ponta da mira; 0 = sem lupa' },
-  { key: 'lensZoom', label: 'Lupa: aumento', min: 1, max: 8, step: 0.1, unit: '×', group: 'Luneta', hint: 'Quantas vezes a lupa aumenta o que está na ponta da mira; 1 = sem aumento' },
-  { key: 'muzzleX', label: 'Saída do tiro X', min: -20, max: 160, step: 1, unit: 'u', group: 'Desenho', hint: 'Ponto de onde sai o tiro e começa a mira, a partir da empunhadura' },
-  { key: 'muzzleY', label: 'Saída do tiro Y', min: -60, max: 60, step: 0.5, unit: 'u', group: 'Desenho', hint: 'Negativo sobe' },
-  { key: 'length', label: 'Comprimento no golpe', min: 0, max: 200, step: 1, unit: 'u', group: 'Desenho', hint: 'Quanto a arma estende o golpe além da ponta da asa' },
-  { key: 'pivotX', label: 'Eixo de giro X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'pivotY', label: 'Eixo de giro Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'handX', label: 'Mão da asa X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'handY', label: 'Mão da asa Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'backX', label: 'Mão da asa de trás X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'backY', label: 'Mão da asa de trás Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'drawLen', label: 'Puxada da flecha', min: 0, max: 120, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Quanto a asa puxa a flecha para trás com a carga cheia' },
-  { key: 'gripX', label: 'Mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a mão da asa segura' },
-  { key: 'gripY', label: 'Mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'grip2X', label: 'Segunda mão no bastão X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Ponto do desenho que a outra mão segura (personagens de dois braços, com “Segunda mão” ligada)' },
-  { key: 'grip2Y', label: 'Segunda mão no bastão Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'staffX', label: 'Posição no corpo X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Onde a mão fica, a partir do ombro; positivo é para a frente dela' },
-  { key: 'staffY', label: 'Posição no corpo Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Negativo sobe' },
-  { key: 'staffAngle', label: 'Inclinação', min: -360, max: 360, step: 1, unit: '°', group: 'Pontos', hint: '0 = apontando para a frente dela; −90 = para cima' },
-  { key: 'windX', label: 'Carregando: posição X', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos', hint: 'Onde a mão chega com o golpe forte todo carregado' },
-  { key: 'windY', label: 'Carregando: posição Y', min: -200, max: 200, step: 0.5, unit: 'u', group: 'Pontos' },
-  { key: 'windAngle', label: 'Carregando: inclinação', min: -360, max: 360, step: 1, unit: '°', group: 'Pontos', hint: 'Para onde a ponta vai com o golpe forte todo carregado; o bastão gira da Inclinação até aqui' },
-  { key: 'meleeDamage', label: 'Dano do golpe', min: 0, max: 100, step: 1, group: 'Golpe' },
-  { key: 'meleeRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe' },
-  { key: 'meleeArc', label: 'Arco da bicada', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe', hint: 'Abertura do cone da bicada' },
-  { key: 'meleeCooldown', label: 'Intervalo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Golpe', hint: '0 = golpes seguidos sem espera' },
-  { key: 'meleeTime', label: 'Duração do giro', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Menos = giro mais rápido' },
-  { key: 'meleePush', label: 'Empurrão', min: 0, max: 800, step: 10, unit: 'px/s', group: 'Golpe' },
-  { key: 'comboWindow', label: 'Janela do combo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Combo', hint: 'Até quanto tempo depois do fim de um golpe o próximo continua a sequência; depois disso ela recomeça' },
-  { key: 'heavyDamage', label: 'Dano do golpe', min: 0, max: 200, step: 1, group: 'Golpe forte' },
-  { key: 'heavyRange', label: 'Alcance da asa', min: 30, max: 250, step: 5, unit: 'px', group: 'Golpe forte', hint: 'Sem carga; a carga estica até o Alcance máximo' },
-  { key: 'heavyArc', label: 'Arco do golpe', min: 20, max: 360, step: 10, unit: '°', group: 'Golpe forte' },
-  { key: 'heavyCooldown', label: 'Intervalo', min: 0, max: 2, step: 0.05, unit: 's', group: 'Golpe forte', hint: 'Depois de um golpe forte, quanto esperar até o próximo golpe' },
-  { key: 'heavyTime', label: 'Duração do giro', min: 0.05, max: 1.5, step: 0.01, unit: 's', group: 'Golpe forte', hint: 'Do soltar do botão até a asa voltar; menos = mais rápido' },
-  { key: 'heavyPush', label: 'Empurrão', min: 0, max: 2000, step: 10, unit: 'px/s', group: 'Golpe forte' },
-  { key: 'heavyCharge', label: 'Tempo de carga', min: 0.1, max: 4, step: 0.05, unit: 's', group: 'Golpe forte', hint: 'Quanto segurar Atirar até a carga máxima' },
-  { key: 'heavyReachMax', label: 'Alcance máximo carregado', min: 1, max: 4, step: 0.05, unit: '×', group: 'Golpe forte', hint: 'Até onde o golpe chega com a carga cheia, em vezes o alcance sem carga; 1 = a carga não muda o alcance' },
-  { key: 'heavySizeMax', label: 'Tamanho máximo carregado', min: 1, max: 4, step: 0.05, unit: '×', group: 'Golpe forte', hint: 'Tamanho do bastão e do rastro no golpe com a carga cheia; 1 = a carga não muda o tamanho' },
-  { key: 'heavyTrailWidth', label: 'Rastro: espessura', min: 2, max: 80, step: 1, unit: 'px', group: 'Golpe forte' },
-  { key: 'heavyTrailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe forte' },
-  { key: 'heavyTrailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe forte' },
-  { key: 'heavyTrailOpacity', label: 'Rastro: opacidade', min: 0, max: 1, step: 0.05, unit: '×', group: 'Golpe forte', hint: '0 = sem rastro' },
-  { key: 'returnDamage', label: 'Dano', min: 0, max: 200, step: 1, group: 'Arremesso que volta', hint: 'Com a carga cheia; sem carga, metade' },
-  { key: 'returnRange', label: 'Distância máxima', min: 100, max: 3000, step: 20, unit: 'px', group: 'Arremesso que volta', hint: 'Até onde ele vai com a carga cheia antes de voltar' },
-  { key: 'returnMin', label: 'Distância sem carga', min: 0.1, max: 1, step: 0.05, unit: '×', group: 'Arremesso que volta', hint: 'Parte da distância máxima com um toque rápido; a mira já começa aqui' },
-  { key: 'returnCharge', label: 'Tempo de carga', min: 0.1, max: 4, step: 0.05, unit: 's', group: 'Arremesso que volta', hint: 'Quanto segurar Atirar até a distância máxima' },
-  { key: 'returnSpeed', label: 'Velocidade', min: 300, max: 3000, step: 50, unit: 'px/s', group: 'Arremesso que volta' },
-  { key: 'returnPush', label: 'Empurrão', min: 0, max: 2000, step: 10, unit: 'px/s', group: 'Arremesso que volta' },
-  { key: 'returnCurveMin', label: 'Curvatura mínima', min: 0, max: 90, step: 1, unit: '°', group: 'Arremesso que volta', hint: 'Quanto o caminho dobra sem mexer a mira; 0 = vai e volta em linha reta' },
-  { key: 'returnCurveMax', label: 'Curvatura máxima', min: 0, max: 180, step: 1, unit: '°', group: 'Arremesso que volta', hint: 'Quanto dobra com a mira virada para longe da direção do arremesso; a curva puxa para o lado da mira' },
-  { key: 'returnCount', label: 'Quantos de uma vez', min: 1, max: 14, step: 1, group: 'Arremesso que volta', hint: 'Quantos podem estar fora ao mesmo tempo; com todos fora, o próximo só sai quando um volta para a mão' },
-  { key: 'deckLeash', label: 'Distância de retorno', min: 100, max: 4000, step: 20, unit: 'px', group: 'Baralho', hint: 'Quando quem jogou se afasta mais do que isto de uma carta, ela volta para a mão' },
-  { key: 'deckBig', label: 'Explosão do 7 e do Ás', min: 1, max: 4, step: 0.1, unit: '×', group: 'Baralho', hint: 'Raio da explosão das duas cartas que explodem sozinhas ao chegar, em vezes o Raio da explosão' },
-  { key: 'deckTouch', label: 'Área de contato', min: 4, max: 120, step: 2, unit: 'px', group: 'Baralho', hint: 'Raio em volta da carta: quem encosta nele faz a carta explodir' },
-  { key: 'deckGap', label: 'Intervalo entre cartas', min: 0.05, max: 2, step: 0.05, unit: 's', group: 'Baralho', hint: 'Com Atirar segurado, sai uma carta a cada intervalo' },
-  { key: 'hookRange', label: 'Alcance', min: 100, max: 3000, step: 20, unit: 'px', group: 'Gancho', hint: 'Até onde o gancho vai; a bolinha laranja só aparece quando há onde grudar dentro dele' },
-  { key: 'hookSpeed', label: 'Velocidade do gancho', min: 300, max: 6000, step: 50, unit: 'px/s', group: 'Gancho' },
-  { key: 'hookCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.05, unit: 's', group: 'Gancho', hint: 'Quanto girar a corrente até a força máxima do puxão' },
-  { key: 'hookPull', label: 'Força do puxão', min: 200, max: 4000, step: 50, unit: 'px/s', group: 'Gancho', hint: 'Velocidade de quem é puxado, com a carga cheia' },
-  { key: 'hookPullMin', label: 'Puxão sem carga', min: 0.1, max: 1, step: 0.05, unit: '×', group: 'Gancho', hint: 'Parte da força com um toque rápido' },
-  { key: 'hookDamage', label: 'Dano ao grudar', min: 0, max: 100, step: 1, group: 'Gancho', hint: 'Em quem o gancho fisga' },
-  { key: 'hookTime', label: 'Tempo máximo do puxão', min: 0.2, max: 5, step: 0.1, unit: 's', group: 'Gancho', hint: 'Depois disso o gancho solta e a corrente volta' },
-  { key: 'shockRange', label: 'Alcance do choque', min: 0, max: 800, step: 10, unit: 'px', group: 'Choque', hint: 'Distância que o raio pula de um para o próximo; 0 = sem choque' },
-  { key: 'shockJumps', label: 'Pulos do raio', min: 0, max: 20, step: 1, group: 'Choque', hint: 'Quantos o raio alcança além dos que levaram o golpe' },
-  { key: 'shockTime', label: 'Duração do choque', min: 0.05, max: 3, step: 0.05, unit: 's', group: 'Choque', hint: 'Quanto tempo tremem e ficam parados' },
-  { key: 'shockDamage', label: 'Dano do choque', min: 0, max: 100, step: 1, group: 'Choque', hint: 'Em cada um que o raio alcança além dos que levaram o golpe' },
-  { key: 'shockDrain', label: 'Tira da barra de harmonia', min: 0, max: 100, step: 1, group: 'Choque', hint: 'Quanto cada um que toma choque perde da barra que as notas enchem' },
-  { key: 'heavyShockRange', label: 'Golpe forte: alcance do choque', min: 0, max: 800, step: 10, unit: 'px', group: 'Choque', hint: '0 = o golpe forte não dá choque' },
-  { key: 'heavyShockTime', label: 'Golpe forte: duração do choque', min: 0.05, max: 3, step: 0.05, unit: 's', group: 'Choque' },
-  { key: 'specialCooldown', label: 'Intervalo do especial', min: 0, max: 120, step: 1, unit: 's', group: 'Especial', hint: 'O primeiro golpe que acerta alguém depois deste tempo sai como especial; 0 = sem especial' },
-  { key: 'specialRange', label: 'Alcance do choque', min: 0, max: 1200, step: 10, unit: 'px', group: 'Especial' },
-  { key: 'specialJumps', label: 'Pulos do raio', min: 0, max: 30, step: 1, group: 'Especial' },
-  { key: 'specialTime', label: 'Tempo em raio-x', min: 0.2, max: 15, step: 0.1, unit: 's', group: 'Especial', hint: 'Quanto tempo ficam em estado de choque' },
-  { key: 'specialDamage', label: 'Dano do choque', min: 0, max: 200, step: 1, group: 'Especial' },
-  { key: 'trailWidth', label: 'Rastro: espessura', min: 2, max: 60, step: 1, unit: 'px', group: 'Golpe', hint: 'Na ponta do golpe; afina até a cauda' },
-  { key: 'trailTime', label: 'Rastro: duração', min: 0.05, max: 1, step: 0.01, unit: 's', group: 'Golpe', hint: 'Quanto o ar leva pra se desfazer' },
-  { key: 'trailWisps', label: 'Rastro: fiapos', min: 0, max: 8, step: 1, group: 'Golpe', hint: 'Fiapos de ar que se soltam do rastro' },
-  { key: 'trailOpacity', label: 'Rastro: opacidade', min: 0, max: 1, step: 0.05, unit: '×', group: 'Golpe', hint: '0 = sem rastro' },
-  { key: 'durability', label: 'Quebra depois de', min: 0, max: 200, step: 1, unit: 'golpes', group: 'Golpe', hint: '0 = nunca quebra' },
-  { key: 'rebateSnap', label: 'Snap: ângulo', min: 0, max: 90, step: 5, unit: '°', group: 'Rebate', hint: 'Puxa a nota rebatida para o personagem mais perto da mira dentro deste ângulo; 0 = sai na direção exata da mira' },
-  { key: 'rebateSnapForce', label: 'Snap: força', min: 0, max: 1, step: 0.05, unit: '×', group: 'Rebate', hint: 'De leve (0) até grudar no alvo (1)' },
-  { key: 'rebateSpeed', label: 'Velocidade da nota rebatida', min: 0.5, max: 3, step: 0.05, unit: '×', group: 'Rebate' },
-  { key: 'throwDamage', label: 'Dano do arremesso', min: 0, max: 100, step: 1, group: 'Arremesso' },
-  { key: 'throwMin', label: 'Força mínima', min: 0, max: 2500, step: 25, unit: 'px/s', group: 'Arremesso', hint: 'Só tocar no botão' },
-  { key: 'throwSpeed', label: 'Força máxima', min: 200, max: 2500, step: 50, unit: 'px/s', group: 'Arremesso' },
-  { key: 'throwCharge', label: 'Tempo de carga', min: 0.1, max: 3, step: 0.1, unit: 's', group: 'Arremesso' },
-  { key: 'aimAssist', label: 'Aim Assist', min: 0, max: 100, step: 5, unit: '%', group: 'Música', hint: 'O tiro vai para o inimigo que estiver na mesma célula da escala que a mira (100% exatamente nele); sem inimigo na célula, vai onde a mira está. 0 = desligado' },
-  { key: 'octave', label: 'Registro (oitava)', min: -3, max: 3, step: 1, group: 'Música', hint: '0 = perto do Dó central' },
-  { key: 'span', label: 'Extensão da mira', min: 0.5, max: 4, step: 0.5, unit: 'oitavas', group: 'Música', hint: 'De apontar pra baixo até pra cima' },
-  { key: 'arpRate', label: 'Velocidade do arpejo', min: 2, max: 24, step: 1, unit: 'notas/s', group: 'Música' },
-  { key: 'noteLen', label: 'Duração da nota', min: 0.05, max: 2, step: 0.05, unit: 's', group: 'Música' },
-  { key: 'wave', label: 'Onda da nota', min: 0, max: 30, step: 1, unit: 'px', group: 'Música', hint: 'Quanto a nota balança voando' },
-  { key: 'quantWindow', label: 'Janela da quantização', min: 0, max: 150, step: 5, unit: 'ms', group: 'Música', hint: 'Até quanto o som espera a próxima semicolcheia' },
-  { key: 'beatBonus', label: 'Bônus na batida', min: 1, max: 3, step: 0.1, unit: '×', group: 'Música', hint: 'Harmonia extra para tiro no tempo' },
-  { key: 'stun', label: 'Paralisa', min: 0, max: 3, step: 0.1, unit: 's', group: 'Música', hint: 'O inimigo fica parado depois da nota' },
-  { key: 'strum', label: 'Rasgueado', min: 0, max: 0.1, step: 0.002, unit: 's', group: 'Música', hint: 'Intervalo entre as notas do acorde' },
-  { key: 'tremolo', label: 'Tremolo', min: 0, max: 1, step: 0.05, unit: '×', group: 'Música', hint: 'Tremer a mira dentro da mesma faixa do leque entorta a nota; 0 = desligado' },
-  { key: 'vibratoDepth', label: 'Vibrato natural: profundidade', min: 0, max: 100, step: 1, unit: 'cents', group: 'Música', hint: 'Quanto a afinação ondula para cada lado sozinha, mesmo com a mira parada (100 cents = 1 semitom); 0 = nota reta' },
-  { key: 'vibratoRate', label: 'Vibrato natural: velocidade', min: 1, max: 12, step: 0.1, unit: 'Hz', group: 'Música', hint: 'Ondulações por segundo' },
-  { key: 'vibratoDelay', label: 'Vibrato natural: atraso', min: 0, max: 1.5, step: 0.05, unit: 's', group: 'Música', hint: 'Tempo de nota reta antes de o vibrato começar a entrar' },
-  { key: 'tremoloRange', label: 'Tremolo: limite', min: 0.05, max: 3, step: 0.05, unit: 'semitons', group: 'Música', hint: 'Até quanto a nota sobe ou desce para cada lado' },
-  { key: 'meleeNotes', label: 'Notas do golpe', min: 1, max: 4, step: 1, group: 'Música', hint: 'O golpe toca a nota da faixa do leque para onde a mira aponta e sobe o acorde a partir dela' },
-  { key: 'ringNotes', label: 'Notas ao estourar', min: 0, max: 16, step: 1, group: 'Música', hint: 'Saem em círculo' },
-  { key: 'hangRows', label: 'Fileiras', min: 1, max: 2, step: 1, group: 'Hangdrum', hint: 'Fileiras de notas em volta da nota central (ding)' },
-  { key: 'hangNotes', label: 'Notas da 1ª fileira', min: 5, max: 9, step: 1, group: 'Hangdrum' },
-  { key: 'hangNotes2', label: 'Notas da 2ª fileira', min: 5, max: 9, step: 1, group: 'Hangdrum' },
-  { key: 'hangSpin', label: 'Giro na bola', min: 0, max: SPIN_FOREVER, step: 1, group: 'Hangdrum', hint: 'A nota tocada numa bola fica girando dentro dela; fora das bolas vai reta. Depois de 60 s: Duração da nota e ∞' },
-  { key: 'effectTime', label: 'Duração do efeito', min: 1, max: 120, step: 1, unit: 's', group: 'Efeito', hint: 'Doses acumulam: cada uma tem o seu tempo e os multiplicadores se multiplicam' },
-  { key: 'effectSpeed', label: 'Velocidade final', min: 0.3, max: 2.5, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%; 0,78 = −22%' },
-  { key: 'effectAccel', label: 'Aceleração', min: 0.3, max: 3, step: 0.01, unit: '×', group: 'Efeito', hint: '1,33 = +33%' },
-  { key: 'cageSouls', label: 'Limite de almas', min: 1, max: 99, step: 1, unit: 'almas', group: 'Gaiola', hint: 'Quantas almas cabem nesta gaiola; uma gaiola já no mundo guarda o limite com que nasceu' },
-  { key: 'effectRamp', label: 'Tempo da arrancada', min: 0.1, max: 2, step: 0.05, unit: 's', group: 'Efeito', hint: 'Com curva ease: quanto leva até a velocidade final' },
+  { key: 'peckPull', label: msg("Recuo do pescoço"), min: 0, max: 50, step: 1, unit: 'u', group: msg("Bicada") },
+  { key: 'rate', label: msg("Cadência"), min: 0.5, max: 20, step: 0.5, unit: msg("tiros/s"), group: msg("Disparo") },
+  { key: 'burst', label: msg("Tiros por rajada"), min: 2, max: 6, step: 1, group: msg("Disparo") },
+  { key: 'chargeTime', label: msg("Tempo de carga do tiro"), min: 0.1, max: 3, step: 0.05, unit: 's', group: msg("Disparo"), hint: msg("Modo carga: segure e solte") },
+  { key: 'chargeMin', label: msg("Força sem carga"), min: 0, max: 1, step: 0.05, unit: '×', group: msg("Disparo"), hint: msg("Modo carga") },
+  { key: 'mag', label: msg("Pente"), min: 0, max: 60, step: 1, unit: msg("tiros"), group: msg("Munição"), hint: msg("0 = sem munição") },
+  { key: 'reloadTime', label: msg("Recarga"), min: 0.2, max: 4, step: 0.1, unit: 's', group: msg("Munição") },
+  { key: 'refillTime', label: msg("Recarga automática gradual"), min: 0, max: 5, step: 0.05, unit: 's', group: msg("Munição"), hint: msg("A cada intervalo sem usar o item, balas voltam sozinhas; 0 = desligada") },
+  { key: 'refillAmount', label: msg("Balas por recarga gradual"), min: 1, max: 20, step: 1, unit: msg("balas"), group: msg("Munição"), hint: msg("Quantas voltam a cada intervalo da recarga gradual") },
+  { key: 'speed', label: msg("Velocidade do projétil"), min: 200, max: 4000, step: 50, unit: 'px/s', group: msg("Projétil") },
+  { key: 'drop', label: msg("Queda do projétil"), min: 0, max: 3000, step: 50, unit: 'px/s²', group: msg("Projétil"), hint: msg("0 = linha reta") },
+  { key: 'damage', label: msg("Dano"), min: 0, max: 100, step: 1, group: msg("Projétil") },
+  { key: 'pierce', label: msg("Atravessa"), min: 0, max: 10, step: 1, unit: msg("alvos"), group: msg("Projétil") },
+  { key: 'range', label: msg("Alcance"), min: 100, max: 3000, step: 50, unit: 'px', group: msg("Projétil") },
+  { key: 'size', label: msg("Tamanho"), min: 1, max: 12, step: 1, unit: 'px', group: msg("Projétil") },
+  { key: 'pellets', label: msg("Projéteis por tiro"), min: 1, max: 16, step: 1, group: msg("Projétil"), hint: msg("Chumbos em leque") },
+  { key: 'explodeRadius', label: msg("Raio da explosão"), min: 0, max: 400, step: 10, unit: 'px', group: msg("Explosão"), hint: msg("0 = não explode") },
+  { key: 'explodePush', label: msg("Empurrão da explosão"), min: 0, max: 3000, step: 50, unit: 'px/s', group: msg("Explosão"), hint: msg("Impulso para longe do centro; diminui até a borda. Inclui quem disparou. 0 = sem empurrão.") },
+  { key: 'explodeDamage', label: msg("Dano da explosão"), min: 0, max: 200, step: 1, group: msg("Explosão"), hint: msg("No centro; cai até a borda") },
+  { key: 'fuse', label: msg("Pavio"), min: 0, max: 6, step: 0.1, unit: 's', group: msg("Explosão"), hint: msg("0 = explode ao bater") },
+  { key: 'bounce', label: msg("Quique"), min: 0, max: 0.9, step: 0.05, unit: '×', group: msg("Explosão"), hint: msg("Com pavio") },
+  { key: 'spreadBase', label: msg("Espalhamento base"), min: 0, max: 20, step: 0.5, unit: '°', group: msg("Espalhamento") },
+  { key: 'spreadShot', label: msg("Por tiro"), min: 0, max: 10, step: 0.1, unit: '°', group: msg("Espalhamento") },
+  { key: 'spreadMax', label: msg("Máximo"), min: 0, max: 40, step: 0.5, unit: '°', group: msg("Espalhamento") },
+  { key: 'spreadRecover', label: msg("Recupera"), min: 1, max: 60, step: 1, unit: '°/s', group: msg("Espalhamento") },
+  { key: 'spreadMove', label: msg("Andando"), min: 0, max: 15, step: 0.5, unit: '°', group: msg("Espalhamento") },
+  { key: 'spreadAir', label: msg("No ar"), min: 0, max: 15, step: 0.5, unit: '°', group: msg("Espalhamento") },
+  { key: 'crouchMult', label: msg("Agachada"), min: 0.1, max: 1.5, step: 0.05, unit: '×', group: msg("Espalhamento") },
+  { key: 'broodMult', label: msg("Chocando"), min: 0.1, max: 1.5, step: 0.05, unit: '×', group: msg("Espalhamento") },
+  { key: 'recoilKick', label: msg("Coice visual"), min: 0, max: 30, step: 1, unit: 'px', group: msg("Manuseio") },
+  { key: 'recoilPush', label: msg("Recuo no ar"), min: 0, max: 800, step: 10, unit: 'px/s', group: msg("Manuseio"), hint: msg("Empurra para trás no ar a cada nota ou tiro; no arco do violino, por segundo") },
+  { key: 'weight', label: msg("Peso (velocidade)"), min: 0.3, max: 1.2, step: 0.05, unit: '×', group: msg("Manuseio") },
+  { key: 'turnRate', label: msg("Giro da mira"), min: 0, max: 1440, step: 30, unit: '°/s', group: msg("Manuseio"), hint: msg("0 = instantâneo") },
+  { key: 'scopeTime', label: msg("Tempo para mirar"), min: 0, max: 1.5, step: 0.05, unit: 's', group: msg("Luneta"), hint: msg("Quanto a mira leva para entrar toda depois de segurar Atirar (e para sair ao soltar); 0 = na hora") },
+  { key: 'scopePan', label: msg("Câmera: avança para a mira"), min: 0, max: 1200, step: 10, unit: 'px', group: msg("Luneta"), hint: msg("Quanto a câmera anda na direção da mira, sem tirar o boneco da tela; 0 = não anda") },
+  { key: 'scopeView', label: msg("Câmera: afasta"), min: 1, max: 2.5, step: 0.05, unit: '×', group: msg("Luneta"), hint: msg("Quanto a mais de cenário a tela mostra mirando (1,3 = 30% a mais); 1 = sem afastar") },
+  { key: 'scopeReach', label: msg("Distância da retícula"), min: 1, max: 4, step: 0.1, unit: '×', group: msg("Luneta"), hint: msg("No analógico e nas setas, quantas vezes mais longe a retícula fica mirando; com o mouse ela fica no cursor") },
+  { key: 'lensSize', label: msg("Lupa: tamanho"), min: 0, max: 200, step: 2, unit: 'px', group: msg("Luneta"), hint: msg("Raio da lupa na ponta da mira; 0 = sem lupa") },
+  { key: 'lensZoom', label: msg("Lupa: aumento"), min: 1, max: 8, step: 0.1, unit: '×', group: msg("Luneta"), hint: msg("Quantas vezes a lupa aumenta o que está na ponta da mira; 1 = sem aumento") },
+  { key: 'muzzleX', label: msg("Saída do tiro X"), min: -20, max: 160, step: 1, unit: 'u', group: msg("Desenho"), hint: msg("Ponto de onde sai o tiro e começa a mira, a partir da empunhadura") },
+  { key: 'muzzleY', label: msg("Saída do tiro Y"), min: -60, max: 60, step: 0.5, unit: 'u', group: msg("Desenho"), hint: msg("Negativo sobe") },
+  { key: 'length', label: msg("Comprimento no golpe"), min: 0, max: 200, step: 1, unit: 'u', group: msg("Desenho"), hint: msg("Quanto a arma estende o golpe além da ponta da asa") },
+  { key: 'pivotX', label: msg("Eixo de giro X"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'pivotY', label: msg("Eixo de giro Y"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'handX', label: msg("Mão da asa X"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'handY', label: msg("Mão da asa Y"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'backX', label: msg("Mão da asa de trás X"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'backY', label: msg("Mão da asa de trás Y"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'drawLen', label: msg("Puxada da flecha"), min: 0, max: 120, step: 0.5, unit: 'u', group: msg("Pontos"), hint: msg("Quanto a asa puxa a flecha para trás com a carga cheia") },
+  { key: 'gripX', label: msg("Mão no bastão X"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos"), hint: msg("Ponto do desenho que a mão da asa segura") },
+  { key: 'gripY', label: msg("Mão no bastão Y"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'grip2X', label: msg("Segunda mão no bastão X"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos"), hint: msg("Ponto do desenho que a outra mão segura (personagens de dois braços, com “Segunda mão” ligada)") },
+  { key: 'grip2Y', label: msg("Segunda mão no bastão Y"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'staffX', label: msg("Posição no corpo X"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos"), hint: msg("Onde a mão fica, a partir do ombro; positivo é para a frente dela") },
+  { key: 'staffY', label: msg("Posição no corpo Y"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos"), hint: msg("Negativo sobe") },
+  { key: 'staffAngle', label: msg("Inclinação"), min: -360, max: 360, step: 1, unit: '°', group: msg("Pontos"), hint: msg("0 = apontando para a frente dela; −90 = para cima") },
+  { key: 'windX', label: msg("Carregando: posição X"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos"), hint: msg("Onde a mão chega com o golpe forte todo carregado") },
+  { key: 'windY', label: msg("Carregando: posição Y"), min: -200, max: 200, step: 0.5, unit: 'u', group: msg("Pontos") },
+  { key: 'windAngle', label: msg("Carregando: inclinação"), min: -360, max: 360, step: 1, unit: '°', group: msg("Pontos"), hint: msg("Para onde a ponta vai com o golpe forte todo carregado; o bastão gira da Inclinação até aqui") },
+  { key: 'meleeDamage', label: msg("Dano do golpe"), min: 0, max: 100, step: 1, group: msg("Golpe") },
+  { key: 'meleeRange', label: msg("Alcance da asa"), min: 30, max: 250, step: 5, unit: 'px', group: msg("Golpe") },
+  { key: 'meleeArc', label: msg("Arco da bicada"), min: 20, max: 360, step: 10, unit: '°', group: msg("Golpe"), hint: msg("Abertura do cone da bicada") },
+  { key: 'meleeCooldown', label: msg("Intervalo"), min: 0, max: 2, step: 0.05, unit: 's', group: msg("Golpe"), hint: msg("0 = golpes seguidos sem espera") },
+  { key: 'meleeTime', label: msg("Duração do giro"), min: 0.05, max: 1, step: 0.01, unit: 's', group: msg("Golpe"), hint: msg("Menos = giro mais rápido") },
+  { key: 'meleePush', label: msg("Empurrão"), min: 0, max: 800, step: 10, unit: 'px/s', group: msg("Golpe") },
+  { key: 'comboWindow', label: msg("Janela do combo"), min: 0, max: 2, step: 0.05, unit: 's', group: msg("Combo"), hint: msg("Até quanto tempo depois do fim de um golpe o próximo continua a sequência; depois disso ela recomeça") },
+  { key: 'heavyDamage', label: msg("Dano do golpe"), min: 0, max: 200, step: 1, group: msg("Golpe forte") },
+  { key: 'heavyRange', label: msg("Alcance da asa"), min: 30, max: 250, step: 5, unit: 'px', group: msg("Golpe forte"), hint: msg("Sem carga; a carga estica até o Alcance máximo") },
+  { key: 'heavyArc', label: msg("Arco do golpe"), min: 20, max: 360, step: 10, unit: '°', group: msg("Golpe forte") },
+  { key: 'heavyCooldown', label: msg("Intervalo"), min: 0, max: 2, step: 0.05, unit: 's', group: msg("Golpe forte"), hint: msg("Depois de um golpe forte, quanto esperar até o próximo golpe") },
+  { key: 'heavyTime', label: msg("Duração do giro"), min: 0.05, max: 1.5, step: 0.01, unit: 's', group: msg("Golpe forte"), hint: msg("Do soltar do botão até a asa voltar; menos = mais rápido") },
+  { key: 'heavyPush', label: msg("Empurrão"), min: 0, max: 2000, step: 10, unit: 'px/s', group: msg("Golpe forte") },
+  { key: 'heavyCharge', label: msg("Tempo de carga"), min: 0.1, max: 4, step: 0.05, unit: 's', group: msg("Golpe forte"), hint: msg("Quanto segurar Atirar até a carga máxima") },
+  { key: 'heavyReachMax', label: msg("Alcance máximo carregado"), min: 1, max: 4, step: 0.05, unit: '×', group: msg("Golpe forte"), hint: msg("Até onde o golpe chega com a carga cheia, em vezes o alcance sem carga; 1 = a carga não muda o alcance") },
+  { key: 'heavySizeMax', label: msg("Tamanho máximo carregado"), min: 1, max: 4, step: 0.05, unit: '×', group: msg("Golpe forte"), hint: msg("Tamanho do bastão e do rastro no golpe com a carga cheia; 1 = a carga não muda o tamanho") },
+  { key: 'heavyTrailWidth', label: msg("Rastro: espessura"), min: 2, max: 80, step: 1, unit: 'px', group: msg("Golpe forte") },
+  { key: 'heavyTrailTime', label: msg("Rastro: duração"), min: 0.05, max: 1, step: 0.01, unit: 's', group: msg("Golpe forte") },
+  { key: 'heavyTrailWisps', label: msg("Rastro: fiapos"), min: 0, max: 8, step: 1, group: msg("Golpe forte") },
+  { key: 'heavyTrailOpacity', label: msg("Rastro: opacidade"), min: 0, max: 1, step: 0.05, unit: '×', group: msg("Golpe forte"), hint: msg("0 = sem rastro") },
+  { key: 'returnDamage', label: msg("Dano"), min: 0, max: 200, step: 1, group: msg("Arremesso que volta"), hint: msg("Com a carga cheia; sem carga, metade") },
+  { key: 'returnRange', label: msg("Distância máxima"), min: 100, max: 3000, step: 20, unit: 'px', group: msg("Arremesso que volta"), hint: msg("Até onde ele vai com a carga cheia antes de voltar") },
+  { key: 'returnMin', label: msg("Distância sem carga"), min: 0.1, max: 1, step: 0.05, unit: '×', group: msg("Arremesso que volta"), hint: msg("Parte da distância máxima com um toque rápido; a mira já começa aqui") },
+  { key: 'returnCharge', label: msg("Tempo de carga"), min: 0.1, max: 4, step: 0.05, unit: 's', group: msg("Arremesso que volta"), hint: msg("Quanto segurar Atirar até a distância máxima") },
+  { key: 'returnSpeed', label: msg("Velocidade"), min: 300, max: 3000, step: 50, unit: 'px/s', group: msg("Arremesso que volta") },
+  { key: 'returnPush', label: msg("Empurrão"), min: 0, max: 2000, step: 10, unit: 'px/s', group: msg("Arremesso que volta") },
+  { key: 'returnCurveMin', label: msg("Curvatura mínima"), min: 0, max: 90, step: 1, unit: '°', group: msg("Arremesso que volta"), hint: msg("Quanto o caminho dobra sem mexer a mira; 0 = vai e volta em linha reta") },
+  { key: 'returnCurveMax', label: msg("Curvatura máxima"), min: 0, max: 180, step: 1, unit: '°', group: msg("Arremesso que volta"), hint: msg("Quanto dobra com a mira virada para longe da direção do arremesso; a curva puxa para o lado da mira") },
+  { key: 'returnCount', label: msg("Quantos de uma vez"), min: 1, max: 14, step: 1, group: msg("Arremesso que volta"), hint: msg("Quantos podem estar fora ao mesmo tempo; com todos fora, o próximo só sai quando um volta para a mão") },
+  { key: 'deckLeash', label: msg("Distância de retorno"), min: 100, max: 4000, step: 20, unit: 'px', group: msg("Baralho"), hint: msg("Quando quem jogou se afasta mais do que isto de uma carta, ela volta para a mão") },
+  { key: 'deckBig', label: msg("Explosão do 7 e do Ás"), min: 1, max: 4, step: 0.1, unit: '×', group: msg("Baralho"), hint: msg("Raio da explosão das duas cartas que explodem sozinhas ao chegar, em vezes o Raio da explosão") },
+  { key: 'deckTouch', label: msg("Área de contato"), min: 4, max: 120, step: 2, unit: 'px', group: msg("Baralho"), hint: msg("Raio em volta da carta: quem encosta nele faz a carta explodir") },
+  { key: 'deckGap', label: msg("Intervalo entre cartas"), min: 0.05, max: 2, step: 0.05, unit: 's', group: msg("Baralho"), hint: msg("Com Atirar segurado, sai uma carta a cada intervalo") },
+  { key: 'hookRange', label: msg("Alcance"), min: 100, max: 3000, step: 20, unit: 'px', group: msg("Gancho"), hint: msg("Até onde o gancho vai; a bolinha laranja só aparece quando há onde grudar dentro dele") },
+  { key: 'hookSpeed', label: msg("Velocidade do gancho"), min: 300, max: 6000, step: 50, unit: 'px/s', group: msg("Gancho") },
+  { key: 'hookCharge', label: msg("Tempo de carga"), min: 0.1, max: 3, step: 0.05, unit: 's', group: msg("Gancho"), hint: msg("Quanto girar a corrente até a força máxima do puxão") },
+  { key: 'hookPull', label: msg("Força do puxão"), min: 200, max: 4000, step: 50, unit: 'px/s', group: msg("Gancho"), hint: msg("Velocidade de quem é puxado, com a carga cheia") },
+  { key: 'hookPullMin', label: msg("Puxão sem carga"), min: 0.1, max: 1, step: 0.05, unit: '×', group: msg("Gancho"), hint: msg("Parte da força com um toque rápido") },
+  { key: 'hookDamage', label: msg("Dano ao grudar"), min: 0, max: 100, step: 1, group: msg("Gancho"), hint: msg("Em quem o gancho fisga") },
+  { key: 'hookTime', label: msg("Tempo máximo do puxão"), min: 0.2, max: 5, step: 0.1, unit: 's', group: msg("Gancho"), hint: msg("Depois disso o gancho solta e a corrente volta") },
+  { key: 'shockRange', label: msg("Alcance do choque"), min: 0, max: 800, step: 10, unit: 'px', group: msg("Choque"), hint: msg("Distância que o raio pula de um para o próximo; 0 = sem choque") },
+  { key: 'shockJumps', label: msg("Pulos do raio"), min: 0, max: 20, step: 1, group: msg("Choque"), hint: msg("Quantos o raio alcança além dos que levaram o golpe") },
+  { key: 'shockTime', label: msg("Duração do choque"), min: 0.05, max: 3, step: 0.05, unit: 's', group: msg("Choque"), hint: msg("Quanto tempo tremem e ficam parados") },
+  { key: 'shockDamage', label: msg("Dano do choque"), min: 0, max: 100, step: 1, group: msg("Choque"), hint: msg("Em cada um que o raio alcança além dos que levaram o golpe") },
+  { key: 'shockDrain', label: msg("Tira da barra de harmonia"), min: 0, max: 100, step: 1, group: msg("Choque"), hint: msg("Quanto cada um que toma choque perde da barra que as notas enchem") },
+  { key: 'heavyShockRange', label: msg("Golpe forte: alcance do choque"), min: 0, max: 800, step: 10, unit: 'px', group: msg("Choque"), hint: msg("0 = o golpe forte não dá choque") },
+  { key: 'heavyShockTime', label: msg("Golpe forte: duração do choque"), min: 0.05, max: 3, step: 0.05, unit: 's', group: msg("Choque") },
+  { key: 'specialCooldown', label: msg("Intervalo do especial"), min: 0, max: 120, step: 1, unit: 's', group: msg("Especial"), hint: msg("O primeiro golpe que acerta alguém depois deste tempo sai como especial; 0 = sem especial") },
+  { key: 'specialRange', label: msg("Alcance do choque"), min: 0, max: 1200, step: 10, unit: 'px', group: msg("Especial") },
+  { key: 'specialJumps', label: msg("Pulos do raio"), min: 0, max: 30, step: 1, group: msg("Especial") },
+  { key: 'specialTime', label: msg("Tempo em raio-x"), min: 0.2, max: 15, step: 0.1, unit: 's', group: msg("Especial"), hint: msg("Quanto tempo ficam em estado de choque") },
+  { key: 'specialDamage', label: msg("Dano do choque"), min: 0, max: 200, step: 1, group: msg("Especial") },
+  { key: 'trailWidth', label: msg("Rastro: espessura"), min: 2, max: 60, step: 1, unit: 'px', group: msg("Golpe"), hint: msg("Na ponta do golpe; afina até a cauda") },
+  { key: 'trailTime', label: msg("Rastro: duração"), min: 0.05, max: 1, step: 0.01, unit: 's', group: msg("Golpe"), hint: msg("Quanto o ar leva pra se desfazer") },
+  { key: 'trailWisps', label: msg("Rastro: fiapos"), min: 0, max: 8, step: 1, group: msg("Golpe"), hint: msg("Fiapos de ar que se soltam do rastro") },
+  { key: 'trailOpacity', label: msg("Rastro: opacidade"), min: 0, max: 1, step: 0.05, unit: '×', group: msg("Golpe"), hint: msg("0 = sem rastro") },
+  { key: 'durability', label: msg("Quebra depois de"), min: 0, max: 200, step: 1, unit: msg("golpes"), group: msg("Golpe"), hint: msg("0 = nunca quebra") },
+  { key: 'rebateSnap', label: msg("Snap: ângulo"), min: 0, max: 90, step: 5, unit: '°', group: msg("Rebate"), hint: msg("Puxa a nota rebatida para o personagem mais perto da mira dentro deste ângulo; 0 = sai na direção exata da mira") },
+  { key: 'rebateSnapForce', label: msg("Snap: força"), min: 0, max: 1, step: 0.05, unit: '×', group: msg("Rebate"), hint: msg("De leve (0) até grudar no alvo (1)") },
+  { key: 'rebateSpeed', label: msg("Velocidade da nota rebatida"), min: 0.5, max: 3, step: 0.05, unit: '×', group: msg("Rebate") },
+  { key: 'throwDamage', label: msg("Dano do arremesso"), min: 0, max: 100, step: 1, group: msg("Arremesso") },
+  { key: 'throwMin', label: msg("Força mínima"), min: 0, max: 2500, step: 25, unit: 'px/s', group: msg("Arremesso"), hint: msg("Só tocar no botão") },
+  { key: 'throwSpeed', label: msg("Força máxima"), min: 200, max: 2500, step: 50, unit: 'px/s', group: msg("Arremesso") },
+  { key: 'throwCharge', label: msg("Tempo de carga"), min: 0.1, max: 3, step: 0.1, unit: 's', group: msg("Arremesso") },
+  { key: 'aimAssist', label: msg("Aim Assist"), min: 0, max: 100, step: 5, unit: '%', group: msg("Música"), hint: msg("O tiro vai para o inimigo que estiver na mesma célula da escala que a mira (100% exatamente nele); sem inimigo na célula, vai onde a mira está. 0 = desligado") },
+  { key: 'octave', label: msg("Registro (oitava)"), min: -3, max: 3, step: 1, group: msg("Música"), hint: msg("0 = perto do Dó central") },
+  { key: 'span', label: msg("Extensão da mira"), min: 0.5, max: 4, step: 0.5, unit: msg("oitavas"), group: msg("Música"), hint: msg("De apontar pra baixo até pra cima") },
+  { key: 'arpRate', label: msg("Velocidade do arpejo"), min: 2, max: 24, step: 1, unit: msg("notas/s"), group: msg("Música") },
+  { key: 'noteLen', label: msg("Duração da nota"), min: 0.05, max: 2, step: 0.05, unit: 's', group: msg("Música") },
+  { key: 'wave', label: msg("Onda da nota"), min: 0, max: 30, step: 1, unit: 'px', group: msg("Música"), hint: msg("Quanto a nota balança voando") },
+  { key: 'quantWindow', label: msg("Janela da quantização"), min: 0, max: 150, step: 5, unit: 'ms', group: msg("Música"), hint: msg("Até quanto o som espera a próxima semicolcheia") },
+  { key: 'beatBonus', label: msg("Bônus na batida"), min: 1, max: 3, step: 0.1, unit: '×', group: msg("Música"), hint: msg("Harmonia extra para tiro no tempo") },
+  { key: 'stun', label: msg("Paralisa"), min: 0, max: 3, step: 0.1, unit: 's', group: msg("Música"), hint: msg("O inimigo fica parado depois da nota") },
+  { key: 'strum', label: msg("Rasgueado"), min: 0, max: 0.1, step: 0.002, unit: 's', group: msg("Música"), hint: msg("Intervalo entre as notas do acorde") },
+  { key: 'tremolo', label: msg("Tremolo"), min: 0, max: 1, step: 0.05, unit: '×', group: msg("Música"), hint: msg("Tremer a mira dentro da mesma faixa do leque entorta a nota; 0 = desligado") },
+  { key: 'vibratoDepth', label: msg("Vibrato natural: profundidade"), min: 0, max: 100, step: 1, unit: 'cents', group: msg("Música"), hint: msg("Quanto a afinação ondula para cada lado sozinha, mesmo com a mira parada (100 cents = 1 semitom); 0 = nota reta") },
+  { key: 'vibratoRate', label: msg("Vibrato natural: velocidade"), min: 1, max: 12, step: 0.1, unit: 'Hz', group: msg("Música"), hint: msg("Ondulações por segundo") },
+  { key: 'vibratoDelay', label: msg("Vibrato natural: atraso"), min: 0, max: 1.5, step: 0.05, unit: 's', group: msg("Música"), hint: msg("Tempo de nota reta antes de o vibrato começar a entrar") },
+  { key: 'tremoloRange', label: msg("Tremolo: limite"), min: 0.05, max: 3, step: 0.05, unit: msg("semitons"), group: msg("Música"), hint: msg("Até quanto a nota sobe ou desce para cada lado") },
+  { key: 'meleeNotes', label: msg("Notas do golpe"), min: 1, max: 4, step: 1, group: msg("Música"), hint: msg("O golpe toca a nota da faixa do leque para onde a mira aponta e sobe o acorde a partir dela") },
+  { key: 'ringNotes', label: msg("Notas ao estourar"), min: 0, max: 16, step: 1, group: msg("Música"), hint: msg("Saem em círculo") },
+  { key: 'hangRows', label: msg("Fileiras"), min: 1, max: 2, step: 1, group: msg("Hangdrum"), hint: msg("Fileiras de notas em volta da nota central (ding)") },
+  { key: 'hangNotes', label: msg("Notas da 1ª fileira"), min: 5, max: 9, step: 1, group: msg("Hangdrum") },
+  { key: 'hangNotes2', label: msg("Notas da 2ª fileira"), min: 5, max: 9, step: 1, group: msg("Hangdrum") },
+  { key: 'hangSpin', label: msg("Giro na bola"), min: 0, max: SPIN_FOREVER, step: 1, group: msg("Hangdrum"), hint: msg("A nota tocada numa bola fica girando dentro dela; fora das bolas vai reta. Depois de 60 s: Duração da nota e ∞") },
+  { key: 'effectTime', label: msg("Duração do efeito"), min: 1, max: 120, step: 1, unit: 's', group: msg("Efeito"), hint: msg("Doses acumulam: cada uma tem o seu tempo e os multiplicadores se multiplicam") },
+  { key: 'effectSpeed', label: msg("Velocidade final"), min: 0.3, max: 2.5, step: 0.01, unit: '×', group: msg("Efeito"), hint: '1,33 = +33%; 0,78 = −22%' },
+  { key: 'effectAccel', label: msg("Aceleração"), min: 0.3, max: 3, step: 0.01, unit: '×', group: msg("Efeito"), hint: '1,33 = +33%' },
+  { key: 'cageSouls', label: msg("Limite de almas"), min: 1, max: 99, step: 1, unit: msg("almas"), group: msg("Gaiola"), hint: msg("Quantas almas cabem nesta gaiola; uma gaiola já no mundo guarda o limite com que nasceu") },
+  { key: 'effectRamp', label: msg("Tempo da arrancada"), min: 0.1, max: 2, step: 0.05, unit: 's', group: msg("Efeito"), hint: msg("Com curva ease: quanto leva até a velocidade final") },
 ]
 export const ITEM_PARAM_GROUPS = [...new Set(ITEM_PARAM_META.map(m => m.group))]
 

@@ -13,6 +13,7 @@ import { SKY_DEFAULT, hourStops, type SkyParams } from './sky'
 import { MOUNTAINS_DEFAULT } from './mountains'
 import type { SurfacePoint } from './surfaces'
 import type { ItemId } from './items'
+import { msg } from '../i18n'
 
 const G = WORLD_GROUND_Y
 // the widest a Pátio gets: 8 scenes (10 with the two at the end, 19200 wide)
@@ -28,10 +29,10 @@ const BOARD_W = 420, BOARD_H = 260
 export const TRAINING_SKY: SkyParams = { ...SKY_DEFAULT, hour: 10.5, follow: true, stops: hourStops(10.5), clouds: 30, haze: 35, light: 70 }
 
 // the sections, in order: the name on their first board and the moves of their stations
-export const TRAINING_SECTIONS: { name: string; title: string; stations: DemoId[] }[] = [
-  { name: 'BÁSICO', title: 'Básico', stations: ['walk', 'jump', 'slide', 'superJump', 'fly', 'drop', 'trampoline'] },
-  { name: 'PAREDES E TETO', title: 'Paredes e teto', stations: ['wall', 'wallJump', 'edge', 'ceiling', 'flip', 'sideSwitch', 'wires'] },
-  { name: 'CHOCAR', title: 'Chocar', stations: ['brood', 'shocking', 'longJump', 'airShocking', 'wallShock', 'ceilingShock', 'clingBrood'] },
+export const TRAINING_SECTIONS: { name: string; board: string; title: string; stations: DemoId[] }[] = [
+  { name: msg('BÁSICO'), board: msg('BÁSICO\nchegue perto de cada lousa\npara ver o movimento'), title: msg('Básico'), stations: ['walk', 'jump', 'slide', 'superJump', 'fly', 'drop', 'trampoline'] },
+  { name: msg('PAREDES E TETO'), board: msg('PAREDES E TETO\nchegue perto de cada lousa\npara ver o movimento'), title: msg('Paredes e teto'), stations: ['wall', 'wallJump', 'edge', 'ceiling', 'flip', 'sideSwitch', 'wires'] },
+  { name: msg('CHOCAR'), board: msg('CHOCAR\nchegue perto de cada lousa\npara ver o movimento'), title: msg('Chocar'), stations: ['brood', 'shocking', 'longJump', 'airShocking', 'wallShock', 'ceilingShock', 'clingBrood'] },
 ]
 
 // each move's station: how wide it is, for its ghost where it starts (station-local x, the height above the ground of
@@ -62,11 +63,11 @@ export const TRAINING_STATIONS: Record<DemoId, { w: number; start: [x: number, f
 
 // the last section, Combate e itens: boards without a ghost, one with a rack of an instrument and one of a weapon to
 // pick up, one with training dummies to hit
-export const ITEMS_SECTION = { name: 'COMBATE E ITENS', title: 'Combate e itens' }
+export const ITEMS_SECTION = { name: msg('COMBATE E ITENS'), title: msg('Combate e itens') }
 export const ITEMS_RACKS: ItemId[] = ['flute', 'pistol']
 export const ITEMS_BOARDS: { w: number; text: string }[] = [
-  { w: 520, text: 'COMBATE E ITENS\nE  pega o item do suporte\nTAB  instrumentos · F  utilitários\nQ  variação · T  roda dos itens\nB  guarda o item\nControle: X, LB, B' },
-  { w: 560, text: 'USAR O ITEM\nV  atira ou toca\nR  recarrega · mouse  mira\nC  golpe (4 seguidos: combo)\nsegure G e solte: arremessa\nControle: RT, Y, R3\ne a mira no analógico direito' },
+  { w: 520, text: msg('COMBATE E ITENS\nE  pega o item do suporte\nTAB  instrumentos · F  utilitários\nQ  variação · T  roda dos itens\nB  guarda o item\nControle: X, LB, B') },
+  { w: 560, text: msg('USAR O ITEM\nV  atira ou toca\nR  recarrega · mouse  mira\nC  golpe (4 seguidos: combo)\nsegure G e solte: arremessa\nControle: RT, Y, R3\ne a mira no analógico direito') },
 ]
 
 // where each station starts (world x), section by section, where the Combate e itens boards start and where the
@@ -118,17 +119,17 @@ export function trainingLayout(): PatioLayout {
 
   const entry = entryPortalElement()
   out.push({ ...entry, x: 40, y: G - entry.h + 6 })
-  board(360, 300, 'TRAINING ROOM\ndo básico ao avançado →\nchegue perto de cada lousa\npara ver o movimento')
+  board(360, 300, msg('TRAINING ROOM\ndo básico ao avançado →\nchegue perto de cada lousa\npara ver o movimento'))
 
   // the sections: at the start of each later one, its board over the portal back to the entrance, which a portal by
   // the entrance leads to; then its stations in a row
   const plan = trainingPlan()
   let number = 0
-  TRAINING_SECTIONS.forEach(({ name, title, stations }, k) => {
+  TRAINING_SECTIONS.forEach(({ board: sectionBoard, title, stations }, k) => {
     if (k > 0) {
       const x = plan.sections[k - 1]
-      board(x + SECTION_GAP / 2, 330, `${name}\nchegue perto de cada lousa\npara ver o movimento`)
-      pair(portal(440 + k * 160, title), portal(x + SECTION_GAP / 2 - 75, 'Voltar à entrada?', 'hover'))
+      board(x + SECTION_GAP / 2, 330, sectionBoard)
+      pair(portal(440 + k * 160, title), portal(x + SECTION_GAP / 2 - 75, msg('Voltar à entrada?'), 'hover'))
     }
     stations.forEach(demo => {
       const s = plan.at[demo]
@@ -203,13 +204,13 @@ export function trainingLayout(): PatioLayout {
   // and the two racks; the second one over three training dummies
   const [first, second] = ITEMS_BOARDS
   board(plan.items + first.w / 2, 330, `${++number} · ${first.text}`)
-  pair(portal(440 + TRAINING_SECTIONS.length * 160, ITEMS_SECTION.title), portal(plan.items + 20, 'Voltar à entrada?', 'hover'))
+  pair(portal(440 + TRAINING_SECTIONS.length * 160, ITEMS_SECTION.title), portal(plan.items + 20, msg('Voltar à entrada?'), 'hover'))
   ITEMS_RACKS.forEach((item, i) => add('rack', { x: plan.items + 250 + i * 140, y: G - ELEMENT_DEFS.rack.h, params: { item, respawnDelay: 1 } }))
   board(plan.items + first.w + second.w / 2 - 40, 330, `${++number} · ${second.text}`)
   for (const dx of [400, 470, 540]) add('dummy', { x: plan.items + first.w + dx - ELEMENT_DEFS.dummy.w / 2, y: G - ELEMENT_DEFS.dummy.h })
 
   // a calm, steady music for the whole room
-  add('zone', { x: 0, y: G - TRAINING_HEIGHT, w: worldW, h: TRAINING_HEIGHT + 10, params: { zone: { ...defaultSoundZone(), name: 'Training room', root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 96, feel: 'straight', progression: [0, 5, 3, 4], color: '#7bd88f', ambience: { beat: 'pulse', bass: 'pad' } } } })
+  add('zone', { x: 0, y: G - TRAINING_HEIGHT, w: worldW, h: TRAINING_HEIGHT + 10, params: { zone: { ...defaultSoundZone(), name: msg('Training room'), root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 96, feel: 'straight', progression: [0, 5, 3, 4], color: '#7bd88f', ambience: { beat: 'pulse', bass: 'pad' } } } })
 
   const elements = out.map(e => normalizeElement(storeElementPosition(e, TRAINING_SCREENS))!)
   return { v: LAYOUT_VERSION, elements, settings: { screens: TRAINING_SCREENS, height: TRAINING_HEIGHT, sky: TRAINING_SKY, mountains: { ...MOUNTAINS_DEFAULT, ranges: 2, height: 70 }, temple: false, sceneMusic: false } }

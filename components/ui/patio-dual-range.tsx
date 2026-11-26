@@ -3,6 +3,7 @@
 import { useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { ResetArrow } from './reset-arrow'
+import { useT } from '@/lib/i18n'
 
 // A slider with two points in the look of PatioRange: drag either point (the nearest to the press); points closer
 // than `snap` join (same value). Arrow keys move the focused point; a double click resets.
@@ -12,6 +13,7 @@ export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0,
 }) {
   const box = useRef<HTMLDivElement>(null)
   const which = useRef<0 | 1>(0)
+  const t = useT()
   const pct = (v: number) => Math.max(0, Math.min(100, (v - min) / (max - min) * 100))
   const round = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step))
   const set = (k: 0 | 1, v: number) => {
@@ -20,10 +22,10 @@ export function PatioDualRange({ label, min, max, step = 0.01, lo, hi, snap = 0,
     if (Math.abs(b - a) < snap) { if (k === 0) a = b; else b = a }
     onChange(Number(a.toFixed(4)), Number(b.toFixed(4)))
   }
-  const title = [hint, onReset && 'Duplo clique para voltar ao padrão.'].filter(Boolean).join(' ') || undefined
+  const title = [hint, onReset && t('Duplo clique para voltar ao padrão.')].filter(Boolean).join(' ') || undefined
   const valueAt = (x: number) => { const r = box.current!.getBoundingClientRect(); return min + (max - min) * Math.max(0, Math.min(1, (x - r.left) / r.width)) }
   const thumb = (k: 0 | 1, v: number) => (
-    <span role="slider" tabIndex={0} aria-valuemin={min} aria-valuemax={max} aria-valuenow={v} aria-label={k ? 'máximo' : 'mínimo'}
+    <span role="slider" tabIndex={0} aria-valuemin={min} aria-valuemax={max} aria-valuenow={v} aria-label={k ? t('máximo') : t('mínimo')}
       onKeyDown={e => {
         const s = e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -step : e.key === 'ArrowRight' || e.key === 'ArrowUp' ? step : 0
         if (s) { e.preventDefault(); e.stopPropagation(); set(k, v + s) }

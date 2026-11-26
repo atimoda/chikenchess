@@ -4,6 +4,7 @@
 // sounds (the physical and the musical death) and its undead (how long it lies, how fast it walks, the bird it
 // becomes). The code brings one base per species and a first batch of variations; editing, duplicating and making
 // new ones is saved in this browser, like the items.
+import { msg } from '../i18n'
 import type { Species } from './temple'
 import { SPECIES } from './temple'
 import type { MoveMode, ShotType, FireSound } from './note-stage'
@@ -45,9 +46,9 @@ export type AlienVariant = {
 }
 
 export const DRUM_OPTIONS: { value: Drum; label: string }[] = [
-  { value: 'taiko', label: 'Taiko' }, { value: 'wood', label: 'Woodblock' }, { value: 'clap', label: 'Palmas' }, { value: 'snare', label: 'Caixa' },
-  { value: 'kick', label: 'Bumbo' }, { value: 'hat', label: 'Chimbal' }, { value: 'openHat', label: 'Chimbal aberto' }, { value: 'jingle', label: 'Platinela' },
-  { value: 'shaker', label: 'Chocalho' }, { value: 'crash', label: 'Prato' },
+  { value: 'taiko', label: msg("Taiko") }, { value: 'wood', label: msg("Woodblock") }, { value: 'clap', label: msg("Palmas") }, { value: 'snare', label: msg("Caixa") },
+  { value: 'kick', label: msg("Bumbo") }, { value: 'hat', label: msg("Chimbal") }, { value: 'openHat', label: msg("Chimbal aberto") }, { value: 'jingle', label: msg("Platinela") },
+  { value: 'shaker', label: msg("Chocalho") }, { value: 'crash', label: msg("Prato") },
 ]
 const isDrum = (v: unknown): v is Drum => DRUM_OPTIONS.some(d => d.value === v)
 const isVoice = (v: unknown): v is VoiceId => typeof v === 'string' && v in VOICE_LABELS
@@ -87,31 +88,31 @@ const drumDeath = (drum: Drum, vel = 0.9) => ({ kind: 'drum' as const, drum, vel
 export const BUILTIN_VARIANTS: AlienVariant[] = [
   ...CATALOG_SPECIES.map(baseVariant),
   // Água-viva
-  variant('jelly', 'jelly-sino', 'Sino', { magnet: 20, color: '#7bdff2', shot: { color: '#7bdff2', glow: 1, size: 9 }, fire: { voice: 'bells', vel: 0.12 }, death: { physical: drumDeath('wood'), musical: { kind: 'notes', voice: 'bells', shape: 'arp', octave: 2, vel: 0.5 } } }),
-  variant('jelly', 'jelly-baixo', 'Baixo', { magnet: 55, color: '#5a4fcf', size: 1.25, hp: 45, shot: { size: 18, speed: 170, glow: 0.5 }, fire: { voice: 'bass', vel: 0.14 }, death: { physical: drumDeath('kick', 1), musical: { kind: 'notes', voice: 'bass', shape: 'note', octave: 0, vel: 0.7 } } }),
-  variant('jelly', 'jelly-neon', 'Neon', { magnet: 8, color: '#7bd88f', move: 'zigzag', zig: { amp: 80, period: 2 }, shot: { glow: 1, trail: 1 } }),
+  variant('jelly', 'jelly-sino', msg("Sino"), { magnet: 20, color: '#7bdff2', shot: { color: '#7bdff2', glow: 1, size: 9 }, fire: { voice: 'bells', vel: 0.12 }, death: { physical: drumDeath('wood'), musical: { kind: 'notes', voice: 'bells', shape: 'arp', octave: 2, vel: 0.5 } } }),
+  variant('jelly', 'jelly-baixo', msg("Baixo"), { magnet: 55, color: '#5a4fcf', size: 1.25, hp: 45, shot: { size: 18, speed: 170, glow: 0.5 }, fire: { voice: 'bass', vel: 0.14 }, death: { physical: drumDeath('kick', 1), musical: { kind: 'notes', voice: 'bass', shape: 'note', octave: 0, vel: 0.7 } } }),
+  variant('jelly', 'jelly-neon', msg("Neon"), { magnet: 8, color: '#7bd88f', move: 'zigzag', zig: { amp: 80, period: 2 }, shot: { glow: 1, trail: 1 } }),
   // Lanterna
-  variant('lantern', 'lantern-flauta', 'Flauta', { magnet: 15, color: '#ffd166', after: 0.5, shot: { size: 7, speed: 330 }, fire: { voice: 'flute', vel: 0.1 }, death: { musical: { kind: 'notes', voice: 'flute', shape: 'arp', octave: 1, vel: 0.55 } } }),
-  variant('lantern', 'lantern-brasa', 'Brasa', { magnet: 25, color: '#ff4d2d', shot: { color: '#ff6b35', glow: 0.9, echo: 1, trail: 0.6 }, death: { physical: drumDeath('crash', 0.6) } }),
-  variant('lantern', 'lantern-papel', 'Papel', { magnet: 5, color: '#f4f1e8', move: 'pass', pass: 200, shot: { size: 9, glow: 0.4 }, fire: { voice: 'harp', vel: 0.08 }, death: { musical: { kind: 'notes', voice: 'harp', shape: 'note', octave: 1, vel: 0.5 } } }),
+  variant('lantern', 'lantern-flauta', msg("Flauta"), { magnet: 15, color: '#ffd166', after: 0.5, shot: { size: 7, speed: 330 }, fire: { voice: 'flute', vel: 0.1 }, death: { musical: { kind: 'notes', voice: 'flute', shape: 'arp', octave: 1, vel: 0.55 } } }),
+  variant('lantern', 'lantern-brasa', msg("Brasa"), { magnet: 25, color: '#ff4d2d', shot: { color: '#ff6b35', glow: 0.9, echo: 1, trail: 0.6 }, death: { physical: drumDeath('crash', 0.6) } }),
+  variant('lantern', 'lantern-papel', msg("Papel"), { magnet: 5, color: '#f4f1e8', move: 'pass', pass: 200, shot: { size: 9, glow: 0.4 }, fire: { voice: 'harp', vel: 0.08 }, death: { musical: { kind: 'notes', voice: 'harp', shape: 'note', octave: 1, vel: 0.5 } } }),
   // Casco
-  variant('shell', 'shell-taiko', 'Taiko', { magnet: 33, hp: 160, shot: { size: 16, speed: 200, glow: 0.6 }, death: { physical: drumDeath('taiko', 1) }, drum: null }),
+  variant('shell', 'shell-taiko', msg("Taiko"), { magnet: 33, hp: 160, shot: { size: 16, speed: 200, glow: 0.6 }, death: { physical: drumDeath('taiko', 1) }, drum: null }),
   // Ímã: pulls every shot and rebated note on the screen to itself (100%), so it holds a lot more harmony
-  variant('shell', 'shell-ima', 'Ímã', { color: '#d62828', size: 1.3, hp: 400, points: 1500, magnet: 100, shot: { color: '#e5e5e5', glow: 0.8 }, fire: { voice: 'bells', vel: 0.1 }, death: { physical: drumDeath('crash', 1) } }),
-  variant('shell', 'shell-bronze', 'Bronze', { magnet: 60, color: '#cd7f32', rule: 'travada', shot: { color: '#e9c46a' }, fire: { voice: 'bells', vel: 0.1 }, death: { physical: drumDeath('crash', 0.9) } }),
+  variant('shell', 'shell-ima', msg("Ímã"), { color: '#d62828', size: 1.3, hp: 400, points: 1500, magnet: 100, shot: { color: '#e5e5e5', glow: 0.8 }, fire: { voice: 'bells', vel: 0.1 }, death: { physical: drumDeath('crash', 1) } }),
+  variant('shell', 'shell-bronze', msg("Bronze"), { magnet: 60, color: '#cd7f32', rule: 'travada', shot: { color: '#e9c46a' }, fire: { voice: 'bells', vel: 0.1 }, death: { physical: drumDeath('crash', 0.9) } }),
   // Gêmeos
-  variant('twin', 'twin-tercas', 'Terças', { magnet: 12, color: '#4cc9f0', shot: { harmony: 2 } }),
-  variant('twin', 'twin-eco', 'Eco', { magnet: 8, color: '#b5179e', shot: { echo: 0.5, trail: 0.5 } }),
+  variant('twin', 'twin-tercas', msg("Terças"), { magnet: 12, color: '#4cc9f0', shot: { harmony: 2 } }),
+  variant('twin', 'twin-eco', msg("Eco"), { magnet: 8, color: '#b5179e', shot: { echo: 0.5, trail: 0.5 } }),
   // Mini
-  variant('mini', 'mini-chocalho', 'Chocalho', { color: '#ffd166', shot: { size: 6, echo: 0.25 }, fire: { voice: 'none', vel: 0 }, drum: 'shaker', death: { physical: drumDeath('shaker', 0.9) } }),
-  variant('mini', 'mini-faisca', 'Faísca', { magnet: 3, color: '#f9f871', shot: { size: 5, speed: 480, glow: 1, color: '#fff3b0', trail: 0.8 } }),
+  variant('mini', 'mini-chocalho', msg("Chocalho"), { color: '#ffd166', shot: { size: 6, echo: 0.25 }, fire: { voice: 'none', vel: 0 }, drum: 'shaker', death: { physical: drumDeath('shaker', 0.9) } }),
+  variant('mini', 'mini-faisca', msg("Faísca"), { magnet: 3, color: '#f9f871', shot: { size: 5, speed: 480, glow: 1, color: '#fff3b0', trail: 0.8 } }),
   // Tambor: percussion only, a rebate is a beat
-  variant('drum', 'drum-palmas', 'Palmas', { magnet: 15, color: '#f4a261', drum: 'clap', fire: { voice: 'none', vel: 0 }, death: { physical: drumDeath('clap', 1) } }),
-  variant('drum', 'drum-caixa', 'Caixa', { color: '#e5e5e5', drum: 'snare', fire: { voice: 'none', vel: 0 }, death: { physical: drumDeath('snare', 1) } }),
-  variant('drum', 'drum-bumbo', 'Bumbo', { magnet: 50, color: '#7a1c1c', size: 1.2, drum: 'kick', fire: { voice: 'none', vel: 0 }, shot: { size: 15, speed: 220 }, death: { physical: drumDeath('kick', 1) } }),
+  variant('drum', 'drum-palmas', msg("Palmas"), { magnet: 15, color: '#f4a261', drum: 'clap', fire: { voice: 'none', vel: 0 }, death: { physical: drumDeath('clap', 1) } }),
+  variant('drum', 'drum-caixa', msg("Caixa"), { color: '#e5e5e5', drum: 'snare', fire: { voice: 'none', vel: 0 }, death: { physical: drumDeath('snare', 1) } }),
+  variant('drum', 'drum-bumbo', msg("Bumbo"), { magnet: 50, color: '#7a1c1c', size: 1.2, drum: 'kick', fire: { voice: 'none', vel: 0 }, shot: { size: 15, speed: 220 }, death: { physical: drumDeath('kick', 1) } }),
   // Dragão
-  variant('dragon', 'dragon-fogo', 'Fogo', { magnet: 33, color: '#ff6b35', scale: 'harmonicMinor', shot: { color: '#ff6b35', glow: 1, trail: 0.8 } }),
-  variant('dragon', 'dragon-jade', 'Jade', { color: '#6ee7b7', scale: 'majorPenta', shot: { color: '#6ee7b7' }, fire: { voice: 'bells', vel: 0.1 }, death: { musical: { kind: 'notes', voice: 'bells', shape: 'arp', octave: 1, vel: 0.5 } } }),
+  variant('dragon', 'dragon-fogo', msg("Fogo"), { magnet: 33, color: '#ff6b35', scale: 'harmonicMinor', shot: { color: '#ff6b35', glow: 1, trail: 0.8 } }),
+  variant('dragon', 'dragon-jade', msg("Jade"), { color: '#6ee7b7', scale: 'majorPenta', shot: { color: '#6ee7b7' }, fire: { voice: 'bells', vel: 0.1 }, death: { musical: { kind: 'notes', voice: 'bells', shape: 'arp', octave: 1, vel: 0.5 } } }),
 ]
 export const BUILTIN_BY_ID: Record<string, AlienVariant> = Object.fromEntries(BUILTIN_VARIANTS.map(v => [v.id, v]))
 
@@ -119,30 +120,30 @@ export const BUILTIN_BY_ID: Record<string, AlienVariant> = Object.fromEntries(BU
 
 export type VariantNumber = { path: string; label: string; min: number; max: number; step: number; unit?: string; group: string; hint?: string }
 export const VARIANT_NUMBERS: VariantNumber[] = [
-  { path: 'size', label: 'Tamanho', min: 0.5, max: 2, step: 0.05, unit: '×', group: 'Corpo' },
-  { path: 'hp', label: 'Vida', min: 1, max: 400, step: 1, group: 'Corpo' },
-  { path: 'points', label: 'Pontos', min: 0, max: 2000, step: 10, group: 'Corpo' },
-  { path: 'magnet', label: 'Bullet Magnetism', min: 0, max: 100, step: 1, unit: '%', group: 'Corpo', hint: 'Puxa para ele os tiros e as notas rebatidas que passam perto, mais quanto mais perto; 100% suga todos da tela' },
-  { path: 'after', label: 'Tempos até encostar', min: 0, max: 8, step: 0.5, group: 'Movimento', hint: 'Depois da última nota, quanto falta para encostar nela (os que vêm até ela)' },
-  { path: 'zig.amp', label: 'Zigue-zague: largura', min: 0, max: 200, step: 5, unit: 'px', group: 'Movimento' },
-  { path: 'zig.period', label: 'Zigue-zague: período', min: 0.25, max: 8, step: 0.25, unit: 'tempos', group: 'Movimento' },
-  { path: 'turn', label: 'Espiral: volta', min: -360, max: 360, step: 5, unit: '°', group: 'Movimento' },
-  { path: 'pass', label: 'Passante: distância', min: 60, max: 500, step: 10, unit: 'px', group: 'Movimento' },
-  { path: 'shot.size', label: 'Tamanho do tiro', min: 3, max: 24, step: 1, unit: 'px', group: 'Tiro' },
-  { path: 'shot.glow', label: 'Brilho', min: 0, max: 1, step: 0.05, group: 'Tiro' },
-  { path: 'shot.trail', label: 'Rastro', min: 0, max: 1, step: 0.05, group: 'Tiro' },
-  { path: 'shot.speed', label: 'Velocidade', min: 80, max: 700, step: 10, unit: 'px/s', group: 'Tiro', hint: 'Quanto antes da hora ele atira' },
-  { path: 'shot.harmony', label: 'Intervalo (nota dupla)', min: 0, max: 7, step: 1, unit: 'graus', group: 'Tiro', hint: 'Cada nota sai com outra este tanto de graus acima (2 = terça; 0 = só uma)' },
-  { path: 'shot.echo', label: 'Eco', min: 0, max: 4, step: 0.25, unit: 'tempos', group: 'Tiro', hint: 'Cada nota sai de novo este tanto depois (0 = sem eco)' },
-  { path: 'fire.vel', label: 'Volume do disparo', min: 0, max: 0.4, step: 0.01, group: 'Tiro' },
-  { path: 'death.physical.vel', label: 'Morte física: volume', min: 0.1, max: 1, step: 0.05, group: 'Sons' },
-  { path: 'death.musical.octave', label: 'Morte musical: oitava', min: -1, max: 3, step: 1, group: 'Sons' },
-  { path: 'death.musical.vel', label: 'Morte musical: volume', min: 0.1, max: 1, step: 0.05, group: 'Sons' },
-  { path: 'undead.riseMin', label: 'Levanta depois de (mín.)', min: 0, max: 120, step: 1, unit: 's', group: 'Morto-vivo' },
-  { path: 'undead.riseMax', label: 'Levanta depois de (máx.)', min: 0, max: 120, step: 1, unit: 's', group: 'Morto-vivo' },
-  { path: 'undead.walkSpeed', label: 'Velocidade andando', min: 0, max: 200, step: 5, unit: 'px/s', group: 'Morto-vivo' },
+  { path: 'size', label: msg("Tamanho"), min: 0.5, max: 2, step: 0.05, unit: '×', group: msg("Corpo") },
+  { path: 'hp', label: msg("Vida"), min: 1, max: 400, step: 1, group: msg("Corpo") },
+  { path: 'points', label: msg("Pontos"), min: 0, max: 2000, step: 10, group: msg("Corpo") },
+  { path: 'magnet', label: msg("Bullet Magnetism"), min: 0, max: 100, step: 1, unit: '%', group: msg("Corpo"), hint: msg("Puxa para ele os tiros e as notas rebatidas que passam perto, mais quanto mais perto; 100% suga todos da tela") },
+  { path: 'after', label: msg("Tempos até encostar"), min: 0, max: 8, step: 0.5, group: msg("Movimento"), hint: msg("Depois da última nota, quanto falta para encostar nela (os que vêm até ela)") },
+  { path: 'zig.amp', label: msg("Zigue-zague: largura"), min: 0, max: 200, step: 5, unit: 'px', group: msg("Movimento") },
+  { path: 'zig.period', label: msg("Zigue-zague: período"), min: 0.25, max: 8, step: 0.25, unit: msg("tempos"), group: msg("Movimento") },
+  { path: 'turn', label: msg("Espiral: volta"), min: -360, max: 360, step: 5, unit: '°', group: msg("Movimento") },
+  { path: 'pass', label: msg("Passante: distância"), min: 60, max: 500, step: 10, unit: 'px', group: msg("Movimento") },
+  { path: 'shot.size', label: msg("Tamanho do tiro"), min: 3, max: 24, step: 1, unit: 'px', group: msg("Tiro") },
+  { path: 'shot.glow', label: msg("Brilho"), min: 0, max: 1, step: 0.05, group: msg("Tiro") },
+  { path: 'shot.trail', label: msg("Rastro"), min: 0, max: 1, step: 0.05, group: msg("Tiro") },
+  { path: 'shot.speed', label: msg("Velocidade"), min: 80, max: 700, step: 10, unit: 'px/s', group: msg("Tiro"), hint: msg("Quanto antes da hora ele atira") },
+  { path: 'shot.harmony', label: msg("Intervalo (nota dupla)"), min: 0, max: 7, step: 1, unit: msg("graus"), group: msg("Tiro"), hint: msg("Cada nota sai com outra este tanto de graus acima (2 = terça; 0 = só uma)") },
+  { path: 'shot.echo', label: msg("Eco"), min: 0, max: 4, step: 0.25, unit: msg("tempos"), group: msg("Tiro"), hint: msg("Cada nota sai de novo este tanto depois (0 = sem eco)") },
+  { path: 'fire.vel', label: msg("Volume do disparo"), min: 0, max: 0.4, step: 0.01, group: msg("Tiro") },
+  { path: 'death.physical.vel', label: msg("Morte física: volume"), min: 0.1, max: 1, step: 0.05, group: msg("Sons") },
+  { path: 'death.musical.octave', label: msg("Morte musical: oitava"), min: -1, max: 3, step: 1, group: msg("Sons") },
+  { path: 'death.musical.vel', label: msg("Morte musical: volume"), min: 0.1, max: 1, step: 0.05, group: msg("Sons") },
+  { path: 'undead.riseMin', label: msg("Levanta depois de (mín.)"), min: 0, max: 120, step: 1, unit: 's', group: msg("Morto-vivo") },
+  { path: 'undead.riseMax', label: msg("Levanta depois de (máx.)"), min: 0, max: 120, step: 1, unit: 's', group: msg("Morto-vivo") },
+  { path: 'undead.walkSpeed', label: msg("Velocidade andando"), min: 0, max: 200, step: 5, unit: 'px/s', group: msg("Morto-vivo") },
 ]
-export const VARIANT_GROUPS = ['Corpo', 'Movimento', 'Tiro', 'Rebate', 'Sons', 'Morto-vivo']
+export const VARIANT_GROUPS = [msg("Corpo"), msg("Movimento"), msg("Tiro"), msg("Rebate"), msg("Sons"), msg("Morto-vivo")]
 
 export function getPath(o: unknown, path: string): unknown {
   return path.split('.').reduce<unknown>((v, k) => (v && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined), o)

@@ -27,6 +27,7 @@ import { ProfilePane } from './profile-pane'
 import { useRunningGames } from '@/hooks/use-running-games'
 import { useOnlineAvailability } from '@/hooks/use-online-availability'
 import { useLobbyKitAudition } from '@/hooks/use-lobby-kit-audition'
+import { useT } from '@/lib/i18n'
 
 const LIGHT_SQUARES = Array.from({ length: 8 }, (_, r) =>
   Array.from({ length: 8 }, (_, c) => ((r + c) % 2 === 0 ? [c, r] : null)).filter(Boolean) as [number, number][]
@@ -284,6 +285,7 @@ function useFriendList(active: boolean) {
 
 /** Reusable in an opponent profile popup; resolves crossed requests as acceptance. */
 export function AddFriendButton({ targetCode, className, iconOnly = false }: { targetCode: string; className?: string; iconOnly?: boolean }) {
+  const t = useT()
   const { user, profile, configured } = useOnline()
   const { friends, loading, act } = useFriendList(configured)
   const [busy, setBusy] = useState(false)
@@ -291,7 +293,7 @@ export function AddFriendButton({ targetCode, className, iconOnly = false }: { t
   const relation = friends.find((friend) => friend.profile.code.toUpperCase() === targetCode.toUpperCase())
   const incoming = relation?.status === 'pending' && relation.sender_id !== user?.id
   const isSelf = profile?.code.toUpperCase() === targetCode.toUpperCase()
-  const label = isSelf ? 'Your profile' : relation?.status === 'accepted' ? 'Friends' : incoming ? 'Accept request' : relation ? 'Request sent' : 'Add friend'
+  const label = isSelf ? t('Your profile') : relation?.status === 'accepted' ? t('Friends') : incoming ? t('Accept request') : relation ? t('Request sent') : t('Add friend')
   const add = async () => {
     setBusy(true)
     setError(null)
@@ -325,6 +327,7 @@ function KitPreview({ member, identity, randomCities, unlockedCities, onChooseKi
   onChooseKit?: (cityId: string) => void
   disabled?: boolean
 } & ReturnType<typeof useLobbyKitAudition>) {
+  const t = useT()
   const [expanded, setExpanded] = useState(true)
   const [randomExpanded, setRandomExpanded] = useState(false)
   const [preview, setPreview] = useState<(KitPreviewData & { previous?: KitPreviewData; delays: number[] }) | null>(null)
@@ -373,15 +376,15 @@ function KitPreview({ member, identity, randomCities, unlockedCities, onChooseKi
       {identity}
       <div className="ml-auto flex min-w-0 items-center gap-3">
         <div className="flex min-h-14 min-w-0 flex-col justify-center text-right">
-          <p className="text-sm text-primary">Random</p>
-          {unlockedCities && <button type="button" aria-expanded={randomExpanded} onClick={() => setRandomExpanded(value => !value)} className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-white/55 hover:text-white"><ChevronRight aria-hidden="true" className={cn('size-3 transition-transform motion-reduce:transition-none', randomExpanded && 'rotate-90')} />Select a kit</button>}
+          <p className="text-sm text-primary">{t('Random')}</p>
+          {unlockedCities && <button type="button" aria-expanded={randomExpanded} onClick={() => setRandomExpanded(value => !value)} className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-white/55 hover:text-white"><ChevronRight aria-hidden="true" className={cn('size-3 transition-transform motion-reduce:transition-none', randomExpanded && 'rotate-90')} />{t('Select a kit')}</button>}
         </div>
-        <button type="button" aria-label="Select a random kit" title="Select a random kit" disabled={disabled || !onChooseKit || !randomCities.length} onClick={rollRandomKit} className="group flex h-14 w-20 shrink-0 cursor-pointer items-center justify-center rounded border border-primary/30 bg-primary/10 text-primary transition-all hover:border-primary hover:bg-primary/20 hover:text-white hover:shadow-[0_0_10px_var(--primary)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary disabled:cursor-default disabled:opacity-50"><Shuffle aria-hidden="true" className="size-6 transition-transform group-hover:rotate-90 motion-reduce:transition-none" /></button>
+        <button type="button" aria-label={t('Select a random kit')} title={t('Select a random kit')} disabled={disabled || !onChooseKit || !randomCities.length} onClick={rollRandomKit} className="group flex h-14 w-20 shrink-0 cursor-pointer items-center justify-center rounded border border-primary/30 bg-primary/10 text-primary transition-all hover:border-primary hover:bg-primary/20 hover:text-white hover:shadow-[0_0_10px_var(--primary)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary disabled:cursor-default disabled:opacity-50"><Shuffle aria-hidden="true" className="size-6 transition-transform group-hover:rotate-90 motion-reduce:transition-none" /></button>
       </div>
     </div>
-    {randomExpanded && unlockedCities && <div className="mt-3 min-w-0 text-xs text-white/55">{unlockedCities.length ? <p className="leading-relaxed">{unlockedCities.map((unlockedCity, index) => <span key={unlockedCity.id}><button type="button" disabled={disabled} className="cursor-pointer text-left underline decoration-white/25 underline-offset-2 hover:text-primary focus-visible:text-primary disabled:cursor-default disabled:no-underline disabled:opacity-60" onClick={() => onChooseKit?.(unlockedCity.id)}>{unlockedCity.year} {unlockedCity.name}{index < unlockedCities.length - 1 ? ',' : ''}</button>{' '}</span>)}</p> : <p>No campaign kits available.</p>}</div>}
+    {randomExpanded && unlockedCities && <div className="mt-3 min-w-0 text-xs text-white/55">{unlockedCities.length ? <p className="leading-relaxed">{unlockedCities.map((unlockedCity, index) => <span key={unlockedCity.id}><button type="button" disabled={disabled} className="cursor-pointer text-left underline decoration-white/25 underline-offset-2 hover:text-primary focus-visible:text-primary disabled:cursor-default disabled:no-underline disabled:opacity-60" onClick={() => onChooseKit?.(unlockedCity.id)}>{unlockedCity.year} {unlockedCity.name}{index < unlockedCities.length - 1 ? ',' : ''}</button>{' '}</span>)}</p> : <p>{t('No campaign kits available.')}</p>}</div>}
   </div>
-  if (!city) return <div className={styles.kitPreviewTop}>{identity}<p className="text-xs text-white/50">Kit {member.city_id}</p></div>
+  if (!city) return <div className={styles.kitPreviewTop}>{identity}<p className="text-xs text-white/50">{t('Kit {id}', { id: member.city_id })}</p></div>
   return <div className={styles.kitPreviewContainer}>
    <div className={styles.kitPreviewGrid} data-expanded={expanded}>
     <div className={styles.kitPreviewTop}>
@@ -398,7 +401,7 @@ function KitPreview({ member, identity, randomCities, unlockedCities, onChooseKi
             <img src={city.image} alt="" className="h-14 w-20 object-cover" />
           </KitSlide>
         </button>
-        {onChooseKit && <button type="button" aria-label="Select Random kit" title="Roll another kit" disabled={disabled || changing || !randomCities.some(candidate => candidate.id !== member.city_id)} onClick={rollKit} className="flex h-14 w-8 shrink-0 items-center justify-center rounded border border-white/20 text-white/65 hover:border-primary hover:text-primary disabled:opacity-50"><Dice5 aria-hidden="true" className="size-4" /></button>}
+        {onChooseKit && <button type="button" aria-label={t('Select Random kit')} title={t('Roll another kit')} disabled={disabled || changing || !randomCities.some(candidate => candidate.id !== member.city_id)} onClick={rollKit} className="flex h-14 w-8 shrink-0 items-center justify-center rounded border border-white/20 text-white/65 hover:border-primary hover:text-primary disabled:opacity-50"><Dice5 aria-hidden="true" className="size-4" /></button>}
       </div>
     </div>
     <div className={styles.kitInstrumentReveal} data-expanded={expanded} aria-hidden={!expanded} inert={!expanded}>
@@ -408,7 +411,7 @@ function KitPreview({ member, identity, randomCities, unlockedCities, onChooseKi
           disabled={changing}
           type="button"
           className="group flex min-w-0 items-start gap-1 text-left hover:text-primary focus-visible:text-primary focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary"
-          aria-label={`Play ${kit.instruments[piece.id]?.name || piece.type} at ${piece.origin}`}
+          aria-label={t('Play {name} at {origin}', { name: kit.instruments[piece.id]?.name || piece.type, origin: piece.origin })}
           onPointerEnter={event => {
             if (changing || event.pointerType !== 'mouse') return
             lastHover.current = { id: piece.id, time: Date.now() }
@@ -442,9 +445,10 @@ function KitPreview({ member, identity, randomCities, unlockedCities, onChooseKi
 }
 
 function RoomVisibility({ value, code, disabled, onChoose }: { value: boolean; code: string; disabled: boolean; onChoose: (isPublic: boolean) => void }) {
+  const t = useT()
   return <div className="flex flex-wrap items-center gap-2">{[
-    { isPublic: true, label: 'Public', description: 'Visible in the room list.' },
-    { isPublic: false, label: 'Private', description: 'Join by ID or invitation.' },
+    { isPublic: true, label: t('Public'), description: t('Visible in the room list.') },
+    { isPublic: false, label: t('Private'), description: t('Join by ID or invitation.') },
   ].map((choice) => {
     const selected = value === choice.isPublic
     return <button key={choice.label} type="button" disabled={disabled} aria-pressed={selected} title={choice.description} className={cn(
@@ -453,7 +457,7 @@ function RoomVisibility({ value, code, disabled, onChoose }: { value: boolean; c
         ? 'border-primary bg-transparent font-medium text-primary'
         : 'border-white/20 bg-transparent text-white/65 enabled:hover:border-primary/70 enabled:hover:text-primary',
     )} onClick={() => { if (value !== choice.isPublic) onChoose(choice.isPublic) }}>
-      {choice.label}{selected && <> <span className="text-primary">Lobby</span> <span className="font-mono tracking-wider text-white">{shortRoomCode(code)}</span></>}
+      {choice.label}{selected && <> <span className="text-primary">{t('Lobby')}</span> <span className="font-mono tracking-wider text-white">{shortRoomCode(code)}</span></>}
     </button>
   })}</div>
 }
@@ -484,10 +488,11 @@ function saveHiddenFriends(userId: string | undefined, hidden: Set<string>) {
 
 /** Wardrobe tab: placeholder until its contents are defined. */
 function WardrobePane() {
+  const t = useT()
   return <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-white/15 px-4 py-10 text-center">
     <Shirt aria-hidden="true" className="size-8 text-primary/70" />
-    <p className="text-sm font-medium text-white/80">Vestiário</p>
-    <p className="text-xs text-white/50">Em breve: roupas e acessórios para a sua galinha.</p>
+    <p className="text-sm font-medium text-white/80">{t('Vestiário')}</p>
+    <p className="text-xs text-white/50">{t('Em breve: roupas e acessórios para a sua galinha.')}</p>
   </div>
 }
 
@@ -496,6 +501,7 @@ function WardrobePane() {
 export type FriendPaneAction = { label: string; icon?: ReactNode; run: (friend: OnlineFriend) => Promise<string | void> | string | void }
 
 export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (friend: OnlineFriend) => void; friendAction?: FriendPaneAction }) {
+  const t = useT()
   const { user } = useOnline()
   const { friends, loading, error, act, refresh } = useFriendList(true)
   const [targetCode, setTargetCode] = useState('')
@@ -524,7 +530,7 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
       saveHiddenFriends(user?.id, next)
       return next
     })
-    setNotice(`${friend.profile.display_name} is now hidden from your friends list.`)
+    setNotice(t('{name} is now hidden from your friends list.', { name: friend.profile.display_name }))
   }
 
   const unhideFriend = (friend: OnlineFriend) => {
@@ -555,15 +561,15 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
         )
         if (unhidden && isHiddenFriend(hidden, unhidden.profile)) {
           unhideFriend(unhidden)
-          setNotice(`${unhidden.profile.display_name} is visible again in your friends list.`)
+          setNotice(t('{name} is visible again in your friends list.', { name: unhidden.profile.display_name }))
         } else {
           const relation = next?.find((entry) => profileCodeMatches(entry.profile.code, query))
           setNotice(
             relation?.status === 'accepted'
-              ? 'Friend request accepted.'
+              ? t('Friend request accepted.')
               : relation?.sender_id !== user?.id
-                ? 'Request received. Accept it in the list below.'
-                : 'Friend request sent.'
+                ? t('Request received. Accept it in the list below.')
+                : t('Friend request sent.')
           )
         }
         setTargetCode('')
@@ -584,7 +590,7 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
     )
     if (existingHidden) {
       unhideFriend(existingHidden)
-      setNotice(`${existingHidden.profile.display_name} is visible again in your friends list.`)
+      setNotice(t('{name} is visible again in your friends list.', { name: existingHidden.profile.display_name }))
       setTargetCode('')
       return
     }
@@ -596,30 +602,30 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
   )
 
   const groups = [
-    { title: 'Friends', entries: visibleAccepted, isAccepted: true },
-    { title: 'Received requests', entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id !== user?.id), isAccepted: false },
-    { title: 'Sent requests', entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id === user?.id), isAccepted: false },
+    { title: t('Friends'), entries: visibleAccepted, isAccepted: true },
+    { title: t('Received requests'), entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id !== user?.id), isAccepted: false },
+    { title: t('Sent requests'), entries: friends.filter((friend) => friend.status === 'pending' && friend.sender_id === user?.id), isAccepted: false },
   ]
 
   return (
     <div className="space-y-5">
       <form className="flex flex-wrap gap-2" onSubmit={submitAdd}>
-        <label className="sr-only" htmlFor="friend-code">Profile code or email</label>
+        <label className="sr-only" htmlFor="friend-code">{t('Profile code or email')}</label>
         <input
           id="friend-code"
           className={`${inputClass} flex-1 font-mono`}
           value={targetCode}
           onChange={(event) => setTargetCode(event.target.value)}
-          placeholder="Profile code or email"
+          placeholder={t('Profile code or email')}
           maxLength={120}
           required
         />
-        <Button type="submit" disabled={Boolean(busy) || !targetCode.trim()}><UserPlus />Add</Button>
+        <Button type="submit" disabled={Boolean(busy) || !targetCode.trim()}><UserPlus />{t('Add')}</Button>
       </form>
       <div className="flex justify-start text-white/45">
         <button
           type="button"
-          aria-label="Refresh friends"
+          aria-label={t('Refresh friends')}
           aria-busy={refreshing}
           disabled={refreshing}
           onClick={() => {
@@ -666,7 +672,7 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
                         }}
                       >
                         {friendAction ? friendAction.icon ?? <UserPlus className="size-3.5" /> : <Gamepad2 className="size-3.5" />}
-                        {friendAction ? friendAction.label : 'Create game'}
+                        {friendAction ? t(friendAction.label) : t('Create game')}
                       </Button>
                     </div>
                     <div className="absolute right-2 top-2">
@@ -674,7 +680,7 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
                         <DropdownMenuTrigger asChild>
                           <button
                             type="button"
-                            aria-label="Friend options"
+                            aria-label={t('Friend options')}
                             className="inline-flex size-6 items-center justify-center rounded text-white/50 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                           >
                             <MoreVertical className="size-3.5" />
@@ -686,7 +692,7 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
                             onClick={() => hideFriend(friend)}
                           >
                             <EyeOff className="size-3.5" />
-                            Hide
+                            {t('Hide')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="cursor-pointer gap-2 text-xs text-rose-300 hover:bg-rose-500/20 hover:text-rose-200"
@@ -694,7 +700,7 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
                             onClick={() => void action('remove', friend)}
                           >
                             <Trash2 className="size-3.5" />
-                            Remove
+                            {t('Remove')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -704,15 +710,15 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
                   <div className="flex flex-wrap gap-2">
                     {friend.sender_id === user?.id ? (
                       <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('cancel', friend)}>
-                        Cancel
+                        {t('Cancel')}
                       </Button>
                     ) : (
                       <>
                         <Button size="sm" disabled={Boolean(busy)} onClick={() => void action('accept', friend)}>
-                          Accept
+                          {t('Accept')}
                         </Button>
                         <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action('reject', friend)}>
-                          Decline
+                          {t('Decline')}
                         </Button>
                       </>
                     )}
@@ -721,17 +727,18 @@ export function FriendsPane({ onCreateGame, friendAction }: { onCreateGame?: (fr
               </div>
             ))
           ) : loading ? (
-            <p role="status" className="text-xs text-white/40">Loading…</p>
+            <p role="status" className="text-xs text-white/40">{t('Loading…')}</p>
           ) : null}
         </section>
       ))}
       {(error || actionError) && <p role="alert" className="text-sm text-rose-200">{actionError || error}</p>}
-      {notice && <p role="status" className="text-xs text-primary">{notice}</p>}
+      {notice && <p role="status" className="text-xs text-primary">{t(notice)}</p>}
     </div>
   )
 }
 
 export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, open, onOpenChange, initialTab, showLaunchers = true, launcherContainer, showMapRooms = false, createRequest, onCreateRequestHandled }: OnlineHubProps) {
+  const t = useT()
   const { configured, user, ensureGuest, refreshProfile, openLogin, notify } = useOnline()
   const documentVisible = useDocumentVisible()
   const runningGames = useRunningGames()
@@ -843,13 +850,13 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     if (arrivals.length) {
       playLobbyJoinSound()
       setFlash(true)
-      for (const name of arrivals) notify(`${name} joined your lobby.`)
+      for (const name of arrivals) notify(t('{name} joined your lobby.', { name }))
       if (flashTimer.current) clearTimeout(flashTimer.current)
       flashTimer.current = setTimeout(() => setFlash(false), 1400)
     }
     roomRef.current = next
     setRoom(next)
-  }, [notify])
+  }, [notify, t])
 
   useEffect(() => {
     if (identityRef.current !== user?.id) {
@@ -1149,8 +1156,8 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     if (!friend || !room || room.status !== 'open' || room.host_id !== user?.id) return
     friendToInvite.current = null
     sendInvite(friend.profile.id, { kind: 'room', code: room.code })
-      .then(() => setNotice(`Convite enviado para ${friend.profile.display_name}.`))
-      .catch((cause) => setNotice(cause instanceof Error ? cause.message : String(cause)))
+      .then(() => setNotice(t('Convite enviado para {name}.', { name: friend.profile.display_name })))
+      .catch((cause) => setNotice(t(cause instanceof Error ? cause.message : String(cause))))
   }, [room, user?.id])
   const actionError = error && <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>
   const ownMember = room?.members.find((member) => member.user_id === user?.id)
@@ -1169,12 +1176,12 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
 
   const inviteLink = room && typeof window !== 'undefined' ? `${window.location.origin}/?room=${encodeURIComponent(room.code)}` : ''
   const copyInvite = async () => {
-    try { await navigator.clipboard.writeText(inviteLink); setNotice('Invitation link copied.') }
-    catch { setNotice('Could not copy the invitation link in this browser.') }
+    try { await navigator.clipboard.writeText(inviteLink); setNotice(t('Invitation link copied.')) }
+    catch { setNotice(t('Could not copy the invitation link in this browser.')) }
   }
   const insertBot = () => {
     if (!canInsertBot) {
-      setError('A campaign bot can only be added to an empty room that you host.')
+      setError(t('A campaign bot can only be added to an empty room that you host.'))
       return
     }
     setError(null)
@@ -1195,7 +1202,7 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
       ? cities[Math.floor(Math.random() * cities.length)]
       : getCityById(ownMember.city_id)
     if (!city || !onCampaignCity) {
-      setError('A city kit is required to start the campaign with the bot.')
+      setError(t('A city kit is required to start the campaign with the bot.'))
       return
     }
     if (await roomAction('leave')) {
@@ -1207,10 +1214,10 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     }
   }
   const tabs: Array<{ id: OnlineHubTab; label: string; icon: typeof Globe2 }> = [
-    { id: 'rooms', label: 'Lobbies', icon: Globe2 },
-    { id: 'friends', label: 'Friends', icon: Users },
-    { id: 'profile', label: 'Profile', icon: UserRound },
-    { id: 'wardrobe', label: 'Vestiário', icon: Shirt },
+    { id: 'rooms', label: t('Lobbies'), icon: Globe2 },
+    { id: 'friends', label: t('Friends'), icon: Users },
+    { id: 'profile', label: t('Profile'), icon: UserRound },
+    { id: 'wardrobe', label: t('Vestiário'), icon: Shirt },
   ]
   const selectTab = (id: OnlineHubTab) => {
     if (id === 'room') {
@@ -1230,29 +1237,29 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
     {showLaunchers && launcherContainer && createPortal(
       <div className="flex gap-1.5 md:gap-3">
         {ownMember && room && (
-          <Button variant="ghost" size="icon" aria-label="Lobby" title="Lobby" className={styles.headerButton} onClick={() => { setOpen(false); setLobbyOpen(true) }}>
+          <Button variant="ghost" size="icon" aria-label={t('Lobby')} title={t('Lobby')} className={styles.headerButton} onClick={() => { setOpen(false); setLobbyOpen(true) }}>
             <DoorOpen aria-hidden="true" className="size-4" />
           </Button>
         )}
-        <Button variant="ghost" size="icon" aria-label="Friends" title="Friends" className={styles.headerButton} onClick={() => launch('friends')}>
+        <Button variant="ghost" size="icon" aria-label={t('Friends')} title={t('Friends')} className={styles.headerButton} onClick={() => launch('friends')}>
           <Users aria-hidden="true" className="size-4" />
         </Button>
       </div>, launcherContainer
     )}
-    {showMapRooms && <aside aria-label="Games, public lobbies and Creative" className={styles.mapRooms}>
+    {showMapRooms && <aside aria-label={t('Games, public lobbies and Creative')} className={styles.mapRooms}>
       {onlineAvailable && <>
       {runningGames.games.length > 0 && <section aria-labelledby="running-games-heading" className={styles.mapRoomList}>
-        <h2 id="running-games-heading" className={styles.mapRoomHeading}>Games in progress</h2>
+        <h2 id="running-games-heading" className={styles.mapRoomHeading}>{t('Games in progress')}</h2>
         {runningGames.games.map(game => {
           const city = getCityById(game.context_city_id)
           const isWaiting = game.turn !== game.color
-          return <button key={game.id} type="button" aria-label={`Return to game against ${game.opponent.display_name}`} className={cn(styles.mapButton, styles.mapRoom, styles.mapRunningGame, isWaiting && styles.mapRoomWaiting)} onClick={() => { setOpen(false); onMatch(game.id) }}>
+          return <button key={game.id} type="button" aria-label={t('Return to game against {name}', { name: game.opponent.display_name })} className={cn(styles.mapButton, styles.mapRoom, styles.mapRunningGame, isWaiting && styles.mapRoomWaiting)} onClick={() => { setOpen(false); onMatch(game.id) }}>
             <span className="flex min-w-0 items-center justify-between gap-2">
               <span className="min-w-0 flex-1 py-1">
                 <span className="block break-words text-xs">{game.opponent.display_name}</span>
                 {city && <span className="mt-0.5 block text-[10px] text-white/50">{city.year} {city.name}</span>}
                 <span className={cn('mt-0.5 block text-[10px]', game.turn === game.color ? 'text-primary' : 'text-white/50')}>
-                  {game.turn === game.color ? 'Your turn' : 'Waiting for opponent'}
+                  {game.turn === game.color ? t('Your turn') : t('Waiting for opponent')}
                 </span>
               </span>
               <RunningGameMiniature game={game} />
@@ -1260,17 +1267,17 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
           </button>
         })}
       </section>}
-      {runningGames.error && <div className="space-y-1 text-xs"><p role="alert" className="text-rose-200">Não foi possível carregar suas partidas.</p><p className="break-words text-white/50">{runningGames.error}</p><button type="button" className={styles.mapButton} aria-busy={runningGames.retrying} disabled={runningGames.retrying} onClick={() => void runningGames.refresh()}>{runningGames.retrying ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-3.5" />}{runningGames.retrying ? 'Atualizando…' : 'Tentar novamente'}</button></div>}
+      {runningGames.error && <div className="space-y-1 text-xs"><p role="alert" className="text-rose-200">{t('Não foi possível carregar suas partidas.')}</p><p className="break-words text-white/50">{runningGames.error}</p><button type="button" className={styles.mapButton} aria-busy={runningGames.retrying} disabled={runningGames.retrying} onClick={() => void runningGames.refresh()}>{runningGames.retrying ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="size-3.5" />}{runningGames.retrying ? t('Atualizando…') : t('Tentar novamente')}</button></div>}
       <section aria-labelledby="public-rooms-heading" className={styles.mapRoomList}>
         <h2 id="public-rooms-heading" className={styles.mapRoomHeading}>
           <button type="button" className={styles.mapRoomHeadingButton} onClick={() => launch('rooms')}>
-              Public lobbies
+              {t('Public lobbies')}
           </button>
         </h2>
-        {mapLobbies.entries.length > 0 && <div className={styles.mapRoomList}>{mapLobbies.entries.slice(0, 5).map(entry => <button key={entry.code} type="button" aria-label={entry.code === mapLobbies.ownCode ? 'Abrir seu lobby' : `Entrar na sala de ${entry.creator_name}`} className={cn(styles.mapButton, styles.mapRoom, styles.mapPublicRoom, entry.code === mapLobbies.ownCode && styles.mapOwnRoom)} disabled={entry.code !== mapLobbies.ownCode && (Boolean(busy) || entry.players >= 2)} onClick={() => { if (entry.code === mapLobbies.ownCode) { setOpen(false); setLobbyOpen(true) } else { setTab('rooms'); setOpen(true); setShowDirectory(false); void roomAction('join', entry.code) } }}>
-          <span className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 flex-1"><span className="block break-words">{entry.creator_name}</span><span className={entry.code === mapLobbies.ownCode ? 'block opacity-70' : 'block text-white/50'}>1v1 casual · {entry.players}/2</span></span><LogIn aria-hidden="true" className="size-4 shrink-0" /></span>
+        {mapLobbies.entries.length > 0 && <div className={styles.mapRoomList}>{mapLobbies.entries.slice(0, 5).map(entry => <button key={entry.code} type="button" aria-label={entry.code === mapLobbies.ownCode ? t('Abrir seu lobby') : t('Entrar na sala de {name}', { name: entry.creator_name })} className={cn(styles.mapButton, styles.mapRoom, styles.mapPublicRoom, entry.code === mapLobbies.ownCode && styles.mapOwnRoom)} disabled={entry.code !== mapLobbies.ownCode && (Boolean(busy) || entry.players >= 2)} onClick={() => { if (entry.code === mapLobbies.ownCode) { setOpen(false); setLobbyOpen(true) } else { setTab('rooms'); setOpen(true); setShowDirectory(false); void roomAction('join', entry.code) } }}>
+          <span className="flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 flex-1"><span className="block break-words">{entry.creator_name}</span><span className={entry.code === mapLobbies.ownCode ? 'block opacity-70' : 'block text-white/50'}>{t('1v1 casual')} · {entry.players}/2</span></span><LogIn aria-hidden="true" className="size-4 shrink-0" /></span>
         </button>)}</div>}
-        {mapLobbies.entries.length > 5 && <button type="button" className={styles.mapButton} onClick={() => launch('rooms')}>Ver todas</button>}
+        {mapLobbies.entries.length > 5 && <button type="button" className={styles.mapButton} onClick={() => launch('rooms')}>{t('Ver todas')}</button>}
         {!mapLobbies.ownCode && <button
           type="button"
           className={cn(styles.mapButton, styles.mapCreateLobby)}
@@ -1278,20 +1285,20 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
           aria-busy={busy === 'create'}
           onClick={() => void createLobby(true)}
         >
-          {busy === 'create' ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <Plus aria-hidden="true" className="size-3.5" />}Create lobby
+          {busy === 'create' ? <Loader2 aria-hidden="true" className="size-3.5 animate-spin" /> : <Plus aria-hidden="true" className="size-3.5" />}{t('Create lobby')}
         </button>}
         {showMapRooms && !isOpen && !lobbyOpen && error && <p role="alert" className="text-xs text-rose-200">{error}</p>}
       </section>
       </>}
-      <Link href="/creative" className={cn(styles.mapButton, styles.mapCreative)}><Music2 aria-hidden="true" className="size-3.5" />Creative Mode</Link>
+      <Link href="/creative" className={cn(styles.mapButton, styles.mapCreative)}><Music2 aria-hidden="true" className="size-3.5" />{t('Creative Mode')}</Link>
     </aside>}
     <Dialog modal={false} open={isOpen} onOpenChange={setOpen}>
-      {isOpen && <DialogContent floating closeOnInteractOutside className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent)} closeLabel="Close online panel">
+      {isOpen && <DialogContent floating closeOnInteractOutside className={cn('max-w-xl border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent)} closeLabel={t('Close online panel')}>
         <DialogHeader className="sr-only">
-          <DialogTitle>{tab === 'rooms' ? 'Lobbies' : tab === 'friends' ? 'Friends' : tab === 'wardrobe' ? 'Vestiário' : 'Your profile'}</DialogTitle>
-          <DialogDescription>{tab === 'rooms' ? 'Play ChickenChess online with another player, powers, and each team’s kits.' : tab === 'friends' ? 'Add friends with their profile code or email and manage received requests.' : tab === 'wardrobe' ? 'Your chicken’s outfits.' : 'Your name, progress, and online account.'}</DialogDescription>
+          <DialogTitle>{tab === 'rooms' ? t('Lobbies') : tab === 'friends' ? t('Friends') : tab === 'wardrobe' ? t('Vestiário') : t('Your profile')}</DialogTitle>
+          <DialogDescription>{tab === 'rooms' ? t('Play ChickenChess online with another player, powers, and each team’s kits.') : tab === 'friends' ? t('Add friends with their profile code or email and manage received requests.') : tab === 'wardrobe' ? t('Your chicken’s outfits.') : t('Your name, progress, and online account.')}</DialogDescription>
         </DialogHeader>
-        <nav aria-label="Online area" className="grid grid-cols-4 gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2">
+        <nav aria-label={t('Online area')} className="grid grid-cols-4 gap-1 border-b border-white/10 pb-3 pr-6 sm:flex sm:gap-2">
           {tabs.map(({ id, label, icon: Icon }) => (
             <div key={id} className="min-w-0">
               <Button
@@ -1313,59 +1320,59 @@ export function OnlineHub({ playerProfile, onMatch, onCampaignCity, inviteCode, 
         </nav>
         {tab === 'profile' ? <ProfilePane playerProfile={playerProfile} onSignIn={() => { setOpen(false); openLogin() }} />
           : tab === 'wardrobe' ? <WardrobePane />
-          : !configured ? <p className="rounded-md border border-white/15 p-4 text-sm leading-relaxed text-white/65">{ONLINE_CONFIGURATION_MESSAGE}</p>
+          : !configured ? <p className="rounded-md border border-white/15 p-4 text-sm leading-relaxed text-white/65">{t(ONLINE_CONFIGURATION_MESSAGE)}</p>
           : tab === 'friends' ? <FriendsPane onCreateGame={handleCreateGameWithFriend} />
           : <div className="space-y-4">
             <div className="space-y-2">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Button variant="outline" className="h-11 w-full border-2 border-primary bg-black/35 text-primary hover:border-primary hover:bg-black/80 hover:text-white dark:!border-primary dark:!bg-black/35 dark:hover:!border-primary dark:hover:!bg-black/80 dark:hover:!text-white" disabled={Boolean(busy)} onClick={() => void createLobby(true)}><Plus />Create Public Lobby</Button>
-                <Button variant="outline" className="h-11 w-full border-2 border-primary bg-black/35 text-primary hover:border-primary hover:bg-black/80 hover:text-white dark:!border-primary dark:!bg-black/35 dark:hover:!border-primary dark:hover:!bg-black/80 dark:hover:!text-white" disabled={Boolean(busy)} onClick={() => void createLobby(false)}><Plus />Create Private Lobby</Button>
+                <Button variant="outline" className="h-11 w-full border-2 border-primary bg-black/35 text-primary hover:border-primary hover:bg-black/80 hover:text-white dark:!border-primary dark:!bg-black/35 dark:hover:!border-primary dark:hover:!bg-black/80 dark:hover:!text-white" disabled={Boolean(busy)} onClick={() => void createLobby(true)}><Plus />{t('Create Public Lobby')}</Button>
+                <Button variant="outline" className="h-11 w-full border-2 border-primary bg-black/35 text-primary hover:border-primary hover:bg-black/80 hover:text-white dark:!border-primary dark:!bg-black/35 dark:hover:!border-primary dark:hover:!bg-black/80 dark:hover:!text-white" disabled={Boolean(busy)} onClick={() => void createLobby(false)}><Plus />{t('Create Private Lobby')}</Button>
               </div>
-              {room && <Button variant="ghost" className="h-11 w-full border border-white/20 bg-transparent text-white/65 hover:border-primary hover:!bg-transparent hover:text-primary dark:hover:!bg-transparent" onClick={() => { setOpen(false); setLobbyOpen(true) }}>My lobby</Button>}
+              {room && <Button variant="ghost" className="h-11 w-full border border-white/20 bg-transparent text-white/65 hover:border-primary hover:!bg-transparent hover:text-primary dark:hover:!bg-transparent" onClick={() => { setOpen(false); setLobbyOpen(true) }}>{t('My lobby')}</Button>}
             </div>
-            <div className="flex items-center justify-between text-xs text-white/45"><span>{connected ? 'Live public lobbies' : loading ? 'Loading lobbies…' : 'Reconnecting…'}</span><button type="button" aria-label="Refresh lobbies" aria-busy={refreshingRooms} disabled={refreshingRooms} onClick={refreshRoomsManually}><RefreshCw className={cn('size-3.5', refreshingRooms && 'animate-spin')} /></button></div>
-            <div className="space-y-2 ">{loading && !rooms.length ? <p role="status" className="py-6 text-center text-sm text-white/45">Loading lobbies…</p> : rooms.length ? rooms.map((entry) => <div key={entry.code} className="flex items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{entry.creator_name}</p><p className="text-xs text-white/45">1v1 casual · {entry.players}/2 · <span className="font-mono">{shortRoomCode(entry.code)}</span></p></div><Button size="sm" disabled={Boolean(busy) || entry.players >= 2} onClick={() => void roomAction('join', entry.code)}>Join<LogIn aria-hidden="true" className="size-4" /></Button></div>) : <p className="rounded-md border border-dashed border-white/15 py-6 text-center text-sm text-white/45">No public lobbies are open. Create the first one.</p>}</div>
+            <div className="flex items-center justify-between text-xs text-white/45"><span>{connected ? t('Live public lobbies') : loading ? t('Loading lobbies…') : t('Reconnecting…')}</span><button type="button" aria-label={t('Refresh lobbies')} aria-busy={refreshingRooms} disabled={refreshingRooms} onClick={refreshRoomsManually}><RefreshCw className={cn('size-3.5', refreshingRooms && 'animate-spin')} /></button></div>
+            <div className="space-y-2 ">{loading && !rooms.length ? <p role="status" className="py-6 text-center text-sm text-white/45">{t('Loading lobbies…')}</p> : rooms.length ? rooms.map((entry) => <div key={entry.code} className="flex items-center justify-between gap-3 rounded-md border border-white/15 bg-black/20 p-3"><div><p className="break-words text-sm">{entry.creator_name}</p><p className="text-xs text-white/45">{t('1v1 casual')} · {entry.players}/2 · <span className="font-mono">{shortRoomCode(entry.code)}</span></p></div><Button size="sm" disabled={Boolean(busy) || entry.players >= 2} onClick={() => void roomAction('join', entry.code)}>{t('Join')}<LogIn aria-hidden="true" className="size-4" /></Button></div>) : <p className="rounded-md border border-dashed border-white/15 py-6 text-center text-sm text-white/45">{t('No public lobbies are open. Create the first one.')}</p>}</div>
             {directoryError && <p role="alert" className="text-sm text-rose-200">{directoryError}</p>}
-            {actionError}<form className="space-y-2 pt-4" onSubmit={(event) => { event.preventDefault(); void roomAction('join', code) }}><label htmlFor="online-room-code" className="sr-only">Lobby ID</label><div className="flex flex-wrap gap-2"><input id="online-room-code" className={`${inputClass} flex-1 font-mono uppercase`} value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Lobby ID" maxLength={32} required /><Button type="submit" variant="outline" className="border-white/20 bg-transparent" disabled={Boolean(busy) || !code.trim()}>Join by ID</Button></div></form>
+            {actionError}<form className="space-y-2 pt-4" onSubmit={(event) => { event.preventDefault(); void roomAction('join', code) }}><label htmlFor="online-room-code" className="sr-only">{t('Lobby ID')}</label><div className="flex flex-wrap gap-2"><input id="online-room-code" className={`${inputClass} flex-1 font-mono uppercase`} value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder={t('Lobby ID')} maxLength={32} required /><Button type="submit" variant="outline" className="border-white/20 bg-transparent" disabled={Boolean(busy) || !code.trim()}>{t('Join by ID')}</Button></div></form>
           </div>}
         {!configured && actionError}
-        {busy === 'invite' && <p role="status" className="text-sm text-white/55">Opening invitation…</p>}
+        {busy === 'invite' && <p role="status" className="text-sm text-white/55">{t('Opening invitation…')}</p>}
       </DialogContent>}
     </Dialog>
     <Dialog modal={false} open={lobbyOpen && Boolean(room)} onOpenChange={setLobbyOpen}>
-      {lobbyOpen && room && <DialogContent floating closeOnInteractOutside style={{ maxWidth: room.status === 'closed' ? 'calc(100% - 2rem)' : '52rem', width: room.status === 'closed' ? 'fit-content' : undefined }} className={cn('border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent, flash && styles.joinFlash, room.status === 'closed' && 'p-0')} closeLabel="Close lobby">
+      {lobbyOpen && room && <DialogContent floating closeOnInteractOutside style={{ maxWidth: room.status === 'closed' ? 'calc(100% - 2rem)' : '52rem', width: room.status === 'closed' ? 'fit-content' : undefined }} className={cn('border-primary/30 bg-[#101713] text-[#dfe8df]', styles.responsiveContent, flash && styles.joinFlash, room.status === 'closed' && 'p-0')} closeLabel={t('Close lobby')}>
         <DialogHeader className={cn(room.status === 'closed' ? 'sr-only' : cn('flex-row items-center gap-2', ownMember ? 'pr-[4.25rem]' : 'pr-10'))}>
-          <DialogTitle className="sr-only">Lobby {shortRoomCode(room.code)}</DialogTitle>
+          <DialogTitle className="sr-only">{t('Lobby {code}', { code: shortRoomCode(room.code) })}</DialogTitle>
           {room.status !== 'closed' && <>
             <RoomVisibility value={room.is_public} code={room.code} disabled={Boolean(busy) || room.status !== 'open' || room.host_id !== user?.id} onChoose={(isPublic) => void roomAction('visibility', room.code, DEFAULT_CITY_ID, isPublic)} />
-            <button type="button" className="absolute right-10 top-3 rounded p-1 text-white/45 hover:text-white focus-visible:outline-2" aria-label="Refresh lobby from server" title="Load the latest lobby details" onClick={() => void refreshRoom().catch((cause) => setError(onlineErrorMessage(cause)))}><RefreshCw className="size-4" /></button>
+            <button type="button" className="absolute right-10 top-3 rounded p-1 text-white/45 hover:text-white focus-visible:outline-2" aria-label={t('Refresh lobby from server')} title={t('Load the latest lobby details')} onClick={() => void refreshRoom().catch((cause) => setError(onlineErrorMessage(cause)))}><RefreshCw className="size-4" /></button>
           </>}
-          <DialogDescription className="sr-only">Choose a kit, invite another player, and get ready to play.</DialogDescription>
+          <DialogDescription className="sr-only">{t('Choose a kit, invite another player, and get ready to play.')}</DialogDescription>
         </DialogHeader>
         {room.status === 'closed' ? <div className="flex flex-col items-center gap-3 p-[30px] text-center">
-          <p className="text-sm text-white/60">This lobby has been closed.</p>
-          <Button size="sm" variant="link" className="text-white/55" onClick={() => { roomGeneration.current += 1; applyRoom(null); setLobbyOpen(false); setTab('rooms'); setOpen(true) }}><ArrowLeft />Back to lobbies</Button>
+          <p className="text-sm text-white/60">{t('This lobby has been closed.')}</p>
+          <Button size="sm" variant="link" className="text-white/55" onClick={() => { roomGeneration.current += 1; applyRoom(null); setLobbyOpen(false); setTab('rooms'); setOpen(true) }}><ArrowLeft />{t('Back to lobbies')}</Button>
         </div> : <div className="space-y-4">
           <div className="space-y-3">
             {room.members.map((member) => <div key={member.user_id} className="space-y-3 border-b border-white/10 py-3 last:border-b-0">
-              <KitPreview key={member.user_id} randomCities={randomCities} member={member} identity={<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-xl leading-none">🐔</span><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ' (you)' : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? 'White' : 'Black'} · {member.profile.code}</p></div></div>{member.ready && <span className="inline-flex items-center gap-1 text-xs text-primary"><Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />Ready</span>}</div>} unlockedCities={member.user_id === user?.id ? unlockedCities : undefined} disabled={Boolean(busy) || room.status !== 'open'} onChooseKit={member.user_id === user?.id && room.status === 'open' ? (cityId) => void roomAction('kit', room.code, cityId) : undefined} play={playKitInstrument} stop={stopKitInstrument} cancelHover={cancelKitHover} confirmHover={confirmKitHover} />
+              <KitPreview key={member.user_id} randomCities={randomCities} member={member} identity={<div className="flex min-w-0 flex-1 flex-wrap items-center gap-2"><div className="flex min-w-0 flex-1 items-start gap-2">{member.user_id !== user?.id && ownMember && <AddFriendButton iconOnly targetCode={member.profile.code} />}<span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-xl leading-none">🐔</span><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{member.profile.display_name}{member.user_id === user?.id ? ` ${t('(you)')}` : ''}</p><p className="text-[11px] text-white/45">{member.color === 'w' ? t('White') : t('Black')} · {member.profile.code}</p></div></div>{member.ready && <span className="inline-flex items-center gap-1 text-xs text-primary"><Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />{t('Ready')}</span>}</div>} unlockedCities={member.user_id === user?.id ? unlockedCities : undefined} disabled={Boolean(busy) || room.status !== 'open'} onChooseKit={member.user_id === user?.id && room.status === 'open' ? (cityId) => void roomAction('kit', room.code, cityId) : undefined} play={playKitInstrument} stop={stopKitInstrument} cancelHover={cancelKitHover} confirmHover={confirmKitHover} />
             </div>)}
             {activeBot && <div className={cn('space-y-3 rounded-md border p-3', botReady ? 'border-primary/35 bg-primary/15' : 'border-white/15 bg-black/20')}>
-              <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2"><Bot aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">Campaign bot</p><p className="text-[11px] text-white/45">Uses your kit in the campaign</p></div></div><div className="flex items-center gap-2"><button type="button" className="cursor-pointer text-xs text-white/55 underline decoration-white/25 underline-offset-2 hover:text-white disabled:cursor-default disabled:opacity-50" disabled={Boolean(busy)} onClick={removeBot}>Remove</button><span role="status" aria-live="polite" className={cn('inline-flex items-center gap-1 text-xs', botReady ? 'text-primary' : 'text-white/40')}>{botReady && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{botReady ? 'Ready' : 'Choosing a kit'}</span></div></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 items-start gap-2"><Bot aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" /><div className="min-w-0 flex-1"><p className="min-w-0 break-words text-sm font-medium">{t('Campaign bot')}</p><p className="text-[11px] text-white/45">{t('Uses your kit in the campaign')}</p></div></div><div className="flex items-center gap-2"><button type="button" className="cursor-pointer text-xs text-white/55 underline decoration-white/25 underline-offset-2 hover:text-white disabled:cursor-default disabled:opacity-50" disabled={Boolean(busy)} onClick={removeBot}>{t('Remove')}</button><span role="status" aria-live="polite" className={cn('inline-flex items-center gap-1 text-xs', botReady ? 'text-primary' : 'text-white/40')}>{botReady && <Check aria-hidden="true" className="size-3.5 text-[#39ff14]" />}{botReady ? t('Ready') : t('Choosing a kit')}</span></div></div>
             </div>}
             <div className="space-y-2 rounded-md border border-dashed border-white/15 p-4 text-center">
-              {!activeBot && room.members.length < 2 && <p className="text-sm text-white/40">Waiting for another player · {room.members.length}/2</p>}
+              {!activeBot && room.members.length < 2 && <p className="text-sm text-white/40">{t('Waiting for another player')} · {room.members.length}/2</p>}
               <div className="flex flex-wrap items-start justify-center gap-2">
-                <div className="flex flex-col items-center gap-1"><Button size="sm" variant="ghost" className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={() => void copyInvite()}><Copy aria-hidden="true" />Invite a friend</Button>{notice && <p role="status" className="text-xs text-primary">{notice}{notice === 'Invitation link copied.' && <span className="mt-1 block text-primary">Send to your friend</span>}</p>}</div>
-                <Button size="sm" variant="ghost" disabled={!canInsertBot} className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={insertBot}><Bot aria-hidden="true" />{activeBot ? 'Bot inserted' : 'Insert Bot'}</Button>
+                <div className="flex flex-col items-center gap-1"><Button size="sm" variant="ghost" className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={() => void copyInvite()}><Copy aria-hidden="true" />{t('Invite a friend')}</Button>{notice && <p role="status" className="text-xs text-primary">{notice}{notice === t('Invitation link copied.') && <span className="mt-1 block text-primary">{t('Send to your friend')}</span>}</p>}</div>
+                <Button size="sm" variant="ghost" disabled={!canInsertBot} className="text-white hover:!bg-blue-950/80 hover:!text-white focus-visible:!bg-blue-950/80 focus-visible:!text-white" onClick={insertBot}><Bot aria-hidden="true" />{activeBot ? t('Bot inserted') : t('Insert Bot')}</Button>
               </div>
-              {activeBot && ownMember?.city_id === DEFAULT_CITY_ID && <p className="text-xs text-white/40">Random selects the same kit for you and the bot when the campaign starts.</p>}
+              {activeBot && ownMember?.city_id === DEFAULT_CITY_ID && <p className="text-xs text-white/40">{t('Random selects the same kit for you and the bot when the campaign starts.')}</p>}
             </div>
           </div>
           {actionError}
-          {room.status === 'playing' && <p className="text-sm text-white/60">This lobby is already in a game.</p>}
-          {ownMember && room.status === 'playing' && room.match_id && <Button className="w-full" onClick={() => { setLobbyOpen(false); onMatch(room.match_id!) }}><LogIn />Return to game</Button>}
-          {ownMember ? room.status === 'open' && <div className="flex items-center justify-between gap-3"><Button size="sm" variant="ghost" disabled={Boolean(busy)} className="text-white/55 hover:text-white" onClick={() => void roomAction('leave')}><ExitRoomIcon />Exit</Button><Button variant={ownMember.ready ? 'outline' : 'default'} className={cn('h-11 w-40 shrink-0 justify-center px-2', ownMember.ready && 'border-primary/45 bg-transparent text-primary/75 hover:bg-transparent hover:text-primary')} disabled={Boolean(busy) || (activeBot ? !botReady : room.members.length !== 2)} onClick={() => void readyAction()}>{busy === 'ready' || busy === 'cancel-ready' || busy === 'leave' ? <Loader2 className="animate-spin" /> : <Check />}{ownMember.ready ? 'Cancel ready' : 'I’m ready!'}</Button></div> : <div className="flex items-center justify-between gap-3">{room.status === 'open' && <Button className="h-11 flex-1" disabled={Boolean(busy) || room.members.length >= 2} onClick={() => void roomAction('join', room.code)}><DoorOpen />Join lobby</Button>}<Button size="sm" variant="ghost" className="text-white/55" onClick={() => { roomGeneration.current += 1; applyRoom(null); setLobbyOpen(false); setTab('rooms'); setOpen(true) }}><ArrowLeft />Back to lobbies</Button></div>}
+          {room.status === 'playing' && <p className="text-sm text-white/60">{t('This lobby is already in a game.')}</p>}
+          {ownMember && room.status === 'playing' && room.match_id && <Button className="w-full" onClick={() => { setLobbyOpen(false); onMatch(room.match_id!) }}><LogIn />{t('Return to game')}</Button>}
+          {ownMember ? room.status === 'open' && <div className="flex items-center justify-between gap-3"><Button size="sm" variant="ghost" disabled={Boolean(busy)} className="text-white/55 hover:text-white" onClick={() => void roomAction('leave')}><ExitRoomIcon />{t('Exit')}</Button><Button variant={ownMember.ready ? 'outline' : 'default'} className={cn('h-11 w-40 shrink-0 justify-center px-2', ownMember.ready && 'border-primary/45 bg-transparent text-primary/75 hover:bg-transparent hover:text-primary')} disabled={Boolean(busy) || (activeBot ? !botReady : room.members.length !== 2)} onClick={() => void readyAction()}>{busy === 'ready' || busy === 'cancel-ready' || busy === 'leave' ? <Loader2 className="animate-spin" /> : <Check />}{ownMember.ready ? t('Cancel ready') : t('I’m ready!')}</Button></div> : <div className="flex items-center justify-between gap-3">{room.status === 'open' && <Button className="h-11 flex-1" disabled={Boolean(busy) || room.members.length >= 2} onClick={() => void roomAction('join', room.code)}><DoorOpen />{t('Join lobby')}</Button>}<Button size="sm" variant="ghost" className="text-white/55" onClick={() => { roomGeneration.current += 1; applyRoom(null); setLobbyOpen(false); setTab('rooms'); setOpen(true) }}><ArrowLeft />{t('Back to lobbies')}</Button></div>}
         </div>}
       </DialogContent>}
     </Dialog>

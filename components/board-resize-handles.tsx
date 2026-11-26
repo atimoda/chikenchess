@@ -3,13 +3,14 @@
 import type { PointerEvent } from 'react'
 import type { BoardResizeCorner } from '@/hooks/use-board-resize'
 import styles from './board-resize-handles.module.css'
+import { msg, useT } from '@/lib/i18n'
 
 const corners: BoardResizeCorner[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
-const labels = { 'top-left': 'superior esquerdo', 'top-right': 'superior direito', 'bottom-left': 'inferior esquerdo', 'bottom-right': 'inferior direito' }
+const labels = { 'top-left': msg('superior esquerdo'), 'top-right': msg('superior direito'), 'bottom-left': msg('inferior esquerdo'), 'bottom-right': msg('inferior direito') }
 
 const targets = {
-  board: { name: 'tabuleiro', title: 'Arraste para redimensionar o tabuleiro' },
-  cards: { name: 'cartas', title: 'Arraste para redimensionar as cartas' },
+  board: { name: 'tabuleiro', title: msg('Arraste para redimensionar o tabuleiro') },
+  cards: { name: 'cartas', title: msg('Arraste para redimensionar as cartas') },
 }
 
 export function BoardResizeHandles({ enabled, onStart, onResizeBy, onCancel, target = 'board' }: {
@@ -20,6 +21,7 @@ export function BoardResizeHandles({ enabled, onStart, onResizeBy, onCancel, tar
   onResizeBy: (delta: number) => void
   onCancel: () => void
 }) {
+  const t = useT()
   if (!enabled) return null
   return corners.map(corner => <button
     key={corner}
@@ -27,8 +29,8 @@ export function BoardResizeHandles({ enabled, onStart, onResizeBy, onCancel, tar
     className={styles.handle}
     data-board-resize={corner}
     data-resize-target={target}
-    aria-label={`Redimensionar ${targets[target].name} pelo canto ${labels[corner]}`}
-    title={targets[target].title}
+    aria-label={target === 'board' ? t('Redimensionar tabuleiro pelo canto {corner}', { corner: t(labels[corner]) }) : t('Redimensionar cartas pelo canto {corner}', { corner: t(labels[corner]) })}
+    title={t(targets[target].title)}
     onPointerDown={event => onStart(event, corner)}
     onMouseDown={event => { event.preventDefault(); event.stopPropagation() }}
     onClick={event => { event.preventDefault(); event.stopPropagation() }}

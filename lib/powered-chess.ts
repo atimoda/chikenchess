@@ -1,4 +1,5 @@
 import { Chess, type Move, type Square } from 'chess.js'
+import { t } from './i18n'
 import { permitsPowerMove, type MatchPower } from './chess-powers'
 
 // chess.js 1.4 exposes these methods at runtime even though its declarations mark
@@ -162,7 +163,7 @@ export function moveExposesOwnKing(game: Chess, from: Square, to: Square): boole
 export function freezeApplicationError(game: Chess, powers: MatchPower[], power: MatchPower): string | null {
   if (power.kind !== 'freeze') return null
   const nextPowers = [...powers, power]
-  if (!clonePoweredChess(game, nextPowers).moves().length) return 'Freeze would leave no legal move'
+  if (!clonePoweredChess(game, nextPowers).moves().length) return t('Freeze would leave no legal move')
 
   // Probe the opponent's upcoming turn without moving any piece. A fresh game
   // needs relative power deadlines; effects expiring on our move are excluded.
@@ -179,7 +180,7 @@ export function freezeApplicationError(game: Chess, powers: MatchPower[], power:
       trapUntilPly: item.trapUntilPly === undefined ? undefined : item.trapUntilPly - ownPly,
     }))
   const opponent = makePoweredChess(new Chess(fen.join(' ')), opponentPowers)
-  return opponent.moves().length ? null : 'Você não pode deixar seu oponente sem jogadas.'
+  return opponent.moves().length ? null : t('Você não pode deixar seu oponente sem jogadas.')
 }
 
 /** Powers can leave the side that just moved in check once they expire. Stockfish

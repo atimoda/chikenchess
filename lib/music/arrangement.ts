@@ -1,3 +1,4 @@
+import { msg } from '@/lib/i18n'
 import { z } from 'zod'
 import type { Instrument } from './model'
 import type { Performance } from './performance'
@@ -5,7 +6,7 @@ import { beatsPerBar } from './meter'
 import { sectionParamsSchema } from './section-params'
 
 /** Closed vocabulary for global section names, in the order offered by the editor. */
-export const SECTION_TYPES = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Post-Chorus', 'Hook', 'Bridge', 'Interlude', 'Turnaround', 'Solo', 'Drop', 'Break', 'Outro'] as const
+export const SECTION_TYPES = [msg('Intro'), msg('Verse'), msg('Pre-Chorus'), msg('Chorus'), msg('Post-Chorus'), msg('Hook'), msg('Bridge'), msg('Interlude'), msg('Turnaround'), msg('Solo'), msg('Drop'), msg('Break'), msg('Outro')] as const
 export type SectionType = typeof SECTION_TYPES[number]
 export const DEFAULT_SECTION_TYPE: SectionType = 'Verse'
 

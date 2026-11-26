@@ -4,7 +4,8 @@
 //
 // Geometry in the element's own units (x 0..w, y 0..h, the box's top-left at 0,0), shared by the art
 // (components/pigchicken/building-art.tsx) and the one-way floors the engine reads. Pure.
-export const BUILDING_ROOFS = { hip: 'Beirais curvos', pyramid: 'Pirâmide' } as const
+import { msg } from '../i18n'
+export const BUILDING_ROOFS = { hip: msg("Beirais curvos"), pyramid: msg("Pirâmide") } as const
 export type BuildingRoof = keyof typeof BUILDING_ROOFS
 export type BuildingParams = {
   roof: BuildingRoof

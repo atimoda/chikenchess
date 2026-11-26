@@ -6,6 +6,7 @@ import { useOnline } from '@/components/online/online-provider'
 import { getOnlineClient, onlineErrorMessage, onlineRpc } from '@/lib/online/client'
 import { yourTurnGameOpponents } from '@/lib/online/lobby-updates'
 import type { RunningGame } from '@/lib/online/types'
+import { t } from '@/lib/i18n'
 
 let channelSequence = 0
 // Set once the database rejects the delta call (not yet migrated).
@@ -54,7 +55,7 @@ export function useRunningGames() {
         const { data, error } = await client.auth.getSession()
         if (error) throw error
         if (!active) return
-        if (data.session?.user.id !== userId) throw new Error('A sessão online mudou. Entre novamente e tente carregar suas partidas.')
+        if (data.session?.user.id !== userId) throw new Error(t('A sessão online mudou. Entre novamente e tente carregar suas partidas.'))
         const list = await loadRunningGames(cache)
         if (active && request === revision) {
           cache.clear()
@@ -62,7 +63,7 @@ export function useRunningGames() {
           const opponents = yourTurnGameOpponents(previous, list)
           if (opponents.length) {
             playLobbyJoinSound()
-            for (const name of opponents) notify(`Your turn against ${name}.`)
+            for (const name of opponents) notify(t('Your turn against {name}.', { name }))
           }
           previous = list
           setSnapshot({ userId, games: list, error: null })

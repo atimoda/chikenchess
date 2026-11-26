@@ -5,11 +5,16 @@
 import { memo } from "react"
 import { Cabin_Sketch } from "next/font/google"
 import { chalkFit, type ChalkboardParams } from "@/lib/pigchicken/chalkboard"
+import { useT } from "@/lib/i18n"
 
 const chalkFont = Cabin_Sketch({ subsets: ["latin"], weight: ["400", "700"], display: "swap" })
 
 export const ChalkboardArt = memo(function ChalkboardArt({ board, w, h }: { board: ChalkboardParams; w: number; h: number }) {
-  const { lines, size } = chalkFit(board.text, w, h)
+  const t = useT()
+  // the unedited texts a board starts with are translated; whatever a player wrote shows as written
+  // the training boards number their texts ("3 · TITLE…"): the number stays, the rest is the text to translate
+  const numbered = board.text.match(/^(\d+ · )([\s\S]*)$/)
+  const { lines, size } = chalkFit(t(board.text) !== board.text || !numbered ? t(board.text) : numbered[1] + t(numbered[2]), w, h)
   return (
     <div className="absolute inset-0 rounded-[6px] p-[10px] shadow-[0_8px_18px_rgba(0,0,0,0.35)]" style={{ background: "linear-gradient(135deg,#9a6a3a,#6e4521 60%,#5a3618)" }}>
       <div

@@ -16,6 +16,7 @@ import { frozenCaptureBlock, shieldCaptureBlock, type ShieldCaptureBlock, type M
 import { getSfxEngine } from "@/lib/sfx-engine"
 import { moveExposesOwnKing } from "@/lib/powered-chess"
 import { EGG_REWARDS } from "@/lib/egg-rewards"
+import { msg, useT } from "@/lib/i18n"
 import { MULLIGAN_ANIMATION_MS, MULLIGAN_PREVIEW_DURATION_MS, POWER_RELEASE_MS, releasedPowers, type MulliganPreviewMove } from "@/lib/power-presentation"
 
 interface ChessgroundBoardProps {
@@ -170,6 +171,8 @@ function GoldenShield({ releasing = false, preview = false, shaking = false }: {
   </svg>
 }
 
+const PIECE_NAMES = { p: msg('pawn'), n: msg('knight'), b: msg('bishop'), r: msg('rook'), q: msg('queen'), k: msg('king') } as const
+
 export function ChessgroundBoard({
   game,
   undoAnimationKey = 0,
@@ -226,6 +229,7 @@ export function ChessgroundBoard({
     ))
     return () => animations.forEach(animation => animation.cancel())
   }, [squareEggsFadeAt, squareEggSquares])
+  const t = useT()
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [pressedPieceSquare, setPressedPieceSquare] = useState<Square | null>(null)
   const [legalMoves, setLegalMoves] = useState<Square[]>([])
@@ -870,7 +874,7 @@ export function ChessgroundBoard({
       {/* Premove indicator */}
       {premove && (
         <div className="absolute -top-10 right-0 px-3 py-1 rounded text-xs font-mono text-muted-foreground bg-muted">
-          Premove: {premove.from} → {premove.to}
+          {t('Premove: {from} → {to}', { from: premove.from, to: premove.to })}
         </div>
       )}
 
@@ -972,7 +976,7 @@ export function ChessgroundBoard({
               <button
                 key={square}
                 aria-busy={pendingSquares.includes(square) || undefined}
-                aria-label={freeMode?.squareLabel?.(square) ?? `${square}${piece ? ` ${piece.color} ${piece.type}` : " empty"}`}
+                aria-label={freeMode?.squareLabel?.(square) ?? (piece ? t('{square} {color} {piece}', { square, color: t(piece.color === 'w' ? 'white' : 'black'), piece: t(PIECE_NAMES[piece.type]) }) : t('{square} empty', { square }))}
                 data-square={square}
                 className={cn(
                   "relative aspect-square flex items-center justify-center transition-colors duration-150 w-full",
@@ -1158,7 +1162,7 @@ export function ChessgroundBoard({
                   const shown = Math.min(target.eggs, 6)
                   return <span
                     data-square-eggs={target.eggs}
-                    aria-label={`${target.eggs} golden ${target.eggs === 1 ? 'egg' : 'eggs'} for any piece that lands here`}
+                    aria-label={target.eggs === 1 ? t('1 golden egg for any piece that lands here') : t('{n} golden eggs for any piece that lands here', { n: target.eggs })}
                     className={cn(rewardStyles.squareEggs, "pointer-events-none absolute inset-0 z-[12] flex flex-wrap content-center items-center justify-center gap-[2%] px-[6%]")}
                   >
                     {Array.from({ length: shown }, (_, index) => <span
@@ -1253,18 +1257,18 @@ export function ChessgroundBoard({
           <span
             className={cn(rewardStyles.rankedRewardHeadline, "font-mono font-bold text-[11px] drop-shadow-[0_1px_5px_rgba(0,0,0,.95)]", rankedMoveAnnouncement.streak && [rewardStyles.rankedRewardHeadlineStreak, "text-[13px]"])}
             style={{ color: headlineColor, textShadow: `0 0 8px ${headlineColor}80` }}
-          >{rankedMoveAnnouncement.headline}</span>
+          >{t(rankedMoveAnnouncement.headline)}</span>
           {rankedMoveAnnouncement.earnedEggs > 0 && <span className={cn(rewardStyles.rankedRewardAmount, "font-mono text-[10px] font-bold text-amber-300 drop-shadow-[0_1px_4px_rgba(0,0,0,.95)]")}>
             {good
-              ? `+${rankedMoveAnnouncement.earnedEggs} ${rankedMoveAnnouncement.earnedEggs === 1 ? 'egg' : 'eggs'}`
-              : `Take ${rankedMoveAnnouncement.earnedEggs} eggs!`}
+              ? rankedMoveAnnouncement.earnedEggs === 1 ? t('+1 egg') : t('+{n} eggs', { n: rankedMoveAnnouncement.earnedEggs })
+              : t('Take {n} eggs!', { n: rankedMoveAnnouncement.earnedEggs })}
           </span>}
         </div>
       })()}
 
       {analysisArrows.length > 0 && (
         <svg
-          aria-label="Sugestões de jogadas"
+          aria-label={t("Sugestões de jogadas")}
           className="absolute inset-0 z-30 h-full w-full overflow-visible pointer-events-none"
           viewBox="0 0 800 800"
           preserveAspectRatio="none"

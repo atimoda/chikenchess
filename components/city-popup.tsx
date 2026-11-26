@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { getCityEras, type CityData } from "@/lib/cities-data"
 import { cn } from "@/lib/utils"
 import { Draggable } from "@/components/ui/draggable"
+import { useT } from "@/lib/i18n"
 
 export interface PopupExitMotion {
   fromRotation: number
@@ -96,6 +97,7 @@ export const CityPopup = ({
   onlineDisabled = false,
   driftAway = false,
 }: CityPopupProps) => {
+  const t = useT()
   const dragHandleRef = useRef<HTMLButtonElement>(null)
   const popupWrapperRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -498,20 +500,20 @@ export const CityPopup = ({
           <div className="era-track flex items-start" style={{ transform: `translateX(-${getCityEras(city).findIndex(era => era.id === city.id) * 100}%)` }}>
             {getCityEras(city).map(era => <article key={era.id} aria-hidden={era.id !== city.id} inert={era.id !== city.id} className="w-full min-w-0 shrink-0" data-era-id={era.id}>
               <div data-drag-handle="true" className="relative h-32 w-full overflow-hidden cursor-grab active:cursor-grabbing">
-                <img src={era.image} alt={`City of ${era.name}`} className="w-full h-full object-cover pointer-events-none" />
+                <img src={era.image} alt={t('City of {name}', { name: era.name })} className="w-full h-full object-cover pointer-events-none" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                {era.id === city.id && isConquered && <span className="absolute top-2 right-2 text-[10px] font-mono font-bold bg-black/70 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full pointer-events-none">👑 CONQUERED</span>}
+                {era.id === city.id && isConquered && <span className="absolute top-2 right-2 text-[10px] font-mono font-bold bg-black/70 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full pointer-events-none">👑 {t('CONQUERED')}</span>}
               </div>
               <div className="px-5 pt-5 pb-1">
                 <h3 className="mb-3 font-mono font-bold text-xl tracking-wide" style={{ color: era.color }}>{era.name}, {era.year}</h3>
                 <p className="text-sm font-bold text-foreground mb-1 uppercase tracking-wider">{era.genre}</p>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{era.description}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{t(era.description)}</p>
               </div>
             </article>)}
           </div>
         </div>
         <div className="px-5 pb-5">
-        {getCityEras(city).length > 1 && <nav aria-label={`Épocas de ${city.name}`} className="flex flex-wrap justify-start gap-2 mb-3">
+        {getCityEras(city).length > 1 && <nav aria-label={t('Épocas de {name}', { name: city.name })} className="flex flex-wrap justify-start gap-2 mb-3">
           {getCityEras(city).map((era, index) => <button key={era.id} type="button" disabled={isEntering}
             // Closed hat on hover: even positions (2nd, 4th…) full, odd ones softer.
             onMouseEnter={() => { if (!isEntering) playMapSound(index % 2 === 1 ? 'alesissr16_ch' : 'alesissr16_ch_soft', true) }} aria-label={`${era.name}, ${era.year}: ${era.genre.split('·')[0].trim()}`} aria-pressed={era.id === city.id}
@@ -593,7 +595,7 @@ export const CityPopup = ({
                     "relative z-10 block transition-opacity duration-[1000ms] ease-in-out",
                     isEntering ? "opacity-0" : "opacity-100"
                 )}>
-                    CAMPAIGN
+                    {t('CAMPAIGN')}
                 </span>
               </button>
               {(onCreateRoom || onlineDisabled) && (
@@ -633,7 +635,7 @@ export const CityPopup = ({
                         <path d="M4 21h16" />
                       </svg>
                     )}
-                    <span className="relative z-10">{!onCreateRoom ? 'Online mode temporarily disabled' : isCreatingRoom ? 'Waiting response' : 'Lobby'}</span>
+                    <span className="relative z-10">{!onCreateRoom ? t('Online mode temporarily disabled') : isCreatingRoom ? t('Waiting response') : t('Lobby')}</span>
                   </button>
                 </div>
               )}

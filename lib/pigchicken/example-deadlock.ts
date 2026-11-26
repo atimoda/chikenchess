@@ -27,6 +27,7 @@ import { MOUNTAINS_DEFAULT, type MountainParams } from './mountains'
 import { CLOUDS_DEFAULT, type CloudParams } from './clouds'
 import { AURORA_DEFAULT, type AuroraParams } from './aurora'
 import type { ItemId } from './items'
+import { msg } from '../i18n'
 
 const G = WORLD_GROUND_Y
 export const DEADLOCK_SCREENS = 8
@@ -49,33 +50,38 @@ type Island = { l: number; r: number; y: number; cx: number }
 type Side = -1 | 1 // -1: the west (Galinheiro), 1: the east (Chiqueiro)
 
 // a side's themes: the biome, houses, trees, music and items of each of its regions
+// the texts that carry the base's name, one set per base (each whole, so each one is translated whole)
+const BASE_TEXTS: Record<string, [string, string, string]> = {
+  Galinheiro: [msg('Boneco do Galinheiro: treine a mira antes de sair para as faixas.'), msg('Galinheiro: subir para a Torre'), msg('Galinheiro: descer')],
+  Chiqueiro: [msg('Boneco do Chiqueiro: treine a mira antes de sair para as faixas.'), msg('Chiqueiro: subir para a Torre'), msg('Chiqueiro: descer')],
+}
 type Theme = {
   name: string; biome: GroundBiome; house: HouseStyle; trees: TreeStyle[]; items: ItemId[]
   zone: Partial<SoundZoneParams>
 }
 const THEMES: Record<'base' | 'low' | 'mid' | 'high', Record<Side, Theme>> = {
   base: {
-    [-1]: { name: 'Galinheiro', biome: 'village', house: 'garden', trees: ['oak', 'ipe', 'shrub'], items: ['cage', 'cageWire', 'pistol', 'bat', 'flute'],
+    [-1]: { name: msg('Galinheiro'), biome: 'village', house: 'garden', trees: ['oak', 'ipe', 'shrub'], items: ['cage', 'cageWire', 'pistol', 'bat', 'flute'],
       zone: { root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#ffd76a', birds: ['canario'], ambience: { beat: 'breeze', bass: 'pad' } } },
-    [1]: { name: 'Chiqueiro', biome: 'village', house: 'storybook', trees: ['willow', 'maple', 'shrub'], items: ['cage', 'cageWood', 'pistol', 'bat', 'flute'],
+    [1]: { name: msg('Chiqueiro'), biome: 'village', house: 'storybook', trees: ['willow', 'maple', 'shrub'], items: ['cage', 'cageWood', 'pistol', 'bat', 'flute'],
       zone: { root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 104, feel: 'swing', progression: [0, 3, 0, 4], color: '#ff9fb6', birds: ['sabia'], ambience: { beat: 'fair', bass: 'walking' } } },
   },
   low: {
-    [-1]: { name: 'Deserto dos Bandidos', biome: 'desert', house: 'cubist', trees: ['palm', 'baobab'], items: ['pistol', 'rifle', 'smg', 'guitar', 'tambourine'],
+    [-1]: { name: msg('Deserto dos Bandidos'), biome: 'desert', house: 'cubist', trees: ['palm', 'baobab'], items: ['pistol', 'rifle', 'smg', 'guitar', 'tambourine'],
       zone: { root: 62, scale: 'mixolydian', chordScale: 'mixolydian', bpm: 104, feel: 'straight', progression: [0, 6, 3, 0], color: '#e9b872', birds: ['pardal'], ambience: { beat: 'baiao', bass: 'baiao' } } },
-    [1]: { name: 'Vulcão da Forja', biome: 'volcanic', house: 'terraces', trees: ['cypress', 'baobab'], items: ['launcher', 'grenade', 'pump', 'keys', 'tambourine'],
+    [1]: { name: msg('Vulcão da Forja'), biome: 'volcanic', house: 'terraces', trees: ['cypress', 'baobab'], items: ['launcher', 'grenade', 'pump', 'keys', 'tambourine'],
       zone: { root: 55, scale: 'blues', chordScale: 'mixolydian', bpm: 92, feel: 'swing', progression: [0, 0, 3, 0, 4, 3, 0, 4], color: '#ff6b5b', ambience: { beat: 'boombap', bass: 'droneDark' } } },
   },
   mid: {
-    [-1]: { name: 'Floresta das Araucárias', biome: 'meadow', house: 'nordic', trees: ['araucaria', 'pine', 'birch'], items: ['bow', 'violin', 'boomerang', 'hook', 'passagua'],
+    [-1]: { name: msg('Floresta das Araucárias'), biome: 'meadow', house: 'nordic', trees: ['araucaria', 'pine', 'birch'], items: ['bow', 'violin', 'boomerang', 'hook', 'passagua'],
       zone: { root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 84, feel: 'half', progression: [0, 5, 2, 6], color: '#4f9d69', birds: ['sabia', 'coruja'], ambience: { beat: 'half', bass: 'droneDark' } } },
-    [1]: { name: 'Montanha Nevada', biome: 'snow', house: 'nordic', trees: ['pine', 'birch'], items: ['sniper', 'hangdrum', 'bow', 'hook', 'passagua'],
+    [1]: { name: msg('Montanha Nevada'), biome: 'snow', house: 'nordic', trees: ['pine', 'birch'], items: ['sniper', 'hangdrum', 'bow', 'hook', 'passagua'],
       zone: { root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 76, feel: 'straight', progression: [0, 1, 0, 1], color: '#bfe9ff', birds: ['coruja'], ambience: { beat: 'breeze', bass: 'pad' } } },
   },
   high: {
-    [-1]: { name: 'Jardins Suspensos', biome: 'meadow', house: 'painted', trees: ['plum', 'ipe', 'cypress'], items: ['harp', 'flute', 'sax', 'cok', 'maryjane'],
+    [-1]: { name: msg('Jardins Suspensos'), biome: 'meadow', house: 'painted', trees: ['plum', 'ipe', 'cypress'], items: ['harp', 'flute', 'sax', 'cok', 'maryjane'],
       zone: { root: 67, scale: 'majorPenta', chordScale: 'lydian', bpm: 88, feel: 'straight', progression: [0, 1, 4, 0], color: '#7bdff2', birds: ['canario', 'pardal'], ambience: { beat: 'pulse', bass: 'arp' } } },
-    [1]: { name: 'Feira no Céu', biome: 'village', house: 'folk', trees: ['maple', 'willow'], items: ['trumpet', 'guitar', 'sax', 'cok', 'maryjane'],
+    [1]: { name: msg('Feira no Céu'), biome: 'village', house: 'folk', trees: ['maple', 'willow'], items: ['trumpet', 'guitar', 'sax', 'cok', 'maryjane'],
       zone: { root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 112, feel: 'swing', progression: [0, 3, 0, 4], color: '#ffb347', birds: ['sabia', 'canario'], ambience: { beat: 'fair', bass: 'walking' } } },
   },
 }
@@ -213,11 +219,11 @@ export function deadlockLayout(): PatioLayout {
     zone(T('mid').name, X(side, 2500), bandMid[0], X(side, 8500), bandMid[1], T('mid').zone)
     zone(T('high').name, X(side, 2500), bandHigh[0], X(side, 8500), bandHigh[1], T('high').zone)
   }
-  zone('Arena das Almas', 8500, bandLow[0], WORLD_W - 8500, bandLow[1], { root: 57, scale: 'harmonicMinor', chordScale: 'harmonicMinor', bpm: 96, feel: 'straight', progression: [0, 5, 3, 4], color: '#c77dff', ambience: { beat: 'afro', bass: 'pulse' } })
-  zone('Coração do Arquipélago', 8500, bandMid[0], WORLD_W - 8500, bandMid[1], { root: 60, scale: 'dorian', chordScale: 'dorian', bpm: 90, feel: 'half', progression: [0, 3, 6, 4], color: '#9d8cff', ambience: { beat: 'half', bass: 'arp' } })
-  zone('Santuário', 8500, altar.y + 160, WORLD_W - 8500, bandHigh[1], { root: 62, scale: 'harmonicMinor', chordScale: 'harmonicMinor', bpm: 72, feel: 'half', progression: [0, 5, 3, 4], color: '#e07bff', ambience: { beat: 'half', bass: 'pad' } })
+  zone(msg("Arena das Almas"), 8500, bandLow[0], WORLD_W - 8500, bandLow[1], { root: 57, scale: 'harmonicMinor', chordScale: 'harmonicMinor', bpm: 96, feel: 'straight', progression: [0, 5, 3, 4], color: '#c77dff', ambience: { beat: 'afro', bass: 'pulse' } })
+  zone(msg("Coração do Arquipélago"), 8500, bandMid[0], WORLD_W - 8500, bandMid[1], { root: 60, scale: 'dorian', chordScale: 'dorian', bpm: 90, feel: 'half', progression: [0, 3, 6, 4], color: '#9d8cff', ambience: { beat: 'half', bass: 'arp' } })
+  zone(msg("Santuário"), 8500, altar.y + 160, WORLD_W - 8500, bandHigh[1], { root: 62, scale: 'harmonicMinor', chordScale: 'harmonicMinor', bpm: 72, feel: 'half', progression: [0, 5, 3, 4], color: '#e07bff', ambience: { beat: 'half', bass: 'pad' } })
   // the Altar: the Moon's gravity, above the Santuário
-  zone('Altar da Lua', CX - 900, TOP, CX + 900, altar.y + 160, { root: 64, scale: 'lydian', chordScale: 'lydian', bpm: 70, feel: 'straight', progression: [0, 1, 0, 1], color: '#f2f7ff', priority: 2, gravity: 'moon', ambience: { beat: 'none', bass: 'pad' } })
+  zone(msg("Altar da Lua"), CX - 900, TOP, CX + 900, altar.y + 160, { root: 64, scale: 'lydian', chordScale: 'lydian', bpm: 70, feel: 'straight', progression: [0, 1, 0, 1], color: '#f2f7ff', priority: 2, gravity: 'moon', ambience: { beat: 'none', bass: 'pad' } })
 
   // ---------- each half: base, lanes and jungle ----------
   const lowLines: LayoutElement[][] = []
@@ -240,9 +246,9 @@ export function deadlockLayout(): PatioLayout {
     T('base').items.forEach((item, k) => rack(item, x(900 + k * 85)))
     // the loja: three Baús opened by merit, each closing again after a minute
     SHOP.forEach((s, k) => chest(x(1330 + k * 130), undefined, { rarity: s.rarity, lock: 'souls', souls: s.souls, reopen: 60, loot: s.loot }))
-    dummy(x(2050), `Boneco do ${T('base').name}: treine a mira antes de sair para as faixas.`)
+    dummy(x(2050), BASE_TEXTS[T('base').name][0])
     // the elevator: a pair of portals from the ground to the high island; ladders to the middle one and from it up
-    portals(x(750), undefined, `${T('base').name}: subir para a Torre`, x(750), on(h.base.high), `${T('base').name}: descer`)
+    portals(x(750), undefined, BASE_TEXTS[T('base').name][1], x(750), on(h.base.high), BASE_TEXTS[T('base').name][2])
     ladder(x(2300), floor(x(2300)), h.base.mid.y, -70 * toCentre)
     // the base's middle island: a Portal de nascimento, a house and the start of the middle lane
     spawn(x(1000), on(h.base.mid))
@@ -268,8 +274,8 @@ export function deadlockLayout(): PatioLayout {
     house(T('low').house, 33 + seed, x(7030), 220, 320)
     T('low').trees.forEach((style, k) => tree(style, 41 + k + seed, x(4100 + k * 2300), 0.85))
     ;[2800, 4250, 5800, 6500, 7650].forEach((v, k) => rack(T('low').items[k], x(v)))
-    dummy(x(4450), side < 0 ? 'Bandido de palha: o deserto é dele até alguém derrubá-lo.' : 'Ferreiro de palha: cuidado com o que explode por aqui.')
-    dummy(x(7900), 'Sentinela de palha: a arena das almas fica logo ali.')
+    dummy(x(4450), side < 0 ? msg("Bandido de palha: o deserto é dele até alguém derrubá-lo.") : msg("Ferreiro de palha: cuidado com o que explode por aqui."))
+    dummy(x(7900), msg("Sentinela de palha: a arena das almas fica logo ali."))
     button('zombies', x(5950))
     button('zcount', x(6020))
     // the low jungle: a trampoline up to it from the ground and another from it to the middle lane
@@ -295,7 +301,7 @@ export function deadlockLayout(): PatioLayout {
     })
     midChain.push(laneTower('trelica', 0.42, heart, toBase))
     link(...midChain)
-    dummy(h.mid[2].cx - toCentre * 300, 'Guardião de palha da faixa do meio.', on(h.mid[2]))
+    dummy(h.mid[2].cx - toCentre * 300, msg("Guardião de palha da faixa do meio."), on(h.mid[2]))
     // --- the high lane: islands joined by the wires of cat-head towers ---
     const highChain: LayoutElement[] = [laneTower('gato', 0.4, h.base.high, toCentre)]
     h.high.forEach((i, k) => {

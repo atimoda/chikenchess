@@ -3,6 +3,7 @@
 // standing on two legs. Drawn in the pixels of Titi's "Trio de filhotes" picture and brought to rig units by BABY_K
 // (the chick of that picture is 400 px tall; the game's, 180 rig units before the species' 0.42).
 import type { ChickenArtSet } from './look-art'
+import { msg, t as tr } from '../i18n'
 
 type P = [number, number]
 const fx = (n: number) => Math.round(n * 10) / 10
@@ -24,13 +25,13 @@ const HOOF = 'M-10 -11 C 4 -15, 17 -6, 18 8 C 10 13, -2 11, -10 4 Z'
 // ---------- leitão ----------
 export type PigletStyle = { id: string; label: string; skin: string; belly: string; ear: string; snout: string; nostril: string; hoof: string; patch?: string; eyePatch?: boolean; earPatch?: boolean; spots?: 'malhado' | 'cinza' | 'ruivo'; eye?: string }
 export const PIGLET_STYLES: PigletStyle[] = [
-  { id: 'rosa', label: 'Rosa', skin: '#f4a8a1', belly: '#f9d0c9', ear: '#ec958e', snout: '#ee8c88', nostril: '#a8474f', hoof: '#7b3d40' },
-  { id: 'branco', label: 'Branco', skin: '#f6ebe7', belly: '#fdf7f4', ear: '#f2b4ad', snout: '#f2a6a0', nostril: '#b25a5e', hoof: '#d9aaa2' },
-  { id: 'malhado', label: 'Malhado', skin: '#f3c9c2', belly: '#fbe3de', ear: '#e9a59d', snout: '#ee9f99', nostril: '#9c4048', hoof: '#6e3a3c', patch: '#2e2a2d', eyePatch: true, spots: 'malhado' },
-  { id: 'cinza', label: 'Manchas cinza', skin: '#ecdcd5', belly: '#f7eeea', ear: '#4c4447', snout: '#e8a39d', nostril: '#8f3f46', hoof: '#5a4c4e', patch: '#4c4447', eyePatch: true, earPatch: true, spots: 'cinza' },
-  { id: 'ruivo', label: 'Ruivo pintado', skin: '#dc9a62', belly: '#efc89c', ear: '#c7824b', snout: '#cf8a68', nostril: '#6b3a2e', hoof: '#4a2f28', patch: '#30282a', spots: 'ruivo' },
-  { id: 'caramelo', label: 'Caramelo', skin: '#bd7b52', belly: '#d9a57f', ear: '#a86742', snout: '#b8704e', nostril: '#5d2f24', hoof: '#4a2a22' },
-  { id: 'preto', label: 'Preto', skin: '#3a363c', belly: '#48434a', ear: '#2a272c', snout: '#57505a', nostril: '#151316', hoof: '#1b1a1d', eye: '#0b0a0c' },
+  { id: 'rosa', label: msg('Rosa'), skin: '#f4a8a1', belly: '#f9d0c9', ear: '#ec958e', snout: '#ee8c88', nostril: '#a8474f', hoof: '#7b3d40' },
+  { id: 'branco', label: msg('Branco'), skin: '#f6ebe7', belly: '#fdf7f4', ear: '#f2b4ad', snout: '#f2a6a0', nostril: '#b25a5e', hoof: '#d9aaa2' },
+  { id: 'malhado', label: msg('Malhado'), skin: '#f3c9c2', belly: '#fbe3de', ear: '#e9a59d', snout: '#ee9f99', nostril: '#9c4048', hoof: '#6e3a3c', patch: '#2e2a2d', eyePatch: true, spots: 'malhado' },
+  { id: 'cinza', label: msg('Manchas cinza'), skin: '#ecdcd5', belly: '#f7eeea', ear: '#4c4447', snout: '#e8a39d', nostril: '#8f3f46', hoof: '#5a4c4e', patch: '#4c4447', eyePatch: true, earPatch: true, spots: 'cinza' },
+  { id: 'ruivo', label: msg('Ruivo pintado'), skin: '#dc9a62', belly: '#efc89c', ear: '#c7824b', snout: '#cf8a68', nostril: '#6b3a2e', hoof: '#4a2f28', patch: '#30282a', spots: 'ruivo' },
+  { id: 'caramelo', label: msg('Caramelo'), skin: '#bd7b52', belly: '#d9a57f', ear: '#a86742', snout: '#b8704e', nostril: '#5d2f24', hoof: '#4a2a22' },
+  { id: 'preto', label: msg('Preto'), skin: '#3a363c', belly: '#48434a', ear: '#2a272c', snout: '#57505a', nostril: '#151316', hoof: '#1b1a1d', eye: '#0b0a0c' },
 ]
 const PG = {
   head: 'M200 60 C 270 58, 330 100, 334 160 C 338 225, 290 275, 200 276 C 120 277, 64 232, 64 168 C 64 104, 126 62, 200 60 Z',
@@ -63,15 +64,15 @@ export function pigletArt(s: PigletStyle): ChickenArtSet {
     stroke([[146, 318], [180, 340]], 22, s.skin) + at(188, 346, 34, `<path d="${HOOF}" fill="${s.hoof}" transform="scale(1.45)"/>`)
   const [sh, wr] = PIGLET_ARM
   return {
-    comb: { label: 'Sem crista', svg: '' }, wattle: { label: 'Sem barbela', svg: '' },
-    beak: { label: 'Focinho', svg: '', mouth: toRig(f, [300, 200]) },
-    neck: { label: 'Sem pescoço', svg: '' },
-    face: { label: `Leitão ${s.label.toLowerCase()}`, ownEyes: true, svg: inFrame(f, head) },
-    torso: { label: 'Corpinho de leitão', svg: inFrame(f, body) },
-    wing: { label: 'Bracinho', back: s.skin, backPath: 'M0 0 Z', hand: toRig(f, wr), svg: inFrame(f, stroke([sh, wr], 20, s.skin) + at(wr[0] + 7, wr[1] + 6, 42, `<path d="${HOOF}" fill="${s.hoof}" transform="scale(1.35)"/>`)) },
-    tail: { label: 'Rabinho', swing: 0.6, svg: inFrame(f, stroke(PG.tail, 9, s.skin)) },
+    comb: { label: msg('Sem crista'), svg: '' }, wattle: { label: msg('Sem barbela'), svg: '' },
+    beak: { label: msg('Focinho'), svg: '', mouth: toRig(f, [300, 200]) },
+    neck: { label: msg('Sem pescoço'), svg: '' },
+    face: { get label() { return tr('Leitão {style}', { style: tr(s.label).toLowerCase() }) }, ownEyes: true, svg: inFrame(f, head) },
+    torso: { label: msg('Corpinho de leitão'), svg: inFrame(f, body) },
+    wing: { label: msg('Bracinho'), back: s.skin, backPath: 'M0 0 Z', hand: toRig(f, wr), svg: inFrame(f, stroke([sh, wr], 20, s.skin) + at(wr[0] + 7, wr[1] + 6, 42, `<path d="${HOOF}" fill="${s.hoof}" transform="scale(1.35)"/>`)) },
+    tail: { label: msg('Rabinho'), swing: 0.6, svg: inFrame(f, stroke(PG.tail, 9, s.skin)) },
     legs: {
-      label: 'Perninhas', front: { drum: s.skin, shank: s.skin }, back: { drum: s.skin, shank: s.skin },
+      label: msg('Perninhas'), front: { drum: s.skin, shank: s.skin }, back: { drum: s.skin, shank: s.skin },
       shape: { thigh: 12, tib: 12, shin: 11.5, dxFront: 18.8, dxBack: 6.5, foot: `<path d="M-6 -2 L 6 -2 L 6 6 L -6 6 Z" fill="${s.hoof}"/>` },
     },
   }
@@ -80,16 +81,16 @@ export function pigletArt(s: PigletStyle): ChickenArtSet {
 // ---------- raposinha ----------
 export type KitStyle = { id: string; label: string; coat: string; cream: string; paw: string; nose: string; tip: string; eye?: string; earScale?: number; tailCoat?: string; mask?: string; patch?: string; patches?: number[][]; headPatches?: number[][] }
 export const KIT_STYLES: KitStyle[] = [
-  { id: 'vermelha', label: 'Raposa-vermelha', coat: '#f8b552', cream: '#fbe5bf', paw: '#a65a2c', nose: '#3a1e1c', tip: '#fbe5bf' },
-  { id: 'prateada', label: 'Raposa-prateada', coat: '#6c6d77', cream: '#e6e7eb', paw: '#2b2b31', nose: '#141416', tip: '#f6f6f4', eye: '#120f10' },
-  { id: 'marmorizada', label: 'Raposa-marmorizada', coat: '#f4f4f2', cream: '#ffffff', paw: '#7a7a84', nose: '#141416', tip: '#ffffff', tailCoat: '#9a9aa4', mask: '#4a4a53', patch: '#5a5a63', patches: [[170, 290, 30, 40, 20], [150, 380, 22, 26, 0]], headPatches: [[180, 90, 40, 22, -20]] },
-  { id: 'artico', label: 'Raposa-do-ártico', coat: '#f5f4f1', cream: '#ffffff', paw: '#d8d5ce', nose: '#2a2626', tip: '#ffffff', earScale: 0.72 },
-  { id: 'cinzenta', label: 'Raposa-cinzenta', coat: '#a3a1a0', cream: '#f4f0e9', paw: '#bb6e3c', nose: '#1a1717', tip: '#2a2728', patch: '#c27a4a', patches: [[150, 300, 26, 40, 10]] },
-  { id: 'corsac', label: 'Raposa-corsac', coat: '#d9c4a0', cream: '#f6f0e5', paw: '#b8996b', nose: '#2a211b', tip: '#5a4836' },
-  { id: 'tibetana', label: 'Raposa-tibetana', coat: '#d49a5e', cream: '#f2ebde', paw: '#a08c76', nose: '#2a1f1a', tip: '#f6f2ea', earScale: 0.74, patch: '#b3ada4', patches: [[140, 360, 30, 50, 0]] },
-  { id: 'feneco', label: 'Feneco', coat: '#f1d8a8', cream: '#fdf3df', paw: '#cfa56e', nose: '#3a2a22', tip: '#6a4a33', earScale: 1.45 },
-  { id: 'deserto', label: 'Raposa-do-deserto', coat: '#d5c3a2', cream: '#f6f0e4', paw: '#c08a58', nose: '#2a211b', tip: '#2a2320', earScale: 1.28 },
-  { id: 'morcego', label: 'Raposa-orelhas-de-morcego', coat: '#a8997f', cream: '#ebe3d4', paw: '#2a2522', nose: '#141212', tip: '#1f1b19', mask: '#2a2522', earScale: 1.55 },
+  { id: 'vermelha', label: msg('Raposa-vermelha'), coat: '#f8b552', cream: '#fbe5bf', paw: '#a65a2c', nose: '#3a1e1c', tip: '#fbe5bf' },
+  { id: 'prateada', label: msg('Raposa-prateada'), coat: '#6c6d77', cream: '#e6e7eb', paw: '#2b2b31', nose: '#141416', tip: '#f6f6f4', eye: '#120f10' },
+  { id: 'marmorizada', label: msg('Raposa-marmorizada'), coat: '#f4f4f2', cream: '#ffffff', paw: '#7a7a84', nose: '#141416', tip: '#ffffff', tailCoat: '#9a9aa4', mask: '#4a4a53', patch: '#5a5a63', patches: [[170, 290, 30, 40, 20], [150, 380, 22, 26, 0]], headPatches: [[180, 90, 40, 22, -20]] },
+  { id: 'artico', label: msg('Raposa-do-ártico'), coat: '#f5f4f1', cream: '#ffffff', paw: '#d8d5ce', nose: '#2a2626', tip: '#ffffff', earScale: 0.72 },
+  { id: 'cinzenta', label: msg('Raposa-cinzenta'), coat: '#a3a1a0', cream: '#f4f0e9', paw: '#bb6e3c', nose: '#1a1717', tip: '#2a2728', patch: '#c27a4a', patches: [[150, 300, 26, 40, 10]] },
+  { id: 'corsac', label: msg('Raposa-corsac'), coat: '#d9c4a0', cream: '#f6f0e5', paw: '#b8996b', nose: '#2a211b', tip: '#5a4836' },
+  { id: 'tibetana', label: msg('Raposa-tibetana'), coat: '#d49a5e', cream: '#f2ebde', paw: '#a08c76', nose: '#2a1f1a', tip: '#f6f2ea', earScale: 0.74, patch: '#b3ada4', patches: [[140, 360, 30, 50, 0]] },
+  { id: 'feneco', label: msg('Feneco'), coat: '#f1d8a8', cream: '#fdf3df', paw: '#cfa56e', nose: '#3a2a22', tip: '#6a4a33', earScale: 1.45 },
+  { id: 'deserto', label: msg('Raposa-do-deserto'), coat: '#d5c3a2', cream: '#f6f0e4', paw: '#c08a58', nose: '#2a211b', tip: '#2a2320', earScale: 1.28 },
+  { id: 'morcego', label: msg('Raposa-orelhas-de-morcego'), coat: '#a8997f', cream: '#ebe3d4', paw: '#2a2522', nose: '#141212', tip: '#1f1b19', mask: '#2a2522', earScale: 1.55 },
 ]
 const KT = {
   tail: 'M50 228 C 80 236, 116 262, 136 296 C 146 314, 150 336, 148 360 C 140 384, 118 398, 88 400 C 54 400, 30 380, 24 346 C 18 310, 24 262, 50 228 Z',
@@ -115,15 +116,15 @@ export function kitArt(s: KitStyle): ChickenArtSet {
     stroke([[204, 312], [236, 334]], 22, s.coat) + at(244, 340, 34, `<path d="${HOOF}" fill="${s.paw}" transform="scale(1.4)"/>`)
   const [sh, wr] = KIT_ARM
   return {
-    comb: { label: 'Sem crista', svg: '' }, wattle: { label: 'Sem barbela', svg: '' },
-    beak: { label: 'Focinho', svg: '', mouth: toRig(f, [350, 180]) },
-    neck: { label: 'Sem pescoço', svg: '' },
-    face: { label: `Raposinha (${s.label.toLowerCase()})`, ownEyes: true, svg: inFrame(f, head) },
-    torso: { label: 'Corpinho de raposinha', svg: inFrame(f, body) },
-    wing: { label: 'Bracinho', back: s.coat, backPath: 'M0 0 Z', hand: toRig(f, wr), svg: inFrame(f, stroke([sh, wr], 20, s.coat) + at(wr[0] + 6, wr[1] + 7, 46, `<path d="${HOOF}" fill="${s.paw}" transform="scale(1.3)"/>`)) },
-    tail: { label: 'Rabinho', swing: 0.5, svg: inFrame(f, `<defs><clipPath id="${tc}"><path d="${KT.tail}"/></clipPath></defs><path d="${KT.tail}" fill="${s.tailCoat ?? s.coat}"/><g clip-path="url(#${tc})"><path d="${KT.tailTip}" fill="${s.tip}"/></g>`) },
+    comb: { label: msg('Sem crista'), svg: '' }, wattle: { label: msg('Sem barbela'), svg: '' },
+    beak: { label: msg('Focinho'), svg: '', mouth: toRig(f, [350, 180]) },
+    neck: { label: msg('Sem pescoço'), svg: '' },
+    face: { get label() { return tr('Raposinha ({style})', { style: tr(s.label).toLowerCase() }) }, ownEyes: true, svg: inFrame(f, head) },
+    torso: { label: msg('Corpinho de raposinha'), svg: inFrame(f, body) },
+    wing: { label: msg('Bracinho'), back: s.coat, backPath: 'M0 0 Z', hand: toRig(f, wr), svg: inFrame(f, stroke([sh, wr], 20, s.coat) + at(wr[0] + 6, wr[1] + 7, 46, `<path d="${HOOF}" fill="${s.paw}" transform="scale(1.3)"/>`)) },
+    tail: { label: msg('Rabinho'), swing: 0.5, svg: inFrame(f, `<defs><clipPath id="${tc}"><path d="${KT.tail}"/></clipPath></defs><path d="${KT.tail}" fill="${s.tailCoat ?? s.coat}"/><g clip-path="url(#${tc})"><path d="${KT.tailTip}" fill="${s.tip}"/></g>`) },
     legs: {
-      label: 'Perninhas', front: { drum: s.coat, shank: s.paw }, back: { drum: s.coat, shank: s.paw },
+      label: msg('Perninhas'), front: { drum: s.coat, shank: s.paw }, back: { drum: s.coat, shank: s.paw },
       shape: { thigh: 11, tib: 11, shin: 11, dxFront: 21.5, dxBack: 10.1, foot: `<path d="M-6 -2 L 6 -2 L 6 6 L -6 6 Z" fill="FILL"/>` },
     },
   }

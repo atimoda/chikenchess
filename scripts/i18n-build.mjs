@@ -20,6 +20,10 @@ const MESSAGES = path.join(ROOT, "lib/locales/messages")
 const GENERATED = path.join(ROOT, "lib/locales/generated")
 const SCAN_DIRS = ["app", "components", "hooks", "lib"]
 const CALLS = new Set(["t", "tr", "tx", "msg"])
+// Texts kept in data files and shown with t(value): every string value is a key (except these fields).
+const DATA_SOURCES = ["data/ui/city-descriptions.json", "data/ui/city-intros.json", "data/ui/campaigns.json", "data/ui/match-tips.json",
+  "data/ui/move-messages.json", "data/ui/opening-phrases.json", "data/ui/rank-titles.json"]
+const DATA_SKIP_FIELDS = new Set(["id", "kind"])
 
 const args = process.argv.slice(2)
 const check = args.includes("--check")
@@ -40,6 +44,21 @@ function walk(dir, out = []) {
   return out
 }
 
+/** The literal texts an argument can be: "a", cond ? "a" : "b", x ?? "a", ({ k: "a" })[key], ["a", "b"][i]. */
+function literals(node) {
+  if (!node) return []
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node]
+  if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node)) return literals(node.expression)
+  if (ts.isConditionalExpression(node)) return [...literals(node.whenTrue), ...literals(node.whenFalse)]
+  if (ts.isBinaryExpression(node) && ["??", "||", "&&"].includes(node.operatorToken.getText())) return [...literals(node.left), ...literals(node.right)]
+  if (ts.isElementAccessExpression(node)) {
+    const table = ts.isParenthesizedExpression(node.expression) ? node.expression.expression : node.expression
+    if (ts.isObjectLiteralExpression(table)) return table.properties.flatMap(p => ts.isPropertyAssignment(p) ? literals(p.initializer) : [])
+    if (ts.isArrayLiteralExpression(table)) return table.elements.flatMap(literals)
+  }
+  return []
+}
+
 /** Every literal key the code translates, with where it is used. */
 export function scanKeys() {
   const keys = new Map()
@@ -57,17 +76,29 @@ export function scanKeys() {
           const callee = node.expression
           const named = ts.isIdentifier(callee) ? CALLS.has(callee.text)
             : ts.isPropertyAccessExpression(callee) && callee.name.text === "x" && ts.isIdentifier(callee.expression) && callee.expression.text === "t"
-          const arg = node.arguments[0]
-          if (named && (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) {
-            const line = sf.getLineAndCharacterOfPosition(arg.getStart()).line + 1
-            if (!keys.has(arg.text)) keys.set(arg.text, [])
-            keys.get(arg.text).push(`${rel}:${line}`)
+          if (named) for (const lit of literals(node.arguments[0]).filter(l => l.text.trim())) {
+            const line = sf.getLineAndCharacterOfPosition(lit.getStart()).line + 1
+            if (!keys.has(lit.text)) keys.set(lit.text, [])
+            keys.get(lit.text).push(`${rel}:${line}`)
           }
         }
         ts.forEachChild(node, visit)
       }
       visit(sf)
     }
+  }
+  for (const rel of DATA_SOURCES) {
+    const file = path.join(ROOT, rel)
+    if (!fs.existsSync(file)) continue
+    const add = (value, field) => {
+      if (typeof value === "string") {
+        if (DATA_SKIP_FIELDS.has(field) || !value.trim()) return
+        if (!keys.has(value)) keys.set(value, [])
+        keys.get(value).push(rel)
+      } else if (Array.isArray(value)) value.forEach(v => add(v, field))
+      else if (value && typeof value === "object") for (const [k, v] of Object.entries(value)) add(v, k)
+    }
+    add(JSON.parse(fs.readFileSync(file, "utf8")), "")
   }
   return keys
 }

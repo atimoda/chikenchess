@@ -1,6 +1,7 @@
 // Input devices of this computer, so each local player can drive their own chicken: the primary keyboard,
 // the secondary keyboard, each gamepad (by its index), the mouse and the touch screen. The binds themselves
 // stay in controls.ts; this file only says which of them belong to which device.
+import { msg, t as tr } from '../i18n'
 import { CHICKEN_ACTIONS, type ChickenAction, type ChickenControls } from './controls'
 import { magnetVector } from './analog-magnet'
 
@@ -9,11 +10,17 @@ export type InputDeviceId = 'kb1' | 'kb2' | 'mouse' | 'touch' | `pad${number}`
 export const isPadDevice = (d: InputDeviceId): d is `pad${number}` => d.startsWith('pad')
 export const padIndex = (d: InputDeviceId) => (isPadDevice(d) ? Number(d.slice(3)) : -1)
 
+/** The device's name on screen (inputDeviceLabel stays the language-free value that is compared and sent). */
+export function inputDeviceText(d: InputDeviceId) {
+  if (isPadDevice(d)) return tr('Gamepad {n}', { n: padIndex(d) + 1 })
+  return tr(inputDeviceLabel(d))
+}
+
 export function inputDeviceLabel(d: InputDeviceId) {
-  if (d === 'kb1') return 'Primary keyboard'
-  if (d === 'kb2') return 'Secondary keyboard'
-  if (d === 'mouse') return 'Mouse'
-  if (d === 'touch') return 'Touch'
+  if (d === 'kb1') return msg('Primary keyboard')
+  if (d === 'kb2') return msg('Secondary keyboard')
+  if (d === 'mouse') return msg('Mouse')
+  if (d === 'touch') return msg('Touch')
   return `Gamepad ${padIndex(d) + 1}`
 }
 

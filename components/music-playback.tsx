@@ -13,6 +13,7 @@ import { beatsPerBar, meterLabel } from '@/lib/music/meter'
 import { variationPosition } from '@/lib/music/performance'
 import { arrangementPosition, pieceSection, type Arrangement } from '@/lib/music/arrangement'
 import { ArrowLeftRight, CircleDotDashed, Dice5, Minus, Pin, Plus, RotateCw } from 'lucide-react'
+import { msg, t as tr, useT } from '@/lib/i18n'
 import styles from './music-playback.module.css'
 import { ArpeggiatorButton, ArpeggiatorPanel, useArpConfig } from './music-arpeggiator'
 import { arpeggiate, type ArpConfig } from '@/lib/music/arpeggiator'
@@ -32,22 +33,23 @@ export function MusicPlaybackViewport({ children, visualUpdatesEnabled, piecePar
 }
 
 function noteLabel(note: number | null) {
-  if (note == null || !Number.isFinite(note)) return 'ataque'
+  if (note == null || !Number.isFinite(note)) return tr('ataque')
   const n = Math.round(note)
   return `${['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][((n % 12) + 12) % 12]}${Math.floor(n / 12) - 1}`
 }
 function DivisionPicker({ value, onChange, meter }: { value:number; onChange:(value:number)=>void; meter:import('@/lib/music/meter').Meter }) {
+  const t=useT()
   const label=gridDivisionLabel(value,meter)
-  return <label className={styles.divisionPicker} title={`Grid subdivision: ${label}. Click to pick another division.`}>
+  return <label className={styles.divisionPicker} title={t('Grid subdivision: {label}. Click to pick another division.',{label})}>
     <span className={styles.divisionGrid} style={{gridTemplateColumns:`repeat(${value}, 1fr)`}} aria-hidden="true">{Array.from({length:value},(_,index)=><i key={index}/>)}</span>
-    <select aria-label="Grid subdivision" value={value} onChange={event=>onChange(Number(event.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,meter)}</option>)}</select>
+    <select aria-label={t('Grid subdivision')} value={value} onChange={event=>onChange(Number(event.target.value))}>{MUSIC_GRID_DIVISIONS.map(option=><option key={option.value} value={option.value}>{gridDivisionLabel(option.value,meter)}</option>)}</select>
   </label>
 }
 const EUCLID_MODES: { mode: EuclidMode; label: string; title: string }[] = [
-  { mode: 'notes', label: 'Notes', title: 'Rewrite the rhythm: one note per pulse, keeping the melody in order' },
-  { mode: 'accent', label: 'Accent', title: 'Full accent on the notes that land on a pulse, half on the others' },
-  { mode: 'ratchet', label: 'Ratchet', title: 'Notes that land on a pulse repeat ×2' },
-  { mode: 'chance', label: 'Chance', title: 'Notes off the pattern play 50% of the time' },
+  { mode: 'notes', label: msg('Notes'), title: msg('Rewrite the rhythm: one note per pulse, keeping the melody in order') },
+  { mode: 'accent', label: msg('Accent'), title: msg('Full accent on the notes that land on a pulse, half on the others') },
+  { mode: 'ratchet', label: msg('Ratchet'), title: msg('Notes that land on a pulse repeat ×2') },
+  { mode: 'chance', label: msg('Chance'), title: msg('Notes off the pattern play 50% of the time') },
 ]
 
 /** `source` is the roll Euclid edits from; `last` is what it produced. A roll that
@@ -57,42 +59,46 @@ interface EuclidState { tab: number; source: PianoRoll; sourceJson: string; last
 /** Inline Euclid row under the variation actions: mode, Pulses and Rotate over
  * the grid's steps, with the pattern drawn as dots. */
 function EuclidPanel({ state, steps, onChange }: { state: EuclidState; steps: number; onChange: (patch: Partial<Pick<EuclidState, 'mode' | 'pulses' | 'rotate'>>) => void }) {
+  const t = useT()
   const pattern = euclidPattern(state.pulses, steps, state.rotate)
   const stepper = (label: string, value: number, min: number, max: number, key: 'pulses' | 'rotate', text: string) => <span className={styles.euclidField}>
-    <span>{label}</span>
+    <span>{t(label)}</span>
     <span className={styles.buttonPair}>
-      <button type="button" aria-label={`Fewer ${label.toLowerCase()}`} disabled={value <= min} onClick={() => onChange({ [key]: value - 1 })}><Minus size={12}/></button>
-      <output aria-label={label}>{text}</output>
-      <button type="button" aria-label={`More ${label.toLowerCase()}`} disabled={value >= max} onClick={() => onChange({ [key]: value + 1 })}><Plus size={12}/></button>
+      <button type="button" aria-label={t('Fewer {label}', { label: t(label).toLowerCase() })} disabled={value <= min} onClick={() => onChange({ [key]: value - 1 })}><Minus size={12}/></button>
+      <output aria-label={t(label)}>{text}</output>
+      <button type="button" aria-label={t('More {label}', { label: t(label).toLowerCase() })} disabled={value >= max} onClick={() => onChange({ [key]: value + 1 })}><Plus size={12}/></button>
     </span>
   </span>
-  return <div className={styles.euclidPanel} role="group" aria-label="Euclidean pattern">
-    <div className={styles.euclidModes} role="radiogroup" aria-label="Euclidean mode">
-      {EUCLID_MODES.map(({ mode, label, title }) => <button key={mode} type="button" role="radio" aria-checked={state.mode === mode} data-on={state.mode === mode} title={title} onClick={() => onChange({ mode })}>{label}</button>)}
+  return <div className={styles.euclidPanel} role="group" aria-label={t('Euclidean pattern')}>
+    <div className={styles.euclidModes} role="radiogroup" aria-label={t('Euclidean mode')}>
+      {EUCLID_MODES.map(({ mode, label, title }) => <button key={mode} type="button" role="radio" aria-checked={state.mode === mode} data-on={state.mode === mode} title={t(title)} onClick={() => onChange({ mode })}>{t(label)}</button>)}
     </div>
-    {stepper('Pulses', state.pulses, 0, steps, 'pulses', `${state.pulses}/${steps}`)}
-    {stepper('Rotate', state.rotate, 0, steps - 1, 'rotate', String(state.rotate))}
+    {stepper(msg('Pulses'), state.pulses, 0, steps, 'pulses', `${state.pulses}/${steps}`)}
+    {stepper(msg('Rotate'), state.rotate, 0, steps - 1, 'rotate', String(state.rotate))}
     <span className={styles.euclidDots} aria-hidden="true">{pattern.map((hit, index) => <i key={index} data-on={hit} />)}</span>
   </div>
 }
 
 export function MusicTransportReadout({ monitor, arrangement, activeCount, solo = false, showBeatUnit = false, showStatus = true }: { monitor: MusicMonitor; arrangement?: Arrangement; activeCount?: number; solo?: boolean; showBeatUnit?: boolean; showStatus?: boolean }) {
+  const t = useT()
   const frame = useSyncExternalStore(monitor.subscribe, monitor.getSnapshot, monitor.getServerSnapshot)
   const position = arrangement ? arrangementPosition(arrangement, frame.cycle, beatsPerBar(frame.transport?.meter)) : undefined
-  return <div className={styles.transport} aria-label="Music clock">
-    {showStatus&&<span>{frame.running ? 'Playing' : 'Stopped'} · Section <b>{position?.section.label ?? frame.transport?.sectionLabel ?? String.fromCharCode(65 + Math.max(0, frame.section))}</b></span>}
-    <span>Bar {Math.floor(frame.cycle) + 1}</span>
-    {showBeatUnit&&<span aria-label="BPM unit">{meterLabel(frame.transport?.meter).split(' · ').slice(1).join(' · ')}</span>}
-    {frame.transport&&<span aria-label="Current BPM">{frame.transport.bpm.toFixed(1)} → {frame.transport.targetBpm.toFixed(1)} BPM {frame.transport.ramp&&frame.transport.ramp.progress<1&&<progress aria-label="Ramp progress" max={1} value={frame.transport.ramp.progress} style={{width:60}}/>}{frame.transport.pending.length>0&&` · ${frame.transport.pending.length} change(s) at the bar line`}</span>}
-    <div className={styles.beats} aria-label={`Beat ${frame.beat} of ${beatsPerBar(frame.transport?.meter)}`}>{Array.from({length:beatsPerBar(frame.transport?.meter)},(_,index)=>index+1).map(beat => <i key={beat} data-on={frame.running && frame.beat === beat} />)}</div>
-    {activeCount!==undefined&&<span className={styles.scale}>{activeCount}/32 active{solo?' · solo':''}</span>}
+  return <div className={styles.transport} aria-label={t('Music clock')}>
+    {showStatus&&<span>{frame.running ? t('Playing') : t('Stopped')} · {t.x('Section {name}', { name: <b>{position?.section.label ? t(position.section.label) : frame.transport?.sectionLabel ? t(frame.transport.sectionLabel) : String.fromCharCode(65 + Math.max(0, frame.section))}</b> })}</span>}
+    <span>{t('Bar {n}', { n: Math.floor(frame.cycle) + 1 })}</span>
+    {showBeatUnit&&<span aria-label={t('BPM unit')}>{meterLabel(frame.transport?.meter).split(' · ').slice(1).join(' · ')}</span>}
+    {frame.transport&&<span aria-label={t('Current BPM')}>{frame.transport.bpm.toFixed(1)} → {frame.transport.targetBpm.toFixed(1)} BPM {frame.transport.ramp&&frame.transport.ramp.progress<1&&<progress aria-label={t('Ramp progress')} max={1} value={frame.transport.ramp.progress} style={{width:60}}/>}{frame.transport.pending.length>0&&` · ${t('{n} change(s) at the bar line', { n: frame.transport.pending.length })}`}</span>}
+    <div className={styles.beats} aria-label={t('Beat {beat} of {total}', { beat: frame.beat, total: beatsPerBar(frame.transport?.meter) })}>{Array.from({length:beatsPerBar(frame.transport?.meter)},(_,index)=>index+1).map(beat => <i key={beat} data-on={frame.running && frame.beat === beat} />)}</div>
+    {activeCount!==undefined&&<span className={styles.scale}>{t('{n}/32 active', { n: activeCount })}{solo ? t(' · solo') : ''}</span>}
   </div>
 }
 export function MusicVoiceBadge({ monitor, id }: { monitor: MusicMonitor; id: string }) {
+  const t = useT()
   const status = useSyncExternalStore<VoiceStatus>(monitor.subscribe, () => monitor.getSnapshot().tracks[id]?.status ?? 'inactive', () => 'inactive')
-  return <span className={styles.badge} data-status={status}>{VOICE_STATUS_LABELS[status]}</span>
+  return <span className={styles.badge} data-status={status}>{t(VOICE_STATUS_LABELS[status])}</span>
 }
 export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, snapshot, manual = false, expanded = false, showStatus = true, instrument, onInstrumentChange, variationTabs = false, manageVariations = variationTabs, knobUpdateMode = 'immediate', loopOn = false, onLoopToggle, soloOn = false, onSoloToggle }: { loopOn?: boolean; onLoopToggle?: () => void; soloOn?: boolean; onSoloToggle?: () => void; instrument?:Instrument; onInstrumentChange?:(patch:InstrumentPerformanceEdit)=>void; monitor: MusicMonitor; id: string; snapshot: MusicSnapshot; manual?: boolean; expanded?: boolean; showStatus?: boolean; variationTabs?: boolean; manageVariations?: boolean; knobUpdateMode?:KnobUpdateMode }) {
+  const t = useT()
   const viewport = useContext(MusicPlaybackViewportContext)
   const [division,setDivision]=useState(defaultGridDivision(snapshot.meter))
   useEffect(() => setDivision(defaultGridDivision(snapshot.meter)), [snapshot.meter])
@@ -170,54 +176,54 @@ export const MusicVoiceReadout = memo(function MusicVoiceReadout({ monitor, id, 
   }
   const toggleArpPanel = () => { setEuclid(null); setArpOpen(open => !open) }
   // The piano editor passes Delete note (only while a note is selected) as the first action.
-  const variationActions = instrument && onInstrumentChange ? (leading: ReactNode) => <div className={styles.variationActions} aria-label="Variation actions">
+  const variationActions = instrument && onInstrumentChange ? (leading: ReactNode) => <div className={styles.variationActions} aria-label={t('Variation actions')}>
     {leading}
     <DivisionPicker value={division} onChange={setDivision} meter={snapshot.meter??'4/4'}/>
-    {snapshot.arrangement&&<button type="button" className={styles.restartToggle} aria-label="Restart MIDI when the global section starts" aria-pressed={restart} data-on={restart} title={restart ? 'Restart MIDI at each global section: on. The loop starts again when a section starts.' : 'Restart MIDI at each global section: off. The loop keeps its global phase across sections.'} onClick={toggleRestart}><RotateCw size={14}/></button>}
-    <button type="button" aria-label="Reverse variation notes" title="Mirror the variation in time" onClick={() => onInstrumentChange(reverseVariation(instrument,activeTab))}><ArrowLeftRight size={14}/></button>
-    <button type="button" aria-label="Randomize variation notes" title="Randomize notes" onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dice5 size={14}/></button>
-    <button type="button" className={styles.euclidToggle} aria-label="Euclidean pattern" aria-pressed={!!euclid} data-on={!!euclid} title="Euclidean pattern: spread pulses evenly over the grid to rewrite the rhythm, accents, ratchets or chance" onClick={toggleEuclid}><CircleDotDashed size={14}/></button>
+    {snapshot.arrangement&&<button type="button" className={styles.restartToggle} aria-label={t('Restart MIDI when the global section starts')} aria-pressed={restart} data-on={restart} title={restart ? t('Restart MIDI at each global section: on. The loop starts again when a section starts.') : t('Restart MIDI at each global section: off. The loop keeps its global phase across sections.')} onClick={toggleRestart}><RotateCw size={14}/></button>}
+    <button type="button" aria-label={t('Reverse variation notes')} title={t('Mirror the variation in time')} onClick={() => onInstrumentChange(reverseVariation(instrument,activeTab))}><ArrowLeftRight size={14}/></button>
+    <button type="button" aria-label={t('Randomize variation notes')} title={t('Randomize notes')} onClick={() => onInstrumentChange(randomizeVariation(instrument,activeTab))}><Dice5 size={14}/></button>
+    <button type="button" className={styles.euclidToggle} aria-label={t('Euclidean pattern')} aria-pressed={!!euclid} data-on={!!euclid} title={t('Euclidean pattern: spread pulses evenly over the grid to rewrite the rhythm, accents, ratchets or chance')} onClick={toggleEuclid}><CircleDotDashed size={14}/></button>
     <ArpeggiatorButton open={arpOpen} disabled={!activeRoll} onApply={() => applyArp(arpConfig)} onToggleOpen={toggleArpPanel}/>
-    <span className={styles.buttonPair}><button type="button" aria-label={`Shorten variation ${activeTab+1}`} title="Remove one beat" disabled={!activeRoll||activeRoll.bars<=1/beatsPerBar(snapshot.meter)} onClick={()=>resizeActiveVariation(-.25)}><Minus size={14}/></button>
-    <button type="button" aria-label={`Lengthen variation ${activeTab+1}`} title="Add one beat" disabled={!activeRoll||activeRoll.bars>=8} onClick={()=>resizeActiveVariation(.25)}><Plus size={14}/></button></span>
+    <span className={styles.buttonPair}><button type="button" aria-label={t('Shorten variation {n}',{n:activeTab+1})} title={t('Remove one beat')} disabled={!activeRoll||activeRoll.bars<=1/beatsPerBar(snapshot.meter)} onClick={()=>resizeActiveVariation(-.25)}><Minus size={14}/></button>
+    <button type="button" aria-label={t('Lengthen variation {n}',{n:activeTab+1})} title={t('Add one beat')} disabled={!activeRoll||activeRoll.bars>=8} onClick={()=>resizeActiveVariation(.25)}><Plus size={14}/></button></span>
   </div> : null
   const notes = sourceInstrument?.pianoRolls.flatMap(roll => roll.notes.map(note => note.degree)) ?? []
   const bottom = notes.length ? Math.min(...notes) : 0
   const top = notes.length ? Math.max(...notes) : 0
-  return <div className={`${styles.voice}${viewport.pieceParamsLayout ? ` ${styles.pieceParamsVoice}` : ''}`} aria-label="Instrument playback">
+  return <div className={`${styles.voice}${viewport.pieceParamsLayout ? ` ${styles.pieceParamsVoice}` : ''}`} aria-label={t('Instrument playback')}>
     {showStatus&&<div className={styles.line}><MusicVoiceBadge monitor={monitor} id={id} /><span>{playback.notes}</span></div>}
     {pianoEditor ? <MusicPianoEditor snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode}/> : <div className={`${styles.variationViewer}${viewport.pieceParamsLayout ? ` ${styles.pieceParamsVariationViewer}` : ''}`} data-loop-enabled={instrument?.loopEnabled!==false}>
       {variationTabs && instrument && onInstrumentChange && <>
       <div className={styles.variationTabs} data-manage-variations={manageVariations||undefined}>
-        {onLoopToggle&&<button type="button" className={styles.loopDot} aria-label={loopOn ? 'Turn off the piece' : 'Turn on the piece'} title={loopOn ? 'On: click to turn it off' : 'Off: click to turn it on'} aria-pressed={loopOn} data-on={loopOn} onClick={onLoopToggle}><span aria-hidden="true">{loopOn ? '●' : '○'}</span></button>}
-        <div className={styles.variationTabList} role="tablist" aria-label="Instrument variations">{Array.from({ length: sourceVariationCount }, (_, index) => {
+        {onLoopToggle&&<button type="button" className={styles.loopDot} aria-label={loopOn ? t('Turn off the piece') : t('Turn on the piece')} title={loopOn ? t('On: click to turn it off') : t('Off: click to turn it on')} aria-pressed={loopOn} data-on={loopOn} onClick={onLoopToggle}><span aria-hidden="true">{loopOn ? '●' : '○'}</span></button>}
+        <div className={styles.variationTabList} role="tablist" aria-label={t('Instrument variations')}>{Array.from({ length: sourceVariationCount }, (_, index) => {
           const fixed = instrument.selectedVariation === index
-          return <button key={index} type="button" role="tab" aria-selected={activeTab === index} aria-pressed={fixed} title="Pin only the MIDI variation; presence, transposition and timing keep following the global arrangement." data-active={activeTab === index} data-fixed={fixed} data-absent={absentVariation===index||undefined} onClick={() => onInstrumentChange({ selectedVariation: fixed ? undefined : index })}>{fixed&&<Pin className={styles.pinnedVariation} aria-hidden="true"/>}{String.fromCharCode(65 + index)}</button>
+          return <button key={index} type="button" role="tab" aria-selected={activeTab === index} aria-pressed={fixed} title={t('Pin only the MIDI variation; presence, transposition and timing keep following the global arrangement.')} data-active={activeTab === index} data-fixed={fixed} data-absent={absentVariation===index||undefined} onClick={() => onInstrumentChange({ selectedVariation: fixed ? undefined : index })}>{fixed&&<Pin className={styles.pinnedVariation} aria-hidden="true"/>}{String.fromCharCode(65 + index)}</button>
         })}
         {manageVariations&&<>
-          <button type="button" aria-label="Add variation" title="Add variation" disabled={sourceVariationCount>=8} onClick={()=>onInstrumentChange(addVariation(instrument))}>+</button>
-          <button type="button" aria-label="Remove last variation" title="Remove last variation" disabled={sourceVariationCount<=1} onClick={()=>onInstrumentChange(removeLastVariation(instrument))}>−</button>
+          <button type="button" aria-label={t('Add variation')} title={t('Add variation')} disabled={sourceVariationCount>=8} onClick={()=>onInstrumentChange(addVariation(instrument))}>+</button>
+          <button type="button" aria-label={t('Remove last variation')} title={t('Remove last variation')} disabled={sourceVariationCount<=1} onClick={()=>onInstrumentChange(removeLastVariation(instrument))}>−</button>
         </>}
         </div>
-        {onSoloToggle&&<button type="button" className={styles.soloText} aria-label={soloOn ? 'Disable solo' : 'Enable solo'} title="Solo" aria-pressed={soloOn} data-on={soloOn} onClick={onSoloToggle}>S</button>}
+        {onSoloToggle&&<button type="button" className={styles.soloText} aria-label={soloOn ? t('Disable solo') : t('Enable solo')} title={t('Solo')} aria-pressed={soloOn} data-on={soloOn} onClick={onSoloToggle}>S</button>}
       </div>
       <MusicPianoEditor compact actions={variationActions} onlyVariation={activeTab} division={division} onDivisionChange={setDivision} snapshot={snapshot} id={id} monitor={monitor} instrument={instrument} onChange={onInstrumentChange} knobUpdateMode={knobUpdateMode} visualUpdatesEnabled={viewport.visualUpdatesEnabled}/>
       {euclid && <EuclidPanel state={euclid} steps={euclidStepCount} onChange={changeEuclid} />}
       {arpOpen && <ArpeggiatorPanel config={arpConfig} onChange={patch => applyArp(setArpConfig(patch))} />}
       </>}
       {!variationTabs&&<>
-      <div className={styles.variations} data-tabbed={variationTabs || undefined} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label="Saved piece variations">
+      <div className={styles.variations} data-tabbed={variationTabs || undefined} style={expanded ? { height:'auto', maxHeight:'none', overflow:'visible' } : undefined} tabIndex={0} aria-label={t('Saved piece variations')}>
       {sourceInstrument?.pianoRolls.map((roll, index) => {
         const active = activeTab === index
         const sounding = running && active && playback.present
         const cursor = playback.phase % roll.bars
         return <div key={index} className={styles.variation} data-active={running && active}>
-        <div className={styles.variationLabel}><b>Variation {String.fromCharCode(65 + index)}</b><span>{running && active ? sounding ? 'Playing' : 'Section rest' : `${roll.bars} bars`}</span></div>
-        <svg viewBox="0 0 300 66" role="img" aria-label={`Notes and rests of variation ${String.fromCharCode(65 + index)}`}>
+        <div className={styles.variationLabel}><b>{t('Variation {letter}', { letter: String.fromCharCode(65 + index) })}</b><span>{running && active ? sounding ? t('Playing') : t('Section rest') : t('{n} bars', { n: roll.bars })}</span></div>
+        <svg viewBox="0 0 300 66" role="img" aria-label={t('Notes and rests of variation {letter}', { letter: String.fromCharCode(65 + index) })}>
           {Array.from({ length: 17 }, (_, i) => <line key={i} x1={i * 18.75} x2={i * 18.75} y1="0" y2="66" stroke={i % 4 ? '#26362b' : '#415246'} />)}
           {roll.notes.map((note, noteIndex) => <rect key={noteIndex} x={note.start / roll.bars * 300} y={48 - (note.degree - bottom) / Math.max(1, top - bottom) * 38}
             width={Math.max(1, note.duration / roll.bars * 300 - 1)} height="12" rx="2" opacity={Math.max(.15, note.velocity)}
-            fill={sounding && cursor >= note.start && cursor < note.start + note.duration ? '#edff9f' : '#76a58b'}><title>{`Degree ${note.degree}`}</title></rect>)}
+            fill={sounding && cursor >= note.start && cursor < note.start + note.duration ? '#edff9f' : '#76a58b'}><title>{t('Degree {n}', { n: note.degree })}</title></rect>)}
           {sounding && <line data-playhead="true" x1={cursor / roll.bars * 300} x2={cursor / roll.bars * 300} y1="0" y2="66" stroke="#f8edce" strokeWidth="2" />}
         </svg>
       </div>})}

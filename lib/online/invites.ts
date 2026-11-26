@@ -2,6 +2,7 @@
 // The server keeps one invite per friend for 10 minutes (supabase/migrations/202611180004_friend_invites.sql); the
 // friend's page hears it through the social updates it already watches and shows a notice with a link to enter.
 import { onlineRpc } from './client'
+import { t } from '@/lib/i18n'
 
 export type InviteKind = 'patio' | 'room'
 export interface OnlineInvite {
@@ -39,9 +40,9 @@ export function patioInviteLink(patioId: string | null, roomId: string | null, o
 }
 
 export function inviteMessage(invite: Pick<OnlineInvite, 'name' | 'kind' | 'patio_name'>): string {
-  const who = invite.name?.trim() || 'Um amigo'
-  if (invite.kind === 'room') return `${who} chamou você para um lobby 1v1.`
-  return invite.patio_name ? `${who} chamou você para o Pátio “${invite.patio_name}”.` : `${who} chamou você para o Pátio.`
+  const who = invite.name?.trim() || t('Um amigo')
+  if (invite.kind === 'room') return t('{who} chamou você para um lobby 1v1.', { who })
+  return invite.patio_name ? t('{who} chamou você para o Pátio “{patio}”.', { who, patio: invite.patio_name }) : t('{who} chamou você para o Pátio.', { who })
 }
 
 /** The invites to announce: the ones not seen yet on this browser, from the last 10 minutes. */
@@ -74,11 +75,11 @@ export function inviteMissing(cause: unknown): boolean {
 
 export function inviteErrorMessage(cause: unknown): string {
   const text = errorText(cause)
-  if (inviteMissing(cause)) return 'O convite ainda não chegou a este servidor.'
-  if (/FRIEND_NOT_FOUND/.test(text)) return 'Só dá para chamar amigos aceitos.'
-  if (/INVITE_TOO_SOON/.test(text)) return 'Convite já enviado. Espere alguns segundos para chamar de novo.'
-  if (/UNAUTHORIZED|TRANSFERRED/.test(text)) return 'Entre na sua conta para chamar amigos.'
-  return text || 'Não deu para enviar o convite. Tente de novo.'
+  if (inviteMissing(cause)) return t('O convite ainda não chegou a este servidor.')
+  if (/FRIEND_NOT_FOUND/.test(text)) return t('Só dá para chamar amigos aceitos.')
+  if (/INVITE_TOO_SOON/.test(text)) return t('Convite já enviado. Espere alguns segundos para chamar de novo.')
+  if (/UNAUTHORIZED|TRANSFERRED/.test(text)) return t('Entre na sua conta para chamar amigos.')
+  return text ? t(text) : t('Não deu para enviar o convite. Tente de novo.')
 }
 
 export async function sendInvite(friendId: string, target: { kind: 'patio'; patioId: string | null; roomId: string | null } | { kind: 'room'; code: string }) {

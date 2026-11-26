@@ -5,6 +5,7 @@
 // (out of the drumsticks' reach) and its shortcuts: a key or a gamepad button caught on the next press, or one of
 // the player's own movement directions. Below, how the chart is framed around her in the Pátio (its size, its
 // shift from her shoulder, whether it always fits the screen). Saved in this browser; the Pátio follows it live.
+import { msg, useT } from "@/lib/i18n"
 import { StepSelect } from "@/components/ui/step-select"
 import { useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
@@ -14,9 +15,10 @@ import { BINDS_MAX, DEFAULT_KIT, DEFAULT_VIEW, MOVE_TOKENS, PAD_R_MAX, PAD_R_MIN
 import { drumBindName } from "@/lib/pigchicken/drum-input"
 import { drawDrumChart, drumHints } from "@/components/pigchicken/draw/drum-chart"
 
-const MOVE_LABEL: Record<string, string> = { "Move:left": "Andar ←", "Move:right": "Andar →", "Move:up": "Andar ↑", "Move:down": "Andar ↓" }
+const MOVE_LABEL: Record<string, string> = { "Move:left": msg("Andar ←"), "Move:right": msg("Andar →"), "Move:up": msg("Andar ↑"), "Move:down": msg("Andar ↓") }
 
 export function DrumKitEditor() {
+  const t = useT()
   const [kit, setKit] = useState<DrumKit>(DEFAULT_KIT)
   const [sel, setSel] = useState<DrumPiece>("snare")
   // the piece whose next key or button press becomes a shortcut
@@ -103,24 +105,25 @@ export function DrumKitEditor() {
   }, [listening])
 
   const pad = kit.pads.find(p => p.piece === sel), base = DEFAULT_KIT.pads.find(p => p.piece === sel)
+  const bindText = (tok: string) => (MOVE_LABEL[tok] ? t(MOVE_LABEL[tok]) : drumBindName(tok))
   const binds = (piece: DrumPiece, title: string) => (
     <div className="grid gap-1.5">
       <span className="text-white/70">{title}</span>
       <div className="flex flex-wrap items-center gap-1.5">
-        {kit.binds[piece].map(t => (
-          <span key={t} className="inline-flex h-7 items-center gap-1 rounded-md border border-white/20 pl-2 pr-1">
-            {MOVE_LABEL[t] ?? drumBindName(t)}
-            <button type="button" aria-label={`Tirar o atalho ${MOVE_LABEL[t] ?? drumBindName(t)}`} onClick={() => update(k => { k.binds[piece] = k.binds[piece].filter(b => b !== t) })} className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-white/10"><X className="h-3 w-3" /></button>
+        {kit.binds[piece].map(tok => (
+          <span key={tok} className="inline-flex h-7 items-center gap-1 rounded-md border border-white/20 pl-2 pr-1">
+            {bindText(tok)}
+            <button type="button" aria-label={t("Tirar o atalho {name}", { name: bindText(tok) })} onClick={() => update(k => { k.binds[piece] = k.binds[piece].filter(b => b !== tok) })} className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-white/10"><X className="h-3 w-3" /></button>
           </span>
         ))}
         {kit.binds[piece].length < BINDS_MAX && (
           <>
             <button type="button" onClick={() => setListening(listening === piece ? null : piece)} className={`h-7 rounded-md border px-2 ${listening === piece ? "border-primary text-primary" : "border-white/20 hover:border-primary"}`}>
-              {listening === piece ? "Aperte uma tecla ou botão…" : "+ tecla ou botão"}
+              {listening === piece ? t("Aperte uma tecla ou botão…") : t("+ tecla ou botão")}
             </button>
-            <select aria-label={`Atalho de andar para ${title}`} value="" onChange={e => { const t = e.target.value; if (t) update(k => { if (!k.binds[piece].includes(t)) k.binds[piece].push(t) }) }} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
-              <option value="">+ andar</option>
-              {MOVE_TOKENS.filter(t => !kit.binds[piece].includes(t)).map(t => <option key={t} value={t}>{MOVE_LABEL[t]}</option>)}
+            <select aria-label={t("Atalho de andar para {title}", { title })} value="" onChange={e => { const tok = e.target.value; if (tok) update(k => { if (!k.binds[piece].includes(tok)) k.binds[piece].push(tok) }) }} className="h-7 rounded-md border border-white/15 bg-[#0b110e] px-1">
+              <option value="">{t("+ andar")}</option>
+              {MOVE_TOKENS.filter(tok => !kit.binds[piece].includes(tok)).map(tok => <option key={tok} value={tok}>{t(MOVE_LABEL[tok])}</option>)}
             </select>
           </>
         )}
@@ -133,36 +136,36 @@ export function DrumKitEditor() {
       {pad && base && (
         <>
           <div className="flex items-center justify-between gap-3">
-            <StepSelect aria-label="Peça" value={sel} onChange={e => setSel(e.target.value as DrumPiece)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
-              {kit.pads.map(p => <option key={p.piece} value={p.piece}>{drumPiece(p.piece).label}</option>)}
+            <StepSelect aria-label={t("Peça")} value={sel} onChange={e => setSel(e.target.value as DrumPiece)} className="h-8 min-w-0 flex-1 rounded-md border border-white/15 bg-[#0b110e] px-2 text-sm text-white">
+              {kit.pads.map(p => <option key={p.piece} value={p.piece}>{t(drumPiece(p.piece).label)}</option>)}
             </StepSelect>
           </div>
-          <PatioRange label="Tamanho" min={PAD_R_MIN} max={PAD_R_MAX} step={0.01} value={pad.r} display={pad.r.toFixed(2)} changed={pad.r !== base.r} hint="O raio do botão (fração do raio da escala)"
+          <PatioRange label={t("Tamanho")} min={PAD_R_MIN} max={PAD_R_MAX} step={0.01} value={pad.r} display={pad.r.toFixed(2)} changed={pad.r !== base.r} hint={t("O raio do botão (fração do raio da escala)")}
             onChange={n => update(k => { k.pads.find(p => p.piece === sel)!.r = n })} onReset={() => update(k => { k.pads.find(p => p.piece === sel)!.r = base.r })} />
-          <label className="flex items-center justify-between gap-3" title="Fica por baixo das outras peças e fora do alcance dos analógicos: toca pelo atalho ou clicando na parte que aparece">
-            <span>Atrás das outras</span>
+          <label className="flex items-center justify-between gap-3" title={t("Fica por baixo das outras peças e fora do alcance dos analógicos: toca pelo atalho ou clicando na parte que aparece")}>
+            <span>{t("Atrás das outras")}</span>
             <input type="checkbox" checked={pad.back} onChange={e => { const v = e.target.checked; update(k => { k.pads.find(p => p.piece === sel)!.back = v }) }} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
-          {binds(sel, sel === "hat" ? "Atalhos (fechado)" : "Atalhos")}
-          {sel === "hat" && binds("hatOpen", "Atalhos do pedal (aberto)")}
+          {binds(sel, sel === "hat" ? t("Atalhos (fechado)") : t("Atalhos"))}
+          {sel === "hat" && binds("hatOpen", t("Atalhos do pedal (aberto)"))}
         </>
       )}
       {/* how the chart is framed around the player in the Pátio */}
       <div className="grid gap-[3px] border-t border-white/10 pt-3">
-        <span className="pb-1 text-white/70">Enquadramento no Pátio</span>
-        <PatioRange label="Tamanho da escala" min={VIEW_SIZE_MIN} max={VIEW_SIZE_MAX} step={0.05} value={kit.view.size} display={`${kit.view.size.toFixed(2)}x`} changed={kit.view.size !== DEFAULT_VIEW.size} hint="O raio da escala em volta dela (não segue o Escalas (Tamanho) das camadas)"
+        <span className="pb-1 text-white/70">{t("Enquadramento no Pátio")}</span>
+        <PatioRange label={t("Tamanho da escala")} min={VIEW_SIZE_MIN} max={VIEW_SIZE_MAX} step={0.05} value={kit.view.size} display={`${kit.view.size.toFixed(2)}x`} changed={kit.view.size !== DEFAULT_VIEW.size} hint={t("O raio da escala em volta dela (não segue o Escalas (Tamanho) das camadas)")}
           onChange={n => update(k => { k.view.size = n })} onReset={() => update(k => { k.view.size = DEFAULT_VIEW.size })} />
-        <PatioRange label="Deslocar para os lados" min={-VIEW_SHIFT_MAX} max={VIEW_SHIFT_MAX} step={0.05} value={kit.view.dx} display={kit.view.dx.toFixed(2)} changed={kit.view.dx !== 0} hint="Quanto o meio da escala fica à direita (ou, negativo, à esquerda) do ombro dela, em raios"
+        <PatioRange label={t("Deslocar para os lados")} min={-VIEW_SHIFT_MAX} max={VIEW_SHIFT_MAX} step={0.05} value={kit.view.dx} display={kit.view.dx.toFixed(2)} changed={kit.view.dx !== 0} hint={t("Quanto o meio da escala fica à direita (ou, negativo, à esquerda) do ombro dela, em raios")}
           onChange={n => update(k => { k.view.dx = n })} onReset={() => update(k => { k.view.dx = 0 })} />
-        <PatioRange label="Deslocar para cima ou para baixo" min={-VIEW_SHIFT_MAX} max={VIEW_SHIFT_MAX} step={0.05} value={kit.view.dy} display={kit.view.dy.toFixed(2)} changed={kit.view.dy !== 0} hint="Quanto o meio da escala fica abaixo (ou, negativo, acima) do ombro dela, em raios"
+        <PatioRange label={t("Deslocar para cima ou para baixo")} min={-VIEW_SHIFT_MAX} max={VIEW_SHIFT_MAX} step={0.05} value={kit.view.dy} display={kit.view.dy.toFixed(2)} changed={kit.view.dy !== 0} hint={t("Quanto o meio da escala fica abaixo (ou, negativo, acima) do ombro dela, em raios")}
           onChange={n => update(k => { k.view.dy = n })} onReset={() => update(k => { k.view.dy = 0 })} />
-        <label className="flex items-center justify-between gap-3 pt-1" title="A escala nunca sai da tela: perto de uma borda ela desliza para dentro e, maior que a tela, encolhe até caber. Desligado: fica sempre no ombro dela, no tamanho escolhido">
-          <span>Caber inteira na tela</span>
+        <label className="flex items-center justify-between gap-3 pt-1" title={t("A escala nunca sai da tela: perto de uma borda ela desliza para dentro e, maior que a tela, encolhe até caber. Desligado: fica sempre no ombro dela, no tamanho escolhido")}>
+          <span>{t("Caber inteira na tela")}</span>
           <input type="checkbox" checked={kit.view.fit} onChange={e => { const v = e.target.checked; update(k => { k.view.fit = v }) }} className="h-5 w-5 accent-[var(--primary)]" />
         </label>
       </div>
-      <label className="flex items-center justify-between gap-3" title="Com um gatilho analógico (LT, RT) na Caixa: puxão brusco é uma batida; movimento lento faz o rufo, mais forte quanto mais fundo. Desligado: só as batidas">
-        <span>Rufo da Caixa no gatilho</span>
+      <label className="flex items-center justify-between gap-3" title={t("Com um gatilho analógico (LT, RT) na Caixa: puxão brusco é uma batida; movimento lento faz o rufo, mais forte quanto mais fundo. Desligado: só as batidas")}>
+        <span>{t("Rufo da Caixa no gatilho")}</span>
         <input type="checkbox" checked={kit.rolls} onChange={e => { const v = e.target.checked; update(k => { k.rolls = v }) }} className="h-5 w-5 accent-[var(--primary)]" />
       </label>
     </div>

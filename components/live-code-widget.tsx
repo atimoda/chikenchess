@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Power, Copy, Check } from "lucide-react"
 import { Draggable } from "@/components/ui/draggable"
 import { toast } from "sonner"
+import { useT } from "@/lib/i18n"
 import type { CityData } from "@/lib/cities-data"
 
 import { Resizable } from "re-resizable"
@@ -64,6 +65,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   onTogglePieceDebug,
   ...props
 }, ref) => {
+  const t = useT()
   // Remove onDrag from props to avoid type conflict with Draggable's onDrag
   const { onDrag: _onDrag, ...restProps } = props as any
 
@@ -83,8 +85,8 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
   const handleCopy = () => {
     navigator.clipboard.writeText(pattern)
     setCopied(true)
-    toast.success("Code copied to clipboard!", {
-      description: "Paste it into strudel.cc to jam."
+    toast.success(t("Code copied to clipboard!"), {
+      description: t("Paste it into strudel.cc to jam.")
     })
     setTimeout(() => setCopied(false), 2000)
   }
@@ -148,7 +150,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
       {/* Toggle Button (On/Off) - Top Left - z-70 */}
       <button
-        aria-label={isOn ? 'Desligar Debug' : 'Ligar Debug'}
+        aria-label={isOn ? t('Desligar Debug') : t('Ligar Debug')}
         aria-hidden={togglePortalized || undefined}
         tabIndex={togglePortalized ? -1 : 0}
         ref={toggleRef}
@@ -176,7 +178,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
 
       {/* Copy Button - Top Right - z-80 (Higher than Handle) */}
       <button
-        aria-label="Copy Strudel code"
+        aria-label={t('Copy Strudel code')}
         className={cn(
           "absolute top-1.5 right-2 p-1 rounded-md transition-all z-[80] group hover:bg-white/10",
           !isOn && "pointer-events-none opacity-0"
@@ -185,13 +187,13 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
           e.stopPropagation()
           handleCopy()
         }}
-        title={copied ? "copied!" : "copy strudel code"}
+        title={copied ? t("copied!") : t("copy strudel code")}
       >
         <span className={cn(
           "pointer-events-none absolute right-full top-1/2 mr-0 -translate-y-1/2 whitespace-nowrap rounded bg-black/90 px-1.5 py-1 font-mono text-[9px] text-white transition-opacity",
           copied ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
-          {copied ? "copied!" : "copy strudel code"}
+          {copied ? t("copied!") : t("copy strudel code")}
         </span>
         {copied ? (
           <Check className="w-3.5 h-3.5 text-green-400" />
@@ -223,7 +225,7 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               aria-pressed={pieceDebugOn}
               onClick={event => { event.stopPropagation(); onTogglePieceDebug() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", pieceDebugOn ? "border-sky-300/70 bg-sky-300/15 text-sky-200" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >Piece</button>
+            >{t('Piece')}</button>
             {onToggleStockfishDebug && <button
               type="button"
               aria-pressed={stockfishDebugOn}
@@ -235,31 +237,31 @@ export const LiveCodeWidget = forwardRef<HTMLDivElement, LiveCodeWidgetProps>(({
               aria-pressed={botControlOn}
               onClick={event => { event.stopPropagation(); onToggleBotControl() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", botControlOn ? "border-amber-300/70 bg-amber-300/15 text-amber-200" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >Bot</button>}
+            >{t('Bot')}</button>}
             {onShowTopMoves && <button
               type="button"
               disabled={topMovesDisabled}
-              title="Veja as 10 melhores jogadas · 2 golden eggs"
+              title={t('Veja as 10 melhores jogadas · 2 golden eggs')}
               onClick={event => { event.stopPropagation(); onShowTopMoves(event.currentTarget) }}
               className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >Moves</button>}
+            >{t('Moves')}</button>}
             {onToggleCodeVisible && <button
               type="button"
               aria-pressed={codeVisible}
-              title={codeVisible ? "Esconder o código no fundo" : "Mostrar o código no fundo"}
+              title={codeVisible ? t("Esconder o código no fundo") : t("Mostrar o código no fundo")}
               onClick={event => { event.stopPropagation(); onToggleCodeVisible() }}
               className={cn("rounded border px-2 py-1 font-mono text-[10px] transition-colors", codeVisible ? "border-[#78ff93]/60 bg-[#78ff93]/10 text-[#b6ffc4]" : "border-white/25 text-white/70 hover:border-white/60 hover:text-white")}
-            >Code</button>}
+            >{t('Code')}</button>}
             {onForceWin && <button
               type="button"
               onClick={event => { event.stopPropagation(); onForceWin() }}
               className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white"
-            >Force win</button>}
+            >{t('Force win')}</button>}
             {onGetEggs && <button
               type="button"
               onClick={event => { event.stopPropagation(); onGetEggs() }}
               className="rounded border border-white/25 px-2 py-1 font-mono text-[10px] text-white/70 transition-colors hover:border-white/60 hover:text-white"
-            >Eggs</button>}
+            >{t('Eggs')}</button>}
           </div>
           {playback && <div className="debug-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden space-y-1 pr-1 font-mono text-[10px] [&_*]:!font-mono [&_*]:!text-[10px]">{playback}</div>}
 

@@ -8,10 +8,11 @@
 // of trees, the top of platforms and of some objects, each one a straight line treated like a wire. How much a bird
 // likes each kind of place is a parameter too (0: it never lands there). The souls flying free use the same world to
 // explore (perchPick, perchHold, perchPoint: lib/pigchicken/soul-roam.ts).
+import { msg } from '../i18n'
 import { spanCurve, spanPoint, type Span } from './power-lines'
 
 export type PerchPlace = 'wire' | 'tree' | 'platform' | 'object'
-export const PERCH_PLACES: Record<PerchPlace, string> = { wire: 'Fios', tree: 'Árvores', platform: 'Plataformas', object: 'Objetos' }
+export const PERCH_PLACES: Record<PerchPlace, string> = { wire: msg("Fios"), tree: msg("Árvores"), platform: msg("Plataformas"), object: msg("Objetos") }
 // a line a bird can sit on: a wire (no place given) or another place to land
 export type PerchLine = Span & { place?: PerchPlace }
 // how much each kind of place is liked (0 to 1)

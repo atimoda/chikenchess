@@ -3,6 +3,7 @@
 // line or a synth figure over the chord of the bar). Pure data and functions: sound-zones.ts cleans what is stored,
 // the Parquinho plays the hits. The beats, their microtiming and their variations are in beats.ts; the recorded
 // instrument of each row, in beat-kits.ts. To add a bass: one entry in BASSES.
+import { msg, t as tr } from '../i18n'
 import type { Feel } from './music'
 import { DRUM_ROWS, kitOf, type DrumRow, type Kit } from './beat-kits'
 import { BEATS, SHIFT_MAX, STEPS, type Beat, type BeatId, type BeatPattern, type DrumGrid, type DrumTime } from './beats'
@@ -20,7 +21,7 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 export const BEAT_IDS: BeatId[] = ['none', ...BEATS.map(b => b.id)]
 export const isBeat = (v: unknown): v is BeatId => typeof v === 'string' && (BEAT_IDS as string[]).includes(v)
 export const beatOf = (id: BeatId): Beat | undefined => BEATS.find(b => b.id === id)
-export const beatLabel = (id: BeatId) => beatOf(id)?.label ?? 'Silêncio'
+export const beatLabel = (id: BeatId) => { const b = beatOf(id); return b ? tr(b.label) : tr('Silêncio') }
 
 const cleanRow = (v: unknown) => (typeof v === 'string' ? (v.replace(/[^oxX.]/g, '.') + REST).slice(0, STEPS) : REST)
 // a zone's own grid as stored: only the rows that play anything (undefined when it is not a grid)
@@ -113,32 +114,32 @@ export type Bass = {
   drone?: DroneTone; lines?: string[]; tone?: BassTone; len?: number; oct?: number
 }
 export const BASSES: Bass[] = [
-  { id: 'drone', label: 'Drone', group: 'Sustentado', drone: 'saw' },
-  { id: 'droneDark', label: 'Drone grave', group: 'Sustentado', drone: 'dark' },
-  { id: 'pad', label: 'Pad', group: 'Sustentado', drone: 'pad' },
-  { id: 'pulse', label: 'Pulsado', group: 'Baixo', tone: 'sub', len: 3, lines: ['1...1...1...1...'] },
-  { id: 'eighths', label: 'Colcheias', group: 'Baixo', tone: 'pluck', len: 2, lines: ['1.1.1.1.1.1.1.1.'] },
-  { id: 'octaves', label: 'Oitavas', group: 'Baixo', tone: 'pluck', len: 2, lines: ['1.8.1.8.1.8.1.8.'] },
-  { id: 'walking', label: 'Caminhando', group: 'Baixo', tone: 'sub', len: 4, lines: ['1...3...5...7...', '8...7...5...3...'] },
-  { id: 'funk', label: 'Sincopado', group: 'Baixo', tone: 'pluck', len: 2, lines: ['1..1....1.8..5..', '1..1..7.1.8.....'] },
-  { id: 'reggae', label: 'Reggae', group: 'Baixo', tone: 'sub', len: 3, lines: ['1..1..5.....3.5.'] },
-  { id: 'baiao', label: 'Baião', group: 'Baixo', tone: 'sub', len: 2, lines: ['1..1..5.1..1..5.'] },
-  { id: 'bossa', label: 'Bossa nova', group: 'Baixo', tone: 'sub', len: 5, lines: ['1.....1.5.....5.'] },
-  { id: 'arp', label: 'Arpejo', group: 'Synth', tone: 'square', len: 2, oct: 1, lines: ['1.3.5.8.5.3.1.3.'] },
-  { id: 'arpFast', label: 'Arpejo rápido', group: 'Synth', tone: 'square', len: 1, oct: 1, lines: ['1358531513585315'] },
-  { id: 'acid', label: 'Sequência ácida', group: 'Synth', tone: 'saw', len: 1, lines: ['1.18.1.31.8.1.71', '1.18.1.51.8.3.18'] },
-  { id: 'offbeat', label: 'Contratempo', group: 'Synth', tone: 'saw', len: 2, lines: ['..1...1...1...1.'] },
-  { id: 'stabs', label: 'Acordes no contratempo', group: 'Synth', tone: 'square', len: 2, oct: 2, lines: ['..c...c...c...c.'] },
+  { id: 'drone', label: msg('Drone'), group: msg('Sustentado'), drone: 'saw' },
+  { id: 'droneDark', label: msg('Drone grave'), group: msg('Sustentado'), drone: 'dark' },
+  { id: 'pad', label: msg('Pad'), group: msg('Sustentado'), drone: 'pad' },
+  { id: 'pulse', label: msg('Pulsado'), group: msg('Baixo'), tone: 'sub', len: 3, lines: ['1...1...1...1...'] },
+  { id: 'eighths', label: msg('Colcheias'), group: msg('Baixo'), tone: 'pluck', len: 2, lines: ['1.1.1.1.1.1.1.1.'] },
+  { id: 'octaves', label: msg('Oitavas'), group: msg('Baixo'), tone: 'pluck', len: 2, lines: ['1.8.1.8.1.8.1.8.'] },
+  { id: 'walking', label: msg('Caminhando'), group: msg('Baixo'), tone: 'sub', len: 4, lines: ['1...3...5...7...', '8...7...5...3...'] },
+  { id: 'funk', label: msg('Sincopado'), group: msg('Baixo'), tone: 'pluck', len: 2, lines: ['1..1....1.8..5..', '1..1..7.1.8.....'] },
+  { id: 'reggae', label: msg('Reggae'), group: msg('Baixo'), tone: 'sub', len: 3, lines: ['1..1..5.....3.5.'] },
+  { id: 'baiao', label: msg('Baião'), group: msg('Baixo'), tone: 'sub', len: 2, lines: ['1..1..5.1..1..5.'] },
+  { id: 'bossa', label: msg('Bossa nova'), group: msg('Baixo'), tone: 'sub', len: 5, lines: ['1.....1.5.....5.'] },
+  { id: 'arp', label: msg('Arpejo'), group: msg('Synth'), tone: 'square', len: 2, oct: 1, lines: ['1.3.5.8.5.3.1.3.'] },
+  { id: 'arpFast', label: msg('Arpejo rápido'), group: msg('Synth'), tone: 'square', len: 1, oct: 1, lines: ['1358531513585315'] },
+  { id: 'acid', label: msg('Sequência ácida'), group: msg('Synth'), tone: 'saw', len: 1, lines: ['1.18.1.31.8.1.71', '1.18.1.51.8.3.18'] },
+  { id: 'offbeat', label: msg('Contratempo'), group: msg('Synth'), tone: 'saw', len: 2, lines: ['..1...1...1...1.'] },
+  { id: 'stabs', label: msg('Acordes no contratempo'), group: msg('Synth'), tone: 'square', len: 2, oct: 2, lines: ['..c...c...c...c.'] },
   // lo-fi: a round bass that lingers, and an electric piano comping the chord of the bar in open voicings
-  { id: 'lofiBass', label: 'Baixo lo-fi', group: 'Baixo', tone: 'sub', len: 6, lines: ['1.........5..1..', '1.......8.....5.'] },
-  { id: 'keys', label: 'Teclado lo-fi', group: 'Teclado', tone: 'keys', len: 9, oct: 1, lines: ['j.........j.....', '......j.....j...'] },
-  { id: 'keysHeld', label: 'Teclado sustentado', group: 'Teclado', tone: 'keys', len: 15, oct: 1, lines: ['j...............'] },
-  { id: 'keysWalk', label: 'Teclado e baixo', group: 'Teclado', tone: 'keys', len: 6, oct: 1, lines: ['j.....5...j...3.', '1...j.....7.j...'] },
+  { id: 'lofiBass', label: msg('Baixo lo-fi'), group: msg('Baixo'), tone: 'sub', len: 6, lines: ['1.........5..1..', '1.......8.....5.'] },
+  { id: 'keys', label: msg('Teclado lo-fi'), group: msg('Teclado'), tone: 'keys', len: 9, oct: 1, lines: ['j.........j.....', '......j.....j...'] },
+  { id: 'keysHeld', label: msg('Teclado sustentado'), group: msg('Teclado'), tone: 'keys', len: 15, oct: 1, lines: ['j...............'] },
+  { id: 'keysWalk', label: msg('Teclado e baixo'), group: msg('Teclado'), tone: 'keys', len: 6, oct: 1, lines: ['j.....5...j...3.', '1...j.....7.j...'] },
 ]
-export const BASS_GROUPS = ['Sustentado', 'Baixo', 'Synth', 'Teclado'] as const
+export const BASS_GROUPS = [msg('Sustentado'), msg('Baixo'), msg('Synth'), msg('Teclado')]
 export const BASS_IDS: BassId[] = ['none', ...BASSES.map(b => b.id)]
 export const isBass = (v: unknown): v is BassId => typeof v === 'string' && (BASS_IDS as string[]).includes(v)
-export const bassLabel = (id: BassId) => BASSES.find(b => b.id === id)?.label ?? 'Silêncio'
+export const bassLabel = (id: BassId) => { const b = BASSES.find(b => b.id === id); return b ? tr(b.label) : tr('Silêncio') }
 export const BASS_OCT = { min: -1, max: 1 }
 // volumes are a share of the Ambiente volume (the panel's Volume)
 export const AMBIENCE_VOL = { min: 0, max: 100, step: 5 }
@@ -206,7 +207,7 @@ export const ambienceSilent = (a: ZoneAmbience) => beatSilent(a) && a.bass === '
 const timeKey = (t: DrumTime | undefined) => (t ? DRUM_ROWS.map(r => (t[r.id] ?? []).join('.')).join('/') : '')
 // what tells two ambiences apart (part of the conductor's zone id)
 export const ambienceKey = (a: ZoneAmbience) => [a.beat, a.variant ?? 0, a.drums ? DRUM_ROWS.map(r => drumRow(a.drums!, r.id)).join('/') : '', timeKey(a.drumTime), a.beatVol ?? 100, a.bass, a.bassVol ?? 100, a.bassOct ?? 0].join(',')
-export const beatName = (a: ZoneAmbience) => (a.drums ? 'Batida própria' : a.variant ? `${beatLabel(a.beat)}: ${ambienceBeatPattern(a)?.label}` : beatLabel(a.beat))
+export const beatName = (a: ZoneAmbience) => (a.drums ? tr('Batida própria') : a.variant ? `${beatLabel(a.beat)}: ${tr(ambienceBeatPattern(a)?.label ?? '')}` : beatLabel(a.beat))
 
 // the Balanço "Swing" on a rhythm that has no lilt of its own on the off-beat eighth: it lands a third of a
 // sixteenth late

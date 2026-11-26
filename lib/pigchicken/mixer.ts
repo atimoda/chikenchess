@@ -3,6 +3,7 @@
 // Mute silences every layer without touching the volumes: they come back as they were when it is turned off.
 // The defaults are the code's with data/pigchicken/default-patio.json over them (its `volume`, which the Volume
 // panel writes with "Salvar no game"): they apply to who never moved a slider here and to Padrão.
+import { msg } from '../i18n'
 import DEFAULTS_FILE from '../../data/pigchicken/default-patio.json'
 import { liveDefault, onGameDefault } from '../game-defaults'
 import { deepDiff, effectiveTuning, keepLocalTuning, setLocalTuning, subscribeTuning, tuningLocked } from './patio-tuning'
@@ -11,11 +12,11 @@ export type MixLayer = 'notes' | 'ambience' | 'weapons' | 'effects' | 'chicken'
 export type Mix = { master: number } & Record<MixLayer, number>
 
 export const MIX_LAYERS: { key: MixLayer; label: string; hint: string }[] = [
-  { key: 'notes', label: 'Instrumentos', hint: 'As notas que ela toca e as respostas dos inimigos' },
-  { key: 'ambience', label: 'Ambiente', hint: 'Percussão e drone de cada zona (0 desliga)' },
-  { key: 'weapons', label: 'Armas', hint: 'Tiros, recarga, golpes, explosões e inimigos morrendo' },
-  { key: 'effects', label: 'Efeitos do cenário', hint: 'Gongo, sons do Templo, o portal e o canto real das aves' },
-  { key: 'chicken', label: 'Galinha', hint: 'Os cacarejos dela (em todas as telas)' },
+  { key: 'notes', label: msg('Instrumentos'), hint: msg('As notas que ela toca e as respostas dos inimigos') },
+  { key: 'ambience', label: msg('Ambiente'), hint: msg('Percussão e drone de cada zona (0 desliga)') },
+  { key: 'weapons', label: msg('Armas'), hint: msg('Tiros, recarga, golpes, explosões e inimigos morrendo') },
+  { key: 'effects', label: msg('Efeitos do cenário'), hint: msg('Gongo, sons do Templo, o portal e o canto real das aves') },
+  { key: 'chicken', label: msg('Galinha'), hint: msg('Os cacarejos dela (em todas as telas)') },
 ]
 
 const CODE_MIX: Mix = { master: 1, notes: 0.7, ambience: 0.35, weapons: 0.6, effects: 0.6, chicken: 1 }

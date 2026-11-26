@@ -8,15 +8,16 @@
 // still in the seated pose (lib/chicken/engine.ts) and the art is in components/pigchicken/draw/harp.ts and
 // components/pigchicken/draw/drumkit.ts and components/pigchicken/draw/grandpiano.ts.
 import type { ItemId } from './items'
+import { msg } from '../i18n'
 
 export type FixedKind = 'pedalharp' | 'drumkit' | 'grandpiano'
 // box: the element's size in the layout (its art's); item: the sheet she plays with (Itens → Instrumentos fixos);
 // stool: where she sits, px from the element's middle toward the side she sits on, and how high the stool's top is
 // over the floor at her size 1; reach: how near (px each side of the stool) she has to be to sit
 export const FIXED_INSTRUMENTS: Record<FixedKind, { label: string; item: ItemId; box: { w: number; h: number }; stool: number; stoolTop: number; reach: number }> = {
-  pedalharp: { label: 'Harpa', item: 'pedalharp', box: { w: 190, h: 250 }, stool: 52, stoolTop: 40, reach: 46 },
-  drumkit: { label: 'Bateria', item: 'drumkit', box: { w: 260, h: 190 }, stool: 84, stoolTop: 40, reach: 46 },
-  grandpiano: { label: 'Piano de cauda', item: 'grandpiano', box: { w: 300, h: 170 }, stool: 128, stoolTop: 42, reach: 46 },
+  pedalharp: { label: msg('Harpa'), item: 'pedalharp', box: { w: 190, h: 250 }, stool: 52, stoolTop: 40, reach: 46 },
+  drumkit: { label: msg('Bateria'), item: 'drumkit', box: { w: 260, h: 190 }, stool: 84, stoolTop: 40, reach: 46 },
+  grandpiano: { label: msg('Piano de cauda'), item: 'grandpiano', box: { w: 300, h: 170 }, stool: 128, stoolTop: 42, reach: 46 },
 }
 export const FIXED_KINDS = Object.keys(FIXED_INSTRUMENTS) as FixedKind[]
 export const isFixedKind = (k: string): k is FixedKind => k in FIXED_INSTRUMENTS

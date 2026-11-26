@@ -1,4 +1,5 @@
 import { limitRankedLists } from './egg-rewards'
+import { t } from './i18n'
 export type EvaluationSide = 'w' | 'b'
 interface EvaluationWorker { postMessage(message: string): void }
 export interface EvaluationCandidate { uci: string; san: string }
@@ -213,7 +214,7 @@ export class ChessEvaluationQueue {
     return [active.completeLines[0]?.uci, ...active.completeLines.map(line => line.uci), active.traceLines.get(1)?.uci, active.score?.uci]
       .find((uci): uci is string => !!uci && (!allowed || allowed.includes(uci))) ?? null
   }
-  fail(message = 'Stockfish indisponível. Reabra a partida para tentar novamente.') {
+  fail(message = t('Stockfish indisponível. Reabra a partida para tentar novamente.')) {
     this.failed = true
     this.active = null
     this.queued = null
@@ -321,7 +322,7 @@ export class ChessEvaluationQueue {
     if (active.cancelled || active.request.key !== this.requestedKey) { this.startQueued(); return }
     const { request } = active
     if (active.phase === 'quick') {
-      if (!active.score) { this.fail('A análise não retornou uma avaliação. Reabra a partida para tentar novamente.'); return }
+      if (!active.score) { this.fail(t('A análise não retornou uma avaliação. Reabra a partida para tentar novamente.')); return }
       this.publishScore(active.score, request.side)
       this.start(request, request.skill !== undefined ? 'move' : 'rank', active.score, active.engineMs, active.nodes)
     } else if (active.phase === 'rank') {
@@ -338,7 +339,7 @@ export class ChessEvaluationQueue {
     } else {
       const uci = message.split(/\s+/)[1]
       if (request.candidates.some(move => move.uci === uci) && (!request.searchMoves || request.searchMoves.includes(uci))) this.callbacks.onMove?.(uci, request.fen)
-      else this.fail('Stockfish não retornou um movimento legal.')
+      else this.fail(t('Stockfish não retornou um movimento legal.'))
       if (!this.failed) {
         if (this.cache.has(request.key)) this.startQueued()
         else this.start(request, 'rank', active.score, active.quickMs, active.quickNodes)

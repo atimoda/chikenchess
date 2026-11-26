@@ -71,9 +71,11 @@ function storedLocale(): Locale {
   return detectLocale(typeof navigator === "undefined" ? [] : navigator.languages?.length ? navigator.languages : [navigator.language ?? ""])
 }
 
+const markDocument = () => { if (typeof document !== "undefined") document.documentElement.lang = state.locale === "zh" ? "zh-CN" : state.locale }
+
 function publish(next: LocaleState) {
   state = next
-  if (typeof document !== "undefined") document.documentElement.lang = next.locale === "zh" ? "zh-CN" : next.locale
+  markDocument()
   for (const listener of listeners) listener()
 }
 
@@ -89,8 +91,11 @@ function apply(locale: Locale) {
 }
 
 let wanted: Locale = FALLBACK
+// Node (tests, scripts) keeps the source texts, even when a test fakes a window: only a browser picks a language by itself.
+const inNode = () => typeof process !== "undefined" && !!process.versions?.node
+
 function start() {
-  if (started || typeof window === "undefined") return
+  if (started || typeof window === "undefined" || inNode()) return
   started = true
   wanted = storedLocale()
   state = { locale: wanted, catalog: {} }
@@ -101,6 +106,8 @@ export function getLocaleState(): LocaleState { start(); return state }
 export const getServerLocaleState = (): LocaleState => SOURCE
 export function subscribeLocale(listener: () => void) {
   start()
+  // after hydration (the page's own <html lang> may have been rendered over the language set before it)
+  markDocument()
   listeners.add(listener)
   return () => { listeners.delete(listener) }
 }
@@ -115,16 +122,24 @@ export function setLocale(locale: Locale) {
   apply(locale)
 }
 
+/** A key may carry a context after "@@" when the same word means different things ("Forte@@blend"); it never shows. */
+const source = (key: string) => { const at = key.indexOf("@@"); return at < 0 ? key : key.slice(0, at) }
+
 const fill = (text: string, vars?: Vars) => vars ? text.replace(/\{(\w+)\}/g, (all, name: string) => name in vars ? String(vars[name]) : all) : text
 
 /** Translates a source text with the given state's catalog. */
 export function translate(current: LocaleState, key: string, vars?: Vars): string {
-  return fill(current.catalog[key] ?? key, vars)
+  return fill(current.catalog[key] ?? source(key), vars)
 }
 
 /** Translates with the current language (for code outside React, such as canvas drawing). */
 export function t(key: string, vars?: Vars): string {
   return translate(getLocaleState(), key, vars)
+}
+
+/** Whether the current language has its own text for this key (false while it loads and in Node). */
+export function hasTranslation(key: string): boolean {
+  return key in getLocaleState().catalog
 }
 
 /** Marks a text kept as data to be translated where it is shown, with `t(value)`. Returns the text itself. */
@@ -134,7 +149,7 @@ export function msg<T extends string>(key: T): T {
 
 /** Translates a sentence with elements in its {placeholders}, for JSX. */
 export function txWith(current: LocaleState, key: string, parts: Record<string, ReactNode>): ReactNode[] {
-  const text = current.catalog[key] ?? key
+  const text = current.catalog[key] ?? source(key)
   const out: ReactNode[] = []
   let last = 0
   let i = 0

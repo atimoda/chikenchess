@@ -2,6 +2,7 @@
 
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode, type WheelEvent } from "react"
 import { cn } from "@/lib/utils"
+import { msg, useT } from "@/lib/i18n"
 import type { ParameterRange } from '@/lib/music/model'
 import { DEFAULT_KNOB_SIZE, Knob, knobAmountFromPointer, knobBottomTrim, knobCursor, knobDragMode, knobRelativeAmount, knobValueLabelStyle, type KnobDragMode, type KnobGestureMode, type KnobUpdateMode } from './knob'
 
@@ -60,6 +61,7 @@ export function RangeKnob({
   gestureMode = 'hybrid',
   onChange,
 }: RangeKnobProps) {
+  const t = useT()
   const drag = useRef<ActiveDrag | null>(null)
   const dialRef = useRef<HTMLDivElement>(null)
   const [draggingThumb, setDraggingThumb] = useState<Thumb | null>(null)
@@ -211,9 +213,9 @@ export function RangeKnob({
 
   const labelNode = labelContent ?? <span className={cn("text-center text-[10px] font-mono uppercase text-muted-foreground", labelPosition === "bottom" && "block leading-none")}>{label}</span>
   const frequencyOptions = [
-    ['loop', 'L', 'Shuffle value every LOOP'],
-    ['section', 'S', 'Shuffle value every SESSION'],
-    ['note', 'N', 'Shuffle value every NOTE'],
+    ['loop', 'L', msg('Shuffle value every LOOP')],
+    ['section', 'S', msg('Shuffle value every SESSION')],
+    ['note', 'N', msg('Shuffle value every NOTE')],
   ] as const
 
   const renderThumb = (thumb: Thumb) => {
@@ -224,7 +226,7 @@ export function RangeKnob({
       key={thumb}
       type="button"
       role="slider"
-      aria-label={`${ariaLabel ?? label} cursor ${thumb === "first" ? "1" : "2"}`}
+      aria-label={t('{label} cursor {n}', { label: ariaLabel ?? label, n: thumb === "first" ? "1" : "2" })}
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={visibleRange[thumb]}
@@ -272,7 +274,7 @@ export function RangeKnob({
           data-update-mode={updateMode}
           data-gesture-mode={gestureMode}
           role="group"
-          aria-label={`${label}: ${formatValue?.(interval) ?? `${interval.first} a ${interval.second}`}`}
+          aria-label={`${label}: ${formatValue?.(interval) ?? t('{first} to {second}', { first: interval.first, second: interval.second })}`}
           className={cn(
             "group relative rounded-full border border-transparent touch-none",
             !neon && "opacity-50",
@@ -315,8 +317,9 @@ export function RangeKnob({
           )}>{formatSingleValue?.(interval.second) ?? String(Number(interval.second.toFixed(3)))}</output>
         </div>}
     {!hideLabel && labelPosition === "bottom" && <div style={{ marginTop: -trim }}>{labelNode}</div>}
-    {showFrequency && <div role="group" aria-label={`Frequência de ${label}`} className={cn("flex items-center justify-center gap-[2px]", labelPosition === "bottom" && "mt-[2px]")} onPointerDown={event => event.stopPropagation()}>
-      {frequencyOptions.map(([frequency, letter, description], index) => {
+    {showFrequency && <div role="group" aria-label={t('Frequency of {label}', { label })} className={cn("flex items-center justify-center gap-[2px]", labelPosition === "bottom" && "mt-[2px]")} onPointerDown={event => event.stopPropagation()}>
+      {frequencyOptions.map(([frequency, letter, rawDescription], index) => {
+        const description = t(rawDescription)
         const selected = !isFixed && selectedFrequency === frequency
         return <button key={frequency} type="button" aria-pressed={selected} aria-label={description} title={description}
           tabIndex={selected || isFixed && index === 0 ? 0 : -1}

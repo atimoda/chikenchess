@@ -7,6 +7,7 @@
 // data-zone-tag (its key), for the slams on the scenes' strip (music-zones-layer.tsx). A value that changes flips
 // like a departures board: the old text drops down out of the tag and the new one comes in from above.
 import { useRef, useState } from "react"
+import { useT } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 import { NOTE_NAMES, SCALES } from "@/lib/pigchicken/music"
 import { BIRDS } from "@/lib/pigchicken/birds"
@@ -94,32 +95,33 @@ export function ZoneTags({ zone, editable, onChange, onOpen, scene = false, live
   zone: SoundZoneParams; editable: boolean; onChange: (z: SoundZoneParams, step?: string) => void; onOpen: () => void
   scene?: boolean; live?: { hp: number }; sceneLabel?: string
 }) {
+  const t = useT()
   const c = zone.color
   const set = (p: Partial<SoundZoneParams>, step?: string) => onChange(normalizeSoundZone({ ...zone, ...p }), step)
   const step = (k: ZoneTagKey) => () => { const next = nextZoneTag(zone, k); if (next) onChange(next) }
   const prog = progressionIndex(zone.progression)
   return <>
-    <CycleTag tag="name" label={`♫ ${sceneLabel ? `${sceneLabel} · ` : ""}${zone.name}`} title="Abrir a configuração da zona" color={c} editable={editable} onClick={onOpen} />
-    <CycleTag tag="root" label={NOTE_NAMES[pcOf(zone.root)]} title="Tom" color={c} editable={editable} onClick={step("root")} />
-    <CycleTag tag="scale" label={SCALES[zone.scale].label} title="Escala" color={c} editable={editable} onClick={step("scale")} />
-    <CycleTag tag="chordScale" label={SCALES[zone.chordScale].label} title="Acordes de" color={c} editable={editable} onClick={step("chordScale")} />
-    <CycleTag tag="feel" label={FEEL_LABELS[zone.feel]} title="Balanço" color={c} editable={editable} onClick={step("feel")} />
-    <SliderTag tag="bpm" label={`${zone.bpm} bpm`} title="Andamento" color={c} editable={editable} value={zone.bpm} min={ZONE_BPM.min} max={ZONE_BPM.max} onChange={(bpm, g) => set({ bpm }, `tag-bpm:${g}`)} />
-    <CycleTag tag="progression" label={progressionText(zone.progression)} title={`Progressão${prog >= 0 ? `: ${PROGRESSIONS[prog].label}` : ""}`} color={c} editable={editable} onClick={step("progression")} />
-    <CycleTag tag="beat" label={`♪ ${beatName(zone.ambience)}`} title="Batida" color={c} editable={editable} onClick={step("beat")} />
-    <CycleTag tag="bass" label={`♩ ${bassLabel(zone.ambience.bass)}`} title="Baixo" color={c} editable={editable} onClick={step("bass")} />
-    <CycleTag tag="chain" label={zone.chain.length ? chainSummary(zone.chain) : "sem cadeia"} title="Cadeia do ambiente" color={c} editable={editable} onClick={step("chain")} />
-    {!scene && <SliderTag tag="priority" label={`prioridade ${zone.priority}`} title="Prioridade" color={c} editable={editable} value={zone.priority} min={ZONE_PRIORITY.min} max={ZONE_PRIORITY.max} onChange={(priority, g) => set({ priority }, `tag-priority:${g}`)} />}
-    <CycleTag tag="music" label={zone.music ? "troca a música" : "só rebates"} title="Troca a música ao entrar" color={c} editable={editable} onClick={step("music")} />
-    <CycleTag tag="gravity" label={gravityLabel(zone.gravity)} title="Gravidade" color={c} editable={editable} onClick={step("gravity")} />
-    <CycleTag tag="time" label={zoneTimeLabel(zone.time)} title="Tempo: abaixo de 100%, tudo dentro da zona anda em câmera lenta" color={c} editable={editable} onClick={step("time")} />
-    <CycleTag tag="xray" label={zone.xray ? "raio-x" : "sem raio-x"} title="Raio-x: todo boneco dentro da zona aparece em raio-x" color={c} editable={editable} onClick={step("xray")} />
-    <CycleTag tag="birds" label={zone.birds.length ? zone.birds.map(b => BIRDS[b].name).join(", ") : "pássaros da cena"} title="Pássaros da zona" color={c} editable={editable} onClick={step("birds")} />
+    <CycleTag tag="name" label={`♫ ${sceneLabel ? `${sceneLabel} · ` : ""}${t(zone.name)}`} title={t("Abrir a configuração da zona")} color={c} editable={editable} onClick={onOpen} />
+    <CycleTag tag="root" label={NOTE_NAMES[pcOf(zone.root)]} title={t("Tom")} color={c} editable={editable} onClick={step("root")} />
+    <CycleTag tag="scale" label={t(SCALES[zone.scale].label)} title={t("Escala")} color={c} editable={editable} onClick={step("scale")} />
+    <CycleTag tag="chordScale" label={t(SCALES[zone.chordScale].label)} title={t("Acordes de")} color={c} editable={editable} onClick={step("chordScale")} />
+    <CycleTag tag="feel" label={t(FEEL_LABELS[zone.feel])} title={t("Balanço")} color={c} editable={editable} onClick={step("feel")} />
+    <SliderTag tag="bpm" label={`${zone.bpm} bpm`} title={t("Andamento")} color={c} editable={editable} value={zone.bpm} min={ZONE_BPM.min} max={ZONE_BPM.max} onChange={(bpm, g) => set({ bpm }, `tag-bpm:${g}`)} />
+    <CycleTag tag="progression" label={progressionText(zone.progression)} title={prog >= 0 ? t("Progressão: {name}", { name: t(PROGRESSIONS[prog].label) }) : t("Progressão")} color={c} editable={editable} onClick={step("progression")} />
+    <CycleTag tag="beat" label={`♪ ${beatName(zone.ambience)}`} title={t("Batida")} color={c} editable={editable} onClick={step("beat")} />
+    <CycleTag tag="bass" label={`♩ ${bassLabel(zone.ambience.bass)}`} title={t("Baixo")} color={c} editable={editable} onClick={step("bass")} />
+    <CycleTag tag="chain" label={zone.chain.length ? chainSummary(zone.chain) : t("sem cadeia")} title={t("Cadeia do ambiente")} color={c} editable={editable} onClick={step("chain")} />
+    {!scene && <SliderTag tag="priority" label={t("prioridade {n}", { n: zone.priority })} title={t("Prioridade")} color={c} editable={editable} value={zone.priority} min={ZONE_PRIORITY.min} max={ZONE_PRIORITY.max} onChange={(priority, g) => set({ priority }, `tag-priority:${g}`)} />}
+    <CycleTag tag="music" label={zone.music ? t("troca a música") : t("só rebates")} title={t("Troca a música ao entrar")} color={c} editable={editable} onClick={step("music")} />
+    <CycleTag tag="gravity" label={gravityLabel(zone.gravity)} title={t("Gravidade")} color={c} editable={editable} onClick={step("gravity")} />
+    <CycleTag tag="time" label={zoneTimeLabel(zone.time)} title={t("Tempo: abaixo de 100%, tudo dentro da zona anda em câmera lenta")} color={c} editable={editable} onClick={step("time")} />
+    <CycleTag tag="xray" label={zone.xray ? t("raio-x") : t("sem raio-x")} title={t("Raio-x: todo boneco dentro da zona aparece em raio-x")} color={c} editable={editable} onClick={step("xray")} />
+    <CycleTag tag="birds" label={zone.birds.length ? zone.birds.map(b => t(BIRDS[b].name)).join(", ") : t("pássaros da cena")} title={t("Pássaros da zona")} color={c} editable={editable} onClick={step("birds")} />
     {!scene && <>
-      <SliderTag tag="life" label={zone.life ? (live && !editable ? `♥ ${live.hp}/${zone.life}` : `♥ ${zone.life}`) : "sem paredes"} title="Vida das paredes (notas até mudar; 0 = sem paredes)" color={c} editable={editable}
+      <SliderTag tag="life" label={zone.life ? (live && !editable ? `♥ ${live.hp}/${zone.life}` : `♥ ${zone.life}`) : t("sem paredes")} title={t("Vida das paredes (notas até mudar; 0 = sem paredes)")} color={c} editable={editable}
         value={zone.life} min={ZONE_LIFE.min} max={ZONE_LIFE.max} bar={zone.life && live ? live.hp / zone.life : undefined} onChange={(life, g) => set({ life }, `tag-life:${g}`)} />
-      {zone.life > 0 && <CycleTag tag="change" label={zoneChange(zone.change).label} title={`Padrão de mudança: ${zoneChange(zone.change).hint}`} color={c} editable={editable} onClick={step("change")} />}
+      {zone.life > 0 && <CycleTag tag="change" label={t(zoneChange(zone.change).label)} title={t("Padrão de mudança: {hint}", { hint: t(zoneChange(zone.change).hint) })} color={c} editable={editable} onClick={step("change")} />}
     </>}
-    <CycleTag tag="color" label={c} render={k => <span aria-hidden="true" className="block h-3.5 w-3.5 rounded-sm border border-white/50" style={{ background: k }} />} title="Cor" color={c} editable={editable} onClick={step("color")} />
+    <CycleTag tag="color" label={c} render={k => <span aria-hidden="true" className="block h-3.5 w-3.5 rounded-sm border border-white/50" style={{ background: k }} />} title={t("Cor")} color={c} editable={editable} onClick={step("color")} />
   </>
 }

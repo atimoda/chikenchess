@@ -22,6 +22,7 @@ import { loadEntryMode, saveEntryMode, type LobbyMode } from "@/lib/chicken/lobb
 import { mixGain } from "@/lib/pigchicken/mixer"
 import { markPortalArrival, takePortalArrival, portalGate, touchesPortal, overlapsPortal, PORTAL_TRANSITION_MS, PORTAL_CLOSE_MS, createPortalShut, stepPortalShut, portalOpenness, type PortalShut } from "@/lib/chicken/portal"
 import { stageHeight, stageTop, stageWidth, stageY } from "@/lib/stage-size"
+import { msg, useT } from "@/lib/i18n"
 
 const PAD = 34 // room around the ring for the glow, arcs and sparks
 const OPACITY = 0.5 // the ring is half transparent
@@ -227,7 +228,7 @@ export function chickenPortalAvoid(vw: number): [number, number][] {
 // a portal standing in a moving world (the Pátio): its centre x and the ground's y in the world element's units
 export type ChickenPortalWorld = { host: React.RefObject<HTMLElement | null>; x: number; groundY: number; d: number }
 
-export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = "Enter playground?", modeSwitch = false, id, actors, onEnter, enabled = true, instructionMode = 'hover', birth, closeAfterSpawn = false, holdOpen = false, startClosed = false }: {
+export function ChickenPortal({ engine, href = "/patio", visible = true, world, label = msg("Enter playground?"), modeSwitch = false, id, actors, onEnter, enabled = true, instructionMode = 'hover', birth, closeAfterSpawn = false, holdOpen = false, startClosed = false }: {
   engine: ChickenEngine | null
   href?: string
   visible?: boolean
@@ -251,6 +252,7 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
   // with closeAfterSpawn: it starts shut (no one is born here)
   startClosed?: boolean
 }) {
+  const t = useT()
   const router = useRouter()
   const local = !!onEnter
   const portalId = id ?? (world ? 'patio' : 'globe')
@@ -617,14 +619,14 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
         >
           <button
             type="button"
-            aria-label="Usar portal"
-            aria-description={label.trim() || undefined}
+            aria-label={t("Usar portal")}
+            aria-description={label.trim() ? t(label.trim()) : undefined}
             onClick={e => { if (e.detail === 0) enterRef.current?.(true) }}
             disabled={!touching && !engine?.canWalkToPortal()}
-            title={touching ? "Usar portal (mesmo comando de Pegar)" : engine?.canWalkToPortal() ? "Ir até o portal e entrar" : "Aproxime o boneco para usar o portal"}
+            title={touching ? t("Usar portal (mesmo comando de Pegar)") : engine?.canWalkToPortal() ? t("Ir até o portal e entrar") : t("Aproxime o boneco para usar o portal")}
             className="whitespace-nowrap rounded-full border border-[#7cc4ff]/70 bg-[#0a1a4a]/85 px-4 py-2 font-semibold text-sm text-white shadow-[0_0_18px_rgba(60,150,255,0.6)] backdrop-blur transition hover:bg-[#123080]/90 active:scale-95 disabled:cursor-default"
           >
-            {label.trim() ? label : "Usar"}
+            {label.trim() ? t(label) : t("Usar")}
           </button>
           {modeSwitch && <EntryModeSwitch mode={entryMode} onChange={pickMode} />}
         </div>
@@ -646,24 +648,25 @@ export function ChickenPortal({ engine, href = "/patio", visible = true, world, 
 
 // online / local, a label on each side of the switch (local: a lobby of this computer's players)
 function EntryModeSwitch({ mode, onChange }: { mode: LobbyMode; onChange: (mode: LobbyMode) => void }) {
+  const t = useT()
   const online = mode === "online"
   const side = (m: LobbyMode, text: string) => (
     <button type="button" onClick={() => onChange(m)} aria-pressed={mode === m} className={mode === m ? "text-white" : "text-white/55 hover:text-white"}>{text}</button>
   )
   return (
-    <div className="flex items-center gap-2 rounded-full border border-[#7cc4ff]/40 bg-[#0a1a4a]/80 px-3 py-1 font-mono text-[11px] backdrop-blur" title={online ? "Entra no lobby online aberto (até 13 players)" : "Lobby só com os players deste computador"}>
-      {side("online", "online")}
+    <div className="flex items-center gap-2 rounded-full border border-[#7cc4ff]/40 bg-[#0a1a4a]/80 px-3 py-1 font-mono text-[11px] backdrop-blur" title={online ? t("Entra no lobby online aberto (até 13 players)") : t("Lobby só com os players deste computador")}>
+      {side("online", t("online"))}
       <button
         type="button"
         role="switch"
         aria-checked={!online}
-        aria-label="Lobby local"
+        aria-label={t("Lobby local")}
         onClick={() => onChange(online ? "local" : "online")}
         className="relative h-4 w-8 rounded-full border border-[#7cc4ff]/60 bg-[#123080]/70"
       >
         <span className="absolute top-0.5 h-2.5 w-2.5 rounded-full bg-[#9fd4ff] shadow-[0_0_6px_#7cc4ff] transition-[left] duration-150" style={{ left: online ? 3 : 17 }} />
       </button>
-      {side("local", "local")}
+      {side("local", t("local"))}
     </div>
   )
 }

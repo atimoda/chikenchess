@@ -9,6 +9,7 @@
 import { WORLD_GROUND_Y } from './world'
 import { ridge, type Ridge } from './mountain-draw'
 import { MOUNTAIN_LIFT, type MountainParams } from './mountains'
+import { msg } from '../i18n'
 
 const G = WORLD_GROUND_Y
 // how far down every layer reaches below the horizon (zoomed all the way out, the camera never shows its foot)
@@ -74,17 +75,19 @@ export const BACKDROP_DEPTH: Record<BackdropLayerId, number> = {
 }
 export const isBackdropLayer = (v: unknown): v is BackdropLayerId => typeof v === 'string' && Object.prototype.hasOwnProperty.call(BACKDROP_DEPTH, v)
 
+// "Montanhas 1"… (the numbers are part of the text, each one translated whole)
+const RANGE_LABELS = [msg('Montanhas 1'), msg('Montanhas 2'), msg('Montanhas 3'), msg('Montanhas 4'), msg('Montanhas 5'), msg('Montanhas 6')]
 export type BackdropLayer = { id: BackdropLayerId; label: string; depth: number }
 // the layers this Pátio shows, the farthest first: the sky with the sun, the clouds (when there are any), the ranges
 // (Montanhas → Cordilheiras, numbered from the back) and the tree lines (Mata ao longe)
 export function backdropLayers(o: { mountains: Pick<MountainParams, 'show' | 'ranges'>; clouds: boolean; forest: boolean }): BackdropLayer[] {
-  const out: BackdropLayer[] = [{ id: 'sun', label: 'Céu e sol', depth: SUN_DEPTH }]
-  if (o.clouds) out.push({ id: 'clouds', label: 'Nuvens', depth: CLOUD_DEPTH })
+  const out: BackdropLayer[] = [{ id: 'sun', label: msg('Céu e sol'), depth: SUN_DEPTH }]
+  if (o.clouds) out.push({ id: 'clouds', label: msg('Nuvens'), depth: CLOUD_DEPTH })
   if (o.mountains.show) {
     const ranges = MOUNTAIN_RANGES.slice(0, o.mountains.ranges).map((r, i) => ({ i, p: r.p })).sort((a, b) => b.p - a.p)
-    ranges.forEach(({ i, p }, k) => out.push({ id: `range${i}` as BackdropLayerId, label: ranges.length > 1 ? `Montanhas ${k + 1}` : 'Montanhas', depth: p }))
+    ranges.forEach(({ i, p }, k) => out.push({ id: `range${i}` as BackdropLayerId, label: ranges.length > 1 ? RANGE_LABELS[k] : msg('Montanhas'), depth: p }))
   }
-  if (o.forest) out.push({ id: 'forestFar', label: 'Mata ao longe', depth: FOREST_FAR.p }, { id: 'forestNear', label: 'Mata perto', depth: FOREST_NEAR.p })
+  if (o.forest) out.push({ id: 'forestFar', label: msg('Mata ao longe'), depth: FOREST_FAR.p }, { id: 'forestNear', label: msg('Mata perto'), depth: FOREST_NEAR.p })
   return out
 }
 

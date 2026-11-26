@@ -1,11 +1,12 @@
 // PigChicKen camera over a world wider than the screen. Follow keeps her centred (with a dead band),
 // scenes stays put and slides a whole screen when she crosses into the next one, fixed never moves.
 
+import { msg } from '../i18n'
 export type CameraMode = 'follow' | 'scenes' | 'fixed'
 export const CAMERA_MODES: { value: CameraMode; label: string }[] = [
-  { value: 'follow', label: 'Seguir' },
-  { value: 'scenes', label: 'Por cenas' },
-  { value: 'fixed', label: 'Fixa' },
+  { value: 'follow', label: msg("Seguir") },
+  { value: 'scenes', label: msg("Por cenas") },
+  { value: 'fixed', label: msg("Fixa") },
 ]
 
 // lead: px the follow camera looks ahead of her (toward the side she faces; negative = to the left)

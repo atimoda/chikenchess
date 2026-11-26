@@ -2,6 +2,7 @@
 // the Faixas fixas element (lanes fixed to the map that force the note of anything rebated inside them) and the
 // "Rebate notas" collision (a surface the notes bounce off, playing through its own chain, the last item's or as
 // they are). All data: the layout stores them, combat asks what a point of the map plays.
+import { msg, t } from '../i18n'
 import { IN_KEY_RULES, SCALES, ZONES, NOTE_NAMES, type Feel, type InKeyRule, type ScaleId, type Zone, type ZoneBlock } from './music'
 import { fanLaneAt, fanLanes, fanNotes, type Fan, type FanContent } from './fan'
 import { CHAIN_MAX, TRANSFORMS, cleanTransform, degreeOf, type Transform } from './transforms'
@@ -261,17 +262,17 @@ export function groundZones(zones: SceneZones | undefined, edges: SceneEdges | u
 
 // a short reading of a chain: "+3ª", "+1 oit", "eco"…
 export function chainSummary(chain: Transform[]) {
-  return chain.map(t => {
-    if (t.kind === 'transpose') return t.mode === 'semitone' ? `${t.n >= 0 ? '+' : ''}${t.n} st` : `${t.n >= 0 ? '+' : '-'}${Math.abs(t.n) + 1}ª`
-    if (t.kind === 'octave') return t.mode === 'random' ? `oit ±${Math.abs(t.n)}` : `${t.n >= 0 ? '+' : ''}${t.n} oit`
-    return TRANSFORMS[t.kind].label.toLowerCase()
+  return chain.map(tr => {
+    if (tr.kind === 'transpose') return tr.mode === 'semitone' ? t('{n} st', { n: `${tr.n >= 0 ? '+' : ''}${tr.n}` }) : t('{n}ª', { n: `${tr.n >= 0 ? '+' : '-'}${Math.abs(tr.n) + 1}` })
+    if (tr.kind === 'octave') return tr.mode === 'random' ? t('oit ±{n}', { n: Math.abs(tr.n) }) : t('{n} oit', { n: `${tr.n >= 0 ? '+' : ''}${tr.n}` })
+    return t(TRANSFORMS[tr.kind].label).toLowerCase()
   }).join(' ')
 }
 
 // "Noite · Lá pentatônica menor · 88 bpm · +3ª"
 export function soundZoneLabel(p: Pick<SoundZoneParams, 'name' | 'root' | 'scale' | 'bpm'> & { chain?: Transform[] }) {
   const chain = p.chain?.length ? ` · ${chainSummary(p.chain)}` : ''
-  return `${p.name} · ${NOTE_NAMES[((p.root % 12) + 12) % 12]} ${SCALES[p.scale].label.toLowerCase()} · ${p.bpm} bpm${chain}`
+  return `${t(p.name)} · ${NOTE_NAMES[((p.root % 12) + 12) % 12]} ${t(SCALES[p.scale].label).toLowerCase()} · ${p.bpm} bpm${chain}`
 }
 
 // ---------- Faixas fixas ----------
@@ -378,9 +379,9 @@ export function lanesShape(p: LanesParams) {
 export type SurfaceMode = 'chain' | 'delegate' | 'none'
 export type SurfaceRebate = { mode: SurfaceMode; chain: Transform[] }
 export const SURFACE_MODES: { value: SurfaceMode; label: string; hint: string }[] = [
-  { value: 'delegate', label: 'Delegar ao taco', hint: 'Toca com a cadeia do último item que bateu na nota' },
-  { value: 'chain', label: 'Cadeia própria', hint: 'Toca com a cadeia desta superfície' },
-  { value: 'none', label: 'Não mudar', hint: 'Quica tocando a nota como ela veio' },
+  { value: 'delegate', label: msg('Delegar ao taco'), hint: msg('Toca com a cadeia do último item que bateu na nota') },
+  { value: 'chain', label: msg('Cadeia própria'), hint: msg('Toca com a cadeia desta superfície') },
+  { value: 'none', label: msg('Não mudar'), hint: msg('Quica tocando a nota como ela veio') },
 ]
 export const SURFACE_BOUNCES = 6 // how many times one note bounces off surfaces before it fades
 

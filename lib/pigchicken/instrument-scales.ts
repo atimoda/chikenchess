@@ -36,6 +36,7 @@
 //     them (lib/pigchicken/drum-kit.ts, which also says how they are played). No pitch follows the aim: a hit's
 //     "note" is the piece's number on the General MIDI drum map.
 // Angles are screen radians (0 = right, π/2 = down, -π/2 = up).
+import { msg } from '../i18n'
 import { SCALES, chordOn, scaleNotes, type Conductor, type PitchSet, type Zone } from './music'
 import { DRUM_PIECES, drumKit, drumPiece, padAt } from './drum-kit'
 import { STAR_ARM_DEFAULT, STAR_OFF_SCALE, STAR_OPACITY, starCellAt, starGrid, starNearest, starPoint } from './star-grid'
@@ -127,7 +128,7 @@ export abstract class InstrumentScale {
 // Escala primária: the leque as it always was (the zone's chord or scale, by how high the aim points)
 export class PrimaryScale extends InstrumentScale {
   readonly id = 'primary' as const
-  readonly label = 'Escala primária'
+  readonly label = msg('Escala primária')
   pool(music: Conductor, q: ToneQuery) { return music.aimPool(q.set, q.octave, q.span) }
   noteFor(music: Conductor, q: ToneQuery) { return music.noteFor(q.angle, q.set, q.octave, q.span) }
   walk(music: Conductor, from: number, n: number, set: PitchSet) { return music.walk(from, n, set) }
@@ -192,7 +193,7 @@ const name = (root: number) => LETTERS[pc(root)]
 // the inner ring its relative minor (Lám under Dó, Mim under Sol…), like the reference chart
 export class FifthsScale extends ChartScale {
   readonly id = 'fifths' as const
-  readonly label = 'Ciclo de quintas'
+  readonly label = msg('Ciclo de quintas')
   protected build() {
     const out: ScaleRegion[] = []
     for (let k = 0; k < SECTORS; k++) {
@@ -217,7 +218,7 @@ const TENSIONS: { up: number; chord: number[]; steps: number[]; suffix: string; 
 const BALL_COLORS = ['#e05a47', '#3f7fc2', '#e3a33a', '#4f9a6a', '#8a5bb5', '#d77a2f', '#2f9bb0', '#c4485f', '#6c8f2f', '#b5833e', '#4b63b0', '#a8506d']
 export class TensionScale extends ChartScale {
   readonly id = 'tension' as const
-  readonly label = 'Tensão e resolução'
+  readonly label = msg('Tensão e resolução')
   protected build() {
     const out: ScaleRegion[] = []
     for (let k = 0; k < SECTORS; k++) {
@@ -256,7 +257,7 @@ export function spiralAt(angle: number, reach: number, turns: number) {
 }
 export class SpiralScale extends InstrumentScale {
   readonly id = 'spiral' as const
-  readonly label = 'Espiral'
+  readonly label = msg('Espiral')
   // the zone's scale over the register, low to high
   pool(music: Conductor, q: ToneQuery) {
     const z = music.zone, center = 60 + 12 * q.octave, span = Math.max(0.5, q.span)
@@ -324,7 +325,7 @@ export function houseAt(angle: number, turn: number) {
 }
 export class HarmonicFieldScale extends InstrumentScale {
   readonly id = 'harmonic' as const
-  readonly label = 'Campo harmônico'
+  readonly label = msg('Campo harmônico')
   house(music: Conductor, angle: number) {
     return fieldHouses(music.zone)[houseAt(angle, fieldTurn(music.zone.root))]
   }
@@ -387,7 +388,7 @@ const HANG_ROWS = [
 ]
 export class HangScale extends InstrumentScale {
   readonly id = 'hang' as const
-  readonly label = 'Hangdrum'
+  readonly label = msg('Hangdrum')
   // the ding: the zone's tonic low in the item's register (from 14 semitones under its centre: D3 for octave 0);
   // the rows: the zone's scale from the fifth above it, one note after another through the zig-zag, row after row
   layout(music: Conductor, q: Pick<ToneQuery, 'octave' | 'hang'>): HangLayout {
@@ -464,7 +465,7 @@ export type StringTouch = { index: number; r: number; zone: StringZone }
 export const stringShift = (zone: StringZone) => (zone === 'flat' ? -1 : zone === 'sharp' ? 1 : zone === 'harmonic' ? 12 : 0)
 export class StringsScale extends InstrumentScale {
   readonly id = 'strings' as const
-  readonly label = 'Cordas soltas'
+  readonly label = msg('Cordas soltas')
   get count() { return clampInt(this.shape.strings, STRINGS_MIN, STRINGS_MAX, STRINGS_DEFAULT.strings) }
   // a string's slice: the lowest starts straight down and they go up clockwise, so the seam is at the ground
   angleOf(i: number) { return Math.PI / 2 + ((i + 0.5) * TAU) / this.count }
@@ -507,7 +508,7 @@ export class StringsScale extends InstrumentScale {
 // MIDI number (the Caixa's between the pieces)
 export class DrumsScale extends InstrumentScale {
   readonly id = 'drums' as const
-  readonly label = 'Bateria'
+  readonly label = msg('Bateria')
   pool() { return DRUM_PIECES.map(p => p.gm).sort((a, b) => a - b) }
   noteFor(_music: Conductor, q: ToneQuery) {
     const r = Math.max(0, Math.min(1, q.reach))
@@ -527,7 +528,7 @@ export const STAR_AXIS = 62
 export type StarKey = { index: number; midi: number; name: string; black: boolean; inScale: boolean; x: number; y: number }
 export class StarScale extends InstrumentScale {
   readonly id = 'star' as const
-  readonly label = 'Estrela'
+  readonly label = msg('Estrela')
   get grid() { return starGrid(this.shape.starArm) }
   axisOf(octave: number) { return STAR_AXIS + 12 * Math.round(octave || 0) }
   layout(music: Conductor, q: Pick<ToneQuery, 'octave'>): StarKey[] {

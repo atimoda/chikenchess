@@ -2,6 +2,7 @@
 // this browser stays the one the game writes (lib/pigchicken/soul-library.ts); signed in with an account, it is
 // merged with the account's. A collection only grows, so there is no conflict to settle: each side takes what the
 // other found (mergeCollections here, the same merge on the server), and nothing found is ever lost.
+import { t as tr } from '../i18n'
 import { getOnlineClient, onlineConfigured, onlineRpc } from '@/lib/online/client'
 import { collectionKey, loadCollection, mergeCollections, normalizeCollection, saveCollection, subscribeCollection, type SoulCollection } from './soul-library'
 
@@ -39,12 +40,12 @@ const code = (e: unknown) => (typeof e === 'object' && e && 'code' in e && typeo
 export const isSoulServerMissing = (e: unknown) => code(e) === 'PGRST202' || code(e) === '42883' || /could not find the function|does not exist/i.test(message(e))
 export function soulErrorMessage(e: unknown): string {
   const m = message(e)
-  if (isSoulServerMissing(e)) return 'O servidor ainda não guarda as almas (falta aplicar a migração). Ficam neste navegador.'
-  if (/failed to fetch|network|load failed|fetch failed|timeout/i.test(m) || e instanceof TypeError) return 'Sem conexão com o servidor. Ficam neste navegador.'
-  if (m.includes('ACCOUNT_REQUIRED')) return 'Entre com sua conta para guardar as almas nela.'
-  if (m.includes('TOO_MANY_SOULS')) return 'A coleção ficou grande demais para guardar na conta.'
-  if (m.includes('INVALID_SOULS')) return 'Não foi possível ler a coleção.'
-  return m || 'Não foi possível sincronizar a coleção.'
+  if (isSoulServerMissing(e)) return tr("O servidor ainda não guarda as almas (falta aplicar a migração). Ficam neste navegador.")
+  if (/failed to fetch|network|load failed|fetch failed|timeout/i.test(m) || e instanceof TypeError) return tr("Sem conexão com o servidor. Ficam neste navegador.")
+  if (m.includes("ACCOUNT_REQUIRED")) return tr("Entre com sua conta para guardar as almas nela.")
+  if (m.includes("TOO_MANY_SOULS")) return tr("A coleção ficou grande demais para guardar na conta.")
+  if (m.includes("INVALID_SOULS")) return tr("Não foi possível ler a coleção.")
+  return m || tr("Não foi possível sincronizar a coleção.")
 }
 
 // Keeps the collection in step with the account while this player is signed in (null: it stays in this browser):

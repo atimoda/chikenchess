@@ -5,6 +5,7 @@ import { createMatchPower, hasUsedPowerThisTurn, permittedPowerMoves, type Match
 import { MATE_VALUE, evaluateBotPlan, pieceValue, shieldedAdvanceThreatens, threatsAfterPlan, topThreat, type PoweredPosition } from './chess-bot-tactics'
 import { freezeApplicationError } from './powered-chess'
 import { limitRankedLists } from './egg-rewards'
+import { msg } from './i18n'
 
 export type BotKind = 'pure' | 'chicken'
 
@@ -473,3 +474,15 @@ export const DEFAULT_BOT_ID = DEFAULT_BOT_PROFILES.find(p => p.id === 'easy-chic
 export function createChessBots(profiles: readonly BotProfile[] = DEFAULT_BOT_PROFILES): ChessBot[] {
   return profiles.map(profile => new ChessBot(profile))
 }
+
+/** Names of the bots (data/ui/bots.json), shown through t(). */
+export const BOT_NAME_KEYS = [
+  msg("Easy Pure Chess"),
+  msg("Medium Pure Chess"),
+  msg("Hard Pure Chess"),
+  msg("Expert Pure Chess"),
+  msg("Jedi Pure Chess"),
+  msg("Easy ChickenBot"),
+  msg("Expert ChickenBot"),
+  msg("Jedi ChickenBot"),
+] as const

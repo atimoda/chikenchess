@@ -7,35 +7,36 @@
 
 // the facade's pattern: windows, a grid of thin lines, thin vertical or horizontal stripes, a mix of those three (one per
 // building), app windows with lines of code (a title bar with three dots on top), or server racks (data-centers)
+import { getLocale, hasTranslation, msg, t } from '../i18n'
 export type SkylineFacade = 'janelas' | 'grade' | 'verticais' | 'horizontais' | 'misto' | 'codigo' | 'servidores'
 export const SKYLINE_FACADES: Record<SkylineFacade, string> = {
-  janelas: 'Janelas', grade: 'Grade de linhas', verticais: 'Listras verticais', horizontais: 'Listras horizontais', misto: 'Misturado',
-  codigo: 'Código', servidores: 'Servidores',
+  janelas: msg("Janelas"), grade: msg("Grade de linhas"), verticais: msg("Listras verticais"), horizontais: msg("Listras horizontais"), misto: msg("Misturado"),
+  codigo: msg("Código"), servidores: msg("Servidores"),
 }
 
 // every number of a row: [min, max, step, label, hint]
 export const SKYLINE_NUMS = {
-  depth: [10, 88, 1, 'Profundidade', 'Quão longe a fileira fica: perto, ela corre quase com o chão; longe, quase parada, atrás das montanhas.'],
-  lift: [0, 100, 1, 'Elevação', 'Sobe o chão da fileira, para os prédios aparecerem por cima do que está na frente.'],
-  haze: [0, 100, 1, 'Névoa', 'Quanto a névoa do céu clareia a fileira e sobe do pé dos prédios.'],
-  density: [20, 300, 5, 'Densidade', 'Quantos prédios em cada trecho. Acima de 100% eles se sobrepõem.'],
-  height: [20, 500, 5, 'Altura', 'A altura média dos prédios.'],
-  heightVar: [0, 100, 1, 'Variação de altura', 'O quanto as alturas mudam de um prédio para o outro.'],
-  width: [30, 1000, 5, 'Largura', 'A largura média dos prédios. Bem largos e altos viram data-centers.'],
-  widthVar: [0, 100, 1, 'Variação de largura', 'O quanto as larguras mudam de um prédio para o outro.'],
-  gap: [0, 100, 1, 'Vãos', 'O espaço entre um prédio e o próximo. 0: colados.'],
-  cluster: [0, 100, 1, 'Aglomerado', 'Junta os prédios em grupos com os mais altos no meio.'],
-  setback: [0, 100, 1, 'Recuos no topo', 'A parte dos prédios com um ou dois degraus mais estreitos no alto.'],
-  annex: [0, 100, 1, 'Anexos', 'A parte dos prédios com um bloco mais baixo colado ao lado.'],
-  side: [0, 100, 1, 'Lateral', 'A parte dos prédios com uma face lateral estreita, de topo inclinado, à direita.'],
-  roof: [0, 100, 1, 'Coisas no teto', 'Caixas e máquinas em cima dos prédios.'],
-  antenna: [0, 100, 1, 'Antenas', 'A parte dos prédios com uma antena.'],
-  windowSize: [30, 300, 5, 'Janelas', 'O tamanho das janelas, listras, linhas de código e servidores.'],
-  windowGap: [30, 300, 5, 'Espaço entre janelas', 'O espaço entre as janelas, listras e linhas.'],
-  contrast: [0, 100, 1, 'Contraste da fachada', 'O quanto o desenho da fachada se destaca da parede. 0: só a silhueta.'],
-  lit: [0, 100, 1, 'Luzes acesas', 'A parte das janelas, linhas de código ou luzes dos servidores acesas na cor das luzes.'],
-  wallAmount: [0, 100, 1, 'Cor', 'Quanto a cor escolhida tinge a parede. 0: só a luz do céu.'],
-  faceAmount: [0, 100, 1, 'Cor da fachada', 'Quanto a cor escolhida tinge o desenho da fachada.'],
+  depth: [10, 88, 1, msg("Profundidade"), msg("Quão longe a fileira fica: perto, ela corre quase com o chão; longe, quase parada, atrás das montanhas.")],
+  lift: [0, 100, 1, msg("Elevação"), msg("Sobe o chão da fileira, para os prédios aparecerem por cima do que está na frente.")],
+  haze: [0, 100, 1, msg("Névoa"), msg("Quanto a névoa do céu clareia a fileira e sobe do pé dos prédios.")],
+  density: [20, 300, 5, msg("Densidade"), msg("Quantos prédios em cada trecho. Acima de 100% eles se sobrepõem.")],
+  height: [20, 500, 5, msg("Altura"), msg("A altura média dos prédios.")],
+  heightVar: [0, 100, 1, msg("Variação de altura"), msg("O quanto as alturas mudam de um prédio para o outro.")],
+  width: [30, 1000, 5, msg("Largura"), msg("A largura média dos prédios. Bem largos e altos viram data-centers.")],
+  widthVar: [0, 100, 1, msg("Variação de largura"), msg("O quanto as larguras mudam de um prédio para o outro.")],
+  gap: [0, 100, 1, msg("Vãos"), msg("O espaço entre um prédio e o próximo. 0: colados.")],
+  cluster: [0, 100, 1, msg("Aglomerado"), msg("Junta os prédios em grupos com os mais altos no meio.")],
+  setback: [0, 100, 1, msg("Recuos no topo"), msg("A parte dos prédios com um ou dois degraus mais estreitos no alto.")],
+  annex: [0, 100, 1, msg("Anexos"), msg("A parte dos prédios com um bloco mais baixo colado ao lado.")],
+  side: [0, 100, 1, msg("Lateral"), msg("A parte dos prédios com uma face lateral estreita, de topo inclinado, à direita.")],
+  roof: [0, 100, 1, msg("Coisas no teto"), msg("Caixas e máquinas em cima dos prédios.")],
+  antenna: [0, 100, 1, msg("Antenas"), msg("A parte dos prédios com uma antena.")],
+  windowSize: [30, 300, 5, msg("Janelas"), msg("O tamanho das janelas, listras, linhas de código e servidores.")],
+  windowGap: [30, 300, 5, msg("Espaço entre janelas"), msg("O espaço entre as janelas, listras e linhas.")],
+  contrast: [0, 100, 1, msg("Contraste da fachada"), msg("O quanto o desenho da fachada se destaca da parede. 0: só a silhueta.")],
+  lit: [0, 100, 1, msg("Luzes acesas"), msg("A parte das janelas, linhas de código ou luzes dos servidores acesas na cor das luzes.")],
+  wallAmount: [0, 100, 1, msg("Cor"), msg("Quanto a cor escolhida tinge a parede. 0: só a luz do céu.")],
+  faceAmount: [0, 100, 1, msg("Cor da fachada"), msg("Quanto a cor escolhida tinge o desenho da fachada.")],
 } as const
 export type SkylineNum = keyof typeof SKYLINE_NUMS
 
@@ -47,7 +48,7 @@ export const SKYLINE_SHAPES = 1000
 
 // the models a row starts from (the panel's Modelo): every setting of the row
 export type SkylinePreset = 'cidade' | 'flat' | 'codigo' | 'datacenter'
-export const SKYLINE_PRESET_LABELS: Record<SkylinePreset, string> = { cidade: 'Cidade', flat: 'Skyline flat', codigo: 'Torres de código', datacenter: 'Data-center' }
+export const SKYLINE_PRESET_LABELS: Record<SkylinePreset, string> = { cidade: msg("Cidade"), flat: msg("Skyline flat"), codigo: msg("Torres de código"), datacenter: msg("Data-center") }
 type RowShape = Omit<SkylineRow, 'show' | 'shape' | 'model'>
 export const SKYLINE_PRESETS: Record<SkylinePreset, RowShape> = {
   cidade: {
@@ -113,14 +114,20 @@ export type SkylineSlot = { id: string; label: string; depth: number; lo: number
 export function skylineSlots(layers: { label: string; depth: number }[]): SkylineSlot[] {
   const [min, max] = SKYLINE_NUMS.depth
   const ls = layers.map(l => ({ label: l.label, d: Math.round(l.depth * 100) })).sort((a, b) => b.d - a.d)
-  // "as Montanhas 2", "a Mata perto"; two ranges side by side: "as Montanhas 1 e 2"
+  // Portuguese (and the source texts) keep the articles: "Atrás das Montanhas 1", "Entre as Montanhas 1 e 2", "Na frente da Mata perto";
+  // the other languages use the neutral forms below
+  const neutral = getLocale() !== 'pt' && hasTranslation('Atrás: {layer}')
   const the = (l: string) => l.startsWith('Montanhas') ? `as ${l}` : `a ${l}`
-  const pair = (a: string, b: string) => a.startsWith('Montanhas ') && b.startsWith('Montanhas ') ? `${the(a)} e ${b.slice(10)}` : `${the(a)} e ${the(b)}`
+  const pair = (a: string, b: string) => !neutral
+    ? `Entre ${a.startsWith('Montanhas ') && b.startsWith('Montanhas ') ? `${the(a)} e ${b.slice(10)}` : `${the(a)} e ${the(b)}`}`
+    : a.startsWith('Montanhas ') && b.startsWith('Montanhas ') ? t('Entre Montanhas {a} e {b}', { a: a.slice(10), b: b.slice(10) }) : t('Entre {a} e {b}', { a: t(a), b: t(b) })
   const out: SkylineSlot[] = []
   for (let k = 0; k <= ls.length; k++) {
     const hi = Math.min(max + 1, k === 0 ? Infinity : ls[k - 1].d), lo = Math.max(min - 1, k === ls.length ? -Infinity : ls[k].d)
     if (hi - lo < 2) continue
-    const label = !ls.length ? 'Fundo' : k === 0 ? `Atrás d${the(ls[0].label)}` : k === ls.length ? `Na frente d${the(ls[k - 1].label)}` : `Entre ${pair(ls[k - 1].label, ls[k].label)}`
+    const first = ls[0]?.label ?? '', last = ls[k - 1]?.label ?? ''
+    const label = !ls.length ? t('Fundo') : k === 0 ? (neutral ? t('Atrás: {layer}', { layer: t(first) }) : `Atrás d${the(first)}`)
+      : k === ls.length ? (neutral ? t('Na frente: {layer}', { layer: t(last) }) : `Na frente d${the(last)}`) : pair(ls[k - 1].label, ls[k].label)
     out.push({ id: `s${k}`, label, depth: Math.max(min, Math.min(max, Math.round((hi + lo) / 2))), lo, hi })
   }
   return out

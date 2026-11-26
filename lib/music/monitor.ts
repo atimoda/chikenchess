@@ -1,3 +1,4 @@
+import { msg } from '@/lib/i18n'
 import type { MusicPulse } from './runtime-types'
 import { getSimultaneousPulses } from './pulse-preference'
 
@@ -93,7 +94,7 @@ export function createMusicPulseMonitor() {
 }
 export type MusicPulseMonitor = ReturnType<typeof createMusicPulseMonitor>
 export const VOICE_STATUS_LABELS: Record<VoiceStatus, string> = {
-  inactive: 'Inactive', paused: 'Transport paused', 'solo-muted': 'Outside solo', loading: 'Loading sample',
-  error: 'Sample error', masked: 'Section rest', rest: 'Phrase rest', note: 'Playing',
+  inactive: msg('Inactive'), paused: msg('Transport paused'), 'solo-muted': msg('Outside solo'), loading: msg('Loading sample'),
+  error: msg('Sample error'), masked: msg('Section rest'), rest: msg('Phrase rest'), note: msg('Playing'),
 }
 import type { HarmonyPlanId } from './harmony'

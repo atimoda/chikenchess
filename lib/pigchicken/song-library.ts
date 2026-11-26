@@ -7,20 +7,21 @@ import { LINE_PLACES, SPEAKERS, TEST_SONG, songEnd, type LinePlace, type NoteMod
 import { songFan } from './fan'
 import { normalizeLanes, normalizeSoundZone } from './sound-zones'
 import type { Fan } from './fan'
+import { msg, t } from '../i18n'
 import type { Layer } from './temple-music'
 import { isRebateRule } from './transforms'
 import { SPECIES, type Species } from './temple'
 
 export const CAMPAIGN_ID = 'campanha'
-export const CAMPAIGN = { id: CAMPAIGN_ID, name: 'Campanha do Gongo', color: '#ffd166' }
+export const CAMPAIGN = { id: CAMPAIGN_ID, name: msg('Campanha do Gongo'), color: '#ffd166' }
 
 // how a song's cover is drawn: Sulco (a record seen from above, time spiralling out) or Grade (the timeline folded
 // into rows of 4 bars, like a piano roll)
 export type CoverStyle = 'sulco' | 'grade'
 export type CoverPalette = 'grau' | 'zona' | 'mono'
 export type SongCover = { style: CoverStyle; palette: CoverPalette; bg: string }
-export const COVER_STYLES: { value: CoverStyle; label: string }[] = [{ value: 'sulco', label: 'Sulco' }, { value: 'grade', label: 'Grade' }]
-export const COVER_PALETTES: { value: CoverPalette; label: string }[] = [{ value: 'grau', label: 'Grau' }, { value: 'zona', label: 'Zona' }, { value: 'mono', label: 'Mono' }]
+export const COVER_STYLES: { value: CoverStyle; label: string }[] = [{ value: 'sulco', label: msg('Sulco') }, { value: 'grade', label: msg('Grade') }]
+export const COVER_PALETTES: { value: CoverPalette; label: string }[] = [{ value: 'grau', label: msg('Grau') }, { value: 'zona', label: msg('Zona') }, { value: 'mono', label: msg('Mono') }]
 export const DEFAULT_COVER: SongCover = { style: 'sulco', palette: 'grau', bg: '#14141c' }
 
 // a song of the library: the stage's song plus its cover (and who made it, when it is one of the saved ones)
@@ -211,7 +212,7 @@ export function saveSongAs(lib: Library, song: LibrarySong, name: string): Libra
   return copy
 }
 // "Nova música": a short song to start from (one alien, four notes), saved here and picked
-export function newSong(lib: Library, name = 'Nova música'): LibrarySong {
+export function newSong(lib: Library, name = t('Nova música')): LibrarySong {
   const id = songId(name, lib.songs.map(s => s.id))
   const fan = songFan(62, 'majorPenta')
   const song: LibrarySong = {

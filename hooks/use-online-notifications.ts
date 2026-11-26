@@ -6,6 +6,7 @@ import { getOnlineClient, onlineRpc } from '@/lib/online/client'
 import { acceptedFriendNames } from '@/lib/online/lobby-updates'
 import type { OnlineFriend } from '@/lib/online/types'
 import { INVITE_NOTICE_MS, freshInvites, inviteHref, inviteKey, inviteMessage, inviteMissing, listInvites, loadSeenInvites, saveSeenInvites } from '@/lib/online/invites'
+import { t } from '@/lib/i18n'
 
 // a notice may carry a link (an invite's Entrar) and stay longer than the usual 6 seconds
 export type OnlineNotice = { id: number; message: string; action?: { label: string; href: string } }
@@ -58,7 +59,7 @@ export function useOnlineNotifications(userId: string | null) {
       if (!active || request !== revision) return
       const accepted = acceptedFriendNames(previous, next || [], userId)
       if (accepted.length) playLobbyJoinSound()
-      for (const name of accepted) notify(`${name} aceitou seu pedido de amizade.`)
+      for (const name of accepted) notify(t('{name} aceitou seu pedido de amizade.', { name }))
       previous = next || []
     }
     // invites from friends: each one announced once on this browser, with a link to their lobby

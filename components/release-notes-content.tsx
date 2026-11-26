@@ -1,9 +1,11 @@
 'use client'
 
 import { CHANGELOG } from '@/lib/changelog'
+import { useT } from '@/lib/i18n'
 
 export function ReleaseNotesContent() {
-  return <div tabIndex={0} aria-label="Histórico de versões" className="h-full overflow-y-auto overscroll-contain min-h-0 pr-3 space-y-8 text-xs">
+  const t = useT()
+  return <div tabIndex={0} aria-label={t("Histórico de versões")} className="h-full overflow-y-auto overscroll-contain min-h-0 pr-3 space-y-8 text-xs">
     {CHANGELOG.map(release => <article key={release.version}>
       <h2 className="text-base font-mono text-primary">v{release.version} · {release.title}</h2>
       {release.date && <p className="text-[11px] text-[#a7b6a9] mt-1">{release.date}</p>}

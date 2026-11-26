@@ -9,6 +9,7 @@ import type { OnlineRoom } from '@/lib/online/types'
 import { AUTH_CALLBACK_CHANNEL, emailAlreadyRegistered, googleLoginFailure, isAuthCallbackMessage } from '@/lib/online/auth-callback'
 import { useOnline, type MigrationSummary } from './online-provider'
 import { LegalLinks } from '@/components/legal-links'
+import { msg, useT } from '@/lib/i18n'
 
 /* global Window, URL, MessageEvent, BroadcastChannel, crypto */
 type LoginStep = 'email' | 'code' | 'conflict' | 'saved'
@@ -24,6 +25,7 @@ function GoogleIcon() {
 }
 
 export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT()
   const { configured, user, profile, ensureGuest, prepareSignIn, refreshProfile, pendingTransfer, resolveProfileTransfer } = useOnline()
   const [step, setStep] = useState<LoginStep>('email')
   const [email, setEmail] = useState('')
@@ -97,10 +99,10 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const finishLogin = useCallback(async () => {
     const { data, error: sessionError } = await requireOnlineClient().auth.getSession()
     if (sessionError) throw sessionError
-    if (!data.session?.user || data.session.user.is_anonymous) throw new Error('O login ainda não foi confirmado. Tente novamente.')
+    if (!data.session?.user || data.session.user.is_anonymous) throw new Error(msg('O login ainda não foi confirmado. Tente novamente.'))
     let saved
     try { saved = await refreshProfile() } catch (cause) { setSavePending(true); throw cause }
-    if (!saved) throw new Error('Conta conectada. O perfil ainda precisa ser salvo; tente novamente.')
+    if (!saved) throw new Error(msg('Conta conectada. O perfil ainda precisa ser salvo; tente novamente.'))
     setSavePending(false)
     if (sourceId.current && sourceId.current !== data.session.user.id && pendingTransfer) {
       setStep('conflict')
@@ -149,7 +151,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 
   const ensureNoActiveRoom = async () => {
     const activeRoom = await onlineRpc<OnlineRoom | null>('online_room', { p_action: 'get', p_code: null })
-    if (activeRoom) throw new Error('Saia da sala ou termine a partida antes de entrar em uma conta existente. Seu perfil visitante continua conectado.')
+    if (activeRoom) throw new Error(msg('Saia da sala ou termine a partida antes de entrar em uma conta existente. Seu perfil visitante continua conectado.'))
   }
 
   const captureSource = async (switchingAccount: boolean) => {
@@ -213,7 +215,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         : await online.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })
       if (result.error) throw result.error
       setResendAt(Date.now() + 60_000)
-      setNotice('Novo código enviado. Confira também a pasta de spam.')
+      setNotice(t('Novo código enviado. Confira também a pasta de spam.'))
     } catch (cause) { setError(onlineErrorMessage(cause)) } finally { setBusy(false) }
   }
 
@@ -224,7 +226,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     const popup = window.open('about:blank', 'chickenchess-google-login', 'popup,width=500,height=700')
     if (!popup) {
       setBusy(false)
-      setError('Permita a janela de login Google no navegador ou use email.')
+      setError(t('Permita a janela de login Google no navegador ou use email.'))
       return
     }
     popupRef.current = popup
@@ -241,7 +243,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
         ? await online.auth.linkIdentity({ provider: 'google', options })
         : await online.auth.signInWithOAuth({ provider: 'google', options })
       if (result.error) throw result.error
-      if (!result.data.url) throw new Error('Não foi possível abrir o login Google.')
+      if (!result.data.url) throw new Error(msg('Não foi possível abrir o login Google.'))
       popupWaiting.current = true
       popup.location.href = result.data.url
     } catch (cause) {
@@ -278,82 +280,86 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   }
 
   return <Dialog open={open} onOpenChange={changeOpen}>
-    <DialogContent className="max-h-[90dvh] max-w-sm overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]" closeLabel="Fechar login">
+    <DialogContent className="max-h-[90dvh] max-w-sm overflow-y-auto border-primary/30 bg-[#101713] text-[#dfe8df]" closeLabel={t('Fechar login')}>
       <DialogHeader>
-        <DialogTitle className="text-xl font-semibold">{step === 'conflict' ? 'Perfil visitante migrado' : step === 'saved' ? 'Perfil salvo' : 'Sign in to save your profile'}</DialogTitle>
+        <DialogTitle className="text-xl font-semibold">{step === 'conflict' ? t('Perfil visitante migrado') : step === 'saved' ? t('Perfil salvo') : t('Sign in to save your profile')}</DialogTitle>
         {(step === 'conflict' || step === 'saved') && <DialogDescription className="text-sm leading-relaxed text-white/60">
-          {step === 'conflict' ? 'Os dados do perfil visitante foram integrados à sua conta.' : 'Seu perfil foi confirmado pelo servidor e pode ser recuperado nesta conta.'}
+          {step === 'conflict' ? t('Os dados do perfil visitante foram integrados à sua conta.') : t('Seu perfil foi confirmado pelo servidor e pode ser recuperado nesta conta.')}
         </DialogDescription>}
       </DialogHeader>
-      {!configured ? <p className="rounded border border-white/15 p-3 text-sm text-white/70">{ONLINE_CONFIGURATION_MESSAGE}</p>
+      {!configured ? <p className="rounded border border-white/15 p-3 text-sm text-white/70">{t(ONLINE_CONFIGURATION_MESSAGE)}</p>
         : step === 'saved' ? <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/10 p-3"><Check className="text-primary" /><div><strong>{profile?.display_name}</strong><p className="text-xs text-white/60">{user?.email || 'Conta Google conectada'}</p></div></div>
-          <Button className="w-full" onClick={() => onOpenChange(false)}>Continuar</Button>
+          <div className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/10 p-3"><Check className="text-primary" /><div><strong>{profile?.display_name}</strong><p className="text-xs text-white/60">{user?.email || t('Conta Google conectada')}</p></div></div>
+          <Button className="w-full" onClick={() => onOpenChange(false)}>{t('Continuar')}</Button>
         </div>
           : step === 'conflict' ? <div className="space-y-4">
             {busy ? (
               <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
                 <Loader2 className="size-8 animate-spin text-primary" />
-                <p className="text-sm text-white/70">Integrando perfil visitante…</p>
+                <p className="text-sm text-white/70">{t('Integrando perfil visitante…')}</p>
               </div>
             ) : error ? (
               <div className="space-y-4">
                 <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>
-                <Button className="w-full" disabled={busy} onClick={() => void executeMerge()}>Tentar integrar novamente</Button>
+                <Button className="w-full" disabled={busy} onClick={() => void executeMerge()}>{t('Tentar integrar novamente')}</Button>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="rounded-lg border border-primary/30 bg-[#14231b] p-4 text-center">
                   <p className="text-sm leading-relaxed text-white">
-                    <strong>{migratedSummary?.eggs ?? pendingTransfer?.sourceProfile.goldenEggs ?? 0}</strong> golden eggs and <strong>{migratedSummary?.points ?? pendingTransfer?.sourceProfile.points ?? 0}</strong> historical points and <strong>{migratedSummary?.friends ?? pendingTransfer?.sourceFriendsCount ?? 0}</strong> friends were migrated from the &ldquo;Perfil visitante&rdquo; para o seu perfil.
+                    {t.x('{eggs} golden eggs and {points} historical points and {friends} friends were migrated from the “Perfil visitante” para o seu perfil.', {
+                      eggs: <strong>{migratedSummary?.eggs ?? pendingTransfer?.sourceProfile.goldenEggs ?? 0}</strong>,
+                      points: <strong>{migratedSummary?.points ?? pendingTransfer?.sourceProfile.points ?? 0}</strong>,
+                      friends: <strong>{migratedSummary?.friends ?? pendingTransfer?.sourceFriendsCount ?? 0}</strong>,
+                    })}
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="rounded-md border border-white/10 bg-black/20 p-2.5">
                     <span className="block text-lg font-bold text-amber-300">+{migratedSummary?.eggs ?? pendingTransfer?.sourceProfile.goldenEggs ?? 0}</span>
-                    <span className="text-white/60">Eggs &rarr; Pontos</span>
+                    <span className="text-white/60">{t('Eggs → Pontos')}</span>
                   </div>
                   <div className="rounded-md border border-white/10 bg-black/20 p-2.5">
                     <span className="block text-lg font-bold text-primary">+{migratedSummary?.points ?? pendingTransfer?.sourceProfile.points ?? 0}</span>
-                    <span className="text-white/60">Pontos hist.</span>
+                    <span className="text-white/60">{t('Pontos hist.')}</span>
                   </div>
                   <div className="rounded-md border border-white/10 bg-black/20 p-2.5">
                     <span className="block text-lg font-bold text-sky-400">+{migratedSummary?.friends ?? pendingTransfer?.sourceFriendsCount ?? 0}</span>
-                    <span className="text-white/60">Amizades</span>
+                    <span className="text-white/60">{t('Amizades')}</span>
                   </div>
                 </div>
                 <Button className="h-11 w-full text-base font-medium" onClick={() => changeOpen(false)}>
-                  Ok!
+                  {t('Ok!')}
                 </Button>
               </div>
             )}
           </div>
             : step === 'code' ? <form className="space-y-4" onSubmit={(event) => void verifyCode(event)}>
-              <p className="text-sm text-white/70">Enviamos um código para <strong className="break-all text-white">{email}</strong>.</p>
-              <label className="block space-y-2"><span className="text-sm">Código de acesso</span><input autoFocus className={`${inputClass} text-center font-mono text-xl tracking-[0.3em]`} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" minLength={6} maxLength={10} required disabled={busy} /></label>
-              <Button className="w-full" type="submit" disabled={busy || code.length < 6}>{busy ? <Loader2 className="animate-spin" /> : <Mail />}Verify code</Button>
+              <p className="text-sm text-white/70">{t.x('Enviamos um código para {email}.', { email: <strong className="break-all text-white">{email}</strong> })}</p>
+              <label className="block space-y-2"><span className="text-sm">{t('Código de acesso')}</span><input autoFocus className={`${inputClass} text-center font-mono text-xl tracking-[0.3em]`} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" minLength={6} maxLength={10} required disabled={busy} /></label>
+              <Button className="w-full" type="submit" disabled={busy || code.length < 6}>{busy ? <Loader2 className="animate-spin" /> : <Mail />}{t('Verify code')}</Button>
               <div className="flex flex-wrap justify-between gap-2 text-xs">
-                <button type="button" disabled={busy} className="text-white/70 underline underline-offset-4 disabled:opacity-40" onClick={() => { setStep('email'); setError(null); setNotice(null) }}>Corrigir email</button>
-                <button type="button" disabled={busy || now < resendAt} className="text-primary underline underline-offset-4 disabled:opacity-40" onClick={() => void resendCode()}>{now < resendAt ? `Reenviar em ${Math.ceil((resendAt - now) / 1000)}s` : 'Reenviar código'}</button>
+                <button type="button" disabled={busy} className="text-white/70 underline underline-offset-4 disabled:opacity-40" onClick={() => { setStep('email'); setError(null); setNotice(null) }}>{t('Corrigir email')}</button>
+                <button type="button" disabled={busy || now < resendAt} className="text-primary underline underline-offset-4 disabled:opacity-40" onClick={() => void resendCode()}>{now < resendAt ? t('Reenviar em {s}s', { s: Math.ceil((resendAt - now) / 1000) }) : t('Reenviar código')}</button>
               </div>
             </form>
               : <div className="space-y-4">
-                <Button variant="outline" className="h-11 w-full border-white/20 bg-[#0b1512] text-white hover:bg-[#182820] hover:text-white dark:border-white/20 dark:bg-[#0b1512] dark:hover:bg-[#182820]" disabled={busy} onClick={() => void signInGoogle()}><GoogleIcon />Continue with Google</Button>
-                <div className="flex items-center gap-3 text-xs text-white/45"><span className="h-px flex-1 bg-white/15" />OR<span className="h-px flex-1 bg-white/15" /></div>
+                <Button variant="outline" className="h-11 w-full border-white/20 bg-[#0b1512] text-white hover:bg-[#182820] hover:text-white dark:border-white/20 dark:bg-[#0b1512] dark:hover:bg-[#182820]" disabled={busy} onClick={() => void signInGoogle()}><GoogleIcon />{t('Continue with Google')}</Button>
+                <div className="flex items-center gap-3 text-xs text-white/45"><span className="h-px flex-1 bg-white/15" />{t('OR')}<span className="h-px flex-1 bg-white/15" /></div>
                 <form className="space-y-3" onSubmit={(event) => void sendCode(event)}>
-                  <label className="block space-y-2"><span className="text-sm">Email</span><input className={inputClass} type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} required /></label>
-                  <Button className="h-11 w-full" type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Mail />}Email me a code</Button>
+                  <label className="block space-y-2"><span className="text-sm">{t('Email')}</span><input className={inputClass} type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy} required /></label>
+                  <Button className="h-11 w-full" type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Mail />}{t('Email me a code')}</Button>
                 </form>
               </div>}
       {error && <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
-      {savePending && <Button disabled={busy} onClick={() => void retrySave()}>Tentar salvar perfil</Button>}
+      {savePending && <Button disabled={busy} onClick={() => void retrySave()}>{t('Tentar salvar perfil')}</Button>}
       {notice && <p role="status" className="text-xs text-primary">{notice}</p>}
-      {busy && <p role="status" className="text-xs text-white/60">{popupWaiting.current ? 'Aguardando Google…' : 'Aguarde…'}</p>}
+      {busy && <p role="status" className="text-xs text-white/60">{popupWaiting.current ? t('Aguardando Google…') : t('Aguarde…')}</p>}
       {step !== 'saved' && step !== 'conflict' && <div className="space-y-2 border-t border-white/10 pt-3 text-center">
-        <p className="text-xs leading-relaxed text-white/50">By signing in, you agree to our Terms of Service. Our Privacy Policy explains how we handle your information.</p>
+        <p className="text-xs leading-relaxed text-white/50">{t('By signing in, you agree to our Terms of Service. Our Privacy Policy explains how we handle your information.')}</p>
         <LegalLinks newTab className="text-white/65" />
       </div>}
-      {step !== 'saved' && step !== 'conflict' && <Button variant="ghost" className="text-white/60" onClick={() => changeOpen(false)}>Cancel</Button>}
+      {step !== 'saved' && step !== 'conflict' && <Button variant="ghost" className="text-white/60" onClick={() => changeOpen(false)}>{t('Cancel')}</Button>}
     </DialogContent>
   </Dialog>
 }

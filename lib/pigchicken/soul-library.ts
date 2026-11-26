@@ -13,6 +13,7 @@
 //   rule (inspirationOf) unless its sheet names another. recipeText says how a soul like it is made.
 // - The sheets: the game's catalogue is the code's with data/pigchicken/default-souls.json over it ("Salvar no game"),
 //   and an admin's browser may keep a draft over the code's. setSoulEntries says which one is in use.
+import { msg, t as tr } from '../i18n'
 import DEFAULTS_FILE from '../../data/pigchicken/default-souls.json'
 import { liveDefault, onGameDefault } from '../game-defaults'
 import { guideBird, inspirationOf, isGuideBird } from './bird-guide'
@@ -27,41 +28,41 @@ export const SOUL_NOTE_ORDER: readonly SoulNote[] = ['tonic', 'consonant', 'tens
 export const SOUL_WEAPON_ORDER: readonly SoulWeapon[] = ['blast', 'bullet', 'arrow', 'impact']
 // of: how its name reads after a soul's ("Assobio de Lanterna", "Eco da Horda")
 export const SOUL_SPECIES: Record<SoulSpecies, { name: string; of: string; color: string }> = {
-  horde: { name: 'Horda', of: 'da Horda', color: '#7bd88f' },
-  jelly: { name: 'Água-viva', of: 'de Água-viva', color: '#c77dff' },
-  lantern: { name: 'Lanterna', of: 'de Lanterna', color: '#ff7a59' },
-  shell: { name: 'Casco', of: 'de Casco', color: '#6a994e' },
-  twin: { name: 'Gêmeos', of: 'de Gêmeos', color: '#4cc9f0' },
-  mini: { name: 'Mini', of: 'de Mini', color: '#f72585' },
-  drum: { name: 'Tambor', of: 'de Tambor', color: '#c1121f' },
-  dragon: { name: 'Dragão', of: 'de Dragão', color: '#ffb703' },
-  chick: { name: 'Pintinho', of: 'de Pintinho', color: CHICK_SOUL_COLOR },
+  horde: { name: msg("Horda"), of: 'da Horda', color: '#7bd88f' },
+  jelly: { name: msg("Água-viva"), of: 'de Água-viva', color: '#c77dff' },
+  lantern: { name: msg("Lanterna"), of: 'de Lanterna', color: '#ff7a59' },
+  shell: { name: msg("Casco"), of: 'de Casco', color: '#6a994e' },
+  twin: { name: msg("Gêmeos"), of: 'de Gêmeos', color: '#4cc9f0' },
+  mini: { name: msg("Mini"), of: 'de Mini', color: '#f72585' },
+  drum: { name: msg("Tambor"), of: 'de Tambor', color: '#c1121f' },
+  dragon: { name: msg("Dragão"), of: 'de Dragão', color: '#ffb703' },
+  chick: { name: msg("Pintinho"), of: 'de Pintinho', color: CHICK_SOUL_COLOR },
 }
-export const SOUL_STATES: Record<SoulState, string> = { alive: 'Viva', dead: 'Morta' }
+export const SOUL_STATES: Record<SoulState, string> = { alive: msg("Viva"), dead: msg("Morta") }
 // alive / dead: what a soul of that family is called
 export const SOUL_SHOTS: Record<SoulShot, { name: string; alive: string; dead: string }> = {
-  wind: { name: 'Sopro', alive: 'Assobio', dead: 'Suspiro' },
-  strings: { name: 'Cordas', alive: 'Acorde', dead: 'Lamento' },
-  keys: { name: 'Teclas', alive: 'Tecla', dead: 'Réquiem' },
-  percussion: { name: 'Percussão', alive: 'Batuque', dead: 'Chocalho' },
-  rebate: { name: 'Rebate', alive: 'Eco', dead: 'Assombro' },
+  wind: { name: msg("Sopro"), alive: 'Assobio', dead: 'Suspiro' },
+  strings: { name: msg("Cordas"), alive: 'Acorde', dead: 'Lamento' },
+  keys: { name: msg("Teclas"), alive: 'Tecla', dead: 'Réquiem' },
+  percussion: { name: msg("Percussão"), alive: 'Batuque', dead: 'Chocalho' },
+  rebate: { name: msg("Rebate"), alive: 'Eco', dead: 'Assombro' },
 }
 // the drawing of a soul: one for each family (the pixel art is in components/pigchicken/draw/souls.ts) and the chick's.
 // pixel: the size of one pixel of it (px); flap: wing beats a second
 export type SoulShape = SoulShot | 'chick'
 export const SOUL_SHAPES: Record<SoulShape, { name: string; pixel: number; flap: number }> = {
-  wind: { name: 'Rabo comprido', pixel: 3, flap: 12 },
-  strings: { name: 'Topete', pixel: 4, flap: 7 },
-  keys: { name: 'Barriga de teclas', pixel: 4, flap: 8 },
-  percussion: { name: 'Gorducha', pixel: 4, flap: 9 },
-  rebate: { name: 'Coruja', pixel: 5, flap: 5 },
-  chick: { name: 'Pintinho', pixel: 3, flap: 10 },
+  wind: { name: msg("Rabo comprido"), pixel: 3, flap: 12 },
+  strings: { name: msg("Topete"), pixel: 4, flap: 7 },
+  keys: { name: msg("Barriga de teclas"), pixel: 4, flap: 8 },
+  percussion: { name: msg("Gorducha"), pixel: 4, flap: 9 },
+  rebate: { name: msg("Coruja"), pixel: 5, flap: 5 },
+  chick: { name: msg("Pintinho"), pixel: 3, flap: 10 },
 }
-export const SOUL_NOTES: Record<SoulNote, string> = { tonic: 'Tônica', consonant: 'Consonante', tension: 'Tensão', leading: 'Sensível', outside: 'Fora da escala' }
-export const SOUL_WEAPONS: Record<SoulWeapon, string> = { blast: 'Explosão', bullet: 'Bala', arrow: 'Flecha', impact: 'Impacto' }
+export const SOUL_NOTES: Record<SoulNote, string> = { tonic: msg("Tônica"), consonant: msg("Consonante"), tension: msg("Tensão"), leading: msg("Sensível"), outside: msg("Fora da escala") }
+export const SOUL_WEAPONS: Record<SoulWeapon, string> = { blast: msg("Explosão"), bullet: msg("Bala"), arrow: msg("Flecha"), impact: msg("Impacto") }
 export const SOUL_RARITIES: Record<SoulRarity, { name: string; color: string }> = {
-  common: { name: 'Comum', color: '#93a79a' }, uncommon: { name: 'Incomum', color: '#7bd88f' },
-  rare: { name: 'Rara', color: '#4cc9f0' }, legendary: { name: 'Lendária', color: '#ffb703' },
+  common: { name: msg("Comum"), color: '#93a79a' }, uncommon: { name: msg("Incomum"), color: '#7bd88f' },
+  rare: { name: msg("Rara"), color: '#4cc9f0' }, legendary: { name: msg("Lendária"), color: '#ffb703' },
 }
 
 // what a rare one asks for: every axis named must be one of the listed (an axis left out: any)
@@ -150,11 +151,22 @@ export function cleanRecipe(raw: unknown): SoulRecipe {
 
 // ---------- the catalogue ----------
 const baseId = (species: SoulSpecies, state: SoulState, shot: SoulShot | null) => (species === 'chick' ? 'chick' : `${species}.${state}.${shot ?? 'wind'}`)
+// the names of the catalogue's base souls (what the soul is called, then whose it is), one by one so each one translates
+const BASE_NAMES: Record<string, string> = {
+  'horde.alive.wind': msg("Assobio da Horda"), 'horde.alive.strings': msg("Acorde da Horda"), 'horde.alive.keys': msg("Tecla da Horda"), 'horde.alive.percussion': msg("Batuque da Horda"), 'horde.alive.rebate': msg("Eco da Horda"), 'horde.dead.wind': msg("Suspiro da Horda"), 'horde.dead.strings': msg("Lamento da Horda"), 'horde.dead.keys': msg("Réquiem da Horda"), 'horde.dead.percussion': msg("Chocalho da Horda"), 'horde.dead.rebate': msg("Assombro da Horda"),
+  'jelly.alive.wind': msg("Assobio de Água-viva"), 'jelly.alive.strings': msg("Acorde de Água-viva"), 'jelly.alive.keys': msg("Tecla de Água-viva"), 'jelly.alive.percussion': msg("Batuque de Água-viva"), 'jelly.alive.rebate': msg("Eco de Água-viva"), 'jelly.dead.wind': msg("Suspiro de Água-viva"), 'jelly.dead.strings': msg("Lamento de Água-viva"), 'jelly.dead.keys': msg("Réquiem de Água-viva"), 'jelly.dead.percussion': msg("Chocalho de Água-viva"), 'jelly.dead.rebate': msg("Assombro de Água-viva"),
+  'lantern.alive.wind': msg("Assobio de Lanterna"), 'lantern.alive.strings': msg("Acorde de Lanterna"), 'lantern.alive.keys': msg("Tecla de Lanterna"), 'lantern.alive.percussion': msg("Batuque de Lanterna"), 'lantern.alive.rebate': msg("Eco de Lanterna"), 'lantern.dead.wind': msg("Suspiro de Lanterna"), 'lantern.dead.strings': msg("Lamento de Lanterna"), 'lantern.dead.keys': msg("Réquiem de Lanterna"), 'lantern.dead.percussion': msg("Chocalho de Lanterna"), 'lantern.dead.rebate': msg("Assombro de Lanterna"),
+  'shell.alive.wind': msg("Assobio de Casco"), 'shell.alive.strings': msg("Acorde de Casco"), 'shell.alive.keys': msg("Tecla de Casco"), 'shell.alive.percussion': msg("Batuque de Casco"), 'shell.alive.rebate': msg("Eco de Casco"), 'shell.dead.wind': msg("Suspiro de Casco"), 'shell.dead.strings': msg("Lamento de Casco"), 'shell.dead.keys': msg("Réquiem de Casco"), 'shell.dead.percussion': msg("Chocalho de Casco"), 'shell.dead.rebate': msg("Assombro de Casco"),
+  'twin.alive.wind': msg("Assobio de Gêmeos"), 'twin.alive.strings': msg("Acorde de Gêmeos"), 'twin.alive.keys': msg("Tecla de Gêmeos"), 'twin.alive.percussion': msg("Batuque de Gêmeos"), 'twin.alive.rebate': msg("Eco de Gêmeos"), 'twin.dead.wind': msg("Suspiro de Gêmeos"), 'twin.dead.strings': msg("Lamento de Gêmeos"), 'twin.dead.keys': msg("Réquiem de Gêmeos"), 'twin.dead.percussion': msg("Chocalho de Gêmeos"), 'twin.dead.rebate': msg("Assombro de Gêmeos"),
+  'mini.alive.wind': msg("Assobio de Mini"), 'mini.alive.strings': msg("Acorde de Mini"), 'mini.alive.keys': msg("Tecla de Mini"), 'mini.alive.percussion': msg("Batuque de Mini"), 'mini.alive.rebate': msg("Eco de Mini"), 'mini.dead.wind': msg("Suspiro de Mini"), 'mini.dead.strings': msg("Lamento de Mini"), 'mini.dead.keys': msg("Réquiem de Mini"), 'mini.dead.percussion': msg("Chocalho de Mini"), 'mini.dead.rebate': msg("Assombro de Mini"),
+  'drum.alive.wind': msg("Assobio de Tambor"), 'drum.alive.strings': msg("Acorde de Tambor"), 'drum.alive.keys': msg("Tecla de Tambor"), 'drum.alive.percussion': msg("Batuque de Tambor"), 'drum.alive.rebate': msg("Eco de Tambor"), 'drum.dead.wind': msg("Suspiro de Tambor"), 'drum.dead.strings': msg("Lamento de Tambor"), 'drum.dead.keys': msg("Réquiem de Tambor"), 'drum.dead.percussion': msg("Chocalho de Tambor"), 'drum.dead.rebate': msg("Assombro de Tambor"),
+  'dragon.alive.wind': msg("Assobio de Dragão"), 'dragon.alive.strings': msg("Acorde de Dragão"), 'dragon.alive.keys': msg("Tecla de Dragão"), 'dragon.alive.percussion': msg("Batuque de Dragão"), 'dragon.alive.rebate': msg("Eco de Dragão"),
+}
 function baseEntry(species: SoulSpecies, state: SoulState, shot: SoulShot): SoulEntry {
   const s = SOUL_SHOTS[shot]
   const id = baseId(species, state, shot)
   return {
-    id, name: `${state === 'alive' ? s.alive : s.dead} ${SOUL_SPECIES[species].of}`, species, state, shot,
+    id, name: BASE_NAMES[id] ?? `${state === 'alive' ? s.alive : s.dead} ${SOUL_SPECIES[species].of}`, species, state, shot,
     rarity: soulRarity(originOf(species, state, { note: 'tonic' })), cls: soulClassOf({ species, shot }),
     look: baseLook(species, state, shot), bird: inspirationOf({ id, species, state, shot }),
   }
@@ -178,18 +190,18 @@ function rare(id: string, name: string, rarity: SoulRarity, asks: SoulRecipe, bo
 }
 // the rare ones, the most particular first: a soul is the first one whose recipe it fits
 export const RARE_SOULS: readonly SoulEntry[] = [
-  rare('fenix', 'Fênix', 'legendary', { species: ['dragon'], state: 'alive', note: ['tonic'] }, '#ff5400', { shape: 'strings', pixel: 5, wing: '#c1121f', belly: '#ffd23f', cls: 'patrol' }),
-  rare('dragao-desafinado', 'Dragão Desafinado', 'legendary', { species: ['dragon'], state: 'alive', note: ['outside'] }, '#9d4edd', { shape: 'rebate', pixel: 6, belly: '#ffb703', cls: 'lazy' }),
-  rare('vaga-lume', 'Vaga-lume', 'rare', { species: ['lantern'], state: 'alive', shot: ['wind'], note: ['tension'] }, '#3a5a40', { belly: '#d9ed92', eye: '#d9ed92', halo: true }),
-  rare('metronomo', 'Metrônomo', 'rare', { species: ['drum'], state: 'alive', shot: ['percussion'], note: ['tonic'] }, '#e9c46a'),
-  rare('gemea-ma', 'Gêmea Má', 'rare', { species: ['twin'], state: 'dead', weapon: ['impact'], note: ['outside', 'leading'] }, '#3a0ca3', { shape: 'keys', eye: '#ff3b3b', halo: true, cls: 'escort' }),
-  rare('alma-blue', 'Alma Blue', 'rare', { state: 'alive', shot: ['strings'], note: ['outside'] }, '#3f6fd9'),
-  rare('quase-la', 'Quase Lá', 'rare', { state: 'alive', shot: ['keys'], note: ['leading'] }, '#ff99c8'),
-  rare('bumerangue', 'Bumerangue', 'rare', { state: 'alive', shot: ['rebate'], note: ['tonic'] }, '#f4a261'),
-  rare('desafinada', 'Desafinada', 'rare', { state: 'alive', shot: ['wind'], note: ['outside'] }, '#b5e48c', { wing: '#ff006e' }),
-  rare('flechada', 'Flechada', 'rare', { state: 'dead', weapon: ['arrow'], note: ['tonic'] }, '#2a9d8f', { shape: 'strings', eye: '#ffffff', halo: true, cls: 'patrol' }),
-  rare('estilhaco', 'Estilhaço', 'legendary', { state: 'dead', weapon: ['blast'], note: ['outside'] }, '#ff006e', { shape: 'percussion', pixel: 5, eye: '#ffd23f', halo: true, cls: 'rhythm' }),
-  rare('bala-perdida', 'Bala Perdida', 'rare', { state: 'dead', weapon: ['bullet'], note: ['leading'] }, '#adb5bd', { shape: 'wind', eye: '#4cc9f0', halo: true, cls: 'lazy' }),
+  rare('fenix', msg("Fênix"), 'legendary', { species: ['dragon'], state: 'alive', note: ['tonic'] }, '#ff5400', { shape: 'strings', pixel: 5, wing: '#c1121f', belly: '#ffd23f', cls: 'patrol' }),
+  rare('dragao-desafinado', msg("Dragão Desafinado"), 'legendary', { species: ['dragon'], state: 'alive', note: ['outside'] }, '#9d4edd', { shape: 'rebate', pixel: 6, belly: '#ffb703', cls: 'lazy' }),
+  rare('vaga-lume', msg("Vaga-lume"), 'rare', { species: ['lantern'], state: 'alive', shot: ['wind'], note: ['tension'] }, '#3a5a40', { belly: '#d9ed92', eye: '#d9ed92', halo: true }),
+  rare('metronomo', msg("Metrônomo"), 'rare', { species: ['drum'], state: 'alive', shot: ['percussion'], note: ['tonic'] }, '#e9c46a'),
+  rare('gemea-ma', msg("Gêmea Má"), 'rare', { species: ['twin'], state: 'dead', weapon: ['impact'], note: ['outside', 'leading'] }, '#3a0ca3', { shape: 'keys', eye: '#ff3b3b', halo: true, cls: 'escort' }),
+  rare('alma-blue', msg("Alma Blue"), 'rare', { state: 'alive', shot: ['strings'], note: ['outside'] }, '#3f6fd9'),
+  rare('quase-la', msg("Quase Lá"), 'rare', { state: 'alive', shot: ['keys'], note: ['leading'] }, '#ff99c8'),
+  rare('bumerangue', msg("Bumerangue"), 'rare', { state: 'alive', shot: ['rebate'], note: ['tonic'] }, '#f4a261'),
+  rare('desafinada', msg("Desafinada"), 'rare', { state: 'alive', shot: ['wind'], note: ['outside'] }, '#b5e48c', { wing: '#ff006e' }),
+  rare('flechada', msg("Flechada"), 'rare', { state: 'dead', weapon: ['arrow'], note: ['tonic'] }, '#2a9d8f', { shape: 'strings', eye: '#ffffff', halo: true, cls: 'patrol' }),
+  rare('estilhaco', msg("Estilhaço"), 'legendary', { state: 'dead', weapon: ['blast'], note: ['outside'] }, '#ff006e', { shape: 'percussion', pixel: 5, eye: '#ffd23f', halo: true, cls: 'rhythm' }),
+  rare('bala-perdida', msg("Bala Perdida"), 'rare', { state: 'dead', weapon: ['bullet'], note: ['leading'] }, '#adb5bd', { shape: 'wind', eye: '#4cc9f0', halo: true, cls: 'lazy' }),
 ]
 // the ones the rule makes: their ids, species, states and families never change
 const BASE_SOULS: readonly SoulEntry[] = [
@@ -197,7 +209,7 @@ const BASE_SOULS: readonly SoulEntry[] = [
     ...SOUL_SHOT_ORDER.map(shot => baseEntry(species, 'alive', shot)),
     ...(species === 'dragon' ? [] : SOUL_SHOT_ORDER.map(shot => baseEntry(species, 'dead', shot))),
   ]),
-  { id: 'chick', name: 'Pintinho', species: 'chick', state: 'alive', shot: null, rarity: 'common', cls: 'chick', look: baseLook('chick', 'alive', 'chick'), bird: inspirationOf({ id: 'chick', species: 'chick', state: 'alive', shot: null }) },
+  { id: 'chick', name: msg("Pintinho"), species: 'chick', state: 'alive', shot: null, rarity: 'common', cls: 'chick', look: baseLook('chick', 'alive', 'chick'), bird: inspirationOf({ id: 'chick', species: 'chick', state: 'alive', shot: null }) },
 ]
 export const CODE_SOUL_ENTRIES: readonly SoulEntry[] = [...BASE_SOULS, ...RARE_SOULS]
 
@@ -343,22 +355,22 @@ export const entryTraits = (e: SoulEntry, entries: readonly SoulEntry[] = live) 
 export const entryClassName = (e: SoulEntry) => SOUL_CLASSES[e.cls].name
 
 // ---------- the recipe: how a soul like this one is made, in words ----------
-const or = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} ou ${names[names.length - 1]}` : names[0])
-const RECIPE_SHOTS: Record<SoulShot, string> = { wind: 'um instrumento de Sopro', strings: 'um instrumento de Cordas', keys: 'um instrumento de Teclas', percussion: 'um instrumento de Percussão', rebate: 'notas de alien rebatidas com um golpe' }
-const RECIPE_WEAPONS: Record<SoulWeapon, string> = { blast: 'uma explosão', bullet: 'uma arma de fogo', arrow: 'uma flecha', impact: 'um golpe' }
-const RECIPE_NOTES: Record<SoulNote, string> = { tonic: 'a tônica', consonant: 'uma consonante (terça ou quinta)', tension: 'uma nota de tensão', leading: 'a sensível (sétima)', outside: 'uma nota fora da escala' }
+const or = (names: string[]) => (names.length > 1 ? tr('{list} ou {last}', { list: names.slice(0, -1).join(', '), last: names[names.length - 1] }) : names[0])
+const RECIPE_SHOTS: Record<SoulShot, string> = { wind: msg("um instrumento de Sopro"), strings: msg("um instrumento de Cordas"), keys: msg("um instrumento de Teclas"), percussion: msg("um instrumento de Percussão"), rebate: msg("notas de alien rebatidas com um golpe") }
+const RECIPE_WEAPONS: Record<SoulWeapon, string> = { blast: msg("uma explosão"), bullet: msg("uma arma de fogo"), arrow: msg("uma flecha"), impact: msg("um golpe") }
+const RECIPE_NOTES: Record<SoulNote, string> = { tonic: msg("a tônica"), consonant: msg("uma consonante (terça ou quinta)"), tension: msg("uma nota de tensão"), leading: msg("a sensível (sétima)"), outside: msg("uma nota fora da escala") }
 /** What to do to get a soul of this entry: which alien, how it has to die (by music or by a weapon), with which
  * family of instrument and, for a rare one, on which note. */
 export function recipeText(e: SoulEntry): string {
-  if (e.species === 'chick') return 'Capture um pintinho com o Passaguá.'
+  if (e.species === 'chick') return tr('Capture um pintinho com o Passaguá.')
   const r: SoulRecipe = e.recipe ?? { species: e.species ? [e.species] : undefined, state: e.state, shot: e.shot ? [e.shot] : undefined }
-  const who = r.species?.length ? `um alien ${or(r.species.map(s => SOUL_SPECIES[s].name))}` : 'um alien qualquer'
-  const play = r.shot?.length ? or(r.shot.map(s => RECIPE_SHOTS[s])) : 'qualquer instrumento'
-  const note = r.note?.length ? `, com a última nota sendo ${or(r.note.map(n => RECIPE_NOTES[n]))}` : ''
-  const net = 'capture o pássaro com o Passaguá'
-  if (r.state === 'dead') return `Mate ${who} com ${r.weapon?.length ? or(r.weapon.map(w => RECIPE_WEAPONS[w])) : 'qualquer arma'}, ressuscite-o tocando ${play}${note} e ${net}.`
-  if (r.state === 'alive') return `Encha a harmonia de ${who} tocando ${play}${note} e ${net}.`
-  return `Encha a harmonia de ${who}, vivo ou morto, tocando ${play}${note} e ${net}.`
+  const who = r.species?.length ? tr('um alien {species}', { species: or(r.species.map(s => tr(SOUL_SPECIES[s].name))) }) : tr('um alien qualquer')
+  const play = r.shot?.length ? or(r.shot.map(s => tr(RECIPE_SHOTS[s]))) : tr('qualquer instrumento')
+  const note = r.note?.length ? tr(', com a última nota sendo {note}', { note: or(r.note.map(n => tr(RECIPE_NOTES[n]))) }) : ''
+  const net = tr('capture o pássaro com o Passaguá')
+  if (r.state === 'dead') return tr('Mate {who} com {weapon}, ressuscite-o tocando {play}{note} e {net}.', { who, weapon: r.weapon?.length ? or(r.weapon.map(w => tr(RECIPE_WEAPONS[w]))) : tr('qualquer arma'), play, note, net })
+  if (r.state === 'alive') return tr('Encha a harmonia de {who} tocando {play}{note} e {net}.', { who, play, note, net })
+  return tr('Encha a harmonia de {who}, vivo ou morto, tocando {play}{note} e {net}.', { who, play, note, net })
 }
 /** the real bird an entry takes after */
 export const entryBird = (e: SoulEntry) => guideBird(e.bird)
@@ -458,7 +470,7 @@ export function addRare(entries: readonly SoulEntry[], from?: SoulEntry | null):
   while (entries.some(e => e.id === id)) id = `rare.nova-${++n}`
   const made: SoulEntry = from
     ? { ...from, id, name: `${from.name} ${n + 1}`.slice(0, SOUL_NAME_MAX), recipe: from.recipe ?? cleanRecipe({ species: from.species ? [from.species] : undefined, state: from.state, shot: from.shot ? [from.shot] : undefined }) }
-    : rareEntry({ id, name: n > 1 ? `Nova rara ${n}` : 'Nova rara', rarity: 'rare', cls: 'sentinel', look: rareLook('wind', '#9aa0a8'), recipe: { state: 'alive', note: ['outside'] } })
+    : rareEntry({ id, name: n > 1 ? tr('Nova rara {n}', { n }) : tr('Nova rara'), rarity: 'rare', cls: 'sentinel', look: rareLook('wind', '#9aa0a8'), recipe: { state: 'alive', note: ['outside'] } })
   const at = entries.findIndex(e => e.recipe)
   return { entries: tidy([...entries.slice(0, at < 0 ? entries.length : at), made, ...entries.slice(at < 0 ? entries.length : at)]), id }
 }

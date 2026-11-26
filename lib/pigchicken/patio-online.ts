@@ -3,6 +3,7 @@
 // game's shapes and their errors into Portuguese.
 import { getOnlineClient, onlineConfigured, onlineRpc } from '@/lib/online/client'
 import { compactLayout, normalizeLayout, type PatioLayout } from './layout'
+import { t } from '../i18n'
 
 export const patioOnlineAvailable = () => onlineConfigured && !!getOnlineClient()
 
@@ -62,7 +63,7 @@ function info(r: Row): PatioLobbyInfo {
 function lobby(r: Row | null): PatioLobby | null {
   if (!r || typeof r !== 'object') return null
   const people = Array.isArray(r.people) ? (r.people as Row[]).map(p => ({
-    userId: String(p.user_id), name: str(p.display_name) ?? 'Jogador', points: num(p.points), goldenEggs: num(p.golden_eggs), wins: num(p.wins),
+    userId: String(p.user_id), name: str(p.display_name) ?? t('Jogador'), points: num(p.points), goldenEggs: num(p.golden_eggs), wins: num(p.wins),
     editedAt: str(p.edited_at), playedAt: str(p.played_at),
   })) : []
   return { ...info(r), layout: normalizeLayout(r.layout, r.is_default === true), people }
@@ -140,6 +141,7 @@ export function unsavedDaysLeft(l: Pick<PatioLobbyInfo, 'lastEditedAt' | 'lastPl
 
 const message = (e: unknown) => (typeof e === 'object' && e && 'message' in e && typeof e.message === 'string' ? e.message : e instanceof Error ? e.message : '')
 const code = (e: unknown) => (typeof e === 'object' && e && 'code' in e && typeof e.code === 'string' ? e.code : '')
+export const isPatioEditForbidden = (e: unknown) => message(e).includes('PATIO_EDIT_FORBIDDEN')
 export const isPatioConflict = (e: unknown) => message(e).includes('PATIO_CONFLICT')
 // the server has no Pátios yet (migration not applied) or cannot be reached: work stays in this browser
 export const isPatioServerMissing = (e: unknown) => code(e) === 'PGRST202' || code(e) === '42883' || /could not find the function|does not exist/i.test(message(e))
@@ -147,21 +149,21 @@ export const isPatioOffline = (e: unknown) => /failed to fetch|network|load fail
 
 export function patioErrorMessage(e: unknown): string {
   const m = message(e)
-  if (isPatioServerMissing(e)) return 'O servidor ainda não tem os Pátios (falta aplicar a migração). Ficou salvo neste navegador.'
-  if (isPatioOffline(e)) return 'Sem conexão com o servidor. Ficou salvo neste navegador.'
-  if (m.includes('PATIO_CONFLICT')) return 'Alguém salvou outra versão deste Pátio enquanto você editava.'
-  if (m.includes('ACCOUNT_REQUIRED')) return 'Entre com sua conta para isso.'
-  if (m.includes('UNAUTHORIZED')) return 'Entre para salvar no servidor. Ficou salvo neste navegador.'
-  if (m.includes('ADMIN_REQUIRED')) return 'Só o admin pode fazer isso.'
-  if (m.includes('PATIO_EDIT_FORBIDDEN')) return 'Você não tem permissão para editar este Pátio.'
-  if (m.includes('PATIO_RENAME_FORBIDDEN')) return 'Só o criador ou o padrinho deste Pátio podem renomeá-lo.'
-  if (m.includes('PATIO_DELETE_FORBIDDEN')) return 'Só quem criou ou salvou este Pátio pode apagá-lo.'
-  if (m.includes('PATIO_IS_DEFAULT')) return 'Este é o Pátio padrão: escolha outro padrão antes de apagá-lo.'
-  if (m.includes('PATIO_NOT_FOUND')) return 'Este Pátio não existe mais no servidor.'
-  if (m.includes('PATIO_EDITORS_FORBIDDEN')) return 'Só o criador deste Pátio (ou o admin) escolhe quem edita.'
-  if (m.includes('TOO_MANY_EDITORS')) return 'No máximo 100 pessoas podem editar um Pátio.'
-  if (m.includes('INVALID_NAME')) return 'O nome precisa ter de 1 a 60 letras.'
-  if (m.includes('LAYOUT_TOO_LARGE')) return 'Este Pátio ficou grande demais para salvar. Tire alguns elementos.'
-  if (m.includes('INVALID_LAYOUT')) return 'Não foi possível ler este Pátio.'
-  return m || 'Não foi possível completar a ação. Tente novamente.'
+  if (isPatioServerMissing(e)) return t('O servidor ainda não tem os Pátios (falta aplicar a migração). Ficou salvo neste navegador.')
+  if (isPatioOffline(e)) return t('Sem conexão com o servidor. Ficou salvo neste navegador.')
+  if (m.includes('PATIO_CONFLICT')) return t('Alguém salvou outra versão deste Pátio enquanto você editava.')
+  if (m.includes('ACCOUNT_REQUIRED')) return t('Entre com sua conta para isso.')
+  if (m.includes('UNAUTHORIZED')) return t('Entre para salvar no servidor. Ficou salvo neste navegador.')
+  if (m.includes('ADMIN_REQUIRED')) return t('Só o admin pode fazer isso.')
+  if (m.includes('PATIO_EDIT_FORBIDDEN')) return t('Você não tem permissão para editar este Pátio.')
+  if (m.includes('PATIO_RENAME_FORBIDDEN')) return t('Só o criador ou o padrinho deste Pátio podem renomeá-lo.')
+  if (m.includes('PATIO_DELETE_FORBIDDEN')) return t('Só quem criou ou salvou este Pátio pode apagá-lo.')
+  if (m.includes('PATIO_IS_DEFAULT')) return t('Este é o Pátio padrão: escolha outro padrão antes de apagá-lo.')
+  if (m.includes('PATIO_NOT_FOUND')) return t('Este Pátio não existe mais no servidor.')
+  if (m.includes('PATIO_EDITORS_FORBIDDEN')) return t('Só o criador deste Pátio (ou o admin) escolhe quem edita.')
+  if (m.includes('TOO_MANY_EDITORS')) return t('No máximo 100 pessoas podem editar um Pátio.')
+  if (m.includes('INVALID_NAME')) return t('O nome precisa ter de 1 a 60 letras.')
+  if (m.includes('LAYOUT_TOO_LARGE')) return t('Este Pátio ficou grande demais para salvar. Tire alguns elementos.')
+  if (m.includes('INVALID_LAYOUT')) return t('Não foi possível ler este Pátio.')
+  return m || t('Não foi possível completar a ação. Tente novamente.')
 }

@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js'
+import { msg, t } from '@/lib/i18n'
 import { z } from 'zod'
 import type { MusicSnapshot } from './runtime-types'
 import { HARMONY_PLANS, HARMONY_PLAN_IDS, type HarmonyPlanId } from './harmony'
@@ -8,26 +9,26 @@ import { instrumentRole } from './sound-design'
 import { scaleSectionGain, withoutSectionParams, type SectionParamKey } from './section-params'
 
 export const STATES = {
-  opening: 'Opening (first 20 plies)', middle: 'Middlegame', endgame: 'Endgame (≤ 10 pieces)',
-  check: 'Check', mate: 'Checkmate', stalemate: 'Stalemate', repetition: 'Threefold repetition',
-  insufficient: 'Insufficient material', draw: '50-move rule', advantage: 'Material advantage (≥ 5)',
-  tension: 'Tension (balanced evaluation)', captureDrought: 'Capture drought', oppositeCastling: 'Opposite-side castling',
+  opening: msg('Opening (first 20 plies)'), middle: msg('Middlegame'), endgame: msg('Endgame (≤ 10 pieces)'),
+  check: msg('Check'), mate: msg('Checkmate'), stalemate: msg('Stalemate'), repetition: msg('Threefold repetition'),
+  insufficient: msg('Insufficient material'), draw: msg('50-move rule'), advantage: msg('Material advantage (≥ 5)'),
+  tension: msg('Tension (balanced evaluation)'), captureDrought: msg('Capture drought'), oppositeCastling: msg('Opposite-side castling'),
 } as const
 export const BOARD_EVENTS = {
-  firstCastle: 'First castle', secondCastle: 'Second castle', firstCapture: 'First capture', capture: 'Capture',
-  queenCapture: 'Queen capture', noQueens: 'No queens left', noKnights: 'Side lost all knights',
-  noRooks: 'Side lost all rooks', noBishops: 'Side lost all bishops',
-  promotion: 'Promotion', underpromotion: 'Underpromotion', enPassant: 'En passant',
-  minimumOne: 'Minimum force (one side)', minimumBoth: 'Minimum force (both sides)',
-  quiet: '10 quiet plies', checkEscape: 'Check escape',
-  evalSwing: 'Evaluation swing', hangingPiece: 'Undefended piece attacked', advancedPawn: 'Advanced pawn',
+  firstCastle: msg('First castle'), secondCastle: msg('Second castle'), firstCapture: msg('First capture'), capture: msg('Capture'),
+  queenCapture: msg('Queen capture'), noQueens: msg('No queens left'), noKnights: msg('Side lost all knights'),
+  noRooks: msg('Side lost all rooks'), noBishops: msg('Side lost all bishops'),
+  promotion: msg('Promotion'), underpromotion: msg('Underpromotion'), enPassant: msg('En passant'),
+  minimumOne: msg('Minimum force (one side)'), minimumBoth: msg('Minimum force (both sides)'),
+  quiet: msg('10 quiet plies'), checkEscape: msg('Check escape'),
+  evalSwing: msg('Evaluation swing'), hangingPiece: msg('Undefended piece attacked'), advancedPawn: msg('Advanced pawn'),
 } as const
 /** Game-dynamics triggers (added with the 2026-10 engine expansion); kits saved before them never authored them. */
 export const DYNAMICS_TRIGGERS = ['tension', 'evalSwing', 'hangingPiece', 'advancedPawn', 'captureDrought', 'oppositeCastling'] as const
 /** chickenchess actions: powers, Mulligan and Best/Worst hints, recorded by the match itself. */
 export const POWER_EVENTS = {
-  freeze: 'Freeze applied', shield: 'Shield applied', mulligan: 'Mulligan',
-  seeBest: 'Best moves shown', seeWorst: 'Worst moves shown', playBest: 'Best move played', playWorst: 'Worst move played',
+  freeze: msg('Freeze applied'), shield: msg('Shield applied'), mulligan: msg('Mulligan'),
+  seeBest: msg('Best moves shown'), seeWorst: msg('Worst moves shown'), playBest: msg('Best move played'), playWorst: msg('Worst move played'),
 } as const
 export const EVENTS = { ...BOARD_EVENTS, ...POWER_EVENTS }
 export const TRIGGERS = { ...STATES, ...EVENTS }
@@ -38,10 +39,10 @@ export interface ReactionContext { ply: number; states: Occurrence[]; events: Oc
 export const thresholdsSchema = z.object({ tension: z.number().int().min(10).max(300), swing: z.number().int().min(50).max(1000), drought: z.number().int().min(6).max(60) }).partial()
 export type Thresholds = z.infer<typeof thresholdsSchema>
 export const DEFAULT_THRESHOLDS: Required<Thresholds> = { tension: 50, swing: 200, drought: 16 }
-export const ACTIONS = { transpose: 'Transpose', bpm: 'Tempo', scale: 'Fixed scale', scaleShift: 'Scale change', relative: 'Relative major/minor', mode: 'Modal rotation', harmony: 'Harmony plan', invert: 'Invert melody', variation: 'Force variation', gain: 'Gain', lpf: 'Low-pass filter', activate: 'Activate band', hpf: 'High-pass filter', resonance: 'Resonance', reverb: 'Reverb', delay: 'Delay send', drive: 'Drive', pan: 'Pan' } as const
+export const ACTIONS = { transpose: msg('Transpose'), bpm: msg('Tempo'), scale: msg('Fixed scale'), scaleShift: msg('Scale change'), relative: msg('Relative major/minor'), mode: msg('Modal rotation'), harmony: msg('Harmony plan'), invert: msg('Invert melody'), variation: msg('Force variation'), gain: msg('Gain'), lpf: msg('Low-pass filter'), activate: msg('Activate band'), hpf: msg('High-pass filter'), resonance: msg('Resonance'), reverb: msg('Reverb'), delay: msg('Delay send'), drive: msg('Drive'), pan: msg('Pan') } as const
 /** Influences that can glide over bars instead of jumping. */
 export const RAMPED_ACTIONS = ['bpm', 'gain', 'lpf', 'hpf'] as const
-export const INSTRUMENT_FILTERS = { all: 'All instruments', drums: 'Drums', bass: 'Bass', lead: 'Lead', pad: 'Pad / drone', fx: 'FX' } as const
+export const INSTRUMENT_FILTERS = { all: msg('All instruments'), drums: msg('Drums'), bass: msg('Bass'), lead: msg('Lead'), pad: msg('Pad / drone'), fx: msg('FX') } as const
 export { SCALE_INTERVALS, SCALE_LABELS } from './scales'
 import { SCALE_INTERVALS, SCALE_LABELS, identifyPitchCollection } from './scales'
 const keys = <T extends Record<string, unknown>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]]
@@ -160,26 +161,28 @@ export function isLegacyReactionPreset(value:unknown){
   return JSON.stringify(withoutHarmony(parsed.data.rules))===JSON.stringify(withoutHarmony(legacyFactoryReactions()))
 }
 const signed=(n:number)=>`${n>0?'+':n<0?'−':'±'}${Math.abs(n)}`
-const ramped=(action:{rampBars?:number})=>action.rampBars?` over ${action.rampBars} bar${action.rampBars===1?'':'s'}`:''
+const ramped=(action:{rampBars?:number})=>action.rampBars?` ${action.rampBars===1?t('over {n} bar',{n:action.rampBars}):t('over {n} bars',{n:action.rampBars})}`:''
+/** The scale shift label without its parenthesised detail, in the current language. */
+const shiftName=(shift:keyof typeof SCALE_SHIFTS)=>t(SCALE_SHIFTS[shift]).replace(/ \(.*\)$/,'')
 /** Short human summary shared by the editor rows and the active-influence list. */
 export function actionSummary(action: Reaction['actions'][number]) {
   switch(action.type){
-    case 'transpose': return `Transpose ${signed(action.value)} st`
-    case 'bpm': return `Tempo ${signed(action.value)}%${action.rampBars?` over ${action.rampBars} bar${action.rampBars===1?'':'s'}`:''}`
-    case 'scale': return `Scale → ${SCALE_LABELS[action.scale]} (fixed)`
-    case 'harmony': return action.harmony==='random'?'Harmony → random plan':`Harmony → ${HARMONY_PLANS[action.harmony].label}`
-    case 'scaleShift': return `Scale → ${SCALE_SHIFTS[action.shift??'relative'].replace(/ \(.*\)$/,'').toLowerCase()}`
-    case 'mode': return `Modal rotation ${signed(action.value)}`
-    case 'variation': return `Variation ${String.fromCharCode(65+action.value)}`
-    case 'gain': return `Gain ${signed(action.value)}%${ramped(action)}`
-    case 'lpf': return `Low-pass ${action.value} Hz${ramped(action)}`
-    case 'hpf': return `High-pass ${action.value} Hz${ramped(action)}`
-    case 'resonance': return `Resonance ${action.value}`
-    case 'reverb': return `Reverb ${action.value}`
-    case 'delay': return `Delay send ${action.value}`
-    case 'drive': return `Drive ${action.value}`
-    case 'pan': return `Pan ${action.value < 0 ? 'L' : action.value > 0 ? 'R' : 'C'} ${Math.abs(action.value)}`
-    default: return ACTIONS[action.type]
+    case 'transpose': return t('Transpose {n} st',{n:signed(action.value)})
+    case 'bpm': return `${t('Tempo {n}%',{n:signed(action.value)})}${ramped(action)}`
+    case 'scale': return t('Scale → {name} (fixed)',{name:t(SCALE_LABELS[action.scale])})
+    case 'harmony': return action.harmony==='random'?t('Harmony → random plan'):t('Harmony → {plan}',{plan:t(HARMONY_PLANS[action.harmony].label)})
+    case 'scaleShift': return t('Scale → {name}',{name:shiftName(action.shift??'relative').toLowerCase()})
+    case 'mode': return t('Modal rotation {n}',{n:signed(action.value)})
+    case 'variation': return t('Variation {letter}',{letter:String.fromCharCode(65+action.value)})
+    case 'gain': return `${t('Gain {n}%',{n:signed(action.value)})}${ramped(action)}`
+    case 'lpf': return `${t('Low-pass {n} Hz',{n:action.value})}${ramped(action)}`
+    case 'hpf': return `${t('High-pass {n} Hz',{n:action.value})}${ramped(action)}`
+    case 'resonance': return t('Resonance {n}',{n:action.value})
+    case 'reverb': return t('Reverb {n}',{n:action.value})
+    case 'delay': return t('Delay send {n}',{n:action.value})
+    case 'drive': return t('Drive {n}',{n:action.value})
+    case 'pan': return t('Pan {side} {n}',{side:action.value < 0 ? t('L') : action.value > 0 ? t('R') : t('C'),n:Math.abs(action.value)})
+    default: return t(ACTIONS[action.type])
   }
 }
 const other = (c:'w'|'b') => c==='w'?'b':'w'
@@ -294,10 +297,10 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
       else if(action.type==='scale')result.scale=SCALE_INTERVALS[action.scale].map(n=>note(root+n))
       else if(action.type==='scaleShift'){
         const shifted=shiftScale(result.scale,action.shift??'relative',seed)
-        if(shifted.skipped){descriptions.push(`${TRIGGERS[rule.trigger]} → scale change skipped: ${shifted.skipped}.`);continue}
+        if(shifted.skipped){descriptions.push(t('{trigger} → scale change skipped: {reason}.',{trigger:t(TRIGGERS[rule.trigger]),reason:shifted.skipped}));continue}
         result.scale=shifted.scale
         if(shifted.rootMove)keepRegister(shifted.rootMove)
-        descriptions.push(`${TRIGGERS[rule.trigger]} → ${SCALE_SHIFTS[shifted.applied].replace(/ \(.*\)$/,'')}: ${identifyPitchCollection(result.scale).root} ${identifyPitchCollection(result.scale).label}`)
+        {const found=identifyPitchCollection(result.scale);descriptions.push(t('{trigger} → {shift}: {root} {scale}',{trigger:t(TRIGGERS[rule.trigger]),shift:shiftName(shifted.applied),root:found.root,scale:found.scale?t(SCALE_LABELS[found.scale]):found.label}))}
         continue
       }
       else if(action.type==='harmony'){
@@ -305,7 +308,7 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         else{
           const options=HARMONY_PLAN_IDS.filter(id=>id!=='kit'&&id!=='static'&&id!==result.harmony)
           result.harmony=options[seededIndex(seed,options.length)]
-          descriptions.push(`${TRIGGERS[rule.trigger]} → Harmony → ${HARMONY_PLANS[result.harmony].label} (random)`)
+          descriptions.push(t('{trigger} → Harmony → {plan} (random)',{trigger:t(TRIGGERS[rule.trigger]),plan:t(HARMONY_PLANS[result.harmony].label)}))
           continue
         }
       }
@@ -313,7 +316,7 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         const intervals=result.scale.map(n=>(pc(n)-root+12)%12).join(',')
         if(intervals===SCALE_INTERVALS.Maior.join(','))result.scale=SCALE_INTERVALS['Menor natural'].map(n=>note(root+9+n))
         else if(intervals===SCALE_INTERVALS['Menor natural'].join(','))result.scale=SCALE_INTERVALS.Maior.map(n=>note(root+3+n))
-        else {descriptions.push('Relative skipped: needs a major or natural minor scale.');continue}
+        else {descriptions.push(t('Relative skipped: needs a major or natural minor scale.'));continue}
       } else if(action.type==='mode') {const offset=action.value%result.scale.length;result.scale=[...result.scale.slice(offset),...result.scale.slice(0,offset)]}
       else if(action.type==='transpose'&&color==='both'&&filter==='all'){
         result.scale=result.scale.map(n=>note(pc(n)+action.value))
@@ -343,7 +346,7 @@ export function applyReactions(base:MusicSnapshot, config:Reactions, context:Rea
         if(action.type==='pan'&&fx)fx.pan=action.value
         if(action.type==='invert'&&inst.behavior!=='pulse'){result.instruments[id]={...result.instruments[id],pianoRolls:inst.pianoRolls.map(roll=>({...roll,notes:roll.notes.map(n=>({...n,degree:-n.degree}))}))}}
       }
-      descriptions.push(`${TRIGGERS[rule.trigger]} → ${actionSummary(action)}`)
+      descriptions.push(t('{trigger} → {summary}',{trigger:t(TRIGGERS[rule.trigger]),summary:actionSummary(action)}))
     }
   }
   for(const fx of Object.values(result.effects))fx.pitch=Math.max(.125,Math.min(8,fx.pitch))

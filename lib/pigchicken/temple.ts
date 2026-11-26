@@ -5,6 +5,7 @@
 // Everything here is plain data stepped with dt and the conductor's beats, with a seeded random number: the same
 // state, inputs and beats give the same game, so it can later be run by a server and sent to every player
 // (the aliens' hit points live in the combat's targets, like every other enemy).
+import { msg, t as tr } from '../i18n'
 import { boxContains, type Box, type Target } from './combat'
 import type { Conductor } from './music'
 import { SCENE_W } from './world'
@@ -13,14 +14,14 @@ import { STAGE_MUSIC, melodyNote, type TempleSound } from './temple-music'
 
 export type Species = 'jelly' | 'lantern' | 'shell' | 'twin' | 'mini' | 'drum' | 'dragon' | 'dragonHead'
 export const SPECIES: Record<Species, { name: string; hp: number; points: number; w: number; h: number; color: string }> = {
-  jelly: { name: 'Água-viva', hp: 30, points: 100, w: 48, h: 40, color: '#c77dff' },
-  lantern: { name: 'Lanterna', hp: 30, points: 150, w: 48, h: 52, color: '#e63946' },
-  shell: { name: 'Casco', hp: 120, points: 250, w: 56, h: 40, color: '#6a994e' },
-  twin: { name: 'Gêmeos', hp: 50, points: 200, w: 56, h: 36, color: '#4cc9f0' },
-  mini: { name: 'Mini', hp: 15, points: 80, w: 32, h: 24, color: '#f72585' },
-  drum: { name: 'Tambor', hp: 60, points: 300, w: 48, h: 44, color: '#c1121f' },
-  dragon: { name: 'Dragão', hp: 45, points: 200, w: 52, h: 52, color: '#ffb703' },
-  dragonHead: { name: 'Cabeça do dragão', hp: 400, points: 2000, w: 84, h: 64, color: '#ff6b35' },
+  jelly: { name: msg('Água-viva'), hp: 30, points: 100, w: 48, h: 40, color: '#c77dff' },
+  lantern: { name: msg('Lanterna'), hp: 30, points: 150, w: 48, h: 52, color: '#e63946' },
+  shell: { name: msg('Casco'), hp: 120, points: 250, w: 56, h: 40, color: '#6a994e' },
+  twin: { name: msg('Gêmeos'), hp: 50, points: 200, w: 56, h: 36, color: '#4cc9f0' },
+  mini: { name: msg('Mini'), hp: 15, points: 80, w: 32, h: 24, color: '#f72585' },
+  drum: { name: msg('Tambor'), hp: 60, points: 300, w: 48, h: 44, color: '#c1121f' },
+  dragon: { name: msg('Dragão'), hp: 45, points: 200, w: 52, h: 52, color: '#ffb703' },
+  dragonHead: { name: msg('Cabeça do dragão'), hp: 400, points: 2000, w: 84, h: 64, color: '#ff6b35' },
 }
 export const JELLY_COLORS = ['#c77dff', '#7bd88f', '#ffd166', '#4cc9f0', '#f72585']
 
@@ -33,12 +34,12 @@ export type StageDef = {
   dragon?: boolean
 }
 export const STAGES: StageDef[] = [
-  { name: 'Despertar', intro: 'As águas-vivas marcham no ritmo. Nos tempos vermelhos da pista, elas soltam bombas.', rows: ['jelly', 'jelly', 'jelly'], cols: 7, bombEvery: 4, bombs: 1, bombSpeed: 220, diveEvery: 0, stepPx: 22 },
-  { name: 'Lanternas', intro: 'Novo: Lanterna. Ela mergulha em você e volta para a formação.', rows: ['lantern', 'jelly', 'jelly', 'jelly'], cols: 7, bombEvery: 4, bombs: 1, bombSpeed: 240, diveEvery: 6, stepPx: 24 },
-  { name: 'Couraça', intro: 'Novo: Casco. Aguenta vários tiros e racha aos poucos.', rows: ['shell', 'lantern', 'jelly', 'jelly'], cols: 7, bombEvery: 2, bombs: 1, bombSpeed: 250, diveEvery: 6, stepPx: 24 },
-  { name: 'Gêmeos', intro: 'Novo: Gêmeos. Derrubado, vira dois pequenos que voam soltos.', rows: ['twin', 'shell', 'lantern', 'jelly'], cols: 6, bombEvery: 2, bombs: 2, bombSpeed: 270, diveEvery: 4, stepPx: 26 },
-  { name: 'Tambores', intro: 'Novo: Tambor. Só abre no tempo da música: acerte no compasso!', rows: ['drum', 'twin', 'lantern', 'jelly'], cols: 7, bombEvery: 2, bombs: 2, bombSpeed: 290, diveEvery: 6, stepPx: 26 },
-  { name: 'Dragão', intro: 'O dragão do templo! Destrua o corpo para expor a cabeça.', rows: [], cols: 0, bombEvery: 4, bombs: 1, bombSpeed: 300, diveEvery: 0, stepPx: 0, dragon: true },
+  { name: msg('Despertar'), intro: msg('As águas-vivas marcham no ritmo. Nos tempos vermelhos da pista, elas soltam bombas.'), rows: ['jelly', 'jelly', 'jelly'], cols: 7, bombEvery: 4, bombs: 1, bombSpeed: 220, diveEvery: 0, stepPx: 22 },
+  { name: msg('Lanternas'), intro: msg('Novo: Lanterna. Ela mergulha em você e volta para a formação.'), rows: ['lantern', 'jelly', 'jelly', 'jelly'], cols: 7, bombEvery: 4, bombs: 1, bombSpeed: 240, diveEvery: 6, stepPx: 24 },
+  { name: msg('Couraça'), intro: msg('Novo: Casco. Aguenta vários tiros e racha aos poucos.'), rows: ['shell', 'lantern', 'jelly', 'jelly'], cols: 7, bombEvery: 2, bombs: 1, bombSpeed: 250, diveEvery: 6, stepPx: 24 },
+  { name: msg('Gêmeos'), intro: msg('Novo: Gêmeos. Derrubado, vira dois pequenos que voam soltos.'), rows: ['twin', 'shell', 'lantern', 'jelly'], cols: 6, bombEvery: 2, bombs: 2, bombSpeed: 270, diveEvery: 4, stepPx: 26 },
+  { name: msg('Tambores'), intro: msg('Novo: Tambor. Só abre no tempo da música: acerte no compasso!'), rows: ['drum', 'twin', 'lantern', 'jelly'], cols: 7, bombEvery: 2, bombs: 2, bombSpeed: 290, diveEvery: 6, stepPx: 26 },
+  { name: msg('Dragão'), intro: msg('O dragão do templo! Destrua o corpo para expor a cabeça.'), rows: [], cols: 0, bombEvery: 4, bombs: 1, bombSpeed: 300, diveEvery: 0, stepPx: 0, dragon: true },
 ]
 export const GONG_FIRST = 5, GONG_NEXT = 3
 // the reset stone (Recomeçar): this many strikes put the temple back at rest, panels and score cleared
@@ -180,14 +181,14 @@ export function createTemple(seed = 1) {
         for (let c = 0; c < st.cols; c++) addAlien(io, sp, s.f!.x + c * gap, s.f!.y + r * gap, { col: c, row: r }, sp === 'jelly' ? JELLY_COLORS[(r + i) % JELLY_COLORS.length] : undefined)
       })
     }
-    banner(`Fase ${i + 1} · ${st.name}`, st.intro, STAGE_MUSIC[i].zone.color, INTRO + 0.6)
+    banner(tr('Fase {n} · {name}', { n: i + 1, name: tr(st.name) }), tr(st.intro), STAGE_MUSIC[i].zone.color, INTRO + 0.6)
     io.sound({ kind: 'stageStart', root: STAGE_MUSIC[i].zone.root })
   }
 
   function fail(io: TempleIO, why: string) {
     clearAliens(io, true)
     s.phase = 'failed'; s.t = 0; s.gongHits = 0; s.gongNeed = GONG_NEXT
-    banner('Fase perdida', `${why} Bata ${GONG_NEXT} vezes no gongo para tentar de novo (ou ${RESET_NEED} na pedra Recomeçar para voltar ao início).`, '#ff6b5b', 6)
+    banner(tr('Fase perdida'), tr('{why} Bata {n} vezes no gongo para tentar de novo (ou {reset} na pedra Recomeçar para voltar ao início).', { why, n: GONG_NEXT, reset: RESET_NEED }), '#ff6b5b', 6)
     io.sound({ kind: 'fail' })
   }
 
@@ -199,11 +200,11 @@ export function createTemple(seed = 1) {
     const chord = io.music.chord()
     if (s.phase === 'victory') {
       s.gongNeed = GONG_FIRST
-      banner('Templo libertado!', `Pontos ${s.score.toLocaleString('pt-BR')} · combo máximo ${s.bestCombo}. Bata ${GONG_FIRST} vezes no gongo para jogar de novo, ou ${RESET_NEED} na pedra Recomeçar para zerar.`, '#ffd166', 9)
+      banner(tr('Templo libertado!'), tr('Pontos {score} · combo máximo {combo}. Bata {n} vezes no gongo para jogar de novo, ou {reset} na pedra Recomeçar para zerar.', { score: s.score.toLocaleString('pt-BR'), combo: s.bestCombo, n: GONG_FIRST, reset: RESET_NEED }), '#ffd166', 9)
       io.sound({ kind: 'victory', root: io.music.zone.root, chord })
     } else {
       s.gongNeed = GONG_NEXT
-      banner('Fase superada!', `+${s.stageScore} pontos (${s.hearts} ♥ = +${bonus}) · combo máximo ${s.bestCombo}. Bata ${GONG_NEXT} vezes no gongo: Fase ${s.stage + 2} · ${STAGES[s.stage + 1].name}.`, '#7bd88f', 7)
+      banner(tr('Fase superada!'), tr('+{score} pontos ({hearts} ♥ = +{bonus}) · combo máximo {combo}. Bata {n} vezes no gongo: Fase {next} · {name}.', { score: s.stageScore, hearts: s.hearts, bonus, combo: s.bestCombo, n: GONG_NEXT, next: s.stage + 2, name: tr(STAGES[s.stage + 1].name) }), '#7bd88f', 7)
       io.sound({ kind: 'clear', root: io.music.zone.root, chord })
     }
   }
@@ -216,7 +217,7 @@ export function createTemple(seed = 1) {
     io.fx.text(io.body.x, io.body.y - 170, '-♥', '#ff6b5b', 26)
     io.fx.burst(io.body.x, io.body.y - 70, 14, '#ff6b5b', 240, 3)
     io.sound({ kind: 'hurt' })
-    if (s.hearts <= 0) fail(io, 'Os aliens te derrubaram.')
+    if (s.hearts <= 0) fail(io, tr('Os aliens te derrubaram.'))
   }
 
   // the dragon's path: the head weaves over the temple; each body segment follows a little behind it
@@ -253,10 +254,10 @@ export function createTemple(seed = 1) {
     // arriving in the temple: the welcome
     if (io.inside && !s.welcomed && s.phase === 'idle') {
       s.welcomed = true
-      banner('Templo do Gongo', `Bata ${GONG_FIRST} vezes no gongo (tiro ou golpe) para começar. Bata na jukebox, perto da pedra Recomeçar, para escolher outra música.`, '#ffd166', 6)
+      banner(tr('Templo do Gongo'), tr('Bata {n} vezes no gongo (tiro ou golpe) para começar. Bata na jukebox, perto da pedra Recomeçar, para escolher outra música.', { n: GONG_FIRST }), '#ffd166', 6)
     }
     // leaving in the middle of a stage cancels it
-    if (active && !io.inside) { s.outsideT += dt; if (s.outsideT > 2.5) { s.outsideT = 0; fail(io, 'Você saiu do templo.') } } else s.outsideT = 0
+    if (active && !io.inside) { s.outsideT += dt; if (s.outsideT > 2.5) { s.outsideT = 0; fail(io, tr('Você saiu do templo.')) } } else s.outsideT = 0
 
     // the gong
     if (io.gongHit) {
@@ -294,7 +295,7 @@ export function createTemple(seed = 1) {
         if (s.resetHits >= RESET_NEED) {
           clearAliens(io, true)
           Object.assign(s, newTempleState(s.rng), { welcomed: true, resetRing: 0 })
-          banner('Templo reiniciado', `Pontos zerados. Bata ${GONG_FIRST} vezes no gongo para começar da Fase 1.`, '#7bdff2', 4)
+          banner(tr('Templo reiniciado'), tr('Pontos zerados. Bata {n} vezes no gongo para começar da Fase 1.', { n: GONG_FIRST }), '#7bdff2', 4)
           return
         }
       }
@@ -443,7 +444,7 @@ export function createTemple(seed = 1) {
 
     // ---------- the end of the stage ----------
     if (s.phase !== 'playing' && s.phase !== 'intro') return
-    if (f && formation.some(a => a.mode === 'form' && a.y + SPECIES[a.sp].h / 2 > G - 150)) { fail(io, 'Os aliens invadiram o templo.'); return }
+    if (f && formation.some(a => a.mode === 'form' && a.y + SPECIES[a.sp].h / 2 > G - 150)) { fail(io, tr('Os aliens invadiram o templo.')); return }
     if (playing && s.aliens.length === 0) clear(io)
   }
 

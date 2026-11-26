@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { ResetArrow } from './reset-arrow'
+import { useT } from '@/lib/i18n'
 
 const RANGE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
 
@@ -12,8 +13,9 @@ export function PatioRange({ label, name, min, max, step = 1, value, display = v
   label: ReactNode; name?: string; min: number; max: number; step?: number; value: number; display?: ReactNode
   hint?: string; changed?: boolean; resettable?: boolean; dimmed?: boolean; onChange: (value: number) => void; onReset?: () => void; onEnd?: () => void
 }) {
+  const t = useT()
   const fill = Math.max(0, Math.min(100, (value - min) / (max - min) * 100))
-  const title = [hint, onReset && 'Duplo clique para voltar ao padrão.'].filter(Boolean).join(' ') || undefined
+  const title = [hint, onReset && t('Duplo clique para voltar ao padrão.')].filter(Boolean).join(' ') || undefined
   return <div className="grid min-w-0 gap-1" title={title}>
     <div data-patio-range className="relative h-10 overflow-hidden rounded-md bg-[#22302a] focus-within:ring-1 focus-within:ring-primary" onDoubleClick={onReset}>
       <div className={cn('pointer-events-none absolute inset-y-0 left-0', dimmed ? 'bg-white/15' : 'bg-primary/50')} style={{ width: `${fill}%` }} />

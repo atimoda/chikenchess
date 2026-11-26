@@ -4,9 +4,10 @@
 // A deck has 14 cards and throws them in its order: the Coringa first (in the Ás's place), then 2 to 10, the royal
 // family and the Ás. A card away is not in the deck: the next throw is the next card of the order still in it.
 
+import { msg } from '../i18n'
 /** The cards in the order a deck throws them. */
 export const CARD_RANKS = ['★', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'] as const
-export const CARD_NAMES = ['Coringa', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Valete', 'Dama', 'Rei', 'Ás'] as const
+export const CARD_NAMES = [msg("Coringa"), '2', '3', '4', '5', '6', '7', '8', '9', '10', msg("Valete"), msg("Dama"), msg("Rei"), msg("Ás")] as const
 export const DECK_SIZE = CARD_RANKS.length
 /** The seventh and the fourteenth of the order (the 7 and the Ás) burst on their own when they arrive. */
 export const burstsAlone = (rank: number) => rank === 6 || rank === DECK_SIZE - 1

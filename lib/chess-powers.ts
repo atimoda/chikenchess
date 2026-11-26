@@ -1,4 +1,5 @@
 import type { Chess, Move, Square } from "chess.js"
+import { t } from "./i18n"
 
 export type MatchPowerKind = "freeze" | "shield"
 export interface MatchPower {
@@ -40,7 +41,7 @@ export function shieldCaptureBlock(move: PowerMove, powers: MatchPower[]): Shiel
 
 /** Short toast copy shown when a Shield blocks a capture attempt, in every mode. */
 export function shieldCaptureBlockMessage(reason: ShieldCaptureBlock): string {
-  return reason === 'protected-target' ? 'Nem tente. Essa peça está protegida.' : 'Peças protegidas não podem comer outras peças.'
+  return reason === 'protected-target' ? t('Nem tente. Essa peça está protegida.') : t('Peças protegidas não podem comer outras peças.')
 }
 
 export function frozenCaptureBlock(move: PowerMove, powers: MatchPower[]): boolean {

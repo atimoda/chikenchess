@@ -1,4 +1,6 @@
 // Pitch collections in twelve-tone equal temperament. Aeolian aliases natural minor.
+import { msg, t } from '@/lib/i18n'
+
 export const SCALE_INTERVALS = {
   'Pentatônica menor': [0, 3, 5, 7, 10],
   'Pentatônica maior': [0, 2, 4, 7, 9],
@@ -24,26 +26,26 @@ export const SCALE_INTERVALS = {
 export type ScaleName = keyof typeof SCALE_INTERVALS
 /** English display names; the Portuguese keys stay as the saved identifiers. */
 export const SCALE_LABELS: Record<ScaleName, string> = {
-  'Pentatônica menor': 'Minor pentatonic',
-  'Pentatônica maior': 'Major pentatonic',
-  'Maior': 'Major',
-  'Menor natural': 'Natural minor',
-  'Dórica': 'Dorian',
-  'Mixolídia': 'Mixolydian',
-  'Blues menor': 'Minor blues',
-  'Blues maior': 'Major blues',
-  'Whole tone': 'Whole tone',
-  'Octatonic / Diminished (tom–semitom)': 'Octatonic / Diminished (whole–half)',
-  'Octatonic / Diminished (semitom–tom)': 'Octatonic / Diminished (half–whole)',
-  'Harmônica menor': 'Harmonic minor',
-  'Melódica menor (ascendente / jazz)': 'Melodic minor (ascending / jazz)',
-  'Phrygian': 'Phrygian',
-  'Phrygian dominant': 'Phrygian dominant',
-  'Lydian': 'Lydian',
-  'Lydian dominant': 'Lydian dominant',
-  'Locrian': 'Locrian',
-  'Aeolian': 'Aeolian',
-  'Chromatic': 'Chromatic',
+  'Pentatônica menor': msg('Minor pentatonic'),
+  'Pentatônica maior': msg('Major pentatonic'),
+  'Maior': msg('Major'),
+  'Menor natural': msg('Natural minor'),
+  'Dórica': msg('Dorian'),
+  'Mixolídia': msg('Mixolydian'),
+  'Blues menor': msg('Minor blues'),
+  'Blues maior': msg('Major blues'),
+  'Whole tone': msg('Whole tone'),
+  'Octatonic / Diminished (tom–semitom)': msg('Octatonic / Diminished (whole–half)'),
+  'Octatonic / Diminished (semitom–tom)': msg('Octatonic / Diminished (half–whole)'),
+  'Harmônica menor': msg('Harmonic minor'),
+  'Melódica menor (ascendente / jazz)': msg('Melodic minor (ascending / jazz)'),
+  'Phrygian': msg('Phrygian'),
+  'Phrygian dominant': msg('Phrygian dominant'),
+  'Lydian': msg('Lydian'),
+  'Lydian dominant': msg('Lydian dominant'),
+  'Locrian': msg('Locrian'),
+  'Aeolian': msg('Aeolian'),
+  'Chromatic': msg('Chromatic'),
 }
 export const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
 export type RootName = typeof ROOTS[number]
@@ -76,7 +78,7 @@ export function identifyPitchCollection(notes: readonly string[], preferredScale
   return {
     root: PITCH_CLASSES[rootIndex],
     scale,
-    label: scale ?? `Escala modal · ${notes.length} notas`,
+    label: scale ?? t('Escala modal · {n} notas', { n: notes.length }),
     notes: notes.map(note => note.replace(/-?\d+$/, '')),
   }
 }

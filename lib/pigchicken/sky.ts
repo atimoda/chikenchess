@@ -18,6 +18,7 @@
 // decides when they show, unless starsAlways: then at any hour, as bright as night). The mountains and the clouds have their own settings (mountains.ts, clouds.ts).
 // A Pátio without `sky` keeps the classic dusk the code always drew (classicLook).
 
+import { msg } from '../i18n'
 export type SkyStop = { at: number; color: string }
 export type SkyParams = {
   hour: number; follow: boolean; stops: SkyStop[]
@@ -29,8 +30,8 @@ export type SkyParams = {
 }
 export type SkyBlend = 'soft' | 'overlay' | 'multiply' | 'screen'
 export const SKY_BLENDS: { id: SkyBlend; label: string; css: string }[] = [
-  { id: 'soft', label: 'Suave', css: 'soft-light' }, { id: 'overlay', label: 'Forte', css: 'overlay' },
-  { id: 'multiply', label: 'Escurece', css: 'multiply' }, { id: 'screen', label: 'Clareia', css: 'screen' },
+  { id: 'soft', label: msg("Suave"), css: 'soft-light' }, { id: 'overlay', label: msg("Forte@@blend"), css: 'overlay' },
+  { id: 'multiply', label: msg("Escurece"), css: 'multiply' }, { id: 'screen', label: msg("Clareia"), css: 'screen' },
 ]
 export const SKY_TEX_SCALE = { min: 25, max: 400, step: 5 } as const
 

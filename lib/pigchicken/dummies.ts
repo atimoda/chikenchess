@@ -3,6 +3,7 @@
 // low and out of tune when it is wrecked and climbs the zone's scale, getting in tune, as it is mended.
 // The editor mode edits `DummyParams` per object; nothing here depends on the canvas or the synth.
 
+import { msg } from '../i18n'
 export type DummyParams = {
   message: string // the tip it shows when it is destroyed (empty: no bubble)
   maxHp: number // total life
@@ -12,13 +13,13 @@ export const DUMMY_HP_RANGE = { min: 10, max: 1000 }
 
 // the first tips, one per dummy of the Pátio, in order
 export const DUMMY_TIPS: string[] = [
-  'Instrumentos não machucam: as notas enchem a barra de harmonia e viram aliens em passarinhos e zumbis em gente feliz.',
-  'Toque uma nota em mim para me consertar. Cada melhora deixa o meu som mais agudo e mais afinado.',
-  'Atire com um instrumento bem na batida da música: a nota vale mais harmonia.',
-  'Mira mais para cima toca notas mais agudas, e a nota sempre cabe no acorde que está tocando.',
-  'Segure Tab (ou View no gamepad) para abrir a roda do inventário e soltar em cima do item.',
-  'Segure arremessar (F) para jogar o item com mais força. Ele também machuca quem acertar.',
-  'No fim do Pátio fica o Templo do Gongo: bata 5 vezes no gongo para começar as fases.',
+  msg("Instrumentos não machucam: as notas enchem a barra de harmonia e viram aliens em passarinhos e zumbis em gente feliz."),
+  msg("Toque uma nota em mim para me consertar. Cada melhora deixa o meu som mais agudo e mais afinado."),
+  msg("Atire com um instrumento bem na batida da música: a nota vale mais harmonia."),
+  msg("Mira mais para cima toca notas mais agudas, e a nota sempre cabe no acorde que está tocando."),
+  msg("Segure Tab (ou View no gamepad) para abrir a roda do inventário e soltar em cima do item."),
+  msg("Segure arremessar (F) para jogar o item com mais força. Ele também machuca quem acertar."),
+  msg("No fim do Pátio fica o Templo do Gongo: bata 5 vezes no gongo para começar as fases."),
 ]
 
 export const dummyTip = (i: number) => DUMMY_TIPS[((i % DUMMY_TIPS.length) + DUMMY_TIPS.length) % DUMMY_TIPS.length]
@@ -34,7 +35,7 @@ export function cleanDummyParams(p: Partial<DummyParams> | undefined, base: Dumm
 
 // 0 wrecked (no life) · 1 falling apart · 2 cracked · 3 scratched · 4 whole
 export const DUMMY_STAGE_MAX = 4
-export const DUMMY_STAGE_NAMES = ['estado deplorável', 'caindo aos pedaços', 'rachado', 'arranhado', 'inteiro']
+export const DUMMY_STAGE_NAMES = [msg("estado deplorável"), msg("caindo aos pedaços"), msg("rachado"), msg("arranhado"), msg("inteiro")]
 export function dummyStage(hp: number, maxHp: number) {
   if (hp <= 0 || maxHp <= 0) return 0
   return Math.max(1, Math.min(DUMMY_STAGE_MAX, Math.ceil((hp / maxHp) * DUMMY_STAGE_MAX - 1e-9)))

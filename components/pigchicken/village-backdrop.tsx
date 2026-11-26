@@ -2,6 +2,7 @@
 
 import { memo } from 'react'
 import { SceneryRegion } from './scenery-region'
+import { useT } from "@/lib/i18n"
 
 // The Vila dos Telhados' fixed scenery: the row of terraces far behind (decorative) and the sign. The rocky slope
 // she walks on is the layout's first ground element (biome "Rocha da Vila", lib/pigchicken/surfaces.ts).
@@ -9,6 +10,7 @@ const TOP = 500, BOTTOM = 940
 const UPPER_TERRACE = '498,876 562,812 606,753 742,748 814,683 941,681 1022,648 1072,646 1128,582 1239,582 1298,570 1377,570 1434,527 1551,527 1612,545 1720,546 1776,564 1890,564 1920,576 1920,940 498,940'
 
 export const VillageBackdrop = memo(function VillageBackdrop({ left }: { left: number }) {
+  const t = useT()
   const box = { x: 498, y: TOP, w: 1920 - 498, h: BOTTOM - TOP }
   return <>
     <SceneryRegion bounds={{ ...box, x: left + box.x }} aria-hidden="true" className="absolute" style={{ left: left + box.x, top: box.y, width: box.w, height: box.h }}>
@@ -28,8 +30,8 @@ export const VillageBackdrop = memo(function VillageBackdrop({ left }: { left: n
       <svg viewBox="0 0 154 96" className="size-full">
         <path d="M25 35v58m102-61v53" stroke="#514452" strokeWidth="7" />
         <path d="M3 15l145-3-4 40-141 4z" fill="#3c384b" stroke="#bb9e8d" strokeWidth="2" />
-        <text x="74" y="30" textAnchor="middle" fontSize="9" letterSpacing="3" fill="#c7a88c">PÁTIO</text>
-        <text x="74" y="45" textAnchor="middle" fontSize="11" letterSpacing="1" fontWeight="700" fill="#f1dbc2">VILA DOS TELHADOS</text>
+        <text x="74" y="30" textAnchor="middle" fontSize="9" letterSpacing="3" fill="#c7a88c">{t("PÁTIO")}</text>
+        <text x="74" y="45" textAnchor="middle" fontSize="11" letterSpacing="1" fontWeight="700" fill="#f1dbc2">{t("VILA DOS TELHADOS")}</text>
       </svg>
     </SceneryRegion>
   </>

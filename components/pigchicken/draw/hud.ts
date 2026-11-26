@@ -9,6 +9,7 @@ import { wheelSliceCenter, wheelSpan } from "@/lib/pigchicken/inventory"
 import { itemImage } from "@/lib/pigchicken/art"
 import { drawItem, type Ctx } from "./shared"
 import { stageHeight, stageWidth } from "@/lib/stage-size"
+import { msg, t as tr } from "@/lib/i18n"
 import { type InventoryAlign } from "@/lib/chicken/controls"
 
 export function drawReticle(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, rx: number, ry: number, dist: number, spreadDeg: number, locked: boolean, path: { x: number; y: number }[] | null, showPath: boolean, showLand: boolean, tint: string) {
@@ -470,8 +471,8 @@ export function drawInventory(ctx: Ctx, combat: Combat, row: number, bottom: boo
   const since = now - (invPill.get(row)?.at ?? -Infinity)
   if (since < PILL_TIME) {
     const d = held ? combat.item(held.item) : null
-    const name = d ? d.name : "Mãos vazias"
-    const info = held && d ? [d.mag > 0 && !d.infiniteAmmo ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? `${held.durability} golpes` : ""].filter(Boolean).join(" · ") : ""
+    const name = d ? tr(d.name) : tr("Mãos vazias")
+    const info = held && d ? [d.mag > 0 && !d.infiniteAmmo ? `${Math.ceil(held.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[held.item] : d.mag}` : "", d.durability > 0 ? tr("{n} golpes", { n: held.durability }) : ""].filter(Boolean).join(" · ") : ""
     ctx.font = "600 12px ui-sans-serif, system-ui, sans-serif"
     const nw = ctx.measureText(name).width
     ctx.font = "400 11px ui-monospace, monospace"
@@ -500,7 +501,7 @@ export function wheelGeom() {
   return { cx: W / 2, cy: H / 2, rOut, rIn: rOut * 0.5 }
 }
 export const GROUP_COLORS = ["#c77dff", "#ff9f43", "#7bd88f"]
-export const GROUP_NAMES = ["Instrumento", "Arma", "Utilitário"]
+export const GROUP_NAMES = [msg("Instrumento"), msg("Arma"), msg("Utilitário")]
 export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number) {
   const slots = combat.inventory, groups = combat.inventoryGroups, n = slots.length, { cx, cy, rOut, rIn } = wheelGeom(), span = wheelSpan(n)
   const ease = 1 - (1 - open) ** 3
@@ -535,7 +536,7 @@ export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number)
     } else {
       ctx.fillStyle = on ? "rgba(20,24,30,0.7)" : "rgba(255,255,255,0.45)"
       ctx.font = "11px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle"
-      ctx.fillText("vazio", x, y)
+      ctx.fillText(tr("vazio"), x, y)
     }
   }
   // the centre: what the chosen (or held) slot is
@@ -544,14 +545,14 @@ export function drawWheel(ctx: Ctx, combat: Combat, hover: number, open: number)
   if (o) {
     const d = combat.item(o.item)
     ctx.fillStyle = GROUP_COLORS[groups[i]]; ctx.font = "10px ui-monospace, monospace"
-    ctx.fillText(GROUP_NAMES[groups[i]].toUpperCase(), 0, -22)
+    ctx.fillText(tr(GROUP_NAMES[groups[i]]).toUpperCase(), 0, -22)
     ctx.fillStyle = "#ffffff"; ctx.font = "bold 17px ui-sans-serif, system-ui, sans-serif"
-    ctx.fillText(d.name, 0, 0, rIn * 1.7)
-    const info = [d.mag > 0 && !d.infiniteAmmo ? `${Math.ceil(o.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[o.item] : d.mag}` : "", d.durability > 0 ? `${o.durability} golpes` : ""].filter(Boolean).join(" · ")
+    ctx.fillText(tr(d.name), 0, 0, rIn * 1.7)
+    const info = [d.mag > 0 && !d.infiniteAmmo ? `${Math.ceil(o.ammo)}/${d.consumable ? CONSUMABLE_LIMITS[o.item] : d.mag}` : "", d.durability > 0 ? tr("{n} golpes", { n: o.durability }) : ""].filter(Boolean).join(" · ")
     if (info) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "11px ui-monospace, monospace"; ctx.fillText(info, 0, 20) }
   } else {
     ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "bold 15px ui-sans-serif, system-ui, sans-serif"
-    ctx.fillText("Mãos vazias", 0, 0)
+    ctx.fillText(tr("Mãos vazias"), 0, 0)
   }
   ctx.restore()
 }

@@ -7,6 +7,7 @@
 // the yellow, and all yellow turns the flag into a doubt, which shots hurt again. All red sets the block free: with
 // no armed bomb it opens, with one it blows up.
 import { MINE_CORNERS, mineBlankCell, mineCell, mineCellAt, mineCellRect, mineCornerCut, mineIndex, mineNeighbours, type MineCorner, type MineGrid, type MineGridParams, type MineSide, type MineSpot } from './mine-grid'
+import { msg } from '../i18n'
 
 // insideBreaks may be left out by whoever has no say on it (it counts as on)
 export type MineRules = Pick<MineGridParams, 'toFlag' | 'toOpen' | 'toDoubt' | 'fuse' | 'turn'> & Partial<Pick<MineGridParams, 'insideBreaks'>>
@@ -299,10 +300,10 @@ export function mineDo(round: MineRound, rules: MineRules, a: MineAct): MineEven
 // the round's titles: the most blocks opened, flags over a bomb, bombs disarmed and deaths by their bombs. A tie
 // gives it to all of them; nobody gets one for nothing.
 export const MINE_TITLES = [
-  { id: 'explorer', name: 'Desbravador', of: 'opened' },
-  { id: 'guardian', name: 'Guardião', of: 'flagsOnBomb' },
-  { id: 'sapper', name: 'Sapador', of: 'disarmed' },
-  { id: 'miner', name: 'Minador', of: 'kills' },
+  { id: 'explorer', name: msg('Desbravador'), of: 'opened' },
+  { id: 'guardian', name: msg('Guardião'), of: 'flagsOnBomb' },
+  { id: 'sapper', name: msg('Sapador'), of: 'disarmed' },
+  { id: 'miner', name: msg('Minador'), of: 'kills' },
 ] as const
 export type MineTitleId = (typeof MINE_TITLES)[number]['id']
 export function mineTitles(stats: Record<string, MineStats>): Record<MineTitleId, string[]> {

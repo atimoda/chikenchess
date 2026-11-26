@@ -5,6 +5,7 @@
 // middle sits in the middle of the fan; drums by piece: kick low, snare in the middle, hats and cymbals high), and
 // groups the notes that follow each other in the same region into aliens of up to 15 notes, each one appearing a
 // few beats before its first. The result opens in the song editor.
+import { msg, t as tr } from '../i18n'
 import { fanNotes, songFan } from './fan'
 import { SCALES, type ScaleId } from './music'
 import { SONG_ALIENS_MAX, SONG_NOTES_MAX, DEFAULT_COVER, type LibrarySong } from './song-library'
@@ -20,22 +21,22 @@ export type MidiFile = { bpm: number; beats: number; tracks: MidiTrack[] }
 export class MidiError extends Error {}
 
 // the General MIDI families (program / 8), for a track with no name
-const FAMILIES = ['Piano', 'Percussão cromática', 'Órgão', 'Violão', 'Baixo', 'Cordas', 'Ensemble', 'Metais', 'Palhetas', 'Flautas', 'Synth lead', 'Synth pad', 'Efeitos', 'Étnico', 'Percussão', 'Efeitos sonoros']
+const FAMILIES = [msg('Piano'), msg('Percussão cromática'), msg('Órgão'), msg('Violão'), msg('Baixo'), msg('Cordas'), msg('Ensemble'), msg('Metais'), msg('Palhetas'), msg('Flautas'), msg('Synth lead'), msg('Synth pad'), msg('Efeitos'), msg('Étnico'), msg('Percussão'), msg('Efeitos sonoros')]
 
 export function parseMidi(data: Uint8Array): MidiFile {
   let p = 0
-  const need = (n: number) => { if (p + n > data.length) throw new MidiError('O arquivo MIDI acabou antes da hora.') }
+  const need = (n: number) => { if (p + n > data.length) throw new MidiError(tr('O arquivo MIDI acabou antes da hora.')) }
   const u8 = () => { need(1); return data[p++] }
   const u16 = () => { need(2); const v = (data[p] << 8) | data[p + 1]; p += 2; return v }
   const u32 = () => { need(4); const v = ((data[p] << 24) >>> 0) + (data[p + 1] << 16) + (data[p + 2] << 8) + data[p + 3]; p += 4; return v }
   const tag = () => { need(4); const t = String.fromCharCode(data[p], data[p + 1], data[p + 2], data[p + 3]); p += 4; return t }
-  const vlq = () => { let v = 0; for (let i = 0; i < 4; i++) { const b = u8(); v = (v << 7) | (b & 0x7f); if (!(b & 0x80)) return v } throw new MidiError('Um tempo do arquivo MIDI está estragado.') }
+  const vlq = () => { let v = 0; for (let i = 0; i < 4; i++) { const b = u8(); v = (v << 7) | (b & 0x7f); if (!(b & 0x80)) return v } throw new MidiError(tr('Um tempo do arquivo MIDI está estragado.')) }
 
-  if (data.length < 14 || tag() !== 'MThd') throw new MidiError('Este arquivo não é MIDI (.mid).')
+  if (data.length < 14 || tag() !== 'MThd') throw new MidiError(tr('Este arquivo não é MIDI (.mid).'))
   const hlen = u32(), format = u16(), ntracks = u16(), division = u16()
   p += Math.max(0, hlen - 6)
-  if (division & 0x8000) throw new MidiError('Este MIDI conta o tempo em SMPTE; exporte com tempo em batidas.')
-  if (format > 1) throw new MidiError('Este MIDI é do formato 2, que o gerador não lê.')
+  if (division & 0x8000) throw new MidiError(tr('Este MIDI conta o tempo em SMPTE; exporte com tempo em batidas.'))
+  if (format > 1) throw new MidiError(tr('Este MIDI é do formato 2, que o gerador não lê.'))
   const ppq = division || 480
   const tempos: { tick: number; usPerBeat: number }[] = []
   // channel tracks: a format 0 file has every channel in one track, so tracks are split by channel
@@ -43,10 +44,10 @@ export function parseMidi(data: Uint8Array): MidiFile {
   let endTick = 0
   for (let t = 0; t < ntracks && p + 8 <= data.length; t++) {
     const id = tag(), len = u32(), end = p + len
-    if (!/^[\x20-\x7e]{4}$/.test(id)) throw new MidiError('Uma faixa do arquivo MIDI está estragada.')
+    if (!/^[\x20-\x7e]{4}$/.test(id)) throw new MidiError(tr('Uma faixa do arquivo MIDI está estragada.'))
     // a chunk of another kind (the format allows them) is skipped
     if (id !== 'MTrk') { p = end; t--; continue }
-    if (end > data.length) throw new MidiError('O arquivo MIDI acabou antes da hora.')
+    if (end > data.length) throw new MidiError(tr('O arquivo MIDI acabou antes da hora.'))
     let tick = 0, status = 0, name = ''
     const programs = new Map<number, number>()
     const open = new Map<string, { tick: number; vel: number }>()
@@ -55,7 +56,7 @@ export function parseMidi(data: Uint8Array): MidiFile {
       tick += vlq()
       let b = data[p]
       if (b & 0x80) { p++; if (b < 0xf0) status = b } else if (status) b = status
-      else throw new MidiError('Um evento do arquivo MIDI está estragado.')
+      else throw new MidiError(tr('Um evento do arquivo MIDI está estragado.'))
       if (b === 0xff) {
         const type = u8(), l = vlq()
         need(l)
@@ -85,17 +86,17 @@ export function parseMidi(data: Uint8Array): MidiFile {
     endTick = Math.max(endTick, tick)
     for (const n of notes) {
       const k = `${t}:${n.ch}`
-      let tr = byKey.get(k)
-      if (!tr) {
+      let trk = byKey.get(k)
+      if (!trk) {
         const program = programs.get(n.ch) ?? 0
-        tr = { index: 0, name: name || (n.ch === 9 ? 'Bateria' : FAMILIES[program >> 3] ?? 'Faixa'), channel: n.ch, drums: n.ch === 9, program, notes: [] }
-        byKey.set(k, tr)
+        trk = { index: 0, name: name || (n.ch === 9 ? tr('Bateria') : (FAMILIES[program >> 3] ? tr(FAMILIES[program >> 3]) : tr('Faixa'))), channel: n.ch, drums: n.ch === 9, program, notes: [] }
+        byKey.set(k, trk)
       }
-      tr.notes.push({ beat: n.tick / ppq, midi: n.midi, dur: Math.max(0, n.end - n.tick) / ppq, vel: n.vel / 127 })
+      trk.notes.push({ beat: n.tick / ppq, midi: n.midi, dur: Math.max(0, n.end - n.tick) / ppq, vel: n.vel / 127 })
     }
   }
   const tracks = [...byKey.values()].filter(t => t.notes.length).map((t, i) => ({ ...t, index: i, notes: t.notes.sort((a, b) => a.beat - b.beat || b.midi - a.midi) }))
-  if (!tracks.length) throw new MidiError('Este MIDI não tem notas.')
+  if (!tracks.length) throw new MidiError(tr('Este MIDI não tem notas.'))
   // the song's tempo: the one that lasts the longest (a song has a single bpm)
   tempos.sort((a, b) => a.tick - b.tick)
   let us = 500000, best = 0
@@ -108,10 +109,10 @@ export function parseMidi(data: Uint8Array): MidiFile {
 
 export type Difficulty = 'facil' | 'medio' | 'dificil' | 'insano'
 export const DIFFICULTIES: { value: Difficulty; label: string; nps: number; gap: number; grid: number; together: number }[] = [
-  { value: 'facil', label: 'Fácil', nps: 1.5, gap: 1, grid: 1, together: 1 },
-  { value: 'medio', label: 'Médio', nps: 2.5, gap: 0.5, grid: 0.5, together: 1 },
-  { value: 'dificil', label: 'Difícil', nps: 4, gap: 0.5, grid: 0.25, together: 2 },
-  { value: 'insano', label: 'Insano', nps: 6, gap: 0.25, grid: 0.25, together: 2 },
+  { value: 'facil', label: msg('Fácil'), nps: 1.5, gap: 1, grid: 1, together: 1 },
+  { value: 'medio', label: msg('Médio'), nps: 2.5, gap: 0.5, grid: 0.5, together: 1 },
+  { value: 'dificil', label: msg('Difícil'), nps: 4, gap: 0.5, grid: 0.25, together: 2 },
+  { value: 'insano', label: msg('Insano'), nps: 6, gap: 0.25, grid: 0.25, together: 2 },
 ]
 // a drum track: by piece (the kit's kick, snare, clap and hats each its alien), or one variation for all
 export const DRUMS_BY_PIECE = 'por-peca'
@@ -162,7 +163,7 @@ export function generateSong(file: MidiFile, o: GenOptions): { song: LibrarySong
   const diff = DIFFICULTIES.find(d => d.value === o.difficulty) ?? DIFFICULTIES[1]
   const catalog = o.catalog ?? BUILTIN_VARIANTS
   const chosen = o.tracks.filter(t => t.on).map(t => ({ g: t, t: file.tracks[t.index] })).filter(x => x.t)
-  if (!chosen.length) throw new MidiError('Escolha pelo menos uma faixa.')
+  if (!chosen.length) throw new MidiError(tr('Escolha pelo menos uma faixa.'))
   // tempo inside 40..200: a fast song is read at half (each beat two), a slow one at double
   let bpm = file.bpm, k = 1
   while (bpm > 200) { bpm /= 2; k /= 2 }
@@ -281,7 +282,7 @@ export function generateSong(file: MidiFile, o: GenOptions): { song: LibrarySong
   aliens.sort((a, b) => a.notes[0].beat - b.notes[0].beat)
   const capped = aliens.slice(0, SONG_ALIENS_MAX).map(a => ({ ...a, notes: a.notes.slice(0, SONG_NOTES_MAX) }))
   const colors = ['#7bdff2', '#c77dff', '#7bd88f', '#ffd166', '#ff8fab', '#4cc9f0', '#f4a261', '#b5e48c', '#ff6b5b', '#9d8df1', '#64dfdf', '#ffb703']
-  const name = o.name.trim().slice(0, 60) || 'Música do MIDI'
+  const name = o.name.trim().slice(0, 60) || tr('Música do MIDI')
   const song: LibrarySong = {
     id: 'midi', name, intro: '', noteMode: 'fan', introBars: 2, fan, cover: { ...DEFAULT_COVER },
     music: {

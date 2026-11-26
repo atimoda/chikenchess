@@ -13,6 +13,7 @@ Leia esta página para localizar a área; depois abra só o mapa da área e os m
 | Pátio: escalas dos instrumentos, Cordas soltas, vozes, instrumentos fixos (Harpa, Bateria), Próxima variação e tambores das armas | [patio-instruments.md](codebase/patio-instruments.md) | `lib/pigchicken/instrument-scales.ts`, `strings-play.ts`, `drum-kit.ts`, `synth.ts` |
 | Pátio: Grade de blocos e rodada do Campo minado (gangorra, bombas, Filhote) | [patio-mine-grid.md](codebase/patio-mine-grid.md) | `lib/pigchicken/mine-*.ts`, `components/pigchicken/mine-*.ts(x)` |
 | Pátio: layout, Modo editor e elementos inseridos (casas, chãos, árvores, Baú, Gongo, lousa, salvar/abrir) | [patio-editor.md](codebase/patio-editor.md) | `lib/pigchicken/layout*.ts`, `components/pigchicken/patio-editor.tsx` |
+| Idiomas: textos traduzidos (`t`, `msg`, `useT`), catálogos e seletor | [i18n.md](codebase/i18n.md) | `lib/i18n.ts`, `lib/locales/`, `scripts/i18n-build.mjs` |
 | Online 1v1, contas, backend Supabase, admin, páginas públicas, instalação e deploy | [online-and-site.md](codebase/online-and-site.md) | `components/online/`, `lib/online/`, `supabase/`, `app/` |
 
 ## Desenho do Pátio

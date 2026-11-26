@@ -2,19 +2,20 @@
 // the scale, the tempo and a chord progression; the conductor keeps the beat, says which chord is playing and
 // turns the aim into a note that always fits.
 
+import { msg, t } from '../i18n'
 import { grooveOf, type ZoneAmbience } from './zone-ambience'
 
 export type ScaleId = 'majorPenta' | 'minorPenta' | 'major' | 'minor' | 'dorian' | 'lydian' | 'mixolydian' | 'harmonicMinor' | 'blues'
 export const SCALES: Record<ScaleId, { label: string; steps: number[] }> = {
-  majorPenta: { label: 'Pentatônica maior', steps: [0, 2, 4, 7, 9] },
-  minorPenta: { label: 'Pentatônica menor', steps: [0, 3, 5, 7, 10] },
-  major: { label: 'Maior', steps: [0, 2, 4, 5, 7, 9, 11] },
-  minor: { label: 'Menor', steps: [0, 2, 3, 5, 7, 8, 10] },
-  dorian: { label: 'Dórico', steps: [0, 2, 3, 5, 7, 9, 10] },
-  lydian: { label: 'Lídio', steps: [0, 2, 4, 6, 7, 9, 11] },
-  mixolydian: { label: 'Mixolídio', steps: [0, 2, 4, 5, 7, 9, 10] },
-  harmonicMinor: { label: 'Menor harmônica', steps: [0, 2, 3, 5, 7, 8, 11] },
-  blues: { label: 'Blues', steps: [0, 3, 5, 6, 7, 10] },
+  majorPenta: { label: msg('Pentatônica maior'), steps: [0, 2, 4, 7, 9] },
+  minorPenta: { label: msg('Pentatônica menor'), steps: [0, 3, 5, 7, 10] },
+  major: { label: msg('Maior'), steps: [0, 2, 4, 5, 7, 9, 11] },
+  minor: { label: msg('Menor'), steps: [0, 2, 3, 5, 7, 8, 10] },
+  dorian: { label: msg('Dórico'), steps: [0, 2, 3, 5, 7, 9, 10] },
+  lydian: { label: msg('Lídio'), steps: [0, 2, 4, 6, 7, 9, 11] },
+  mixolydian: { label: msg('Mixolídio'), steps: [0, 2, 4, 5, 7, 9, 10] },
+  harmonicMinor: { label: msg('Menor harmônica'), steps: [0, 2, 3, 5, 7, 8, 11] },
+  blues: { label: msg('Blues'), steps: [0, 3, 5, 6, 7, 10] },
 }
 
 // feel: how the beat is felt (the ambience's groove and the grid the notes are pulled to)
@@ -50,11 +51,11 @@ export type ZoneBlock = { zone: Zone; beats: number; reps: number }
 // the scenes' zones in the code: the key, scale and tempo each scene of the Parquinho starts with (in silence:
 // sound-zones.ts sceneZoneBase) and what the "Cenas" of the zone's Estilo (zone-styles.ts) copy, with the ambience each one used to play
 export const ZONES: Zone[] = [
-  { id: 'campo', name: 'Campo', root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#7bd88f', ambience: { beat: 'straight', bass: 'drone' } },
-  { id: 'noite', name: 'Noite', root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 88, feel: 'half', progression: [0, 5, 2, 6], color: '#7b8cff', ambience: { beat: 'half', bass: 'drone' } },
-  { id: 'feira', name: 'Feira', root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 112, feel: 'swing', progression: [0, 3, 0, 4], color: '#ffb347', ambience: { beat: 'fair', bass: 'drone' } },
-  { id: 'ceu', name: 'Céu', root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 80, feel: 'straight', progression: [0, 1, 0, 1], color: '#7bdff2', ambience: { beat: 'breeze', bass: 'drone' } },
-  { id: 'blues', name: 'Porão', root: 55, scale: 'blues', chordScale: 'mixolydian', bpm: 96, feel: 'swing', progression: [0, 0, 3, 0, 4, 3, 0, 4], color: '#c77dff', ambience: { beat: 'swing', bass: 'drone' } },
+  { id: 'campo', name: msg('Campo'), root: 60, scale: 'majorPenta', chordScale: 'major', bpm: 100, feel: 'straight', progression: [0, 4, 5, 3], color: '#7bd88f', ambience: { beat: 'straight', bass: 'drone' } },
+  { id: 'noite', name: msg('Noite'), root: 57, scale: 'minorPenta', chordScale: 'minor', bpm: 88, feel: 'half', progression: [0, 5, 2, 6], color: '#7b8cff', ambience: { beat: 'half', bass: 'drone' } },
+  { id: 'feira', name: msg('Feira'), root: 62, scale: 'dorian', chordScale: 'dorian', bpm: 112, feel: 'swing', progression: [0, 3, 0, 4], color: '#ffb347', ambience: { beat: 'fair', bass: 'drone' } },
+  { id: 'ceu', name: msg('Céu'), root: 65, scale: 'lydian', chordScale: 'lydian', bpm: 80, feel: 'straight', progression: [0, 1, 0, 1], color: '#7bdff2', ambience: { beat: 'breeze', bass: 'drone' } },
+  { id: 'blues', name: msg('Porão'), root: 55, scale: 'blues', chordScale: 'mixolydian', bpm: 96, feel: 'swing', progression: [0, 0, 3, 0, 4, 3, 0, 4], color: '#c77dff', ambience: { beat: 'swing', bass: 'drone' } },
 ]
 
 // colour of each scale degree (notes are tinted by where they sit in the scale)
@@ -248,4 +249,4 @@ export function chordName(chord: number[]) {
   const third = pc(t - r), fifth = pc(f - r)
   return LETTERS[pc(r)] + (fifth === 6 ? '°' : third === 3 ? 'm' : '')
 }
-export const zoneLabel = (z: Zone) => `${z.name} · ${NOTE_NAMES[pc(z.root)]} ${SCALES[z.scale].label.toLowerCase()} · ${z.bpm} bpm`
+export const zoneLabel = (z: Zone) => `${t(z.name)} · ${NOTE_NAMES[pc(z.root)]} ${t(SCALES[z.scale].label).toLowerCase()} · ${z.bpm} bpm`

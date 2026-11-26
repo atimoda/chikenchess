@@ -65,6 +65,7 @@ import { BotControlWidget } from "./bot-control-widget"
 import { ChessBot, DEFAULT_BOT_ID, DEFAULT_BOT_PROFILES, getBotConfigParams, type BotConfigParams, type BotProfile } from "@/lib/chess-bots"
 import { loadEditableBotProfiles, saveBotProfile } from "@/lib/admin/bot-profiles-client"
 import { isAdminUser } from "@/lib/admin/access"
+import { msg, t as tr, useT } from "@/lib/i18n"
 import { useOnline } from "./online/online-provider"
 import type { Occurrence, Trigger } from "@/lib/music/reactions"
 import { duckSourceOptions } from "@/lib/music/sound-design"
@@ -130,17 +131,19 @@ function stockfishPosition(game: Chess): string {
 }
 
 function MoveAnalysisReadout({ analysis, status }: { analysis: ChessMoveAnalysis | null; status?: string }) {
-  if (status) return <div className="text-white/40">{status}</div>
-  if (!analysis) return <div className="text-white/40">Analisando movimentos…</div>
-  if (analysis.source === 'powers') return <div aria-label="Desempenho da análise" className="border-t border-white/15 pt-2 text-white/40">Análise com poderes · {analysis.legalMoves} lances · {analysis.nodes.toLocaleString()} respostas · {analysis.elapsedMs} ms</div>
-  return <div aria-label="Desempenho da análise" className="border-t border-white/15 pt-2">
-    <div className="text-white/40">{analysis.final ? 'Estimativa final' : 'Prévia em atualização'} · {analysis.side === 'w' ? 'brancas' : 'pretas'} a jogar · avaliação {analysis.quickMs} ms / prof. {analysis.quickDepth} · ranking {analysis.engineMs} ms / prof. {analysis.depth} · {(analysis.quickNodes + analysis.nodes).toLocaleString()} nós</div>
-    {!analysis.complete&&<div className="text-white/40">Orçamento esgotado antes de comparar todas as jogadas.</div>}
+  const t = useT()
+  if (status) return <div className="text-white/40">{t(status)}</div>
+  if (!analysis) return <div className="text-white/40">{t("Analisando movimentos…")}</div>
+  if (analysis.source === 'powers') return <div aria-label={t("Desempenho da análise")} className="border-t border-white/15 pt-2 text-white/40">{t("Análise com poderes · {moves} lances · {nodes} respostas · {ms} ms", { moves: analysis.legalMoves, nodes: analysis.nodes.toLocaleString(), ms: analysis.elapsedMs })}</div>
+  return <div aria-label={t("Desempenho da análise")} className="border-t border-white/15 pt-2">
+    <div className="text-white/40">{t(analysis.final ? 'Estimativa final' : 'Prévia em atualização')} · {t(analysis.side === 'w' ? 'brancas a jogar' : 'pretas a jogar')} · {t("avaliação {quickMs} ms / prof. {quickDepth} · ranking {engineMs} ms / prof. {depth} · {nodes} nós", { quickMs: analysis.quickMs, quickDepth: analysis.quickDepth, engineMs: analysis.engineMs, depth: analysis.depth, nodes: (analysis.quickNodes + analysis.nodes).toLocaleString() })}</div>
+    {!analysis.complete&&<div className="text-white/40">{t("Orçamento esgotado antes de comparar todas as jogadas.")}</div>}
   </div>
 }
 
 export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMoveMarks = false }: ChessGameProps) {
   // The board starts with White at the bottom; keep mixer rows tied to that orientation.
+  const t = useT()
   const boardOrientation: "white" | "black" = "white"
   const [game, setGame] = useState(() => makePoweredChess(new Chess()))
   const [powerDisplay, setPowerDisplay] = usePowerDisplay()
@@ -163,7 +166,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   const powerTimelineRef = useRef<Array<{ game: Chess; powers: MatchPower[] }>>([{ game: clonePoweredChess(game, []), powers: [] }])
   const redoTimelineRef = useRef<Array<{ game: Chess; powers: MatchPower[] }>>([])
   const [undoAnimationKey, setUndoAnimationKey] = useState(0)
-  const [gameStatus, setGameStatus] = useState<string>("Your move")
+  const [gameStatus, setGameStatus] = useState<string>(msg("Your move"))
   const [botProfiles, setBotProfiles] = useState<BotProfile[]>(() => DEFAULT_BOT_PROFILES)
   const [selectedBotId, setSelectedBotId] = useState<string>(DEFAULT_BOT_ID)
   const selectedBotProfile = useMemo(
@@ -670,7 +673,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       setMatchPowers([])
       setPoweredChessPowers(gameInstance, [])
       powerTimelineRef.current[gameInstance.history().length] = { game: clonePoweredChess(gameInstance, []), powers: [] }
-      toast.info('Powers faded because no reply was available')
+      toast.info(tr('Powers faded because no reply was available'))
     }
     // Powers can change the available moves without changing the FEN.
     const suggestionKey = `${gameInstance.fen()}|${JSON.stringify(matchPowersRef.current)}`
@@ -710,7 +713,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       }).catch(error => {
         if (poweredAnalysisSequenceRef.current !== analysisSequence) return
         setIsEvaluating(false)
-        setEvaluationError(error instanceof Error ? error.message : 'Não foi possível avaliar os poderes.')
+        setEvaluationError(error instanceof Error ? error.message : tr('Não foi possível avaliar os poderes.'))
       })
     } else if (evaluationQueueRef.current?.hasFailed && workerRetryTimerRef.current === null) {
       // The retries for an earlier position ran out: a new position gets a fresh
@@ -858,9 +861,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     try {
       const updatedBot = activeBotRef.current.toUpdatedProfile()
       setBotProfiles(await saveBotProfile(updatedBot))
-      toast.success(`Configurações de "${updatedBot.name}" salvas no jogo`)
+      toast.success(tr('Configurações de "{name}" salvas no jogo', { name: updatedBot.name }))
     } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Falha ao salvar bot.')
+      toast.error(cause instanceof Error ? cause.message : tr('Falha ao salvar bot.'))
     } finally {
       setSavingBot(false)
     }
@@ -932,7 +935,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
       void engineRef.current?.playBlockedCue()
       animateInsufficientEggs(eggCounterRef.current)
       const shortfall = amount - playerEggBalanceRef.current
-      toast.error(`You need ${shortfall} more golden egg${shortfall === 1 ? '' : 's'} to use this`)
+      toast.error(shortfall === 1 ? tr('You need 1 more golden egg to use this') : tr('You need {n} more golden eggs to use this', { n: shortfall }))
       return false
     }
     return true
@@ -958,11 +961,11 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     if (!kind || introPhase !== 3 || !canUseMatchPower(gameRef.current, 'w')) return
     if (hasUsedPowerThisTurn(matchPowersRef.current, kind, gameRef.current, 'w')) {
       setArmedPower(null)
-      toast.info(`${kind === 'freeze' ? 'Freeze' : 'Shield'} can be used once per turn`)
+      toast.info(kind === 'freeze' ? tr('Freeze can be used once per turn') : tr('Shield can be used once per turn'))
       return
     }
     if (matchPowersRef.current.some(power => power.kind === kind && power.square === square)) {
-      toast.info('This square already has that power')
+      toast.info(tr('This square already has that power'))
       return
     }
     const button = powerButtonRefs.current[kind]
@@ -1067,7 +1070,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
   }, matchLogRef.current)), [city.name, city.year])
 
   const forceWin = useCallback(() => {
-    setGameStatus("CHECKMATE - White wins!")
+    setGameStatus(msg("CHECKMATE - White wins!"))
     setIsPlaying(false)
     setHasPlaybackStarted(true)
     deactivatePlaybackWidgets()
@@ -1161,7 +1164,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     // Update game status
     if (game.isCheckmate()) {
       const winner = game.turn() === "w" ? "Black" : "White"
-      setGameStatus(`CHECKMATE - ${winner} wins!`)
+      setGameStatus(winner === "White" ? msg("CHECKMATE - White wins!") : msg("CHECKMATE - Black wins!"))
       setIsPlaying(false)
       deactivatePlaybackWidgets()
       // If White (Player) won
@@ -1176,26 +1179,26 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           playCheckmate()
           // Against a bot the match eggs stay in play: the player may Mulligan the mate away.
           const canMulligan = playerEggBalanceRef.current >= 2
-          defeatToastRef.current = toast.error("CHECKMATE!", {
+          defeatToastRef.current = toast.error(tr("CHECKMATE!"), {
             id: 'bot-checkmate',
             duration: Infinity,
             description: canMulligan
-              ? "Use a Mulligan (2 golden eggs) to keep playing, or return to the lobby."
-              : "You need 2 golden eggs to use a Mulligan. Return to the lobby.",
-            action: { label: "Return to lobby", onClick: () => { defeatToastRef.current = null; onBack() } },
+              ? tr("Use a Mulligan (2 golden eggs) to keep playing, or return to the lobby.")
+              : tr("You need 2 golden eggs to use a Mulligan. Return to the lobby."),
+            action: { label: tr("Return to lobby"), onClick: () => { defeatToastRef.current = null; onBack() } },
           })
         }
       }
     } else if (game.isDraw() || game.isStalemate()) {
-      setGameStatus("DRAW!")
+      setGameStatus(msg("DRAW!"))
       setIsPlaying(false)
       deactivatePlaybackWidgets()
       playDrawKalimba()
       settleCityVictory(true)
     } else if (game.isCheck() && game.turn() === "w") {
-      setGameStatus("CHECK!")
+      setGameStatus(msg("CHECK!"))
     } else {
-      setGameStatus(game.turn() === "w" ? "Your move" : "Bot thinking...")
+      setGameStatus(game.turn() === "w" ? msg("Your move") : msg("Bot thinking..."))
     }
   }, [game, city, deactivatePlaybackWidgets, settleCityVictory, introPhase, onBack, logMatch])
 
@@ -1461,8 +1464,10 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
         if (awardAnimationsRef.current) void engineRef.current?.playRankedMoveWhistle(rewardKind)
         if (reward.firstNotice && reward.earnedEggs > 0) {
           toast.success(rewardKind === 'worst'
-            ? `You made one of the worst available moves! Here are ${reward.earnedEggs} golden eggs as a reward :)`
-            : `You made one of the best available moves! Here ${reward.earnedEggs === 1 ? 'is' : 'are'} ${reward.earnedEggs} golden ${reward.earnedEggs === 1 ? 'egg' : 'eggs'} as a reward.`,
+            ? tr('You made one of the worst available moves! Here are {n} golden eggs as a reward :)', { n: reward.earnedEggs })
+            : reward.earnedEggs === 1
+              ? tr('You made one of the best available moves! Here is 1 golden egg as a reward.')
+              : tr('You made one of the best available moves! Here are {n} golden eggs as a reward.', { n: reward.earnedEggs }),
             { duration: 6000 })
         }
       }
@@ -1778,7 +1783,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
     || game.isGameOver()
     || gameStatus === "DRAW!"
     || gameStatus.startsWith("CHECKMATE")
-  const statusText = armedPower ? 'Choose a square' : gameStatus
+  const statusText = armedPower ? msg('Choose a square') : gameStatus
   const statusAlert = gameStatus.includes("CHECK") || gameStatus.includes("MATE")
   const statusColor = statusAlert ? "#ef4444" : city.color
   const statusPlacement = !armedPower && gameStatus === "Bot thinking..." ? "top" : "bottom"
@@ -1792,13 +1797,13 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
 
   const markWidgetToggleLayerReady = useCallback(() => setWidgetTogglesReady(true), [])
   const widgetToggleItems = useMemo(() => [
-    ...(spectrogramMode === 'widget' ? [{ id: 'spectrogram', label: 'Spectrogram', ref: spectrogramToggleRef, isOn: spectrogramOn, cityColor: city.color, onToggle: () => toggleWidget('spectrogram', setSpectrogramOn), position: spectrogramPosition ?? { x: 0, y: 0 }, onPositionChange: setSpectrogramPosition, onDragStart: () => handleWidgetHeaderClick('spectrogram') }] : []),
-    { id: 'knobs', label: 'Piece Params', ref: knobsToggleRef, isOn: knobsOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('knobs', knobsOn, setKnobsOn, knobsManuallyClosedRef), position: knobsPosition ?? { x: 0, y: 0 }, onPositionChange: setKnobsPosition, onDragStart: () => handleWidgetHeaderClick('knobs') },
-    { id: 'pieceDebug', label: 'Piece Debug', ref: pieceDebugToggleRef, isOn: pieceDebugOn, cityColor: city.color, onToggle: () => toggleWidget('pieceDebug', setPieceDebugOn), position: pieceDebugPosition ?? { x: 0, y: 0 }, onPositionChange: setPieceDebugPosition, onDragStart: () => handleWidgetHeaderClick('pieceDebug') },
-    { id: 'globalPanel', label: 'Board Params', ref: globalPanelToggleRef, isOn: globalPanelOn, cityColor: city.color, onToggle: () => toggleWidget('globalPanel', setGlobalPanelOn), position: globalPanelPosition ?? { x: 0, y: 0 }, onPositionChange: setGlobalPanelPosition, onDragStart: () => handleWidgetHeaderClick('globalPanel') },
+    ...(spectrogramMode === 'widget' ? [{ id: 'spectrogram', label: msg('Spectrogram'), ref: spectrogramToggleRef, isOn: spectrogramOn, cityColor: city.color, onToggle: () => toggleWidget('spectrogram', setSpectrogramOn), position: spectrogramPosition ?? { x: 0, y: 0 }, onPositionChange: setSpectrogramPosition, onDragStart: () => handleWidgetHeaderClick('spectrogram') }] : []),
+    { id: 'knobs', label: msg('Piece Params'), ref: knobsToggleRef, isOn: knobsOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('knobs', knobsOn, setKnobsOn, knobsManuallyClosedRef), position: knobsPosition ?? { x: 0, y: 0 }, onPositionChange: setKnobsPosition, onDragStart: () => handleWidgetHeaderClick('knobs') },
+    { id: 'pieceDebug', label: msg('Piece Debug'), ref: pieceDebugToggleRef, isOn: pieceDebugOn, cityColor: city.color, onToggle: () => toggleWidget('pieceDebug', setPieceDebugOn), position: pieceDebugPosition ?? { x: 0, y: 0 }, onPositionChange: setPieceDebugPosition, onDragStart: () => handleWidgetHeaderClick('pieceDebug') },
+    { id: 'globalPanel', label: msg('Board Params'), ref: globalPanelToggleRef, isOn: globalPanelOn, cityColor: city.color, onToggle: () => toggleWidget('globalPanel', setGlobalPanelOn), position: globalPanelPosition ?? { x: 0, y: 0 }, onPositionChange: setGlobalPanelPosition, onDragStart: () => handleWidgetHeaderClick('globalPanel') },
     { id: 'mixer', label: 'Mixer', ref: mixerToggleRef, isOn: mixerOn, cityColor: city.color, onToggle: () => togglePlayerTurnPanel('mixer', mixerOn, setMixerOn, mixerManuallyClosedRef), position: mixerPosition ?? { x: 0, y: 0 }, onPositionChange: setMixerPosition, onDragStart: () => handleWidgetHeaderClick('mixer') },
-    { id: 'liveCode', label: 'Debug', ref: liveCodeToggleRef, isOn: liveCodeOn, cityColor: city.color, onToggle: () => toggleWidget('liveCode', setLiveCodeOn), position: liveCodePosition ?? { x: 0, y: 0 }, onPositionChange: setLiveCodePosition, onDragStart: () => handleWidgetHeaderClick('liveCode') },
-    { id: 'botControl', label: 'Bot Control', ref: botControlToggleRef, isOn: botControlOn && codeBackdropOn, cityColor: city.color, onToggle: toggleBotControl, position: botControlPosition ?? { x: 0, y: 0 }, onPositionChange: setBotControlPosition, onDragStart: () => handleWidgetHeaderClick('botControl') },
+    { id: 'liveCode', label: msg('Debug'), ref: liveCodeToggleRef, isOn: liveCodeOn, cityColor: city.color, onToggle: () => toggleWidget('liveCode', setLiveCodeOn), position: liveCodePosition ?? { x: 0, y: 0 }, onPositionChange: setLiveCodePosition, onDragStart: () => handleWidgetHeaderClick('liveCode') },
+    { id: 'botControl', label: msg('Bot Control'), ref: botControlToggleRef, isOn: botControlOn && codeBackdropOn, cityColor: city.color, onToggle: toggleBotControl, position: botControlPosition ?? { x: 0, y: 0 }, onPositionChange: setBotControlPosition, onDragStart: () => handleWidgetHeaderClick('botControl') },
   ], [botControlOn, botControlPosition, city.color, codeBackdropOn, globalPanelOn, globalPanelPosition, handleWidgetHeaderClick, knobsOn, knobsPosition, pieceDebugOn, pieceDebugPosition, liveCodePosition, liveCodeOn, mixerOn, mixerPosition, spectrogramMode, spectrogramOn, spectrogramPosition, resizeTick, toggleBotControl, togglePlayerTurnPanel, toggleWidget])
 
   // The on/off dot of the Song & Instruments list and of Piece Params.
@@ -1849,7 +1854,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 showSong={!paramsOpen}
                 songMidi={{ on: songMidiOn, onToggle: () => setSongMidiOn(on => !on) }}
                 playback={knobsOn && music.selected ? <>
-                  {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">Ativa temporariamente pelo cheque da sua equipe.</p>}
+                  {music.selected.activation === 'check' && <p className="text-[10px] text-amber-200">{t("Ativa temporariamente pelo cheque da sua equipe.")}</p>}
                   <MusicVoiceReadout variationTabs showStatus={false} loopOn={music.activeIds.has(music.selected.id)} onLoopToggle={() => { if (music.selected) toggleSongPiece(music.selected.square) }} soloOn={music.soloIds.has(music.selected.id)} onSoloToggle={() => { if (music.selected) soloSongPiece(music.selected.id) }} instrument={music.instrument ?? undefined} onInstrumentChange={music.updateInstrument} monitor={music.monitor} id={music.selected.id} snapshot={music.snapshot} manual={music.preview?.id === music.selected.id && music.preview.mode === 'manual'} knobUpdateMode="on-release" />
                 </> : undefined}
                 arrangement={music.kit?.arrangement}
@@ -1972,12 +1977,12 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 codeVisible={codeTextOn}
                 onToggleCodeVisible={() => setCodeTextOn(on => !on)}
                 playback={liveCodeOn && music.engineActive ? <>
-                  <div role="status">{music.error ? <span className="text-red-400">Áudio: {music.error}</span> : music.preview ? <span className="text-orange-300">TOCANDO · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{music.activeSquares.size} vozes ativas</span>}</div>
-                  {music.attackingColor && <div className="text-amber-200">CHEQUE · lado atacante {music.attackingColor === 'w' ? 'branca' : 'preta'}</div>}
+                  <div role="status">{music.error ? <span className="text-red-400">{t("Áudio: {error}", { error: music.error })}</span> : music.preview ? <span className="text-orange-300">{t("TOCANDO")} · {music.instrument?.name} · {music.preview.square}</span> : <span className="text-white/60">{t("{n} vozes ativas", { n: music.activeSquares.size })}</span>}</div>
+                  {music.attackingColor && <div className="text-amber-200">{t("CHEQUE · lado atacante {side}", { side: t(music.attackingColor === 'w' ? 'branca' : 'preta') })}</div>}
                   {music.reactionDescriptions.map((description, i) => <div key={i}>{description}</div>)}
                   <MusicTransportReadout monitor={music.monitor} />
                   <MusicHarmonyReadout monitor={music.monitor} />
-                  <MoveAnalysisReadout analysis={displayedAnalysis} status={evaluationError ?? (game.isGameOver() ? "Partida encerrada." : undefined)} />
+                  <MoveAnalysisReadout analysis={displayedAnalysis} status={evaluationError ?? (game.isGameOver() ? msg("Partida encerrada.") : undefined)} />
                 </> : undefined}
                 ref={liveCodeRef}
                 toggleRef={liveCodeToggleRef}
@@ -2091,7 +2096,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                                 textShadow: "none"
                             }}
                           >
-                              {phrase}
+                              {t(phrase)}
                           </p>
                       ))}
                       </div>
@@ -2118,7 +2123,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                               } as React.CSSProperties}
                           >
                               <span className="group-hover:text-[var(--city-neon)] transition-colors duration-300 group-hover:drop-shadow-[0_0_8px_var(--city-neon)]">
-                                {city.introPhrases?.[city.introPhrases.length - 1] || "CONTINUE"}
+                                {t(city.introPhrases?.[city.introPhrases.length - 1] || "CONTINUE")}
                               </span>
                           </Button>
                       </div>
@@ -2149,8 +2154,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
             variant="outline"
             size="icon"
             onClick={onBack}
-            aria-label="Voltar ao mapa"
-            title="Voltar ao mapa"
+            aria-label={t("Voltar ao mapa")}
+            title={t("Voltar ao mapa")}
             className={cn(
               "col-start-1 row-start-1 md:col-auto md:row-auto shrink-0 pointer-events-auto text-[var(--city-neon)] hover:text-white hover:bg-[var(--city-neon)] hover:border-[var(--city-neon)] hover:shadow-[0_0_10px_var(--city-neon)] active:bg-black/70 active:text-[var(--city-neon)] active:border-[var(--city-neon)] focus-visible:text-[var(--city-neon)] transition-all",
               introPhase < 3 && "relative z-[111]"
@@ -2181,14 +2186,14 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   <Button
                     variant="outline"
                     size="sm"
-                    aria-label="Bot level"
-                    title="Bot level"
+                    aria-label={t("Bot level")}
+                    title={t("Bot level")}
                     className="hidden md:flex min-w-16 justify-center bg-transparent transition-all border-border hover:border-[var(--hover-color)] hover:shadow-[0_0_10px_var(--hover-color)] hover:text-white active:bg-black/70 active:border-[var(--hover-color)] active:text-[var(--hover-color)] focus-visible:border-[var(--hover-color)] focus-visible:text-[var(--hover-color)]"
                     style={{
                         "--hover-color": city.color
                     } as React.CSSProperties}
                   >
-                    <span className="px-1 text-xs font-mono">{activeBot.name}</span>
+                    <span className="px-1 text-xs font-mono">{t(activeBot.name)}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -2196,7 +2201,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   align="end"
                   style={{ "--difficulty-hover": `color-mix(in srgb, ${city.color} 50%, black)` } as React.CSSProperties}
                 >
-                  <DropdownMenuLabel>Bot level:</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t("Bot level:")}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {botProfiles.map(bot => {
                     const selected = bot.id === activeBot.id
@@ -2210,7 +2215,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                           selected && "font-bold",
                         )}
                       >
-                        {bot.name}
+                        {t(bot.name)}
                         {selected && <Check className="w-4 h-4 ml-2" />}
                       </DropdownMenuItem>
                     )
@@ -2264,7 +2269,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                 widthFor={[visibleEggs, visibleOpponentEggs]}
                 role={activeBot.isPureChess ? undefined : "img"}
                 aria-hidden={activeBot.isPureChess ? "true" : undefined}
-                aria-label={activeBot.isPureChess ? undefined : `${visibleOpponentEggs} golden egg${visibleOpponentEggs === 1 ? "" : "s"} for the opponent`}
+                aria-label={activeBot.isPureChess ? undefined : visibleOpponentEggs === 1 ? t("1 golden egg for the opponent") : t("{n} golden eggs for the opponent", { n: visibleOpponentEggs })}
                 className={cn(
                   "transition-opacity duration-1000",
                   activeBot.isPureChess && "invisible pointer-events-none",
@@ -2310,9 +2315,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   armedPower={armedPower}
                   onPowerTarget={targetPower}
                   matchPowers={matchPowers}
-                  onFrozenCaptureBlocked={() => toast('Não é possível capturar uma peça congelada.', { id: 'frozen-capture-blocked', duration: 3000 })}
+                  onFrozenCaptureBlocked={() => toast(tr('Não é possível capturar uma peça congelada.'), { id: 'frozen-capture-blocked', duration: 3000 })}
                   onShieldCaptureBlocked={reason => toast(shieldCaptureBlockMessage(reason), { id: 'shield-capture-blocked', duration: 3000 })}
-                  onKingExposed={() => toast('Você não pode deixar seu rei sob ataque.', { id: 'king-exposed', duration: 3000 })}
+                  onKingExposed={() => toast(tr('Você não pode deixar seu rei sob ataque.'), { id: 'king-exposed', duration: 3000 })}
                   isMoveAllowed={move => permitsPowerMove(move, matchPowersRef.current, game.history().length + 1)}
                   cityColor={city.color} 
                   isThinking={isThinking} 
@@ -2382,8 +2387,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   widthFor={[visibleEggs, visibleOpponentEggs]}
                   empty={visibleEggs === 0}
                   role="img"
-                  aria-label={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"} for you`}
-                  title={`${visibleEggs} golden egg${visibleEggs === 1 ? "" : "s"}`}
+                  aria-label={visibleEggs === 1 ? t("1 golden egg for you") : t("{n} golden eggs for you", { n: visibleEggs })}
+                  title={visibleEggs === 1 ? t("1 golden egg") : t("{n} golden eggs", { n: visibleEggs })}
                   className={cn("self-center transition-opacity duration-1000", introPhase < 3 ? "opacity-0" : "opacity-100")}
                 />
               </div>
@@ -2415,7 +2420,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   onMouseLeave: () => setMulliganPreviewActive(false),
                   onPointerLeave: () => setMulliganPreviewActive(false),
                   onBlur: () => setMulliganPreviewActive(false),
-                  title: "Volta 1 jogada · 2 golden eggs",
+                  title: t("Volta 1 jogada · 2 golden eggs"),
                 },
                 freeze: {
                   ref: element => { powerButtonRefs.current.freeze = element },
@@ -2438,8 +2443,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   <button
                     data-ranked-move-action="best"
                     type="button"
-                    aria-label="Veja as 3 melhores jogadas"
-                    title={playerHasActivePower ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 melhores jogadas"}
+                    aria-label={t("Veja as 3 melhores jogadas")}
+                    title={playerHasActivePower ? t("Indisponível enquanto Freeze ou Shield estiver ativo") : t("Veja as 3 melhores jogadas")}
                     disabled={playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'best')}
                     onClick={event => {
                       if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) return
@@ -2458,8 +2463,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                   <button
                     data-ranked-move-action="worst"
                     type="button"
-                    aria-label="Veja as 3 piores jogadas"
-                    title={playerHasActivePower ? "Indisponível enquanto Freeze ou Shield estiver ativo" : "Veja as 3 piores jogadas"}
+                    aria-label={t("Veja as 3 piores jogadas")}
+                    title={playerHasActivePower ? t("Indisponível enquanto Freeze ou Shield estiver ativo") : t("Veja as 3 piores jogadas")}
                     disabled={playerHasActivePower || !displayedAnalysis?.complete || !!evaluationError || analysisArrows.some(arrow => arrow.tone === 'worst')}
                     onClick={event => {
                       if (matchPowersRef.current.some(p => (p.appliedBy ?? 'w') === 'w')) return
@@ -2486,7 +2491,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                       playDrum("sd", 0.48)
                       spendEggForAction(event.currentTarget, 2, undoMove)
                     }}
-                    aria-label="Undo · costs 2 golden eggs"
+                    aria-label={t("Undo · costs 2 golden eggs")}
                     onMouseEnter={() => {
                       setMulliganPreviewActive(true)
                       showCostHint('undo')
@@ -2517,7 +2522,7 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     variant="ghost"
                     size="icon"
                     onClick={redoMove}
-                    aria-label="Redo"
+                    aria-label={t("Redo")}
                     onMouseEnter={() => playControlHoverKick(0.536)}
                     onMouseDown={() => playDrum("hh", 1.5)}
                     onPointerLeave={hideCostHint}
@@ -2538,9 +2543,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     data-match-power-action="freeze"
                     type="button"
                     disabled={!canUseMatchPower(game, 'w') || hasUsedPowerThisTurn(matchPowers, 'freeze', game, 'w')}
-                    aria-label="Congele uma casa por uma rodada"
+                    aria-label={t("Congele uma casa por uma rodada")}
                     aria-pressed={armedPower === 'freeze'}
-                    title="Congele uma casa por uma rodada"
+                    title={t("Congele uma casa por uma rodada")}
                     onPointerDown={event => powerTargeting.onButtonPointerDown('freeze', event)}
                     onLostPointerCapture={powerTargeting.onLostPointerCapture}
                     onClick={event => { hideCostHint(); powerTargeting.onButtonClick('freeze', event) }}
@@ -2556,9 +2561,9 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
                     data-match-power-action="shield"
                     type="button"
                     disabled={!canUseMatchPower(game, 'w') || hasUsedPowerThisTurn(matchPowers, 'shield', game, 'w')}
-                    aria-label="Proteja uma casa por uma rodada"
+                    aria-label={t("Proteja uma casa por uma rodada")}
                     aria-pressed={armedPower === 'shield'}
-                    title="Proteja uma casa por uma rodada"
+                    title={t("Proteja uma casa por uma rodada")}
                     onPointerDown={event => powerTargeting.onButtonPointerDown('shield', event)}
                     onLostPointerCapture={powerTargeting.onLostPointerCapture}
                     onClick={event => { hideCostHint(); powerTargeting.onButtonClick('shield', event) }}

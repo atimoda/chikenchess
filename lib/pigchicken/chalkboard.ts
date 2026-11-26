@@ -3,6 +3,7 @@
 // script of held actions (TRAINING_DEMOS), played by a real chicken engine (components/pigchicken/training-ghosts.ts),
 // so the ghost does exactly what the player's buttons would do.
 import type { ChickenAction } from '../chicken/controls'
+import { msg } from '../i18n'
 
 // one stretch of the script: how long (s) and which actions are held during it ('' = nothing)
 export type DemoStep = [seconds: number, actions: string]
@@ -14,108 +15,108 @@ export const DEMO_ACTIONS: readonly ChickenAction[] = ['left', 'right', 'up', 'd
 // and gamepad, default binds of data/chicken/default-controls.json)
 const DEMOS = {
   walk: {
-    label: 'Andar e correr',
-    text: 'ANDAR E CORRER\nA / D  andar\nSHIFT + D  correr\nControle: analógico, X',
+    label: msg('Andar e correr'),
+    text: msg('ANDAR E CORRER\nA / D  andar\nSHIFT + D  correr\nControle: analógico, X'),
     steps: [[0.5, ''], [0.9, 'right'], [0.9, 'right+run'], [0.6, '']],
   },
   jump: {
-    label: 'Pular e pulo duplo',
-    text: 'PULAR\nESPAÇO  pular\nno ar, ESPAÇO de novo:\npulo duplo\nControle: A',
+    label: msg('Pular e pulo duplo'),
+    text: msg('PULAR\nESPAÇO  pular\nno ar, ESPAÇO de novo:\npulo duplo\nControle: A'),
     steps: [[0.5, ''], [0.2, 'right'], [0.15, 'right+jump'], [0.35, 'right'], [0.5, ''], [0.15, 'right+jump'], [0.2, 'right'], [0.15, 'right+jump'], [0.5, 'right'], [0.8, '']],
   },
   slide: {
-    label: 'Agachar e slide',
-    text: 'AGACHAR E SLIDE\nS  agachar\ncorrendo, aperte S\npara deslizar\nControle: ↓ e X',
+    label: msg('Agachar e slide'),
+    text: msg('AGACHAR E SLIDE\nS  agachar\ncorrendo, aperte S\npara deslizar\nControle: ↓ e X'),
     steps: [[0.5, ''], [0.8, 'right+crouch'], [0.3, ''], [0.7, 'right+run'], [1.0, 'right+run+crouch'], [0.8, '']],
   },
   superJump: {
-    label: 'Super pulo',
-    text: 'SUPER PULO\nsegure S\ne aperte ESPAÇO\npula o dobro\nControle: ↓ + A',
+    label: msg('Super pulo'),
+    text: msg('SUPER PULO\nsegure S\ne aperte ESPAÇO\npula o dobro\nControle: ↓ + A'),
     steps: [[0.5, ''], [0.4, 'crouch'], [0.2, 'crouch+jump'], [0.4, 'jump'], [0.5, 'right'], [1.0, '']],
   },
   fly: {
-    label: 'Voar',
-    text: 'VOAR\nno ar, segure ESPAÇO\npara planar\n+ W  cai mais devagar\nControle: segure A',
+    label: msg('Voar'),
+    text: msg('VOAR\nno ar, segure ESPAÇO\npara planar\n+ W  cai mais devagar\nControle: segure A'),
     steps: [[0.5, ''], [0.2, 'right+jump'], [0.15, 'right'], [1.8, 'right+jump'], [0.8, '']],
   },
   drop: {
-    label: 'Descer da plataforma',
-    text: 'DESCER DA PLATAFORMA\nS + ESPAÇO\nsegure S para\npassar direto\nControle: ↓ + A',
+    label: msg('Descer da plataforma'),
+    text: msg('DESCER DA PLATAFORMA\nS + ESPAÇO\nsegure S para\npassar direto\nControle: ↓ + A'),
     steps: [[0.6, ''], [0.3, 'crouch'], [0.2, 'crouch+jump'], [0.1, 'crouch'], [0.9, ''], [0.3, 'crouch'], [0.2, 'crouch+jump'], [0.1, 'crouch'], [1.0, '']],
   },
   trampoline: {
-    label: 'Trampolim',
-    text: 'TRAMPOLIM\npouse em cima\npara quicar\nsegure S: atravessa\nControle: ↓',
+    label: msg('Trampolim'),
+    text: msg('TRAMPOLIM\npouse em cima\npara quicar\nsegure S: atravessa\nControle: ↓'),
     steps: [[0.5, ''], [1.3, 'right'], [1.5, '']],
   },
   wall: {
-    label: 'Agarrar e escalar parede',
-    text: 'PAREDE\npule e encoste nela\nsem apertar nada\nW / S  sobe e desce\nControle: analógico',
+    label: msg('Agarrar e escalar parede'),
+    text: msg('PAREDE\npule e encoste nela\nsem apertar nada\nW / S  sobe e desce\nControle: analógico'),
     steps: [[0.5, ''], [0.15, 'right'], [0.1, 'right+jump'], [0.6, ''], [1.3, 'up'], [0.4, 'right'], [0.8, '']],
   },
   wallJump: {
-    label: 'Pulo na parede',
-    text: 'PULO NA PAREDE\nagarrada: ESPAÇO\n+ o lado de fora\nsolte tudo e agarre\na outra parede\nControle: A',
+    label: msg('Pulo na parede'),
+    text: msg('PULO NA PAREDE\nagarrada: ESPAÇO\n+ o lado de fora\nsolte tudo e agarre\na outra parede\nControle: A'),
     steps: [[0.5, ''], [0.15, 'right'], [0.1, 'right+jump'], [0.5, ''], [0.12, 'jump+left'], [0.4, ''], [0.12, 'jump+right'], [0.4, ''], [0.12, 'jump+left'], [0.4, ''], [0.12, 'jump+right'], [0.4, ''], [0.12, 'jump+left'], [0.4, ''], [1.2, '']],
   },
   edge: {
-    label: 'Agarrar a beira',
-    text: 'AGARRAR A BEIRA\nagachada (S), ande\naté a ponta\nW  sobe de volta\nControle: ↓',
+    label: msg('Agarrar a beira'),
+    text: msg('AGARRAR A BEIRA\nagachada (S), ande\naté a ponta\nW  sobe de volta\nControle: ↓'),
     steps: [[0.5, ''], [0.8, 'right+crouch'], [0.6, ''], [0.8, 'up'], [0.3, 'left'], [0.8, '']],
   },
   ceiling: {
-    label: 'Pendurar no teto',
-    text: 'TETO\npule segurando W\npara pendurar\nA / D  anda no teto\nESPAÇO  solta\nControle: ↑ + A',
+    label: msg('Pendurar no teto'),
+    text: msg('TETO\npule segurando W\npara pendurar\nA / D  anda no teto\nESPAÇO  solta\nControle: ↑ + A'),
     steps: [[0.5, ''], [0.3, 'up+jump'], [0.3, 'up'], [0.8, 'right'], [0.4, ''], [0.2, 'jump'], [1.0, '']],
   },
   flip: {
-    label: 'Inverter de lado',
-    text: 'INVERTER DE LADO\nem cima da caixa:\nCTRL + ESPAÇO\nde novo: volta\nControle: LT + A',
+    label: msg('Inverter de lado'),
+    text: msg('INVERTER DE LADO\nem cima da caixa:\nCTRL + ESPAÇO\nde novo: volta\nControle: LT + A'),
     steps: [[0.6, ''], [0.2, 'down'], [0.2, 'down+jump'], [0.9, ''], [0.2, 'down'], [0.2, 'down+jump'], [1.0, '']],
   },
   sideSwitch: {
-    label: 'Trocar de lado na caixa',
-    text: 'TROCAR DE LADO\nem cima da caixa:\nCTRL + S + ESPAÇO\nvai para baixo dela\nCTRL + W + ESPAÇO\nvolta para cima\nControle: LT + ↓ + A',
+    label: msg('Trocar de lado na caixa'),
+    text: msg('TROCAR DE LADO\nem cima da caixa:\nCTRL + S + ESPAÇO\nvai para baixo dela\nCTRL + W + ESPAÇO\nvolta para cima\nControle: LT + ↓ + A'),
     steps: [[0.6, ''], [0.2, 'down+crouch'], [0.2, 'down+crouch+jump'], [1.0, ''], [0.2, 'down+up'], [0.2, 'down+up+jump'], [1.0, '']],
   },
   wires: {
-    label: 'Fios do poste',
-    text: 'FIOS DO POSTE\nembaixo do fio, pule\nsegurando W\nA / D  anda pendurada\nESPAÇO  solta\nControle: ↑ + A',
+    label: msg('Fios do poste'),
+    text: msg('FIOS DO POSTE\nembaixo do fio, pule\nsegurando W\nA / D  anda pendurada\nESPAÇO  solta\nControle: ↑ + A'),
     steps: [[0.5, ''], [0.15, 'up+jump'], [0.1, 'up'], [0.15, 'up+jump'], [0.1, 'up'], [0.15, 'up+jump'], [0.3, 'up'], [1.8, 'right'], [0.3, ''], [0.2, 'jump'], [1.0, '']],
   },
   brood: {
-    label: 'Chocar',
-    text: 'CHOCAR\nCTRL  choca\nsolte: segue chocando\nA / D  anda chocando\nCTRL de novo: levanta\nControle: LT',
+    label: msg('Chocar'),
+    text: msg('CHOCAR\nCTRL  choca\nsolte: segue chocando\nA / D  anda chocando\nCTRL de novo: levanta\nControle: LT'),
     steps: [[0.5, ''], [0.4, 'down'], [0.5, ''], [1.2, 'right'], [0.4, ''], [0.15, 'down'], [0.8, '']],
   },
   shocking: {
-    label: 'Pulo chocando',
-    text: 'PULO CHOCANDO\nsegure CTRL + ESPAÇO\nsolte ESPAÇO com W\n(A / D: para o lado)\nControle: LT + A',
+    label: msg('Pulo chocando'),
+    text: msg('PULO CHOCANDO\nsegure CTRL + ESPAÇO\nsolte ESPAÇO com W\n(A / D: para o lado)\nControle: LT + A'),
     steps: [[0.5, ''], [0.2, 'down'], [0.5, 'down+jump'], [0.15, 'down+jump+up'], [0.05, 'down+up'], [0.3, 'right'], [1.4, '']],
   },
   longJump: {
-    label: 'Salto longo',
-    text: 'SALTO LONGO\ncorrendo (SHIFT + D)\nCTRL + ESPAÇO\ne solte ESPAÇO\nControle: X + LT + A',
+    label: msg('Salto longo'),
+    text: msg('SALTO LONGO\ncorrendo (SHIFT + D)\nCTRL + ESPAÇO\ne solte ESPAÇO\nControle: X + LT + A'),
     steps: [[0.5, ''], [0.3, 'right+run'], [0.25, 'right+run+down+jump'], [0.08, 'right+run+down'], [0.1, 'left'], [1.5, '']],
   },
   airShocking: {
-    label: 'Pulo chocando no ar',
-    text: 'PULO CHOCANDO NO AR\nno ar: CTRL + ESPAÇO\nsegure para carregar\nsolte ESPAÇO com W\nControle: LT + A',
+    label: msg('Pulo chocando no ar'),
+    text: msg('PULO CHOCANDO NO AR\nno ar: CTRL + ESPAÇO\nsegure para carregar\nsolte ESPAÇO com W\nControle: LT + A'),
     steps: [[0.5, ''], [0.2, 'jump'], [0.1, ''], [0.4, 'down+jump'], [0.1, 'down+jump+up'], [0.05, 'down+up'], [0.45, ''], [0.8, 'right'], [2.4, '']],
   },
   wallShock: {
-    label: 'Pulo chocando na parede',
-    text: 'PULO CHOCANDO\nNA PAREDE\nagarrada: CTRL + ESPAÇO\n+ o lado de fora\nsolte ESPAÇO\nControle: LT + A',
+    label: msg('Pulo chocando na parede'),
+    text: msg('PULO CHOCANDO\nNA PAREDE\nagarrada: CTRL + ESPAÇO\n+ o lado de fora\nsolte ESPAÇO\nControle: LT + A'),
     steps: [[0.5, ''], [0.15, 'right'], [0.1, 'right+jump'], [0.6, ''], [0.2, 'down'], [0.5, 'down+jump+left'], [0.1, 'down+left'], [1.6, '']],
   },
   ceilingShock: {
-    label: 'Pulo chocando no teto',
-    text: 'PULO CHOCANDO NO TETO\nembaixo de um teto duro:\nCTRL + ESPAÇO\nsolte ESPAÇO com W\nagarra o teto sozinha\nA / D  anda no teto\nControle: LT + A',
+    label: msg('Pulo chocando no teto'),
+    text: msg('PULO CHOCANDO NO TETO\nembaixo de um teto duro:\nCTRL + ESPAÇO\nsolte ESPAÇO com W\nagarra o teto sozinha\nA / D  anda no teto\nControle: LT + A'),
     steps: [[0.5, ''], [0.2, 'down'], [0.5, 'down+jump'], [0.15, 'down+jump+up'], [0.05, 'down+up'], [0.8, ''], [0.8, 'right'], [0.3, ''], [0.2, 'jump'], [1.0, '']],
   },
   clingBrood: {
-    label: 'Chocar agarrada',
-    text: 'CHOCAR AGARRADA\nna parede ou no teto\nsegure CTRL\nW / S  anda chocando\nControle: LT',
+    label: msg('Chocar agarrada'),
+    text: msg('CHOCAR AGARRADA\nna parede ou no teto\nsegure CTRL\nW / S  anda chocando\nControle: LT'),
     steps: [[0.5, ''], [0.15, 'right'], [0.1, 'right+jump'], [0.6, ''], [0.6, 'down'], [1.4, 'down+up'], [0.4, ''], [0.2, 'jump+left'], [1.2, '']],
   },
 } satisfies Record<string, TrainingDemo>
@@ -133,7 +134,7 @@ export const CHALK_TEXT_MAX = 400
 export const GHOST_OFFSET = { min: -1500, max: 1500 } as const
 export const GHOST_REACH = { min: 100, max: 2000, default: 520 } as const
 
-export const defaultChalkboard = (): ChalkboardParams => ({ text: 'Escreva aqui', demo: '', ghostX: 0, ghostY: 0, reach: GHOST_REACH.default })
+export const defaultChalkboard = (): ChalkboardParams => ({ text: msg('Escreva aqui'), demo: '', ghostX: 0, ghostY: 0, reach: GHOST_REACH.default })
 
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))

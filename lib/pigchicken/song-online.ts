@@ -3,6 +3,7 @@
 // sent and what was saved on another browser comes back (the sync below). Nothing is ever lost: when the same song
 // changed here and elsewhere, the account's version wins and this browser's stays as a copy ("… (este aparelho)").
 // The admin also sees everyone's songs and can hear one or copy it into their own library.
+import { t } from '@/lib/i18n'
 import { getOnlineClient, onlineConfigured, onlineRpc } from '@/lib/online/client'
 import { LIBRARY_EVENT, loadLibrary, loadPending, normalizeSong, songId, writeMine, writePending, type LibrarySong } from './song-library'
 
@@ -119,14 +120,14 @@ const code = (e: unknown) => (typeof e === 'object' && e && 'code' in e && typeo
 export const isSongServerMissing = (e: unknown) => code(e) === 'PGRST202' || code(e) === '42883' || /could not find the function|does not exist/i.test(message(e))
 export function songErrorMessage(e: unknown): string {
   const m = message(e)
-  if (isSongServerMissing(e)) return 'O servidor ainda não guarda músicas (falta aplicar a migração). Ficam neste navegador.'
-  if (/failed to fetch|network|load failed|fetch failed|timeout/i.test(m) || e instanceof TypeError) return 'Sem conexão com o servidor. Ficam neste navegador.'
-  if (m.includes('ACCOUNT_REQUIRED')) return 'Entre com sua conta para guardar as músicas nela.'
-  if (m.includes('ADMIN_REQUIRED')) return 'Só o admin vê as músicas de todos.'
-  if (m.includes('TOO_MANY_SONGS')) return 'A sua conta já tem 200 músicas: apague alguma para guardar outra.'
-  if (m.includes('SONG_TOO_LARGE')) return 'Uma música ficou grande demais para guardar na conta.'
-  if (m.includes('INVALID_SONG')) return 'Não foi possível ler uma das músicas.'
-  return m || 'Não foi possível sincronizar as músicas.'
+  if (isSongServerMissing(e)) return t('O servidor ainda não guarda músicas (falta aplicar a migração). Ficam neste navegador.')
+  if (/failed to fetch|network|load failed|fetch failed|timeout/i.test(m) || e instanceof TypeError) return t('Sem conexão com o servidor. Ficam neste navegador.')
+  if (m.includes('ACCOUNT_REQUIRED')) return t('Entre com sua conta para guardar as músicas nela.')
+  if (m.includes('ADMIN_REQUIRED')) return t('Só o admin vê as músicas de todos.')
+  if (m.includes('TOO_MANY_SONGS')) return t('A sua conta já tem 200 músicas: apague alguma para guardar outra.')
+  if (m.includes('SONG_TOO_LARGE')) return t('Uma música ficou grande demais para guardar na conta.')
+  if (m.includes('INVALID_SONG')) return t('Não foi possível ler uma das músicas.')
+  return m || t('Não foi possível sincronizar as músicas.')
 }
 
 // keeps the library in step with the account while this player is signed in (null: songs stay in this browser):
@@ -143,7 +144,7 @@ export function startSongSync(user: string | null, api: SongApi = songApi): () =
     setSyncState({ status: 'syncing', message: '' })
     try {
       const r = await syncSongs(user, api)
-      if (!stopped) setSyncState({ status: 'synced', message: r.copies.length ? `Mudou aqui e em outro aparelho: a versão daqui ficou como “${r.copies.join('”, “')}”.` : '' })
+      if (!stopped) setSyncState({ status: 'synced', message: r.copies.length ? t('Mudou aqui e em outro aparelho: a versão daqui ficou como “{names}”.', { names: r.copies.join('”, “') }) : '' })
     } catch (e) {
       if (!stopped) setSyncState({ status: 'error', message: songErrorMessage(e) })
     } finally {

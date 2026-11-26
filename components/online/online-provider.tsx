@@ -9,6 +9,7 @@ import { AUTH_CALLBACK_CHANNEL, authCallbackMessage, completeAuthCallback, readA
 import { LoginDialog } from './login-dialog'
 import { useOnlineNotifications } from '@/hooks/use-online-notifications'
 import { X } from 'lucide-react'
+import { msg, useT } from '@/lib/i18n'
 
 /* global Response, CustomEvent, Event, BroadcastChannel */
 
@@ -53,11 +54,12 @@ const OnlineContext = createContext<OnlineContextValue | null>(null)
 
 export function useOnline(): OnlineContextValue {
   const value = useContext(OnlineContext)
-  if (!value) throw new Error('useOnline precisa de OnlineProvider.')
+  if (!value) throw new Error(msg('useOnline precisa de OnlineProvider.'))
   return value
 }
 
 export function OnlineProvider({ children }: { children: ReactNode }) {
+  const t = useT()
   const [user, setUser] = useState<User | null>(null)
   const { notices, notify, dismiss } = useOnlineNotifications(user?.id || null)
   const [profile, setProfile] = useState<OnlineProfile | null>(null)
@@ -182,7 +184,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
           if (message.includes('PROFILE_CONFLICT')) {
             const remote = await onlineRpc<OnlineProfile>('online_profile', { p_local_profile: null, p_display_name: null, p_expected_user_id: current.id })
             applyProfile(remote)
-            throw new Error('O perfil mudou em outro aparelho ou partida. Recarregamos a cópia do servidor e guardamos o progresso local em um backup.')
+            throw new Error(msg('O perfil mudou em outro aparelho ou partida. Recarregamos a cópia do servidor e guardamos o progresso local em um backup.'))
           }
           throw cause
         }
@@ -211,7 +213,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
       p_display_name: displayName?.trim() || null,
       p_expected_user_id: current.id,
     })
-    if (userRef.current?.id !== current.id) throw new Error('A conta mudou durante a ação. Tente novamente com a conta atual.')
+    if (userRef.current?.id !== current.id) throw new Error(msg('A conta mudou durante a ação. Tente novamente com a conta atual.'))
     if (request === profileRequest.current && userRef.current?.id === current.id) {
       const latest = readLocalProfile()
       if (localOwned && !samePlayerProfileContent(latest, local)) {
@@ -350,7 +352,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
       if (data.session?.user) { adoptUser(data.session.user); return data.session.user }
       const { data: guest, error: guestError } = await online.auth.signInAnonymously()
       if (guestError) throw guestError
-      if (!guest.user) throw new Error('Não foi possível criar seu perfil visitante.')
+      if (!guest.user) throw new Error(msg('Não foi possível criar seu perfil visitante.'))
       adoptUser(guest.user)
       return guest.user
     })()
@@ -400,12 +402,12 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
       body: { sourceAccessToken: source.sourceAccessToken, choice: 'target' },
     })
     if (transferError) {
-      let message = 'Não foi possível transferir o perfil. Sua cópia de visitante continua guardada.'
+      let message: string = msg('Não foi possível transferir o perfil. Sua cópia de visitante continua guardada.')
       if ('context' in transferError && transferError.context instanceof Response) {
         const body = await transferError.context.json().catch(() => null)
-        if (body?.code === 'ACTIVE_MATCH') message = 'Termine ou saia da partida ativa antes de transferir o perfil.'
-        else if (body?.code === 'ACTIVE_ROOM') message = 'Saia da sala aberta antes de transferir o perfil. As cópias continuam guardadas.'
-        else if (body?.code === 'HISTORY_CONFLICT') message = 'Essas contas já participaram da mesma partida e precisam permanecer separadas. As cópias dos dois perfis continuam guardadas.'
+        if (body?.code === 'ACTIVE_MATCH') message = msg('Termine ou saia da partida ativa antes de transferir o perfil.')
+        else if (body?.code === 'ACTIVE_ROOM') message = msg('Saia da sala aberta antes de transferir o perfil. As cópias continuam guardadas.')
+        else if (body?.code === 'HISTORY_CONFLICT') message = msg('Essas contas já participaram da mesma partida e precisam permanecer separadas. As cópias dos dois perfis continuam guardadas.')
         else if (typeof body?.error === 'string') message = body.error
       }
       throw new Error(message)
@@ -477,7 +479,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
       {notices.map((notice) => <div key={notice.id} className="pointer-events-auto flex items-start gap-3 rounded-lg border border-primary/50 bg-[#101713] p-4 text-sm text-white shadow-lg">
         <p className="min-w-0 flex-1 break-words">{notice.message}</p>
         {notice.action && <a href={notice.action.href} onClick={() => dismiss(notice.id)} className="shrink-0 rounded-md border border-primary px-3 py-1 font-medium text-primary hover:bg-primary hover:text-[#05060c]">{notice.action.label}</a>}
-        <button type="button" aria-label="Fechar aviso" className="shrink-0 text-white/60 hover:text-white" onClick={() => dismiss(notice.id)}><X className="size-4" /></button>
+        <button type="button" aria-label={t('Fechar aviso')} className="shrink-0 text-white/60 hover:text-white" onClick={() => dismiss(notice.id)}><X className="size-4" /></button>
       </div>)}
     </div>
     <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
