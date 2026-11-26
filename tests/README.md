@@ -82,6 +82,8 @@ Para consumíveis do Pátio (04/11), `node --test tests/pigchicken-inventory.cas
 
 `tests/pigchicken-explosion.cases.cjs` (incluído em `npm run test:pigchicken`) cobre direção radial, queda da força na borda, força zero, impulso nos players/atirador nos quatro explosivos e deslocamento/retorno dos alvos. No navegador, confira o tiro no próprio chão, explosões laterais, chão/parede/ar, outros players e os sliders no grupo Explosão.
 
+`tests/pigchicken-pvp.cases.cjs` (incluído em `npm run test:pigchicken`) cobre o Dano entre jogadores: desligado o tiro atravessa; ligado, tiro, arremesso e golpe acertam o outro player uma vez com o dano do item e nunca quem atacou, tiro de outro navegador usa o dano do item daqui, nota de instrumento não machuca, e a chave salva, vai ao arquivo do game e sai no Reverter para o padrão.
+
 Para gamepad/carga (04/11), `tests/chicken-touch.cases.cjs` verifica os novos padrões e a migração sem alterar binds personalizados; `tests/pigchicken-inventory.cases.cjs` verifica a pose de granada/pandeiro na mão e o recuo compartilhado de Atirar proporcional/Throw. No navegador, confira mira completa nas duas orientações, trajetória saindo da mão ao soltar, ausência dos círculos de carga e manutenção do círculo de recarga, inclusive com outro player local.
 
 Mira do mouse em inversões rápidas: `tests/chicken-touch.cases.cjs` verifica alcance estável durante giro lento/inversões repetidas, offsets de saída nos dois lados e cursor muito próximo. No navegador, alternar o cursor entre lados antes de a arma terminar de girar não deve afastar a retícula do raio escolhido pelo mouse; `turnRate` continua limitando o giro e os projéteis seguem a arma.

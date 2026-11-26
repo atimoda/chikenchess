@@ -47,7 +47,7 @@ Código: `invInstruments`, `invWeapons`, `invUtilities` em `lib/chicken/params.t
 ## Vida (etapa 4)
 
 - **Quanto:** parâmetro `maxHp`: galinha 100 (a base do jogo), Ken 200 e Pig 300 pelo fator da classe (×2 e ×3, editáveis nas colunas Pig e Ken do painel Ajustes). Pintinhos (bots) não têm vida.
-- **O que tira:** explosões que acertam o boneco (o dano que a explosão já calculava para o empurrão) e a mordida de zumbi no boneco deste navegador (15). Tiros e golpes de outros jogadores ainda não acertam jogadores (fica para a arena).
+- **O que tira:** explosões que acertam o boneco (o dano que a explosão já calculava para o empurrão) e a mordida de zumbi no boneco deste navegador (15). Tiros, golpes e arremessos de outros jogadores só tiram vida num Pátio com **Dano entre jogadores** ligado ([regras](../patio/pvp.md)).
 - **Guarda do Pig:** chocando no chão, o dano que vem da frente cai `guardBlock`% (60).
 - **Volta sozinha:** `regenDelay` s sem tomar dano (6) e ela volta a `regenRate`% da vida cheia por segundo (8).
 - **Barra:** uma barrinha sobre a cabeça, verde acima de 50%, âmbar acima de 25% e vermelha abaixo; aparece quando falta vida e some 2 s depois de encher. Não espelha com o boneco.

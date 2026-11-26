@@ -9,7 +9,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import { PatioDualRange } from "@/components/ui/patio-dual-range"
 import type { PatioLayout } from "@/lib/pigchicken/layout"
-import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioItemGlow, patioSceneMusic, patioSettingsAtDefault, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
+import { DEFAULT_PATIO_SETTINGS, PATIO_GROUND, PATIO_HEIGHT, PATIO_INVENTORY, PATIO_SCREENS, PATIO_ZOOM, patioGround, patioHeight, patioInventoryLimit, patioItemGlow, patioPvp, patioSceneMusic, patioSettingsAtDefault, patioTemple, patioZoom, type PatioSettings, type PatioZoom } from "@/lib/pigchicken/patio-settings"
 import { saveDefaultPatioSettings } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
 import { SCENE_W, worldScenes } from "@/lib/pigchicken/world"
@@ -121,6 +121,13 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
               onChange({ ...layout, settings: e.target.checked ? rest : { ...rest, sceneMusic: false } })
             }} className="h-5 w-5 accent-[var(--primary)]" />
           </label>
+          <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title={t("Tiros, golpes, arremessos e o gancho de um player tiram vida dos outros. Com a vida zerada, ele vira Kid e larga os itens.")}>
+            <span>{t("Dano entre jogadores")}</span>
+            <input type="checkbox" checked={patioPvp(layout.settings)} onChange={e => {
+              const { pvp: _old, ...rest } = layout.settings ?? {}
+              onChange({ ...layout, settings: e.target.checked ? { ...rest, pvp: true } : rest })
+            }} className="h-5 w-5 accent-[var(--primary)]" />
+          </label>
           <label className="flex h-10 items-center justify-between gap-3 rounded-md bg-[#22302a] px-3" title={t("Os terraços e a placa ao fundo da Vila dos Telhados, no fim do mundo. O Templo do Gongo e as casas da Vila são elementos do Modo editor.")}>
             <span>{t("Fundo da Vila")}</span>
             <input type="checkbox" checked={patioTemple(layout.settings)} onChange={e => {
@@ -169,6 +176,7 @@ export function PatioSettingsPanel({ layout, screens, canEdit, onChange, onClose
           <dt>{t("Brilho dos itens")}</dt><dd className="font-bold">{glow.amount ? `${glow.amount}%` : t("Desligado")}</dd>
           <dt>{t("Zonas das cenas")}</dt><dd className="font-bold">{patioSceneMusic(layout.settings) ? t("Ligadas") : t("Desligadas")}</dd>
           <dt>{t("Céu")}</dt><dd className="font-bold">{layout.settings?.sky ? hourLabel(layout.settings.sky.hour) : t("Clássico")}</dd>
+          <dt>{t("Dano entre jogadores")}</dt><dd className="font-bold">{patioPvp(layout.settings) ? t("Ligado") : t("Desligado")}</dd>
           <dt>{t("Fundo da Vila")}</dt><dd className="font-bold">{patioTemple(layout.settings) ? t("Sim") : t("Não")}</dd>
           <dt>{t("Lock")}</dt><dd className="font-bold">{layout.settings?.locked ? t("Travado") : t("Livre")}</dd>
           <dt>{t("Montanhas")}</dt><dd className="font-bold">{layout.settings?.mountains?.show === false ? t("Escondidas") : t("Visíveis")}</dd>
