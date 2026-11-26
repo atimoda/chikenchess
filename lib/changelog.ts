@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; prévia do tabuleiro ao passar o mouse no histórico de jogadas',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas',
     groups: [
       { title: 'Partida: Invite a friend', items: [
         'Novo botão Invite a friend no cabeçalho da partida, à esquerda do Bot level (no celular, um ícone de pessoa com +). Ele abre um lobby 1v1 privado com o kit da cidade, ou usa o lobby em que você já está.',
@@ -21,6 +21,17 @@ const RECENT = [
       { title: 'Partida: widgets', items: [
         'Os widgets da partida (Mixer, Piece Params, Piece Debug, Spectrogram, Debug e Bot Control) agora também mudam de tamanho puxando a borda de cima ou o canto superior direito, na diagonal. A base do widget fica parada enquanto ele cresce para cima.',
         'Ao redimensionar, o widget não passa mais da borda da janela, e o canto inferior esquerdo agora mantém o lado direito parado.',
+      ] },
+      { title: 'Pátio: notas giratórias da escala Hangdrum', items: [
+        'As notas giratórias agora são da escala Hangdrum, não só do instrumento Hangdrum: qualquer instrumento com essa escala ligada faz a nota tocada numa bola girar dentro dela, do mesmo jeito.',
+        'Giro na bola, Nota é disparada até a região da nota e Cada nota interrompe a anterior saíram do painel Itens e ficam no painel Escalas, na escala Hangdrum, no grupo Notas giratórias. Valem para todos os instrumentos nessa escala e entram no Salvar no Pátio, no Salvar no game e no Reverter para o padrão das Escalas.',
+        'O padrão é o que o Hangdrum já usava: gira pela Duração da nota do instrumento, vai voando até a bola e cada nota corta a anterior da mesma bola.',
+      ] },
+      { title: 'Pátio online', items: [
+        'Correção: quem abria o Pátio padrão no online podia cair na sala de outro Pátio (a mais antiga aberta), e o mapa editado ao vivo lá era gravado por cima do Pátio padrão. Agora o Pátio padrão tem o próprio lobby, e um mapa vindo de sala de outro Pátio é ignorado.',
+        'Depois de passar por um portal ou trocar de Pátio, o navegador não volta mais para a sala online do Pátio anterior: entra no lobby do Pátio novo.',
+        'Um link de sala online de outro Pátio abre o Pátio daquela sala, já dentro dela.',
+        'A Praça dos Portais foi restaurada com a última cópia encontrada, de 25/11 à noite.',
       ] },
       { title: 'Partida: histórico de jogadas', items: [
         'Passar o mouse sobre uma jogada do histórico, no rodapé, mostra logo acima um tabuleiro pequeno com a posição logo depois daquela jogada, com as casas de origem e destino destacadas e a jogada na cor da cidade. Vale na campanha, contra bot e no online. No celular, basta segurar o dedo na jogada.',

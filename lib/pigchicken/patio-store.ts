@@ -184,6 +184,23 @@ export function lobbyFromUrl(): string | null {
   const id = new URLSearchParams(window.location.search).get('lobby')
   return isPatioId(id) ? id : null
 }
+// the live room in the address (?room=, an invite or the lobby switcher): it belongs to one Pátio only, and another
+// Pátio opened afterwards (a portal, Playgrounds) joins its own lobby instead of that room
+export function roomFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  return new URLSearchParams(window.location.search).get('room') || null
+}
+export function setRoomInUrl(id: string | null) {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if (id) url.searchParams.set('room', id)
+  else url.searchParams.delete('room')
+  window.history.replaceState(window.history.state, '', url)
+}
+// an online room is of the open Pátio (the room's patioId: "default" or the lobby id; the open one: its id or
+// "default"); a room of another Pátio never hands its live layout or saved revision to the open one
+export const roomFitsPatio = (roomPatioId: string | null | undefined, openKey: string | null | undefined) =>
+  !!roomPatioId && !!openKey && roomPatioId.toLowerCase() === openKey.toLowerCase()
 export function setLobbyInUrl(id: string | null) {
   if (typeof window === 'undefined') return
   const url = new URL(window.location.href)

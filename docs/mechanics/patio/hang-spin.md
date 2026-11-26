@@ -1,10 +1,10 @@
-# Notas giratórias do Hangdrum — 25/11, v2.18.0
+# Notas giratórias da escala Hangdrum — 25/11, v2.18.0; da escala desde 26/11, v2.19.0
 
-Parte de [Escalas dos instrumentos](instrument-scales.md) (seção Hangdrum). Movimentos parecidos para outras escalas e grupos de instrumentos são agenda futura, ainda não implementados.
+Parte de [Escalas dos instrumentos](instrument-scales.md) (seção Hangdrum). É um comportamento da **escala** Hangdrum, não do item: vale igual para qualquer instrumento que toque nela (o Hangdrum ou outro com a escala ligada em Itens → Escalas), com os mesmos controles. Movimentos parecidos para outras escalas são agenda futura, ainda não implementados.
 
 ## Gatilho
 
-- Atirar com a escala Hangdrum (o item Hangdrum ou qualquer instrumento com essa escala ligada), com a mira dentro de uma bola (`touch` sem batida) e **Giro na bola** maior que 0. O Tiro instantâneo nunca gira.
+- Atirar com a escala Hangdrum como escala atual (o item Hangdrum ou qualquer instrumento com essa escala ligada), com a mira dentro de uma bola (`touch` sem batida) e **Giro na bola** da escala maior que 0. O Tiro instantâneo nunca gira. Com o instrumento noutra escala (troca rápida), a nota vai reta.
 - Fora das bolas a batida (`hangSlap`) continua como antes: vai reta e não gira. Com Giro na bola em Desligado, a nota também vai reta, como antes.
 
 ## Movimento
@@ -20,12 +20,13 @@ Parte de [Escalas dos instrumentos](instrument-scales.md) (seção Hangdrum). Mo
 - Acaba quando o tempo termina, quando acerta alguém, quando é cortada por outra nota da mesma bola, quando a camada da galinha salta mais de 600 px num passo (portal, teletransporte), quando o player sai, ou quando o player passa de 24 notas girando (a mais antiga sai). Some como as notas comuns, sem efeito extra.
 - Trocar de item ou de escala **não** encerra: dá para lançar várias notas e trocar logo para outra arma ou instrumento, com as notas girando em volta.
 
-## Controles (Itens → Hangdrum)
+## Controles (Escalas → Hangdrum → Notas giratórias)
 
-- **Giro na bola** (`hangSpin`): Desligado (0), 1 a 60 s, Duração da nota (61: o slider Duração da nota do item) e ∞ (62: até acertar, ser cortada ou a galinha sair). Padrão: Duração da nota no Hangdrum, Desligado nos outros instrumentos.
-- **Nota é disparada até a região da nota** (`hangTravel`, padrão ligado): só aparece com o giro ligado.
-- **Cada nota interrompe a anterior** (`hangChoke`; padrão ligado no Hangdrum, desligado nos outros): tocar uma bola corta o som da última nota tocada nela (some em 0,04 s) e tira de cena a nota que girava nela. Bolas diferentes soam e giram juntas; a batida não corta nada. Vale também com o giro desligado.
-- Salvos por item no navegador e no Salvar no game, como os outros números do item.
+- Ficam em `ScaleParams` da escala `hang` (`lib/pigchicken/scale-params.ts`), não no item: um valor para todos os instrumentos na escala. Até 25/11 eram do item (`ItemDef.hangSpin`/`hangTravel`/`hangChoke`); valores salvos assim são ignorados e a escala usa os seus.
+- **Giro na bola** (`hangSpin`): Desligado (0), 1 a 60 s, Duração da nota (61: o slider Duração da nota do instrumento que tocou) e ∞ (62: até acertar, ser cortada ou a galinha sair). Padrão: Duração da nota.
+- **Nota é disparada até a região da nota** (`hangTravel`, 0/1, padrão ligado): caixa de marcar, só aparece com o giro ligado.
+- **Cada nota interrompe a anterior** (`hangChoke`, 0/1, padrão ligado; caixa de marcar): tocar uma bola corta o som da última nota tocada nela (some em 0,04 s) e tira de cena a nota que girava nela. Bolas diferentes soam e giram juntas; a batida não corta nada. Vale também com o giro desligado.
+- Salvos com os números da escala: no navegador, no Salvar no Pátio, no Salvar no game (`data/pigchicken/default-scales.json`) e voltam no Padrão e no Reverter para o padrão do painel Escalas.
 
 ## Online
 
@@ -33,4 +34,4 @@ Parte de [Escalas dos instrumentos](instrument-scales.md) (seção Hangdrum). Mo
 
 ## Escopo
 
-Todos os players locais no Parquinho, Templo e Vila, e os Pátios online. Código: `lib/pigchicken/note-orbit.ts` (matemática pura), `combat.ts` (`shoot`, `stepBullet`, `cutBall`, `spinCap`, `orbitCenter`, `spreadOrbits`, `orbitOut`, `remoteOrbit`). Testes em `tests/pigchicken-note-orbit.cases.cjs`. Conferido no navegador o painel e as notas girando em volta da galinha; o som do corte não foi ouvido em aparelho.
+Todos os players locais no Parquinho, Templo e Vila, e os Pátios online. Código: `lib/pigchicken/note-orbit.ts` (matemática pura), `scale-params.ts` (controles), `components/pigchicken/scales-panel.tsx` (caixas de marcar `toggle`, rótulo `format`, `shown`), `combat.ts` (`shoot`, `stepBullet`, `cutBall`, `spinCap`, `orbitCenter`, `spreadOrbits`, `orbitOut`, `remoteOrbit`). Testes em `tests/pigchicken-note-orbit.cases.cjs`. Conferido no navegador o painel e as notas girando em volta da galinha; o som do corte não foi ouvido em aparelho.
