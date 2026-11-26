@@ -27,6 +27,12 @@ const RECENT = [
         'Giro na bola, Nota é disparada até a região da nota e Cada nota interrompe a anterior saíram do painel Itens e ficam no painel Escalas, na escala Hangdrum, no grupo Notas giratórias. Valem para todos os instrumentos nessa escala e entram no Salvar no Pátio, no Salvar no game e no Reverter para o padrão das Escalas.',
         'O padrão é o que o Hangdrum já usava: gira pela Duração da nota do instrumento, vai voando até a bola e cada nota corta a anterior da mesma bola.',
       ] },
+      { title: 'Pátio online', items: [
+        'Correção: quem abria o Pátio padrão no online podia cair na sala de outro Pátio (a mais antiga aberta), e o mapa editado ao vivo lá era gravado por cima do Pátio padrão. Agora o Pátio padrão tem o próprio lobby, e um mapa vindo de sala de outro Pátio é ignorado.',
+        'Depois de passar por um portal ou trocar de Pátio, o navegador não volta mais para a sala online do Pátio anterior: entra no lobby do Pátio novo.',
+        'Um link de sala online de outro Pátio abre o Pátio daquela sala, já dentro dela.',
+        'A Praça dos Portais foi restaurada com a última cópia encontrada, de 25/11 à noite.',
+      ] },
     ],
   },
   {
