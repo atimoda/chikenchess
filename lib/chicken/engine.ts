@@ -18,7 +18,7 @@ import { armMarkup, type ArmsSpec } from './arm-rig'
 import { CHICKEN_CLUCKS, CHICKEN_PARAMS, CHICKEN_PX_PARAMS, CHICKEN_VOICES, SCALE_BASE, chickenClucks, type ChickenParams } from './params'
 import { getChickenConfig, subscribeChickenConfig, type ChickenConfig } from './config'
 import { barPoint, bodyHeight, poseOf } from './body-frame'
-import { CHICKEN_ACTIONS, virtualActionHeld, isChickenControlsListening, readTouchMoveStick, touchMoveExtent, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
+import { CHICKEN_ACTIONS, isChickenControlsListening, readTouchMoveStick, touchMoveExtent, loadChickenControls, subscribeChickenControls, type ChickenAction, type ChickenControls } from './controls'
 import { advanceShockingAirCharge, directionalJumpImpulse, shockingAirMultiplier } from './jump-impulse'
 import { grabDamageStep } from './grab-damage'
 import { clingAnim, clingSpeedLimit } from './cling-brood'
@@ -91,9 +91,12 @@ export type ChickenEngine = {
   isWalkingToPortal: (id: string) => boolean
   cancelPortalWalk: (id: string) => void
   isShiftHeld: () => boolean
-  // the Pegar of the last getActions came only from inputs Correr also has (a shared key or pad button, or the on-screen
-  // Correr with "Correr também pega itens"): it still takes items, but does not equip one she already carries
+  // the Pegar of the last getActions came only from inputs Correr also has (a shared key or pad button): on an item it
+  // does Correr's store (lib/pigchicken/combat.ts runPressed), not Pegar; Baús and fixed instruments still answer it
   grabIsRun: () => boolean
+  // the Correr of the last getActions came from a source that stores items: any key, pad button or wheel bind, and the
+  // on-screen Correr only with "Correr também pega itens do chão" on (never a bot's)
+  runStores: () => boolean
   // one press of an action that has no button to hold (the mouse wheel's bind, components/pigchicken/parquinho.tsx):
   // it counts in the next getActions and in the next physics step, like a key pressed and let go between two reads
   tapAction: (action: ChickenAction) => void
@@ -542,7 +545,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const held = new Set<string>(), pressed = new Set<string>(), gameTaps = new Set<string>()
   const shifts = new Set<string>()
   const virt: Partial<Record<ChickenAction, boolean>> = {}, virtTapped = new Set<ChickenAction>(), actionTaps = new Set<ChickenAction>()
-  let pad: Partial<Record<ChickenAction, boolean>> = {}, padOwnGrab = false, grabRunOnly = false
+  let pad: Partial<Record<ChickenAction, boolean>> = {}, padOwnGrab = false, grabRunOnly = false, runStoreSrc = false
   // the devices she listens to (null: all of them) and, from them, the keys of each action
   let devices: InputDeviceId[] | null = null
   let keyBinds = {} as Record<ChickenAction, string[]>, usedKeys = new Set<string>()
@@ -554,7 +557,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
   const virtOk = () => !devices || devices.includes('touch') || devices.includes('mouse')
   // a bot's actions, read once per step (setBot)
   let bot: (() => Partial<Record<ChickenAction, boolean>>) | null = null, botNow: Partial<Record<ChickenAction, boolean>> = {}
-  const input = (a: ChickenAction, touchRunGrab = controls.touchRunGrab) => bot ? !!botNow[a] : keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && virtualActionHeld(virt, a, touchRunGrab))
+  const input = (a: ChickenAction) => bot ? !!botNow[a] : keyBinds[a].some(t => held.has(t)) || !!pad[a] || (virtOk() && !!virt[a])
   const tapped = (a: ChickenAction) => !bot && (keyBinds[a].some(t => pressed.has(t)) || (virtOk() && virtTapped.has(a)))
   const usedKey = (tok: string) => usedKeys.has(tok)
   const onKeyDown = (e: KeyboardEvent) => {
@@ -2540,6 +2543,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (source) { devices = []; S.cl = null; goal = null }
     },
     grabIsRun: () => grabRunOnly,
+    runStores: () => runStoreSrc,
     isShiftHeld: () => shifts.size > 0 && (!devices || devices.includes('kb1') || devices.includes('kb2')),
     setPortalEntry(entry) {
       if (!entry) {
@@ -2637,9 +2641,12 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       const out = {} as Record<ChickenAction, boolean>
       // a key pressed and let go between two reads still counts once
       CHICKEN_ACTIONS.forEach(a => { out[a.key] = !portalEntry && !isChickenControlsListening() && (input(a.key) || keyBinds[a.key].some(t => gameTaps.has(t)) || actionTaps.has(a.key)) })
-      // Pegar with none of its own sources: only keys/buttons shared with Correr, or the on-screen Correr
+      // Pegar with none of its own sources: only keys/buttons shared with Correr
       grabRunOnly = out.grab && !bot && !padOwnGrab && !(virtOk() && virt.grab)
         && !keyBinds.grab.some(t => !keyBinds.run.includes(t) && (held.has(t) || gameTaps.has(t)))
+      // Correr from anything but the on-screen button, or from it with its store on
+      runStoreSrc = out.run && !bot && (!!pad.run || actionTaps.has('run') || keyBinds.run.some(t => held.has(t) || gameTaps.has(t))
+        || (virtOk() && !!virt.run && controls.touchRunGrab))
       gameTaps.clear(); actionTaps.clear()
       return out
     },
@@ -2655,7 +2662,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
       if (useSampleAt !== now) {
         useSampleAt = now
         pollPad()
-        useSample = input('grab', false)
+        useSample = input('grab')
       }
       return useSample
     },

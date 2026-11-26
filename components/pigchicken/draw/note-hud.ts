@@ -1,7 +1,7 @@
 // Draws the instruments' and the throwing items' ring round the reticle (lib/pigchicken/note-hud.ts): thin neon
 // lines with a halo of their own colour and a dark shade under them so they read on a day sky and at night (a wide
 // see-through stroke, no shadowBlur: it stays cheap on a phone). Empty is only the faint track.
-import { bitAlpha, blackKey, fieldAngle, fieldSize, nextColor, nextNote, noteLit, noteSlot, sweepAlpha, SPECIAL_CARDS, type NoteView } from "@/lib/pigchicken/note-hud"
+import { bitAlpha, blackKey, fieldAngle, fieldSize, glissSlot, nextColor, nextNote, noteLit, noteSlot, sweepAlpha, SPECIAL_CARDS, type NoteView } from "@/lib/pigchicken/note-hud"
 import { DEGREE_COLORS } from "@/lib/pigchicken/music"
 
 const SHADE = "rgba(0,4,14,0.55)", TRACK = "rgba(190,232,255,0.36)", TAU = Math.PI * 2
@@ -103,11 +103,6 @@ export function drawNoteHud(ctx: CanvasRenderingContext2D, v: NoteView, x: numbe
         } else if (l >= 1) g.line(g.ray(s.a, r0, r1), base, isNext ? 1.8 : 1.3, sw(j))
         else if (l > 0) g.line(g.ray(s.a, r1 - (r1 - r0) * l, r1), base, 1.3, 0.7)
         else g.empty(g.ray(s.a, r0, r1), 1.3)
-        if (isNext && f.charge > 0) {
-          // the glissando: a point rises along the string, its colour climbing the degrees
-          const r = r1 - (r1 - r0) * f.charge, i = Math.max(0, DEGREE_COLORS.indexOf(nx))
-          g.dot(Math.cos(s.a) * r, Math.sin(s.a) * r, 2.4, DEGREE_COLORS[(i + Math.floor(f.charge * 4.99)) % DEGREE_COLORS.length])
-        }
       }
     } break
     case "fields": {
@@ -186,6 +181,12 @@ export function drawNoteHud(ctx: CanvasRenderingContext2D, v: NoteView, x: numbe
       }
       if (f.charge >= 1) g.dot(0, -1.08 * R, 2.4, "#ff8a2a")
     } break
+  }
+  // Carga em glissando: the arpeggio's notes in a row over the horizon; each one the dragged aim plays goes out
+  if (f.gliss) for (let j = 0; j < f.gliss.max; j++) {
+    const s = glissSlot(j, f.gliss.max), px = s.x * R, py = s.y * R
+    if (j < f.gliss.spent) g.hole(px, py, 1.6)
+    else { const isNext = j === f.gliss.spent && f.charge > 0; g.dot(px, py, isNext ? 2.6 : 2, isNext ? nx : base) }
   }
   ctx.restore()
 

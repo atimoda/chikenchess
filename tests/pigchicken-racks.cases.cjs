@@ -109,19 +109,15 @@ test('layout edits update delays without resetting the rack, and moving/revealin
   assert.equal(c.pickups.length,1);assert.equal(c.pickups[0].id,id);assert.equal(c.pickups[0].x,6038)
 })
 
-test('touch Run collects an offered rack item only when enabled and releases its grab source',()=>{
-  const {virtualActionHeld}=loadTs('lib/chicken/controls.ts')
-  for(const enabled of [false,true]){
-    const c=createCombat();c.addRack(0,'pistol',1000,0)
-    step(c,.016)
-    const active={run:true}
-    step(c,.016,{grabHeld:virtualActionHeld(active,'grab',enabled)})
-    assert.equal(c.held?.item??null,enabled?'pistol':null)
-    active.run=false
-    assert.equal(virtualActionHeld(active,'grab',enabled),false)
-    // Dedicated Grab remains usable with the preference disabled.
-    if(!enabled){step(c,.016,{grab:true,grabHeld:true});assert.equal(c.held.item,'pistol')}
-  }
+test('Correr pressed on an offered rack item stores it without equipping; the dedicated Pegar still equips',()=>{
+  const c=createCombat();c.addRack(0,'pistol',1000,0)
+  step(c,.016)
+  step(c,.016,{runPressed:true})
+  assert.equal(c.held?.item??null,null)
+  assert.ok(c.inventory.some(o=>o?.item==='pistol'))
+  const c2=createCombat();c2.addRack(0,'pistol',1000,0)
+  step(c2,.016)
+  step(c2,.016,{grab:true,grabHeld:true});assert.equal(c2.held.item,'pistol')
 })
 
 test('a deleted rack leaves its item on its own: it stays, never comes back, and can be deleted (the undo brings the rack back)',()=>{

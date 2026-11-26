@@ -356,8 +356,9 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
   // the on-screen Throw button's aim: dragged out of it, the drag's angle; a tap, her movement or where she faces
   const throwAim = useRef<Stick | null>(null)
   // the touch Punch dragged out of its circle: how far the finger has turned around the button since it left it
-  // (radians, unwrapped; null: not yet) until it lifts (up), the Golpe desenhado's drawing (lib/pigchicken/swing.ts)
-  const punchDraw = useRef<{ turn: number | null; up: boolean } | null>(null)
+  // (radians, unwrapped; null: not yet) and where the finger is from the button's middle (dx, dy px) until it lifts
+  // (up), the Golpe desenhado's drawing (lib/pigchicken/swing.ts)
+  const punchDraw = useRef<PunchDrawing | null>(null)
   // time of the last quick tap on the right stick: shoots the nearest enemy
   const tapShot = useRef(0)
   // the on-screen Roda dragged out of its middle: the drag's direction points at the wheel's slice (a jog)
@@ -541,10 +542,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // of the blow's reach
     let rDown: { pc: boolean } | null = null
     let rUp: { x: number; y: number } | null = null
-    // the Golpe desenhado being drawn (mouse or touch Punch): the angle around her shoulder, frame by frame (t in s)
-    let drawing: { t: number; a: number }[] = []
-    // the aim when the touch Punch's drawing started: its turns count from there
-    let punchFrom = 0
+    // the Golpe desenhado being drawn (mouse or touch Punch): the angle around her shoulder, frame by frame (t in s),
+    // and where the pointer was (x, y) from her shoulder when the drawing started, for its miniature preview
+    let drawing: { t: number; a: number; x: number; y: number }[] = []
+    // the aim when the touch Punch's drawing started: its turns count from there; the turn that takes the finger's
+    // direction from the button to that aim (its miniature starts where she aims)
+    let punchFrom = 0, punchRot = 0
+    // her shoulder when the mouse's or the finger's drawing started; the drawing is the touch Punch's (its miniature
+    // grows to the blow's reach)
+    let drawFrom = { x: 0, y: 0 }, drawGrow = false
     const canPointClick = (e: PointerEvent) => e.button === 2 && !cameraKey && !isUi(e.target) && !onChicken(e.target) &&
       !(e.target as Element | null)?.closest?.("[data-patio-editor]") && !engine.getMotionState().held
     // the mouse is someone else's (another local player holds it)
@@ -1311,11 +1317,17 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         // where a finger on the screen draws a blow instead of aiming: around her shoulder (client px)
         ring = { x: (origin.x - stageWidth() / 2) * zoom + stageWidth() / 2, y: (origin.y - stageHeight() / 2) * zoom + stageHeight() / 2, r: combat.drawnReach(st.scale) * 1.5 * zoom }
         const pd = punchDraw.current, sd = screenDraw
-        if (rDown && mouse) drawing.push({ t: now / 1000, a: around(mouse) })
-        else if (sd?.moved) drawing.push({ t: now / 1000, a: around(drawing.length ? sd : { x: sd.x0, y: sd.y0 }) })
+        const record = (p: { x: number; y: number }) => {
+          const m = toStage(p)
+          if (!drawing.length) { drawFrom = { x: origin.x, y: origin.y }; drawGrow = false }
+          drawing.push({ t: now / 1000, a: around(p), x: m.x - drawFrom.x, y: m.y - drawFrom.y })
+        }
+        if (rDown && mouse) record(mouse)
+        else if (sd?.moved) record(drawing.length ? sd : { x: sd.x0, y: sd.y0 })
         else if (pd && pd.turn !== null) {
-          if (!drawing.length) punchFrom = aim.angle
-          drawing.push({ t: now / 1000, a: punchFrom + pd.turn })
+          if (!drawing.length) { punchFrom = aim.angle; punchRot = punchFrom - Math.atan2(pd.dy, pd.dx); drawGrow = true }
+          const c = Math.cos(punchRot), s = Math.sin(punchRot)
+          drawing.push({ t: now / 1000, a: punchFrom + pd.turn, x: pd.dx * c - pd.dy * s, y: pd.dx * s + pd.dy * c })
         }
         const blocked = p1Seated || wh.open || st.held
         if (rDown && rUp) {
@@ -1377,7 +1389,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
             reloadPending = false; reloadFired = false
           }
           return pressed
-        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(),
+        })(), pick: wh.open ? 0 : pick, slot: wheelPick || slotPick || slotTap.current, grab: act.grab && !prev.grab, grabHeld: act.grab, grabReleased: !act.grab && !!prev.grab, grabRun: engine.grabIsRun(), runPressed: act.run && !prev.run && engine.runStores(),
         grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(seatBindsOf(combat.seated.kind), controls, devs, drumKit())),
         fireDepth: wh.open || fireBlock ? 0 : fireDepth(controls, devs, padButtonValues(devs)), moves: movesOf(act),
         groupPick: group, move, pickVariations: pickVar, groupVariations: groupVariations(controls, group),
@@ -1609,7 +1621,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           deselect: xa.deselectItem && !xp.deselectItem,
           cancelFire: cancelPecks || document.hidden || xs.held || xs.state.startsWith('portal'),
           fire: xa.fire, firePressed: xa.fire && !xp.fire, melee: xa.melee && !xp.melee,
-          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(),
+          throwHeld: xa.throw, throwReleased: !xa.throw && !!xp.throw, reload: xa.reload && !xp.reload, pick: xpick, slot: 0, grab: xa.grab && !xp.grab, grabReleased: !xa.grab && !!xp.grab, grabRun: eng.grabIsRun(), runPressed: xa.run && !xp.run && eng.runStores(),
           grabKeep: !!combat.seated && grabIsSeatBind(controls, devs, drumKeys, padButtonValues(devs), seatTokens(seatBindsOf(combat.seated.kind), controls, devs, drumKit())),
           fireDepth: fireDepth(controls, devs, padButtonValues(devs)), moves: movesOf(xa),
           groupPick: xgroup, pickVariations: pickVariations(controls, xa), groupVariations: groupVariations(controls, xgroup),
@@ -1968,7 +1980,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         if (!k) scopeDef = null
       }
       drawSwing(ctx, combat, origin, "back", screenView)
-      if (drawing.length > 1) drawDrawing(ctx, origin, drawing, combat.drawnReach(st.scale))
+      if (drawing.length > 1) drawDrawing(ctx, origin, drawing, combat.drawnReach(st.scale), combat.def().drawnSimple, drawGrow)
       // the item itself is drawn inside her rig, in front of her body and of the wing; in a swing the wing
       // turns with the blow and stretches to its reach, and the item rides on the wing tip
       const h = combat.held, sw = combat.swing
@@ -2083,7 +2095,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
           owned: h ?? null, look: nl, ammo: h?.ammo ?? 0, reload, refill: h && d.refillTime > 0 ? (h.refill ?? 0) / d.refillTime : 0, amount: d.refillAmount,
           charge: Math.max(combat.fireCharge, combat.heavyCharge), firing: combat.firing, color: tone?.color ?? null, slap: !!tone?.slap, aim: combat.aimAngle,
           spin: combat.hookSpin, cadence: combat.cadence, away: h && nl?.style === "cards" ? combat.cards.filter(c => c.owned === h).map(c => c.rank) : [],
-          out: h ? h.out ?? 0 : 0, special: h ? combat.special(h) : null, wake: !!ammoWake.get(id),
+          out: h ? h.out ?? 0 : 0, special: h ? combat.special(h) : null, wake: !!ammoWake.get(id), gliss: h ? combat.gliss : null,
         }, dt)
         ammoWake.delete(id)
         if (around) drawAmmoAround(ctx, v, o.x, o.y, around.scale, aroundVisibility(v, sp.standbyAfter, sp.fadeTime), reload, d.shellReload)
@@ -2560,7 +2572,8 @@ function TouchWheelButton({ engine, jogRef }: { engine: ChickenEngine; jogRef: R
 // Lifted inside the button: a tap, a blow of the combo. Dragged out of the button: the Golpe desenhado, starting where
 // she aims, each turn of the finger around the button's middle turning the move around her as much (back near the
 // middle, it holds); it comes out when the finger lifts, wherever it is.
-type PunchDraw = React.MutableRefObject<{ turn: number | null; up: boolean } | null>
+type PunchDrawing = { turn: number | null; up: boolean; dx: number; dy: number }
+type PunchDraw = React.MutableRefObject<PunchDrawing | null>
 function TouchPunchButton({ engine, drawRef }: { engine: ChickenEngine; drawRef: PunchDraw }) {
   const t = useT()
   const { editing } = useTouchLayout()
@@ -2579,13 +2592,13 @@ function TouchPunchButton({ engine, drawRef }: { engine: ChickenEngine; drawRef:
     const a = Math.atan2(dy, dx)
     if (p.last !== null) p.turn += Math.atan2(Math.sin(a - p.last), Math.cos(a - p.last))
     p.last = a
-    drawRef.current = { turn: p.turn, up: false }
+    drawRef.current = { turn: p.turn, up: false, dx, dy }
   }
   const lift = (e: ReactPointerEvent) => {
     const p = press.current
     if (!p || p.pid !== e.pointerId) return
     press.current = null; setDown(false)
-    if (p.out) { drawRef.current = { turn: null, up: true }; return }
+    if (p.out) { drawRef.current = { turn: null, up: true, dx: 0, dy: 0 }; return }
     if (e.type !== "pointerup") return
     const t = ++turn.current
     // held for two frames: the combat needs one with the button down before the one that lets go

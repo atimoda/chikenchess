@@ -586,7 +586,3 @@ export function readTouchMoveStick(deadzone: number): { x: number; y: number; ma
   return { x: touchMove.x, y: touchMove.y, mag }
 }
 
-// Only the on-screen Run source also grabs; physical Run bindings keep their own behavior.
-export function virtualActionHeld(active: Partial<Record<ChickenAction, boolean>>, action: ChickenAction, runGrab: boolean): boolean {
-  return !!active[action] || (action === 'grab' && runGrab && !!active.run)
-}

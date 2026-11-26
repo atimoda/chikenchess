@@ -119,6 +119,7 @@ export type ItemDef = {
   meleeCooldown: number // s
   meleeInterrupt: boolean // a blow pressed while the last one is still going cuts it off and starts at once
   pointClick: boolean // the mouse's right button is point-and-click: a Golpe on a point out of reach walks there first
+  drawnSimple: boolean // "Simplificar raio do golpe": the Golpe desenhado's preview is the angles on the reach (off: a miniature of the drawing)
   meleeTime: number // s the swing takes to sweep its arc
   durability: number // melee hits on a target before it breaks (0 = never)
   meleePush: number // knockback px/s
@@ -164,7 +165,7 @@ export type ItemDef = {
   stun: number // s an enemy stays still after a note (the beam keeps it still while it plays)
   strum: number // s between the notes of a chord (pellets)
   ringNotes: number // notes it lets out in a circle when it bursts (with a fuse or on impact)
-  gliss: boolean // charge plays a glissando and the note rises with the charge (harp)
+  gliss: boolean // Carga em glissando (harp): dragging the aim while charging plays each note it goes into, floating round her until the main note flies with them; the aim's reach sets the main note's speed
   tremolo: number // 0..1: shaking the aim inside a lane of the fan bends the note (lib/pigchicken/tremolo.ts); 0 = off
   tremoloRange: number // semitones the tremolo can bend a note each way
   // what the tremolo follows ("Tremolo: reage a"): the aim turning inside a lane, or the aim moving along the
@@ -367,7 +368,7 @@ const PISTOL: ItemDef = {
   recoilKick: 7, recoilPush: 50, weight: 1, turnRate: 0,
   scope: false, scopeTime: 0.3, scopeReach: 2, scopePan: 420, scopeView: 1.3, lensSize: 64, lensZoom: 2.5,
   muzzleX: 54, muzzleY: -7, length: 56,
-  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, pointClick: true, meleeTime: 0.2, durability: 0, meleePush: 260,
+  meleeDamage: 18, meleeRange: 95, meleeArc: 110, meleeCooldown: 0, meleeInterrupt: true, pointClick: true, drawnSimple: false, meleeTime: 0.2, durability: 0, meleePush: 260,
   combo: swingCombo(110), comboWindow: COMBO_WINDOW,
   trailWidth: 24, trailColor: TRAIL_CREAM, trailTime: 0.2, trailWisps: 4, trailOpacity: 0.7,
   rebateChain: chain(['dynamics', 'staccato']), rebateSnap: 15, rebateSnapForce: 0.4, rebateSpeed: 1, rebateTok: false,
@@ -634,11 +635,12 @@ const TAMBOURINE: ItemDef = {
   instrument: true, voice: 'bells', pitchSet: 'chord', octave: 1, span: 1, noteLen: 0.3, wave: 4, ringNotes: 10, volMin: 0.7,
   rebateChain: chain(['ratchet', undefined, 3], ['drum', 'jingle', 1]), rebateSnap: 60, rebateSnapForce: 0.6,
 }
-// Harpa de Lira (Harpas) → bow: the charge is a glissando, the note rises with the charge and flies far and precise
+// Harpa de Lira (Harpas) → bow: dragging the aim while charging plays an arpeggio (lib/pigchicken/gliss-float.ts); the
+// note flies far and precise, as fast as the aim is far from her
 const HARP: ItemDef = {
   ...BOW, ...MUSIC_MELEE, id: 'harp', name: msg("Harpa de Lira"), family: msg("Harpas"), reticle: 'bow', archery: false, pivotX: 0,
   damage: 40, size: 12, speed: 1500, drop: 700, recoilPush: 60, muzzleX: 21, muzzleY: -10, length: 30,
-  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.5,
+  instrument: true, voice: 'harp', pitchSet: 'scale', octave: 0, span: 2, noteLen: 0.6, wave: 3, gliss: true, volMin: 0.3,
   handOn: true, handX: 30, handY: -25, backOn: true, backX: -7, backY: -17,
   rebateChain: chain(['voices', 'triad'], ['arpeggio', 'up', 1]),
 }
@@ -998,7 +1000,7 @@ function applySavedItem(out: Record<ItemId, ItemDef>, id: ItemId, s: any, v: num
   // saved before the grenade showed its blast only with Fire held (v3): it takes the new default
   if (PATH_SHOWS.some(o => o.value === s.landShow) && !(id === 'grenade' && !(v >= 3))) out[id].landShow = s.landShow
   if (PIVOT_PARTS.some(o => o.value === s.pivotAt)) out[id].pivotAt = s.pivotAt
-  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending', 'scope'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
+  ;(['autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam', 'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'drawnSimple', 'rebateTok', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'spiralDescending', 'scope'] as const).forEach(k => { if (typeof s[k] === 'boolean') out[id][k] = s[k] })
   // saved before "Arco e Flecha" (v11): a bow whose points were never touched takes the new ones (both wings on it)
   if (id === 'bow' && !(v >= 11) && !s.handOn && !s.backOn && !s.pivotX && !s.pivotY) (['pivotX', 'handOn', 'handX', 'handY', 'backOn', 'backX', 'backY'] as const).forEach(k => { (out.bow as Record<string, unknown>)[k] = DEFAULT_ITEMS.bow[k] })
   if (ARPS.some(a => a.value === s.arp)) out[id].arp = s.arp
@@ -1058,7 +1060,7 @@ const ITEMS_VERSION = 12
 // what the defaults file (and "Salvar no game") keeps of each item: every number and choice the Itens panel edits
 const ITEM_FILE_KEYS: (keyof ItemDef)[] = [...new Set<keyof ItemDef>([
   ...ITEM_PARAM_META.map(m => m.key), 'fireMode', 'pathShow', 'landShow', 'autoReload', 'burstHold', 'slideFire', 'shellReload', 'hitscan', 'quantize', 'beam',
-  'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints', 'scope',
+  'gliss', 'fretless', 'meleeInterrupt', 'pointClick', 'drawnSimple', 'rebateTok', 'pivotAt', 'handOn', 'backOn', 'swapHands', 'grip2On', 'wingFlip', 'archery', 'arp', 'pitchSet', 'volMin', 'volMax', 'voice', 'effectCurve', 'effectLook', 'combo', 'heavyKind', 'specialKind', 'rebateChain', 'trailColor', 'scales', 'spiralDescending', 'tremoloAxis', 'handDelay', 'classPoints', 'scope',
 ])]
 /** The items a defaults file gives (the code's, with the file over them). */
 export function itemsOver(file: unknown): Record<ItemId, ItemDef> {
