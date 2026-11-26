@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal; prévia do Golpe desenhado fiel ao desenho',
     groups: [
       { title: 'Pátio: Mesa de chickenchess', items: [
         'Nova Mesa de chickenchess no Modo editor (grupo Jogos): uma mesinha com tabuleiro e dois banquinhos. Já está no meio da Arena das Almas, no Arquipélago das Almas.',
@@ -63,6 +63,10 @@ const RECENT = [
         'Quanto mais longe a mira estiver da galinha dentro do leque, mais rápida sai a nota principal (e mais alta, pelo Volume pela distância, que agora vai de 30% a 100% na harpa).',
         'Na mira, uma fileira de 7 bolinhas acima do horizonte mostra as notas do arpejo; cada nota tocada apaga a sua bolinha, que sobe e some. A carga volta a enchê-las.',
         'Em Itens, o checkbox Carga em glissando passa a se chamar Arpejo ao arrastar a mira e vale para qualquer instrumento de carga em que for ligado. No online, os outros veem as notas do arpejo a partir do disparo.',
+      ] },
+      { title: 'Pátio: prévia do Golpe desenhado', items: [
+        'Enquanto você desenha o golpe no ar, a linha de prévia agora é uma miniatura do próprio desenho: começa no alcance do golpe, onde o desenho começou, e segue o mesmo caminho do mouse ou do dedo, em tamanho menor. O golpe em si continua igual.',
+        'Nova caixa Simplificar raio do golpe no grupo Golpe de cada item do painel Itens (desligada em todos): ligada, a prévia volta a ser a linha em volta do boneco, no alcance do golpe.',
       ] },
     ],
   },
