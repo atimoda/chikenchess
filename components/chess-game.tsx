@@ -56,6 +56,7 @@ import { CapturedPieces } from "./match/captured-pieces"
 import { EggCounter, MatchStatus } from "./match/egg-counter"
 import { GameplayTipDialog, useGameplayTip } from "./match/gameplay-tip"
 import { MATCH_HEADER_BUTTON_CLASS, MatchViewControls } from "./match/match-view-controls"
+import { InviteFriendButton } from "./match/invite-friend-button"
 import { BOARD_CARDS_RESIZE_RATIO, powerCardsResizeLimits, useBoardResize } from "@/hooks/use-board-resize"
 import { useBoardPan } from "@/hooks/use-board-pan"
 import { arrowsForAnalysis, type AnalysisArrowKind } from "@/lib/analysis-arrows"
@@ -2175,6 +2176,8 @@ export function ChessGame({ city, onBack, panelsFollowPlayerTurn, showRankedMove
           <div className="col-start-2 row-start-1 justify-self-end md:col-auto md:row-auto md:ml-auto flex shrink-0 items-center gap-2 md:gap-3 pointer-events-auto">
 
             <div className={cn("flex items-center gap-2 md:gap-3 transition-opacity duration-500", introPhase < 3 ? "opacity-0 pointer-events-none" : "opacity-100")}>
+              <InviteFriendButton cityId={city.id} cityColor={city.color} />
+
               {/* Settings */}
               <DropdownMenu open={openDropdown === "difficulty"} onOpenChange={open => setOpenDropdown(current => open ? "difficulty" : current === "difficulty" ? null : current)}>
                 <DropdownMenuTrigger asChild>

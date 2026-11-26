@@ -64,3 +64,26 @@ test('server errors become the player\'s words; a server without the migration i
   assert.ok(!inviteMissing({ code: 'P0002', message: 'FRIEND_NOT_FOUND' }))
   assert.equal(inviteErrorMessage({ code: 'PGRST202' }), 'O convite ainda não chegou a este servidor.')
 })
+
+// Invite a friend in the match header (lib/online/share-links.ts): the lobby link and where each app button leads.
+const { SHARE_APPS, LOBBY_INVITE_TEXT, lobbyInviteLink, shareAppTarget } = loadTs('lib/online/share-links.ts')
+
+test('the match invite link enters the lobby like Copy invite and the invite notice', () => {
+  assert.equal(lobbyInviteLink('12345', 'https://c.app'), 'https://c.app/?room=12345')
+  assert.equal(lobbyInviteLink('12345', 'https://c.app'), inviteHref(invite({ kind: 'room', patio_id: null, room: '12345' }), 'https://c.app'))
+})
+
+test('apps with a web share page get the link in it; the others copy it and open their messages', () => {
+  assert.deepEqual(SHARE_APPS.map(app => app.id), ['whatsapp', 'discord', 'instagram', 'tiktok', 'facebook', 'x'])
+  const link = 'https://c.app/?room=12345'
+  const whatsapp = shareAppTarget('whatsapp', link)
+  assert.equal(whatsapp.copyFirst, false)
+  assert.equal(new URL(whatsapp.href).searchParams.get('text'), `${LOBBY_INVITE_TEXT} ${link}`)
+  assert.equal(new URL(shareAppTarget('facebook', link).href).searchParams.get('u'), link)
+  assert.equal(new URL(shareAppTarget('x', link).href).searchParams.get('url'), link)
+  for (const app of ['discord', 'instagram', 'tiktok']) {
+    const target = shareAppTarget(app, link)
+    assert.equal(target.copyFirst, true)
+    assert.ok(!target.href.includes('12345'))
+  }
+})

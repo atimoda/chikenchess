@@ -5,10 +5,16 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
-    version: '2.18.1',
+    version: '2.19.0',
     date: '26/11/2026',
-    title: 'Partida: ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito',
+    title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito',
     groups: [
+      { title: 'Partida: Invite a friend', items: [
+        'Novo botão Invite a friend no cabeçalho da partida, à esquerda do Bot level (no celular, um ícone de pessoa com +). Ele abre um lobby 1v1 privado com o kit da cidade, ou usa o lobby em que você já está.',
+        'No painel aparecem seus amigos do ChickenChess com Invite, que chama o amigo para esse lobby; o link do lobby com o botão de copiar; e embaixo os ícones de WhatsApp, Discord, Instagram, TikTok, Facebook e X para compartilhar direto.',
+        'WhatsApp, Facebook e X abrem já com o link. Discord, Instagram e TikTok não têm página de compartilhar: no celular abre a lista de compartilhar do aparelho; no computador o link é copiado e o app abre para você colar.',
+        'Quando o amigo entra no lobby, um aviso com som aparece durante a partida, com o botão Ir ao lobby.',
+      ] },
       { title: 'Partida: cabeçalho', items: [
         'O ano e a cidade e os seletores de tom, escala e harmonia ficam do mesmo tamanho do botão do globo e, ao passar o mouse, ficam como ele: fundo escuro, letra branca e brilho na cor da cidade em volta. Um seletor aberto continua aceso enquanto o menu está aberto. Vale na campanha e no online.',
       ] },
