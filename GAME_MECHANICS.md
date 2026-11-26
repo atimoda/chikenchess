@@ -34,6 +34,7 @@
 | Pátio: abas do Modo editor (Elementos, Zonas, Camadas, Grade, Pátio, Câmera), aba do elemento e painel fixo à direita, em cima ou embaixo | [Abas e painel fixo do Modo editor](docs/mechanics/patio/editor-tabs.md) |
 | Pátio: Portais de nascimento (vários lugares para nascer, chance de cada um, sorteio ao entrar) | [Portais de nascimento](docs/mechanics/patio/spawn-portals.md) |
 | Pátio: Grade de blocos do Campo minado (blocos fechados e abertos, bombas, vão, paredes, lado aberto e fechado, trocar de bloco) | [Grade de blocos](docs/mechanics/patio/mine-grid.md) |
+| Pátio: Ativador de grid de campo minado (barras de música e dano, Trancado e Chave de ouro, opções da grade por slam, contagem 3, 2, 1) | [Ativador de grid](docs/mechanics/patio/mine-activator.md) |
 | Pátio: rodada do Campo minado (gangorra de música e dano, bandeira, dúvida, bombas, Chave dourada, detonador, instalar bomba, Filhote, fim da rodada e títulos, rodada no online, Pátio de exemplo Campo minado) | [Rodada do Campo minado](docs/mechanics/patio/mine-round.md) |
 | Pátio: salvar/abrir, Playgrounds, Destaques, Pátios de exemplo | [Lobbies do Pátio](docs/mechanics/patio/lobbies.md) |
 | Pátio: instrumentos fixos (Harpa de pedais: sentar, tocar parada, duas mãos, dedos na tela, levantar; Bateria: peças, baquetas, atalhos, pedal do chimbal, rufo, editor do kit; Piano de cauda: Estrela sentada, dinâmica pelas binds, levantar com Golpe) | [Instrumentos fixos](docs/mechanics/patio/fixed-instruments.md) |
@@ -129,7 +130,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: zumbis e hordas](docs/mechanics/patio/enemies.md) | 2 KB |
 | [Pátio: modo editor e layout](docs/mechanics/patio/editor.md) | 21 KB |
 | [Pátio: Portais de nascimento](docs/mechanics/patio/spawn-portals.md) | 4 KB |
-| [Pátio: Grade de blocos](docs/mechanics/patio/mine-grid.md) | 7 KB |
+| [Pátio: Grade de blocos](docs/mechanics/patio/mine-grid.md) | 24 KB |
+| [Pátio: Ativador de grid](docs/mechanics/patio/mine-activator.md) | 7 KB |
 | [Pátio: Rodada do Campo minado](docs/mechanics/patio/mine-round.md) | 11 KB |
 | [Pátio: salvar/abrir, Playgrounds, Destaques](docs/mechanics/patio/lobbies.md) | 10 KB |
 | [Pátio: Baú e Chave](docs/mechanics/patio/chests.md) | 6 KB |

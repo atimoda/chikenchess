@@ -126,6 +126,9 @@ export type ChickenEngine = {
   // she landed on something other than the main ground (a hard floor: a slam on a Mesa de chickenchess's top) holding
   // Brood since the last call: where (screen px, her feet), said once
   takeLandSlam: () => { x: number; y: number } | null
+  // she is falling holding Brood (Chocar) now: what she passes through on her way down may react (a floating Zona
+  // sonora's tags step to their next value)
+  diving: () => boolean
   // the item in her wing: SVG art pointing right with the grip at (0, 0), in rig units; drawn in front of
   // her body and in front of the wing, turned to `angle` (screen radians), pulled back by `kick` rig units.
   // The wing turns with it: its tip follows the aim.
@@ -2685,6 +2688,7 @@ export function createChickenEngine(host: HTMLElement, opts: { groundHeight: num
     // she fell onto the main ground holding Brood (a slam) since the last call: said once
     takeSlam() { const s = slammed; slammed = false; return s },
     takeLandSlam() { const s = landSlam; landSlam = null; return s },
+    diving() { return !S.grounded && S.vy > 0 && stepD && !S.held },
     walkTo(point) {
       if (remote || portalEntry || S.held || S.cl) return
       const p = local(point.x, point.y), m = 40 * R.scale

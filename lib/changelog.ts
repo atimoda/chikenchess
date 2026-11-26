@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.19.0',
     date: '26/11/2026',
-    title: 'Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro; Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito',
+    title: 'Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito',
     groups: [
       { title: 'Pátio: Mesa de chickenchess', items: [
         'Nova Mesa de chickenchess no Modo editor (grupo Jogos): uma mesinha com tabuleiro e dois banquinhos. Já está no meio da Arena das Almas, no Arquipélago das Almas.',
@@ -16,6 +16,15 @@ const RECENT = [
         'Embaixo do tampo ficam as opções em etiquetas: suba na mesa e caia com Chocar na metade esquerda para trocar o ano/cidade (com Random não há foto; com uma cidade, a foto aparece acima da mesa) e na direita para trocar o raio do som. Vale também durante a partida.',
         'A música da partida só toca dentro do raio da mesa e some suavemente até a borda dele; fora, o motor musical da partida desliga. Raio 0 deixa a partida sem música.',
         'Quem vence a partida ganha uma Chave de ouro. “Sair da partida” libera a mesa.',
+      ] },
+      { title: 'Pátio: Ativador de grid de campo minado', items: [
+        'O Ativador agora tem a cara do ícone do Campo minado: uma mina sobre um bloco vermelho que brilha, mais forte quanto mais cheias as barras de música (à esquerda) e de dano (à direita). Dá para pisar em cima dele.',
+        'Nova opção Trancado: notas e dano não enchem nada e só uma Chave de ouro liga o Ativador. Perto dele aparece “E - Usar a Chave de ouro”. No Arquipélago das Almas há um Ativador trancado a oeste da Arena das Almas.',
+        'Ao ligar a grade, todos no Pátio veem um 3, 2, 1 enorme no meio da tela, do tamanho e com as cores dos números da grade. A cada número a grade pisca onde vai aparecer, para dar tempo de sair dali.',
+        'Embaixo do topo do Ativador ficam as opções da grade que ele liga: tamanho do bloco, vão e cantos em octógono. Quem edita o Pátio troca cada uma caindo com Chocar sobre ela, e a grade pisca rapidinho com as novas opções. Elas também estão no Editar do Ativador.',
+      ] },
+      { title: 'Pátio: Zonas sonoras', items: [
+        'As tags de uma Zona sonora no ar agora também mudam com Chocar: quem edita o Pátio cai por cima de uma tag segurando Chocar e ela passa para o próximo valor, como as da faixa do chão.',
       ] },
       { title: 'Partida: Modo botões', items: [
         'A linha de botões do Modo botões agora também pode ser arrastada pelo fundo, como a mão de cartas, na campanha e no online.',

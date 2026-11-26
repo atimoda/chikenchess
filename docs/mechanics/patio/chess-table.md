@@ -41,7 +41,7 @@ Código: regras puras em `lib/pigchicken/chess-table.ts`, fila e partida deste n
 
 ## Chave de ouro
 
-- Item `chesskey` (“Chave de ouro”), grupo Chaves: consumível em pilha até 9 no grupo Utilitário do inventário, ajustável no painel Itens (grupo Chaves). Só se ganha vencendo na mesa: não está nos suportes, no Item solto nem nos Baús. Por enquanto é um troféu: não abre Baús (não é uma Chave). Na etapa seguinte, liga o Ativador de grid do Campo minado.
+- Item `chesskey` (“Chave de ouro”), grupo Chaves: consumível em pilha até 9 no grupo Utilitário do inventário, ajustável no painel Itens (grupo Chaves). Só se ganha vencendo na mesa: não está nos suportes, no Item solto nem nos Baús. Não abre Baús (não é uma Chave): abre o [Ativador de grid](mine-activator.md) trancado. Junto de um, Usar gasta uma Chave de ouro e liga a grade do Campo minado para todos.
 
 ## No Arquipélago das Almas
 

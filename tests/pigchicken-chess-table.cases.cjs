@@ -144,4 +144,9 @@ test('Arquipélago das Almas: the Mesa de chickenchess stands on the floor in th
   const arena=layout.elements.filter(e=>['jukebox','gong','chest','rack'].includes(e.kind)&&e.y>500&&Math.abs(e.x-t.x)<1000)
   assert.ok(arena.length>=4)
   assert.ok(arena.every(e=>e.x+e.w<=t.x||e.x>=t.x+t.w))
+  // elsewhere on the map, an Ativador de grid locked: only the Chave de ouro won here opens it
+  const acts=layout.elements.filter(e=>e.kind==='mineactivator')
+  assert.equal(acts.length,1)
+  assert.equal(acts[0].params.mineActivator.lock,true)
+  assert.ok(Math.abs(acts[0].x-t.x)>1000)
 })

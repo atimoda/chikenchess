@@ -50,7 +50,7 @@ import { SurfacePoints } from "./surface-points"
 import { GROUND_BIOMES, SURFACE_STYLE_LABELS, WALL_STYLES, defaultSurface, surfaceStyles, type SurfaceParams } from "@/lib/pigchicken/surfaces"
 import { usePatioPlacement, type PatioPlacementHandlers } from "./use-patio-placement"
 import { CHALK_TEXT_MAX, DEMO_IDS, GHOST_OFFSET, GHOST_REACH, TRAINING_DEMOS, chalkboardForDemo, type ChalkboardParams, type DemoId } from "@/lib/pigchicken/chalkboard"
-import { MINE_ACTIVATOR_DAMAGE, MINE_ACTIVATOR_NOTES, defaultMineActivator, type MineActivatorParams } from "@/lib/pigchicken/mine-activator"
+import { MINE_ACTIVATOR_DAMAGE, MINE_ACTIVATOR_NOTES, MINE_ACTIVATOR_OPTIONS, MINE_ACTIVATOR_STEPS, defaultMineActivator, type MineActivatorParams } from "@/lib/pigchicken/mine-activator"
 import { CHESS_RADII, CHESS_RANDOM, chessRadiusLabel, defaultChessTable, type ChessTableParams } from "@/lib/pigchicken/chess-table"
 import { chessCityLabel, chessCityOrder } from "./draw/chess-table"
 import { GONG_FORGET, GONG_HITS, GONG_STOP_HITS, PLAYER_ACCURACY, PLAYER_HEARTS, defaultGong, defaultPlayer, type GongParams, type PlayerParams } from "@/lib/pigchicken/gong"
@@ -943,11 +943,24 @@ function GongFields({ gong, onChange }: { gong: GongParams; onChange: (gong: Gon
   </>
 }
 
-// an Ativador de grid de campo minado: the music and the damage that fill its two bars
+// an Ativador de grid de campo minado: the music and the damage that fill its two bars, whether only a Chave de ouro
+// turns it on, and the block, gap and corners of the grid it turns on (the same values a slam on it steps through)
 function MineActivatorFields({ activator: a, onChange }: { activator: MineActivatorParams; onChange: (activator: MineActivatorParams, step?: string) => void }) {
   return <div className="grid gap-field">
-    <PatioRange label="Notas até ativar" min={MINE_ACTIVATOR_NOTES.min} max={MINE_ACTIVATOR_NOTES.max} step={MINE_ACTIVATOR_NOTES.step} value={a.notes} onChange={notes => onChange({ ...a, notes }, "activator-notes")} />
-    <PatioRange label="Dano até ativar" min={MINE_ACTIVATOR_DAMAGE.min} max={MINE_ACTIVATOR_DAMAGE.max} step={MINE_ACTIVATOR_DAMAGE.step} value={a.damage} onChange={damage => onChange({ ...a, damage }, "activator-damage")} />
+    <Toggle label="Trancado (só Chave de ouro)" hint="Trancado, as barras não enchem: só uma Chave de ouro, ganha na Mesa de chickenchess, liga a grade." checked={a.lock} onChange={lock => onChange({ ...a, lock })} />
+    {!a.lock && <>
+      <PatioRange label="Notas até ativar" min={MINE_ACTIVATOR_NOTES.min} max={MINE_ACTIVATOR_NOTES.max} step={MINE_ACTIVATOR_NOTES.step} value={a.notes} onChange={notes => onChange({ ...a, notes }, "activator-notes")} />
+      <PatioRange label="Dano até ativar" min={MINE_ACTIVATOR_DAMAGE.min} max={MINE_ACTIVATOR_DAMAGE.max} step={MINE_ACTIVATOR_DAMAGE.step} value={a.damage} onChange={damage => onChange({ ...a, damage }, "activator-damage")} />
+    </>}
+    {MINE_ACTIVATOR_OPTIONS.map(option => (
+      <label key={option} className="grid gap-1">
+        <span>{option === "cell" ? "Tamanho do bloco" : option === "gap" ? "Vão entre blocos" : "Cantos em octógono"}</span>
+        <StepSelect aria-label={option === "cell" ? "Tamanho do bloco" : option === "gap" ? "Vão entre blocos" : "Cantos em octógono"} value={a[option] === null ? "" : String(a[option])}
+          onChange={e => onChange({ ...a, [option]: e.target.value === "" ? null : Number(e.target.value) })} className="h-9 rounded-md border border-white/15 bg-[#0b110e] px-2">
+          {[...new Set([...MINE_ACTIVATOR_STEPS[option], a[option]])].map(v => <option key={v ?? "patio"} value={v === null ? "" : String(v)}>{v === null ? "O do Pátio" : option === "corner" ? `${v}%` : v}</option>)}
+        </StepSelect>
+      </label>
+    ))}
   </div>
 }
 
@@ -1066,7 +1079,7 @@ function Thumb({ entry }: { entry: Entry }) {
   if (entry.kind === "gong") return <span aria-hidden="true" className="relative block h-8 w-9"><span className="absolute inset-x-0 top-0 h-1 rounded-sm bg-[#b3261e]" /><span className="absolute bottom-0 left-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute bottom-0 right-0.5 top-0 w-1 bg-[#8d1b14]" /><span className="absolute left-1/2 top-2 h-5 w-5 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f2c46d,#c58b2e_55%,#7a4f12)]" /></span>
   if (entry.kind === "building") { const s = entry.size ?? ELEMENT_DEFS.building; return <span className="relative block h-9" style={{ aspectRatio: `${s.w} / ${s.h}` }}><BuildingArt building={entry.params?.building ?? defaultBuilding()} w={s.w} h={s.h} /></span> }
   if (entry.kind === "resetstone") return <span aria-hidden="true" className="relative block h-9 w-7"><span className="absolute inset-x-1 bottom-1 top-0 rounded-t-full bg-[#7c8892]" /><span className="absolute left-1/2 top-2.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#7bdff2]" /><span className="absolute inset-x-0 bottom-0 h-1.5 rounded-sm bg-[#6f695f]" /></span>
-  if (entry.kind === "mineactivator") return <span aria-hidden="true" className="relative block h-8 w-11"><span className="absolute inset-x-1.5 bottom-1 top-0.5 rounded-t-full bg-[radial-gradient(circle_at_35%_30%,#bfe0ff,#3d8bff_45%,#1b4fb8)]" /><span className="absolute inset-x-0 bottom-0 h-1.5 rounded-sm bg-[#2b3440]" /></span>
+  if (entry.kind === "mineactivator") return <span aria-hidden="true" className="relative mx-auto block h-8 w-8 border-2 border-b-black/40 border-l-white/60 border-r-black/40 border-t-white/60 bg-[radial-gradient(circle,#ff8a6a,#e0141c_60%,#8e0a12)] shadow-[0_0_8px_#ff2a1a]"><span className="absolute inset-[7px] rounded-full bg-[radial-gradient(circle_at_32%_30%,#f4f4f4,#34373c_45%,#16181b)]" /></span>
   if (entry.kind === "jukebox") return <span aria-hidden="true" className="relative block h-9 w-6 rounded-t-full border-2 border-[#39ff88] bg-[#0f2a1e]"><span className="absolute inset-x-1 top-2 h-2 rounded-sm bg-[#7b8cff]" /><span className="absolute inset-x-1 bottom-1 h-3 rounded-sm bg-[repeating-linear-gradient(45deg,#ff4d6d_0_2px,#ffd166_2px_4px)]" /></span>
   if (entry.kind === "vitrola") return <VitrolaThumb />
   if (entry.kind === "pedalharp") return <HarpThumb />

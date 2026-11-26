@@ -24,6 +24,8 @@ import { ChalkboardArt } from "./chalkboard-art"
 import { BalustradeArt, BuildingArt } from "./building-art"
 import { BALUSTRADE_FLOOR, buildingSurfaces, normalizeBalustrade, normalizeBuilding } from "@/lib/pigchicken/buildings"
 import { chessStool, chessTop } from "@/lib/pigchicken/chess-table"
+import { mineActivatorTile } from "@/lib/pigchicken/mine-activator"
+import { mineActivatorStore } from "@/lib/pigchicken/mine-activator-store"
 
 // one element's art filling its box
 // placed: the element as it stands in the Pátio (a house there opens when someone goes in), not a preview of it
@@ -162,6 +164,15 @@ function ChessTableCollider({ el, depth }: { el: LayoutElement; depth: number })
   </>
 }
 
+// An Ativador de grid de campo minado: its tile is a solid block while it can be filled (small and untouchable while
+// it waits, it is none), so a player stands on it and slams its options
+function MineActivatorCollider({ el, depth }: { el: LayoutElement; depth: number }) {
+  const armed = useSyncExternalStore(mineActivatorStore.subscribe, mineActivatorStore.armed, () => true)
+  if (!armed) return null
+  const t = mineActivatorTile(el), w = t.r - t.l, h = t.bottom - t.top
+  return <div data-chicken-id={`${el.id}:tile`} data-chicken-depth={depth} data-chicken-world-box={`${t.l},${t.top},${w},${h}`} data-chicken-shape={`0,0 ${w},0 ${w},${h} 0,${h}`} data-chicken-hard data-chicken-nearby className="absolute" />
+}
+
 // The rooms of the houses with someone of this browser inside (lib/pigchicken/house-rooms.ts): a hard ground floor
 // and the storeys' one-way floors, read only by the engines of whoever is in that room (`data-chicken-room`; its
 // walls and ceiling are her engine's limits, see parquinho.tsx). Nothing in front hides them.
@@ -196,6 +207,7 @@ export const LayoutColliders = memo(function LayoutColliders({ elements }: { ele
         }
         // a Mesa de chickenchess: the table is hard (a slam with Chocar lands on its top), the stools are platforms
         if (el.kind === "chesstable") return <ChessTableCollider key={el.id} el={el} depth={depth} />
+        if (el.kind === "mineactivator") return <MineActivatorCollider key={el.id} el={el} depth={depth} />
         // a Suporte de item's table: a platform to stand on and climb
         if (el.kind === "rack") {
           const t = rackTable(el)

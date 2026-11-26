@@ -80,8 +80,9 @@ import { MusicZonesLayer } from "@/components/pigchicken/music-zones-layer"
 import { withSceneZone } from "@/lib/pigchicken/sound-zones"
 import { PatioSettingsPanel } from "@/components/pigchicken/patio-settings-panel"
 import { MineGridPanel } from "@/components/pigchicken/mine-grid-panel"
-import { activatedMineGrid } from "@/lib/pigchicken/mine-activator"
-import { mineActivatorStore, resetMineActivators, setMineActivatorSaved } from "@/lib/pigchicken/mine-activator-store"
+import { activatedMineGrid, defaultMineActivator, nextMineActivatorOption } from "@/lib/pigchicken/mine-activator"
+import { mineActivatorStore, onMineActivatorSlam, resetMineActivators, setMineActivatorSaved } from "@/lib/pigchicken/mine-activator-store"
+import { MineActivatorOverlay } from "@/components/pigchicken/mine-activator-overlay"
 import { resetChessTables } from "@/lib/pigchicken/chess-table-store"
 import { PatioChess } from "@/components/pigchicken/patio-chess"
 import { mineStore } from "@/lib/pigchicken/mine-grid-store"
@@ -805,10 +806,24 @@ export function ChickenPatio() {
   // An Ativador de grid de campo minado also turns it on, for everyone in the Pátio (mine-activator-store.ts): by
   // music with the blocks as Zonas sonoras, by damage without them.
   const savedGrid = patio?.layout.settings?.mineGrid
-  const activatorVia = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.via, () => null)
-  const activations = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.activations, () => 0)
-  const mineParams = useMemo(() => (activatorVia ? activatedMineGrid(savedGrid, activatorVia) : patioMineGrid({ mineGrid: savedGrid })), [savedGrid, activatorVia])
+  // (the grid an activator turned on shows after its count of 3 s, with that activator's block, gap and corners)
+  const activatorVia = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shownVia, () => null)
+  const activations = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shown, () => 0)
+  const activatorParams = useSyncExternalStore(mineActivatorStore.subscribe, () => mineActivatorStore.shownParams, () => null)
+  const mineParams = useMemo(() => (activatorVia ? activatedMineGrid(savedGrid, activatorVia, activatorParams) : patioMineGrid({ mineGrid: savedGrid })), [savedGrid, activatorVia, activatorParams])
   useEffect(() => { setMineActivatorSaved(!!savedGrid?.on) }, [savedGrid?.on])
+  // a slam on an activator's top steps its grid option there; whoever may edit the Pátio saves it in the layout (so
+  // the online Pátio's browsers turn on the same grid), for the others it is only a landing
+  const canEditRef = useRef(false)
+  canEditRef.current = !!patio && access.canEdit
+  useEffect(() => onMineActivatorSlam((id, option) => {
+    const layout = patioLayoutRef.current
+    if (!canEditRef.current || !layout) return
+    const el = layout.elements.find(e => e.id === id && e.kind === "mineactivator")
+    if (!el) return
+    const next = nextMineActivatorOption(el.params.mineActivator ?? defaultMineActivator(), option)
+    changeLayoutRef.current({ ...layout, elements: layout.elements.map(e => (e === el ? { ...e, params: { ...e.params, mineActivator: next } } : e)) })
+  }), [])
   useEffect(() => { resetMineActivators() }, [patioKey])
   // the Mesas de chickenchess: no queue nor match of the last Pátio stays
   useEffect(() => { resetChessTables() }, [patioKey])
@@ -1032,10 +1047,16 @@ export function ChickenPatio() {
             const settings = { ...patio.layout.settings, sceneZones: withSceneZone(patio.layout.settings?.sceneZones, scene, zone) }
             if (!settings.sceneZones) delete settings.sceneZones
             changeLayout({ ...patio.layout, settings })
+          } : undefined}
+          onFall={patio && access.canEdit ? changes => {
+            const next = new Map(changes.map(c => [c.el.id, c.zone]))
+            changeLayout({ ...patio.layout, elements: patio.layout.elements.map(e => (next.has(e.id) ? { ...e, params: { ...e.params, zone: next.get(e.id)! } } : e)) })
           } : undefined} />
       )}
       {/* a match of a Mesa de chickenchess, over the Pátio */}
       <PatioChess />
+      {/* an Ativador de grid: the count before its grid and the flash of its options */}
+      <MineActivatorOverlay saved={savedGrid} world={{ width: screens * SCENE_W, top: worldTop, ground: WORLD_GROUND_Y }} />
       <ChickenChat players={chatPlayers} open={chatOpen} onOpenChange={setChatOpen} bottom={groundHeight + 12} myName={me?.name} />
       {saveOpen && patio && (
         <PatioSavePanel

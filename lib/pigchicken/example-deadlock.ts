@@ -28,6 +28,7 @@ import { CLOUDS_DEFAULT, type CloudParams } from './clouds'
 import { AURORA_DEFAULT, type AuroraParams } from './aurora'
 import type { ItemId } from './items'
 import { CHESS_TABLE_BOX, defaultChessTable } from './chess-table'
+import { MINE_ACTIVATOR_BOX, defaultMineActivator } from './mine-activator'
 
 const G = WORLD_GROUND_Y
 export const DEADLOCK_SCREENS = 8
@@ -364,6 +365,10 @@ export function deadlockLayout(): PatioLayout {
 
   // the Mesa de chickenchess right in the middle of the arena: whoever wins its match gets a Chave de ouro
   add('chesstable', { x: CX - CHESS_TABLE_BOX.w / 2, y: floor(CX) - CHESS_TABLE_BOX.h, params: { chessTable: defaultChessTable() } })
+  // and west of the arena, on the low lane's ground, an Ativador de grid locked: only that Chave de ouro turns on the
+  // Campo minado's grid, over the whole Arquipélago (blocks of 448, cut corners)
+  const ax = CX - 1400
+  add('mineactivator', { x: ax - MINE_ACTIVATOR_BOX.w / 2, y: floor(ax) - MINE_ACTIVATOR_BOX.h, params: { mineActivator: { ...defaultMineActivator(), lock: true, cell: 448, gap: 32, corner: 30 } } })
 
   // ---------- the Portais de nascimento share the chances equally ----------
   const born = [out.find(e => e.kind === 'entry')!, ...spawns]
