@@ -7,7 +7,7 @@ import type { OnlineProfile } from '@/lib/online/types'
 import { cacheLocalProfile, cacheOnlineProfile, getOnlineClient, onlineConfigured, onlineErrorMessage, onlineRpc, preserveProfileBackup, readCachedLocalProfile, readCachedOnlineProfile, readLocalProfile, readLocalProfileOwner, requireOnlineClient, samePlayerProfileContent, setLocalProfileOwner } from '@/lib/online/client'
 import { AUTH_CALLBACK_CHANNEL, authCallbackMessage, completeAuthCallback, readAuthCallback } from '@/lib/online/auth-callback'
 import { LoginDialog } from './login-dialog'
-import { useOnlineNotifications } from '@/hooks/use-online-notifications'
+import { useOnlineNotifications, type NotifyOptions } from '@/hooks/use-online-notifications'
 import { X } from 'lucide-react'
 
 /* global Response, CustomEvent, Event, BroadcastChannel */
@@ -42,7 +42,7 @@ export interface OnlineContextValue {
   refreshProfile: (displayName?: string) => Promise<OnlineProfile | null>
   signOut: () => Promise<void>
   openLogin: () => void
-  notify: (message: string) => void
+  notify: (message: string, options?: NotifyOptions) => void
   /** Capture the source session only in memory before any identity change. */
   prepareSignIn: () => Promise<void>
   pendingTransfer: PendingTransferData | null
