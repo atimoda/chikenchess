@@ -1,6 +1,7 @@
 "use client"
 
 import { useSyncExternalStore } from "react"
+import { msg, useT } from "@/lib/i18n"
 import {
   getQuality, getServerQuality, QUALITY_LABELS, qualityLevels, setQualityAuto, setQualityLevel, subscribeQuality,
   type GraphicsLevel, type QualityKind,
@@ -9,24 +10,25 @@ import {
 export const useQuality = () => useSyncExternalStore(subscribeQuality, getQuality, getServerQuality)
 
 const KINDS: { kind: QualityKind; label: string }[] = [
-  { kind: "graphics", label: "Qualidade e efeitos gráficos" },
-  { kind: "sound", label: "Qualidade e efeitos sonoros" },
+  { kind: "graphics", label: msg("Qualidade e efeitos gráficos") },
+  { kind: "sound", label: msg("Qualidade e efeitos sonoros") },
 ]
 
 /** The two quality levels and "Ajustar automaticamente", the same rows in Preferências and in the Pátio's Camadas. */
 export function QualityFields({ rowClassName, selectClassName, checkboxClassName }: { rowClassName: string; selectClassName: string; checkboxClassName: string }) {
   const quality = useQuality()
+  const t = useT()
   return <>
     {KINDS.map(({ kind, label }) => (
       <label key={kind} className={rowClassName}>
-        <span>{label}</span>
+        <span>{t(label)}</span>
         <select value={quality[kind]} onChange={e => setQualityLevel(kind, e.target.value as GraphicsLevel)} className={selectClassName}>
-          {qualityLevels(kind).map(level => <option key={level} value={level}>{QUALITY_LABELS[level]}</option>)}
+          {qualityLevels(kind).map(level => <option key={level} value={level}>{t(QUALITY_LABELS[level])}</option>)}
         </select>
       </label>
     ))}
     <label className={rowClassName}>
-      <span>Ajustar automaticamente</span>
+      <span>{t("Ajustar automaticamente")}</span>
       <input type="checkbox" checked={quality.auto} onChange={e => setQualityAuto(e.target.checked)} className={checkboxClassName} />
     </label>
   </>

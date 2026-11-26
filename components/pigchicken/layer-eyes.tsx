@@ -15,6 +15,7 @@ import { FloatingPanel } from "@/components/ui/floating-panel"
 import { PatioRange } from "@/components/ui/patio-range"
 import { useFramePreferences } from "@/components/fps-preferences"
 import { QualityFields } from "@/components/quality-preferences"
+import { LanguageField } from "@/components/language-select"
 import { GAME_FPS_LIMIT, setFramePreference } from "@/lib/game-frame"
 import { saveDefaultPatioLayers } from "@/lib/admin/game-defaults-client"
 import { SaveToGameButton } from "@/components/admin/save-to-game-button"
@@ -110,6 +111,7 @@ export function LayersPanel({ layers, set, base, onSave, onClose }: ReturnType<t
       {flag("hitboxes", "Hit-boxes")}
       {flag("stageDebug", "Debug da fase de notas")}
       </LockedFieldset>
+      <LanguageField rowClassName="flex items-center justify-between gap-3" selectClassName="rounded-md border border-white/15 bg-[#0c120f] px-2 py-1 text-xs text-[#dfe8df]" />
       <QualityFields rowClassName="flex items-center justify-between gap-3"
         selectClassName="rounded-md border border-white/15 bg-[#0c120f] px-2 py-1 text-xs text-[#dfe8df]" checkboxClassName="h-5 w-5 accent-[var(--primary)]" />
       <label className="flex items-center justify-between gap-3">
