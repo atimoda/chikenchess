@@ -16,11 +16,14 @@ import { applyNetChests, cleanNetChests, exportOpenChests } from './net-chests'
 import { cleanNetCages, exportCages, importCages, stepCageMirror, type CageMirror } from './cages'
 import { CAGE_IDS } from './items'
 import { createNetMineSync } from './net-mine-sync'
+import { cleanAct, isActKind, netActStore, type NetAct } from './net-acts'
 
 const FOES_MS = 100 // the owner's enemies: 10 times a second
 const FULL_MS = 2000 // and everything about them (also right after someone joins)
 const OUT_MS = 50 // shots and hits leave in batches, 20 times a second
 const BATCH = 32
+// of each batch, at most this many are the players' acts (lib/pigchicken/net-acts.ts: pecks, blows, the violin)
+const ACTS_MAX = 16
 
 export type NetRole = 'off' | 'owner' | 'follower'
 
@@ -68,6 +71,7 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
     cageMirrors.clear(); cagesKey = ''; lastCages = 0
     combat.setNetSeated([])
     housePids.clear(); clearNetHouseRooms(); housesKey = ''; lastHouses = 0
+    netActStore.clear()
   }
 
   return {
@@ -139,17 +143,28 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
           if (c) { housePids.add(m.pid); setNetHouseRooms(m.pid, c) }
         }
         else if (m.type === 'shots') {
-          const list = m.list.slice(0, BATCH).map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
-          const pid = m.pid, shotRoom = opts.shotRoom
+          const pid = m.pid, shotRoom = opts.shotRoom, got = m.list.slice(0, BATCH)
+          const list = got.map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
           if (list.length) combat.addRemoteShots(list, shotRoom && ((x, y) => shotRoom(pid, x, y)), pid)
+          // the acts of that browser's chickens travel in the same list (a violin inside a house closed here is not heard)
+          const acts = others.some(p => p.pid === pid) ? got.filter(x => isActKind((x as { k?: unknown } | null)?.k)).map(x => cleanAct(x, DEFAULT_ITEMS)).filter((x): x is NetAct => !!x && !(x.k === 'vb' && shotRoom?.(pid, x.x1, x.y1) === 'hidden')) : []
+          if (acts.length) { combat.addRemoteActs(acts, pid); netActStore.receive(pid, acts, now) }
         }
       }
 
       // ---------- out ----------
       if (combat.netShots.length > BATCH * 2) combat.netShots.splice(0, combat.netShots.length - BATCH * 2)
+      netActStore.keep(new Set(others.map(p => p.pid)))
+      if (combat.netActs.length > ACTS_MAX * 2) combat.netActs.splice(0, combat.netActs.length - ACTS_MAX * 2)
       if (now - lastOut >= OUT_MS) {
         lastOut = now
-        if (combat.netShots.length && others.length) sendNetShots(combat.netShots.splice(0, BATCH))
+        // the players' acts first (each with her slot in this browser's list), then the shots
+        const ids = localPlayers(), acts: NetAct[] = []
+        for (const { who, act } of combat.netActs.splice(0)) { const slot = ids.indexOf(who); if (slot >= 0 && slot < NET_SLOTS) acts.push({ ...act, s: slot }) }
+        ids.slice(0, NET_SLOTS).forEach((id, slot) => { for (const act of combat.liveActs(id)) acts.push({ ...act, s: slot }) })
+        const out: (NetShot | NetAct)[] = others.length ? acts.slice(-ACTS_MAX) : []
+        if (others.length) out.push(...combat.netShots.splice(0, BATCH - out.length))
+        if (out.length) sendNetShots(out)
         else if (!others.length) combat.netShots.length = 0
         if (hitsOut.length) sendNetHits(hitsOut.splice(0, 64))
         for (const t of combat.netTakes.splice(0, 8)) { const to = t.k === 'f' ? s.info!.ownerPid : t.pid; if (to != null && to !== s.myPid) sendNetTake(to, { k: t.k, id: t.id }) }

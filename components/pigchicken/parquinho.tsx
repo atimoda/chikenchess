@@ -35,7 +35,7 @@ import type { NetChickMirror } from "@/components/chicken/online-chickens"
 import { PLAYER_COLORS } from "@/lib/chicken/lobby"
 import type { NetSpawn } from "@/lib/pigchicken/net-world"
 import { GROUP_SWITCHES, INVENTORY_MAX, groupSwitchStep, inventorySlotFromCode, newGroupSwitchRepeat, newQuickSwitchRepeat, quickSwitchStep, wheelSliceAt, wrapSlot, type GroupSwitchRepeat, type ItemGroup, type QuickSwitchRepeat } from "@/lib/pigchicken/inventory"
-import { announceHeldItem, announcePlayerClass, bowed, classItem, pointClassOf, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
+import { announceHeldItem, announcePlayerClass, bowed, VIOLIN_BOW_X, classItem, pointClassOf, curvePower, loadItems, nextArp, saveItems, subscribeItems, type ItemId } from "@/lib/pigchicken/items"
 import { CATALOG_SPECIES, loadCatalog, subscribeCatalog, variantData, variantFor, variantSize } from "@/lib/pigchicken/alien-catalog"
 import type { TrainingSpawnRequest } from "@/lib/pigchicken/training-spawn"
 import { playWeaponSound, setWeaponVolume } from "@/lib/pigchicken/sfx"
@@ -111,7 +111,8 @@ import { perchLines } from "@/lib/pigchicken/perch-places"
 import { powerSpans } from "@/lib/pigchicken/power-lines"
 import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
-import { drawBeam, drawZoneBanner, rigSwing, drawSwing, drawDrawing, swingShake } from "@/components/pigchicken/draw/effects"
+import { drawBeam, drawBeamLine, drawZoneBanner, rigSwing, drawSwing, drawSwingOf, drawDrawing, swingShake } from "@/components/pigchicken/draw/effects"
+import { netActStore } from "@/lib/pigchicken/net-acts"
 import { drawnPath, type SwingPath } from "@/lib/pigchicken/swing"
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
@@ -841,7 +842,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const stageSounds: NoteStageSound[] = []
     let templeShown = ""
     // dev only: lets the test scripts reach the combat and the temple
-    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStages: stages, __chickenEngine: engine })
+    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStages: stages, __chickenEngine: engine, __netActs: netActStore })
     const drone = createDrone()
     // how long the zone's ambience has been sounding: after a silence its layers come in one by one
     const ambEntry = createAmbienceEntry()
@@ -2037,9 +2038,13 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawBeam(ctx, combat, camX, view)
       extraList.forEach(([id]) => { combat.use(id); drawBeam(ctx, combat, camX, view) })
       combat.use("p1")
+      // online: the other browsers' violins and blows
+      for (const b of combat.remoteBeams) drawBeamLine(ctx, b, camX, view)
       ctx.restore()
       extraList.forEach(([id, eng]) => { combat.use(id); drawSwing(ctx, combat, eng.getState().shoulder, "back", screenView) })
       combat.use("p1")
+      const netSwings = netActStore.size ? netActStore.swings() : []
+      for (const n of netSwings) drawSwingOf(ctx, n.swing, n.origin, "back", screenView)
       // the projectile's path shows per item: hidden, with the fire button held, held or aim locked, always
       const tints = colorsRef.current
       // over a button or panel the mouse shows its normal cursor instead of the reticle and its volume ring
@@ -2239,12 +2244,15 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       if (combat.swing?.kind === "flat") fronts.push(["p1", origin])
       extraList.forEach(([id, eng]) => { combat.use(id); if (combat.swing?.kind === "flat") fronts.push([id, eng.getState().shoulder]) })
       combat.use("p1")
+      const netFronts = netSwings.filter(n => n.swing.kind === "flat")
       const stained = combat.poopStains.length > 0
-      if (wh.open || fronts.length || stained) {
+      if (wh.open || fronts.length || netFronts.length || stained) {
         if (!hudFront) clearFront()
         wctx.save()
         if (zoom !== 1) { wctx.translate(stageWidth() / 2, stageHeight() / 2); wctx.scale(zoom, zoom); wctx.translate(-stageWidth() / 2, -stageHeight() / 2) }
         fronts.forEach(([id, at]) => { combat.use(id); drawSwing(wctx, combat, at, "front", screenView) })
+        combat.use("p1")
+        for (const n of netFronts) drawSwingOf(wctx, n.swing, n.origin, "front", screenView)
         // what a dropping left on a chicken, on her
         if (stained) { wctx.save(); wctx.translate(jx, camY + jy); drawPoopStains(wctx, combat, camX, view); wctx.restore() }
         wctx.restore()
@@ -2712,7 +2720,6 @@ function TouchThrowButton({ engine, aimRef }: { engine: ChickenEngine; aimRef: R
 
 // the violin's bow crosses the strings between the bridge and the fingerboard: rig units along the violin from
 // her shoulder (the drawing's grip), and the mouse travel (px) for one full stroke of the bow
-const VIOLIN_BOW_X = -23
 const BOW_STROKE_PX = 260
 
 // flat item art, pointing right with the grip at (0, 0)

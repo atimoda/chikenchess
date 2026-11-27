@@ -13,6 +13,11 @@ const RECENT = [
         'Nova chave Dano entre jogadores nas Configurações do Pátio (desligada por padrão). Ligada, tiros, golpes, a Bicada, arremessos, bastões arremessados e a Corrente-gancho de um player tiram vida dos outros e dão um tranco, com o dano do próprio item. Instrumentos continuam só tocando. Quem chega a zero vira Kid ali mesmo e larga os itens, e volta a adulto enchendo a barra de música.',
         'No online, os tiros e arremessos de outro navegador também machucam quem está neste; os golpes de outro navegador ainda não.',
       ] },
+      { title: 'Pátio online: Bicada, golpes e violino', items: [
+        'A Bicada de outro navegador agora aparece: o pescoço recolhendo enquanto Atirar está segurado e o bico saindo ao soltar.',
+        'Os golpes de outro navegador (com a asa, com item, combo, golpe forte e Golpe desenhado) aparecem com a asa girando, o item na ponta e o rastro de ar, com o som do golpe por perto.',
+        'O violino de outro navegador aparece tocando: o feixe com as notas, o arco indo e vindo nas cordas e a nota sustentada, mais baixa que a sua, enquanto ele estiver na cena.',
+      ] },
       { title: 'Pátio: Bateria', items: [
         'Na escala da Bateria, segurar o clique (ou o dedo) e arrastar toca na hora cada peça em que ele encosta, na ordem, mesmo num movimento rápido que cruze várias de uma vez. Ficar dentro da mesma peça não repete; sair e voltar toca de novo. Arrastar rápido soa quase como um clique; devagar, mais leve.',
         'O kit agora soa com gravações de uma bateria acústica de verdade (Virtuosity Drums, livre de direitos): bumbo, caixa, tons, surdo, chimbal fechado e aberto pelo pedal, condução, sino, ataque, splash e china, cada peça com batidas fracas, médias e fortes e duas tomadas que se alternam. O Tom 2, o Splash e a China são feitos de outras peças da mesma bateria. Na primeira vez que se senta, enquanto as gravações carregam, a bateria sintetizada de antes cobre as batidas.',

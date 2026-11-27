@@ -2,6 +2,7 @@
 // target dummies and items lying on the ground. World coordinates (x grows into the world, y is the screen's).
 import { msg, t as tr } from '../i18n'
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
+import { ACT_HOLD_MS, swingAct, type NetAct } from './net-acts'
 import { DRAWN_RECOVER, SWING_PHASES, announceComboBlow, blowKind, nextCombo, pathAngle, pathAngles, pathEnd, pathSpan, swingCombo as comboOf, swingHitAt, swingLife, type Swing, type SwingPath } from './swing'
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
@@ -493,7 +494,7 @@ export function createCombat() {
   const music = createConductor()
   let out: MusicOut = SILENT
   let arpStep = 0, arpIdle = 0, phraseBase = 0, glissLast = 0, glissSteps = 0, bonusTextT = 0
-  let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null = null
+  let beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number; item?: ItemId } | null = null
   let beamHeld: Held | null = null, beamMidi = 0
   // the aim's tremolo (lib/pigchicken/tremolo.ts): semitones the held instrument's notes bend right now
   let trem: TremoloState = newTremolo(), tremBend = 0
@@ -692,6 +693,13 @@ export function createCombat() {
   let reportHit: ((h: NetHit) => void) | null = null
   let netOn = false
   const netShots: NetShot[] = []
+  // and what each local player does with her body that the others draw (lib/pigchicken/net-acts.ts): the Bicada and
+  // the Golpe as they start (who: the local player; the sync puts her slot in)
+  const netActs: { who: string; act: NetAct }[] = []
+  // the other browsers' violins playing (by pid and slot): the beam drawn and its note held here, softer, while they
+  // keep saying it (left: s until it stops without a word)
+  const remoteBeams = new Map<string, { beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: null; bend?: number; vib?: number }; held: Held | null; midi: number; item: ItemId; left: number }>()
+  const stopRemoteBeam = (key: string) => { remoteBeams.get(key)?.held?.stop(); remoteBeams.delete(key) }
   // the other browsers' chickens (world units): the zombies go for the nearest chicken, local or not
   let netBodies: { x: number; y: number; pid?: number }[] = []
 
@@ -1275,7 +1283,7 @@ export function createCombat() {
     peck: Peck | null; peckPrep: number; peckCool: number
     inv: Owned[]; cur: number; cooldown: number; burstLeft: number; reloadT: number; bloom: number; meleeCool: number; kick: number
     throwT: number; throwAngle: number; throwItem: Owned | null; throwVoid: boolean; chargeT: number; prevFire: boolean; fireHeldItem: Owned | null; fireResume: Owned | null; aimAngle: number; pumpT: number; swing: Swing | null; swingCombo: number; swingGap: number; heavyItem: Owned | null; heavyT: number
-    beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
+    beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: number | null; bend?: number; vib?: number; item?: ItemId } | null; beamHeld: Held | null; beamMidi: number; arpStep: number; arpIdle: number; phraseBase: number
     glissLast: number; glissSteps: number; hover: Pickup | null; hoverOwned: Pickup | null; lastBody: Body | null; consumption: Consumption; effects: Effect[]; cages: Owned[]; cageDeny: number; cageArm: number | null; fireDeny: number
     trem: TremoloState; tremBend: number; tremReach: number | null; aimReach: number; aimKind: AimKind; harp: HarpState; stringAims: (StringAim | null)[] | null; kit: KitState; seated: { seat: Seat; owned: Owned } | null; aimPoint: { x: number; y: number } | null
   }
@@ -2482,6 +2490,7 @@ export function createCombat() {
       item: wing ? null : held() ?? null, damage: strong ? d.heavyDamage : d.meleeDamage, push: strong ? d.heavyPush : d.meleePush, durability: d.durability > 0, name: d.name,
       ...(strong ? { heavy: true, charge: heavy, size } : {}),
     }
+    if (netOn) netActs.push({ who: active, act: swingAct(swing, -1) })
     swingGap = 0
     // the Itens panel's combo window bar (only while it is open): the window counts once the move and the block end
     if (active === 'p1') announceComboBlow(() => ({ busy: Math.max(time, meleeCool), window: strong ? 0 : d.comboWindow }))
@@ -2503,6 +2512,7 @@ export function createCombat() {
       item: wing ? null : held() ?? null, damage: d.meleeDamage, push: d.meleePush, durability: d.durability > 0, name: d.name,
       path, struck: new Set(), note: null,
     }
+    if (netOn) netActs.push({ who: active, act: swingAct(swing, -1) })
     swingGap = 0
     if (active === 'p1') announceComboBlow(() => ({ busy: Math.max(time, meleeCool), window: 0 }))
   }
@@ -2912,7 +2922,7 @@ export function createCombat() {
       } else beamWall.set(active, since)
       x = lx; y = ly
     } else beamWall.delete(active)
-    beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null, bend: tremBend, vib: d.vibratoDepth }
+    beam = { x1: muzzle.x, y1: muzzle.y, x2: x, y2: y, midi, color, target: hit?.id ?? null, bend: tremBend, vib: d.vibratoDepth, item: d.id }
     h.ammo = Math.max(0, h.ammo - dt * d.rate); if (h.refill) h.refill = 0
     bloom = 0
     if (hit && offKey(hit, midi, x, y)) hit = null
@@ -3609,8 +3619,50 @@ export function createCombat() {
     setNetFollower(fn: ((h: NetHit) => void) | null) { reportHit = fn },
     get netFollower() { return !!reportHit },
     // while online, the shots fired here are kept for the sync to send (it empties the list)
-    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; chestOpens.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
+    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; netActs.length = 0; [...remoteBeams.keys()].forEach(stopRemoteBeam); chestOpens.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
     netShots,
+    netActs,
+    /** What a local player keeps doing that the others must keep seeing (said again every batch): the Bicada's
+     *  wind-up and the violin's beam. */
+    liveActs(id: string): NetAct[] {
+      const l = id === active ? { peckPrep, aimAngle, beam, inv, cur, seated } : loadouts.get(id)
+      if (!l) return []
+      const out: NetAct[] = []
+      const own = l.seated?.owned ?? l.inv[l.cur] ?? null
+      if (l.peckPrep > 0 && !own) out.push({ k: 'pp', s: -1, a: Math.round(l.aimAngle * 100) / 100, p: Math.round(items.peck.peckPull * Math.min(1, l.peckPrep / 0.12)), r: Math.round(items.peck.meleeRange) })
+      const b = l.beam
+      if (b?.item) out.push({ k: 'vb', s: -1, i: b.item, x1: Math.round(b.x1), y1: Math.round(b.y1), x2: Math.round(b.x2), y2: Math.round(b.y2), m: Math.round(b.midi * 100) / 100, c: b.color, ...(b.bend ? { b: Math.round(b.bend * 100) / 100 } : {}), ...(b.vib ? { v: b.vib } : {}) })
+      return out
+    },
+    /** Another browser's acts (cleaned): its violins' beams play and show here (softer), its blows and pecks are
+     *  heard when they are near (the poses are lib/pigchicken/net-acts.ts's store). */
+    addRemoteActs(list: readonly NetAct[], pid: number) {
+      let heard = 0
+      for (const a of list) {
+        if (a.k === 'vb') {
+          const key = `${pid}:${a.s}`, d = items[a.i]
+          if (!d) continue
+          const beamNow = { x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2, midi: a.m, color: a.c, target: null, bend: a.b, vib: a.v }
+          const near = Math.max(a.x1, a.x2) > view.l - 200 && Math.min(a.x1, a.x2) < view.r + 200
+          let r = remoteBeams.get(key)
+          if (r && r.item !== a.i) { stopRemoteBeam(key); r = undefined }
+          if (!r) { r = { beam: beamNow, held: null, midi: a.m, item: a.i, left: 0 }; remoteBeams.set(key, r) }
+          r.beam = beamNow; r.left = ACT_HOLD_MS / 1000
+          const pitch = a.m + (a.b ?? 0)
+          // its note, softer than one's own, only while it is in the scene
+          if (near && !r.held) { r.held = out.hold(d.voice, pitch, vibOf(d)); r.midi = pitch }
+          else if (!near && r.held) { r.held.stop(); r.held = null }
+          else if (r.held && Math.abs(pitch - r.midi) > 0.005) { r.held.setPitch(pitch); r.midi = pitch }
+          r.held?.setVolume?.(0.6 * aimVolume(d.volMin, d.volMax, 1))
+          continue
+        }
+        if (a.k !== 'pk' && a.k !== 'sw') continue
+        const at = netBodies.find(b => b.pid === pid)
+        if (at && at.x > view.l - 200 && at.x < view.r + 200 && heard++ < 2) sounds.push({ kind: 'swing', item: null })
+      }
+    },
+    /** the other browsers' violins' beams now (drawn like one's own) */
+    get remoteBeams() { return [...remoteBeams.values()].map(r => r.beam) },
     setNetBodies(list: { x: number; y: number; pid?: number }[]) { netBodies = list },
     addRemoteShots,
     // the owner applies another browser's hit on one of its enemies, as if it were its own
@@ -4000,6 +4052,7 @@ export function createCombat() {
             const p = items.peck
             peck = { angle: targetAngle, pull: p.peckPull * Math.min(1, peckPrep / 0.12), reach: p.meleeRange, t: 0, time: Math.max(0.05, p.meleeTime), hit: false }
             peckPrep = 0; peckCool = Math.max(p.meleeCooldown, p.meleeTime); sound('swing', null); peckStarted = true
+            if (netOn) netActs.push({ who: active, act: { k: 'pk', s: -1, a: Math.round(peck.angle * 100) / 100, p: Math.round(peck.pull), r: Math.round(peck.reach), tm: Math.round(peck.time * 1000) / 1000 } })
           }
         }
       } else if (h && d.consumable) {
@@ -4147,6 +4200,8 @@ export function createCombat() {
       dt = frameDt
       if (world) {
         spreadOrbits(dt)
+        // the other browsers' violins: a beam they stopped saying stops here too
+        remoteBeams.forEach((r, key) => { r.left -= dt; if (r.left <= 0) stopRemoteBeam(key) })
         for (let i = bullets.length - 1; i >= 0; i--) {
           const b = bullets[i]
           if (!stepBullet(b, dt * timeAt(b.x, b.y), ctx)) continue
