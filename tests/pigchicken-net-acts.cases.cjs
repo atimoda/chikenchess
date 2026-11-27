@@ -213,3 +213,19 @@ test('how the item is held goes out while it is more than carried: a throw charg
   assert.equal(two.held.item, 'bat')
   assert.deepEqual(two.liveActs('ghost'), [], 'no such player')
 })
+
+test("the lobby owner's undead bird whistles at this browser's players too (and only once it flies)", () => {
+  const c = online()
+  c.setNetFollower(() => {})
+  const bird = { id: 900, kind: 'undead', mirror: true, net: 5, x: 700, y: 400, w: 30, h: 30, hp: 10, maxHp: 10, face: 1, state: 'idle', animT: 0, deadT: 0, harmony: 0, flash: 0, vx: 0, data: { bird: 'pardal', phase: 'bird', params: {} } }
+  c.targets.push(bird)
+  let most = 0
+  for (let i = 0; i < 60 * 8; i++) { worldTick(c); most = Math.max(most, c.noteShots.filter(n => n.source === 'bird').length) }
+  assert.ok(most >= 1, 'it whistled a note at her')
+  const quiet = online()
+  quiet.setNetFollower(() => {})
+  quiet.targets.push({ ...bird, data: { bird: 'pardal', phase: 'fall', params: {} } })
+  let none = 0
+  for (let i = 0; i < 60 * 8; i++) { worldTick(quiet); none = Math.max(none, quiet.noteShots.filter(n => n.source === 'bird').length) }
+  assert.equal(none, 0, 'an undead on the ground does not whistle')
+})

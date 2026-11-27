@@ -3094,6 +3094,22 @@ export function createCombat() {
     at.poopIn = poopWait(every)
   }
   // an undead bird: an enemy itself, it only lets them fall on the chickens
+  const mirrorBirds = new WeakMap<Target, { whistleIn: number; poopIn?: number }>()
+  function mirrorBirdStep(t: Target, dt: number) {
+    const u = t.data as UndeadState | undefined
+    if (!u?.bird || t.deadT > 0 || (u.phase !== 'bird' && !u.perch)) return
+    const type = BIRDS[u.bird]
+    if (!type) return
+    let m = mirrorBirds.get(t)
+    if (!m) { m = { whistleIn: whistleTime(type) }; mirrorBirds.set(t, m) }
+    m.whistleIn -= dt
+    if (m.whistleIn <= 0) { m.whistleIn = whistleTime(type); whistle(t.x, t.y - t.h / 2, type, u.params?.mode ?? null) }
+    if (type.poop) {
+      const at = { x: t.x, y: t.y - t.h / 2, poopIn: m.poopIn }
+      birdPoops(at, type.poop.every, type.poop.damage, 0, null, false, false, dt)
+      m.poopIn = at.poopIn
+    }
+  }
   function undeadPoops(t: Target, u: UndeadState, p: { every: number; damage: number }, dt: number) {
     const at = { x: t.x, y: t.y - t.h / 2, poopIn: u.poopIn }
     birdPoops(at, p.every, p.damage, 0, null, false, false, dt)
@@ -4541,7 +4557,10 @@ export function createCombat() {
       targets.push(...pendingUndead.splice(0))
       for (let i = targets.length - 1; i >= 0; i--) {
         const t = targets[i]
-        if (t.kind !== 'undead' || t.mirror) continue
+        if (t.kind !== 'undead') continue
+        // online, the lobby owner's undead bird on this browser: it whistles and drops on this browser's players too
+        // (each browser keeps its own clock for them; the owner's own whistles go to its own players)
+        if (t.mirror) { mirrorBirdStep(t, tdt(t)); continue }
         const u = t.data as UndeadState, dt = tdt(t)
         t.animT += dt
         // an undead bird may rest on a wire after circling a while, and runs from whoever comes near
