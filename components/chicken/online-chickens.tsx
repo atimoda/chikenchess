@@ -23,8 +23,14 @@ import { mineStore } from "@/lib/pigchicken/mine-grid-store"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
-import { DEFAULT_ITEMS, classItem, isStaff, itemRig, pointClassOf, type ItemId } from "@/lib/pigchicken/items"
-import { aimElevation, staffPose } from "@/lib/pigchicken/staff-pose"
+import { DEFAULT_ITEMS, VIOLIN_BOW_X, bowed, type ItemId } from "@/lib/pigchicken/items"
+import { netActStore, type NetAct } from "@/lib/pigchicken/net-acts"
+import { readNetBaby } from "@/lib/chicken/net-baby"
+import { babyArt } from "@/lib/chicken/baby"
+import { heldItemPose } from "@/lib/pigchicken/held-pose"
+import type { Combat } from "@/lib/pigchicken/combat"
+import type { Swing } from "@/lib/pigchicken/swing"
+import { rigSwing } from "@/components/pigchicken/draw/effects"
 import { stageHeight, stageWidth } from "@/lib/stage-size"
 import { liveZoneEffectsAt } from "@/lib/pigchicken/zone-physics"
 
@@ -42,6 +48,9 @@ const SEND_MS = 50
 const CHICKS_MS = 100, CHICKS_KEEP_MS = 1000
 // the name tag sits this far above her feet (rig units, like the chat bubble)
 const TAG_UP = 236
+// another browser's violin: one stroke of the bow this long (ms)
+const BOW_MS = 500
+type NetHold = Extract<NetAct, { k: "hp" }>
 
 export const netColor = (index: number) => PLAYER_COLORS[index % PLAYER_COLORS.length]
 export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getNetState)
@@ -49,7 +58,9 @@ export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getN
 // aim: the angle she is drawn pointing at, eased toward the latest one (the packets come 20 times a second)
 // portal: the portal animation she is in on this screen (as her browser says), and the camera it was last drawn with
 // housed: out of sight, inside a house that is closed on this screen
-type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; housed: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number; color: string; small: boolean }
+// bowing: her violin plays (its bow goes back and forth across the strings); hold: how she holds her item (net-acts
+// "hp"); swing: her blow now
+type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; housed: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number; color: string; dress: string; look: ChickenLook | null; baby: { skin: string | null; bar: number } | null; bowing: boolean; hold: NetHold | null; swing: Swing | null }
 // another browser's chick drawn here (id: its id in the lobby; hidden: asked of its browser, out of sight meanwhile)
 export type NetChickMirror = { engine: ChickenEngine; wrap: HTMLDivElement; pid: number; id: number; hidden: boolean; hide: () => void }
 // the shortest turn from a to b
@@ -131,7 +142,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const tag = document.createElement("div")
         tag.className = "pointer-events-none fixed left-0 top-0 z-[203] whitespace-nowrap rounded-full border-2 bg-black/60 px-2 py-0.5 font-mono text-[11px] font-bold text-white"
         host.appendChild(tag)
-        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, housed: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0, color: netColor(p.color), small: false }
+        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, housed: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0, color: netColor(p.color), dress: "", look: null, baby: null, bowing: false, hold: null, swing: null }
         engine.setRemote(() => {
           const c = remoteChicken(entry.pid, entry.slot)
           if (!c) return null
@@ -142,16 +153,22 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
           const target = byteAngle(c.aim)
           entry.aim = target === null ? null : entry.aim === null ? target : entry.aim + turnTo(entry.aim, target) * (1 - Math.exp(-dt * 20))
           const angle = entry.aim ?? (c.face < 0 ? Math.PI : 0)
-          const key = itemKey(c.item), svg = key ? ITEM_SVG[key as keyof typeof ITEM_SVG] : undefined
-          if (c.item !== entry.item || key) {
-            entry.item = c.item
-            const own = key && key in DEFAULT_ITEMS ? DEFAULT_ITEMS[key as ItemId] : null
-            // (as her class holds it: Pig's and Ken's own Pontos)
-            const def = own ? classItem(own, pointClassOf(engine.speciesNow())) : null
-            // a staff is carried in its own pose on her body (the game's default one), as on the browser that plays her
-            const staff = def && isStaff(def) ? staffPose(def, 0, aimElevation(angle, c.face)) : null
-            engine.setHeld(key && svg ? { svg, itemKey: key, angle, kick: 0, atHand: !!staff, rig: def ? itemRig(def) : null, staff } : null)
+          // the item in her wing, held as on her browser (heldItemPose, from what it says: her blow, a charge, eating...)
+          const key = itemKey(c.item), id = key && key in DEFAULT_ITEMS ? key as ItemId : null, hp = entry.hold
+          entry.item = c.item
+          const ph = (now / BOW_MS) % 2
+          const def = id ? DEFAULT_ITEMS[id] : null
+          const seen = {
+            held: id ? { item: id, ammo: hp?.am === 0 ? 0 : 1, durability: 1, flying: !!hp?.fl, back: !!hp?.bk } : null,
+            consumption: hp?.ei ? { item: hp.ei, left: 1 - (hp.ec ?? 0), total: 1 } : null,
+            item: (i: ItemId) => DEFAULT_ITEMS[i], species: engine.speciesNow(), swing: entry.swing,
+            throwCharge: hp?.tc ?? 0, throwAngle: hp?.ta ?? angle, fireCharge: hp?.fc ?? 0, aimAngle: angle, kick: 0,
+            heavyCharge: hp?.hc ?? 0, heavyCharging: hp?.hc !== undefined, hookSpinning: hp?.hc !== undefined && !!def?.grapple,
+            reloading: hp?.rl ?? 0, inHand: () => hp?.ih ?? 1,
           }
+          // her violin while it plays: the bow goes back and forth, a stroke every BOW_MS
+          const bow = entry.bowing && def && bowed(def) ? { x: VIOLIN_BOW_X, stroke: ph < 1 ? ph : 2 - ph } : null
+          engine.setHeld(heldItemPose(seen as unknown as Combat, now, bow, c.face))
           engine.setGame({ lookAngle: entry.aim })
           // in a portal: the same animation as on her browser, into (or out of) the portal's centre on this screen
           const state = stateName(c.state)
@@ -176,11 +193,14 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         r = entry
         map.set(k, r)
       }
-      r.engine.setLook((p.looks[slot] as ChickenLook | null) ?? null)
+      // (a Filhote over there: her look says so, with her skin and music bar)
+      const seen = readNetBaby(p.looks[slot] ?? null)
+      r.engine.setLook((seen.look as ChickenLook | null) ?? null)
+      r.look = (seen.look as ChickenLook | null) ?? null; r.baby = seen.baby
       r.tag.textContent = p.chickens > 1 ? `${p.name} ${slot + 1}` : p.name
       r.tag.style.borderColor = netColor(p.color)
       // her look was set again: a Filhote is dressed again at the next frame
-      r.color = netColor(p.color); r.small = false
+      r.color = netColor(p.color); r.dress = "?"
     })
     const speakers: Record<string, ChickenEngine> = {}
     map.forEach(r => { if (r.slot === 0) speakers[`net:${r.pid}`] = r.engine })
@@ -218,12 +238,25 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
       })
       remotes.current.forEach(r => {
         if (!r.seen) return
+        // what she does with her body over there: the Bicada, the Golpe (whose air the Parquinho draws from her
+        // shoulder) and the violin's bow
+        const act = netActStore.pose(r.pid, r.slot, now)
+        r.engine.setPeck(act.peck)
+        r.engine.setSwing(rigSwing(act.swing))
+        netActStore.setOrigin(r.pid, r.slot, act.swing && !r.housed ? r.engine.getState().shoulder : null)
+        r.bowing = act.bowing; r.hold = act.hold; r.swing = act.swing
         // a Filhote of the Grade de blocos (the lobby's owner says who): a chick in her browser's colour
+        // a Filhote of the Grade de blocos (the lobby's owner says who): a chick in her browser's colour; a Filhote of
+        // her own (her life ran out): the Filhote of her class in her skin, with her music bar
         const small = mineStore.netChick(r.pid, r.slot)
-        if (small !== r.small) {
-          r.small = small
-          if (small) { r.engine.setSpecies("chick"); r.engine.setArt(chickArt(playerChickStyle(r.color))) } else { r.engine.setSpecies(undefined); r.engine.setArt(null) }
+        const dress = small ? "mine" : r.baby ? `baby:${r.baby.skin ?? ""}` : ""
+        if (dress !== r.dress) {
+          r.dress = dress
+          if (small) { r.engine.setSpecies("chick"); r.engine.setArt(chickArt(playerChickStyle(r.color))) }
+          else if (r.baby && r.look) { r.engine.setSpecies("chick"); r.engine.setArt(babyArt(r.look, r.baby.skin)) }
+          else { r.engine.setSpecies(undefined); r.engine.setArt(null) }
         }
+        r.engine.setMeter(r.baby && !small ? r.baby.bar : null)
         // inside a house no one of this screen is in: the façade hides her and her name
         const housed = houseRoomsStore.netHidden(r.pid, r.slot)
         if (housed !== r.housed) { r.housed = housed; r.wrap.style.visibility = r.tag.style.visibility = housed ? "hidden" : "visible" }

@@ -48,6 +48,7 @@
 | Pátio: mata do fundo (Configurações do Pátio → Mata: Mata ao longe e Mata perto) | [Mata](docs/mechanics/patio/forest.md) |
 | Pátio: prédios do fundo (Configurações do Pátio → Prédios: fileiras, modelos, data-centers) | [Prédios](docs/mechanics/patio/skyline.md) |
 | Pátio: players, lobby, cores, chat e Pátio online | [Players e online](docs/mechanics/patio/players-and-online.md) |
+| Pátio online: itens no chão e bonecos de treino compartilhados (dono do lobby, pedir, largar) | [Itens e bonecos compartilhados](docs/mechanics/patio/online-share.md) |
 | Pátio: itens, inventário, roda, consumíveis e explosões | [Itens](docs/mechanics/patio/items.md) |
 | Pátio: pegar itens do chão (botão Pegar, Pegar segurando, Correr guarda sem equipar, alcance, Golpe e Bicada que coletam) | [Pegar itens do chão](docs/mechanics/patio/pickup.md) |
 | Pátio: alinhamento da barra do inventário (Separado, Centralizado, Esquerda, Direita), trocas de item que repetem enquanto segura e roda do inventário | [Barra do inventário](docs/mechanics/patio/inventory-bar.md) |
@@ -160,7 +161,8 @@ Localização do código e checks: `docs/CODEBASE_MAP.md`. A agenda completa nã
 | [Pátio: arpejo ao arrastar da Harpa de Lira](docs/mechanics/patio/harp-arpeggio.md) | 4 KB |
 | [Pátio: escala Estrela](docs/mechanics/patio/star-scale.md) | 7 KB |
 | [Pátio: Próxima variação, variações nas trocas e tambores](docs/mechanics/patio/item-variations.md) | 7 KB |
-| [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 17 KB |
+| [Pátio: players, lobby, chat e online](docs/mechanics/patio/players-and-online.md) | 27 KB |
+| [Pátio online: itens e bonecos compartilhados](docs/mechanics/patio/online-share.md) | 4 KB |
 | [Pátio: rebate, zonas sonoras, jukebox e músicas](docs/mechanics/patio/songs.md) | 20 KB |
 | [Pátio: zonas sonoras, camadas e música ambiente](docs/mechanics/patio/zones.md) | 17 KB |
 | [Pátio: ritmos das zonas (microtempo, timbres, variações e blocos)](docs/mechanics/patio/rhythms.md) | 10 KB |

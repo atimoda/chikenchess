@@ -5,6 +5,35 @@ import { CHANGELOG_ARCHIVE } from './changelog-archive'
 // Only the most recent versions live here: edit the top entry. Older ones are in changelog-archive.ts.
 const RECENT = [
   {
+    version: '2.20.0',
+    date: '27/11/2026',
+    title: 'Pátio online: itens no chão compartilhados, bonecos de treino com a mesma vida para todos, fases de notas e Templo do Gongo visíveis para todos, golpes e gancho entre navegadores, pose do item na mão, Filhote e pássaros que assobiam para todos',
+    groups: [
+      { title: 'Pátio online: itens no chão', items: [
+        'Os itens no chão agora são os mesmos para todos no lobby: os do Pátio, os dos suportes, o que sai de um Baú ou de um prêmio, o que alguém larga, arremessa ou troca. Cada item que alguém pega some para todos.',
+        'Dois players que pegam o mesmo item ao mesmo tempo: fica com quem pediu primeiro; para o outro ele só some.',
+        'Uma Gaiola no chão leva junto as almas que tem dentro.',
+      ] },
+      { title: 'Pátio online: bonecos de treino', items: [
+        'Os bonecos de treino do Pátio têm a mesma vida para todos: o dano e o conserto com notas de qualquer navegador quebram e consertam o boneco em todas as telas, com o som e as lascas.',
+      ] },
+      { title: 'Pátio online: Templo do Gongo e fases de notas', items: [
+        'Quando alguém toca uma música numa Jukebox, Vitrola ou Gongo, ou joga a campanha do Templo do Gongo, os outros veem a fase dele: o anel, os aliens, as notas e as bombas voando, e um painel com o nome de quem toca, a música, os corações, os pontos, o combo e a afinação.',
+        'As notas que ele rebate tocam baixinho para quem está na cena.',
+        'Enquanto a fase de alguém toca numa zona, ninguém começa outra música ali: a Jukebox, a Vitrola e o Gongo recusam com o som abafado.',
+      ] },
+      { title: 'Pátio online: golpes, Bicada e gancho', items: [
+        'Com Dano entre jogadores ligado, os golpes e a Bicada de outro navegador agora também machucam e empurram os players daqui.',
+        'A Corrente-gancho prende e puxa o player de outro navegador, e o gancho dele puxa os players daqui.',
+      ] },
+      { title: 'Pátio online: aparência dos outros', items: [
+        'O item na mão de outro navegador mostra como está sendo segurado: carregando o arremesso ou o tiro, o arco puxado, o golpe forte carregando, comendo, recarregando, o bastão longe (arremessado) e o par de Boomerangs.',
+        'O Filhote de outro navegador aparece como Filhote, com a barra de música.',
+        'Os pássaros mortos-vivos assobiam notas e fazem cocô nos players de todos os navegadores, não só nos do dono do lobby.',
+      ] },
+    ],
+  },
+  {
     version: '2.19.0',
     date: '26/11/2026',
     title: 'Invite a friend nas partidas: chame um amigo, copie o link ou compartilhe nos apps; ano e cidade, tom, escala e harmonia com o tamanho e o hover do botão do globo; widgets redimensionam pela borda de cima e pelo canto superior direito; notas giratórias em qualquer instrumento com a escala Hangdrum; prévia do tabuleiro ao passar o mouse no histórico de jogadas; Mesa de chickenchess no Pátio: entre na fila nos banquinhos, jogue contra um bot ou um amigo sobre o Pátio e ganhe uma Chave de ouro, que abre o novo Ativador de grid trancado, com contagem 3, 2, 1 e opções da grade por Chocar; Harpa de Lira toca o arpejo arrastando a mira, com as notas flutuando em volta e saindo junto da nota principal; prévia do Golpe desenhado fiel ao desenho; Correr guarda o item do chão no inventário; o jogo inteiro em 8 idiomas, com o Idioma nas Preferências; Salvar no game chega na hora a quem está no Pátio online; Bateria toca cada peça em que o clique arrastado encosta e soa com gravações de uma bateria acústica',
@@ -12,6 +41,11 @@ const RECENT = [
       { title: 'Pátio: Dano entre jogadores', items: [
         'Nova chave Dano entre jogadores nas Configurações do Pátio (desligada por padrão). Ligada, tiros, golpes, a Bicada, arremessos, bastões arremessados e a Corrente-gancho de um player tiram vida dos outros e dão um tranco, com o dano do próprio item. Instrumentos continuam só tocando. Quem chega a zero vira Kid ali mesmo e larga os itens, e volta a adulto enchendo a barra de música.',
         'No online, os tiros e arremessos de outro navegador também machucam quem está neste; os golpes de outro navegador ainda não.',
+      ] },
+      { title: 'Pátio online: Bicada, golpes e violino', items: [
+        'A Bicada de outro navegador agora aparece: o pescoço recolhendo enquanto Atirar está segurado e o bico saindo ao soltar.',
+        'Os golpes de outro navegador (com a asa, com item, combo, golpe forte e Golpe desenhado) aparecem com a asa girando, o item na ponta e o rastro de ar, com o som do golpe por perto.',
+        'O violino de outro navegador aparece tocando: o feixe com as notas, o arco indo e vindo nas cordas e a nota sustentada, mais baixa que a sua, enquanto ele estiver na cena.',
       ] },
       { title: 'Pátio: Bateria', items: [
         'Na escala da Bateria, segurar o clique (ou o dedo) e arrastar toca na hora cada peça em que ele encosta, na ordem, mesmo num movimento rápido que cruze várias de uma vez. Ficar dentro da mesma peça não repete; sair e voltar toca de novo. Arrastar rápido soa quase como um clique; devagar, mais leve.',
@@ -156,109 +190,6 @@ const RECENT = [
       { title: 'Qualidade automática sem prender em 30 FPS', items: [
         'Quando o “Ajustar automaticamente” baixa a qualidade gráfica ou sonora, a redução vale só até recarregar ou fechar a página; ao abrir de novo, o jogo volta ao nível escolhido à mão ou ao do aparelho. Antes, um engasgo passageiro deixava o computador preso em Baixa, a 30 FPS, para sempre.',
         'Quem já tinha ficado preso em Baixa pelo ajuste automático volta ao nível normal na próxima abertura. Níveis escolhidos à mão com a caixa desligada, e a Baixíssima, continuam como estavam.',
-      ] },
-    ],
-  },
-  {
-    version: '2.17.0',
-    date: '24/11/2026',
-    title: 'Pátio: Golpe desenhado; estilos prontos na Zona; brilho dos itens com uma cor por grupo; luneta da Sniper; recuo no ar em todas as armas e instrumentos; caminhada lenta pelo analógico; Perfil e Amigos como abas no título do Vestiário; Pátio abre com “Carregando…” em vez da versão antiga; Gerar de MIDI com a música inteira; inventário do celular em pé alinhado; Baixo + Pulo e diagonais para trocar de bloco na Grade; abas no Modo editor e painel fixo em cima ou embaixo; balão do chat no lugar com zoom; câmera acompanha o boneco sugado pelo portal e corre entre os portais de um par; zoom até 800% e Full Size',
-    groups: [
-      { title: 'Pátio: Golpe desenhado', items: [
-        'O golpe do clique direito do mouse agora sai ao soltar o botão, não mais ao apertar. Um clique simples dá o golpe do combo na hora, mirado no ponto clicado; se o ponto estiver longe, ela também anda até lá (com Clique direito: point and click ligado no item), sem esperar chegar para golpear. Saíram o golpe adiado até o destino e o golpe na hora quando algo encostava nela.',
-        'Clicar com o botão direito e arrastar em volta da galinha desenha o golpe: enquanto segura, uma linha fina mostra o desenho, e ao soltar a asa refaz o mesmo movimento, nos mesmos ângulos e na mesma velocidade, com um rastro que segue o desenho. Cada coisa por onde a asa passa é atingida na hora em que ela passa.',
-        'Com um instrumento na asa, cada nota por onde o golpe passa toca o som de golpe daquela nota, no momento em que é alcançada.',
-        'No celular: tocar no Punch dá o golpe do combo como antes; arrastar o Punch para fora do círculo desenha o golpe a partir de onde ela mira. Arrastar o dedo na tela perto dela também desenha, a partir do ponto tocado; um toque sem arrastar continua atirando ali.',
-      ] },
-      { title: 'Pátio: céu até o teto nos Pátios altos', items: [
-        'Num Pátio com Altura limite acima do padrão (até 8000), o céu agora vai até o teto do mundo, em vez de ficar preto a partir de certa altura. A passagem para a cor do alto sobe junto, como num Pátio de altura padrão.',
-      ] },
-      { title: 'Pátio: Training room refeito', items: [
-        'O Training room agora ensina 21 movimentos em três seções: Básico, Paredes e teto e Chocar. Cada estação tem a lousa com os botões e o fantasminha que faz o movimento quando você chega perto.',
-        'No fim, a seção Combate e itens: uma lousa para pegar e trocar itens, com uma Flauta e uma Pistola nos suportes, e outra para atirar, tocar, golpear e arremessar, com três alvos de treino.',
-        'Movimentos novos na lousa (e no Fantasma do Quadro de lousa no Modo editor): Trocar de lado na caixa, Fios do poste, Chocar, Pulo chocando na parede, Pulo chocando no teto e Chocar agarrada.',
-        'Ao lado da entrada, portais levam direto ao começo de Paredes e teto, de Chocar e de Combate e itens; no começo de cada seção, um portal volta à entrada.',
-      ] },
-      { title: 'Painéis: Reverter para o padrão', items: [
-        'Todo painel com Salvar no game agora termina com o botão Reverter para o padrão, logo à esquerda do Salvar no game: Personagem, Ajustes, Câmera de Mira, Controles, Configurações do Pátio, Camadas, Volume, Escalas, Itens e Biblioteca de almas. O ícone de seta circular do cabeçalho saiu.',
-        'Reverter para o padrão volta todos os campos do painel, de modo que um Salvar no game logo depois não tem nada a gravar. Configurações do Pátio agora volta também céu, montanhas, floresta, prédios, nuvens, neve, aurora, zoom, Zonas das cenas, Fundo da Vila e brilho dos itens; Escalas e Itens voltam todas as escalas e todos os itens.',
-        'Personagem: Reverter para o padrão volta à versão salva no game, então reverter e salvar logo depois não lista nada e nenhum parâmetro fica amarelo (antes Controle no ar e Multiplicador da corrida do Ken e Espalhada dos itens do Pig ficavam). O padrão dos Kids no código também passou a ser o salvo (cabeça, corpo e 3 instrumentos, 3 armas e 3 utilitários).',
-        'Kids: a regra Não pega bastões nem armas de golpe vem desligada, então os Kids pegam qualquer item, inclusive Taco, Passaguá, Boomerang, Corrente-gancho, Martelo de Thor, Cajado de Odin e baralhos, até o limite de cada categoria.',
-        'Personagem: a seta do cabeçalho virou Desfazer a última alteração. Ela desfaz uma alteração por vez (arrastar um knob conta como uma) e fica apagada quando tudo volta ao que está salvo no game.',
-        'Câmera de Mira e Ajustes: o Salvar no game de cada um grava só os seus campos.',
-      ] },
-      { title: 'Pátio: painel Grade de blocos', items: [
-        'O painel Grade de blocos ganhou Salvar no game (admin) e Reverter para o padrão no fim. Os ajustes salvos no game, menos ligar a grade, viram o padrão de todo Pátio novo e de todo Pátio que ainda não tinha a sua grade. Reverter volta os ajustes ao padrão e deixa a grade ligada ou desligada como estava.',
-        'Em cima do painel, três botões lado a lado no lugar da caixa e dos dois botões de antes: Ligar/Desligar, Resetar e Números. Ligar/Desligar e Números ficam amarelos enquanto ligados; com a grade desligada, Resetar e Números ficam apagados.',
-      ] },
-      { title: 'Pátio: trocar de bloco na Grade', items: [
-        'No chão de uma sala com outro bloco fechado embaixo, Baixo + Pulo agora passa para o bloco de baixo, como Chocar + Pulo, em vez do super pulo. Sem bloco fechado embaixo, ou com uma direção junto, continua o super pulo.',
-        'Com Cantos em octógono e vão: em pé na rampa de baixo por dentro de uma sala, Baixo + Pulo passa para o bloco da diagonal de baixo; pendurada no teto inclinado de cima, Cima + Pulo passa para o bloco da diagonal de cima. Só quando há um bloco fechado naquela diagonal.',
-        'A hit-area de cada pose agora vale para os vãos entre blocos: com a caixa de Agachado ou de Chocando mais baixa que o vão, o boneco passa agachado ou chocando, e lá dentro continua nessa pose até sair. Paredes e tetos duros também medem o boneco pela caixa da pose em que ele está.',
-        'Quem sai de uma sala sem trocar de bloco (atravessando uma parede por um objeto que cruza a grade, por um empurrão ou por um bug) e vai parar no vão entre os blocos passa a ver a grade do lado de fora.',
-      ] },
-      { title: 'Pátio: estilos prontos na Zona', items: [
-        'O primeiro dropdown do painel da Zona (e da Zona da cena), agora Estilo, traz além das cenas um estilo pronto para cada ritmo: Pop, Balada, Rock, Disco, Funk, Jazz, House, Techno, Trap, Boom bap, Bossa nova, Samba, Baião, Reggae, Reggaeton, Afrobeat e Pulso. Escolher um preenche o bloco inteiro: tom, escala, acordes, progressão, BPM, batida e baixo.',
-        'O dropdown mostra o estilo que a zona ainda tem e volta a “Escolher estilo…” quando algo muda. Nova progressão I vi ii V (samba).',
-        'As seções do painel (Blocos, Harmonia, Ritmo, Baixo, Gravidade, Notas e regras) abrem e fecham pelo título amarelo, como no painel Personagem. Corpos virou a seção Gravidade.',
-      ] },
-      { title: 'Pátio: brilho dos itens', items: [
-        'O brilho dos itens no chão agora tem uma cor por grupo: armas em roxo, utilitários (esportivos, magia, chaves, itens da Grade de blocos e gaiolas) em azul, consumíveis (Bear Gummy, Cok) em verde e instrumentos no dourado de antes.',
-        'Em Configurações do Pátio, embaixo do slider Brilho dos itens, um quadrado de cor para cada grupo (Instrumentos, Armas, Utilitários, Consumíveis) muda a cor daquele grupo. Pátios que já tinham uma cor escolhida a mantêm nos instrumentos.',
-      ] },
-      { title: 'Vestiário: Perfil e Amigos no título', items: [
-        'Perfil e Amigos saíram da fileira das partes do boneco e viraram abas no título do painel, ao lado de Vestiário. Cada aba troca o conteúdo do próprio painel (o seu perfil, ou a lista de amigos com Invite), sem abrir outra janela por cima; Vestiário volta para o boneco.',
-      ] },
-      { title: 'Pátio: abrir sem versão antiga e sem dicas piscando', items: [
-        'Ao abrir um Pátio (o padrão inclusive), aparece “Carregando…” até chegar a versão salva no servidor, em vez de mostrar por alguns segundos a cópia antiga guardada no aparelho e depois trocar. Sem conexão, ou se o servidor demorar mais de 6 s, a cópia do aparelho aparece como antes.',
-        'Os balões de dica dos alvos de treino não piscam mais na tela durante o carregamento do Pátio: só aparecem quando o alvo é destruído.',
-      ] },
-      { title: 'Pátio: Gerar de MIDI com a música inteira', items: [
-        'Arquivos MIDI com mensagens de sistema (SysEx, como o reset General MIDI que muitos arquivos trazem no começo) eram lidos errado: as notas das faixas depois da mensagem iam parar milhares de compassos adiante, e a música gerada tinha só os aliens do começo. Agora a leitura confere com a de outros programas em 18 MIDIs reais testados.',
-        'As faixas dividem os lugares: uma bateria constante não toma mais todas as notas da dificuldade. Num MIDI completo com bateria, o Médio que gerava cerca de 25 aliens só de bumbo e caixa agora gera mais de 200, com melodia, baixo e acompanhamento.',
-        'Músicas longas nas dificuldades altas não perdem mais o final: quando passariam de 400 aliens, as notas são agrupadas em aliens maiores em vez de cortar o fim.',
-      ] },
-      { title: 'Pátio: inventário no celular em pé', items: [
-        'No celular em pé, a fileira de itens do 1º player no alto da tela segue o alinhamento de Controles → Inventário, como a barra de baixo do desktop e do tablet. No padrão (Separado), os instrumentos ficam encostados na borda esquerda e as armas e os utilitários ficam à direita, junto do avatar; Centralizado, Esquerda e Direita também valem. O nome do item escolhido aparece embaixo da casa dele.',
-      ] },
-      { title: 'Pátio: recuo no ar ao atirar', items: [
-        'Todas as armas e instrumentos agora empurram para trás quem atira no ar, a cada tiro ou nota, no sentido contrário ao da mira. No chão nada muda.',
-        'Os sopros são os que mais empurram: Trompete (agora com um terço da força de antes), Flauta e Sax. Depois vêm Teclado, Violão, Violino (enquanto o arco toca), Harpa de Lira, Pandeiro e Hangdrum; entre as armas, Lança-foguetes, Escopeta e Sniper empurram mais, Pistola, Rifle, Arco, Granada e Submetralhadora bem pouco.',
-        'Tiros carregados (Arco, Harpa de Lira, Granada) empurram conforme a carga. A força de cada item fica em Itens → Manuseio → Recuo no ar; quem já tinha mudado esse valor mantém o seu.',
-      ] },
-      { title: 'Pátio: mira treme ao atirar recarregando', items: [
-        'Apertar Atirar enquanto a arma ou o instrumento recarrega faz a mira dar uma tremidinha rápida, além do clique, mostrando que o tiro não saiu.',
-      ] },
-      { title: 'Analógico de movimento: caminhada lenta e profundidade da mira', items: [
-        'Empurrar o analógico de movimento (gamepad ou celular) menos de 80% faz a galinha caminhar devagar; empurrado até o fim, ela anda na velocidade normal. Correr, as setas, o teclado e o direcional do gamepad continuam na velocidade normal.',
-        'A velocidade da caminhada lenta é ajustável em Controles → Analógicos (“Caminhada lenta”, padrão 0,5x).',
-        'Quando o analógico de mira não está em uso, o quanto o analógico de movimento está empurrado aproxima ou afasta a mira do boneco. Usando o analógico de mira, é ele quem decide a distância, como antes.',
-      ] },
-      { title: 'Controles de toque: arrastar o Pular', items: [
-        'Um dedo que encosta no Pular e arrasta empurra o analógico de movimento, como já fazia o Correr. Só vale para toques que começam no Pular: chegar nele arrastando do Correr ou do Chocar não muda nada.',
-      ] },
-      { title: 'Pátio: luneta da Sniper', items: [
-        'Segurando Atirar com a Sniper, ela mira pela luneta: a câmera avança na direção da mira e se afasta, mostrando mais longe, sem tirar a galinha da tela. Soltar atira e a câmera volta.',
-        'Uma lupa redonda aparece na ponta da mira e aumenta os aliens, zumbis, bonecos, itens e tiros que estão embaixo dela, para acertar com mais precisão.',
-        'No analógico e nas setas, a retícula vai mais longe enquanto mira; com o mouse ela continua no cursor.',
-        'Itens → Luneta: ligar a luneta em qualquer arma ou instrumento e ajustar o tempo para mirar, quanto a câmera avança e afasta, a distância da retícula e o tamanho e o aumento da lupa. Cada arma guarda os seus números. Só a Sniper vem com a luneta ligada.',
-      ] },
-      { title: 'Galinha: trocar de fio no cruzamento', items: [
-        'Andando em cima de um fio de poste ou torre, segurando Cima junto com a direção, ao passar por outro fio que cruza o seu ela muda para o que sobe mais para aquele lado, como ao subir numa parede. Segurando Agachar com a direção, muda para o que desce mais. Sem Cima nem Agachar, continua no mesmo fio.',
-      ] },
-      { title: 'Pátio: abas no Modo editor e balão do chat', items: [
-        'O topo do painel do Modo editor virou uma fileira de abas: Elementos (os cartões para arrastar), Zonas, Camadas, Grade, Pátio e Câmera. Com a edição ligada, a aba escolhida fica com a borda verde e mostra o seu painel logo abaixo, dentro do Modo editor: Camadas, Grade de blocos, Configurações do Pátio e Câmera de Mira; Zonas liga a camada das zonas e mostra o slider dela e os elementos de Música.',
-        'Clicar na aba de um painel que já está aberto solto fecha o solto e abre o painel dentro da aba. Abrir pelo cabeçalho o painel da aba que está aberta volta a aba para Elementos.',
-        'Com a edição desligada, os cartões continuam à mostra e os botões abrem e fecham os painéis soltos, como os do cabeçalho; Zonas liga e desliga a camada. As abas passam para a linha de baixo quando o painel fica estreito.',
-        'Com o Modo editor fixo na lateral e a edição ligada, dois cliques num elemento ou numa zona abrem o painel dele numa aba nova do Modo editor, com o nome do elemento, em vez de cobrir o painel inteiro. O mesmo vale para Camada e colisões, casas, árvores e a Zona da cena. A aba some ao escolher outra aba ou ao tirar a seleção, e volta a aba que estava antes.',
-        'O painel fixo do Modo editor pode ficar em cima (logo abaixo do cabeçalho, que continua no topo) ou embaixo, além de à direita: com ele fixo, botões Fixar em cima, Fixar embaixo e Fixar à direita no título; o do lado atual solta o painel. Em cima e embaixo, a divisória muda a altura. O Pátio, a câmera, o zoom, a mira e os cliques passam a usar só o espaço que sobra.',
-        'O balão do chat volta a ficar em cima da cabeça da galinha com qualquer zoom da câmera, inclusive com o Modo editor fixo na lateral.',
-      ] },
-      { title: 'Pátio: câmera vai junto para o portal e zoom até 800%', items: [
-        'Quando a galinha é sugada por um portal longe da tela (ao trocar de Pátio, por exemplo), a câmera desliza junto com ela até o portal, na mesma curva, em vez de ficar parada onde ela estava. Com o portal já à vista, a câmera não se mexe.',
-        'Num par de portais do mesmo Pátio, a câmera corre do portal de entrada até o de saída enquanto a galinha sai dele, em vez de pular de uma vez, mostrando onde fica um portal em relação ao outro.',
-        'Ao trocar de Pátio e nos pares de portais, o boneco agora entra e sai no lugar certo do anel com qualquer zoom e com o Modo editor fixo em cima.',
-        'Configurações do Pátio → Zoom: o ponto da direita agora vai até 800% (antes 400%), e a ponta esquerda, que afasta até o Pátio inteiro caber na tela, passou a se chamar Full Size.',
       ] },
     ],
   },

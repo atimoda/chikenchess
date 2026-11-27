@@ -137,6 +137,8 @@ export function createLayoutSync(combat: Combat) {
           targets.set(el.id, t)
         } else if (lastParams.get(el.id) !== key) combat.setDummyParams(t.id, params)
         lastParams.set(el.id, key)
+        // (the same in every browser of an online lobby)
+        if (t.dummy) t.dummy.key = el.id
       }
       t.w = el.w; t.h = el.h; t.y = bottom
       const x = inside ? cx : AWAY

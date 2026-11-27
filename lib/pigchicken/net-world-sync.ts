@@ -4,7 +4,7 @@
 // shows the other browsers', and passes on what a Passaguá asks of another browser and what that browser gives
 // (lib/pigchicken/net-souls.ts), and the Baús opened in each browser (lib/pigchicken/net-chests.ts), and it gives the round of the Grade de blocos its part
 // (lib/pigchicken/net-mine-sync.ts). ParquinhoPlay calls frame() once a frame, before the combat's step.
-import { getNetState, netCan, onNetWorld, remoteChicken, sendNetCages, sendNetChests, sendNetFoes, sendNetGive, sendNetHits, sendNetHouses, sendNetMine, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
+import { getNetState, netCan, onNetWorld, remoteChicken, sendNetCages, sendNetChests, sendNetFoes, sendNetGive, sendNetHits, sendNetHouses, sendNetMine, sendNetShare, sendNetShots, sendNetSouls, sendNetSpawn, sendNetTake, type NetWorldMsg } from '../chicken/online-room'
 import { stateName } from '../chicken/net-protocol'
 import type { Combat, ShotRoom } from './combat'
 import { cleanNetHouses } from './house-rooms'
@@ -16,11 +16,17 @@ import { applyNetChests, cleanNetChests, exportOpenChests } from './net-chests'
 import { cleanNetCages, exportCages, importCages, stepCageMirror, type CageMirror } from './cages'
 import { CAGE_IDS } from './items'
 import { createNetMineSync } from './net-mine-sync'
+import { cleanAct, isActKind, netActStore, type NetAct } from './net-acts'
+import { cleanDrops, cleanGives, cleanIds, cleanItems, exportItems, ownedIn, ownedOut, type NetOwned } from './net-items'
+import { cleanDummies, type NetShareMsg } from './net-share'
+import { cleanStageAct, netStageStore, STAGE_ACT_MS, type NetStageAct } from './net-stages'
 
 const FOES_MS = 100 // the owner's enemies: 10 times a second
 const FULL_MS = 2000 // and everything about them (also right after someone joins)
 const OUT_MS = 50 // shots and hits leave in batches, 20 times a second
 const BATCH = 32
+// of each batch, at most this many are the players' acts (lib/pigchicken/net-acts.ts: pecks, blows, the violin)
+const ACTS_MAX = 16
 
 export type NetRole = 'off' | 'owner' | 'follower'
 
@@ -29,7 +35,8 @@ const NET_SLOTS = 4
 
 // localPlayers: this browser's players in their slots' order ('p1' first), as the combat knows them
 // shotRoom: the room of a house a shot of another browser begins in ('hidden': inside a house closed on this screen)
-export function createNetWorldSync(combat: Combat, localPlayers: () => string[] = () => ['p1'], opts: { shotRoom?: (pid: number, x: number, y: number) => ShotRoom | 'hidden' | null } = {}) {
+// stageActs: the fases de notas this browser's players play, as the others draw them (lib/pigchicken/net-stages.ts)
+export function createNetWorldSync(combat: Combat, localPlayers: () => string[] = () => ['p1'], opts: { shotRoom?: (pid: number, x: number, y: number) => ShotRoom | 'hidden' | null; stageActs?: () => NetStageAct[] } = {}) {
   let role: NetRole = 'off'
   const inbox: NetWorldMsg[] = []
   const off = onNetWorld(m => { inbox.push(m); if (inbox.length > 300) inbox.shift() })
@@ -55,6 +62,9 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
   // the houses: the browsers that said one of their players is inside one; what this browser last said of its own
   const housePids = new Set<number>()
   let housesKey = '', lastHouses = 0
+  // what lies in the owner's world (lib/pigchicken/net-share.ts): what the owner last said of its items and dummies
+  let itemsKey = '', dummiesKey = '', lastShare = 0, lastShareFull = 0, shareOthers = ''
+  let lastStages = 0
 
   function become(next: NetRole) {
     if (next === 'follower') { combat.yieldShared(); combat.setNetFollower(h => { if (hitsOut.length < 256) hitsOut.push(h) }) }
@@ -68,6 +78,9 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
     cageMirrors.clear(); cagesKey = ''; lastCages = 0
     combat.setNetSeated([])
     housePids.clear(); clearNetHouseRooms(); housesKey = ''; lastHouses = 0
+    netActStore.clear()
+    itemsKey = ''; dummiesKey = ''; lastShareFull = 0; shareOthers = ''
+    netStageStore.clear()
   }
 
   return {
@@ -101,6 +114,8 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
 
       // souls can only be asked of the others through a server that relays it
       combat.setNetAsks(netCan('souls'))
+      // the items on the floor and the dummies are the owner's only through a server that relays them
+      combat.setShareRole(netCan('share') ? role : 'off')
 
       // ---------- in ----------
       const spawns: NetSpawn[] = []
@@ -138,18 +153,66 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
           const c = others.some(p => p.pid === m.pid) ? cleanNetHouses(m.list) : null
           if (c) { housePids.add(m.pid); setNetHouseRooms(m.pid, c) }
         }
+        else if (m.type === 'share') {
+          const sh = m.share as NetShareMsg | null
+          if (!sh || typeof sh !== 'object' || !others.some(p => p.pid === m.pid)) continue
+          if (role === 'follower' && m.pid === s.info!.ownerPid) {
+            // the owner's items and dummies; the items it gave this browser's players, the ones already gone
+            if (sh.items?.l) combat.importNetItems(cleanItems(sh.items.l, DEFAULT_ITEMS))
+            for (const [id, raw] of cleanGives(sh.items?.g)) { const o = ownedIn(raw, DEFAULT_ITEMS, combat.nextNetId); if (o) combat.takeNetItem(id, o) }
+            for (const id of cleanIds(sh.items?.n)) combat.netItemGone(id)
+            if (sh.dm) combat.importNetDummies(cleanDummies(sh.dm))
+          } else if (role === 'owner') {
+            // another browser's players take items (the first to ask gets each), drop others and hit the dummies
+            const gives: [number, NetOwned][] = [], gone: number[] = []
+            for (const id of cleanIds(sh.items?.t)) { const o = combat.giveNetItem(id); if (o) gives.push([id, ownedOut(o)]); else gone.push(id) }
+            if (gives.length || gone.length) sendNetShare({ items: { ...(gives.length ? { g: gives } : {}), ...(gone.length ? { n: gone } : {}) } }, m.pid)
+            const drops = cleanDrops(sh.items?.d, DEFAULT_ITEMS, combat.nextNetId)
+            if (drops.length) combat.addNetDrops(drops)
+            if (sh.dm) combat.addNetDummyDeltas(cleanDummies(sh.dm))
+          }
+        }
         else if (m.type === 'shots') {
-          const list = m.list.slice(0, BATCH).map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
-          const pid = m.pid, shotRoom = opts.shotRoom
+          const pid = m.pid, shotRoom = opts.shotRoom, got = m.list.slice(0, BATCH)
+          const list = got.map(x => cleanShot(x, DEFAULT_ITEMS)).filter((x): x is NetShot => !!x)
           if (list.length) combat.addRemoteShots(list, shotRoom && ((x, y) => shotRoom(pid, x, y)), pid)
+          // the acts of that browser's chickens travel in the same list (a violin inside a house closed here is not heard)
+          const acts = others.some(p => p.pid === pid) ? got.filter(x => isActKind((x as { k?: unknown } | null)?.k)).map(x => cleanAct(x, DEFAULT_ITEMS)).filter((x): x is NetAct => !!x && !(x.k === 'vb' && shotRoom?.(pid, x.x1, x.y1) === 'hidden')) : []
+          if (acts.length) { combat.addRemoteActs(acts, pid); netActStore.receive(pid, acts, now) }
+          // and the fases de notas they play
+          if (others.some(p => p.pid === pid)) for (const x of got) { if ((x as { k?: unknown } | null)?.k !== 'ns') continue; const st = cleanStageAct(x); if (st) netStageStore.receive(pid, st, now) }
         }
       }
 
       // ---------- out ----------
       if (combat.netShots.length > BATCH * 2) combat.netShots.splice(0, combat.netShots.length - BATCH * 2)
+      netActStore.keep(new Set(others.map(p => p.pid)))
+      netStageStore.keep(new Set(others.map(p => p.pid)))
+      if (combat.netActs.length > ACTS_MAX * 2) combat.netActs.splice(0, combat.netActs.length - ACTS_MAX * 2)
       if (now - lastOut >= OUT_MS) {
         lastOut = now
-        if (combat.netShots.length && others.length) sendNetShots(combat.netShots.splice(0, BATCH))
+        // the players' acts first (each with her slot in this browser's list), then the shots
+        const ids = localPlayers(), acts: NetAct[] = []
+        for (const { who, act } of combat.netActs.splice(0)) { const slot = ids.indexOf(who); if (slot >= 0 && slot < NET_SLOTS) acts.push({ ...act, s: slot }) }
+        ids.slice(0, NET_SLOTS).forEach((id, slot) => { for (const act of combat.liveActs(id)) acts.push({ ...act, s: slot }) })
+        const out: (NetShot | NetAct | NetStageAct)[] = others.length ? acts.slice(-ACTS_MAX) : []
+        // the stages this browser plays, 10 times a second (at most 2 in a batch, kept under the server's size)
+        if (others.length && opts.stageActs && now - lastStages >= STAGE_ACT_MS) {
+          lastStages = now
+          let room = 12000 - JSON.stringify(out).length
+          for (const st of opts.stageActs().slice(0, 2)) { const n = JSON.stringify(st).length; if (n < room) { out.push(st); room -= n } }
+        }
+        if (others.length) {
+          const shots = combat.netShots.splice(0, BATCH - out.length)
+          let room = 15500 - JSON.stringify(out).length
+          for (let i = 0; i < shots.length; i++) {
+            const n = JSON.stringify(shots[i]).length + 1
+            // (what does not fit goes in the next batch)
+            if (n > room) { combat.netShots.unshift(...shots.slice(i)); break }
+            out.push(shots[i]); room -= n
+          }
+        }
+        if (out.length) sendNetShots(out)
         else if (!others.length) combat.netShots.length = 0
         if (hitsOut.length) sendNetHits(hitsOut.splice(0, 64))
         for (const t of combat.netTakes.splice(0, 8)) { const to = t.k === 'f' ? s.info!.ownerPid : t.pid; if (to != null && to !== s.myPid) sendNetTake(to, { k: t.k, id: t.id }) }
@@ -193,6 +256,28 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
       if (role === 'owner' && others.length && netCan('chests')) {
         const key = others.map(p => p.pid).join(',')
         if (key !== chestsKey || now - lastChests >= FULL_MS) { chestsKey = key; lastChests = now; sendNetChests({ l: exportOpenChests(combat.chests) }) }
+      }
+      // the items and the dummies: a follower's takes, drops and hits go to the owner as they happen; the owner says its
+      // items and dummies when they change (at most 10 times a second), every 2 s and when someone joins
+      if (combat.shareRole === 'follower' && now - lastShare >= OUT_MS) {
+        lastShare = now
+        const t = combat.itemAsks.splice(0, 16), d = combat.itemDrops.splice(0, 32).map(p => [ownedOut(p.owned), Math.round(p.x), Math.round(p.y), Math.round(p.vy), Math.round(p.noPick * 10) / 10] as [NetOwned, number, number, number, number])
+        const dm = [...combat.dummyDeltas].map(([k, v]) => [k, Math.round(v * 100) / 100] as [string, number]).filter(([, v]) => v !== 0)
+        combat.dummyDeltas.clear()
+        const items = { ...(t.length ? { t } : {}), ...(d.length ? { d } : {}) }
+        if (t.length || d.length || dm.length) sendNetShare({ ...(t.length || d.length ? { items } : {}), ...(dm.length ? { dm } : {}) })
+      }
+      if (combat.shareRole === 'owner' && others.length && now - lastShare >= FOES_MS) {
+        lastShare = now
+        const key = others.map(p => p.pid).join(',')
+        const full = key !== shareOthers || now - lastShareFull >= FULL_MS
+        if (full) { shareOthers = key; lastShareFull = now }
+        const l = exportItems(combat.pickups), lk = JSON.stringify(l)
+        const dm = combat.exportDummies(), dk = JSON.stringify(dm)
+        const msg: NetShareMsg = {}
+        if (full || lk !== itemsKey) { msg.items = { l }; itemsKey = lk }
+        if (full || dk !== dummiesKey) { msg.dm = dm; dummiesKey = dk }
+        if (msg.items || msg.dm) sendNetShare(msg)
       }
       mine.frame(now, others.map(p => p.pid))
       if (role === 'owner' && others.length && now - lastFoes >= FOES_MS) {

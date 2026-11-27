@@ -8,7 +8,10 @@ import { msg, t as tr } from '../i18n'
 import { receiveChickenChat, setChickenChatTransport } from './chat'
 import { byteAngle, decodeNetSnapshot, encodeNetState, NET_MAX_BROWSERS, type NetChicken } from './net-protocol'
 import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world'
+import type { NetAct } from '../pigchicken/net-acts'
 import type { NetGive, NetSoul, NetTake } from '../pigchicken/net-souls'
+import type { NetShareMsg } from '../pigchicken/net-share'
+import type { NetStageAct } from '../pigchicken/net-stages'
 import type { NetChests } from '../pigchicken/net-chests'
 import type { NetCages } from '../pigchicken/cages'
 import type { NetMineActs, NetMineState, NetMineWord } from '../pigchicken/net-mine'
@@ -59,6 +62,9 @@ export type NetWorldMsg =
   | { type: 'mine'; pid: number; mine: unknown }
   // the house each of another browser's chickens is inside of (lib/pigchicken/house-rooms.ts)
   | { type: 'houses'; pid: number; list: unknown }
+  // what lies in the owner's world for everyone, or (to the owner) what another browser took or dropped
+  // (lib/pigchicken/net-share.ts)
+  | { type: 'share'; pid: number; share: unknown }
 type WorldListener = (m: NetWorldMsg) => void
 const worldListeners = new Set<WorldListener>()
 export function onNetWorld(fn: WorldListener) { worldListeners.add(fn); return () => { worldListeners.delete(fn) } }
@@ -68,7 +74,7 @@ let seq = 0
 // what the server says it relays beyond its first messages (an older one says nothing: a message it does not know
 // would close the connection, so those are only sent to a server that asked for them)
 let caps: Record<string, unknown> = {}
-export const netCan = (cap: 'souls' | 'chicks' | 'chests' | 'cages' | 'mine' | 'houses' | 'defaults') => !!caps[cap]
+export const netCan = (cap: 'souls' | 'chicks' | 'chests' | 'cages' | 'mine' | 'houses' | 'defaults' | 'share') => !!caps[cap]
 const listeners = new Set<() => void>()
 const remotes = new Map<string, RemoteChicken>()
 // the other browsers' chicks (lib/chicken/net-chicks.ts), by pid and number
@@ -169,6 +175,7 @@ function attach(r: Room) {
   r.onMessage('mine', (m: { pid: number; m: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'mine', pid: m?.pid, mine: m?.m }) })
   r.onMessage('houses', (m: { pid: number; l: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'houses', pid: m?.pid, list: m?.l }) })
   r.onMessage('chests', (m: { pid: number; l: unknown; o?: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'chests', pid: m?.pid, chests: { l: m?.l, o: m?.o } }) })
+  r.onMessage('share', (m: { pid: number; m: unknown }) => { if (m?.pid !== state.myPid) toWorld({ type: 'share', pid: m?.pid, share: m?.m }) })
   r.onMessage('denied', (m: { reason: string }) => set({ notice: m.reason }))
   r.onMessage('kicked', (m: { reason: string }) => set({ notice: m.reason }))
   r.onLeave(() => {
@@ -215,7 +222,8 @@ const live = () => (room && state.status === 'online' ? room : null)
 export const sendNetFoes = (foes: NetFoes) => live()?.send('foes', foes)
 export const sendNetHits = (list: NetHit[]) => live()?.send('hits', { list })
 export const sendNetSpawn = (spawn: NetSpawn) => live()?.send('spawn', { spawn })
-export const sendNetShots = (list: NetShot[]) => live()?.send('shots', { list })
+// (the players' acts, lib/pigchicken/net-acts.ts, go in the same list)
+export const sendNetShots = (list: (NetShot | NetAct | NetStageAct)[]) => live()?.send('shots', { list })
 // the souls flying free: the ones this browser flies; one asked of the browser `to`; one given to it
 const soulful = () => (netCan('souls') ? live() : null)
 export const sendNetSouls = (l: NetSoul[]) => soulful()?.send('souls', { l })
@@ -229,6 +237,8 @@ export const sendNetCages = (l: NetCages) => (netCan('cages') ? live() : null)?.
 export const sendNetMine = (m: NetMineState | NetMineActs | NetMineWord) => (netCan('mine') ? live() : null)?.send('mine', { m })
 // the house each of this browser's chickens is inside of ('' outside), in their slots' order
 export const sendNetHouses = (l: string[]) => (netCan('houses') ? live() : null)?.send('houses', { l })
+// what lies in the owner's world: the owner's, to everyone else or to the browser `to`; another browser's, to the owner
+export const sendNetShare = (m: NetShareMsg, to?: number) => (netCan('share') ? live() : null)?.send('share', to === undefined ? { m } : { m, to })
 // the chicks that follow this browser's first chicken (an empty list: none left)
 export const sendNetChicks = (l: NetChick[]) => (netCan('chicks') ? live() : null)?.send('chicks', { l })
 

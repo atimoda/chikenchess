@@ -29,8 +29,10 @@ export function drawNote(ctx: Ctx, b: Combat["bullets"][number], x: number, puls
 // plus the aim's tremolo bending it now (semitones)
 export const beamWave = (cents = 12, bend = 0) => 1 + Math.max(0, Math.min(100, cents)) / 6 + 9 * Math.min(2, Math.abs(bend))
 export function drawBeam(ctx: Ctx, combat: Combat, camX: number, view: ViewRect) {
-  const b = combat.beam
-  if (!b) return
+  if (combat.beam) drawBeamLine(ctx, combat.beam, camX, view)
+}
+// a violin's beam (one's own or another browser's), in world units
+export function drawBeamLine(ctx: Ctx, b: { x1: number; y1: number; x2: number; y2: number; color: string; bend?: number; vib?: number }, camX: number, view: ViewRect) {
   if (!intersectsView({ x: Math.min(b.x1, b.x2), y: Math.min(b.y1, b.y2), w: Math.abs(b.x2 - b.x1), h: Math.abs(b.y2 - b.y1) }, view, 32)) return
   const x1 = b.x1 - camX, x2 = b.x2 - camX, len = Math.hypot(x2 - x1, b.y2 - b.y1) || 1
   const ux = (x2 - x1) / len, uy = (b.y2 - b.y1) / len, t = performance.now() / 1000
@@ -74,7 +76,10 @@ export function rigSwing(sw: Swing | null) {
 // two and dissolves from the tail, letting off a few curls; a flash where it hit. The horizontal blow is a flattened
 // ellipse: its back half is drawn behind her (layer "back"), its front half over her (layer "front")
 export function drawSwing(ctx: Ctx, combat: Combat, origin: { x: number; y: number }, layer: "back" | "front" = "back", view: ViewRect = { x: 0, y: 0, w: stageWidth(), h: stageHeight() }) {
-  const sw = combat.swing
+  drawSwingOf(ctx, combat.swing, origin, layer, view)
+}
+// a blow's air (one's own or another browser's chicken's: lib/pigchicken/net-acts.ts) from her shoulder at `origin`
+export function drawSwingOf(ctx: Ctx, sw: Swing | null, origin: { x: number; y: number }, layer: "back" | "front" = "back", view: ViewRect = { x: 0, y: 0, w: stageWidth(), h: stageHeight() }) {
   if (!sw || sw.trail.opacity <= 0) return
   if (!intersectsView({ x: origin.x - sw.reach - 40, y: origin.y - sw.reach - 40, w: sw.reach * 2 + 80, h: sw.reach * 2 + 80 }, view, 8)) return
   if (layer === "front" && sw.kind !== "flat") return

@@ -773,6 +773,8 @@ const VOICE_IDS: Record<string, true> = { flute: true, sax: true, trumpet: true,
 // the violin (a beam instrument) bows its held note with the arpeggiator off; with it on, it plucks the arpeggio
 // (pizzicato: short notes, the bow's seconds spent note by note)
 export const bowed = (d: ItemDef) => d.beam && d.arp === 'off'
+// where the violin's bow crosses its strings (rig units along the item)
+export const VIOLIN_BOW_X = -23
 export const pizzicato = (d: ItemDef) => d.beam && d.arp !== 'off'
 // the shape of an item's Hangdrum scale (lib/pigchicken/instrument-scales.ts)
 export const hangOf = (d: ItemDef) => ({ rows: d.hangRows, notes: d.hangNotes, notes2: d.hangNotes2 })
