@@ -11,6 +11,7 @@ import type { NetFoes, NetHit, NetShot, NetSpawn } from '../pigchicken/net-world
 import type { NetAct } from '../pigchicken/net-acts'
 import type { NetGive, NetSoul, NetTake } from '../pigchicken/net-souls'
 import type { NetShareMsg } from '../pigchicken/net-share'
+import type { NetStageAct } from '../pigchicken/net-stages'
 import type { NetChests } from '../pigchicken/net-chests'
 import type { NetCages } from '../pigchicken/cages'
 import type { NetMineActs, NetMineState, NetMineWord } from '../pigchicken/net-mine'
@@ -222,7 +223,7 @@ export const sendNetFoes = (foes: NetFoes) => live()?.send('foes', foes)
 export const sendNetHits = (list: NetHit[]) => live()?.send('hits', { list })
 export const sendNetSpawn = (spawn: NetSpawn) => live()?.send('spawn', { spawn })
 // (the players' acts, lib/pigchicken/net-acts.ts, go in the same list)
-export const sendNetShots = (list: (NetShot | NetAct)[]) => live()?.send('shots', { list })
+export const sendNetShots = (list: (NetShot | NetAct | NetStageAct)[]) => live()?.send('shots', { list })
 // the souls flying free: the ones this browser flies; one asked of the browser `to`; one given to it
 const soulful = () => (netCan('souls') ? live() : null)
 export const sendNetSouls = (l: NetSoul[]) => soulful()?.send('souls', { l })

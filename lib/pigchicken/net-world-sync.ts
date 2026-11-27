@@ -19,6 +19,7 @@ import { createNetMineSync } from './net-mine-sync'
 import { cleanAct, isActKind, netActStore, type NetAct } from './net-acts'
 import { cleanDrops, cleanGives, cleanIds, cleanItems, exportItems, ownedIn, ownedOut, type NetOwned } from './net-items'
 import { cleanDummies, type NetShareMsg } from './net-share'
+import { cleanStageAct, netStageStore, STAGE_ACT_MS, type NetStageAct } from './net-stages'
 
 const FOES_MS = 100 // the owner's enemies: 10 times a second
 const FULL_MS = 2000 // and everything about them (also right after someone joins)
@@ -34,7 +35,8 @@ const NET_SLOTS = 4
 
 // localPlayers: this browser's players in their slots' order ('p1' first), as the combat knows them
 // shotRoom: the room of a house a shot of another browser begins in ('hidden': inside a house closed on this screen)
-export function createNetWorldSync(combat: Combat, localPlayers: () => string[] = () => ['p1'], opts: { shotRoom?: (pid: number, x: number, y: number) => ShotRoom | 'hidden' | null } = {}) {
+// stageActs: the fases de notas this browser's players play, as the others draw them (lib/pigchicken/net-stages.ts)
+export function createNetWorldSync(combat: Combat, localPlayers: () => string[] = () => ['p1'], opts: { shotRoom?: (pid: number, x: number, y: number) => ShotRoom | 'hidden' | null; stageActs?: () => NetStageAct[] } = {}) {
   let role: NetRole = 'off'
   const inbox: NetWorldMsg[] = []
   const off = onNetWorld(m => { inbox.push(m); if (inbox.length > 300) inbox.shift() })
@@ -62,6 +64,7 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
   let housesKey = '', lastHouses = 0
   // what lies in the owner's world (lib/pigchicken/net-share.ts): what the owner last said of its items and dummies
   let itemsKey = '', dummiesKey = '', lastShare = 0, lastShareFull = 0, shareOthers = ''
+  let lastStages = 0
 
   function become(next: NetRole) {
     if (next === 'follower') { combat.yieldShared(); combat.setNetFollower(h => { if (hitsOut.length < 256) hitsOut.push(h) }) }
@@ -77,6 +80,7 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
     housePids.clear(); clearNetHouseRooms(); housesKey = ''; lastHouses = 0
     netActStore.clear()
     itemsKey = ''; dummiesKey = ''; lastShareFull = 0; shareOthers = ''
+    netStageStore.clear()
   }
 
   return {
@@ -175,12 +179,15 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
           // the acts of that browser's chickens travel in the same list (a violin inside a house closed here is not heard)
           const acts = others.some(p => p.pid === pid) ? got.filter(x => isActKind((x as { k?: unknown } | null)?.k)).map(x => cleanAct(x, DEFAULT_ITEMS)).filter((x): x is NetAct => !!x && !(x.k === 'vb' && shotRoom?.(pid, x.x1, x.y1) === 'hidden')) : []
           if (acts.length) { combat.addRemoteActs(acts, pid); netActStore.receive(pid, acts, now) }
+          // and the fases de notas they play
+          if (others.some(p => p.pid === pid)) for (const x of got) { if ((x as { k?: unknown } | null)?.k !== 'ns') continue; const st = cleanStageAct(x); if (st) netStageStore.receive(pid, st, now) }
         }
       }
 
       // ---------- out ----------
       if (combat.netShots.length > BATCH * 2) combat.netShots.splice(0, combat.netShots.length - BATCH * 2)
       netActStore.keep(new Set(others.map(p => p.pid)))
+      netStageStore.keep(new Set(others.map(p => p.pid)))
       if (combat.netActs.length > ACTS_MAX * 2) combat.netActs.splice(0, combat.netActs.length - ACTS_MAX * 2)
       if (now - lastOut >= OUT_MS) {
         lastOut = now
@@ -188,8 +195,23 @@ export function createNetWorldSync(combat: Combat, localPlayers: () => string[] 
         const ids = localPlayers(), acts: NetAct[] = []
         for (const { who, act } of combat.netActs.splice(0)) { const slot = ids.indexOf(who); if (slot >= 0 && slot < NET_SLOTS) acts.push({ ...act, s: slot }) }
         ids.slice(0, NET_SLOTS).forEach((id, slot) => { for (const act of combat.liveActs(id)) acts.push({ ...act, s: slot }) })
-        const out: (NetShot | NetAct)[] = others.length ? acts.slice(-ACTS_MAX) : []
-        if (others.length) out.push(...combat.netShots.splice(0, BATCH - out.length))
+        const out: (NetShot | NetAct | NetStageAct)[] = others.length ? acts.slice(-ACTS_MAX) : []
+        // the stages this browser plays, 10 times a second (at most 2 in a batch, kept under the server's size)
+        if (others.length && opts.stageActs && now - lastStages >= STAGE_ACT_MS) {
+          lastStages = now
+          let room = 12000 - JSON.stringify(out).length
+          for (const st of opts.stageActs().slice(0, 2)) { const n = JSON.stringify(st).length; if (n < room) { out.push(st); room -= n } }
+        }
+        if (others.length) {
+          const shots = combat.netShots.splice(0, BATCH - out.length)
+          let room = 15500 - JSON.stringify(out).length
+          for (let i = 0; i < shots.length; i++) {
+            const n = JSON.stringify(shots[i]).length + 1
+            // (what does not fit goes in the next batch)
+            if (n > room) { combat.netShots.unshift(...shots.slice(i)); break }
+            out.push(shots[i]); room -= n
+          }
+        }
         if (out.length) sendNetShots(out)
         else if (!others.length) combat.netShots.length = 0
         if (hitsOut.length) sendNetHits(hitsOut.splice(0, 64))

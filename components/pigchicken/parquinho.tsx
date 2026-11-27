@@ -87,7 +87,7 @@ import { FollowLayer, LayoutColliders, LayoutLayerView, PatioTreeStyles } from "
 import { houseRooms, roomShotWalls, type RoomRect } from "@/lib/pigchicken/house-rooms"
 import { houseRoomsStore } from "@/lib/pigchicken/house-rooms-store"
 import { HouseDusk, useHouseDuskFilter } from "@/components/pigchicken/house-dusk"
-import { GONG_X, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
+import { GONG_X, STAGES as TEMPLE_STAGES, createTemple, type TempleIO } from "@/lib/pigchicken/temple"
 import { TEMPLE_IDLE, playNoteStageSound, playTempleSound, templeAmbience, type TempleSound } from "@/lib/pigchicken/temple-music"
 import { GOAL_DEFAULT, type NoteStage, type NoteStageIO, type NoteStageSound, type StageBy, type StageRequest } from "@/lib/pigchicken/note-stage"
 import { createNoteStages } from "@/lib/pigchicken/note-stages"
@@ -113,6 +113,8 @@ import { VillageBackdrop } from "@/components/pigchicken/village-backdrop"
 import { syncRiders, buttonLabels, lookTargets } from "@/components/pigchicken/draw/creatures"
 import { drawBeam, drawBeamLine, drawZoneBanner, rigSwing, drawSwing, drawSwingOf, drawDrawing, swingShake } from "@/components/pigchicken/draw/effects"
 import { netActStore } from "@/lib/pigchicken/net-acts"
+import { campaignAct, netStageStore, stageAct } from "@/lib/pigchicken/net-stages"
+import { drawRemoteStageHuds, drawRemoteStages } from "@/components/pigchicken/draw/net-stages"
 import { drawnPath, type SwingPath } from "@/lib/pigchicken/swing"
 import { aimReach } from "@/lib/pigchicken/aim-volume"
 import { drawVolumeRing } from "@/components/pigchicken/draw/volume-ring"
@@ -786,7 +788,16 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     // online: the lobby's owner moves the enemies, the others mirror them; everyone's shots fly on every screen
     // the rooms of the houses (lib/pigchicken/house-rooms.ts): what is fired inside one stays in it
     let shotRooms = new Map<string, ShotRoom & { rect: RoomRect }>()
-    const net = createNetWorldSync(combat, () => ["p1", ...(extras?.current?.keys() ?? [])], {
+    // the Templo do Gongo's campaign while it plays here: its scene's zone and where player 1 is
+    let campaignNet: { zone: string; at: { x: number; y: number } } | null = null
+    const localIds = () => ["p1", ...(extras?.current?.keys() ?? [])]
+    const net = createNetWorldSync(combat, localIds, {
+      // the fases de notas this browser's players play, as the other browsers draw them
+      // (and the Templo do Gongo's campaign, played by player 1)
+      stageActs: () => [
+        ...stages.playing.flatMap(st => { const slot = localIds().indexOf(st.owner); return slot >= 0 && slot < 4 ? [stageAct(st, slot, combat.targets, combat.noteShots)] : [] }),
+        ...(campaignNet ? [campaignAct(temple.state, 0, campaignNet.zone, TEMPLE_STAGES[temple.state.stage]?.name ?? "", 3, campaignNet.at, combat.targets)] : []),
+      ],
       // another browser's shot that begins in the room one of its players is in: seen only when that house is open here
       shotRoom: (pid, x, y) => {
         for (let slot = 0; slot < 4; slot++) {
@@ -842,7 +853,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
     const stageSounds: NoteStageSound[] = []
     let templeShown = ""
     // dev only: lets the test scripts reach the combat and the temple
-    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStages: stages, __chickenEngine: engine, __netActs: netActStore })
+    if (process.env.NODE_ENV !== "production") Object.assign(window as unknown as Record<string, unknown>, { __pigchicken: combat, __pigchickenTemple: temple, __pigchickenStages: stages, __chickenEngine: engine, __netActs: netActStore, __netStages: netStageStore })
     const drone = createDrone()
     // how long the zone's ambience has been sounding: after a silence its layers come in one by one
     const ambEntry = createAmbienceEntry()
@@ -1728,18 +1739,21 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // the Templo's campaign keeps the zone of its scene for itself while it plays
       const campaignOn = temple.state.phase === "intro" || temple.state.phase === "playing"
       const templeKey = templeGong ? zoneOfTarget(templeGong).key : null
+      campaignNet = campaignOn && templeKey ? { zone: templeKey, at: { x: body.x, y: body.y - 70 * body.scale } } : null
       let startCampaign = false
+      // online: a zone where another browser's player plays a song takes no other
+      const elsewhere = (zone: string | null) => !!zone && netStageStore.busy(zone, performance.now())
       const refuse = (label: string | undefined) => { if (label) templeDraw.refused.set(label, 0); playNoteStageSound({ kind: "dull" }, mixGain("effects")) }
       // a sequencer plays a song (its own pick, or the one asked): the campaign's disc starts the campaign
       const playOn = (dev: (typeof sequencers)[number], songId: string, owner: string, by: StageBy, gongX?: number) => {
         const z = zoneOfTarget(dev)
-        if (songId === CAMPAIGN_ID) { if (templeKey && stages.busy(templeKey)) refuse(dev.label); else startCampaign = true; return }
+        if (songId === CAMPAIGN_ID) { if (templeKey && (stages.busy(templeKey) || elsewhere(templeKey))) refuse(dev.label); else startCampaign = true; return }
         const song = library.songs.find(x => x.id === songId)
         if (!song) return
         const vitrola = dev.label?.startsWith("vitrola:")
         const again = by === "gongo" ? tr("Bata no gongo para tocar de novo.") : vitrola ? tr("Bata na vitrola para tocar de novo.") : tr("Bata na jukebox para tocar de novo.")
         const req: StageRequest = { song, owner, zone: z.key, zoneName: z.name, by: vitrola && by === "jukebox" ? "vitrola" : by, device: dev.label, goal: goalOf(dev.label), record: true, again, gongX }
-        if (stages.request(req, campaignOn && z.key === templeKey) === "busy") refuse(dev.label)
+        if (stages.request(req, (campaignOn && z.key === templeKey) || elsewhere(z.key)) === "busy") refuse(dev.label)
       }
       // Tocar, in a sequencer's panel (with no sequencer known: the nearest to her)
       if (playRequest !== null) {
@@ -1747,7 +1761,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         playRequest = null
         const dev = sequencers.find(t => t.label === r.device) ?? [...sequencers].sort((a, b) => Math.abs(a.x - body.x) - Math.abs(b.x - body.x))[0]
         if (dev) playOn(dev, r.id, "p1", "jukebox")
-        else if (r.id === CAMPAIGN_ID) startCampaign = !(templeKey && stages.busy(templeKey))
+        else if (r.id === CAMPAIGN_ID) startCampaign = !(templeKey && (stages.busy(templeKey) || elsewhere(templeKey)))
       }
       // Parar, in a sequencer's panel: its song, else the campaign
       if (stopRequest) {
@@ -1761,7 +1775,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const r = draftRequest
         draftRequest = null
         if (r === "stop") stages.halt({ draft: true })
-        else if (stages.request({ song: r.song, owner: "p1", zone: p1Zone.key, zoneName: p1Zone.name, by: "editor", goal: GOAL_DEFAULT, record: false, again: "", from: r.from, draft: true }, campaignOn && p1Zone.key === templeKey) === "busy") refuse(undefined)
+        else if (stages.request({ song: r.song, owner: "p1", zone: p1Zone.key, zoneName: p1Zone.name, by: "editor", goal: GOAL_DEFAULT, record: false, again: "", from: r.from, draft: true }, (campaignOn && p1Zone.key === templeKey) || elsewhere(p1Zone.key)) === "busy") refuse(undefined)
       }
       // the Gongo do Templo asked for the song of its zone's sequencer (its strikes counted in the Templo)
       const templeSeq = templeGong ? sequencerFor(templeGong) : null
@@ -1775,7 +1789,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         const run = gongRuns.get(id) ?? newGongRun()
         gongRuns.set(id, run)
         const gz = zoneOfTarget(g).key
-        if (campaignOn && gz === templeKey) { run.ring = 0; templeSounds.push({ kind: "gongDull" }); continue }
+        if ((campaignOn && gz === templeKey) || elsewhere(gz)) { run.ring = 0; templeSounds.push({ kind: "gongDull" }); continue }
         const there = stages.at(gz), playingHere = !!there && there.request?.by !== "bomba"
         const out = strikeGong(run, p, playingHere)
         if (out === "dull") playNoteStageSound({ kind: "dull" }, mixGain("effects"))
@@ -1796,7 +1810,7 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
         gongRuns.set(id, run)
         stepGong(run, p, dt)
         const g = combat.targets.find(t => t.label === `gong:${id}`)
-        const busy = g ? stages.busy(zoneOfTarget(g).key) || (campaignOn && zoneOfTarget(g).key === templeKey) : false
+        const busy = g ? stages.busy(zoneOfTarget(g).key) || (campaignOn && zoneOfTarget(g).key === templeKey) || elsewhere(zoneOfTarget(g).key) : false
         templeDraw.gongs.set(`gong:${id}`, { ring: run.ring, waiting: !busy, hits: run.hits, need: p.hits, lamps: p.lamps })
       }
       // the stone struck stops the song of its zone (not a bomb's)
@@ -1823,6 +1837,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       }
       stages.step(dt, stageIo)
       stageSounds.splice(0).forEach(e => playNoteStageSound(e, mixGain("effects")))
+      // online: the notes another browser's player rebates in a song, heard softer while it plays in this scene
+      for (const h of netStageStore.takeHeard()) if (h.x >= sceneL - 200 && h.x <= sceneL + SCENE_W + 200) playNoteStageSound({ kind: "fire", midi: h.midi - 12, voice: "bells", vel: 0.3 }, mixGain("effects"))
       // a new record: the song's best score is kept (and the banner says so)
       for (const r of stages.takeResults()) {
         // a won song of a Jukebox or a Vitrola with a prize: its items jump out of it (in this browser, like a Baú's)
@@ -1983,6 +1999,8 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       drawTempleShots(ctx, temple, camX, view)
       for (const st of stages.all) drawStageFan(ctx, st, combat.noteShots, camX, combat.music.time, st.clock?.beatPhase ?? combat.music.beatPhase)
       drawNoteShots(ctx, combat.noteShots, camX, view)
+      const remoteStages = netStageStore.size ? netStageStore.list(performance.now()) : []
+      if (remoteStages.length) drawRemoteStages(ctx, remoteStages, camX, view, combat.music.beatPhase, combat.music.beat, performance.now())
       for (const st of stages.all) drawStageTalk(ctx, st, camX)
       ctx.restore()
       const ang = combat.aimAngle, adx = Math.cos(ang), ady = Math.sin(ang)
@@ -2268,6 +2286,11 @@ export function ParquinhoPlay({ engine, settings, worldRef, groundHeight = 30, l
       // one panel for each song playing (the ended ones keep their banner a moment)
       let stageTop = hudTop
       for (const st of stages.all) { drawNoteStageHud(ctx, st, stageTop); if (st.active) stageTop += 66 }
+      // the other browsers' songs, each under a small panel with whose it is
+      if (netStageStore.size) {
+        const people = getNetState().info?.players
+        drawRemoteStageHuds(ctx, netStageStore.list(performance.now()), stageTop, pid => people?.find(p => p.pid === pid)?.name ?? "?")
+      }
       if (stageDebugRef.current) drawStageDebug(ctx, stages.all, st.height - groundHRef.current)
       if (hudRef.current) hudRef.current.style.display = S.debug ? "" : "none"
       if (hudRef.current && S.debug) {

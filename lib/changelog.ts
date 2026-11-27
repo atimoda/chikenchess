@@ -7,7 +7,7 @@ const RECENT = [
   {
     version: '2.20.0',
     date: '27/11/2026',
-    title: 'Pátio online: itens no chão compartilhados, bonecos de treino com a mesma vida para todos, golpes e gancho entre navegadores, pose do item na mão, Filhote e pássaros que assobiam para todos',
+    title: 'Pátio online: itens no chão compartilhados, bonecos de treino com a mesma vida para todos, fases de notas e Templo do Gongo visíveis para todos, golpes e gancho entre navegadores, pose do item na mão, Filhote e pássaros que assobiam para todos',
     groups: [
       { title: 'Pátio online: itens no chão', items: [
         'Os itens no chão agora são os mesmos para todos no lobby: os do Pátio, os dos suportes, o que sai de um Baú ou de um prêmio, o que alguém larga, arremessa ou troca. Cada item que alguém pega some para todos.',
@@ -16,6 +16,11 @@ const RECENT = [
       ] },
       { title: 'Pátio online: bonecos de treino', items: [
         'Os bonecos de treino do Pátio têm a mesma vida para todos: o dano e o conserto com notas de qualquer navegador quebram e consertam o boneco em todas as telas, com o som e as lascas.',
+      ] },
+      { title: 'Pátio online: Templo do Gongo e fases de notas', items: [
+        'Quando alguém toca uma música numa Jukebox, Vitrola ou Gongo, ou joga a campanha do Templo do Gongo, os outros veem a fase dele: o anel, os aliens, as notas e as bombas voando, e um painel com o nome de quem toca, a música, os corações, os pontos, o combo e a afinação.',
+        'As notas que ele rebate tocam baixinho para quem está na cena.',
+        'Enquanto a fase de alguém toca numa zona, ninguém começa outra música ali: a Jukebox, a Vitrola e o Gongo recusam com o som abafado.',
       ] },
       { title: 'Pátio online: golpes, Bicada e gancho', items: [
         'Com Dano entre jogadores ligado, os golpes e a Bicada de outro navegador agora também machucam e empurram os players daqui.',
