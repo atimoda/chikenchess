@@ -3,6 +3,7 @@
 import { msg, t as tr } from '../i18n'
 import { PECK_CONTACT, peckPose, type Peck, type PeckPose } from './peck'
 import { ACT_HOLD_MS, swingAct, type NetAct } from './net-acts'
+import { importItems, ITEM_TAKE_WAIT, ownedIn, type NetItemIn, type cleanDrops } from './net-items'
 import { DRAWN_RECOVER, SWING_PHASES, announceComboBlow, blowKind, nextCombo, pathAngle, pathAngles, pathEnd, pathSpan, swingCombo as comboOf, swingHitAt, swingLife, type Swing, type SwingPath } from './swing'
 import { DEFAULT_RULE, rebateSound, type NoteEnv, type NoteOut, type RebateRule, type Transform } from './transforms'
 import { SURFACE_BOUNCES, type PlaceEnv, type SurfaceRebate } from './sound-zones'
@@ -253,7 +254,9 @@ export type Target = {
   // shocked by a lightning weapon (lib/pigchicken/shock.ts): it shakes, stands still and blinks in x-ray
   shock?: Shock
 }
-export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number }
+// online (lib/pigchicken/net-share.ts): key, the layout element's id, the same in every browser; hold: s the owner's
+// life for it is not taken (a hit here has not reached it yet)
+export type DummyState = { params: DummyParams; stage: number; tipT: number; crackT: number; key?: string; hold?: number }
 // how long the tip stays up after it is destroyed (and after each hit while wrecked)
 export const TIP_TIME = 8
 export const TIP_AGAIN = 5
@@ -269,7 +272,8 @@ export function combineEffects(list: readonly Effect[]): Effect | null {
   const last = list[list.length - 1]
   return { ...last, left: Math.max(...list.map(e => e.left)), total: Math.max(...list.map(e => e.total)), speed: list.reduce((k, e) => k * e.speed, 1), accel: list.reduce((k, e) => k * e.accel, 1) }
 }
-export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number }
+// mirror: online, on a browser that does not own the lobby, the owner's id for it (lib/pigchicken/net-items.ts)
+export type Pickup = { id: number; owned: Owned; x: number; y: number; vy: number; resting: boolean; noPick: number; mirror?: number }
 // a Baú of the layout (lib/pigchicken/chests.ts): x is its middle, y the floor it stands on. lid: 0 shut … 1 open
 // (eased by the world's step); t: s since it opened; shake: s left of the shiver of a press that could not open it
 export type Chest = { id: string; x: number; y: number; params: ChestParams; open: boolean; lid: number; t: number; shake: number }
@@ -696,6 +700,28 @@ export function createCombat() {
   // and what each local player does with her body that the others draw (lib/pigchicken/net-acts.ts): the Bicada and
   // the Golpe as they start (who: the local player; the sync puts her slot in)
   const netActs: { who: string; act: NetAct }[] = []
+  // the items on the floor, online (lib/pigchicken/net-items.ts): the owner keeps them all for everyone; a follower
+  // shows the owner's (each with its id there), asks it for the one a player here takes (itemAsks; the item waits
+  // out of sight, itemWaits) and hands it what falls here (itemDrops)
+  let shareRole: 'off' | 'owner' | 'follower' = 'off'
+  // and the training dummies of the layout: a follower tells the owner how much life its hits took or gave each one
+  // (by its key); the owner's life for each comes back to everyone
+  const dummyDeltas = new Map<string, number>()
+  const DUMMY_HOLD = 0.6
+  let dummyQuiet = false // (the life another browser said: not told back)
+  function dummyChanged(t: Target, was: number) {
+    const d = t.dummy!
+    if (shareRole !== 'follower' || dummyQuiet || !d.key || t.hp === was) return
+    dummyDeltas.set(d.key, (dummyDeltas.get(d.key) ?? 0) + t.hp - was)
+    d.hold = DUMMY_HOLD
+  }
+  const itemAsks: number[] = [], itemDrops: Pickup[] = []
+  const itemWaits = new Map<number, { who: string; x: number; y: number; equip: boolean; replace: boolean; swap: boolean; t: number }>()
+  const ITEM_ANSWER_WAIT = 10 // s an asked item's answer is still taken
+  function dropItem(p: Pickup) {
+    if (shareRole !== 'follower') pickups.push(p)
+    else if (itemDrops.length < 64) itemDrops.push(p)
+  }
   // the other browsers' violins playing (by pid and slot): the beam drawn and its note held here, softer, while they
   // keep saying it (left: s until it stops without a word)
   const remoteBeams = new Map<string, { beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: null; bend?: number; vib?: number }; held: Held | null; midi: number; item: ItemId; left: number }>()
@@ -1032,7 +1058,7 @@ export function createCombat() {
       const k = hooks[i], d = items[k.owned.item], dt = frameDt * timeAt(k.x, k.y)
       const hand = k.remote ? k.home! : bodyOf(k.owner) ? hands.get(k.owner) ?? null : null
       // its owner is gone: it falls where it is
-      if (!hand) { hooks.splice(i, 1); arrives(k.owned); if (!k.remote && !k.owned.out) pickups.push({ id: nextId++, owned: k.owned, x: k.x, y: k.y, vy: 0, resting: false, noPick: 0.3 }); continue }
+      if (!hand) { hooks.splice(i, 1); arrives(k.owned); if (!k.remote && !k.owned.out) dropItem({ id: nextId++, owned: k.owned, x: k.x, y: k.y, vy: 0, resting: false, noPick: 0.3 }); continue }
       k.hx = hand.x; k.hy = hand.y; k.t += dt
       if (k.phase === 'out') {
         for (let left = k.speed * dt; left > 0 && k.phase === 'out'; left -= HOOK_STEP) {
@@ -1130,7 +1156,9 @@ export function createCombat() {
       answerDummy(t)
       return
     }
+    const was = t.hp
     t.hp = Math.max(0, t.hp - damage)
+    dummyChanged(t, was)
     addText(x, y - 10, String(Math.round(damage)), '#ffd166')
     burst(x, y, 5, '#ffd166', 160, 2)
     setStage(t)
@@ -1142,6 +1170,7 @@ export function createCombat() {
     if (amount <= 0) return
     const was = t.hp
     t.hp = Math.min(t.maxHp, t.hp + amount); t.tint = color
+    dummyChanged(t, was)
     if (t.hp > was && Math.random() < 0.5) sparks.push({ x: t.x + rand(-t.w / 2, t.w / 2), y: t.y - rand(t.h * 0.4, t.h), vx: rand(-30, 30), vy: rand(-90, -40), life: 0.5, max: 0.5, color: '#7bd88f', size: 3 })
     setStage(t)
     if (was < t.maxHp && t.hp >= t.maxHp) {
@@ -1173,6 +1202,16 @@ export function createCombat() {
       if (next < DUMMY_STAGE_MAX) addText(t.x, t.y - t.h - 16, tr('melhorou!'), '#7bd88f')
     }
     d.stage = next
+  }
+
+  // online: the dummy's life as another browser says it is: it breaks or mends to it, with its sound
+  function setDummyLife(t: Target, hp: number) {
+    const next = Math.max(0, Math.min(t.maxHp, hp))
+    if (Math.abs(next - t.hp) < 0.05) return
+    if (next > t.hp) { dummyQuiet = true; try { mendDummy(t, next - t.hp, t.tint ?? '#7bd88f') } finally { dummyQuiet = false } return }
+    t.hp = next; t.flash = 0.12
+    setStage(t)
+    answerDummy(t)
   }
 
   // its answer: low and sour when wrecked, climbing the zone's scale and getting in tune as it gets better
@@ -1472,7 +1511,7 @@ export function createCombat() {
       if (!swap) return false
       const old = cages[0]
       old.cage!.enterT = Infinity
-      pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -30 : 30), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
+      dropItem({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -30 : 30), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
       cages[0] = p.owned
       addText(p.x, p.y - 30, `↔ ${tr(items[p.owned.item].name)}`, '#4cc9f0')
     } else {
@@ -1493,7 +1532,7 @@ export function createCombat() {
     if (stack) {
       const amount = Math.min(p.owned.ammo, (CONSUMABLE_LIMITS[stack.item] ?? 0) - stack.ammo)
       stack.ammo += amount; p.owned.ammo -= amount
-      if (p.owned.ammo > 0) pickups.push(p)
+      if (p.owned.ammo > 0) dropItem(p)
       sound('equip', stack.item)
       addText(p.x, p.y - 30, `+${amount} ${tr(items[stack.item].name)}`, '#7bdff2')
       return true
@@ -1505,14 +1544,14 @@ export function createCombat() {
       if (same === cur) stopBeam()
       inv.splice(same, 1)
       if (cur > same || cur >= inv.length + 1) cur = Math.max(0, cur - 1)
-      pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
+      dropItem({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 })
     }
     if (!roomFor(p.owned.item)) return false
     const wasHeld = held()
     if (equip) { stopBeam(); peck = null; peckPrep = 0 }
     const limit = CONSUMABLE_LIMITS[p.owned.item]
     if (limit && p.owned.ammo > limit) {
-      pickups.push({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
+      dropItem({ ...p, id: nextId++, owned: { ...p.owned, ammo: p.owned.ammo - limit } })
       p.owned.ammo = limit
     }
     const added = takeIn(p.owned)
@@ -1527,7 +1566,7 @@ export function createCombat() {
   function swapIn(p: Pickup) {
     const old = held()
     stopBeam()
-    if (old) { pickups.push({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 }); inv.splice(cur, 1) }
+    if (old) { dropItem({ id: nextId++, owned: old, x: p.x + (Math.random() < 0.5 ? -24 : 24), y: p.y - 20, vy: -260, resting: false, noPick: 1.2 }); inv.splice(cur, 1) }
     cur = takeIn(p.owned); reloadT = 0; chargeT = 0; burstLeft = 0
     sound('equip', p.owned.item)
     addText(p.x, p.y - 30, `↔ ${tr(items[p.owned.item].name)}`, '#4cc9f0')
@@ -1562,10 +1601,20 @@ export function createCombat() {
   function popItems(x: number, top: number, loot: ItemId[]) {
     loot.forEach((item, i) => {
       const off = (i - (loot.length - 1) / 2) * 30
-      pickups.push({ id: nextId++, owned: fresh(item), x: x + off, y: top + 10, vy: -rand(420, 560), resting: false, noPick: 0.45 })
+      dropItem({ id: nextId++, owned: fresh(item), x: x + off, y: top + 10, vy: -rand(420, 560), resting: false, noPick: 0.45 })
     })
   }
   let hover: Pickup | null = null
+  // online, a follower: a player here takes the owner's item (equip/replace as pickUp; swap: with no room it takes the
+  // place of the held one): it leaves this screen and the owner is asked; its answer gives it to her
+  function askItem(p: Pickup, equip: boolean, replace: boolean, swap: boolean) {
+    if (p.mirror === undefined || itemWaits.size >= 32) return
+    const i = pickups.indexOf(p)
+    if (i >= 0) pickups.splice(i, 1)
+    if (hover === p) hover = null
+    itemWaits.set(p.mirror, { who: active, x: p.x, y: p.y, equip, replace, swap, t: 0 })
+    itemAsks.push(p.mirror)
+  }
   // items taken (or dropped by a swap) during the current hold of Pegar: each is taken once per hold
   const heldTaken = new Set<number>()
   // an item on the floor she already carries: grab equips hers
@@ -2619,6 +2668,7 @@ export function createCombat() {
     for (let i = pickups.length - 1; i >= 0; i--) {
       const p = pickups[i]
       if (!canTake(p) || !inSector(origin.x, origin.y, sw.angle, sw.arc, sw.reach, p.x, p.y - SWING_PICKUP_R, SWING_PICKUP_R)) continue
+      if (p.mirror !== undefined) { askItem(p, false, true, false); continue }
       pickups.splice(i, 1)
       if (!pickUp(p, false)) pickups.splice(i, 0, p)
       else if (hover === p) hover = null
@@ -3177,7 +3227,7 @@ export function createCombat() {
     const hers = invOf(f.owner)
     let best: Pickup | null = null, near = f.act.range
     for (const p of pickups) {
-      if (p.owned.cage || !p.resting || p.noPick > 0 || Math.hypot(p.x - her.x, p.y - her.y) < SOUL_ACT.fetch.near * her.scale || racks.some(r => r.pickupId === p.id) || freed.some(o => o.job?.item === p)) continue
+      if (p.owned.cage || p.mirror !== undefined || !p.resting || p.noPick > 0 || Math.hypot(p.x - her.x, p.y - her.y) < SOUL_ACT.fetch.near * her.scale || racks.some(r => r.pickupId === p.id) || freed.some(o => o.job?.item === p)) continue
       const has = hers.find(o => o.item === p.owned.item)
       const g = ownGroup(p.owned.item)
       if (has ? has.ammo >= (CONSUMABLE_LIMITS[has.item] ?? 0) : hers.length >= limit || countIn(hers, g) >= capOf(f.owner === active ? lastBody : loadouts.get(f.owner)?.lastBody, g)) continue
@@ -3331,7 +3381,7 @@ export function createCombat() {
       standUp()
       stopBeam(); peck = null; peckPrep = 0; swing = null; heavyItem = null; heavyT = 0; consumption = null; reloadT = 0; chargeT = 0; burstLeft = 0
       const at = lastBody ?? { x: 0, y: floorY }
-      const fling = (o: Owned) => pickups.push({ id: nextId++, owned: o, x: at.x + rand(-spread, spread), y: at.y - 40, vy: -rand(260, 460), resting: false, noPick: 1 })
+      const fling = (o: Owned) => dropItem({ id: nextId++, owned: o, x: at.x + rand(-spread, spread), y: at.y - 40, vy: -rand(260, 460), resting: false, noPick: 1 })
       inv.splice(0).forEach(fling); cur = 0
       for (const o of cages.splice(0)) { o.cage!.enterT = Infinity; fling(o) }
     },
@@ -3410,7 +3460,7 @@ export function createCombat() {
       seatNear.delete(id)
       if (l) for (const o of l.cages) {
         o.cage!.enterT = Infinity
-        pickups.push({ id: nextId++, owned: o, x: (l.lastBody?.x ?? 0) + rand(-50, 50), y: (l.lastBody?.y ?? floorY) - 40, vy: -220, resting: false, noPick: 0.6 })
+        dropItem({ id: nextId++, owned: o, x: (l.lastBody?.x ?? 0) + rand(-50, 50), y: (l.lastBody?.y ?? floorY) - 40, vy: -220, resting: false, noPick: 0.6 })
       }
       loadouts.delete(id); parryZones.delete(id); falls.delete(id); aimSways.delete(id); detunes.delete(id); locks.delete(id); shotRooms.delete(id)
       // (her spinning notes go with her)
@@ -3848,6 +3898,84 @@ export function createCombat() {
       soulNews.push({ soul, owner: a.owner, x: a.x, y: a.y })
       return true
     },
+    // ---------- the items on the floor, online (lib/pigchicken/net-items.ts) ----------
+    get shareRole() { return shareRole },
+    /** owner: this browser keeps the items for everyone; follower: it shows the owner's (its own leave); off */
+    setShareRole(next: 'off' | 'owner' | 'follower') {
+      if (next === shareRole) return
+      if (next === 'follower') { pickups.length = 0; racks.forEach(r => { r.pickupId = undefined; r.t = 0 }) }
+      else if (shareRole === 'follower') {
+        // the owner's become this browser's; each rack holds again the item of it lying at its spot
+        for (const p of pickups) p.mirror = undefined
+        for (const r of racks) {
+          const at = pickups.find(p => p.owned.item === r.item && Math.abs(p.x - r.x) < 30 && !racks.some(o => o.pickupId === p.id))
+          if (at) { r.pickupId = at.id; r.given = Math.max(1, r.given); r.spawnX = r.x; r.spawnY = r.y }
+        }
+        pickups.push(...itemDrops.splice(0))
+      }
+      shareRole = next
+      itemAsks.length = 0; itemDrops.length = 0; itemWaits.clear(); dummyDeltas.clear()
+    },
+    /** follower: the life its hits took (−) or gave (+) each dummy since the sync last asked, by key */
+    dummyDeltas,
+    /** owner: each dummy's life, by key, as everyone shows it */
+    exportDummies(): [string, number][] {
+      const out: [string, number][] = []
+      for (const t of targets) if (t.dummy?.key) out.push([t.dummy.key, Math.round(t.hp * 10) / 10])
+      return out
+    },
+    /** follower: the owner's life for each dummy (one hit here a moment ago keeps its own until the owner has it) */
+    importNetDummies(list: readonly [string, number][]) {
+      for (const [key, hp] of list) {
+        const t = targets.find(g => g.dummy?.key === key)
+        if (t?.dummy && !t.dummy.hold) setDummyLife(t, hp)
+      }
+    },
+    /** owner: another browser's hits took (−) or gave (+) this much life of each dummy */
+    addNetDummyDeltas(list: readonly [string, number][]) {
+      for (const [key, delta] of list) {
+        const t = targets.find(g => g.dummy?.key === key)
+        if (t?.dummy) setDummyLife(t, t.hp + delta)
+      }
+    },
+    /** follower: the owner ids asked since the sync last sent them, and what fell here for the owner */
+    itemAsks, itemDrops,
+    /** follower: the owner's list of items arrived; the ones asked for stay out of sight while the answer may come */
+    importNetItems(list: readonly NetItemIn[]) {
+      const hidden = new Set<number>()
+      itemWaits.forEach((w, id) => { if (w.t < ITEM_TAKE_WAIT) hidden.add(id) })
+      importItems(pickups, list, hidden, () => nextId++, raw => ownedIn(raw, items, () => nextId++))
+    },
+    /** follower: the owner gave the item `id` a player here asked for: she takes it as her press would have */
+    takeNetItem(id: number, owned: Owned) {
+      const w = itemWaits.get(id)
+      // (asked too long ago: it falls back where she is, for everyone)
+      if (!w) { dropItem({ id: nextId++, owned, x: lastBody?.x ?? 0, y: (lastBody?.y ?? floorY) - 40, vy: -220, resting: false, noPick: 0.6 }); return false }
+      itemWaits.delete(id)
+      const was = active
+      useLoadout(w.who === active || loadouts.has(w.who) ? w.who : active)
+      try {
+        const p: Pickup = { id: nextId++, owned, x: w.x, y: w.y, vy: 0, resting: false, noPick: 0 }
+        if (!pickUp(p, w.equip, w.replace)) { if (w.swap && !p.owned.cage) swapIn(p); else dropItem(p) }
+      } finally { useLoadout(was) }
+      return true
+    },
+    /** follower: the owner says the item is gone (someone took it first) */
+    netItemGone(id: number) { itemWaits.delete(id) },
+    /** owner: another browser asks for the item `id`; it leaves the floor and goes to it (null: gone, or not yet) */
+    giveNetItem(id: number): Owned | null {
+      const i = pickups.findIndex(p => p.id === id)
+      if (i < 0 || pickups[i].noPick > 0) return null
+      const [p] = pickups.splice(i, 1)
+      if (hover === p) hover = null
+      return p.owned
+    },
+    /** owner: what fell in another browser lies here now, for everyone */
+    addNetDrops(list: ReturnType<typeof cleanDrops>) {
+      for (const d of list) pickups.push({ id: nextId++, owned: d.owned, x: d.x, y: d.y, vy: d.vy, resting: false, noPick: d.noPick })
+    },
+    /** what new souls in a Gaiola that came from another browser take as their ids */
+    nextNetId: () => nextId++,
     // the owner's world becomes this browser's (it is the new owner): the mirrors move here from now on
     adoptMirrors() { targets.forEach(t => { if (t.mirror) { t.mirror = false; t.netX = undefined; t.netY = undefined } }) },
     // another browser became the owner: this browser's shared enemies become mirrors until its snapshot replaces them
@@ -3862,7 +3990,8 @@ export function createCombat() {
     clearEnemies() { for (let i = targets.length - 1; i >= 0; i--) if (targets[i].kind === 'alien' || targets[i].kind === 'zombie') targets.splice(i, 1) },
     get enemies() { return targets.filter(t => (t.kind === 'alien' || t.kind === 'zombie') && t.deadT <= 0 && t.state !== 'dead').length },
     // an item on its own in the world (a Pátio's "Item solto"): it falls to the floor there and never comes back
-    addPickup(x: number, item: ItemId, y: number, cageSouls?: number) { const id = nextId++; pickups.push({ id, owned: fresh(item, cageSouls), x, y, vy: 0, resting: false, noPick: 0 }); return id },
+    // (online, a follower: the owner's are the ones on its floor)
+    addPickup(x: number, item: ItemId, y: number, cageSouls?: number) { const id = nextId++; if (shareRole !== 'follower') pickups.push({ id, owned: fresh(item, cageSouls), x, y, vy: 0, resting: false, noPick: 0 }); return id },
     // online: the Baús opened here since the sync last asked
     chestOpens,
     // another browser opened this Baú `t` s ago: it opens here too, with its animation and sound when it is news (the
@@ -4116,6 +4245,7 @@ export function createCombat() {
           touched.forEach(p => {
             const i = pickups.indexOf(p)
             if (i < 0 || !canTake(p)) return
+            if (p.mirror !== undefined) { askItem(p, false, true, false); return }
             pickups.splice(i, 1)
             if (!pickUp(p, false)) pickups.splice(i, 0, p)
             else if (hover === p) hover = null
@@ -4358,7 +4488,7 @@ export function createCombat() {
         const floor = top ? top.y : t.y >= tGround ? tGround : null
         if (floor !== null && t.vy > 0) {
           // another browser's throw: the item lands on that browser's floor, not here
-          if (!t.remote) pickups.push({ id: nextId++, owned: t.owned, x: t.x, y: floor, vy: 0, resting: true, noPick: 0.5 })
+          if (!t.remote) dropItem({ id: nextId++, owned: t.owned, x: t.x, y: floor, vy: 0, resting: true, noPick: 0.5 })
           burst(t.x, floor, 6, '#c9b48a', 120, 2)
           thrown.splice(i, 1)
         }
@@ -4404,7 +4534,7 @@ export function createCombat() {
         const her = f.remote ? null : bodyOf(f.owner)
         const home = f.home ?? (her ? { x: her.x, y: her.y - 90 * her.scale } : null)
         // its owner is gone: it falls where it is
-        if (!home) { arrives(f.owned); if (!f.owned.out) pickups.push({ id: nextId++, owned: f.owned, x: f.x, y: f.y, vy: 0, resting: false, noPick: 0.3 }); flights.splice(i, 1); continue }
+        if (!home) { arrives(f.owned); if (!f.owned.out) dropItem({ id: nextId++, owned: f.owned, x: f.x, y: f.y, vy: 0, resting: false, noPick: 0.3 }); flights.splice(i, 1); continue }
         const dx = home.x - f.x, dy = home.y - f.y, dist = Math.hypot(dx, dy) || 1
         f.speed = Math.min(f.speed + 2400 * dt, fd.returnSpeed * 1.6)
         if (dist <= Math.max(34, f.speed * dt)) {
@@ -4420,6 +4550,7 @@ export function createCombat() {
         touch()
       }
       if (world) stepHooks(frameDt, { boxes, groundY })
+      if (world) itemWaits.forEach((w, id) => { w.t += frameDt; if (w.t >= ITEM_ANSWER_WAIT) itemWaits.delete(id) })
       if (world) stepCards(dt, { boxes, groundY })
       if (world) for (let i = bolts.length - 1; i >= 0; i--) { bolts[i].t += dt; if (bolts[i].t >= bolts[i].life) bolts.splice(i, 1) }
 
@@ -4469,6 +4600,9 @@ export function createCombat() {
       const itemOffered = !!hover || !!hoverOwned
       if (grabNow && hover && pickups.includes(hover) && (!!hover.owned.cage || roomFor(hover.owned.item) || swapFits(hover.owned.item) || babySwaps(hover.owned.item) || inv.some(o => o.item === hover!.owned.item))) {
         const g = hover, firstNew = nextId, at = pickups.indexOf(g)
+        // (the owner's, online: asked of it, taken as this press would when it answers)
+        if (g.mirror !== undefined) { askItem(g, !keeps, !runStore, !keeps); hover = null; heldTaken.add(g.id) }
+        else {
         pickups.splice(at, 1)
         const picked = pickUp(g, !keeps, !runStore)
         if (!picked && keeps) pickups.splice(at, 0, g)
@@ -4476,6 +4610,7 @@ export function createCombat() {
           if (!picked) swapIn(g)
           hover = null
           heldTaken.add(g.id); for (let id = firstNew; id < nextId; id++) heldTaken.add(id)
+        }
         }
       }
       // no room in its category and nothing of it in her wing to trade: a word over it says why it stays
@@ -4517,7 +4652,8 @@ export function createCombat() {
       }
       // Each rack owns its pickup, so neighbouring racks and dropped copies
       // cannot suppress its refill. A partially collected stack still occupies it.
-      racks.forEach(r => {
+      // (online, a follower: the owner's racks give the items everyone sees)
+      if (shareRole !== 'follower') racks.forEach(r => {
         if (r.pickupId !== undefined) {
           const active = pickups.find(p => p.id === r.pickupId)
           if (active) {
@@ -4596,7 +4732,7 @@ export function createCombat() {
         t.wobble *= Math.pow(0.02, dt)
         t.x += t.vx * dt; t.vx *= Math.pow(0.004, dt)
         t.x += (t.home - t.x) * Math.min(1, 1.5 * dt)
-        if (t.dummy) { t.dummy.tipT = Math.max(0, t.dummy.tipT - dt); t.dummy.crackT = Math.max(0, t.dummy.crackT - dt) }
+        if (t.dummy) { t.dummy.tipT = Math.max(0, t.dummy.tipT - dt); t.dummy.crackT = Math.max(0, t.dummy.crackT - dt); if (t.dummy.hold) t.dummy.hold = Math.max(0, t.dummy.hold - dt) }
       })
 
       targets.forEach(t => {

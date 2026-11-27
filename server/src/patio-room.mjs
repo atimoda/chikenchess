@@ -20,7 +20,11 @@ const CHESTS_MAX = 64, CHESTS_BYTES = 4000
 const CAGES_MAX = 4, CAGES_BYTES = 400
 // the round of the Grade de blocos (the browser's lib/pigchicken/net-mine.ts)
 const MINE_BYTES = 120_000
-const CAPS = { souls: 1, chicks: 1, chests: 1, cages: 1, mine: 1, houses: 1, defaults: 1 }
+// what lies in the owner's world for everyone (the browser's lib/pigchicken/net-share.ts: the items on the floor,
+// the training dummies, the Templo do Gongo, the palco de notas): the owner's goes to everyone else or the browser it
+// names; another browser's, to the owner only
+const SHARE_BYTES = 60_000
+const CAPS = { souls: 1, chicks: 1, chests: 1, cages: 1, mine: 1, houses: 1, defaults: 1, share: 1 }
 // the house each of a browser's chickens is inside of (the browser's lib/pigchicken/house-rooms.ts)
 const HOUSES_MAX = 4, HOUSES_BYTES = 400
 const jsonSize = v => { try { return JSON.stringify(v).length } catch { return Infinity } }
@@ -52,6 +56,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "cages"    { l }      the Gaiolas each of its chickens carries (model, souls, limit); relayed to everyone else
 //   "mine"     { m }      the round of the Grade de blocos: the owner's, relayed to everyone else; from another browser, what its players did, relayed to the owner only
 //   "houses"   { l }      the house each of its chickens is inside of ('' outside); relayed to everyone else
+//   "share"    { m, to? }  what lies in the owner's world: the owner's goes to `to` (or everyone else); another browser's (its takes and drops) to the owner only
 // Messages to the browser:
 //   "hello"    { pid, room, caps }  right after joining (caps: the newer messages this server relays)
 //   "room"     the room info below, whenever it changes
@@ -73,6 +78,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
 //   "cages"    { pid, l }     the Gaiolas another browser's chickens carry
 //   "mine"     { pid, m }     the owner's round of the Grade de blocos, or (to the owner) what another browser's players did to it
 //   "houses"   { pid, l }     the house each of another browser's chickens is inside of
+//   "share"    { pid, m }     the owner's world for everyone, or (to the owner) what another browser took or dropped
 // the parts of the game's defaults (lib/game-defaults.ts) and Personagem's ('chicken'), and how often a room hears of them
 const DEFAULT_PARTS = new Set(['settings', 'layers', 'camera', 'volume', 'mineGrid', 'items', 'scales', 'controls', 'souls', 'chicken'])
 const DEFAULTS_GAP = 2000
@@ -118,6 +124,7 @@ export class PatioRoom extends Room {
     this.onMessage('cages', (client, msg) => this.onCages(client, msg))
     this.onMessage('mine', (client, msg) => this.onMine(client, msg))
     this.onMessage('houses', (client, msg) => this.onHouses(client, msg))
+    this.onMessage('share', (client, msg) => this.onShare(client, msg))
     this.setSimulationInterval(() => this.broadcastSnapshot(), TICK_MS)
   }
 
@@ -144,7 +151,7 @@ export class PatioRoom extends Room {
       state: new Map(), // slot -> latest chicken state
       sendOk: bucket(30, 40), chatOk: bucket(2, 4), profileOk: bucket(4, 8), layoutOk: bucket(4, 8),
       foesOk: bucket(15, 20), hitsOk: bucket(30, 60), spawnOk: bucket(2, 4), shotsOk: bucket(30, 40),
-      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16), chicksOk: bucket(15, 20), chestsOk: bucket(4, 8), cagesOk: bucket(6, 10), mineOk: bucket(25, 40), housesOk: bucket(6, 10),
+      soulsOk: bucket(15, 20), takeOk: bucket(8, 16), giveOk: bucket(8, 16), chicksOk: bucket(15, 20), chestsOk: bucket(4, 8), cagesOk: bucket(6, 10), mineOk: bucket(25, 40), housesOk: bucket(6, 10), shareOk: bucket(30, 60),
     }
     this.players.set(client.sessionId, p)
     this.settleOwner()
@@ -365,6 +372,17 @@ export class PatioRoom extends Room {
     const p = this.players.get(client.sessionId)
     if (!p || !p.housesOk() || !Array.isArray(msg?.l) || msg.l.length > HOUSES_MAX || jsonSize(msg.l) > HOUSES_BYTES) return
     this.broadcast('houses', { pid: p.pid, l: msg.l }, { except: client })
+  }
+
+  // what lies in the owner's world: the owner's to the browser it names, or to everyone else; another browser's to
+  // the owner only. As it is: the browsers check what is in it.
+  onShare(client, msg) {
+    const p = this.players.get(client.sessionId), m = msg?.m
+    if (!p || !p.shareOk() || !m || typeof m !== 'object' || Array.isArray(m) || jsonSize(m) > SHARE_BYTES) return
+    if (p.pid !== this.ownerPid) { const owner = this.byPid(this.ownerPid); if (owner && owner !== p) owner.client.send('share', { pid: p.pid, m }); return }
+    if (msg.to === undefined) { this.broadcast('share', { pid: p.pid, m }, { except: client }); return }
+    const to = this.byPid(Number(msg.to))
+    if (to && to !== p) to.client.send('share', { pid: p.pid, m })
   }
 
   // a soul or a chick asked of one browser ("take") and its answer ("give"): only to the browser it names
