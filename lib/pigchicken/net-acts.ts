@@ -18,10 +18,14 @@ import type { ItemId } from './items'
 export type NetAct =
   | { k: 'pk'; s: number; a: number; p: number; r: number; tm: number; ox?: number; oy?: number; dm?: number; pu?: number; ar?: number }
   | { k: 'pp'; s: number; a: number; p: number; r: number }
-  | { k: 'sw'; s: number; a: number; ar: number; rg: number; re: number; tm: number; w: number; d: number; kd: SwingKind; tr: [number, string, number, number, number]; h?: number; sz?: number; pt?: [number[], number[]]; ox?: number; oy?: number; dm?: number; pu?: number }
+  | { k: 'sw'; s: number; a: number; ar: number; rg: number; re: number; tm: number; w: number; d: number; kd: SwingKind; tr: [number, string, number, number, number]; h?: number; sz?: number; ch?: number; pt?: [number[], number[]]; ox?: number; oy?: number; dm?: number; pu?: number }
   | { k: 'vb'; s: number; i: ItemId; x1: number; y1: number; x2: number; y2: number; m: number; c: string; b?: number; v?: number }
+  // hp: how the item in her wing is held, while it is more than carried (sent again every batch): a throw charging (tc,
+  // and where it aims, ta), a shot charging (fc), a staff winding or the chain spinning (hc), eating (ei, how far: ec),
+  // thrown and away (fl), reloading (rl), the quiver empty (am: 0), the Boomerangs in her wings (ih) and the back one (bk)
+  | { k: 'hp'; s: number; tc?: number; ta?: number; fc?: number; hc?: number; ei?: ItemId; ec?: number; fl?: number; rl?: number; am?: number; ih?: number; bk?: number }
 
-export const ACT_KINDS = ['pk', 'pp', 'sw', 'vb'] as const
+export const ACT_KINDS = ['pk', 'pp', 'sw', 'vb', 'hp'] as const
 export const isActKind = (k: unknown) => (ACT_KINDS as readonly unknown[]).includes(k)
 // a drawn blow's move travels with at most this many points
 const PATH_MAX = 48
@@ -38,7 +42,7 @@ const r2 = (v: number) => Math.round(v * 100) / 100
 export function swingAct(sw: Swing, slot: number, origin?: { x: number; y: number }): NetAct {
   const t = sw.trail
   const act: NetAct = { k: 'sw', s: slot, a: r2(sw.angle), ar: r2(sw.arc), rg: Math.round(sw.range), re: Math.round(sw.reach), tm: r2(sw.time), w: sw.wing ? 1 : 0, d: sw.dir < 0 ? -1 : 1, kd: sw.kind, tr: [Math.round(t.width), t.color, r2(t.time), t.wisps, r2(t.opacity)] }
-  if (sw.heavy) { act.h = 1; act.sz = r2(sw.size ?? 1) }
+  if (sw.heavy) { act.h = 1; act.sz = r2(sw.size ?? 1); act.ch = r2(sw.charge ?? 1) }
   if (sw.path) act.pt = thinPath(sw.path)
   if (origin) { act.ox = Math.round(origin.x); act.oy = Math.round(origin.y) }
   if (sw.damage > 0) { act.dm = r2(sw.damage); act.pu = Math.round(sw.push) }
@@ -64,7 +68,7 @@ export function swingOfAct(act: Extract<NetAct, { k: 'sw' }>): Swing {
     angle: act.a, arc: act.ar, range: act.rg, reach: act.re, t: 0, time: act.tm, wing: !!act.w, dir: act.d, kind: act.kd, combo: 0,
     hitAt: path ? 0 : swingHitAt(act.tm), hit: false, hits: 0, life: path ? Math.max(act.tm, end + trail.time) : swingLife(act.tm, trail.time),
     impacts: [], seed: Math.random(), trail, item: null, damage: 0, push: 0, durability: false, name: '',
-    ...(act.h ? { heavy: true, size: act.sz ?? 1 } : {}),
+    ...(act.h ? { heavy: true, charge: act.ch ?? 1, size: act.sz ?? 1 } : {}),
     ...(path ? { path } : {}),
   }
 }
@@ -86,7 +90,7 @@ export function cleanAct(o: unknown, items: Record<string, unknown>): NetAct | n
       k: 'sw', s, a: a.a as number, ar: cap(a.ar as number, 0, Math.PI * 2), rg: cap(a.rg as number, 0, 3000), re: cap(a.re as number, 0, 4000), tm: cap(a.tm as number, 0.02, 10),
       w: a.w ? 1 : 0, d: (a.d as number) < 0 ? -1 : 1, kd: a.kd as SwingKind, tr: [cap(w, 0, 400), c, cap(t, 0.05, 10), cap(Math.round(n), 0, 30), cap(op, 0, 1)],
     }
-    if (a.h) { act.h = 1; act.sz = num(a.sz) ? cap(a.sz, 1, 10) : 1 }
+    if (a.h) { act.h = 1; act.sz = num(a.sz) ? cap(a.sz, 1, 10) : 1; act.ch = num(a.ch) ? cap(a.ch, 0, 1) : 1 }
     Object.assign(act, blow())
     if (Array.isArray(a.pt) && a.pt.length === 2) {
       const [pt, pa] = a.pt as unknown[]
@@ -94,6 +98,17 @@ export function cleanAct(o: unknown, items: Record<string, unknown>): NetAct | n
       if (ok(pt) && ok(pa) && pt.length === pa.length && pt.every((x, i) => i === 0 || x >= pt[i - 1]) && pt[pt.length - 1] <= 10) act.pt = [pt, pa]
     }
     return act
+  }
+  if (a.k === 'hp') {
+    const hp: Extract<NetAct, { k: 'hp' }> = { k: 'hp', s }
+    for (const key of ['tc', 'fc', 'hc', 'ec', 'rl'] as const) if (num(a[key])) hp[key] = cap(a[key] as number, 0, 1)
+    if (num(a.ta)) hp.ta = a.ta as number
+    if (typeof a.ei === 'string' && a.ei in items) hp.ei = a.ei as ItemId
+    if (a.fl) hp.fl = 1
+    if (a.bk) hp.bk = 1
+    if (a.am === 0) hp.am = 0
+    if (num(a.ih)) hp.ih = cap(Math.round(a.ih), 0, 14)
+    return hp
   }
   if (a.k === 'vb' && typeof a.i === 'string' && a.i in items && all('x1', 'y1', 'x2', 'y2', 'm') && typeof a.c === 'string' && COLOR.test(a.c)) {
     // (never longer than a beam can go)
@@ -112,6 +127,7 @@ type Live = {
   prep?: { a: number; p: number; r: number; until: number }
   swing?: { sw: Swing; at: number }
   bowUntil?: number
+  hold?: { hp: Extract<NetAct, { k: 'hp' }>; until: number }
   // her shoulder on the screen, as the online chickens last drew her (the air of her blows is drawn from it)
   origin?: { x: number; y: number }
 }
@@ -128,12 +144,13 @@ export function createNetActStore() {
         else if (a.k === 'pp') { if (!l.peck) l.prep = { a: a.a, p: a.p, r: a.r, until: now + ACT_HOLD_MS } }
         else if (a.k === 'sw') { l.swing = { sw: swingOfAct(a), at: now }; delete l.peck; delete l.prep }
         else if (a.k === 'vb') l.bowUntil = now + ACT_HOLD_MS
+        else if (a.k === 'hp') l.hold = { hp: a, until: now + ACT_HOLD_MS }
       }
     },
     /** her pose now: the beak, the blow (its t brought to now) and whether a bow plays her violin */
-    pose(pid: number, slot: number, now: number): { peck: PeckPose | null; swing: Swing | null; bowing: boolean } {
+    pose(pid: number, slot: number, now: number): { peck: PeckPose | null; swing: Swing | null; bowing: boolean; hold: Extract<NetAct, { k: 'hp' }> | null } {
       const key = `${pid}:${slot}`, l = live.get(key)
-      if (!l) return { peck: null, swing: null, bowing: false }
+      if (!l) return { peck: null, swing: null, bowing: false, hold: null }
       let peck: PeckPose | null = null
       if (l.peck) {
         const t = (now - l.peck.at) / 1000
@@ -151,8 +168,10 @@ export function createNetActStore() {
         else swing = l.swing.sw
       }
       const bowing = (l.bowUntil ?? 0) > now
-      if (!l.peck && !l.prep && !l.swing && !bowing && !l.origin) live.delete(key)
-      return { peck, swing, bowing }
+      if (l.hold && l.hold.until < now) delete l.hold
+      const hold = l.hold?.hp ?? null
+      if (!l.peck && !l.prep && !l.swing && !bowing && !l.origin && !hold) live.delete(key)
+      return { peck, swing, bowing, hold }
     },
     setOrigin(pid: number, slot: number, origin: { x: number; y: number } | null) {
       const key = `${pid}:${slot}`

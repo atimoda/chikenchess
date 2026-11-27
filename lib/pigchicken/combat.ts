@@ -3700,14 +3700,32 @@ export function createCombat() {
     /** What a local player keeps doing that the others must keep seeing (said again every batch): the Bicada's
      *  wind-up and the violin's beam. */
     liveActs(id: string): NetAct[] {
-      const l = id === active ? { peckPrep, aimAngle, beam, inv, cur, seated } : loadouts.get(id)
-      if (!l) return []
-      const out: NetAct[] = []
-      const own = l.seated?.owned ?? l.inv[l.cur] ?? null
-      if (l.peckPrep > 0 && !own) out.push({ k: 'pp', s: -1, a: Math.round(l.aimAngle * 100) / 100, p: Math.round(items.peck.peckPull * Math.min(1, l.peckPrep / 0.12)), r: Math.round(items.peck.meleeRange) })
-      const b = l.beam
-      if (b?.item) out.push({ k: 'vb', s: -1, i: b.item, x1: Math.round(b.x1), y1: Math.round(b.y1), x2: Math.round(b.x2), y2: Math.round(b.y2), m: Math.round(b.midi * 100) / 100, c: b.color, ...(b.bend ? { b: Math.round(b.bend * 100) / 100 } : {}), ...(b.vib ? { v: b.vib } : {}) })
-      return out
+      if (id !== active && !loadouts.has(id)) return []
+      const was = active
+      useLoadout(id)
+      try {
+        const out: NetAct[] = []
+        const own = held(), d = def(), r2 = (v: number) => Math.round(v * 100) / 100
+        if (peckPrep > 0 && !own) out.push({ k: 'pp', s: -1, a: r2(aimAngle), p: Math.round(items.peck.peckPull * Math.min(1, peckPrep / 0.12)), r: Math.round(items.peck.meleeRange) })
+        const b = beam
+        if (b?.item) out.push({ k: 'vb', s: -1, i: b.item, x1: Math.round(b.x1), y1: Math.round(b.y1), x2: Math.round(b.x2), y2: Math.round(b.y2), m: r2(b.midi), c: b.color, ...(b.bend ? { b: r2(b.bend) } : {}), ...(b.vib ? { v: b.vib } : {}) })
+        // how the item in her wing is held when it is not just carried: a throw or a shot charging, a staff winding,
+        // the chain spinning, eating, its quiver empty, away (thrown), reloading, a pair of Boomerangs
+        const hp: Extract<NetAct, { k: 'hp' }> = { k: 'hp', s: -1 }
+        const tc = throwT > 0 ? Math.min(1, throwT / Math.max(0.05, d.throwCharge)) : 0
+        const fc = d.fireMode === 'charge' && chargeT > 0 ? Math.min(1, chargeT / Math.max(0.05, d.chargeTime)) : 0
+        const winding = !!heavyItem && heavyItem === (own ?? BARE)
+        if (tc > 0) { hp.tc = r2(tc); hp.ta = r2(throwAngle) }
+        if (fc > 0) hp.fc = r2(fc)
+        if (winding) hp.hc = r2(Math.min(1, heavyT / staffCharge(d)))
+        if (consumption) { hp.ei = consumption.item; hp.ec = r2(1 - consumption.left / Math.max(0.01, consumption.total)) }
+        if (own?.flying) hp.fl = 1
+        if (own && reloadT > 0) hp.rl = r2(1 - reloadT / Math.max(0.01, d.reloadTime))
+        if (own && d.archery && own.ammo <= 0) hp.am = 0
+        if (own && d.returnThrow && !d.deck) { hp.ih = Math.max(0, awayMax(d) - (own.out ?? 0)); if (own.back) hp.bk = 1 }
+        if (Object.keys(hp).length > 2) out.push(hp)
+        return out
+      } finally { useLoadout(was) }
     },
     /** Another browser's acts (cleaned): its violins' beams play and show here (softer), its blows and pecks are
      *  heard when they are near (the poses are lib/pigchicken/net-acts.ts's store). */
