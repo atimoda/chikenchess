@@ -24,7 +24,7 @@ Código: campos `archery` e `drawLen` em `ItemDef` (`lib/pigchicken/items.ts`); 
 - **Flecha na corda:** aparece só com munição e fora da recarga; sem isso a corda fica vazia. Em golpe e arremesso, corda e flecha continuam desenhadas no arco, em repouso.
 - **Padrões:** só o Arco vem ligado: eixo no ombro com `pivotX` −74 (a empunhadura fica à frente do corpo), Asa em (−12, 0) sobre a corda, Asa de trás em (1, 0) na empunhadura. Fichas do Arco salvas no navegador antes disso (v11 das fichas) com os pontos nunca mexidos tomam esses padrões; pontos personalizados ficam. Desligado, o item carrega como antes (recuo de estilingue na mão).
 - **Itens sem desenho separado** (sem entrada em `ARCHERY_ART`, como a Harpa de Lira): a caixa só faz a asa da frente recuar o ponto dela durante a carga; nada é desenhado a mais.
-- **Pátio online:** as galinhas dos outros navegadores mostram o Arco inteiro em repouso, com as asas nos pontos padrão; a puxada não é transmitida.
+- **Pátio online:** as galinhas dos outros navegadores mostram o Arco com as asas nos pontos padrão; desde 27/11 (v2.20.0) a puxada aparece enquanto o outro atira com ele, e o arco sem flecha fica sem flecha ([pose do item](players-and-online.md)).
 
 ## Editor de pontos
 
