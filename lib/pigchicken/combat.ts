@@ -699,6 +699,13 @@ export function createCombat() {
   // the other browsers' violins playing (by pid and slot): the beam drawn and its note held here, softer, while they
   // keep saying it (left: s until it stops without a word)
   const remoteBeams = new Map<string, { beam: { x1: number; y1: number; x2: number; y2: number; midi: number; color: string; target: null; bend?: number; vib?: number }; held: Held | null; midi: number; item: ItemId; left: number }>()
+  // the other browsers' blows and pecks that reach this browser's players (Dano entre jogadores): each lands once, when
+  // its time comes (t: s since it arrived), on the players here in its sector (a peck: along its cone, stopped by the
+  // ground and the walls)
+  type RemoteBlow = { peck: boolean; t: number; at: number; x: number; y: number; angle: number; arc: number; reach: number; damage: number; push: number }
+  const remoteBlows: RemoteBlow[] = []
+  // where the current player's step leaves from (her shoulder): a blow that starts in it tells the others
+  let stepOrigin = { x: 0, y: 0 }
   const stopRemoteBeam = (key: string) => { remoteBeams.get(key)?.held?.stop(); remoteBeams.delete(key) }
   // the other browsers' chickens (world units): the zombies go for the nearest chicken, local or not
   let netBodies: { x: number; y: number; pid?: number }[] = []
@@ -767,7 +774,8 @@ export function createCombat() {
   const playerAt = (x: number, y: number, pad = 0, skip?: string) =>
     blastActors.find(a => a.id && a.id !== skip && x >= a.box.l - pad && x <= a.box.r + pad && y >= a.box.t - pad && y <= a.box.b + pad)
   // another browser's chicken at (x, y): a shot from here stops there (that browser decides what it does)
-  const netBodyAt = (x: number, y: number, pad = 0) => netBodies.some(c => x >= c.x - 45 - pad && x <= c.x + 45 + pad && y >= c.y - 200 - pad && y <= c.y + pad)
+  const netBodyHit = (x: number, y: number, pad = 0) => netBodies.find(c => x >= c.x - 45 - pad && x <= c.x + 45 + pad && y >= c.y - 200 - pad && y <= c.y + pad)
+  const netBodyAt = (x: number, y: number, pad = 0) => !!netBodyHit(x, y, pad)
   function hurtPlayer(a: (typeof blastActors)[number], damage: number, pushX: number, x: number, y: number) {
     if (!(damage > 0)) return
     // (she flinches even from a weapon that does not push)
@@ -775,6 +783,39 @@ export function createCombat() {
     a.push(px, -Math.abs(px) * PVP_LIFT, damage)
     addText(x, y - 10, String(Math.round(damage)), '#ff8a7a')
     burst(x, y, 5, '#ff6b5b', 160, 2)
+  }
+  // another browser's blow or peck whose time came: the players here it reaches take its damage and push, once each
+  function landRemoteBlow(b: RemoteBlow, ctx: StepCtx) {
+    if (!pvp || !(b.damage > 0)) return
+    if (b.peck) {
+      const hit = new Set<string>()
+      for (let ray = 0; ray <= 8; ray++) {
+        const a = b.angle + (ray / 8 - 0.5) * b.arc
+        for (let r = 0; r <= b.reach; r += 3) {
+          const x = b.x + Math.cos(a) * r, y = b.y + Math.sin(a) * r
+          if (y > ctx.groundY || boxAt(ctx.boxes, x, y)) break
+          const pal = playerAt(x, y, 0)
+          if (pal?.id && !hit.has(pal.id)) { hit.add(pal.id); hurtPlayer(pal, b.damage, Math.cos(b.angle) * b.push, x, y) }
+        }
+      }
+      return
+    }
+    for (const a of blastActors) {
+      if (!a.id) continue
+      const cx = (a.box.l + a.box.r) / 2, cy = (a.box.t + a.box.b) / 2, half = (a.box.r - a.box.l) / 2
+      const dx = cx - b.x, dy = cy - b.y, dist = Math.hypot(dx, dy) - half
+      let diff = Math.atan2(dy, dx) - b.angle
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff))
+      if (dist > b.reach || (Math.abs(diff) > b.arc / 2 && dist > 10)) continue
+      hurtPlayer(a, b.damage, Math.sign(dx || 1) * b.push, cx - Math.sign(dx) * half, cy)
+    }
+  }
+  function stepRemoteBlows(dt: number, ctx: StepCtx) {
+    for (let i = remoteBlows.length - 1; i >= 0; i--) {
+      const b = remoteBlows[i]
+      b.t += dt
+      if (b.t >= b.at) { remoteBlows.splice(i, 1); landRemoteBlow(b, ctx) }
+    }
   }
   function hitTarget(t: Target, damage: number, pushX: number, x: number, y: number, by: SoulWeapon | null = null) {
     if (t.deadT > 0 || damage <= 0) return
@@ -913,6 +954,9 @@ export function createCombat() {
       return { kind: 'target', id: t.id }
     }
     for (const a of blastActors) if (a.id && a.id !== owner && x >= a.box.l && x <= a.box.r && y >= a.box.t && y <= a.box.b) return { kind: 'player', id: a.id }
+    // online, another browser's chicken: it holds there (her browser pulls her)
+    const nb = netBodyHit(x, y)
+    if (nb?.pid !== undefined) return { kind: 'net', pid: nb.pid }
     if (y >= ctx.groundY || solidAt(ctx.boxes, x, y)) return { kind: 'world' }
     return null
   }
@@ -935,7 +979,7 @@ export function createCombat() {
     sound('throw', null)
     if (netOn) {
       const c = hookCast(from, aimAngle, d.hookRange, (x, y) => hookHitAt(x, y, active, room ?? ctx))
-      netShots.push({ k: 'gk', i: h.item, x: Math.round(from.x), y: Math.round(from.y), tx: Math.round(c.x), ty: Math.round(c.y), sp: d.hookSpeed, l: c.hit ? 1 : 0 })
+      netShots.push({ k: 'gk', i: h.item, x: Math.round(from.x), y: Math.round(from.y), tx: Math.round(c.x), ty: Math.round(c.y), sp: d.hookSpeed, l: c.hit ? 1 : 0, pl: Math.round(hookPullSpeed(d, charge)), dm: d.hookDamage })
     }
   }
   // the hook latches on what it touched
@@ -944,6 +988,13 @@ export function createCombat() {
     burst(k.x, k.y, 6, '#9d9ca8', 150, 2)
     sound('block', null)
     if (hit.kind === 'world') { k.ax = k.x; k.ay = k.y; return }
+    // another browser's chicken: the hook rides on her while her browser pulls her (ax, ay: where she was seen last)
+    if (hit.kind === 'net') {
+      const b = netBodyHit(k.x, k.y, 6)
+      if (!b) { k.phase = 'back'; return }
+      k.ax = b.x; k.ay = b.y; k.ox = k.x - b.x; k.oy = k.y - b.y
+      return
+    }
     if (hit.kind === 'target') {
       const t = targets.find(o => o.id === hit.id)
       if (!t) { k.phase = 'back'; return }
@@ -962,6 +1013,7 @@ export function createCombat() {
   function unhook(k: Hook) {
     if (k.phase !== 'pull' || !k.hit) { k.phase = 'back'; return }
     const hit = k.hit
+    if (hit.kind === 'net') { k.phase = 'back'; k.t = 0; return }
     if (hit.kind === 'world' || hit.kind === 'player') {
       const a = actorOf(hit.kind === 'world' ? k.owner : hit.id)
       if (a?.v) a.push(-a.v.x * (1 - HOOK_KEEP), -a.v.y * (1 - HOOK_KEEP))
@@ -986,7 +1038,20 @@ export function createCombat() {
         for (let left = k.speed * dt; left > 0 && k.phase === 'out'; left -= HOOK_STEP) {
           const s = Math.min(HOOK_STEP, left, Math.max(0, k.left))
           k.x += Math.cos(k.angle) * s; k.y += Math.sin(k.angle) * s; k.left -= s
-          if (k.remote) { if (k.left <= 0) { k.phase = k.latched ? 'pull' : 'back'; k.t = 0 } continue }
+          if (k.remote) {
+            // another browser's hook that reaches a player here: she is hooked and pulled to its hand, as by one of
+            // this browser's (its damage with Dano entre jogadores)
+            const a = k.pull > 0 && !k.room ? playerAt(k.x, k.y, 6) : undefined
+            if (a?.id) {
+              k.phase = 'pull'; k.t = 0; k.best = Infinity; k.stall = 0; k.hit = { kind: 'player', id: a.id }
+              k.ox = k.x - (a.box.l + a.box.r) / 2; k.oy = k.y - (a.box.t + a.box.b) / 2
+              burst(k.x, k.y, 6, '#9d9ca8', 150, 2); sound('block', null)
+              if (pvp) hurtPlayer(a, k.damage, 0, k.x, k.y)
+              continue
+            }
+            if (k.left <= 0) { k.phase = k.latched ? 'pull' : 'back'; k.t = 0 }
+            continue
+          }
           const hit = hookHitAt(k.x, k.y, k.owner, k.room ?? ctx)
           if (hit) latchHook(k, hit)
           else if (k.left <= 0) { k.phase = 'back'; k.t = 0 }
@@ -995,8 +1060,18 @@ export function createCombat() {
       }
       if (k.phase === 'pull') {
         // another browser's: it only holds a moment where it latched
-        if (k.remote) { if (k.t >= 0.35) { k.phase = 'back'; k.t = 0 } continue }
+        if (k.remote && k.hit?.kind !== 'player') { if (k.t >= 0.35) { k.phase = 'back'; k.t = 0 } continue }
         const hit = k.hit!
+        if (hit.kind === 'net') {
+          // another browser's chicken: the hook goes with her (the one of that browser nearest where she was seen last)
+          // until she reaches the hand, or the pull's time is up
+          let b: { x: number; y: number } | null = null, best = Infinity
+          for (const c of netBodies) { if (c.pid !== hit.pid) continue; const dd = Math.hypot(c.x - k.ax, c.y - k.ay); if (dd < best) { best = dd; b = c } }
+          if (!b || best > 400) { k.phase = 'back'; k.t = 0; continue }
+          k.ax = b.x; k.ay = b.y; k.x = b.x + k.ox; k.y = b.y + k.oy
+          if (k.t >= Math.max(0.2, d.hookTime) || Math.hypot(hand.x - k.x, hand.y - k.y) <= HOOK_ARRIVE_TARGET + 20) unhook(k)
+          continue
+        }
         if (hit.kind === 'world') {
           const me = actorOf(k.owner), her = bodyOf(k.owner)
           if (!me || !her) { k.phase = 'back'; continue }
@@ -1959,7 +2034,7 @@ export function createCombat() {
         const dx = s.tx - s.x, dy = s.ty - s.y
         hooks.push({
           x: s.x, y: s.y, hx: s.x, hy: s.y, angle: Math.atan2(dy, dx), speed: s.sp, left: Math.hypot(dx, dy), phase: 'out', owned: fresh(s.i), owner: '',
-          hit: null, ax: s.tx, ay: s.ty, ox: 0, oy: 0, pull: 0, damage: 0, t: 0, best: Infinity, stall: 0, scale: 1, remote: true, latched: s.l === 1, home: { x: s.x, y: s.y },
+          hit: null, ax: s.tx, ay: s.ty, ox: 0, oy: 0, pull: s.pl ?? 0, damage: s.dm ?? 0, t: 0, best: Infinity, stall: 0, scale: 1, remote: true, latched: s.l === 1, home: { x: s.x, y: s.y }, room,
         })
         if (near && heard++ < 4) sounds.push({ kind: 'throw', item: null })
         continue
@@ -2490,7 +2565,7 @@ export function createCombat() {
       item: wing ? null : held() ?? null, damage: strong ? d.heavyDamage : d.meleeDamage, push: strong ? d.heavyPush : d.meleePush, durability: d.durability > 0, name: d.name,
       ...(strong ? { heavy: true, charge: heavy, size } : {}),
     }
-    if (netOn) netActs.push({ who: active, act: swingAct(swing, -1) })
+    if (netOn) netActs.push({ who: active, act: swingAct(swing, -1, stepOrigin) })
     swingGap = 0
     // the Itens panel's combo window bar (only while it is open): the window counts once the move and the block end
     if (active === 'p1') announceComboBlow(() => ({ busy: Math.max(time, meleeCool), window: strong ? 0 : d.comboWindow }))
@@ -2512,7 +2587,7 @@ export function createCombat() {
       item: wing ? null : held() ?? null, damage: d.meleeDamage, push: d.meleePush, durability: d.durability > 0, name: d.name,
       path, struck: new Set(), note: null,
     }
-    if (netOn) netActs.push({ who: active, act: swingAct(swing, -1) })
+    if (netOn) netActs.push({ who: active, act: swingAct(swing, -1, stepOrigin) })
     swingGap = 0
     if (active === 'p1') announceComboBlow(() => ({ busy: Math.max(time, meleeCool), window: 0 }))
   }
@@ -3619,7 +3694,7 @@ export function createCombat() {
     setNetFollower(fn: ((h: NetHit) => void) | null) { reportHit = fn },
     get netFollower() { return !!reportHit },
     // while online, the shots fired here are kept for the sync to send (it empties the list)
-    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; netActs.length = 0; [...remoteBeams.keys()].forEach(stopRemoteBeam); chestOpens.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
+    setNetOn(on: boolean) { netOn = on; if (!on) { netShots.length = 0; netActs.length = 0; remoteBlows.length = 0; [...remoteBeams.keys()].forEach(stopRemoteBeam); chestOpens.length = 0; netBodies = []; soulMirrors.length = 0; netTakes.length = 0; asked.clear(); takenFoes.clear(); netAsks = false } },
     netShots,
     netActs,
     /** What a local player keeps doing that the others must keep seeing (said again every batch): the Bicada's
@@ -3657,6 +3732,11 @@ export function createCombat() {
           continue
         }
         if (a.k !== 'pk' && a.k !== 'sw') continue
+        // with its place and damage, it may reach the players here (Dano entre jogadores); a few at a time at most
+        if (a.ox !== undefined && a.oy !== undefined && a.dm && remoteBlows.length < 32) {
+          if (a.k === 'pk') remoteBlows.push({ peck: true, t: 0, at: a.tm * PECK_CONTACT, x: a.ox, y: a.oy, angle: a.a, arc: a.ar ?? 0, reach: a.r, damage: a.dm, push: a.pu ?? 0 })
+          else remoteBlows.push({ peck: false, t: 0, at: a.pt ? pathEnd({ t: a.pt[0], a: a.pt[1] }) : swingHitAt(a.tm), x: a.ox, y: a.oy, angle: a.a, arc: a.ar, reach: a.re, damage: a.dm, push: a.pu ?? 0 })
+        }
         const at = netBodies.find(b => b.pid === pid)
         if (at && at.x > view.l - 200 && at.x < view.r + 200 && heard++ < 2) sounds.push({ kind: 'swing', item: null })
       }
@@ -3789,6 +3869,7 @@ export function createCombat() {
     // world: false steps only the current player's loadout (another local player in the same frame)
     step(frameDt: number, body: Body, origin: { x: number; y: number }, muzzle: { x: number; y: number }, targetAngle: number, input: FrameInput, boxes: Box[], groundY: number, onRecoil: (vx: number, vy: number) => void, opts: { world?: boolean; throwOrigin?: { x: number; y: number }; peckOrigin?: { x: number; y: number }; hand?: { x: number; y: number } } = {}) {
       const world = opts.world !== false
+      stepOrigin = origin
       magnetCache = null
       // her own hands (aim, cooldowns, swings, charges) live on the time of the Zona she is in; the world below goes
       // thing by thing, each on the time of where it is, and the music keeps the frame's
@@ -4052,7 +4133,10 @@ export function createCombat() {
             const p = items.peck
             peck = { angle: targetAngle, pull: p.peckPull * Math.min(1, peckPrep / 0.12), reach: p.meleeRange, t: 0, time: Math.max(0.05, p.meleeTime), hit: false }
             peckPrep = 0; peckCool = Math.max(p.meleeCooldown, p.meleeTime); sound('swing', null); peckStarted = true
-            if (netOn) netActs.push({ who: active, act: { k: 'pk', s: -1, a: Math.round(peck.angle * 100) / 100, p: Math.round(peck.pull), r: Math.round(peck.reach), tm: Math.round(peck.time * 1000) / 1000 } })
+            if (netOn) {
+              const at = opts.peckOrigin ?? origin
+              netActs.push({ who: active, act: { k: 'pk', s: -1, a: Math.round(peck.angle * 100) / 100, p: Math.round(peck.pull), r: Math.round(peck.reach), tm: Math.round(peck.time * 1000) / 1000, ox: Math.round(at.x), oy: Math.round(at.y), ar: Math.round(Math.min(160, Math.max(0, p.meleeArc)) * DEG * 100) / 100, ...(p.meleeDamage > 0 ? { dm: p.meleeDamage, pu: p.meleePush } : {}) } })
+            }
           }
         }
       } else if (h && d.consumable) {
@@ -4202,6 +4286,7 @@ export function createCombat() {
         spreadOrbits(dt)
         // the other browsers' violins: a beam they stopped saying stops here too
         remoteBeams.forEach((r, key) => { r.left -= dt; if (r.left <= 0) stopRemoteBeam(key) })
+        stepRemoteBlows(dt, ctx)
         for (let i = bullets.length - 1; i >= 0; i--) {
           const b = bullets[i]
           if (!stepBullet(b, dt * timeAt(b.x, b.y), ctx)) continue

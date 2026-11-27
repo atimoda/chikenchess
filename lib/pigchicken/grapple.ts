@@ -7,7 +7,8 @@ import type { ItemDef } from './items'
 type P = { x: number; y: number }
 // what the hook can latch on, as the cast finds it: the world (a wall, a floor, an object: she is pulled to it) or
 // someone (a target or another player: pulled to her)
-export type HookHit = { kind: 'world' } | { kind: 'target'; id: number } | { kind: 'player'; id: string }
+// net: another browser's chicken (online), by its browser: that browser pulls her; here the hook holds on her
+export type HookHit = { kind: 'world' } | { kind: 'target'; id: number } | { kind: 'player'; id: string } | { kind: 'net'; pid: number }
 export type HookCast = { x: number; y: number; hit: HookHit | null }
 
 // px the cast advances per check: small enough not to jump over a thin wall or a small enemy

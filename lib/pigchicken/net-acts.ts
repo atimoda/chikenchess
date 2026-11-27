@@ -12,11 +12,13 @@ import type { ItemId } from './items'
 // pk: a Bicada let go (angle, pull, reach, its time); pp: its wind-up while Atirar is held (sent again every batch)
 // sw: a Golpe that starts (its pose and air: angle, arc, wing's reach, reach, time, 1 for the bare wing, direction,
 // kind, the air [width, colour, time, curls, opacity], the strong blow and its size, the Golpe desenhado's move)
+// pk and sw also carry where they leave from (ox, oy: the neck's base or her shoulder, world units), their damage and
+// push (dm, pu) and the Bicada its cone (ar): with Dano entre jogadores the other browsers hurt their own players with them
 // vb: the violin's beam while it plays (sent again every batch): from where to where, its note, colour, bend, vibrato
 export type NetAct =
-  | { k: 'pk'; s: number; a: number; p: number; r: number; tm: number }
+  | { k: 'pk'; s: number; a: number; p: number; r: number; tm: number; ox?: number; oy?: number; dm?: number; pu?: number; ar?: number }
   | { k: 'pp'; s: number; a: number; p: number; r: number }
-  | { k: 'sw'; s: number; a: number; ar: number; rg: number; re: number; tm: number; w: number; d: number; kd: SwingKind; tr: [number, string, number, number, number]; h?: number; sz?: number; pt?: [number[], number[]] }
+  | { k: 'sw'; s: number; a: number; ar: number; rg: number; re: number; tm: number; w: number; d: number; kd: SwingKind; tr: [number, string, number, number, number]; h?: number; sz?: number; pt?: [number[], number[]]; ox?: number; oy?: number; dm?: number; pu?: number }
   | { k: 'vb'; s: number; i: ItemId; x1: number; y1: number; x2: number; y2: number; m: number; c: string; b?: number; v?: number }
 
 export const ACT_KINDS = ['pk', 'pp', 'sw', 'vb'] as const
@@ -33,11 +35,13 @@ const COLOR = /^#[0-9a-f]{3,8}$/i
 const r2 = (v: number) => Math.round(v * 100) / 100
 
 /** A Golpe of this browser as it goes out (slot: the chicken's place in this browser's list). */
-export function swingAct(sw: Swing, slot: number): NetAct {
+export function swingAct(sw: Swing, slot: number, origin?: { x: number; y: number }): NetAct {
   const t = sw.trail
   const act: NetAct = { k: 'sw', s: slot, a: r2(sw.angle), ar: r2(sw.arc), rg: Math.round(sw.range), re: Math.round(sw.reach), tm: r2(sw.time), w: sw.wing ? 1 : 0, d: sw.dir < 0 ? -1 : 1, kd: sw.kind, tr: [Math.round(t.width), t.color, r2(t.time), t.wisps, r2(t.opacity)] }
   if (sw.heavy) { act.h = 1; act.sz = r2(sw.size ?? 1) }
   if (sw.path) act.pt = thinPath(sw.path)
+  if (origin) { act.ox = Math.round(origin.x); act.oy = Math.round(origin.y) }
+  if (sw.damage > 0) { act.dm = r2(sw.damage); act.pu = Math.round(sw.push) }
   return act
 }
 
@@ -71,7 +75,9 @@ export function cleanAct(o: unknown, items: Record<string, unknown>): NetAct | n
   if (!a || typeof a !== 'object' || !isActKind(a.k) || !num(a.s) || a.s < 0 || a.s > 3) return null
   const s = Math.round(a.s)
   const all = (...keys: string[]) => keys.every(k => num(a[k]) && Math.abs(a[k] as number) < LIMIT)
-  if (a.k === 'pk' && all('a', 'p', 'r', 'tm')) return { k: 'pk', s, a: a.a as number, p: cap(a.p as number, 0, 400), r: cap(a.r as number, 0, 2000), tm: cap(a.tm as number, 0.05, 5) }
+  // where a blow leaves from and what it does (only both together, and inside their ranges)
+  const blow = () => all('ox', 'oy') ? { ox: a.ox as number, oy: a.oy as number, ...(num(a.dm) && a.dm > 0 ? { dm: cap(a.dm, 0, 5000), pu: num(a.pu) ? cap(a.pu, -5000, 5000) : 0 } : {}) } : {}
+  if (a.k === 'pk' && all('a', 'p', 'r', 'tm')) return { k: 'pk', s, a: a.a as number, p: cap(a.p as number, 0, 400), r: cap(a.r as number, 0, 2000), tm: cap(a.tm as number, 0.05, 5), ...blow(), ...(num(a.ar) ? { ar: cap(a.ar, 0, Math.PI) } : {}) }
   if (a.k === 'pp' && all('a', 'p', 'r')) return { k: 'pp', s, a: a.a as number, p: cap(a.p as number, 0, 400), r: cap(a.r as number, 0, 2000) }
   if (a.k === 'sw' && all('a', 'ar', 'rg', 're', 'tm', 'd') && SWING_COMBO.includes(a.kd as SwingKind) && Array.isArray(a.tr) && a.tr.length === 5) {
     const [w, c, t, n, op] = a.tr as unknown[]
@@ -81,6 +87,7 @@ export function cleanAct(o: unknown, items: Record<string, unknown>): NetAct | n
       w: a.w ? 1 : 0, d: (a.d as number) < 0 ? -1 : 1, kd: a.kd as SwingKind, tr: [cap(w, 0, 400), c, cap(t, 0.05, 10), cap(Math.round(n), 0, 30), cap(op, 0, 1)],
     }
     if (a.h) { act.h = 1; act.sz = num(a.sz) ? cap(a.sz, 1, 10) : 1 }
+    Object.assign(act, blow())
     if (Array.isArray(a.pt) && a.pt.length === 2) {
       const [pt, pa] = a.pt as unknown[]
       const ok = (v: unknown): v is number[] => Array.isArray(v) && v.length >= 2 && v.length <= PATH_MAX && v.every(x => num(x) && Math.abs(x) < 1000)

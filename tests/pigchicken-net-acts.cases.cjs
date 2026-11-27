@@ -117,3 +117,75 @@ test('offline nothing is queued', () => {
   step(c, { melee: true })
   assert.equal(c.netActs.length, 0)
 })
+
+// ---------- Dano entre jogadores across browsers ----------
+// this browser's p1 stands at x 0..40; another browser's chicken (pid 5) acts from the left of her
+function victim(pvp = true) {
+  const c = online(), got = []
+  c.setBlastActors([{ id: 'p1', box: { l: 0, r: 40, t: 0, b: 110 }, v: { x: 0, y: 0 }, push: (x, y, d) => got.push({ x, y, d }) }])
+  c.setPvp(pvp)
+  return { c, got }
+}
+const worldTick = (c, n = 1) => { for (let i = 0; i < n; i++) c.step(0.016, { ...body, x: 600 }, { x: 600, y: 50 }, { x: 600, y: 50 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 }, [], 1000, () => {}) }
+
+test("another browser's Golpe hurts the players here once, when it lands, and only with Dano entre jogadores", () => {
+  const attacker = online()
+  attacker.give('bat')
+  step(attacker, { melee: true }, 0)
+  const act = A.cleanAct(JSON.parse(JSON.stringify(sent(attacker)[0])), DEFAULT_ITEMS)
+  assert.ok(act.dm > 0 && act.ox !== undefined, 'it says where it leaves from and what it does')
+  const at = { ...act, ox: -40, oy: 50 }
+  for (const pvp of [false, true]) {
+    const { c, got } = victim(pvp)
+    c.addRemoteActs([at], 5)
+    worldTick(c, 2)
+    assert.equal(got.length, 0, 'not before it lands')
+    worldTick(c, 60)
+    assert.equal(got.length, pvp ? 1 : 0)
+    if (pvp) { assert.equal(got[0].d, act.dm); assert.ok(got[0].x > 0, 'pushed away from the attacker') }
+  }
+  // out of its reach: nothing
+  const { c, got } = victim()
+  c.addRemoteActs([{ ...at, ox: -2000 }], 5)
+  worldTick(c, 60)
+  assert.equal(got.length, 0)
+})
+
+test("another browser's Bicada hurts a player here in its cone, and a wall in between protects her", () => {
+  const pk = { k: 'pk', s: 0, a: 0, p: 10, r: 80, tm: 0.2, ox: -30, oy: 50, ar: 0.5, dm: 12, pu: 100 }
+  const { c, got } = victim()
+  c.addRemoteActs([A.cleanAct(pk, DEFAULT_ITEMS)], 5)
+  worldTick(c, 30)
+  assert.equal(got.length, 1); assert.equal(got[0].d, 12)
+  const w = victim()
+  w.c.addRemoteActs([A.cleanAct(pk, DEFAULT_ITEMS)], 5)
+  for (let i = 0; i < 30; i++) w.c.step(0.016, { ...body, x: 600 }, { x: 600, y: 50 }, { x: 600, y: 50 }, 0, { fire: false, firePressed: false, melee: false, throwHeld: false, throwReleased: false, reload: false, pick: 0, slot: 0 }, [{ l: -15, t: 0, r: -5, b: 110 }], 1000, () => {})
+  assert.equal(w.got.length, 0, 'the wall stops the beak')
+})
+
+test("another browser's hook that reaches a player here hooks her and pulls her to its hand", () => {
+  const { c, got } = victim()
+  c.addRemoteShots([{ k: 'gk', i: 'hook', x: -600, y: 50, tx: 20, ty: 50, sp: 2400, l: 1, pl: 1500, dm: 8 }], undefined, 5)
+  worldTick(c, 30)
+  assert.ok(got.some(g => g.d === 8), 'the damage when it latches')
+  assert.ok(got.some(g => g.x < 0 && !g.d), 'then pulled toward its hand, on the left')
+  // an older browser's hook (no pull said) only shows
+  const old = victim()
+  old.c.addRemoteShots([{ k: 'gk', i: 'hook', x: -600, y: 50, tx: 20, ty: 50, sp: 2400, l: 1 }], undefined, 5)
+  worldTick(old.c, 30)
+  assert.equal(old.got.length, 0)
+})
+
+test("this browser's hook holds on another browser's chicken instead of passing through her", () => {
+  const c = online()
+  c.setNetBodies([{ x: 300, y: 100, pid: 9 }])
+  c.give('hook')
+  c.setBlastActors([{ id: 'p1', box: { l: -20, r: 20, t: 0, b: 110 }, v: { x: 0, y: 0 }, push: () => {} }])
+  // charge and let go, aiming right at her
+  for (let i = 0; i < 20; i++) step(c, { fire: true, firePressed: i === 0 }, 0, true)
+  step(c, {}, 0, true)
+  const gk = c.netShots.find(s => s.k === 'gk')
+  assert.ok(gk, 'thrown')
+  assert.ok(gk.tx >= 250 && gk.tx <= 350, `it stops on her, at ${gk.tx}`)
+  assert.equal(gk.l, 1); assert.ok(gk.pl > 0 && gk.dm >= 0)
+})
