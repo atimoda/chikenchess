@@ -51,3 +51,15 @@ test('older packets (without aim and rot) are still read, as aim 0 and rot 0', a
   for (let i = 0; i < 2; i++) oldSnap.set(snap.subarray(3 + 23 * i, 3 + 23 * i + 21), 3 + 21 * i)
   assert.deepEqual(P.decodeNetSnapshot(oldSnap).entries, chickens.map((c, i) => ({ pid: i, ...c, aim: 0, rot: 0 })))
 })
+
+test('a Filhote goes online in her look (skin and music bar) and comes back out of it', () => {
+  const { withNetBaby, readNetBaby } = loadTs('lib/chicken/net-baby.ts')
+  const look = { torso: 'porco-rosa', face: 'x' }
+  assert.equal(withNetBaby(look, { on: false, skin: null, bar: 0 }), look, 'an adult: as she is')
+  const sent = withNetBaby(look, { on: true, skin: 'preto', bar: 0.5 })
+  // (what the game server keeps of a look: short word keys and values)
+  assert.ok(Object.entries(sent).every(([k, v]) => /^[\w-]{1,24}$/.test(k) && /^[\w-]{1,40}$/.test(v)))
+  assert.deepEqual(readNetBaby(sent), { look, baby: { skin: 'preto', bar: 0.5 } })
+  assert.deepEqual(readNetBaby(look), { look, baby: null })
+  assert.deepEqual(readNetBaby(null), { look: null, baby: null })
+})

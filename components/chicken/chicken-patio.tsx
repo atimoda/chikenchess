@@ -9,6 +9,7 @@ import { PatioRange } from "@/components/ui/patio-range"
 import { useGamePageScrollLock } from "@/hooks/use-game-page-scroll-lock"
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { getBaby, subscribeBaby } from "@/lib/chicken/baby"
+import { withNetBaby } from "@/lib/chicken/net-baby"
 import { variantClass } from "@/lib/chicken/beast-art"
 import Link from "next/link"
 import dynamic from "next/dynamic"
@@ -338,7 +339,9 @@ export function ChickenPatio() {
   // ---------- online (the game server, server/) ----------
   const mode = lobby?.mode ?? "local"
   const localCount = lobby ? localPlayers(lobby).length : 1
-  const myLooks = useMemo(() => [draft.look, ...others.map(p => p.look ?? null)] as (Record<string, string> | null)[], [draft.look, others])
+  // (Player 1 a Filhote: the others see her as one, with her skin and her music bar; lib/chicken/net-baby.ts)
+  const babyKey = useSyncExternalStore(subscribeBaby, () => { const b = getBaby(); return b.on ? `${b.skin ?? ""}|${Math.round(b.bar * 100)}` : "" }, () => "")
+  const myLooks = useMemo(() => [withNetBaby(draft.look, babyKey ? getBaby() : null), ...others.map(p => p.look ?? null)] as (Record<string, string> | null)[], [draft.look, others, babyKey])
   const myName = meName ?? "Player 1"
   const netJoin = useRef({ name: myName, chickens: localCount, looks: myLooks, patio })
   netJoin.current = { name: myName, chickens: localCount, looks: myLooks, patio }

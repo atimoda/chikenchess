@@ -25,6 +25,8 @@ import { cancelGameFrame, requestGameFrame } from "@/lib/game-frame"
 import { ITEM_SVG } from "@/lib/pigchicken/art"
 import { DEFAULT_ITEMS, VIOLIN_BOW_X, bowed, type ItemId } from "@/lib/pigchicken/items"
 import { netActStore, type NetAct } from "@/lib/pigchicken/net-acts"
+import { readNetBaby } from "@/lib/chicken/net-baby"
+import { babyArt } from "@/lib/chicken/baby"
 import { heldItemPose } from "@/lib/pigchicken/held-pose"
 import type { Combat } from "@/lib/pigchicken/combat"
 import type { Swing } from "@/lib/pigchicken/swing"
@@ -58,7 +60,7 @@ export const useNet = () => useSyncExternalStore(subscribeNet, getNetState, getN
 // housed: out of sight, inside a house that is closed on this screen
 // bowing: her violin plays (its bow goes back and forth across the strings); hold: how she holds her item (net-acts
 // "hp"); swing: her blow now
-type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; housed: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number; color: string; small: boolean; bowing: boolean; hold: NetHold | null; swing: Swing | null }
+type Remote = { engine: ChickenEngine; wrap: HTMLDivElement; tag: HTMLDivElement; pid: number; slot: number; seen: boolean; housed: boolean; item: number; aim: number | null; at: number; portal: "portal" | "portalArrival" | null; camX: number; camY: number; color: string; dress: string; look: ChickenLook | null; baby: { skin: string | null; bar: number } | null; bowing: boolean; hold: NetHold | null; swing: Swing | null }
 // another browser's chick drawn here (id: its id in the lobby; hidden: asked of its browser, out of sight meanwhile)
 export type NetChickMirror = { engine: ChickenEngine; wrap: HTMLDivElement; pid: number; id: number; hidden: boolean; hide: () => void }
 // the shortest turn from a to b
@@ -140,7 +142,7 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         const tag = document.createElement("div")
         tag.className = "pointer-events-none fixed left-0 top-0 z-[203] whitespace-nowrap rounded-full border-2 bg-black/60 px-2 py-0.5 font-mono text-[11px] font-bold text-white"
         host.appendChild(tag)
-        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, housed: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0, color: netColor(p.color), small: false, bowing: false, hold: null, swing: null }
+        const entry: Remote = { engine, wrap, tag, pid: p.pid, slot, seen: false, housed: false, item: 0, aim: null, at: performance.now(), portal: null, camX: 0, camY: 0, color: netColor(p.color), dress: "", look: null, baby: null, bowing: false, hold: null, swing: null }
         engine.setRemote(() => {
           const c = remoteChicken(entry.pid, entry.slot)
           if (!c) return null
@@ -191,11 +193,14 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         r = entry
         map.set(k, r)
       }
-      r.engine.setLook((p.looks[slot] as ChickenLook | null) ?? null)
+      // (a Filhote over there: her look says so, with her skin and music bar)
+      const seen = readNetBaby(p.looks[slot] ?? null)
+      r.engine.setLook((seen.look as ChickenLook | null) ?? null)
+      r.look = (seen.look as ChickenLook | null) ?? null; r.baby = seen.baby
       r.tag.textContent = p.chickens > 1 ? `${p.name} ${slot + 1}` : p.name
       r.tag.style.borderColor = netColor(p.color)
       // her look was set again: a Filhote is dressed again at the next frame
-      r.color = netColor(p.color); r.small = false
+      r.color = netColor(p.color); r.dress = "?"
     })
     const speakers: Record<string, ChickenEngine> = {}
     map.forEach(r => { if (r.slot === 0) speakers[`net:${r.pid}`] = r.engine })
@@ -241,11 +246,17 @@ export function OnlineChickens({ own, groundHeight, onSpeakers, chicks, netChick
         netActStore.setOrigin(r.pid, r.slot, act.swing && !r.housed ? r.engine.getState().shoulder : null)
         r.bowing = act.bowing; r.hold = act.hold; r.swing = act.swing
         // a Filhote of the Grade de blocos (the lobby's owner says who): a chick in her browser's colour
+        // a Filhote of the Grade de blocos (the lobby's owner says who): a chick in her browser's colour; a Filhote of
+        // her own (her life ran out): the Filhote of her class in her skin, with her music bar
         const small = mineStore.netChick(r.pid, r.slot)
-        if (small !== r.small) {
-          r.small = small
-          if (small) { r.engine.setSpecies("chick"); r.engine.setArt(chickArt(playerChickStyle(r.color))) } else { r.engine.setSpecies(undefined); r.engine.setArt(null) }
+        const dress = small ? "mine" : r.baby ? `baby:${r.baby.skin ?? ""}` : ""
+        if (dress !== r.dress) {
+          r.dress = dress
+          if (small) { r.engine.setSpecies("chick"); r.engine.setArt(chickArt(playerChickStyle(r.color))) }
+          else if (r.baby && r.look) { r.engine.setSpecies("chick"); r.engine.setArt(babyArt(r.look, r.baby.skin)) }
+          else { r.engine.setSpecies(undefined); r.engine.setArt(null) }
         }
+        r.engine.setMeter(r.baby && !small ? r.baby.bar : null)
         // inside a house no one of this screen is in: the façade hides her and her name
         const housed = houseRoomsStore.netHidden(r.pid, r.slot)
         if (housed !== r.housed) { r.housed = housed; r.wrap.style.visibility = r.tag.style.visibility = housed ? "hidden" : "visible" }
